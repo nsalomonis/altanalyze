@@ -27,6 +27,8 @@ def read_directory(sub_dir):
     dir_list = os.listdir(dir + sub_dir)
     return dir_list
 
+# random change by martijn
+
 ################# Begin Analysis
 
 def getFilteredExons(filename,p,probeset_db):
@@ -250,6 +252,8 @@ def reorderArraysOnly(filtered_exp_db):
             #raw_data_comps[probeset,comp] = temp_raw
             data.write(values) 
 
+# another random change by martijn
+
 def generateConstitutiveExpression(exp_dbase,constitutive_gene_db,probeset_gene_db,pre_filtered_db,array_names,filename):
     """Generate Steady-State expression values for each gene for analysis in the main module of this package"""
     steady_state_db={}; k=0; l=0
@@ -469,7 +473,6 @@ if __name__ == '__main__':
     filtered_exon_list = {}
     filtered_exon_list = getFilteredExons(filename,p)
     filtered_exon_list = filterFilteredData(splicing_analysis_db,filtered_exon_list)
-    #filtered_exon_list = filterFilteredData(splicing_analysis_db,filtered_exon_list)
     #"""
     filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db,data_type)
     #filtered_gene_db = permformFtests(filtered_exp_db,group_count,probeset_db)
