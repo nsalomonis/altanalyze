@@ -209,16 +209,18 @@ def parse_affymetrix_annotations(filename):
                             except ValueError: null = []
                     uniprot_list = uniprot_list2
                     
-                    mrna_associations = affy_data[ma]; ensembl_list=[]
+                    mrna_associations = affy_data[ma]; ensembl_list=[]; descriptions=[]
                     ensembl_data = string.split(mrna_associations,' /// ')
                     for entry in ensembl_data:
                         annotations = string.split(entry,' // ')
+                        #if probeset == '8148358': print annotations
                         for i in annotations:
                             if 'gene:ENS' in i:
-                                description, ensembl_id = string.split(i,'gene:ENS')
+                                description, ensembl_id = string.split(i,'gene:ENS'); descriptions.append((len(description),description))
                                 ensembl_id = string.split(ensembl_id,' ')
                                 ensembl_id = 'ENS'+ensembl_id[0]; ensembl_list.append(ensembl_id)
 
+                    #if probeset == '8148358': print ensembl_list; kill
                     gene_assocs = affy_data[ga]; entrez_list=[]
                     entrez_data = string.split(gene_assocs,' /// ')
                     for entry in entrez_data:
@@ -226,8 +228,8 @@ def parse_affymetrix_annotations(filename):
                             if len(entry)>0:
                                 annotations = string.split(entry,' // ')
                                 entrez_gene = int(annotations[-1]); entrez_list.append(str(entrez_gene))
-                                symbol = annotations[1]; description = annotations[2]
-                                #print entrez_gene,symbol,description;kill
+                                symbol = annotations[1]; description = annotations[2]; descriptions.append((len(description),description))
+                                #print entrez_gene,symbol, descriptions;kill
                                 z = InferredEntrezInformation(symbol,entrez_gene,description)
                                 try: entrez_annotation_db[str(entrez_gene)] = z ###create an inferred Entrez gene database
                                 except NameError: null = []
@@ -248,10 +250,18 @@ def parse_affymetrix_annotations(filename):
                         goids = [process_goids,component_goids,function_goids]
                         go_names = [process_names,component_names,function_names]
                     else: goids=[]; go_names=[]
-                    if extract_pathway_names == 'yes': null, pathways = extractPathwayData(pathway_data,[],[],version)
+                    if extract_pathway_names == 'yes': null, pathways = extractPathwayData(pathway_data,[],version)
                     else: pathways = []
+                    entrez_list=unique.unique(entrez_list); unigene_list=unique.unique(unigene_list); uniprot_list=unique.unique(uniprot_list); ensembl_list=unique.unique(ensembl_list)
+                    descriptions2=[]
+                    for i in descriptions: 
+                        if 'cdna:known' not in i: descriptions2.append(i)
+                    descriptions = descriptions2
+                    if len(descriptions)>0:
+                        descriptions.sort(); description = descriptions[-1][1]
+                        if description[0] == ' ': description = description[1:] ### some entries begin with a blank
                     ai = AffymetrixInformation(probeset,symbol,ensembl_list,entrez_list,unigene_list,uniprot_list,description,goids,go_names,pathways)
-                    if len(entrez_list)<5: affy_annotation_db[probeset] = ai
+                    if len(entrez_list)<5 and len(ensembl_list)<5: affy_annotation_db[probeset] = ai
 
 def extractPathwayData(terms,type,version):
     goids = []; go_names = []
@@ -378,7 +388,6 @@ def parseGene2GO(tax_id,species):
     import_dir = '/Databases/BuildDBs/Entrez/Gene2GO'
     g = GrabFiles(); g.setdirectory(import_dir)
     filename = g.searchdirectory('gene2go') ###Identify gene files corresponding to a particular MOD
-    
     fn=filepath(filename); gene_go={}; x = 0
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)

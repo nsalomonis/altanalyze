@@ -136,6 +136,7 @@ class EnsemblInformation:
         self._splice_event = splice_event; self._splice_junctions = splice_junctions
     def setIntronDeletionStatus(self,del_status):
         self._del_status = del_status
+    def setAssociatedSplicingEvent(self,splice_event): self._splice_event = splice_event
     def AssociatedSplicingEvent(self):
         try: return self._splice_event
         except AttributeError: return ''
@@ -156,13 +157,19 @@ class EnsemblInformation:
     def setExonSeq(self,exon_seq): self._exon_seq = exon_seq
     def ExonSeq(self): return self._exon_seq
     def setPrevExonSeq(self,prev_exon_seq): self._prev_exon_seq = prev_exon_seq
-    def PrevExonSeq(self): return self._prev_exon_seq
+    def PrevExonSeq(self):
+        try: return self._prev_exon_seq
+        except Exception: return ''
     def setNextExonSeq(self,next_exon_seq): self._next_exon_seq = next_exon_seq
-    def NextExonSeq(self): return self._next_exon_seq
+    def NextExonSeq(self):
+        try: return self._next_exon_seq
+        except Exception: return ''
     def setPrevIntronSeq(self,prev_intron_seq): self._prev_intron_seq = prev_intron_seq
     def PrevIntronSeq(self): return self._prev_intron_seq
     def setNextIntronSeq(self,next_intron_seq): self._next_intron_seq = next_intron_seq
     def NextIntronSeq(self): return self._next_intron_seq
+    def setPromoterSeq(self,promoter_seq): self._promoter_seq = promoter_seq
+    def PromoterSeq(self): return self._promoter_seq
     
     def AllGeneValues(self):
         output = str(self.ExonID())
@@ -211,7 +218,8 @@ class RelativeExonLocations:
 ################### Import exon coordinate/transcript data from BIOMART
 def importEnsExonStructureDataSimple(species,type,gene_strand_db,exon_location_db,adjacent_exon_locations):
     if type == 'ensembl': filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
-    else: filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_filtered_mrna.txt'
+    elif type == 'ucsc': filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_filtered_mrna.txt'
+    elif type == 'ncRNA': filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_filtered_ncRNA.txt'
     start_time = time.time()
     fn=filepath(filename); x=0; k=[]; relative_exon_locations={}
     for line in open(fn,'rU').xreadlines():
@@ -234,8 +242,8 @@ def importEnsExonStructureDataSimple(species,type,gene_strand_db,exon_location_d
             gene_strand_db[gene] = strand
             exon_location_db[ens_exonid] = exon_start,exon_end
 
-    ###Generate a list of exon possitions for adjacent exons for all exons   \
-    adjacent_exon_locations={}
+    ###Generate a list of exon possitions for adjacent exons for all exons
+    first_exon_dbase={}
     for (transcript,gene,strand) in relative_exon_locations:
         relative_exon_locations[(transcript,gene,strand)].sort()
         if strand == '-': relative_exon_locations[(transcript,gene,strand)].reverse()
@@ -243,17 +251,36 @@ def importEnsExonStructureDataSimple(species,type,gene_strand_db,exon_location_d
         ex_ls = relative_exon_locations[(transcript,gene,strand)]
         for exon_data in ex_ls:
             exonid = exon_data[-1]
-            try:
-                pes = ex_ls[i-1][0]; pee = ex_ls[i-1][1]; nes = ex_ls[i+1][0]; nee = ex_ls[i+1][1] ###pes: previous exon start, pee: previous exon end
-                rel = RelativeExonLocations(exonid,pes,pee,nes,nee)
-                adjacent_exon_locations[exonid] = rel
-            except IndexError: null=[]
+            if i == 0: ### first exon
+                pes = -1; pee = -1 ###Thus, Index should be out of range, but since -1 is valid, it won't be
+                if strand == '-': ces = ex_ls[i][1]
+                else: ces = ex_ls[i][0]
+                try: first_exon_dbase[gene].append([ces,exonid])
+                except KeyError: first_exon_dbase[gene] = [[ces,exonid]]
+            else: pes = ex_ls[i-1][0]; pee = ex_ls[i-1][1] ###pes: previous exon start, pee: previous exon end
+            try:  nes = ex_ls[i+1][0]; nee = ex_ls[i+1][1]
+            except IndexError: nes = -1; nee = -1
+            rel = RelativeExonLocations(exonid,pes,pee,nes,nee)
+            """if exonid in adjacent_exon_locations:
+                rel1 = adjacent_exon_locations[exonid]
+                prev_exon_start,prev_exon_stop = rel1.NextExonCoor()
+                next_exon_start,next_exon_stop = rel1.PrevExonCoor()
+                if prev_exon_start == -1 or next_exon_start == -1:
+                    adjacent_exon_locations[exonid] = rel ###Don't over-ride the exisitng entry if no exon is proceeding or following
+            else: adjacent_exon_locations[exonid] = rel"""
+            adjacent_exon_locations[exonid] = rel
             i+=1
-            
+
+    for gene in first_exon_dbase:
+        first_exon_dbase[gene].sort()
+        strand = gene_strand_db[gene]
+        if strand == '-': first_exon_dbase[gene].reverse()
+        first_exon_dbase[gene] = first_exon_dbase[gene][0][1] ### select the most 5' of the start exons for the gene
+        
     #print relative_exon_locations['ENSMUST00000025142','ENSMUSG00000024293','-']; kill
     end_time = time.time(); time_diff = int(end_time-start_time)
     print filename,"parsed in %d seconds" % time_diff
-    return gene_strand_db,exon_location_db,adjacent_exon_locations
+    return gene_strand_db,exon_location_db,adjacent_exon_locations,first_exon_dbase
 
 def importEnsExonStructureData(filename,species):
     start_time = time.time()
@@ -281,7 +308,7 @@ def importEnsExonStructureData(filename,species):
                 if test=='yes': ###used to test the program for a single gene
                     if gene in test_gene: continue_analysis='yes' 
                 else: continue_analysis='yes'
-                if  continue_analysis=='yes':             
+                if  continue_analysis=='yes':
                     ###Create temporary databases storing just exon and just trascript and then combine in the next block of code
                     initial_exon_annotation_db[ens_exonid] = gene,chr,strand,exon_start,exon_end,constitutive_exon                    
                     try: exon_transcript_db[ens_exonid].append(ens_transcriptid)
@@ -297,11 +324,12 @@ def importEnsExonStructureData(filename,species):
     print len(transcript_gene_db), "number of transcripts included"
     print filename,"parsed in %d seconds" % time_diff
     
-def getEnsExonStructureData(species):
+def getEnsExonStructureData(species,data_type):
     start_time = time.time()
     ###Simple function to import and organize exon/transcript data
     filename1 = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
     filename2 = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_filtered_mrna.txt'
+    filename3 = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_filtered_ncRNA.txt'
     global initial_exon_annotation_db; initial_exon_annotation_db={}
     global exon_transcript_db; exon_transcript_db={}
     global transcript_gene_db; transcript_gene_db={}
@@ -310,9 +338,12 @@ def getEnsExonStructureData(species):
     global initial_junction_db; initial_junction_db = {}; global too_short; too_short={}
     global ensembl_annotations; ensembl_annotations={}; global ensembl_gene_coordinates; ensembl_gene_coordinates = {}
 
-    importEnsExonStructureData(filename2,species)
-    importEnsExonStructureData(filename1,species)
-    
+    if data_type == 'mRNA':
+        importEnsExonStructureData(filename2,species)
+        importEnsExonStructureData(filename1,species)
+    elif data_type == 'ncRNA':  ###Builds database based on a mix of Ensembl, GenBank and UID ncRNA IDs
+        importEnsExonStructureData(filename3,species)
+        
     global exon_annotation_db; exon_annotation_db={} ###Agglomerate the data from above and store as an instance of the ExonStructureData class
     for ens_exonid in initial_exon_annotation_db:
         gene,chr,strand,exon_start,exon_end,constitutive_exon = initial_exon_annotation_db[ens_exonid]
@@ -412,9 +443,9 @@ def import_sequence_data(filename,filter_db,species,analysis_type):
     global temp_seq; temp_seq=''; damned =0; global failed; failed={}
     addition_seq_len = 2000; var = 1000
     if 'gene' in fn:
-        gene_strand_db,exon_location_db,adjacent_exon_locations = importEnsExonStructureDataSimple(species,'ucsc',{},{},{})
-        gene_strand_db,exon_location_db,adjacent_exon_locations = importEnsExonStructureDataSimple(species,'ensembl',gene_strand_db,exon_location_db,adjacent_exon_locations)
-        
+        gene_strand_db,exon_location_db,adjacent_exon_locations,null = importEnsExonStructureDataSimple(species,'ucsc',{},{},{})
+        gene_strand_db,exon_location_db,adjacent_exon_locations,first_exon_db = importEnsExonStructureDataSimple(species,'ensembl',gene_strand_db,exon_location_db,adjacent_exon_locations)
+        null=[]
     for line in open(fn,'r').xreadlines():
         data = cleanUpLine(line)
         try:
@@ -457,6 +488,8 @@ def import_sequence_data(filename,filter_db,species,analysis_type):
                                     start = start - addition_seq_len
                                     stop = stop + addition_seq_len
                                     strand = gene_strand_db[gene]
+                                    first_exonid = first_exon_db[gene]
+                                    fexon_start,fexon_stop = exon_location_db[first_exonid]
                                     for ed in filter_db[gene]:
                                         if analysis_type == 'get_locations':
                                             cd = seqSearch(sequence,ed.ExonSeq())
@@ -481,32 +514,53 @@ def import_sequence_data(filename,filter_db,species,analysis_type):
                                             for ens_exon in ens_exon_list:
                                                 if len(ens_exon)>0:
                                                     exon_start,exon_stop = exon_location_db[ens_exon]
-                                                    exon_sequence = grabSeq(sequence,strand,start,stop,exon_start,exon_stop)
-                                                    """Could repeat for if we build another dictionary with exon->adjacent exon positions (store in a class where
+                                                    exon_sequence = grabSeq(sequence,strand,start,stop,exon_start,exon_stop,'exon')
+                                                    """Could repeat if we build another dictionary with exon->adjacent exon positions (store in a class where
                                                     you designate last and next exon posiitons for each transcript relative to that exon), to grab downstream, upsteam exon and intron sequences"""
                                                     try:
                                                         rel = adjacent_exon_locations[ens_exon]
                                                         prev_exon_start,prev_exon_stop = rel.PrevExonCoor()
                                                         next_exon_start,next_exon_stop = rel.NextExonCoor()
-                                                        prev_exon_sequence = grabSeq(sequence,strand,start,stop,prev_exon_start,prev_exon_stop)
-                                                        next_exon_sequence = grabSeq(sequence,strand,start,stop,next_exon_start,next_exon_stop)
+                                                        prev_exon_sequence = grabSeq(sequence,strand,start,stop,prev_exon_start,prev_exon_stop,'exon')
+                                                        next_exon_sequence = grabSeq(sequence,strand,start,stop,next_exon_start,next_exon_stop,'exon')
+                                                        seq_type = 'intron'
                                                         if strand == '-':
-                                                            prev_intron_sequence = grabSeq(sequence,strand,start,stop,exon_stop,prev_exon_start)
-                                                            next_intron_sequence = grabSeq(sequence,strand,start,stop,next_exon_stop,exon_start)
+                                                            if 'alt-N-term' in ed.AssociatedSplicingEvent() or 'altPromoter' in ed.AssociatedSplicingEvent(): seq_type = 'promoter' ### Thus prev_intron_seq is used to designate an alternative promoter sequence
+                                                            prev_intron_sequence = grabSeq(sequence,strand,start,stop,exon_stop,prev_exon_start,seq_type)
+                                                            promoter_sequence = grabSeq(sequence,strand,start,stop,fexon_stop,-1,"promoter")
+                                                            next_intron_sequence = grabSeq(sequence,strand,start,stop,next_exon_stop,exon_start,'intron')
                                                         else:
-                                                            prev_intron_sequence = grabSeq(sequence,strand,start,stop,prev_exon_stop,exon_start)
-                                                            next_intron_sequence = grabSeq(sequence,strand,start,stop,exon_stop,next_exon_start)
-                                                        """if 'ENS' in ens_exon and strand == '-':
+                                                            prev_intron_sequence = grabSeq(sequence,strand,start,stop,prev_exon_stop,exon_start,seq_type)
+                                                            promoter_sequence = grabSeq(sequence,strand,start,stop,-1,fexon_start,"promoter")
+                                                            next_intron_sequence = grabSeq(sequence,strand,start,stop,exon_stop,next_exon_start,'intron')
+                                                        """if 'ENS' in ens_exon:
                                                             print ens_exon, strand
                                                             print '1)',exon_sequence
-                                                            print '2)',prev_intron_sequence[:15],prev_intron_sequence[-15:]
-                                                            print '3)',next_intron_sequence[:15],next_intron_sequence[-15:];kill"""
-                                                    except KeyError: prev_exon_sequence=''
+                                                            print '2)',prev_intron_sequence[:20],prev_intron_sequence[-20:], len(prev_intron_sequence), strand,start,stop,prev_exon_stop,exon_start,seq_type, ed.AssociatedSplicingEvent()
+                                                            print '3)',next_intron_sequence[:20],next_intron_sequence[-20:], len(next_intron_sequence)
+                                                            print '4)',promoter_sequence[:20],promoter_sequence[-20:], len(promoter_sequence);kill"""
+                                                        ###Intron sequences can be extreemly long so just include the first and last 1kb
+                                                        if len(prev_intron_sequence)>2001 and seq_type == 'promoter': prev_intron_sequence = prev_intron_sequence[-2001:]
+                                                        elif len(prev_intron_sequence)>2001: prev_intron_sequence = prev_intron_sequence[:1000]+'|'+prev_intron_sequence[-1000:]
+                                                        if len(next_intron_sequence)>2001: next_intron_sequence = next_intron_sequence[:1000]+'|'+next_intron_sequence[-1000:]
+                                                        if len(promoter_sequence)>2001: promoter_sequence = promoter_sequence[-2001:]
+                                                    except KeyError:
+                                                        prev_exon_sequence=''; next_intron_sequence=''; exon_sequence=''
+                                                        if strand == '-': promoter_sequence = grabSeq(sequence,strand,start,stop,fexon_stop,-1,"promoter")
+                                                        else: promoter_sequence = grabSeq(sequence,strand,start,stop,-1,fexon_start,"promoter")
+                                                        if len(promoter_sequence)>2001: promoter_sequence = promoter_sequence[-2001:]                                                     
                                                     ed.setExonSeq(exon_sequence) ### Use to replace the previous probeset/critical exon sequence with sequence corresponding to the full exon
                                                     if len(prev_exon_sequence)>0:
                                                         ### Use to output sequence for ESE/ISE type motif searches
-                                                        ed.setPrevExonSeq(prev_exon_sequence); ed.setNextExonSeq(next_exon_sequence)
-                                                        ed.setPrevIntronSeq(prev_intron_sequence[1:-1]); ed.setNextIntronSeq(next_intron_sequence[1:-1])
+                                                        ed.setPrevExonSeq(prev_exon_sequence);
+                                                    if len(next_exon_sequence)>0: ed.setNextExonSeq(next_exon_sequence)
+                                                    ed.setPrevIntronSeq(prev_intron_sequence[1:-1]); ed.setNextIntronSeq(next_intron_sequence[1:-1])
+                                                    ed.setPromoterSeq(promoter_sequence[1:-1])
+                                                else:
+                                                    if strand == '-': promoter_sequence = grabSeq(sequence,strand,start,stop,fexon_stop,-1,"promoter")
+                                                    else: promoter_sequence = grabSeq(sequence,strand,start,stop,-1,fexon_start,"promoter")
+                                                    if len(promoter_sequence)>2001: promoter_sequence = promoter_sequence[-2001:]
+                                                    ed.setPromoterSeq(promoter_sequence[1:-1])
                             sequence = ''; data2 = data[1:]; t= string.split(data2,'|'); gene,chr,start,stop = t
                     else: data2 = data[1:]; t= string.split(data2,'|'); gene,chr,start,stop = t
         except IndexError: continue
@@ -520,9 +574,18 @@ def import_sequence_data(filename,filter_db,species,analysis_type):
     elif len(fasta) > 0: return fasta
     else: return filter_db
 
-def grabSeq(sequence,strand,start,stop,exon_start,exon_stop):
-    if strand == '-': exon_sequence = sequence[(stop-exon_stop):(stop-exon_stop)+(exon_stop-exon_start)+1]
-    else: exon_sequence = sequence[(exon_start-start):(exon_stop-start+1)]
+def grabSeq(sequence,strand,start,stop,exon_start,exon_stop,type):
+    proceed = 'yes'
+    if type != 'promoter' and (exon_start == -1 or exon_stop == -1): proceed = 'no' ###Thus no preceeding or succedding exons and thus no seq reported
+    if proceed == 'yes':
+        if strand == '-':
+            if exon_stop == -1: exon_stop = stop
+            exon_sequence = sequence[(stop-exon_stop):(stop-exon_stop)+(exon_stop-exon_start)+1]
+        else:
+            #print type, exon_start,start,exon_stop
+            if exon_start == -1: exon_start = start ### For last intron 
+            exon_sequence = sequence[(exon_start-start):(exon_stop-start+1)]
+    else: exon_sequence = ''
     return exon_sequence
 
 def seqSearch(sequence,exon_seq):
@@ -915,14 +978,14 @@ def importEnsemblDomainData(filename):
     return ensembl_ft_db,domain_gene_counts
        
 
-def getEnsemblAssociations(Species,test_status):
+def getEnsemblAssociations(Species,data_type,test_status):
     global species; species = Species
     global test; test = test_status
     global test_gene
     meta_test = ["ENSG00000215305","ENSG00000179676","ENSG00000170484","ENSG00000138180","ENSG00000100258","ENSG00000132170","ENSG00000105767","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
-    test_gene = ['ENSG00000010810','ENSMUSG00000028101']
+    test_gene = ['ENSG00000166825','ENSG00000143379']
     #test_gene = meta_test
-    exon_annotation_db,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species)
+    exon_annotation_db,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
     exon_annotation_db2 = annotate_exons(exon_annotation_db); ensembl_descriptions={}
     
     exon_db = customDBDeepCopy(exon_annotation_db2) ##having problems with re-writting contents of this db when I don't want to
@@ -1433,9 +1496,10 @@ if __name__ == '__main__':
     ###KNOWN PROBLEMS: the junction analysis program calls exons as cassette-exons if there a new C-terminal exon occurs downstream of that exon in a different transcript (ENSG00000197991).
     dirfile = unique
     species = 'Hs'
-    species = 'Mm'
-    test = 'no'
-    test_gene = ['ENSMUSG00000000902']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']
+    #species = 'Mm'
+    test = 'yes'
+    data_type = 'ncRNA'
+    test_gene = ['ENSG00000201902']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']
     meta_test = ["ENSG00000215305","ENSG00000179676","ENSG00000170484","ENSG00000138180","ENSG00000100258","ENSG00000132170","ENSG00000105767","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
     #test_gene = meta_test
     #critical_exon_seq_db = import_sequence_data(gene_seq_filename,critical_exon_seq_db,species);kill
@@ -1449,7 +1513,7 @@ if __name__ == '__main__':
         elif 'Exon_cDNA' in dir_file: exon_trans_file = dir_file
         elif 'Domain' in dir_file: domain_file = dir_file
     #"""
-    exon_annotation_db,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species)
+    exon_annotation_db,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
     KILL
 
     #exon_db = customDBDeepCopy(exon_annotation_db)

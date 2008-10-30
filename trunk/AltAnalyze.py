@@ -3,17 +3,35 @@ import statistics
 import sys, string
 import os.path
 import unique
-import UI
+import UI; reload(UI)
 import export
-import ExpressionBuilder
+import ExpressionBuilder; reload(ExpressionBuilder)
 import ExonAnalyze_module
 import ExonAnnotate_module
 import ResultsExport_module
 import FeatureAlignment
 import time
 
+use_Tkinter = 'no'
+try:
+    import Tkinter
+    from Tkinter import *
+    use_Tkinter = 'yes'
+except ImportError: use_Tkinter = 'yes'; print "\nPmw or Tkinter not found... Tkinter print out not available";
+debug_mode = 'no'
+
 dirfile = unique
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
+
+"""
+### Used when exporting text to a pygame module for Mac in order to view stdout print statements
+mac_print_mode = 'no'
+if os.name == 'posix': 
+  try:
+    import pgterm; import macfont
+    mac_print = pgterm.PygameTerminal(sx=80,sy=30,font=macfont.SysFont('Courier', 12))
+    mac_print_mode = 'yes'
+  except ImportError: mac_print_mode = 'no' """
 
 def filepath(filename):
     dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
@@ -495,7 +513,7 @@ def expr_analysis(filename,constituitive_probeset_db,exon_db,annotate_db,dataset
     gene_expression_diff_db = constitutive_expression_changes(constitutive_fold_change,annotate_db)
     ###Check to see if raw data for permutation is present for expression normalization
     if len(array_raw_group_values)>0:
-        global avg_const_exp_db; global permute_lists
+        global avg_const_exp_db; global permute_lists; global midas_db
         avg_const_exp_db  = {}; permute_lists = []; y = 0
         while conditions > y:
             avg_const_exp_db = constituitive_exp_normalization_raw(gene_db,constituitive_gene_db,array_raw_group_values,exon_db,y,avg_const_exp_db)
@@ -507,7 +525,7 @@ def expr_analysis(filename,constituitive_probeset_db,exon_db,annotate_db,dataset
             print "Finished exporting input data for MiDAS analysis"; midas_db={}
         else:
             try: midas_db = ResultsExport_module.importMidasOutput(dataset_name)
-            except IOError: midas_db={}
+            except IOError: midas_db={}; print "No MiDAS file found for this dataset."
 
     return conditions,relative_splicing_ratio,stats_dbase,adj_fold_dbase,dataset_name,gene_expression_diff_db,midas_db
 
@@ -667,6 +685,11 @@ def constituitive_exp_normalization(fold_db,stats_dbase,exon_db,constituitive_pr
     if factor_out_expression_changes == 'no':
         adj_fold_dbase = fold_db #don't change expression values
     print len(constitutive_fold_change), "Genes undergoing analysis for alternative splicing/transcription"
+    mir_gene_count = 0
+    for gene in constitutive_fold_change:
+        if gene in gene_microRNA_denom: mir_gene_count+=1
+    print mir_gene_count, "Genes with predicted microRNA binding sites undergoing analysis for alternative splicing/transcription"
+
     global gene_analyzed; gene_analyzed = len(constituitive_gene_db)
     return adj_fold_dbase, relative_splicing_ratio, conditions, gene_db, constituitive_gene_db,constitutive_fold_change, avg_const_exp_db
 
@@ -1440,7 +1463,7 @@ def analyzeSplicingIndex(fold_dbase):
                     splicing_index = group1_mean_ratio-group2_mean_ratio; abs_splicing_index = abs(splicing_index)
                     exp_log_ratio = original_fold_dbase[probeset][1]; abs_log_ratio = abs(original_fold_dbase[probeset][1])
                     ttest_log_ratio = stats_dbase[probeset][1]
-                    #if probeset == '2969916': print abs_splicing_index,group_ratio_p,ed.ExonID(),group1_mean_ratio,group2_mean_ratio,math.log(group1_mean_ratio,2),math.log(group2_mean_ratio,2),((math.log(group1_mean_ratio,2))*(math.log(group2_mean_ratio,2))),opposite_SI_log_mean; kill
+                    #if probeset == '3061323': print abs_splicing_index,group_ratio_p,ed.ExonID(),group1_mean_ratio,group2_mean_ratio,math.log(group1_mean_ratio,2),math.log(group2_mean_ratio,2),((math.log(group1_mean_ratio,2))*(math.log(group2_mean_ratio,2))),opposite_SI_log_mean; kill
                     if probeset in midas_db:
                         try: midas_p = float(midas_db[probeset])
                         except ValueError:
@@ -1998,26 +2021,27 @@ def restrictProbesets():
 
 def RunAltAnalyze():
 
+  global microRNA_count_db; global protein_exon_feature_db; global protein_sequence_dbase; global probeset_protein_db
+  global protein_ft_db; global domain_gene_counts; global annotate_db; annotate_db={}; global splice_event_list; splice_event_list=[]; global critical_exon_junction_db
+  global dataset_name; global constituitive_probeset_db; global exon_db; global gene_microRNA_denom; global microRNA_full_exon_db
+  
   if array_type == 'AltMouse': import_dir = '/AltExpression/'+array_type
   elif array_type == 'exon': import_dir = '/AltExpression/ExonArray/'+species+'/'
   
-  if analysis_method == 'ASPIRE' or analysis_method == 'linearregres' or analysis_method == 'splicing-index':
-    global microRNA_full_exon_db; global microRNA_count_db; global gene_microRNA_denom; global protein_exon_feature_db; global protein_sequence_dbase; global probeset_protein_db
-    global protein_ft_db; global domain_gene_counts; global annotate_db; annotate_db={}; global splice_event_list; splice_event_list=[]; global critical_exon_junction_db
-    global midas_db; global dataset_name; global exon_db; global constituitive_probeset_db
-    
+  if analysis_method == 'ASPIRE' or analysis_method == 'linearregres' or analysis_method == 'splicing-index':    
     if array_type == 'exon': gene_annotation_file = "AltDatabase/ensembl/"+species+"/"+species+"_Ensembl-annotations.txt"
     else: gene_annotation_file = "AltDatabase/"+species+"/"+array_type+"/"+array_type+"_gene_annotations.txt"
     annotate_db = import_annotations(gene_annotation_file,array_type)
     if export_go_annotations == 'yes': exportGOannotations(annotate_db)
 
-    ###Import probe-level associations    
+    ###Import probe-level associations
+    
     exon_db={}; filtered_arrayids={};filter_status='no'
     constituitive_probeset_db,exon_db,genes_being_analyzed = importSplicingAnnotationDatabase(probeset_annotations_file,array_type,filtered_arrayids,filter_status)
 
     if array_type != 'exon': critical_exon_junction_db = ExonAnalyze_module.grabJunctionData(species,array_type,'probeset-pairs') ###used to translate probeset pairs into critical_exons
     else: critical_exon_junction_db = {}
-      
+    
     if analyze_functional_attributes == 'yes':
       exon_protein_sequence_file = "AltDatabase/"+species+"/"+array_type+"/"+"SEQUENCE-protein-dbase.txt"
       probeset_protein_db,protein_sequence_dbase = ExonAnalyze_module.importExonSequenceBuild(exon_protein_sequence_file,exon_db)
@@ -2060,45 +2084,127 @@ def RunAltAnalyze():
 
   return summary_results_db, aspire_output_gene_list, number_events_analyzed
 
-if __name__ == '__main__':
+def universalPrintFunction(print_items): 
+    for item in print_items:
+        print item
+        #if os.name == 'posix': mac_print.println(item)
+    
+def universalInputFunction():
+    #if os.name == 'posix': inp = mac_print.input()
+    #else: inp = sys.stdin.readline()
+    inp = sys.stdin.readline()
+    return inp
+
+class StatusWindow:
+    def __init__(self,root,expr_var,alt_var,additional_var,file_location_defaults):
+            #try:
+            self._parent = root
+            root.title('AltAnalyze 1.0 Beta')
+            statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
+            ### Create a Tkinter Label window with width 60
+
+            s = Tkinter.Scrollbar(); #L = Tkinter.Listbox()
+            s.pack(side=Tkinter.RIGHT, fill=Tkinter.Y); #L.pack(side=Tkinter.LEFT, fill=Tkinter.Y)
+            #s.config(command=L.yview); #L.config(yscrollcommand=s.set)
+            
+            #e1 = Entry(root, textvariable = statusVar).pack()
+            #L.insert(Tkinter.END,e1)
+            
+            #Label(root, text="****************GO-Elite Status Window****************").pack()
+            ### If you don't define 'height', the window height increases based on the output
+            #Entry(root, textvariable=statusVar).pack(fill=X,expand=Y)
+
+            Label(root,width=110,height=26,justify=LEFT, anchor=W, textvariable=statusVar).pack(fill=X,expand=Y)
+            #L.insert(Tkinter.END,a)
+            #quit_win = Button(self._parent, text="Quit", command=self.quit) 
+            #quit_win.pack(side = 'right', padx =10, pady = 0)
+
+            status = StringVarFile(statusVar,root) ### Likely captures the stdout
+
+            sys.stdout = status; root.after(100, AltAnalyzeMain(expr_var, alt_var, additional_var, file_location_defaults,root))
+            self._parent.mainloop(); self._parent.destroy()
+            #except Exception: sys.exit()
+    def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
+    def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
+    
+class StringVarFile:
+    def __init__(self,stringVar,window):
+        self.__newline = 0; self.__stringvar = stringVar; self.__window = window
+    def write(self,s):
+        new = self.__stringvar.get()
+        for c in s:
+            #if c == '\n': self.__newline = 1
+            if c == '\k': self.__newline = 1### This should not be found and thus results in a continous feed rather than replacing a single line
+            else:
+                if self.__newline: new = ""; self.__newline = 0
+                new = new+c
+        self.set(new)
+    def set(self,s): self.__stringvar.set(s); self.__window.update()   
+    def get(self): return self.__stringvar.get()
+                
+def AltAnalyzeSetup(skip_intro):
+    expr_var, alt_var, additional_var, file_location_defaults = UI.getUserParameters(skip_intro)
+
+    if use_Tkinter == 'yes' and debug_mode == 'no':
+        global root; root = Tk()
+        StatusWindow(root,expr_var, alt_var, additional_var, file_location_defaults)
+        root.destroy()
+    else: AltAnalyzeMain(expr_var, alt_var, additional_var, file_location_defaults,'')
+    
+def AltAnalyzeMain(expr_var,alt_var,additional_var,file_location_defaults,root):
+
   ### Hard-coded defaults
   w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'any'; data_source = y; constitutive_source = z; manufacturer = x ### Constitutive source, is only really paid attention to if Ensembl, otherwise Affymetrix is used (even if default)
-  use_R = 'no'
-  
-  ### Get default options for ExpressionBuilder and AltAnalyze
-  expr_var, alt_var, additional_var, file_location_defaults = UI.getUserParameters()
+  ### Get default options for ExpressionBuilder and AltAnalyze    
   start_time = time.time()
-  
-  species,array_type,manufacturer,constitutive_source,dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch = expr_var
+
+  global species; global array_type; global expression_data_format; global use_R; use_R = 'no'
+  global analysis_method; global p_threshold; global filter_probeset_types
+  global permute_p_threshold; global perform_permutation_analysis; global export_splice_index_values
+  global exportTransitResultsforAnalysis; global analyze_functional_attributes;  global microRNA_prediction_method
+
+  global agglomerate_inclusion_probesets; global get_non_log_avg; global expression_threshold; global factor_out_expression_changes
+  global only_include_constitutive_containing_genes; global remove_transcriptional_regulated_genes; global add_exons_to_annotations
+  global exclude_protein_details; global use_external_file_for_probeset_filtering
+ 
+  species,array_type,manufacturer,constitutive_source,dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis = expr_var
   analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,permute_p_threshold,perform_permutation_analysis, export_splice_index_values = alt_var
   exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method = additional_var
 
-  print "Expression Analysis Parameters Being Used..."
-  print '\t'+'species'+':',species
-  print '\t'+'array_type'+':',array_type
-  print '\t'+'manufacturer'+':',manufacturer
-  print '\t'+'constitutive_source'+':',constitutive_source
-  print '\t'+'dabg_p'+':',dabg_p
-  print '\t'+'raw_expression_threshold'+':',raw_expression_threshold
-  print '\t'+'avg_all_for_ss'+':',avg_all_for_ss
-  print '\t'+'expression_data_format'+':',expression_data_format
-  print '\t'+'include_raw_data'+':',include_raw_data
-  print '\t'+'run_from_scratch'+':',run_from_scratch
+  print_items=[]
+  print_items.append("Expression Analysis Parameters Being Used...")
+  print_items.append('\t'+'species'+': '+species)
+  print_items.append('\t'+'array_type'+': '+array_type)
+  print_items.append('\t'+'manufacturer'+': '+manufacturer)
+  print_items.append('\t'+'constitutive_source'+': '+constitutive_source)
+  print_items.append('\t'+'dabg_p'+': '+str(dabg_p))
+  print_items.append('\t'+'raw_expression_threshold'+': '+str(raw_expression_threshold))
+  print_items.append('\t'+'avg_all_for_ss'+': '+avg_all_for_ss)
+  print_items.append('\t'+'expression_data_format'+': '+expression_data_format)
+  print_items.append('\t'+'include_raw_data'+': '+include_raw_data)
+  print_items.append('\t'+'run_from_scratch'+': '+run_from_scratch)
+  print_items.append('\t'+'perform_alt_analysis'+': '+perform_alt_analysis)
+  
+  print_items.append("Alternative Exon Analysis Parameters Being Used..." )
+  print_items.append('\t'+'analysis_method'+': '+analysis_method)
+  print_items.append('\t'+'p_threshold'+': '+str(p_threshold))
+  print_items.append('\t'+'filter_probeset_types'+': '+filter_probeset_types)
+  print_items.append('\t'+'alt_exon_fold_variable'+': '+str(alt_exon_fold_variable))
+  print_items.append('\t'+'gene_expression_cutoff'+': '+str(gene_expression_cutoff))
+  print_items.append('\t'+'avg_all_for_ss'+': '+avg_all_for_ss)
+  print_items.append('\t'+'permute_p_threshold'+': '+str(permute_p_threshold))
+  print_items.append('\t'+'perform_permutation_analysis'+': '+perform_permutation_analysis)
+  print_items.append('\t'+'export_splice_index_values'+': '+export_splice_index_values)
+  print_items.append('\t'+'exportTransitResultsforAnalysis'+': '+exportTransitResultsforAnalysis)
+  print_items.append('\t'+'analyze_functional_attributes'+': '+analyze_functional_attributes)
+  print_items.append('\t'+'microRNA_prediction_method'+': '+microRNA_prediction_method)
 
-  print "Alternative Exon Analysis Parameters Being Used..."  
-  print '\t'+'analysis_method'+':',analysis_method
-  print '\t'+'p_threshold'+':',p_threshold
-  print '\t'+'filter_probeset_types'+':',filter_probeset_types
-  print '\t'+'alt_exon_fold_variable'+':',alt_exon_fold_variable
-  print '\t'+'gene_expression_cutoff'+':',gene_expression_cutoff
-  print '\t'+'avg_all_for_ss'+':',avg_all_for_ss
-  print '\t'+'permute_p_threshold'+':',permute_p_threshold
-  print '\t'+'perform_permutation_analysis'+':',perform_permutation_analysis
-  print '\t'+'export_splice_index_values'+':',export_splice_index_values
-  print '\t'+'exportTransitResultsforAnalysis'+':',exportTransitResultsforAnalysis
-  print '\t'+'analyze_functional_attributes'+':',analyze_functional_attributes
-  print '\t'+'microRNA_prediction_method'+':',microRNA_prediction_method
-      
+  universalPrintFunction(print_items)
+
+  global export_go_annotations; global aspire_output_list; global aspire_output_gene_list
+  global filter_probesets_by; global global_addition_factor; global onlyAnalyzeJunctions
+  global log_fold_cutoff; global aspire_cutoff; global annotation_system; global alt_exon_logfold_cutoff
+  
   """dabg_p = 0.75; data_type = 'expression' ###used for expression analysis when dealing with AltMouse arrays
   a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; array_type = c
   l = 'log'; n = 'non-log'; expression_data_format = l
@@ -2114,106 +2220,119 @@ if __name__ == '__main__':
   options 1-2 are executed in remoteExpressionBuilder and option 3 is by running ExonArrayEnsembl rules"""
 
   if run_from_scratch == 'raw input':
-      ExpressionBuilder.remoteExpressionBuilder(species,array_type,dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,manufacturer,constitutive_source,data_source,include_raw_data)
+      ExpressionBuilder.remoteExpressionBuilder(species,array_type,dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,manufacturer,constitutive_source,data_source,include_raw_data,perform_alt_analysis,root)
   elif run_from_scratch == 'update DBs':
       null=[] ###Add link to new module
       #updateDBs(species,array_type)
-   
-  ###### Run AltAnalyze ######  
-  global dataset_name; global summary_results_db; global summary_results_db2
-  summary_results_db={}; summary_results_db2={}; aspire_output_list=[]; aspire_output_gene_list=[]
+      sys.exit()
+  if perform_alt_analysis != 'expression': ###Thus perform_alt_analysis = 'both' or 'alt' (default when skipping expression summary step)
+      ###### Run AltAnalyze ######  
+      global dataset_name; global summary_results_db; global summary_results_db2
+      summary_results_db={}; summary_results_db2={}; aspire_output_list=[]; aspire_output_gene_list=[]
 
-  onlyAnalyzeJunctions = 'no'; agglomerate_inclusion_probesets = 'no'; filter_probesets_by = 'NA'
-  if array_type == 'AltMouse':
-      if filter_probeset_types == 'junctions-only':  onlyAnalyzeJunctions = 'yes'
-      elif filter_probeset_types == 'combined-junctions': agglomerate_inclusion_probesets = 'yes'; onlyAnalyzeJunctions = 'yes'
-      elif filter_probeset_types == 'exons-only': analysis_method = 'splicing-index'; filter_probesets_by = 'exon'
-  else: filter_probesets_by = filter_probeset_types
-
-  c = 'Ensembl'; d = 'Entrez Gene'
-  annotation_system = c
-  expression_threshold = 0 ###This is different than the raw_expression_threshold (probably shouldn't filter so set to 0)
-
-  if analysis_method == 'ASPIRE': aspire_cutoff = alt_exon_fold_variable
-  if analysis_method == 'linearregres-rlm': analysis_method = 'linearregres';use_R = 'yes'
-
-  if 'APT' in file_location_defaults: apt_location = file_location_defaults['APT'].Location()
-  log_fold_cutoff = math.log(float(gene_expression_cutoff),2)
-  alt_exon_logfold_cutoff = math.log(float(alt_exon_fold_variable),2)
-      
-  global_addition_factor = 0
-  get_non_log_avg = 'no'
-  export_junction_comparisons = 'no' ### No longer accessed in this module - only in update mode through a different module
-  
-  factor_out_expression_changes = 'yes' ### Use 'no' if data is normalized already or no expression normalization for ASPIRE desired
-  only_include_constitutive_containing_genes = 'yes'
-  remove_transcriptional_regulated_genes = 'yes'
-  add_exons_to_annotations = 'no'
-  exclude_protein_details = 'no'
-  export_go_annotations = 'no'
-
-  use_external_file_for_probeset_filtering = 'no'
-
-  if analysis_method != 'splicing-index': annotation_system = d
-  if array_type == 'AltMouse': species = 'Mm'
-  if export_splice_index_values == 'yes': remove_transcriptional_regulated_genes = 'no'
-
-  global filtered_probeset_db; filtered_probeset_db={}
-  if use_external_file_for_probeset_filtering == 'yes': filtered_probeset_db = restrictProbesets()
-
-  print "Parsing out Affymetrix GO annotations"
-  global go_annotations; go_annotations={}
-  ###Saves run-time while testing the software (global variable stored)
-  import_dir = '/AltDatabase/affymetrix/'+species
-  dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-  for affy_data in dir_list:    #loop through each file in the directory to output results
-      affy_data_dir = 'AltDatabase/affymetrix/'+species+'/'+affy_data
-      parse_affymetrix_annotations(affy_data_dir)  
-
-  if array_type == 'exon': probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"
-  else: probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+"MASTER-probeset-transcript.txt"
-
-  ### If exportTransitResultsforAnalysis == 'yes', modify the user options initially to export all probe set data for MiDAS
-  if exportTransitResultsforAnalysis == 'yes':
-      analyze_functional_attributes = 'no'; export_splice_index_values = 'no'; permute_p_threshold = 'no'
-      if analysis_method == 'splicing-index': filter_probesets_by = 'full'
-      else: onlyAnalyzeJunctions = 'no'; agglomerate_inclusion_probesets = 'no'
-      print analysis_method, filter_probeset_types
-      summary_results_db, aspire_output_gene_list, number_events_analyzed = RunAltAnalyze()
-      
-      ### Once MiDAS data is exported, reset the options to the original parameters and re-run
-      analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,permute_p_threshold,perform_permutation_analysis, export_splice_index_values = alt_var
-      exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method = additional_var
-      exportTransitResultsforAnalysis='no'
-
+      onlyAnalyzeJunctions = 'no'; agglomerate_inclusion_probesets = 'no'; filter_probesets_by = 'NA'
       if array_type == 'AltMouse':
           if filter_probeset_types == 'junctions-only':  onlyAnalyzeJunctions = 'yes'
           elif filter_probeset_types == 'combined-junctions': agglomerate_inclusion_probesets = 'yes'; onlyAnalyzeJunctions = 'yes'
           elif filter_probeset_types == 'exons-only': analysis_method = 'splicing-index'; filter_probesets_by = 'exon'
       else: filter_probesets_by = filter_probeset_types
 
-      a = r""+apt_location
-      try:
-          os.spawnl(os.P_NOWAIT, a) ###Open a APT command prompt
-          print "\nAn Affymetrix Power Tools (APT) command prompt has been opened. Perform the following steps to build MiDAS statistics:"
-      except OSError: print '\nBegin running the Affymetrix Power Tools (APT) Application and perform the following steps:'
-      print '     1) Open each one of the new "command-*" files in the "AltResults/MIDAS" directory'
-      print '     2) In the APT prompt, enter the first line in the "command" file (change direcotries to "AltResults/MIDAS")'
-      print '     3) In the APT prompt, enter the first second in the "command" file (builds MIDAS p-value file to be read by AltAnalyze)'
-      print '\nHit the Enter/Return key, when finished exporting MiDAS output to continue analysis'
-      inp = sys.stdin.readline()
-      
-  summary_results_db, aspire_output_gene_list, number_events_analyzed = RunAltAnalyze()
+      c = 'Ensembl'; d = 'Entrez Gene'
+      annotation_system = c
+      expression_threshold = 0 ###This is different than the raw_expression_threshold (probably shouldn't filter so set to 0)
 
-  try:
-    if exportTransitResultsforAnalysis == 'no':
-        ResultsExport_module.output_summary_results(summary_results_db,'',analysis_method)
-        #ResultsExport_module.output_summary_results(summary_results_db2,'-uniprot_attributes',analysis_method)
-        ResultsExport_module.compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed,'no',analysis_method,array_type)
-        ResultsExport_module.compare_ASPIRE_results(aspire_output_gene_list,annotate_db,'','yes',analysis_method,array_type) 
-  except UnboundLocalError: print "...No results to summarize" ###Occurs if there is a problem parsing these files
-  
+      if analysis_method == 'ASPIRE': aspire_cutoff = alt_exon_fold_variable
+      if analysis_method == 'linearregres-rlm': analysis_method = 'linearregres';use_R = 'yes'
+
+      if 'APT' in file_location_defaults: apt_location = file_location_defaults['APT'].Location()
+      log_fold_cutoff = math.log(float(gene_expression_cutoff),2)
+      alt_exon_logfold_cutoff = math.log(float(alt_exon_fold_variable),2)
+          
+      global_addition_factor = 0
+      get_non_log_avg = 'no'
+      export_junction_comparisons = 'no' ### No longer accessed in this module - only in update mode through a different module
+      
+      factor_out_expression_changes = 'yes' ### Use 'no' if data is normalized already or no expression normalization for ASPIRE desired
+      only_include_constitutive_containing_genes = 'yes'
+      remove_transcriptional_regulated_genes = 'yes'
+      add_exons_to_annotations = 'no'
+      exclude_protein_details = 'no'
+      export_go_annotations = 'no'
+
+      use_external_file_for_probeset_filtering = 'no'
+
+      if analysis_method != 'splicing-index': annotation_system = d
+      if array_type == 'AltMouse': species = 'Mm'
+      if export_splice_index_values == 'yes': remove_transcriptional_regulated_genes = 'no'
+
+      global filtered_probeset_db; filtered_probeset_db={}
+      if use_external_file_for_probeset_filtering == 'yes': filtered_probeset_db = restrictProbesets()
+
+      universalPrintFunction(["Parsing out Affymetrix GO annotations"])
+      global go_annotations; go_annotations={}
+      ###Saves run-time while testing the software (global variable stored)
+      import_dir = '/AltDatabase/affymetrix/'+species
+      dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+      for affy_data in dir_list:    #loop through each file in the directory to output results
+          affy_data_dir = 'AltDatabase/affymetrix/'+species+'/'+affy_data
+          parse_affymetrix_annotations(affy_data_dir)  
+
+      global probeset_annotations_file
+      if array_type == 'exon': probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"
+      else: probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+"MASTER-probeset-transcript.txt"
+
+      ### If exportTransitResultsforAnalysis == 'yes', modify the user options initially to export all probe set data for MiDAS
+      if exportTransitResultsforAnalysis == 'yes':
+          analyze_functional_attributes = 'no'; export_splice_index_values = 'no'; permute_p_threshold = 'no'
+          if analysis_method == 'splicing-index': filter_probesets_by = 'full'
+          else: onlyAnalyzeJunctions = 'no'; agglomerate_inclusion_probesets = 'no'
+          #print analysis_method, filter_probeset_types
+          summary_results_db, aspire_output_gene_list, number_events_analyzed = RunAltAnalyze()
+          
+          ### Once MiDAS data is exported, reset the options to the original parameters and re-run
+          analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,permute_p_threshold,perform_permutation_analysis, export_splice_index_values = alt_var
+          exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method = additional_var
+          exportTransitResultsforAnalysis='no'
+
+          if array_type == 'AltMouse':
+              if filter_probeset_types == 'junctions-only':  onlyAnalyzeJunctions = 'yes'
+              elif filter_probeset_types == 'combined-junctions': agglomerate_inclusion_probesets = 'yes'; onlyAnalyzeJunctions = 'yes'
+              elif filter_probeset_types == 'exons-only': analysis_method = 'splicing-index'; filter_probesets_by = 'exon'
+          else: filter_probesets_by = filter_probeset_types
+
+          a = r""+apt_location
+          try:
+              os.spawnl(os.P_NOWAIT, a) ###Open a APT command prompt
+              print "\nAn Affymetrix Power Tools (APT) command prompt has been opened. Perform the following steps to build MiDAS statistics:"
+          except OSError: print '\nBegin running the Affymetrix Power Tools (APT) Application and perform the following steps:'
+          universalPrintFunction(['     1) Open each one of the new "command-*" files in the "AltResults/MIDAS" directory'])
+          universalPrintFunction(['     2) In the APT prompt, enter the first line in the "command" file (change direcotries to "AltResults/MIDAS")'])
+          universalPrintFunction(['     3) In the APT prompt, enter the first second in the "command" file (builds MIDAS p-value file to be read by AltAnalyze)'])
+          universalPrintFunction(['\nHit the Enter/Return key, when finished exporting MiDAS output to continue analysis'])
+          inp = universalInputFunction()
+      summary_results_db, aspire_output_gene_list, number_events_analyzed = RunAltAnalyze()
+
+      try:
+        if exportTransitResultsforAnalysis == 'no':
+            ResultsExport_module.output_summary_results(summary_results_db,'',analysis_method)
+            #ResultsExport_module.output_summary_results(summary_results_db2,'-uniprot_attributes',analysis_method)
+            ResultsExport_module.compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed,'no',analysis_method,array_type)
+            ResultsExport_module.compare_ASPIRE_results(aspire_output_gene_list,annotate_db,'','yes',analysis_method,array_type) 
+      except UnboundLocalError: print "...No results to summarize" ###Occurs if there is a problem parsing these files
+      
   end_time = time.time(); time_diff = int(end_time-start_time)
-  print "Analyses finished in %d seconds" % time_diff
-  print "Hit Enter/Return to exit AltAnalyze"
-  inp = sys.stdin.readline(); sys.exit()
+  universalPrintFunction(["Analyses finished in %d seconds" % time_diff])
+  #universalPrintFunction(["Hit Enter/Return to exit AltAnalyze"])
+
+  print_out = 'Analysis complete. AltAnalyze results\nexported to "AltResults/AlternativeOutput".'
+  try:
+      print "Analysis Complete\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
+      UI.InfoWindow(print_out,'Analysis Completed!')
+      root.destroy()
+  except NameError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
+  skip_intro = 'yes'
+  AltAnalyzeSetup(skip_intro)
+  
+if __name__ == '__main__':
+    skip_intro = 'yes'
+    AltAnalyzeSetup(skip_intro)

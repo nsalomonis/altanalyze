@@ -22,7 +22,7 @@ def read_directory(sub_dir):
     dir_list = os.listdir(dir + sub_dir); dir_list2 = []
     ###Code to prevent folder names from being included
     for entry in dir_list:
-        if entry[-4:] == ".txt" or entry[-4:] == ".csv": dir_list2.append(entry)
+        if entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv": dir_list2.append(entry)
     return dir_list2
 
 class GrabFiles:
@@ -33,7 +33,7 @@ class GrabFiles:
     def searchdirectory(self,search_term):
         #self is an instance while self.data is the value of the instance
         file_dir,file = getDirectoryFiles(self.data,str(search_term))
-        if len(file)<1: print search_term,'not found'
+        if len(file)<1: print search_term,'not found',self.data
         return file_dir
     
 def getDirectoryFiles(import_dir, search_term):

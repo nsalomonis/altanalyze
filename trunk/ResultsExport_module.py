@@ -23,8 +23,8 @@ def read_directory(sub_dir):
     #add in code to prevent folder names from being included
     dir_list2 = [] 
     for entry in dir_list:
-        if entry[-4:] == ".txt" or entry[-4:] == ".all" or entry[-5:] == ".data" or entry[-3:] == ".fa":
-            dir_list2.append(entry)
+        #if entry[-4:] == ".txt" or entry[-4:] == ".all" or entry[-5:] == ".data" or entry[-3:] == ".fa":
+        dir_list2.append(entry)
     return dir_list2
 
 def returnDirectories(sub_dir):
@@ -400,7 +400,8 @@ def runMiDAS(dataset_name):
 
 def importMidasOutput(dataset_name):
     coversionfile = 'AltResults/MIDAS/probeset-conversion-'+dataset_name[0:-1]+'.txt'
-    
+    print "Looking for", coversionfile
+ 
     fn=filepath(coversionfile); x=0; probeset_conversion_db={}
     for line in open(fn,'rU').xreadlines():         
         data = cleanUpLine(line)
