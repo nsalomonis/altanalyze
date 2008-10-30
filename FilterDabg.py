@@ -237,7 +237,8 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
   import_dir = '/AltExpression/pre-filtered/expression/'; import_dir_dabg = '/AltExpression/pre-filtered/dabg/'
   
   dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-  dir_list2 = read_directory(import_dir_dabg)
+  try: dir_list2 = read_directory(import_dir_dabg)
+  except Exception: dir_list2=[]
 
   if len(altanalyze_files) == 0: altanalyze_files = dir_list  ###if no filenames input
 
@@ -278,7 +279,7 @@ if __name__ == '__main__':
   m = 'Mm'; h = 'Hs'
   species = m
   x = 'AltMouse'; y = 'exon'
-  array_type = x
+  array_type = y
   l = 'log'; n = 'non-log'
   exp_data_format = l  
   p = 0.75

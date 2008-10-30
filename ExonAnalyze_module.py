@@ -84,7 +84,7 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
 
     ###Replace the actual genes with the unique gene count per microRNA
     for microRNA in microRNA_count_db: microRNA_count_db[microRNA] = len(microRNA_count_db[microRNA])
-        
+    print len(gene_microRNA_denom),"genes with a predicted microRNA binding site alinging to a probeset"
     return microRNA_full_exon_db,microRNA_count_db,gene_microRNA_denom
         
 def link_microRNA_exon_to_decon_db(microRNA_full_exon_db,exon_hits):

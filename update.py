@@ -76,14 +76,15 @@ def buildExonArrayExonAnnotations(species):
     process_from_scratch='yes'
     constitutive_source='default'
     ### Build the databases and return the variables (not used here)
-    probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,species)
+    source_biotype = 'mRNA'
+    probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,source_biotype,species)
 
 def buildUniProtFunctAnnotations(species,force):
     import UI
     file_location_defaults = UI.importDefaultFileLocations()
     """Identify the appropriate download location for the UniProt database for the selected species"""
     uis = file_location_defaults['UniProt']
-    tis = file_location_defaults['TreMBL']
+    tis = file_location_defaults['TrEMBL']
     
     for ui in uis:
         if species in ui.Species(): uniprot_filename_url = ui.Location()
@@ -162,19 +163,23 @@ def updateDBs(species,array_type):
         if inp  == '1': download_new_dbs = 'yes'; rebuild_altanalyze_dbs = 'no'; proceed = 'yes'
         elif inp == '2': download_new_dbs = 'yes'; rebuild_altanalyze_dbs = 'yes'; proceed = 'yes'
         elif inp == '3': download_new_dbs = 'no'; rebuild_altanalyze_dbs = 'yes'; proceed = 'yes'
-        elif inp == '3': sys.exit()
+        elif inp == '4': sys.exit()
         else: print "Sorry... that command is not an option\n"
 
+    force = 'no'
     if download_new_dbs == 'yes':
         force = 'no'
         
     if rebuild_altanalyze_dbs == 'yes':            
         ###Might need to delete the existing versions of downloaded databases or force download
-        buildUniProtFunctAnnotations(species,force)
+        #buildUniProtFunctAnnotations(species,force)
 
         if species == 'Mm' and array_type == 'AltMouse':
             buildAltMouseExonAnnotations()
-        else: buildExonArrayExonAnnotations()
+        else: buildExonArrayExonAnnotations(species)
             
 if __name__ == '__main__':
-    buildUniProtFunctAnnotations('Hs',force='no')        
+    #buildUniProtFunctAnnotations('Hs',force='no')
+    species='Hs'; array_type = 'exon'
+    updateDBs(species,array_type)
+    

@@ -16,7 +16,7 @@ def createExportFile(new_file,dir):
     try:
         fn=filepath(new_file); file_var = open(fn,'w')
     except IOError:
-        print "IOError", fn
+        #print "IOError", fn
         fn = filepath(dir)
         try:
             os.mkdir(fn) ###Re-Create directory if deleted

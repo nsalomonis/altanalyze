@@ -9,6 +9,9 @@ try:
     import Tkinter
     from Tkinter import *
     import PmwFreeze
+    from Tkconstants import LEFT
+    import tkMessageBox
+    import tkFileDialog
 except ImportError: print "\nPmw or Tkinter not found... proceeding with manual input"
 dirfile = unique
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
@@ -170,10 +173,29 @@ class GUI:
         #self.button = Button(text="   Quit  ", command=quitcommand)
         #self.button.pack(side = 'bottom', padx = 10, pady = 10)
         
-        continue_to_next_win = Tkinter.Button(text = 'Continue', command = self._parent.destroy)
-        continue_to_next_win.pack(side = 'bottom', padx = 10, pady = 10); self._parent.mainloop()
+        continue_to_next_win = Button(text = 'Continue', command = self._parent.destroy)
+        continue_to_next_win.pack(side = 'right', padx = 10, pady = 10)
 
+        quit_win = Button(self._parent, text="Quit", command=self.quit) 
+        quit_win.pack(side = 'right', padx =10, pady = 5)
 
+        self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
+        self._parent.mainloop()
+
+    def info(self):
+        tkMessageBox.showinfo("title","message",parent=self._parent)
+
+    def deleteWindow(self):
+        tkMessageBox.showwarning("Quit","Use 'Quit' button to end program!",parent=self._parent)
+
+    def quit(self):
+        #print "quit starts"
+        #print "cleaning up things..."
+        self._parent.quit()
+        self._parent.destroy()
+        sys.exit()
+        #print "quit ends"
+        
     def Report(self,tag,option):
         output = tag
         return output
@@ -382,20 +404,6 @@ def importDefaultInfo(filename,array_type):
             if array_type == array_abrev:
                 return [analyze_functional_attributes,microRNA_prediction_method]
 
-def importUserOptions():
-    filename = 'Config/options.txt'
-    expr_defaults = importDefaultInfo(filename)
-    #perform_alt_analysis, dabg_p, expression_data_format, expression_threshold, avg_all_for_ss, include_raw_data = expr_defaults
-    
-    filename = 'Config/defaults-alt_exon.txt'
-    alt_exon_defaults = importDefaultInfo(filename)
-    #analysis_method, alt_exon_fold_variable, p_threshold, filter_probeset_types, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold,exportTransitResultsforAnalysis, export_splice_index_values = values
-    
-    filename = 'Config/defaults-funct.txt'
-    functional_analysis_defaults = importDefaultInfo(filename)
-    #analyze_functional_attributes,microRNA_prediction_method = functional_analysis_defaults
-    return expr_defaults, alt_exon_defaults, functional_analysis_defaults
-
 class OptionData:
     def __init__(self,option,displayed_title,display_object,description,array_options):
         self._option = option; self._displayed_title = displayed_title; self._description = description
@@ -427,10 +435,19 @@ def importUserOptions(array_type):
             option_list.append(option)
     return option_list,option_db
 
+class WarningWindow:
+    def __init__(self,warning,window_name):
+        tkMessageBox.showerror(window_name, warning)
+
+class InfoWindow:
+    def __init__(self,dialogue,header):
+        tkMessageBox.showinfo(header, dialogue)
+
 class MainMenu:
     def __init__(self):
         parent = Tk()
-
+        self._parent = parent
+        parent.title('AltAnalyze: Introduction')
         self._user_variables={}
         filename = 'logo.gif'
         fn=filepath(filename)
@@ -446,22 +463,40 @@ class MainMenu:
             callback(tag)
         horiz = PmwFreeze.RadioSelect(parent,
                 labelpos = 'w', command = buttoncallback,
-                label_text = 'AltAnalyze version 1.0 Main', frame_borderwidth = 2,
+                label_text = 'GO-Elite version 1.0 Main', frame_borderwidth = 2,
                 frame_relief = 'ridge'
         ); horiz.pack(fill = 'x', padx = 10, pady = 10)
         for text in ['Continue']: horiz.add(text)
         """
         ### Add some buttons to the horizontal RadioSelect
         continue_to_next_win = Tkinter.Button(text = 'Begin Analysis', command = parent.destroy)
-        continue_to_next_win.pack(side = 'bottom', padx = 10, pady = 10); parent.mainloop()
+        continue_to_next_win.pack(side = 'bottom', padx = 5, pady = 5);
+
+        info_win = Button(self._parent, text="About AltAnalyze", command=self.info)
+        info_win.pack(side = 'bottom', padx = 5, pady = 5)
+
+        parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
+        parent.mainloop()
+
+    def info(self):
+        about = 'AltAnalyze 1.01 beta.\n'
+        about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
+        about+= 'Apache open-source license. Additional information can be found at:\n'
+        about+= 'http://www.genmapp.org/AltAnalyze\n'
+        about+= '\nDeveloped by:\n\tNathan Salomonis\n\tBruce Conklin\nGladstone Institutes 2008'
+        tkMessageBox.showinfo("About AltAnalyze",about,parent=self._parent)
+
+    def deleteWindow(self):
+        tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
 
     def callback(self, tag):
         #print 'Button',[option], tag,'was pressed.'
         self._user_variables['continue'] = tag        
-            
-def getUserParameters():
-    try: MainMenu()
-    except TclError: null=[]
+                
+def getUserParameters(skip_intro):
+    if skip_intro == 'yes':
+        try: MainMenu()
+        except TclError: null=[]
     global species; species=''; global user_variables; user_variables={}; global analysis_method; global array_type 
     ### Get default options for ExpressionBuilder and AltAnalyze
 
@@ -507,20 +542,22 @@ def getUserParameters():
         if run_from_scratch != 'update DBs':
             expr_defaults, alt_exon_defaults, functional_analysis_defaults = importDefaults(array_type,species)
             
-            try:
-                if run_from_scratch != 'pre-processed':
+            if run_from_scratch != 'pre-processed':
 
-                    option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
-                    root = Tk(); root.title('AltAnalyze: Expression Analysis Parameters')
-                    gu = GUI(root,option_db,option_list[i:i+len(expr_defaults)],expr_defaults)
-            
+                option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
+                root = Tk(); root.title('AltAnalyze: Expression Analysis Parameters')
+                gu = GUI(root,option_db,option_list[i:i+len(expr_defaults)],expr_defaults)
+                if array_type != "3'array":          
                     dabg_p = gu.Results()['dabg_p']
                     run_from_scratch = gu.Results()['run_from_scratch']
                     expression_threshold = gu.Results()['expression_threshold']
                     perform_alt_analysis = gu.Results()['perform_alt_analysis']
-                    expression_data_format = gu.Results()['expression_data_format']
                     avg_all_for_ss = gu.Results()['avg_all_for_ss']
-                    include_raw_data = gu.Results()['include_raw_data']
+                expression_data_format = gu.Results()['expression_data_format']
+                include_raw_data = gu.Results()['include_raw_data']
+                
+            if (perform_alt_analysis == 'both') or (run_from_scratch == 'pre-processed'):
+                perform_alt_analysis = 'alt'
                 
                 i = i+len(expr_defaults)
                 #print option_list[i:i+len(alt_exon_defaults)+len(functional_analysis_defaults)], alt_exon_defaults+functional_analysis_defaults;kill
@@ -545,11 +582,7 @@ def getUserParameters():
                 microRNA_prediction_method = gu.Results()['microRNA_prediction_method']
                 try: p_threshold = float(permute_p_threshold)
                 except ValueError: permute_p_threshold = permute_p_threshold
-
-            except KeyError: ###Occurs when only analyzing gene expression
-                include_raw_data = gu.Results()['include_raw_data']
-                expression_data_format = gu.Results()['expression_data_format']
-    except NameError:
+    except NameError:  ###Occurs when PMW or Tkinter does not propperly load
         species, array_type, manufacturer, constitutive_source, run_from_scratch = getPrimaryUserParameters()
         expr_defaults, alt_exon_defaults, functional_analysis_defaults = importDefaults(array_type,species)
 
@@ -576,7 +609,7 @@ def getUserParameters():
     except ValueError: gene_expression_cutoff = gene_expression_cutoff    
 
     #print [exportTransitResultsforAnalysis,analyze_functional_attributes,microRNA_prediction_method,avg_all_for_ss,include_raw_data];kill
-    expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch
+    expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,permute_p_threshold, perform_permutation_analysis, export_splice_index_values
     additional_var = exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method
     return expr_var, alt_var, additional_var, file_location_defaults

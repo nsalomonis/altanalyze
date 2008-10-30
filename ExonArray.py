@@ -3,6 +3,7 @@ import os.path
 import unique
 import statistics
 import math
+import EnsemblImport; reload(EnsemblImport)
 import ExonArrayEnsemblRules; reload(ExonArrayEnsemblRules)
 import ExonArrayAffyRules
 import ExpressionBuilder
@@ -25,7 +26,10 @@ def read_directory(sub_dir):
     dir = string.replace(dir,py2app_adj,'')
     dir = string.replace(dir,'\\library.zip','')
     dir_list = os.listdir(dir + sub_dir)
-    return dir_list
+    dir_list2=[]
+    for file in dir_list:
+        if '.txt' in file: dir_list2.append(file)
+    return dir_list2
 
 ################# Begin Analysis
 
@@ -113,7 +117,7 @@ def importExonProbesetData(filename,import_these_probesets,import_type):
     except UnboundLocalError: ### Occurs if no p-value file exists
         return 'null', 'null','null'
     
-def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_db,data_type):
+def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_db,data_type,perform_alt_analysis):
     """Probeset level data and gene level data are handled differently by this program for exon and tiling based arrays.
     Probeset level data is sequentially filtered to reduce the dataset to a minimal set of expressed probesets (exp p-values) that
     that align to genes with multiple lines of evidence (e.g. ensembl) and show some evidence of regulation for any probesets in a
@@ -163,63 +167,64 @@ def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_
 
         generateConstitutiveExpression(constitutive_exp_dbase,constitutive_gene_db,probeset_gene_db,pre_filtered_db,array_names,filename)
         probeset_db = {}; constitutive_exp_dbase = {}; possible_constitutive_probeset={} ### reset databases to conserve memory
-        
-        exp_dbase={}; constitutive_gene_db={}; probeset_gene_db={} ### reset databases to conserve memory
-        global expr_group_list; global comp_group_list
-        if data_type == 'expression':
-            expr_group_dir = string.replace(filename,'exp.','groups.')
-            comp_group_dir = string.replace(filename,'exp.','comps.')
-        else:
-            expr_group_dir = string.replace(filename,'stats.','groups.')
-            comp_group_dir = string.replace(filename,'stats.','comps.')
-        comp_group_list, comp_group_list2 = ExpressionBuilder.importComparisonGroups(comp_group_dir)
-        expr_group_list,expr_group_db = ExpressionBuilder.importArrayGroups(expr_group_dir,array_linker_db)
 
-        print "Reorganizing array data into comparison groups for export to down-stream splicing analysis software"
-        ###Do this only for the header data
-        group_count,raw_data_comp_headers = reorder_arrays.reorderArrayHeaders(array_names,expr_group_list,comp_group_list,array_linker_db)
+        if perform_alt_analysis != 'expression': ### User Option
+            exp_dbase={}; constitutive_gene_db={}; probeset_gene_db={} ### reset databases to conserve memory
+            global expr_group_list; global comp_group_list
+            if data_type == 'expression':
+                expr_group_dir = string.replace(filename,'exp.','groups.')
+                comp_group_dir = string.replace(filename,'exp.','comps.')
+            else:
+                expr_group_dir = string.replace(filename,'stats.','groups.')
+                comp_group_dir = string.replace(filename,'stats.','comps.')
+            comp_group_list, comp_group_list2 = ExpressionBuilder.importComparisonGroups(comp_group_dir)
+            expr_group_list,expr_group_db = ExpressionBuilder.importArrayGroups(expr_group_dir,array_linker_db)
 
-        ###Export the header info and store the export write data for reorder_arrays
-        global comparision_export_db; comparision_export_db={}
-        AltAnalzye_input_dir = "AltExpression/pre-filtered/"+data_type+'/'; array_type_name = 'Exon'
-        for comparison in comp_group_list2: ###loop throught the list of comparisons
-            group1 = comparison[0]; group2 = comparison[1]
-            group1_name = expr_group_db[group1]; group2_name = expr_group_db[group2]
-            comparison_filename = species+'_'+array_type_name+'_'+ group1_name + '_vs_' + group2_name + '.txt'
+            print "Reorganizing array data into comparison groups for export to down-stream splicing analysis software"
+            ###Do this only for the header data
+            group_count,raw_data_comp_headers = reorder_arrays.reorderArrayHeaders(array_names,expr_group_list,comp_group_list,array_linker_db)
+
+            ###Export the header info and store the export write data for reorder_arrays
+            global comparision_export_db; comparision_export_db={}
+            AltAnalzye_input_dir = "AltExpression/pre-filtered/"+data_type+'/'; array_type_name = 'Exon'
+            for comparison in comp_group_list2: ###loop throught the list of comparisons
+                group1 = comparison[0]; group2 = comparison[1]
+                group1_name = expr_group_db[group1]; group2_name = expr_group_db[group2]
+                comparison_filename = species+'_'+array_type_name+'_'+ group1_name + '_vs_' + group2_name + '.txt'
+                
+                new_file = AltAnalzye_input_dir + comparison_filename; comparison_filename_list.append(comparison_filename)
+                data = export.createExportFile(new_file,AltAnalzye_input_dir[:-1])
+
+                try: array_names = raw_data_comp_headers[comparison]
+                except KeyError: print raw_data_comp_headers;kill
+                title = ['Probesets']+array_names; title = string.join(title,'\t')+'\n'; data.write(title)
+                comparision_export_db[comparison] = data ###store the export file write data so we can write after organizing
+
+            #reorder_arrays.reorderArraysOnly(filtered_exp_db,expr_group_list,comp_group_list)
+            print len(pre_filtered_db), 'pre_filtered_db probesets being selected from expression file'
+            importExonProbesetData(filename,pre_filtered_db,'comparisons')
+            pre_filtered_db={}
             
-            new_file = AltAnalzye_input_dir + comparison_filename; comparison_filename_list.append(comparison_filename)
-            data = export.createExportFile(new_file,AltAnalzye_input_dir[:-1])
-
-            try: array_names = raw_data_comp_headers[comparison]
-            except KeyError: print raw_data_comp_headers;kill
-            title = ['Probesets']+array_names; title = string.join(title,'\t')+'\n'; data.write(title)
-            comparision_export_db[comparison] = data ###store the export file write data so we can write after organizing
-
-        #reorder_arrays.reorderArraysOnly(filtered_exp_db,expr_group_list,comp_group_list)
-        print len(pre_filtered_db), 'pre_filtered_db probesets being selected from expression file'
-        importExonProbesetData(filename,pre_filtered_db,'comparisons')
-        pre_filtered_db={}
-        
-        for comparison in comparision_export_db:
-            data = comparision_export_db[comparison]
+            for comparison in comparision_export_db:
+                data = comparision_export_db[comparison]
+                data.close()
+            print "Pairwise comparisons for AltAnalyze exported..."
+            
+            #export_summary_stats='no'; array_type = "exon-array"
+            #ExpressionBuilder.exportSplicingInput(species,array_type,expr_group_db,raw_data_comp_headers,comp_group_list2,raw_data_comps,export_summary_stats,data_type)
+            """
+            null,filename = string.split(filename,'\\')
+            filtered_exp_export = 'AltExpression/pre-filtered/'+species+'_Exon-'+filename[4:]
+            fn=filepath(filtered_exp_export); data = open(fn,'w'); title = 'Probeset'
+            for array in ranked_array_headers: title = title +'\t'+ array
+            data.write(title+'\n')
+            for probeset in filtered_exp_db:
+                exp_vals = probeset
+                for exp_val in filtered_exp_db[probeset]:
+                    exp_vals = exp_vals +'\t'+ str(exp_val)
+                data.write(exp_vals+'\n')
             data.close()
-        print "Pairwise comparisons for AltAnalyze exported..."
-        
-        #export_summary_stats='no'; array_type = "exon-array"
-        #ExpressionBuilder.exportSplicingInput(species,array_type,expr_group_db,raw_data_comp_headers,comp_group_list2,raw_data_comps,export_summary_stats,data_type)
-        """
-        null,filename = string.split(filename,'\\')
-        filtered_exp_export = 'AltExpression/pre-filtered/'+species+'_Exon-'+filename[4:]
-        fn=filepath(filtered_exp_export); data = open(fn,'w'); title = 'Probeset'
-        for array in ranked_array_headers: title = title +'\t'+ array
-        data.write(title+'\n')
-        for probeset in filtered_exp_db:
-            exp_vals = probeset
-            for exp_val in filtered_exp_db[probeset]:
-                exp_vals = exp_vals +'\t'+ str(exp_val)
-            data.write(exp_vals+'\n')
-        data.close()
-        #return filtered_exp_db,group_count,ranked_array_headers"""
+            #return filtered_exp_db,group_count,ranked_array_headers"""
     return comparison_filename_list
 
 def reorderArraysOnly(filtered_exp_db): 
@@ -406,16 +411,17 @@ def makeGeneLevelAnnotations(probeset_db):
         probeset_gene_db[gene] = transcript_cluster_ids,exon_ids,probeset_ids
     return probeset_gene_db
 
-def getAnnotations(filename,p,exons_to_grab,data_source,manufacturer,constitutive_source,Species,avg_all_for_ss,filter_by_DABG):
+def getAnnotations(filename,p,exons_to_grab,data_source,manufacturer,constitutive_source,Species,avg_all_for_ss,filter_by_DABG,perform_alt_analysis):
     global species; species = Species; global average_all_probesets; average_all_probesets={}; filtered_exon_list=[]
     global avg_all_probes_for_steady_state; avg_all_probes_for_steady_state = avg_all_for_ss; global filter_by_dabg; filter_by_dabg = filter_by_DABG
     process_from_scratch = 'no'; constitutive_analyzed = 'no'  ###internal variables used while testing
+    source_biotype = 'mRNA'
     ###Get annotations using Affymetrix as a trusted source or via links to Ensembl
     if data_source == 'Affymetrix':
         annotation_dbases = ExonArrayAffyRules.getAnnotations(exons_to_grab,constitutive_source,process_from_scratch)
         probe_association_db,constitutive_gene_db,exon_location_db, trans_annotation_db, trans_annot_extended = annotation_dbases
     else:
-        if manufacturer == 'Affymetrix': probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,species)
+        if manufacturer == 'Affymetrix': probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,source_biotype,species)
         if constitutive_analyzed == 'yes':
             return probeset_gene_db,annotate_db
     if filter_by_dabg == 'yes':
@@ -428,9 +434,9 @@ def getAnnotations(filename,p,exons_to_grab,data_source,manufacturer,constitutiv
 
     ###Filter expression data based on DABG and annotation filtered probesets (will work without DABG filtering as well)
     data_type = 'expression'
-    comparison_filename_list = filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db,data_type)
+    comparison_filename_list = filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db,data_type,perform_alt_analysis)
     data_type = 'dabg'; filename = string.replace(filename,'exp.','stats.') ###repeat, but for dabg statistics rather than expression data
-    comparison_filename_list2 = filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db,data_type)
+    comparison_filename_list2 = filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db,data_type,perform_alt_analysis)
     constitutive_gene_db={}
     probeset_gene_db = makeGeneLevelAnnotations(probeset_db)
     
@@ -439,11 +445,128 @@ def getAnnotations(filename,p,exons_to_grab,data_source,manufacturer,constitutiv
     #filtered_gene_db = permformFtests(filtered_exp_db,group_count,probeset_db)
     return probeset_gene_db,annotate_db, comparison_filename_list
 
+def inputResultFiles(filename,file_type):
+    fn=filepath(filename)
+    gene_db={}; x = 0
+    ###Import expression data (non-log space)
+    for line in open(fn,'rU').xreadlines():             
+        data = cleanUpLine(line)
+        if x==0: x=1
+        else:
+            t = string.split(data,'\t')
+            if file_type == 'gene': geneid = t[0]; gene_db[geneid]=[]
+            else: probeset = t[7]; gene_db[probeset]=[]
+    return gene_db
+                
+def grabExonIntronPromoterSequences(species,array_type,data_type,output_types):
+    ### output_types could be adjacent intron sequences, adjacent exon sequences, targets exon sequence or promoter
+    sequence_input_dir_list=[]
+    if data_type == 'probeset': sequence_input_dir = '/AltResults/AlternativeOutput/'+array_type+'/sequence_input'
+    if data_type == 'gene': sequence_input_dir = '/ExpressionOutput/'+array_type+'/sequence_input'
+    
+    dir_list = read_directory(sequence_input_dir)
+    for input_file in dir_list:
+        filedir = sequence_input_dir[1:]+'/'+input_file
+        filter_db = inputResultFiles(filedir,data_type)
+        export_exon_filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_probesets.txt'        
+        ensembl_probeset_db = ExonArrayEnsemblRules.reimportEnsemblProbesetsForSeqExtraction(export_exon_filename,data_type,filter_db)
+        """for gene in ensembl_probeset_db:
+            if gene == 'ENSG00000139737':
+                for x in ensembl_probeset_db[gene]:
+                    exon_id,((probe_start,probe_stop,probeset_id,exon_class,transcript_clust),ed) = x
+                    print gene, ed.ExonID()
+        kill"""
+        analysis_type = 'get_sequence'
+        dir = 'AltDatabase/ensembl/'+species+'/'; gene_seq_filename = dir+species+'_gene-seq-2000_flank'
+        ensembl_probeset_db = EnsemblImport.import_sequence_data(gene_seq_filename,ensembl_probeset_db,species,analysis_type)
+
+        """
+        critical_exon_file = 'AltDatabase/'+species+'/'+ array_type + '/' + array_type+'_critical-exon-seq.txt'
+        if output_types == 'all' and data_type == 'probeset':
+            output_types = ['alt-promoter','promoter','exon','adjacent-exons','adjacent-introns']
+        else: output_types = [output_types]
+        
+        for output_type in output_types:
+            sequence_input_dir = string.replace(sequence_input_dir,'_input','_output')
+            filename = sequence_input_dir[1:]+'/ExportedSequence-'+data_type+'-'+output_type+'.txt'
+            exportExonIntronPromoterSequences(filename, ensembl_probeset_db,data_type,output_type)
+        """
+        if output_types == 'all' and data_type == 'probeset':
+            output_types = ['alt-promoter','promoter','exon','adjacent-exons','adjacent-introns']
+        else: output_types = [output_types]
+        
+        for output_type in output_types:
+            sequence_input_dir2 = string.replace(sequence_input_dir,'_input','_output')
+            filename = sequence_input_dir2[1:]+'/'+input_file[:-4]+'-'+data_type+'-'+output_type+'.txt'
+            exportExonIntronPromoterSequences(filename, ensembl_probeset_db,data_type,output_type)
+
+def exportExonIntronPromoterSequences(filename,ensembl_probeset_db,data_type,output_type):
+    exon_seq_db_filename = filename
+    fn=filepath(exon_seq_db_filename); data = open(fn,'w'); gene_data_exported={}; probe_data_exported={}
+
+    if data_type == 'gene' or output_type == 'promoter': seq_title = 'PromoterSeq'
+    elif output_type == 'alt-promoter': seq_title = 'PromoterSeq'
+    elif output_type == 'exon': seq_title = 'ExonSeq'
+    elif output_type == 'adjacent-exons': seq_title = 'PrevExonSeq\tNextExonSeq'
+    elif output_type == 'adjacent-introns': seq_title = 'PrevIntronSeq\tNextIntronSeq'
+
+    title = ['Ensembl_GeneID','ExonID','ExternalExonIDs','ProbesetID',seq_title]
+    title = string.join(title,'\t')+'\n'; #data.write(title)
+    for ens_gene in ensembl_probeset_db:
+        for probe_data in ensembl_probeset_db[ens_gene]:
+            exon_id,((probe_start,probe_stop,probeset_id,exon_class,transcript_clust),ed) = probe_data
+            ens_exon_list = ed.ExonID(); ens_exons = string.join(ens_exon_list,' ')
+            proceed = 'no'
+            try:
+                if data_type == 'gene' or output_type == 'promoter':
+                    try: seq = [ed.PromoterSeq()]; proceed = 'yes'
+                    except AttributeError: proceed = 'no'
+                elif output_type == 'alt-promoter':
+                    if 'alt-N-term' in ed.AssociatedSplicingEvent() or 'altPromoter' in ed.AssociatedSplicingEvent():
+                        try: seq = [ed.PrevIntronSeq()]; proceed = 'yes'
+                        except AttributeError: proceed = 'no'
+                elif output_type == 'exon':
+                    try: seq = [ed.ExonSeq()]; proceed = 'yes'
+                    except AttributeError: proceed = 'no'
+                elif output_type == 'adjacent-exons':
+                    if len(ed.PrevExonSeq())>1 and len(ed.NextExonSeq())>1:
+                        try: seq = ['(prior-exon-seq)'+ed.PrevExonSeq(),'(next-exon-seq)'+ed.NextExonSeq()]; proceed = 'yes'
+                        except AttributeError: proceed = 'no'
+                elif output_type == 'adjacent-introns':
+                    if len(ed.PrevIntronSeq())>1 and len(ed.NextIntronSeq())>1:
+                        try: seq = ['(prior-intron-seq)'+ed.PrevIntronSeq(), '(next-intron-seq)'+ed.NextIntronSeq()]; proceed = 'yes'
+                        except AttributeError: proceed = 'no'
+            except AttributeError: proceed = 'no'
+            if proceed == 'yes':
+                gene_data_exported[ens_gene]=[]
+                probe_data_exported[probeset_id]=[]
+                if data_type == 'gene':
+                    values = ['>'+ens_gene]
+                else: values = ['>'+ens_gene,exon_id,ens_exons,probeset_id]
+                values = string.join(values,'|')+'\n';data.write(values)
+                for seq_data in seq:
+                    i = 0; e = 100
+                    while i < len(seq_data):
+                        seq_line = seq_data[i:e]; data.write(seq_line+'\n')
+                        i+=100; e+=100
+
+    print len(gene_data_exported), 'gene entries exported'
+    print len(probe_data_exported), 'probeset entries exported'
+    data.close()
+    print exon_seq_db_filename, 'exported....'
+        
 if __name__ == '__main__':
     dirfile = unique
     m = 'Mm'
     h = 'Hs'
     Species = h
+    Array_type = 'exon'
+    Data_type = 'probeset'
+    Output_types = 'promoter'
+    Output_types = 'all'
+    
+    grabExonIntronPromoterSequences(Species,Array_type,Data_type,Output_types)
+    sys.exit()
     #"""
     avg_all_for_ss = 'yes'
     import_dir = '/AltDatabase/'+Species+ '/exon'

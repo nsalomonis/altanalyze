@@ -253,7 +253,7 @@ def identifyCriticalExonLocations(species,array_type):
 
 def reAnnotateCriticalExonSequences(species,array_type):
     export_exon_filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_'+array_type+'_probesets.txt'        
-    ensembl_probeset_db = ExonArrayEnsemblRules.reimportEnsemblProbesetsForSeqExtraction(export_exon_filename)
+    ensembl_probeset_db = ExonArrayEnsemblRules.reimportEnsemblProbesetsForSeqExtraction(export_exon_filename,'null',{})
     
     analysis_type = 'get_sequence'
     dir = 'AltDatabase/ensembl/'+species+'/'; gene_seq_filename = dir+species+'_gene-seq-2000_flank'

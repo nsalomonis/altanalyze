@@ -7,9 +7,17 @@ import reorder_arrays
 import ExonArray
 import export
 import time
+import UI
 import BuildAffymetrixAssociations; reload(BuildAffymetrixAssociations)
 dirfile = unique
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
+
+use_Tkinter = 'no'
+try:
+    from Tkinter import *
+    use_Tkinter = 'yes'
+except ImportError: use_Tkinter = 'yes'; print "\nPmw or Tkinter not found... Tkinter print out not available";
+debug_mode = 'no'
 
 def filepath(filename):
     dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
@@ -30,6 +38,32 @@ def read_directory(sub_dir):
     return dir_list2
 
 ################# Begin Analysis from parsing files
+
+def checkArrayHeaders(expr_input_dir,expr_group_dir):
+    ### This method is used to check to see if the array headers in the groups and expression files match
+    print "Processing the expression file:",expr_input_dir
+    fn=filepath(expr_input_dir)
+    x = 0; y = 0; d = 0
+    global array_folds; array_folds={}
+    for line in open(fn,'rU').xreadlines():             
+      data = cleanUpLine(line)
+      if data[0] != '#':
+        fold_data = string.split(data,'\t')
+        arrayid = fold_data[0]
+        ### differentiate data from column headers
+        if x == 1: break
+        if x == 0: #only grab headers if it's the first row
+            array_names = []; array_linker_db = {}; z = 0
+            for entry in fold_data:
+                try:
+                    null1, headers, null2 = string.split(entry,'"')
+                    if len(entry) > 0 and z != 0: array_names.append(headers)
+                except ValueError:
+                    if z != 0: array_names.append(entry)
+                z += 1
+            for array in array_names: array = string.replace(array,'\r',''); array_linker_db[array] = d; d +=1
+            x = 1
+    expr_group_list,expr_group_db = importArrayGroups(expr_group_dir,array_linker_db)
 
 def calculate_expression_measures(expr_input_dir,expr_group_dir,expr_group,experiment_name,comp_group_dir,comp_group,probeset_db,annotate_db):
     print "Processing the expression file:",expr_input_dir
@@ -53,7 +87,10 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,expr_group,exper
                         except ValueError: fold_data2.append(fold)
                 else:
                     try: fold_data2.append(float(fold))
-                    except ValueError: print fold, arrayid; kill #fold_data2.append(float(0))
+                    except ValueError: 
+                        print_out = 'WARNING!!! The probeset ID'+arrayid+ 'has an invalid expression value. Correct and re-run'
+                        try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); sys.exit()
+                        except NameError: print print_out; sys.exit()
             if expression_data_format == 'non-log':
                 fold_data3=[] ###Convert numeric expression to log fold (need to add 1)
                 for fold in fold_data2:
@@ -100,8 +137,14 @@ def importArrayGroups(expr_group_dir,array_linker_db):
         array_header,group,group_name = string.split(data,'\t')
         group = int(group)
         #compare new to original index order of arrays
-        try: original_index_order = array_linker_db[array_header]
-        except KeyError: print array_header, array_linker_db; kill
+        try:
+            original_index_order = array_linker_db[array_header]
+        except KeyError:
+            print_out = 'WARNING!!! At least one array-ID listed in the "groups." file (e.g.,'+array_header+')'+'\n is not in the array "exp." file. See the new file "arrays." with all "exp." header names\nand correct "groups."' 
+            try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!')
+            except NameError: print print_out
+            exportArrayHeaders(expr_group_dir,array_linker_db)
+            root.destroy(); sys.exit()            
         entry = new_index_order, original_index_order, group, group_name
         expr_group_list.append(entry)
         new_index_order += 1 #add this aftwards since these will also be used as index values
@@ -110,6 +153,12 @@ def importArrayGroups(expr_group_dir,array_linker_db):
     #print expr_group_list
     return expr_group_list,expr_group_db
 
+def exportArrayHeaders(expr_group_dir,array_linker_db):
+    new_file = string.replace(expr_group_dir,'groups.','arrays.')
+    fn=filepath(new_file); data = open(fn,'w')
+    for array in array_linker_db: data.write(array+'\n')
+    data.close()
+    
 def importComparisonGroups(comp_group_dir):
     comp_group_list=[]
     comp_group_list2=[]
@@ -122,7 +171,32 @@ def importComparisonGroups(comp_group_dir):
         comp_group_list2.append(groups2)
     return comp_group_list, comp_group_list2
 
+def importMicrornaAssociations(species,report):
+    filename = 'AltDatabase/Ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt'
+    fn=filepath(filename); ensembl_microRNA_db={}
+    for line in open(fn,'rU').xreadlines():            
+        data = cleanUpLine(line)
+        miR,ens_geneid,sources = string.split(data,'\t')
+        miR_annot = miR+'('+sources+')'
+        try: ensembl_microRNA_db[ens_geneid].append(miR_annot)
+        except KeyError: ensembl_microRNA_db[ens_geneid] = [miR_annot]
+
+    ###Optionally filter out miRs with evidence from just one algorithm (options are 'any' and 'muliple'
+    for gene in ensembl_microRNA_db:
+        miRs = ensembl_microRNA_db[gene]; miRs.sort()
+        if report == 'multiple':
+            miRs2=[]
+            for mir in miRs:
+                if '|' in mir: miRs2.append(mir)
+            miRs=miRs2
+        miRs = string.join(miRs,', ')
+        ensembl_microRNA_db[gene] = miRs
+        
+    return ensembl_microRNA_db
+
 def exportAnalyzedData(comp_group_list2,expr_group_db):
+    try: ensembl_microRNA_db = importMicrornaAssociations(species,'multiple')
+    except IOError: ensembl_microRNA_db={}
     if data_type == 'expression':
         new_file = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
         data = export.createExportFile(new_file,expression_dataset_output_dir[:-1])
@@ -135,7 +209,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
         if array_type == "exon":
             #annotate_db[gene] = symbol, definition,rna_processing
             #probeset_db[gene] = transcluster_string, exon_id_string
-            title = "Ensembl_gene" +'\t'+ 'Definition' +'\t'+ 'Symbol' +'\t'+ 'Transcript_cluster_ids' +'\t'+ 'Constitutive_exons' +'\t'+ 'Constitutive_probesets' +'\t'+ 'RNA_processing/binding'
+            title = "Ensembl_gene" +'\t'+ 'Definition' +'\t'+ 'Symbol' +'\t'+ 'Transcript_cluster_ids' +'\t'+ 'Constitutive_exons' +'\t'+ 'Constitutive_probesets' +'\t'+ 'Putative microRNA binding sites'
         elif x == 1:
             title = "Probesets" +'\t'+ 'Symbol' +'\t'+ 'Definition' +'\t'+ 'affygene' +'\t'+ 'exons' +'\t'+ 'probe_type_call' +'\t'+ 'ensembl' '\t'+ 'RNA_processing/binding'
         elif y==1:
@@ -155,10 +229,13 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                     try: definition = annotate_db[arrayid][0]; symbol = annotate_db[arrayid][1]; rna_processing = annotate_db[arrayid][2]
                     except TypeError: print arrayid, annotate_db[arrayid]; kill
                 except KeyError: definition=''; symbol=''; rna_processing=''
+                report = 'all'
+                try: miRs = ensembl_microRNA_db[arrayid]
+                except KeyError: miRs = ''
                 trans_cluster = probeset_db[arrayid][0]
                 exon_ids = probeset_db[arrayid][1]
                 probesets = probeset_db[arrayid][2]
-                data_val = arrayid +'\t'+ symbol +'\t'+ definition +'\t'+ trans_cluster +'\t'+ exon_ids +'\t'+ probesets +'\t'+ rna_processing
+                data_val = arrayid +'\t'+ symbol +'\t'+ definition +'\t'+ trans_cluster +'\t'+ exon_ids +'\t'+ probesets +'\t'+ miRs
             elif arrayid in annotate_db and arrayid in probeset_db:
                 symbol = annotate_db[arrayid][0]
                 definition = annotate_db[arrayid][1]
@@ -337,9 +414,9 @@ def parse_custom_annotations(filename):
     print len(custom_array_db), "custom array entries process"
     return custom_array_db
 
-def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,manufacturer,constitutive_source,data_source,Include_raw_data):
+def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,manufacturer,constitutive_source,data_source,Include_raw_data,perform_alt_analysis,Root):
   start_time = time.time()
-
+  global root; root = Root
   #def remoteExpressionBuilder():
   global species; global array_type ; species = Species; array_type = Array_type; global altanalyze_files
   global filter_by_dabg; filter_by_dabg = 'yes' ### shouldn't matter, since the program should just continue on without it
@@ -409,8 +486,9 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
                     if comp_group == "comps."+experimental_input:
                         comp_group_dir = "ExpressionInput/"+array_type+'/'+comp_group
                         datasets_with_all_necessary_files +=1
+                        checkArrayHeaders(expr_input_dir,expr_group_dir)
                         if array_type == "exon":
-                            probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(expr_input_dir,dabg_p,exons_to_grab,data_source,manufacturer,constitutive_source,species,avg_all_for_ss,filter_by_dabg)
+                            probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(expr_input_dir,dabg_p,exons_to_grab,data_source,manufacturer,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis)
                             expr_input_dir = expr_input_dir[:-4]+'-steady-state.txt'
                             for file in comparison_filename_list: altanalyze_files.append(file)
                         """"if array_type == "AltMouse" and filter_by_dabg == 'yes':
@@ -433,14 +511,18 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
       print "...check these file names before running again."
       inp = sys.stdin.readline(); sys.exit()
   altanalyze_files = unique.unique(altanalyze_files) ###currently not used, since declaring altanalyze_files a global is problematic (not available from ExonArray... could add though)
-  if array_type != "3'array":
+  if array_type != "3'array" and perform_alt_analysis != 'expression':
       import FilterDabg
       FilterDabg.remoteRun(species,array_type,expression_threshold,filter_method,dabg_p,expression_data_format,altanalyze_files)
   else:
       end_time = time.time(); time_diff = int(end_time-start_time)
-      print "Analyses finished in %d seconds" % time_diff
-      print "Hit Enter/Return to exit AltAnalyze"
-      inp = sys.stdin.readline(); sys.exit()
+
+      print_out = 'Analysis complete. Gene expression summary \nexported to "ExpressionOutput".'
+      try:
+            print "Analysis Complete\n\n\n\n\n\n\n";
+            UI.InfoWindow(print_out,'Analysis Completed!');
+            root.destroy(); sys.exit()
+      except NameError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
 
 if __name__ == '__main__':
   """
