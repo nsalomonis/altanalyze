@@ -1,4 +1,20 @@
 ###ResultsExport_module
+#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Author Nathan Salomonis - nsalomonis@gmail.com
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy 
+#of this software and associated documentation files (the "Software"), to deal 
+#in the Software without restriction, including without limitation the rights 
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+#copies of the Software, and to permit persons to whom the Software is furnished 
+#to do so, subject to the following conditions:
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sys, string
 import os.path
@@ -6,20 +22,13 @@ import statistics
 import unique
 import export
 dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
-    fn = string.replace(fn,py2app_adj,'')
-    fn = string.replace(fn,'\\library.zip','') ###py2exe on some systems, searches for all files in the library file, eroneously
+    fn = unique.filepath(filename)
     return fn
 
 def read_directory(sub_dir):
-    dir=os.path.dirname(dirfile.__file__)
-    dir = string.replace(dir,py2app_adj,'')
-    dir = string.replace(dir,'\\library.zip','')
-    dir_list = os.listdir(dir + sub_dir)
+    dir_list = unique.read_directory(sub_dir)
     #add in code to prevent folder names from being included
     dir_list2 = [] 
     for entry in dir_list:
@@ -253,7 +262,7 @@ def compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed
         else: data.write(values)
     data.close()
 
-def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,avg_const_exp_db,adj_fold_dbase,exon_db,dataset_name):
+def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,avg_const_exp_db,adj_fold_dbase,exon_db,dataset_name,apt_dir):
     """Export processed raw expression values (e.g. add global fudge factor or eliminate probe sets based on filters) to txt files
     for analysis with MiDAS"""
     #array_group_list contains group names in order of analysis
@@ -358,7 +367,7 @@ def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,
     celfiles = 'AltResults/MIDAS/celfiles-'+dataset_name[0:-1]+'.txt'
     fn4=filepath(celfiles)
     data4 = open(fn4,'w')
-    title = 'cel_file\tgroup_id\n'; data4.write(title)
+    title = 'cel_files\tgroup_id\n'; data4.write(title)
     for group in array_group_list: ###contains the correct order for each group
         for array_id in array_group_db[group]:
             values = str(array_id) +'\t'+ str(group) +'\n'
@@ -374,7 +383,9 @@ def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,
         values = probeset+'\t'+probeset_number+'\n'
         data5.write(values)
     data5.close()
-    
+
+    """
+    ### This code is obsolete... used before AltAnalyze could connect to APT directly.
     commands = 'AltResults/MIDAS/commands-'+dataset_name[0:-1]+'.txt'
     data = export.createExportFile(commands,'AltResults/MIDAS')
     path = filepath('AltResults/MIDAS'); path = string.replace(path,'\\','/'); path = 'cd '+path+'\n\n'
@@ -384,19 +395,63 @@ def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,
     celfiles = 'celfiles-'+dataset_name[0:-1]+'.txt'
     command_line = 'apt-midas -c '+celfiles+' -g '+gene_exp_file+' -e '+junction_exp_file+' -m '+metafile+' -o '+dataset_name[0:-1]+'-output'
     data.write(path); data.write(command_line); data.close()
-    #runMiDAS(dataset_name[:-1],command_line)
+    """
 
-def runMiDAS(dataset_name):
-    import os
-    ###http://www.experts-exchange.com/Programming/Languages/Scripting/Python/Q_21998507.html
-    a = r"C:/Program Files/Affymetrix Power Tools/apt-1.4.0/bin/apt-vars.bat"
-    b = "cd C:\Documents and Settings\Nathan Salomonis\My Documents\final project\AltAnalyze_release\AltResults\MIDAS"
-    c = "apt-midas -c celfiles-Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average.txt -g gene-exp-Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average.txt -e exon-exp-Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average.txt -m meta-Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average.txt -o Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average-output"
-    os.spawnl(os.P_NOWAIT, a)
-    ###if the program is not at this disk location, have the user enter the location as input
-    #subprocess.Popen([r"gzip","-d", "x.txt.gz"]).wait()
-    #http://xahlee.org/perl-python/system_calls.html
-    #os.system()
+    status = runMiDAS(apt_dir,array_type,dataset_name)    
+    return status
+
+def getAPTDir(apt_fp):
+    ###Determine if APT has been set to the right directory and add the analysis_type to the filename
+    if 'bin' not in apt_fp: ###This directory contains the C+ programs that we wish to call
+        if 'apt' in apt_fp: ###This directory is the parent directory to 'bin'
+            apt_fp = apt_fp+'/'+'bin'
+        elif 'Affymetrix Power Tools' in apt_fp: ###The user selected the parent directory
+            dir_list = read_directory(apt_fp); versions = [] ###See what folders are in this directory (e.g., specific APT versions)
+            for folder in dir_list: ###If there are multiple versions
+                if 'apt' in folder:
+                    version = string.replace(folder,'apt-','')
+                    version = string.split(version,'.'); version_int_list = []
+                    try:
+                        for val in version: version_int_list.append(int(val))
+                        versions.append([version_int_list,folder])
+                    except Exception:
+                        versions.append([folder,folder]) ### arbitrarily choose an APT version if multiple exist and the folder name does not conform to the above
+            if len(versions)>0:
+                ###By making the versions indexed by the integer list value of the version, we can grab the latest version
+                versions.sort(); apt_fp = apt_fp+'/'+versions[-1][1]+'/'+'bin' ###Add the full path to the most recent version
+    return apt_fp
+
+def runMiDAS(apt_dir,array_type,dataset_name):
+    if '/bin' in apt_dir: apt_file = apt_dir +'/apt-midas' ### if the user selects an APT directory
+    elif os.name == 'nt': apt_file = apt_dir + '/PC/apt-midas'
+    elif os.name == 'mac': apt_file = apt_dir + '/Mac/apt-midas'
+    elif os.name == 'posix': apt_file = apt_dir + '/Linux/apt-midas'
+    apt_file = filepath(apt_file)
+
+    ### Each input file for MiDAS requires a full file path, so get the parent path
+    midas_input_dir = 'AltResults/MIDAS/'
+    path=filepath(midas_input_dir)
+
+    ### Remotely connect to the previously verified APT C+ midas program and run analysis
+    metafile = path + 'meta-'+dataset_name[0:-1]+'.txt'
+    exon_or_junction_file = path + array_type+'-exp-'+dataset_name[0:-1]+'.txt'
+    gene_exp_file = path + 'gene-exp-'+dataset_name[0:-1]+'.txt'
+    celfiles = path + 'celfiles-'+dataset_name[0:-1]+'.txt'
+    output_file = path + dataset_name[0:-1]+'-output'
+
+    ### Delete the output folder if it already exists (may cause APT problems)
+    delete_status = export.deleteFolder(output_file)
+    try:
+        import subprocess
+        retcode = subprocess.call([
+        apt_file, "--cel-files", celfiles,"-g", gene_exp_file, "-e", exon_or_junction_file,
+        "-m", metafile, "-o", output_file])
+        if retcode: status = 'failed'
+        else: status = 'run'
+    except NameError: status = 'failed'
+    if status == 'failed': print "apt-midas failed"
+    else: print "apt-midas run sucessfully"
+    return status
 
 def importMidasOutput(dataset_name):
     coversionfile = 'AltResults/MIDAS/probeset-conversion-'+dataset_name[0:-1]+'.txt'
@@ -493,7 +548,9 @@ def import_annotations(filename,array_type):
     return annotate_db
 
 if __name__ == '__main__':
-    dirfile = unique
+    array_type = 'exon'; dataset_name = 'test.'; apt_dir = 'AltDatabase/affymetrix/APT'
+    runMiDAS(apt_dir,array_type,dataset_name); sys.exit()
+
     a = 'Mm'; b = 'Hs'
     species = a
     e = 'ASPIRE'; f = 'linearregres'; g = 'ANOVA'; h = 'splicing-index'

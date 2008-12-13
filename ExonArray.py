@@ -1,3 +1,21 @@
+###ExonArray
+#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Author Nathan Salomonis - nsalomonis@gmail.com
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy 
+#of this software and associated documentation files (the "Software"), to deal 
+#in the Software without restriction, including without limitation the rights 
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+#copies of the Software, and to permit persons to whom the Software is furnished 
+#to do so, subject to the following conditions:
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import sys, string
 import os.path
 import unique
@@ -10,23 +28,15 @@ import ExpressionBuilder
 import reorder_arrays
 import time
 import export
-dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
-    fn = string.replace(fn,py2app_adj,'')
-    fn = string.replace(fn,'\\library.zip','') ###py2exe on some systems, searches for all files in the library file, eroneously
+    fn = unique.filepath(filename)
     return fn
 
 def read_directory(sub_dir):
-    dirfile = unique
-    dir=os.path.dirname(dirfile.__file__)
-    dir = string.replace(dir,py2app_adj,'')
-    dir = string.replace(dir,'\\library.zip','')
-    dir_list = os.listdir(dir + sub_dir)
-    dir_list2=[]
+    dir_list = unique.read_directory(sub_dir)
+    #add in code to prevent folder names from being included
+    dir_list2 = []
     for file in dir_list:
         if '.txt' in file: dir_list2.append(file)
     return dir_list2
@@ -37,8 +47,8 @@ def getFilteredExons(filename,p,probeset_db):
     start_time = time.time()
     ###Get statistics file based on expression file's name
     #Re-write to take into account groups
-    filename= string.replace(filename,'plier','dabg')
-    filename = string.replace(filename,'exp.','stats.')
+    #filename= string.replace(filename,'plier','dabg')
+    #filename = string.replace(filename,'exp.','stats.')
     fn=filepath(filename)
     filtered_exon_list={}; total = 0; x=0
     try:
@@ -411,7 +421,7 @@ def makeGeneLevelAnnotations(probeset_db):
         probeset_gene_db[gene] = transcript_cluster_ids,exon_ids,probeset_ids
     return probeset_gene_db
 
-def getAnnotations(filename,p,exons_to_grab,data_source,manufacturer,constitutive_source,Species,avg_all_for_ss,filter_by_DABG,perform_alt_analysis):
+def getAnnotations(fl,stats_input_dir,p,exons_to_grab,data_source,manufacturer,constitutive_source,Species,avg_all_for_ss,filter_by_DABG,perform_alt_analysis):
     global species; species = Species; global average_all_probesets; average_all_probesets={}; filtered_exon_list=[]
     global avg_all_probes_for_steady_state; avg_all_probes_for_steady_state = avg_all_for_ss; global filter_by_dabg; filter_by_dabg = filter_by_DABG
     process_from_scratch = 'no'; constitutive_analyzed = 'no'  ###internal variables used while testing
@@ -427,21 +437,22 @@ def getAnnotations(filename,p,exons_to_grab,data_source,manufacturer,constitutiv
     if filter_by_dabg == 'yes':
         print len(splicing_analysis_db),"genes included in the splicing annotation database (constitutive only containing)"
         ###Step 1) generate a list of probesets with a DABG p<threshold
-        filtered_exon_list = getFilteredExons(filename,p,probeset_db)
+        expr_input_dir = fl.ExpFile(); stats_input_dir = fl.StatsFile()
+        filtered_exon_list = getFilteredExons(stats_input_dir,p,probeset_db)
         #filtered_exon_list=[]
         ###Step 2) find the intersection of probesets from step 1 and probesets with valid gene annotations (for export to splicing-analyses)
         filtered_exon_list = filterFilteredData(probeset_db,filtered_exon_list)
 
     ###Filter expression data based on DABG and annotation filtered probesets (will work without DABG filtering as well)
     data_type = 'expression'
-    comparison_filename_list = filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db,data_type,perform_alt_analysis)
-    data_type = 'dabg'; filename = string.replace(filename,'exp.','stats.') ###repeat, but for dabg statistics rather than expression data
-    comparison_filename_list2 = filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db,data_type,perform_alt_analysis)
+    comparison_filename_list = filterExpressionData(expr_input_dir,filtered_exon_list,constitutive_gene_db,probeset_db,data_type,perform_alt_analysis)
+    data_type = 'dabg' ###repeat, but for dabg statistics rather than expression data
+    comparison_filename_list2 = filterExpressionData(stats_input_dir,filtered_exon_list,constitutive_gene_db,probeset_db,data_type,perform_alt_analysis)
     constitutive_gene_db={}
     probeset_gene_db = makeGeneLevelAnnotations(probeset_db)
     
     filtered_exon_list=[]; probeset_db={}
-    #filtered_exp_db,group_count,ranked_array_headers = filterExpressionData(filename,filtered_exon_list,constitutive_gene_db,probeset_db)
+    #filtered_exp_db,group_count,ranked_array_headers = filterExpressionData(expr_input_dir,filtered_exon_list,constitutive_gene_db,probeset_db)
     #filtered_gene_db = permformFtests(filtered_exp_db,group_count,probeset_db)
     return probeset_gene_db,annotate_db, comparison_filename_list
 
@@ -556,7 +567,6 @@ def exportExonIntronPromoterSequences(filename,ensembl_probeset_db,data_type,out
     print exon_seq_db_filename, 'exported....'
         
 if __name__ == '__main__':
-    dirfile = unique
     m = 'Mm'
     h = 'Hs'
     Species = h

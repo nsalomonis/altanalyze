@@ -1,3 +1,21 @@
+###JunctionArray
+#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Author Nathan Salomonis - nsalomonis@gmail.com
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy 
+#of this software and associated documentation files (the "Software"), to deal 
+#in the Software without restriction, including without limitation the rights 
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+#copies of the Software, and to permit persons to whom the Software is furnished 
+#to do so, subject to the following conditions:
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import sys, string
 import os.path
 import unique
@@ -7,22 +25,13 @@ import ExonArray
 import EnsemblImport
 import ExonArrayEnsemblRules
 import JunctionArrayEnsemblRules
-dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
-    fn = string.replace(fn,py2app_adj,'')
-    fn = string.replace(fn,'\\library.zip','') ###py2exe on some systems, searches for all files in the library file, eroneously
+    fn = unique.filepath(filename)
     return fn
 
 def read_directory(sub_dir):
-    dirfile = unique
-    dir=os.path.dirname(dirfile.__file__)
-    dir = string.replace(dir,py2app_adj,'')
-    dir = string.replace(dir,'\\library.zip','')
-    dir_list = os.listdir(dir + sub_dir)
+    dir_list = unique.read_directory(sub_dir)
     return dir_list
 
 def filterExpressionData(filename1,filename2,pre_filtered_db,constitutive_db):
@@ -265,7 +274,6 @@ def reAnnotateCriticalExonSequences(species,array_type):
 if __name__ == '__main__':
     """Module has methods for annotating Junction associated critical exon sequences with up-to-date genome coordinates and analysis options for
     junciton arrays from AnalyzeExpressionDatasets"""
-    dirfile = unique
     m = 'Mm'; h = 'Hs'; species = m; array_type = 'AltMouse' ###In theory, could be another type of junciton or combination array
 
     import_dir = '/AltDatabase/exon/'+species; expr_file_dir = 'R_expression_raw_data\exp.altmouse_es-eb.dabg.rma.txt'

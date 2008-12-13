@@ -1,25 +1,33 @@
+###FeatureAlignment
+#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Author Nathan Salomonis - nsalomonis@gmail.com
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy 
+#of this software and associated documentation files (the "Software"), to deal 
+#in the Software without restriction, including without limitation the rights 
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+#copies of the Software, and to permit persons to whom the Software is furnished 
+#to do so, subject to the following conditions:
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import sys, string
 import os.path
 import unique
 import ExonAnalyze_module
 import copy
 
-dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
-
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
-    fn = string.replace(fn,py2app_adj,'')
-    fn = string.replace(fn,'\\library.zip','') ###py2exe on some systems, searches for all files in the library file, eroneously
+    fn = unique.filepath(filename)
     return fn
 
 def read_directory(sub_dir):
-    dirfile = unique
-    dir=os.path.dirname(dirfile.__file__)
-    dir = string.replace(dir,py2app_adj,'')
-    dir = string.replace(dir,'\\library.zip','')
-    dir_list = os.listdir(dir + sub_dir); dir_list2 = []
+    dir_list = unique.read_directory(sub_dir); dir_list2 = []
     ###Code to prevent folder names from being included
     for entry in dir_list:
         if entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv": dir_list2.append(entry)
@@ -96,6 +104,98 @@ def import_arrayid_ensembl(filename):
         try: ensembl_arrayid_db[ensembl_gene_id].append(gene_id)
         except KeyError: ensembl_arrayid_db[ensembl_gene_id] = [gene_id]
 
+def findDomainsByGenomeCoordinates(species,array_type):
+    ### Grab Ensembl relationships from a custom Ensembl Perl script or BioMart
+    import_dir = '/AltDatabase/ensembl/'+species
+    m = GrabFiles(); m.setdirectory(import_dir)
+    protein_relationship_file = m.searchdirectory(species+'_Ensembl_Protein_')
+    protein_feature_file = m.searchdirectory(species+'_ProteinFeatures_') 
+    ens_transcript_protein_db = importEnsemblRelationships(protein_relationship_file,'transcript') ### From Perl script to Ensembl API
+    exon_protein_db = importEnsExonStructureDataSimple(species,ens_transcript_protein_db) ### From BioMart
+
+    if array_type == 'exon': ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
+    else: ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
+    protein_probeset_db = importSplicingAnnotationDatabase(ens_probeset_file,exon_protein_db) ### Derived from ExonArrayEnsemblRules
+    matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db)
+    
+def matchEnsemblDomainCoordinates(filename,species,array_type,protein_probeset_db):
+    fn=filepath(filename); x=0; probeset_domain_match={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if x == 0: x=1 ###Don't extract the headers
+        else:
+            coor_list=[]
+            ensembl_prot, aa_start, aa_stop, genomic_start, genomic_stop, name, interpro_id, description = string.split(data,'\t')
+            coor_list.append(int(genomic_start)); coor_list.append(int(genomic_stop)); coor_list.sort()
+            genomic_start, genomic_stop = coor_list
+            if ensembl_prot in protein_probeset_db and len(description)>1:
+                probeset_data = protein_probeset_db[ensembl_prot]
+                for sad in probeset_data:
+                    if sad.Probeset() == '2399776': print sad.ProbeStart(),sad.ProbeStop(),genomic_start,genomic_stop,interpro_id,description
+
+                    if ((genomic_start <= sad.ProbeStart()) and (genomic_stop >= sad.ProbeStart())) or ((genomic_stop >= sad.ProbeStop()) and (genomic_start <= sad.ProbeStop())):  
+                        ipd = interpro_id+'-'+description
+                        try: probeset_domain_match[sad.Probeset()].append(ipd)
+                        except KeyError: probeset_domain_match[sad.Probeset()] = [ipd]
+
+    probeset_domain_match = eliminateRedundant(probeset_domain_match) ###Remove redundant matches
+    print len(probeset_domain_match),'probesets with associated protein domains'
+    
+    import export
+    export_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_domain_aligning_probesets.txt"                       
+    data = export.createExportFile(export_file,"AltDatabase/"+species+"/"+array_type)
+    data.write('Probeset\tInterPro-Descrption\n')
+    for probeset in probeset_domain_match:
+        domain_info_list = probeset_domain_match[probeset]
+        for ipd in domain_info_list: data.write(probeset+'\t'+ipd+'\n')
+    data.close()
+    print "Direct probeset to domain associations exported to:",export_file
+    
+def importSplicingAnnotationDatabase(filename,exon_protein_db):
+    fn=filepath(filename); x=0; protein_probeset_db={}
+    for line in open(fn,'rU').xreadlines():             
+        probeset_data = cleanUpLine(line)  #remove endline
+        if x == 0: x = 1
+        else:
+            t=string.split(probeset_data,'\t'); probeset=t[0]; probeset_start=t[6]; probeset_stop=t[7]; external_exonid=t[10]
+            if 'ENS' in external_exonid: ### We only need to examine probesets linked to Ensembl transcripts
+                external_exonid_list = string.split(external_exonid,'|'); ens_exonid_list=[]
+                for exon in external_exonid_list:
+                    if 'ENS' in exon: ens_exonid_list.append(exon)
+                sad = SplicingAnnotationData(probeset,probeset_start,probeset_stop)
+                for ens_exon in ens_exonid_list:
+                    if ens_exon in exon_protein_db:
+                        ens_proteins = exon_protein_db[ens_exon]
+                        for ens_protein_id in ens_proteins:
+                            try: protein_probeset_db[ens_protein_id].append(sad)
+                            except KeyError: protein_probeset_db[ens_protein_id] = [sad]
+                            
+    print len(protein_probeset_db),'Ensembl proteins with associated probesets'
+    return protein_probeset_db
+
+class SplicingAnnotationData:
+    def __init__(self,probeset,start,stop):
+        self._probeset = probeset; self._start = start; self._stop = stop
+    def Probeset(self): return self._probeset
+    def ProbeStart(self): return int(self._start)
+    def ProbeStop(self): return int(self._stop)
+    
+def importEnsExonStructureDataSimple(species,ens_transcript_protein_db):
+    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
+    fn=filepath(filename); x=0; exon_protein_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: x=1
+        else:
+            gene, chr, strand, exon_start, exon_end, ens_exonid, constitutive_exon, ens_transcriptid = t
+            if ens_transcriptid in ens_transcript_protein_db:
+                ens_protein_id = ens_transcript_protein_db[ens_transcriptid]
+                try: exon_protein_db[ens_exonid].append(ens_protein_id)
+                except KeyError: exon_protein_db[ens_exonid]=[ens_protein_id]
+    print len(exon_protein_db),'Ensembl exons with associated protein IDs'
+    return exon_protein_db
+
 def import_ensembl_ft_data(species,filename,ensembl_arrayid_db,array_type):
     """Over the lifetime of this program, the inputs for protein sequences and relationships have changed.
     To support multiple versions, this function now routes the data to two different possible functions,
@@ -109,7 +209,7 @@ def import_ensembl_ft_data(species,filename,ensembl_arrayid_db,array_type):
         protein_feature_file = m.searchdirectory(species+'_ProteinFeatures_')
         
         ensembl_protein_seq_db = importEnsemblProtSeq(protein_seq_file)
-        ensembl_protein_gene_db = importEnsemblRelationships(protein_relationship_file)
+        ensembl_protein_gene_db = importEnsemblRelationships(protein_relationship_file,'gene')
         ensembl_ft_db, domain_gene_counts = importEnsemblFTdata(protein_feature_file,ensembl_arrayid_db,array_type,ensembl_protein_seq_db,ensembl_protein_gene_db)
         
     return ensembl_protein_seq_db,ensembl_ft_db,domain_gene_counts
@@ -125,14 +225,15 @@ def importEnsemblProtSeq(filename):
             ensembl_protein_seq_db[ensembl_prot] =  seq_data   ###use this db as input for the UniProt exon based ft search below
     return ensembl_protein_seq_db
 
-def importEnsemblRelationships(filename):
+def importEnsemblRelationships(filename,type):
     fn=filepath(filename); ensembl_protein_gene_db={}; x=0
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         if x == 0: x=1 ###Don't extract the headers
-        else: 
+        else:
             ensembl_gene, ensembl_transcript, ensembl_protein = string.split(data,'\t')
-            ensembl_protein_gene_db[ensembl_protein] =  ensembl_gene
+            if type == 'gene': ensembl_protein_gene_db[ensembl_protein] =  ensembl_gene
+            if type == 'transcript': ensembl_protein_gene_db[ensembl_transcript] =  ensembl_protein
     return ensembl_protein_gene_db
 
 def importEnsemblFTdata(filename,ensembl_arrayid_db,array_type,ensembl_protein_seq_db,ensembl_protein_gene_db):
@@ -401,7 +502,28 @@ def combineDatabases(x,y):
         if entry in db3: db3[entry]+=db2[entry]
         else: db3[entry]=db2[entry]
     return db3
-    
+
+def clearall():
+    all = [var for var in globals() if (var[:2], var[-2:]) != ("__", "__")]
+    for var in all: del globals()[var]
+
 if __name__ == '__main__':
+    species = 'Hs'; array_type = 'exon'
+    #"""
+    ### Grab Ensembl relationships from a custom Ensembl Perl script or BioMart
+    import_dir = '/AltDatabase/ensembl/'+species
+    m = GrabFiles(); m.setdirectory(import_dir)
+    protein_relationship_file = m.searchdirectory(species+'_Ensembl_Protein_')
+    protein_feature_file = m.searchdirectory(species+'_ProteinFeatures_') 
+    ens_transcript_protein_db = importEnsemblRelationships(protein_relationship_file,'transcript') ### From Perl script to Ensembl API
+    exon_protein_db = importEnsExonStructureDataSimple(species,ens_transcript_protein_db) ### From BioMart
+    kill
+    if array_type == 'exon': ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
+    else: ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
+    protein_probeset_db = importSplicingAnnotationDatabase(ens_probeset_file,exon_protein_db) ### Derived from ExonArrayEnsemblRules
+    #"""
+    matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db)
+        
+    #findDomainsByGenomeCoordinates('Hs','exon')
     #grab_exon_level_feature_calls(exon_sequence_database,species,array_type,exon_db,genes_being_analyzed)
     null=[]
