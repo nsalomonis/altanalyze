@@ -1,24 +1,32 @@
 ###ExonAnalyze_module
+#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Author Nathan Salomonis - nsalomonis@gmail.com
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy 
+#of this software and associated documentation files (the "Software"), to deal 
+#in the Software without restriction, including without limitation the rights 
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+#copies of the Software, and to permit persons to whom the Software is furnished 
+#to do so, subject to the following conditions:
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import os
 import sys, string
 import unique
 import copy
-dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
-    fn = string.replace(fn,py2app_adj,'')
-    fn = string.replace(fn,'\\library.zip','') ###py2exe on some systems, searches for all files in the library file, eroneously
+    fn = unique.filepath(filename)
     return fn
 
 def read_directory(sub_dir):
-    dirfile = unique
-    dir=os.path.dirname(dirfile.__file__)
-    dir = string.replace(dir,py2app_adj,'')
-    dir = string.replace(dir,'\\library.zip','') ###py2exe on some systems, searches for all files in the library file, eroneously
-    dir_list = os.listdir(dir + sub_dir)
+    dir_list = unique.read_directory(sub_dir)
     return dir_list
             
 def identifyPutativeSpliceEvents(exon_db,constituitive_probeset_db,array_id_db,agglomerate_inclusion_probesets,onlyAnalyzeJunctions):
@@ -310,7 +318,6 @@ def eliminate_redundant_dict_values(database):
     return db1
 
 if __name__ == '__main__':
-    dirfile = unique
     exons1 = 'E9-E12'
     exons2 = 'E11-E15'
     block_structure = '1(E1)-2(E2)-3(E3|E4)-4(E5)-5(E6)-6(E7|E8|E9|E10|E11)-7(E12)-8(E13|E14)-9(E15)-10(E16|E17)-11(E18)-12(E19|E20)-13(E21|E22)-14(E23|E24)'

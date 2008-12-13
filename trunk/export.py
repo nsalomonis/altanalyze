@@ -1,16 +1,33 @@
+###export
+#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Author Nathan Salomonis - nsalomonis@gmail.com
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy 
+#of this software and associated documentation files (the "Software"), to deal 
+#in the Software without restriction, including without limitation the rights 
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+#copies of the Software, and to permit persons to whom the Software is furnished 
+#to do so, subject to the following conditions:
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import os
 import sys
 import string
 import unique
-dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
-    fn = string.replace(fn,py2app_adj,'')
-    fn = string.replace(fn,'\\library.zip','') ###py2exe on some systems, searches for all files in the library file, eroneously
+    fn = unique.filepath(filename)
     return fn
+
+def read_directory(sub_dir):
+    dir_list = unique.read_directory(sub_dir)
+    return dir_list
 
 def createExportFile(new_file,dir):
     try:
@@ -24,20 +41,6 @@ def createExportFile(new_file,dir):
         except OSError: createExportDir(new_file,dir) ###Occurs if the parent directory is also missing
         fn=filepath(new_file); file_var = open(fn,'w')
     return file_var
-
-"""def createExportDir(fn,dir):
-    dir_ls = string.split(dir,'//')
-    if len(dir_ls) == 1: ### Thus, '//' not found
-        dir_ls = string.split(dir,'/')
-    if len(dir_ls) != 1: parent_dir = string.join(dir_ls[:-1],'/')
-    else: #print "Parent directory not found locally for", dir_ls; sys.exit()
-    pfn = filepath(parent_dir)
-    print "Trying to create the directory:",parent_dir
-    try:
-        os.mkdir(pfn) ###Re-Create directory if deleted
-        try: os.mkdir(fn) ###Re-Create directory if deleted
-        except OSError: createExportFile(fn,dir) ###Occurs if the parent directory is also missing        
-    except OSError: createExportDir(fn,pfn) ###Occurs if the parent directory is also missing"""
 
 def createExportDir(new_file,dir):
     dir_ls = string.split(dir,'//')
@@ -58,3 +61,14 @@ def createExportDir(new_file,dir):
                 continue
         createExportFile(new_file,dir)
     else: print "Parent directory not found locally for", dir_ls; sys.exit()
+
+def deleteFolder(dir):
+    try:
+        dir = filepath(dir); dir_list = read_directory(dir) ### Get all files in directory
+        for file in dir_list:
+            fn = filepath(dir+'/'+file)
+            os.remove(fn)
+        os.removedirs(dir)
+        return 'success'
+    except OSError:
+        return 'failed'
