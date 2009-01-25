@@ -1,5 +1,5 @@
 ###EnsemblImport
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -991,7 +991,7 @@ def getEnsemblAssociations(Species,data_type,test_status):
     global test; test = test_status
     global test_gene
     meta_test = ["ENSG00000215305","ENSG00000179676","ENSG00000170484","ENSG00000138180","ENSG00000100258","ENSG00000132170","ENSG00000105767","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
-    test_gene = ['ENSG00000166825','ENSG00000143379']
+    test_gene = ['ENSG00000168781']
     #test_gene = meta_test
     exon_annotation_db,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
     exon_annotation_db2 = annotate_exons(exon_annotation_db); ensembl_descriptions={}
@@ -1506,6 +1506,7 @@ if __name__ == '__main__':
     #species = 'Mm'
     test = 'yes'
     data_type = 'ncRNA'
+    data_type = 'mRNA'
     test_gene = ['ENSG00000201902']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']
     meta_test = ["ENSG00000215305","ENSG00000179676","ENSG00000170484","ENSG00000138180","ENSG00000100258","ENSG00000132170","ENSG00000105767","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
     #test_gene = meta_test

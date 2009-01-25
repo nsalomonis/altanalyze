@@ -1,5 +1,5 @@
 ###update
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -151,44 +151,86 @@ def download(url,dir,file_type):
     else: gz_filepath = ''; status = 'removed'
     return gz_filepath, status
 
-def downloadCurrentVersion(filename,dir,secondary_dir,file_type):
+def downloadCurrentVersion(filename,secondary_dir,file_type):
     import UI
-    file_location_defaults = UI.importDefaultFileLocations()    
-    url_dir = file_location_defaults['url'].Location() ### Get the location of the download site from Config/default-files.csv
+    file_location_defaults = UI.importDefaultFileLocations()
+
+    uds = file_location_defaults['url'] ### Get the location of the download site from Config/default-files.csv
+    for ud in uds: url_dir = ud.Location() ### Only one entry
+
+    filename = export.findFilename(filename)
+    dir = export.findParentDir(filename)  
     url = url_dir+secondary_dir+'/'+filename
     file,status = download(url,dir,file_type)
 
 def updateDBs(species,array_type):
+    update_uniprot='no'; update_ensembl='no'; update_probeset_to_ensembl='no'; update_domain='no'; update_all='no'
     proceed = 'no'
     while proceed == 'no':
         print "\n*****Update AltAnalyze Database Options***** \n"
         print "Program Options: Updates for species",species,"and array type",array_type
         print "NOTE: some files will needed be manually updated before continuing (e.g., Affymetrix and Ensembl files). See ReadMe for more info."
-        print "1) Download all external databases from source websites (UCSC, NCBI, and UniProt). "
-        print "2) Perform step 1 and immediately build databases (must have other files downloaded),"
-        print "3) Build databases will local files present."
-        print "4) Quit"
+        print "1) Update UniProt"
+        print "2) Update Ensembl"
+        print "3) Update Probeset-Ensembl associations"
+        print "4) Update Protein/Domain associations"
+        print "5) Update All"
+        print "6) Quit"
         inp = sys.stdin.readline(); inp = inp.strip()
-        if inp  == '1': download_new_dbs = 'yes'; rebuild_altanalyze_dbs = 'no'; proceed = 'yes'
-        elif inp == '2': download_new_dbs = 'yes'; rebuild_altanalyze_dbs = 'yes'; proceed = 'yes'
-        elif inp == '3': download_new_dbs = 'no'; rebuild_altanalyze_dbs = 'yes'; proceed = 'yes'
-        elif inp == '4': sys.exit()
+        if inp  == '1': update_uniprot = 'yes'; proceed = 'yes'
+        elif inp == '2': update_ensembl = 'yes'; proceed = 'yes'
+        elif inp == '3': update_probeset_to_ensembl = 'yes'; proceed = 'yes'
+        elif inp == '4': update_domain = 'yes'; proceed = 'yes'
+        elif inp == '5': update_all = 'yes'; proceed = 'yes'
+        elif inp == '6': sys.exit()
         else: print "Sorry... that command is not an option\n"
 
-    force = 'no'
-    if download_new_dbs == 'yes':
-        force = 'no'
-        
-    if rebuild_altanalyze_dbs == 'yes':            
-        ###Might need to delete the existing versions of downloaded databases or force download
-        #buildUniProtFunctAnnotations(species,force)
+    proceed = 'no'
+    while proceed == 'no':
+        print "\n*****Update AltAnalyze Database Options*****"
+        print "1) Force download of all files (whether present locally or not) "
+        print "2) Use local or download if necessary"
+        print "3) Quit"
+        inp = sys.stdin.readline(); inp = inp.strip()
+        if inp  == '1': force = 'yes'; proceed = 'yes'
+        elif inp == '2': force = 'no'; proceed = 'yes'
+        elif inp == '3': sys.exit()
+        else: print "Sorry... that command is not an option\n"        
 
+    if update_all == 'yes':
+        update_uniprot='yes'; update_ensembl='yes'; update_probeset_to_ensembl='yes'; update_domain='yes'
+        
+    if update_uniprot == 'yes':            
+        ###Might need to delete the existing versions of downloaded databases or force download
+        buildUniProtFunctAnnotations(species,force)
+        
+    if update_ensembl == 'yes':
+        import EnsemblSQL
+
+        """ Used to grab all essential Ensembl annotations previously obtained via BioMart"""        
+        force = 'yes'; configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''
+        EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
+        
+        """ Used to grab Ensembl-to-External gene associations"""
+        #force = 'no'; configType = 'Basic'; analysisType = 'ExternalOnly'; externalDBName = 'GO'
+        #buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
+        
+    if update_probeset_to_ensembl == 'yes':
         if species == 'Mm' and array_type == 'AltMouse':
             buildAltMouseExonAnnotations()
         else: buildExonArrayExonAnnotations(species)
+
+    if update_domain == 'yes':
+        if species == 'Mm' and array_type == 'AltMouse':
+            """Performs probeset sequence aligment to Ensembl and UCSC transcripts. To do: Need to setup download if files missing"""
+            import mRNASeqAlign
+            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,force)
+        else:
+            import IdentifyAltIsoforms
+            IdentifyAltIsoforms.runProgram(species,array_type,force)
             
 if __name__ == '__main__':
     #buildUniProtFunctAnnotations('Hs',force='no')
-    species='Hs'; array_type = 'exon'
+    species='Mm'; array_type = 'exon'
     updateDBs(species,array_type)
     

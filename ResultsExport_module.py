@@ -1,5 +1,5 @@
 ###ResultsExport_module
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -364,16 +364,8 @@ def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,
         data3.write(exp_values)
     data3.close()
 
-    celfiles = 'AltResults/MIDAS/celfiles-'+dataset_name[0:-1]+'.txt'
-    fn4=filepath(celfiles)
-    data4 = open(fn4,'w')
-    title = 'cel_files\tgroup_id\n'; data4.write(title)
-    for group in array_group_list: ###contains the correct order for each group
-        for array_id in array_group_db[group]:
-            values = str(array_id) +'\t'+ str(group) +'\n'
-            data4.write(values)
-    data4.close()
-
+    exportMiDASArrayNames(array_group_list,array_group_db,dataset_name,'new')
+    
     coversionfile = 'AltResults/MIDAS/probeset-conversion-'+dataset_name[0:-1]+'.txt'
     fn5=filepath(coversionfile)
     data5 = open(fn5,'w')
@@ -397,9 +389,22 @@ def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,
     data.write(path); data.write(command_line); data.close()
     """
 
-    status = runMiDAS(apt_dir,array_type,dataset_name)    
+    status = runMiDAS(apt_dir,array_type,dataset_name,array_group_list,array_group_db)    
     return status
 
+def exportMiDASArrayNames(array_group_list,array_group_db,dataset_name,type):
+    celfiles = 'AltResults/MIDAS/celfiles-'+dataset_name[0:-1]+'.txt'
+    fn4=filepath(celfiles)
+    data4 = open(fn4,'w')
+    if type == 'old': cel_files = 'cel_file'
+    elif type == 'new': cel_files = 'cel_files'
+    title = cel_files+'\tgroup_id\n'; data4.write(title)
+    for group in array_group_list: ###contains the correct order for each group
+        for array_id in array_group_db[group]:
+            values = str(array_id) +'\t'+ str(group) +'\n'
+            data4.write(values)
+    data4.close()
+    
 def getAPTDir(apt_fp):
     ###Determine if APT has been set to the right directory and add the analysis_type to the filename
     if 'bin' not in apt_fp: ###This directory contains the C+ programs that we wish to call
@@ -421,7 +426,7 @@ def getAPTDir(apt_fp):
                 versions.sort(); apt_fp = apt_fp+'/'+versions[-1][1]+'/'+'bin' ###Add the full path to the most recent version
     return apt_fp
 
-def runMiDAS(apt_dir,array_type,dataset_name):
+def runMiDAS(apt_dir,array_type,dataset_name,array_group_list,array_group_db):
     if '/bin' in apt_dir: apt_file = apt_dir +'/apt-midas' ### if the user selects an APT directory
     elif os.name == 'nt': apt_file = apt_dir + '/PC/apt-midas'
     elif os.name == 'mac': apt_file = apt_dir + '/Mac/apt-midas'
@@ -449,7 +454,18 @@ def runMiDAS(apt_dir,array_type,dataset_name):
         if retcode: status = 'failed'
         else: status = 'run'
     except NameError: status = 'failed'
-    if status == 'failed': print "apt-midas failed"
+    if status == 'failed':
+        try:
+            ### Try running the analysis with old MiDAS file headers and command
+            exportMiDASArrayNames(array_group_list,array_group_db,dataset_name,'old')
+            import subprocess
+            retcode = subprocess.call([
+            apt_file, "-c", celfiles,"-g", gene_exp_file, "-e", exon_or_junction_file,
+            "-m", metafile, "-o", output_file])
+            if retcode: status = 'failed'
+            else: status = 'run'        
+        except Exception: status = 'failed'
+        if status == 'failed': print "apt-midas failed"
     else: print "apt-midas run sucessfully"
     return status
 
@@ -549,7 +565,7 @@ def import_annotations(filename,array_type):
 
 if __name__ == '__main__':
     array_type = 'exon'; dataset_name = 'test.'; apt_dir = 'AltDatabase/affymetrix/APT'
-    runMiDAS(apt_dir,array_type,dataset_name); sys.exit()
+    runMiDAS(apt_dir,array_type,dataset_name,{},()); sys.exit()
 
     a = 'Mm'; b = 'Hs'
     species = a

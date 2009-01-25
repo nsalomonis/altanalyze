@@ -1,5 +1,5 @@
 ###ExpressionBuilder
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -102,8 +102,9 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
                 fold = string.replace(fold,'"','')
                 try:
                     if len(fold)>0: fold = float(fold); fold_data2.append(fold)
+                    else: null = float('a') ###Force a ValueError since no data is present in this cell
                 except ValueError: 
-                    print_out = 'WARNING!!! The probeset ID'+arrayid+ 'has an invalid expression value. Correct and re-run'
+                    print_out = 'WARNING!!! The probeset ID'+arrayid+ 'has an invalid expression value:'+fold+'\n. Correct and re-run'
                     try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); sys.exit()
                     except NameError: print print_out; sys.exit()
             if expression_data_format == 'non-log':
@@ -137,6 +138,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     ### Export formatted results for input as an expression dataset into GenMAPP or PathVisio
     if data_type == 'expression':
         if include_raw_data == 'yes': headers = removeRawData(array_fold_headers)
+        else: headers = array_fold_headers
         exportDataForGenMAPP(headers)
 
 def importArrayGroups(expr_group_dir,array_linker_db):
@@ -244,7 +246,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
     if data_type == 'expression':
         new_file = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
         data = export.createExportFile(new_file,expression_dataset_output_dir[:-1])
-
+        custom_annotation_dbase = importCustomAnnotations()
         x=0;y=0;z=0
         for arrayid in array_folds:
             if arrayid in annotate_db and arrayid in probeset_db: x = 1
@@ -257,15 +259,12 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
             title = "Ensembl_gene" +'\t'+ 'Definition' +'\t'+ 'Symbol' +'\t'+ 'Transcript_cluster_ids' +'\t'+ 'Constitutive_exons' +'\t'+ 'Constitutive_probesets' +'\t'+ 'Putative microRNA binding sites'
         elif x == 1:
             title = "Probesets" +'\t'+ 'Symbol' +'\t'+ 'Definition' +'\t'+ 'affygene' +'\t'+ 'exons' +'\t'+ 'probe_type_call' +'\t'+ 'ensembl' '\t'+ 'RNA_processing/binding'
-        elif y==1:
-             title = "Probesets" +'\t'+ 'Symbol' +'\t'+ 'Definition'
+        elif y==1: title = "Probesets" +'\t'+ 'Symbol' +'\t'+ 'Definition'
         elif array_type == "3'array":
-             title = ['Probesets','Symbol','Definition','Ensembl_id','Entrez_id','Unigene_id','GO-Process','GO-Function','GO-Component','Pathway_info']
+             title = ['Probesets','Symbol','Definition','Ensembl_id','Entrez_id','Unigene_id','GO-Process','GO-Function','GO-Component','Pathway_info','Select Cellular Compartments','Select Protein Classes']
              title = string.join(title,'\t')
-        else:
-            title = "Probesets"
-        for entry in array_fold_headers:
-            title = title + '\t' + entry
+        else: title = "Probesets"
+        for entry in array_fold_headers: title = title + '\t' + entry
         title = title +'\t'+ 'smallest-p' +'\t'+ 'largest fold' + '\n'
         data.write(title)
         for arrayid in array_folds:
@@ -303,9 +302,13 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                     entrez = ca.EntrezString()
                     unigene = ca.UnigeneString()
                     pathway_info = ca.PathwayInfo()
-                    component = ca.GOComponentNames(); process = ca.GOProcessNames(); function = ca.GOFunctionNames()
-                except KeyError: definition=''; symbol=''; ens=''; entrez=''; unigene=''; pathway_info=''; process=''; function=''; component=''
-                data_val = [arrayid,symbol,definition,ens,entrez,unigene,process,function,component,pathway_info]
+                    component = ca.GOComponentNames(); process = ca.GOProcessNames(); function = ca.GOFunctionNames(); compartmement=''; custom_class=''
+                    for ens_gene in ca.Ensembl(): ### Add Custom Annotation layer
+                        try: compartmement,custom_class = custom_annotation_dbase[ens_gene]
+                        except KeyError: null=[]
+                        
+                except KeyError: definition=''; symbol=''; ens=''; entrez=''; unigene=''; pathway_info=''; process=''; function=''; component=''; compartmement='' ;custom_class=''
+                data_val = [arrayid,symbol,definition,ens,entrez,unigene,process,function,component,pathway_info,compartmement,custom_class]
                 data_val = string.join(data_val,'\t')
             else:
                 data_val = arrayid
@@ -429,6 +432,15 @@ def import_annotations(filename):
         except ValueError:
             continue
     return annotation_dbase
+
+def importCustomAnnotations():
+    filename = 'AltDatabase/uniprot/'+species+'/custom_annotations.txt'
+    fn=filepath(filename); custom_annotation_dbase = {}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        ens_gene,compartmement,custom_class = string.split(data,'\t')
+        custom_annotation_dbase[ens_gene] = compartmement,custom_class
+    return custom_annotation_dbase
 
 def import_altmerge(filename):
     probeset_db = {}

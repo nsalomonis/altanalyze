@@ -1,5 +1,5 @@
 ###BuildAffymetrixAssociations
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -252,7 +252,7 @@ def parse_affymetrix_annotations(filename):
                         if len(entry)>0:
                             annotations = string.split(entry,' // ')
                             try: null = int(annotations[-2][3:]); unigene_list.append(annotations[-2])
-                            except ValueError: null = []
+                            except Exception: null = []
                     ###Only applies to optional GOID inclusion
                     if process_go == 'yes':
                         process = affy_data[bp]; component = affy_data[cc]; function = affy_data[mf]
@@ -294,7 +294,8 @@ def extractPathwayData(terms,type,version):
                         else: go_name = ''
                 if version == 2:
                     if type == 'GO': ### NM_153254 // GO:0006464 // protein modification process // inferred from electronic annotation /// 
-                        accession, goid, go_name, source = go_entry_info
+                        try: accession, goid, go_name, source = go_entry_info
+                        except ValueError: accession = go_entry_info[0]; goid = go_entry_info[1]; go_name = ''; source = ''
                     else: ### AF057061 // GenMAPP // Matrix_Metalloproteinases
                         accession, go_name, source = go_entry_info; goid = ''
                         if len(go_name)>1: go_name = source+'-'+go_name

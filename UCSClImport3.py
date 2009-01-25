@@ -24,9 +24,6 @@ import copy
 import time
 import alignToKnownAlt
 
-dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
-
 def filepath(filename):
     fn = unique.filepath(filename)
     return fn
@@ -65,7 +62,8 @@ def importEnsExonStructureData(species):
     global ensembl_transcript_structure_db; ensembl_transcript_structure_db={}; global ens_transcript_gene_db; ens_transcript_gene_db={}
     global ensembl_const_exon_db; ensembl_const_exon_db = {}
     ###Simple function to import and organize exon/transcript data
-    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
+    if round == 1: filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
+    if round == 2: filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_NonGene_structure_'+mRNA_type+'.txt'
     fn=filepath(filename); ensembl_gene_coordinates={}; ensembl_annotations={}; x=0
     transcript_exon_db = {}; initial_junction_db = {}; ensembl_transcript_exons={}; coordinate_gene_count_db={}
     for line in open(fn,'rU').xreadlines():
@@ -89,6 +87,7 @@ def importEnsExonStructureData(species):
                 else: proceed = 'no'
             else: proceed = 'yes'
             if abs(exon_end-exon_start)>0 and proceed == 'yes':
+                
                 ###Create temporary databases storing just exon and just trascript and then combine in the next block of code
                 try: ensembl_gene_coordinates[gene].append(exon_start)
                 except KeyError: ensembl_gene_coordinates[gene] = [exon_start]
@@ -96,17 +95,28 @@ def importEnsExonStructureData(species):
                 except KeyError: coordinate_gene_count_db[gene] = [[exon_start,exon_end]]
                 ensembl_gene_coordinates[gene].append(exon_end)
                 ensembl_annotations[gene] = chr,strand
-                ensembl_exon_data[(chr,exon_start,exon_end)] = ens_exonid
-                try:ensembl_gene_exon_db[gene]+= [ens_exonid]
-                except KeyError: ensembl_gene_exon_db[gene] = [ens_exonid]
-                try: ensembl_transcript_exons[ens_transcriptid,strand].append((exon_start,ens_exonid))
-                except KeyError: ensembl_transcript_exons[ens_transcriptid,strand] = [(exon_start,ens_exonid)]
-                try: ensembl_transcript_structure_db[ens_transcriptid].append((chr,exon_start,exon_end))
-                except KeyError: ensembl_transcript_structure_db[ens_transcriptid] = [(chr,exon_start,exon_end)]
-                ens_transcript_gene_db[ens_transcriptid] = gene
-                ensembl_const_exon_db[ens_exonid] = constitutive_exon
+                if analysis_type == 'mRNA': ### This conserves energy
+                    ensembl_exon_data[(chr,exon_start,exon_end)] = ens_exonid
+                    try: ensembl_gene_exon_db[gene]+= [ens_exonid]
+                    except KeyError: ensembl_gene_exon_db[gene] = [ens_exonid]
+                    try: ensembl_transcript_exons[ens_transcriptid,strand].append((exon_start,ens_exonid))
+                    except KeyError: ensembl_transcript_exons[ens_transcriptid,strand] = [(exon_start,ens_exonid)]
+                    try: ensembl_transcript_structure_db[ens_transcriptid].append((chr,exon_start,exon_end))
+                    except KeyError: ensembl_transcript_structure_db[ens_transcriptid] = [(chr,exon_start,exon_end)]
+                    ens_transcript_gene_db[ens_transcriptid] = gene
+                    ensembl_const_exon_db[ens_exonid] = constitutive_exon
+                
     end_time = time.time(); time_diff = int(end_time-start_time)
     print filename,"parsed in %d seconds" % time_diff
+
+    if analysis_type == 'ncRNA':
+        ### Delete dbase entries where there are multiple exons
+        coordinate_gene_count_db = delMultipleEntries(coordinate_gene_count_db)
+        ensembl_transcript_exons = delMultipleEntries(ensembl_transcript_exons)
+        ensembl_transcript_structure_db = delMultipleEntries(ensembl_transcript_structure_db)
+        
+        ensembl_gene_coordinates = filterMultipleEntries(coordinate_gene_count_db,ensembl_gene_coordinates)
+        ensembl_gene_exon_db = filterMultipleEntries(coordinate_gene_count_db,ensembl_gene_exon_db)
 
     ###Sort exon info in the transcript to store pairs of Ensembl exons to find unique pairs of exons from UCSC
     ensembl_exon_pairs={}
@@ -129,9 +139,32 @@ def importEnsExonStructureData(species):
             ensembl_gene_coordinates2 = ensembl_chr_coordinate_db[chr]
             ensembl_gene_coordinates2[(gene_start,gene_stop)] = gene,strand
         else:
-            ensembl_gene_coordinates2={}; ensembl_gene_coordinates2[(gene_start,gene_stop)] = gene,strand
+            try: ensembl_gene_coordinates2={}; ensembl_gene_coordinates2[(gene_start,gene_stop)] = gene,strand
+            except TypeError: print gene,ensembl_gene_coordinates[gene];kill
             ensembl_chr_coordinate_db[chr]=ensembl_gene_coordinates2
     return ensembl_chr_coordinate_db
+
+def filterMultipleEntries(db1,db2):
+    db3 = {}
+    for i in db1:
+        if i in db2: db3[i]=db2[i]
+    return db3
+
+def delMultipleEntries(db):
+    db1 = {}
+    for key in db:
+        if len(db[key])==1: db1[key]=db[key]
+
+    db2 = {}
+    for key in db1:
+        vals = db1[key][0]
+        if len(vals) == 2:
+            try:
+                exon_length = int(vals[1]) - int(vals[0])
+                if exon_length < 1350: db2[key]=db1[key]
+            except ValueError: db2[key]=db1[key]
+        else: db2[key]=db1[key]
+    return db2
 
 def makeUnique(item):
     db1={}; list1=[]
@@ -167,41 +200,59 @@ def mergeFragmentedExons(exon_coordiantes,strand):
     return exon_coordiantes,merged
     
 def importUCSCExonStructureData(species):
-    start_time = time.time(); global ucsc_annotations; global input_gene_file
+    start_time = time.time(); global ucsc_annotations; global input_gene_file; global ucsc_genomic_accession_db
     ###Simple function to import and organize exon/transcript data
-    filename = 'AltDatabase/ucsc/'+species+'/all_mrna.txt'; input_gene_file = filename; merged_ac_count=0;ac_count=0
+    if analysis_type == 'mRNA': filename = 'AltDatabase/ucsc/'+species+'/all_'+mRNA_type+'.txt'; input_gene_file = filename; merged_ac_count=0;ac_count=0
+    elif analysis_type == 'ncRNA': filename = 'AltDatabase/ucsc/'+species+'/all_ncRNA.txt'; input_gene_file = filename; merged_ac_count=0;ac_count=0
     fn=filepath(filename); ucsc_gene_coordinates={}; transcript_structure_db={}; ucsc_interim_gene_transcript_db={}
     ucsc_annotations={}; ucsc_transcript_coordinates={}; temp_data_db={}; accession_count={}; clusterid_count={}
+    ucsc_genomic_accession_db = {}; last_exon_stop=0; last_exon_start=0
     for line in open(fn,'r').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        coordinates = t[-1]; coordinates = covertStrToListInt(coordinates)
-        exon_size_list = t[-3]; exon_size_list = covertStrToListInt(exon_size_list) ##coordinates and are the same length
-        strand = t[9]; accession = t[10]; clusterid = t[0]; chr = t[14][3:]
-        if '_' in chr: c = string.split(chr,'_'); chr = c[0]
-        unique_geneid = clusterid,strand,chr  ###can have strand specific isoforms
-        index=0; exon_coordiantes = []
-        while index<len(coordinates):
-            exon_start = coordinates[index]; exon_stop = coordinates[index]+exon_size_list[index]
+        if analysis_type == 'mRNA':
+            coordinates = t[-1]; coordinates = covertStrToListInt(coordinates)
+            exon_size_list = t[-3]; exon_size_list = covertStrToListInt(exon_size_list) ##coordinates and are the same length
+            strand = t[9]; accession = t[10]; clusterid = t[0]; chr = t[14][3:]
+            index=0; exon_coordiantes = []
+            
+            while index<len(coordinates):
+                exon_start = coordinates[index]; exon_stop = coordinates[index]+exon_size_list[index]
+                exon_coordiantes.append((exon_start+1,exon_stop))
+                try: ###Below code is available if we want to join exons that have very small introns (really one exon)... however, EnsemblImport will agglomerate these exons and ignore the splice event (if in the same exon)
+                    if (coordinates[index+1]-exon_stop)<gap_length: null = []#print accession, exon_stop,coordinates;kill
+                except IndexError: null=[]
+                index+=1
+            if strand == '-': exon_coordiantes.reverse()
+            exon_coordiantes,merged = mergeFragmentedExons(exon_coordiantes,strand)
+            merged='no'
+            if merged=='yes': merged_ac_count+=1
+            unique_geneid = clusterid,strand,chr  ###can have strand specific isoforms
+        elif analysis_type == 'ncRNA':
+            exon_coordiantes = []
+            try: clusterid,chr,exon_start,exon_stop,name,score,strand,null,null,nc_class = t
+            except ValueError: print t;kill
+            chr = string.replace(chr,'chr','')
+            accession = name+"_"+str(exon_start)
+            exon_start = int(exon_start); exon_stop = int(exon_stop)
             exon_coordiantes.append((exon_start+1,exon_stop))
-            try: ###Below code is available if we want to join exons that have very small introns (really one exon)... however, EnsemblImport will agglomerate these exons and ignore the splice event (if in the same exon)
-                if (coordinates[index+1]-exon_stop)<gap_length: null = []#print accession, exon_stop,coordinates;kill
-            except IndexError: null=[]
-            index+=1
-        if strand == '-': exon_coordiantes.reverse()
-        #print accession,coordinates
-        exon_coordiantes,merged = mergeFragmentedExons(exon_coordiantes,strand)
-        merged='no'
-        if merged=='yes': merged_ac_count+=1
-        temp_data_db[accession] = unique_geneid,strand,exon_coordiantes,chr
-        try: accession_count[accession]+=1
-        except KeyError: accession_count[accession]=1
-        clusterid_count[unique_geneid] = []
-        ac_count+=1
-
+            unique_geneid = accession,strand,chr  ###can have strand specific isoforms
+        if '_' in chr: c = string.split(chr,'_'); chr = c[0]
+        if exon_start == last_exon_start or last_exon_stop == exon_stop: null=[] ### Don't record entry - only applies to ncRNA data
+        elif len(exon_coordiantes)>1: null=[]
+        elif (exon_stop - exon_start)>1500: null=[]
+        else:   
+            #ucsc_annotations[chr,start,end]=[]
+            temp_data_db[accession] = unique_geneid,strand,exon_coordiantes,chr
+            ucsc_genomic_accession_db[accession]=chr,strand
+            try: accession_count[accession]+=1
+            except KeyError: accession_count[accession]=1
+            clusterid_count[unique_geneid] = []
+            ac_count+=1
+        last_exon_start = exon_start; last_exon_stop = exon_stop
     print len(clusterid_count), 'clusters imported'
-    print merged_ac_count, "transcripts had atleast two exons merged into one, out of",ac_count
-    
+    print merged_ac_count, "transcripts had at least two exons merged into one, out of",ac_count
+
     for accession in temp_data_db:
         if accession_count[accession]==1: ###Why would an accession have multiple entries: shouldn't but does
             unique_geneid,strand,exon_coordiantes,chr = temp_data_db[accession]
@@ -218,9 +269,10 @@ def importUCSCExonStructureData(species):
             try: ucsc_interim_gene_transcript_db[unique_geneid].append(accession)
             except KeyError: ucsc_interim_gene_transcript_db[unique_geneid] = [accession]
             transcript_structure_db[accession] = exon_coordiantes
+            temp_data_db[accession]
     end_time = time.time(); time_diff = int(end_time-start_time)
     print filename,"parsed in %d seconds" % time_diff
-
+    
     ###Build a gene cluster level database (start and stop coordinates) for UCSC clusters
     ucsc_chr_coordinate_db={}
     for geneid in ucsc_gene_coordinates:
@@ -249,10 +301,15 @@ def getChromosomalOveralap(ucsc_chr_db,ensembl_chr_db):
          for (bp1,ep1) in ucsc_db:
             x = 0
             gene_clusterid,ucsc_strand = ucsc_db[(bp1,ep1)]
+            accession = gene_clusterid[0]
             try:
                 ensembl_db = ensembl_chr_db[chr]
+                delta = 0
                 for (bp2,ep2) in ensembl_db:
                     y += 1; ensembl,ens_strand = ensembl_db[(bp2,ep2)]
+                    """if accession == 'n3578(miRNA)_20337643':
+                        print ensembl,bp1,ep1,bp2,ep2
+                        delta = 1"""
                     if ucsc_strand == ens_strand:
                         ###if the two gene location ranges overlapping
                         ##########FORCE UCSC mRNA TO EXIST WITHIN THE SPACE OF ENSEMBL TO PREVENT TRANSCRIPT CLUSTER EXCLUSION IN ExonArrayEnsemblRules
@@ -282,10 +339,9 @@ def getChromosomalOveralapSpecific(ucsc_db,ensembl_db):
     ###exon_location[transcript_cluster_id,chr,strand] = [(start,stop,exon_type,probeset_id)]
     y = 0; l =0; ensembl_transcript_clusters={}; no_match_list=[]
     ###(bp1,ep1) = (47211632,47869699); (bp2,ep2)  =  (47216942, 47240877)
-    for key in ucsc_db:
-        (chr,bp1,ep1,accession) = key
+    for (chr,bp1,ep1) in ucsc_db:
         x = 0
-        ucsc_chr,ucsc_strand,ensembls = ucsc_db[key]
+        accession,ucsc_chr,ucsc_strand,ensembls = ucsc_db[(chr,bp1,ep1)]
         status = 'go'
         for ensembl in ensembls:
                 y += 1; bp2,ep2 = ensembl_db[ensembl]
@@ -319,23 +375,22 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
     ###Currently deemed as "over-kill" to use this.
 
     all_accession_gene_associations = {} ###record this for export: needed to align all transcripts to genes for probeset seqeunce alignment
-    
+    key = ('n3578(miRNA)_20337643', '+', '22')
     ucsc_multiple_alignments = {}; ensembl_gene_accession_structures={}
     for clusterid in ensembl_transcript_clusters:
         ens_geneids = ensembl_transcript_clusters[clusterid]
         ucsc_transcripts = ucsc_interim_gene_transcript_db[clusterid]
+        
         for accession in ucsc_transcripts:
             try: all_accession_gene_associations[accession] += ens_geneids
             except KeyError: all_accession_gene_associations[accession] = ens_geneids
-        if len(ens_geneids)>1: ###If a cluster ID associates with multiple Ensembl IDs
+        if len(ens_geneids)>1 and export_all_associations=='no': ###If a cluster ID associates with multiple Ensembl IDs
             chr = ucsc_annotations[clusterid]
             strand = clusterid[1]
             for accession in ucsc_transcripts:
                 if test == 'yes': print "Multiple Ensembls for",accession
                 a = ucsc_transcript_coordinates[accession]; a.sort(); trans_start = a[0];trans_stop = a[-1]
-                ucsc_multiple_alignments[(chr,trans_start,trans_stop,accession)] = chr,strand,ens_geneids
-                #if (chr,trans_start,trans_stop) == ('8', 113499990, 113521567): print accession,chr,strand,ens_geneids
-                #if accession == 'AK049467': print 'A',ens_geneids,(chr,trans_start,trans_stop);kill
+                ucsc_multiple_alignments[(chr,trans_start,trans_stop)] = accession,chr,strand,ens_geneids
         else:
             for ens_geneid in ens_geneids:
                 transcripts = ucsc_interim_gene_transcript_db[clusterid]
@@ -344,7 +399,7 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
                     exon_structure_list = transcript_structure_db[accession]
                     try: ensembl_gene_accession_structures[ens_geneid].append((accession,exon_structure_list))
                     except KeyError: ensembl_gene_accession_structures[ens_geneid]= [(accession,exon_structure_list)]
-                    
+
     ###Create a new database for ensembl gene boundaries indexed by ensembl id for quicker reference in the faster lookup chr overlap function
     ensembl_gene_coordinates2={}
     for chr in ensembl_chr_coordinate_db:
@@ -377,21 +432,22 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
         ens_geneids = new_ensembl_transcript_clusters[accession]
         try: all_accession_gene_associations[accession] += ens_geneids
         except KeyError: all_accession_gene_associations[accession] = ens_geneids
-        if len(ens_geneids)>1 and export_all_associations=='no': ###If a cluster ID associates with multiple Ensembl IDs
+        if len(ens_geneids)>1  and export_all_associations=='no': ###If a cluster ID associates with multiple Ensembl IDs
             null = []###don't do anything with these
         else:
             for ens_geneid in ens_geneids:
-                ens_geneid = ens_geneids[0]
                 exon_structure_list = transcript_structure_db[accession]
                 try: ensembl_gene_accession_structures[ens_geneid].append((accession,exon_structure_list))
                 except KeyError: ensembl_gene_accession_structures[ens_geneid]= [(accession,exon_structure_list)]
-
+            
     ###Re-run the chromosomal overlap analysis specifically on transcripts, where the gene overlapped with multiple ensembls
     ensembl_transcript_clusters2,no_match_list2 = getChromosomalOveralapSpecific(ucsc_multiple_alignments,ensembl_gene_coordinates2)
+
+    """At this point we have no_match_list and no_match_list2, both of which are theoretically non-coding RNAs that do not
+    align to a known gene (within the region of a gene)"""
     
     for accession in ensembl_transcript_clusters2:
         ens_geneids = ensembl_transcript_clusters2[accession]
-        #if accession == 'AK049467': print ens_geneids;kill
         all_accession_gene_associations[accession] = ens_geneids ###Write over existing if a more specific set of gene associations found
         if len(ens_geneids)==1 or export_all_associations=='yes': ###Otherwise there are multiple associations
             for ens_geneid in ens_geneids:
@@ -399,95 +455,96 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
                 ###This is the list of Ensembl genes to GenBank accessions and exon coordiantes
                 try: ensembl_gene_accession_structures[ens_geneid].append((accession,exon_structure_list))
                 except KeyError: ensembl_gene_accession_structures[ens_geneid]= [(accession,exon_structure_list)]
-                
-    ###Verify accession to gene associations for multiple associations or pick the one propper gene call among several incorrect
-    """A problem is that if an Ensembl pseudo-transcript (not a real gene), with no exons overlapping with UCSC transcript exists, the accession
-    could not be annotated with a gene, but this is not ideal, since the exons in the transcript may just overlap with one gene"""
-    all_accession_gene_associations2 = []; number_of_associated_exons={}; removed=0; ensembl_gene_accession_structures_deleted={}; exon_annotation_del_db={}
-    for accession in all_accession_gene_associations:
-        exon_structure = transcript_structure_db[accession] ###coordinates for 'exons' provided by UCSC
-        unique_genes = unique.unique(all_accession_gene_associations[accession])
-        ensembl_gene_exons_temp={}
-        for gene in unique_genes:
-            chr,strand = ensembl_annotations[gene]
-            for exon_coordinates in exon_structure:
-                exons = ensembl_gene_exon_db[gene]  ###Ensembl exonids for this gene
-                new_exon_coordinates = chr,exon_coordinates[0],exon_coordinates[1] ###create a exon coordiante tuple analagous to the one created for Ensembl
-                if new_exon_coordinates in ensembl_exon_data:  ###Therefore this is an Ensembl aligning exon (same start and stop)
-                    ensembl_exon = ensembl_exon_data[new_exon_coordinates]  ###Get the id for this exon
-                    if ensembl_exon in exons:  ###Since this exon could be in any gene, check to make sure it's specific for just this one
-                        try: ensembl_gene_exons_temp[gene].append(ensembl_exon)
-                        except KeyError: ensembl_gene_exons_temp[gene] = [ensembl_exon]
-        #if accession == 'X97298': print accession, unique_genes, ensembl_gene_exons_temp, len(ensembl_gene_exons_temp);kill
-        #if strand == '+': print accession, unique_genes, ensembl_gene_exons_temp, len(ensembl_gene_exons_temp);kill 
-        if len(ensembl_gene_exons_temp) == 1: ###Therefore, only one Ensembl gene contained overlapping exons
-            for gene in ensembl_gene_exons_temp:
-                all_accession_gene_associations[accession] = [gene]
-                number_of_associated_exons[gene,accession] = len(ensembl_gene_exons_temp[gene])
-                if len(unique_genes)>1: ###If multiple genes, then this accession number has not been updated in our main accession to Ensembl Dbase
-                    exon_structure_list = transcript_structure_db[accession]
-                    try: ensembl_gene_accession_structures[gene].append((accession,exon_structure_list))
-                    except KeyError: ensembl_gene_accession_structures[gene]= [(accession,exon_structure_list)]
-        elif len(ensembl_gene_exons_temp) == 0 or len(ensembl_gene_exons_temp) > 1:
-            ###Therfore, no Ensembl exon overlaps with the transcript or exons overlapp with several genes.  If in the main accession to Ensembl Dbase, delete it
+
+    if analysis_type != 'ncRNA':
+        ###Verify accession to gene associations for multiple associations or pick the one propper gene call among several incorrect
+        """A problem is that if an Ensembl pseudo-transcript (not a real gene), with no exons overlapping with UCSC transcript exists, the accession
+        could not be annotated with a gene, but this is not ideal, since the exons in the transcript may just overlap with one gene"""
+        all_accession_gene_associations2 = []; number_of_associated_exons={}; removed=0; ensembl_gene_accession_structures_deleted={}; exon_annotation_del_db={}
+        for accession in all_accession_gene_associations:
+            exon_structure = transcript_structure_db[accession] ###coordinates for 'exons' provided by UCSC
+            unique_genes = unique.unique(all_accession_gene_associations[accession])
+            ensembl_gene_exons_temp={}
             for gene in unique_genes:
-                if gene in ensembl_gene_accession_structures and export_all_associations=='no':
-                    accession_data_list = ensembl_gene_accession_structures[gene]
-                    index = 0
-                    for accession_data in accession_data_list:
-                        if accession in accession_data:
-                            del accession_data_list[index]; removed +=1
-                            ### add all of the gene accession info to a new db to look for overlap with UCSC annotated alt events
-                            if len(ensembl_gene_exons_temp) == 0 and len(unique_genes) == 1: ### This occurs if a transcript has no overlaping ensembl exons, but does contain an annotated event according to UCSC
-                                all_accession_gene_associations[accession] = [gene]  ###although the entry is deleted, probably no issue with exporting the data to LinkEST
-                                if len(unique_genes)==1: ###If multiple genes, then this accession number has not been updated in our main accession to Ensembl Dbase
-                                    exon_structure_list = transcript_structure_db[accession]
-                                    try: ensembl_gene_accession_structures_deleted[gene].append((accession,exon_structure_list))
-                                    except KeyError: ensembl_gene_accession_structures_deleted[gene]= [(accession,exon_structure_list)]
-                                    chr,strand = ensembl_annotations[gene]
-                                    exon_annotation_del_db[(gene,chr,strand)] = exon_structure_list ###This should mimic the Ensembl database used for alignToKnownAlt
-                        index += 1
-                        
-    ###Check to see if any of the unique accession-gene associations that didn't have an ensembl exon overlap with a known UCSC alt-event
-    ###first update gene coordiantes with approved UCSC mRNAs (Ensembl frak's up sometmes and actually makes mRNAs too short)
-    for gene in ensembl_gene_accession_structures:
-        for (accession,exon_structure_list) in ensembl_gene_accession_structures[gene]:
-            for exon_info in exon_structure_list:
-                exon_start = exon_info[0]; exon_stop = exon_info[1]
-                ensembl_gene_coordinates[gene].append(exon_start); ensembl_gene_coordinates[gene].append(exon_stop)
-    ucsc_splicing_annot_db = alignToKnownAlt.importEnsExonStructureData(species,ensembl_gene_coordinates,ensembl_annotations,exon_annotation_del_db)
-    # ucsc_splicing_annot_db[ensembl].append((start,stop,annotation_str))
-    
-    for gene in ensembl_gene_accession_structures_deleted:
-        if gene in ucsc_splicing_annot_db:
-            for (accession,exon_structure_list) in ensembl_gene_accession_structures_deleted[gene]:
-                add = []
-                for ucsc_exon_info in ucsc_splicing_annot_db[gene]:
-                    bp1 = ucsc_exon_info[0]; ep1 = ucsc_exon_info[1]; annotation = ucsc_exon_info[2]
-                    for exon_info in exon_structure_list:
-                        bp2 = exon_info[0]; ep2 = exon_info[1]
-                        #if accession == 'BC092441':
-                        if ((bp1 >= bp2) and (ep2 >= bp1)) or ((ep1 >= bp2) and (ep2 >= ep1)): add.append(annotation) ###if the start or stop of the UCSC Alt is inside the UCSC mRNA exon start and stop
-                        elif ((bp2 >= bp1) and (ep1 >= bp2)) or ((ep2 >= bp1) and (ep1 >= ep2)): add.append(annotation) ###opposite
-                if len(add)>0:
-                    try: ensembl_gene_accession_structures[gene].append((accession,exon_structure_list))
-                    except KeyError: ensembl_gene_accession_structures[gene]= [(accession,exon_structure_list)]
+                chr,strand = ensembl_annotations[gene]
+                for exon_coordinates in exon_structure:
+                    exons = ensembl_gene_exon_db[gene]  ###Ensembl exonids for this gene
+                    new_exon_coordinates = chr,exon_coordinates[0],exon_coordinates[1] ###create a exon coordiante tuple analagous to the one created for Ensembl
+                    if new_exon_coordinates in ensembl_exon_data:  ###Therefore this is an Ensembl aligning exon (same start and stop)
+                        ensembl_exon = ensembl_exon_data[new_exon_coordinates]  ###Get the id for this exon
+                        if ensembl_exon in exons:  ###Since this exon could be in any gene, check to make sure it's specific for just this one
+                            try: ensembl_gene_exons_temp[gene].append(ensembl_exon)
+                            except KeyError: ensembl_gene_exons_temp[gene] = [ensembl_exon]
+            #if accession == 'X97298': print accession, unique_genes, ensembl_gene_exons_temp, len(ensembl_gene_exons_temp);kill
+            #if strand == '+': print accession, unique_genes, ensembl_gene_exons_temp, len(ensembl_gene_exons_temp);kill 
+            if len(ensembl_gene_exons_temp) == 1: ###Therefore, only one Ensembl gene contained overlapping exons
+                for gene in ensembl_gene_exons_temp:
+                    all_accession_gene_associations[accession] = [gene]
+                    number_of_associated_exons[gene,accession] = len(ensembl_gene_exons_temp[gene])
+                    if len(unique_genes)>1: ###If multiple genes, then this accession number has not been updated in our main accession to Ensembl Dbase
+                        exon_structure_list = transcript_structure_db[accession]
+                        try: ensembl_gene_accession_structures[gene].append((accession,exon_structure_list))
+                        except KeyError: ensembl_gene_accession_structures[gene]= [(accession,exon_structure_list)]
+            elif len(ensembl_gene_exons_temp) == 0 or len(ensembl_gene_exons_temp) > 1:
+                ###Therfore, no Ensembl exon overlaps with the transcript or exons overlapp with several genes.  If in the main accession to Ensembl Dbase, delete it
+                for gene in unique_genes:
+                    if gene in ensembl_gene_accession_structures and export_all_associations=='no':
+                        accession_data_list = ensembl_gene_accession_structures[gene]
+                        index = 0
+                        for accession_data in accession_data_list:
+                            if accession in accession_data:
+                                del accession_data_list[index]; removed +=1
+                                ### add all of the gene accession info to a new db to look for overlap with UCSC annotated alt events
+                                if len(ensembl_gene_exons_temp) == 0 and len(unique_genes) == 1: ### This occurs if a transcript has no overlaping ensembl exons, but does contain an annotated event according to UCSC
+                                    all_accession_gene_associations[accession] = [gene]  ###although the entry is deleted, probably no issue with exporting the data to LinkEST
+                                    if len(unique_genes)==1: ###If multiple genes, then this accession number has not been updated in our main accession to Ensembl Dbase
+                                        exon_structure_list = transcript_structure_db[accession]
+                                        try: ensembl_gene_accession_structures_deleted[gene].append((accession,exon_structure_list))
+                                        except KeyError: ensembl_gene_accession_structures_deleted[gene]= [(accession,exon_structure_list)]
+                                        chr,strand = ensembl_annotations[gene]
+                                        exon_annotation_del_db[(gene,chr,strand)] = exon_structure_list ###This should mimic the Ensembl database used for alignToKnownAlt
+                            index += 1
+                            
+        ###Check to see if any of the unique accession-gene associations that didn't have an ensembl exon overlap with a known UCSC alt-event
+        ###first update gene coordiantes with approved UCSC mRNAs (Ensembl frak's up sometmes and actually makes mRNAs too short)
+        for gene in ensembl_gene_accession_structures:
+            for (accession,exon_structure_list) in ensembl_gene_accession_structures[gene]:
+                for exon_info in exon_structure_list:
+                    exon_start = exon_info[0]; exon_stop = exon_info[1]
+                    ensembl_gene_coordinates[gene].append(exon_start); ensembl_gene_coordinates[gene].append(exon_stop)
+        ucsc_splicing_annot_db = alignToKnownAlt.importEnsExonStructureData(species,ensembl_gene_coordinates,ensembl_annotations,exon_annotation_del_db)
+        # ucsc_splicing_annot_db[ensembl].append((start,stop,annotation_str))
 
-    print removed, "accessions removed from analysis"
-    ###Export all possible transcript to ensembl anntotations
-    """This is used for LinkESTSequenceToArrays, for figuring out which UCSC mRNAs can be specifically aligned to which Ensembl genes"""
-    export_file = string.replace(input_gene_file,'all',species+'_UCSC-accession-to-gene')
-    fn=filepath(export_file); data = open(fn,'w')
-    for accession in all_accession_gene_associations:
-        unique_genes = unique.unique(all_accession_gene_associations[accession])
-        unique_genes = string.join(unique_genes,'|')
-        if (unique_genes,accession) in number_of_associated_exons:
-            number_of_ens_exons = number_of_associated_exons[(unique_genes,accession)]
-        else: number_of_ens_exons = 'NA'
-        values = accession +'\t'+ unique_genes +'\t'+ str(number_of_ens_exons)+'\n'
-        data.write(values)
-    data.close()
+        ### Only retain genes that have at least one example of UCSC alternative splicing    
+        for gene in ensembl_gene_accession_structures_deleted:
+            if gene in ucsc_splicing_annot_db:
+                for (accession,exon_structure_list) in ensembl_gene_accession_structures_deleted[gene]:
+                    add = []
+                    for ucsc_exon_info in ucsc_splicing_annot_db[gene]:
+                        bp1 = ucsc_exon_info[0]; ep1 = ucsc_exon_info[1]; annotation = ucsc_exon_info[2]
+                        for exon_info in exon_structure_list:
+                            bp2 = exon_info[0]; ep2 = exon_info[1]
+                            #if accession == 'BC092441':
+                            if ((bp1 >= bp2) and (ep2 >= bp1)) or ((ep1 >= bp2) and (ep2 >= ep1)): add.append(annotation) ###if the start or stop of the UCSC Alt is inside the UCSC mRNA exon start and stop
+                            elif ((bp2 >= bp1) and (ep1 >= bp2)) or ((ep2 >= bp1) and (ep1 >= ep2)): add.append(annotation) ###opposite
+                    if len(add)>0:
+                        try: ensembl_gene_accession_structures[gene].append((accession,exon_structure_list))
+                        except KeyError: ensembl_gene_accession_structures[gene]= [(accession,exon_structure_list)]
 
+        print removed, "accessions removed from analysis"
+        ###Export all possible transcript to ensembl anntotations
+        """This is used for LinkESTSequenceToArrays, for figuring out which UCSC mRNAs can be specifically aligned to which Ensembl genes"""
+        export_file = string.replace(input_gene_file,'all',species+'_UCSC-accession-to-gene')
+        fn=filepath(export_file); data = open(fn,'w')
+        for accession in all_accession_gene_associations:
+            unique_genes = unique.unique(all_accession_gene_associations[accession])
+            unique_genes = string.join(unique_genes,'|')
+            if (unique_genes,accession) in number_of_associated_exons:
+                number_of_ens_exons = number_of_associated_exons[(unique_genes,accession)]
+            else: number_of_ens_exons = 'NA'
+            values = accession +'\t'+ unique_genes +'\t'+ str(number_of_ens_exons)+'\n'
+            data.write(values)
+        data.close()
     return ensembl_gene_accession_structures
 
 def matchUCSCExonsToEnsembl(ensembl_gene_accession_structures):
@@ -581,9 +638,38 @@ def matchUCSCExonsToEnsembl(ensembl_gene_accession_structures):
     
     return ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon
 
+def exportNonGeneExonStructures(ensembl_gene_accession_structures,transcript_structure_db):
+    export_file = string.replace(input_gene_file,'all',species+'_UCSC_NonGene_structure'); ensembl_linked_accession_db={}
+    fn=filepath(export_file); data = open(fn,'w')
+    title = ['Ensembl Gene ID','Chromosome','Strand','Exon Start (bp)','Exon End (bp)','Custom Exon ID','Constitutive Exon','NCBI Accession']
+    title = string.join(title,'\t')+'\n'
+    data.write(title)
+    for ens_geneid in ensembl_gene_accession_structures:
+        for (accession,exon_structure) in ensembl_gene_accession_structures[ens_geneid]:
+            ensembl_linked_accession_db[accession] = []
+    non_gene_acs = 0
+    for accession in transcript_structure_db:
+        if accession not in ensembl_linked_accession_db:
+            non_gene_acs+=1
+            chr,strand = ucsc_genomic_accession_db[accession]
+            common_values = [accession,chr,strand]
+            exon_structure = transcript_structure_db[accession]             
+            index=1
+            ens_exon_count=[]###See if we should export this transcript (if it contains no unique exons)
+            for (exon_start,exon_stop) in exon_structure:
+                exonid = accession+'-'+str(index) ###custom ID designating the relative exon position in the exon_structure
+                constitutive_call = '0'
+                values = common_values+[str(exon_start),str(exon_stop),exonid,constitutive_call,accession]
+                index+=1
+                values = string.join(values,'\t')+'\n'
+                data.write(values)
+    data.close()
+    print non_gene_acs, "NON-Ensembl linked accession numbers exported"
+    
 def exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon,species):
-    export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure'); accessions_exlcuded=[]; accessions_included=0
-    #if export_all_associations == 'yes': export_file = string.replace(export_file,'mrna','complete-mrna')
+    export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure'); accessions_exlcuded=0; accessions_included=0
+    if analysis_type == 'ncRNA': export_file = string.replace(export_file,'structure','structure_'+str(round))
+    if export_all_associations == 'yes': export_file = string.replace(export_file,'mrna','complete-mrna')
     fn=filepath(export_file); data = open(fn,'w')
     title = ['Ensembl Gene ID','Chromosome','Strand','Exon Start (bp)','Exon End (bp)','Custom Exon ID','Constitutive Exon','NCBI Accession']
     title = string.join(title,'\t')+'\n'
@@ -601,7 +687,7 @@ def exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,co
                     ###Verify that the exon corresponds to that gene (some Ensembl exon regions belong to more than one gene)
                     if exonid in ensembl_gene_exon_db[ens_geneid]: ens_exon_count.append(exonid)
                 except KeyError: null = []
-            if len(ens_exon_count) != len(exon_structure):  ###REMOVE TRANSCRIPTS FOR WHICH THERE ARE ONLY ENSEMBL EXONS: This is an issue since we really want to get rid of transcripts with only Ensembl Junctions (too strict)
+            if (len(ens_exon_count) != len(exon_structure)) or (analysis_type == 'ncRNA'):  ###REMOVE TRANSCRIPTS FOR WHICH THERE ARE ONLY ENSEMBL EXONS: This is an issue since we really want to get rid of transcripts with only Ensembl Junctions (too strict)
                 accessions_included+=1
                 for (exon_start,exon_stop) in exon_structure:
                     ###used to try to emperically determine which exons are constitutive... instead, just trust Ensembl
@@ -614,17 +700,17 @@ def exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,co
                     except KeyError: exonid = accession+'-'+str(index) ###custom ID designating the relative exon position in the exon_structure
                     if exonid in ensembl_const_exon_db: constitutive_call = ensembl_const_exon_db[exonid]
                     else: constitutive_call = '0'
+                    if analysis_type == 'ncRNA':
+                        ###For ncRNA analyses, the ncRNA coordinates are small and many can overlap with a single AC, so use the primary AC coordinates
+                        gene_coordinates = coordinate_gene_count_db[ens_geneid]
+                        exon_start = gene_coordinates[0][0]; exon_start = gene_coordinates[-1][1]
                     values = common_values+[str(exon_start),str(exon_stop),exonid,constitutive_call,accession]
                     index+=1
                     values = string.join(values,'\t')+'\n'
                     data.write(values)
-            else: accessions_exlcuded.append(accession)
+            else: accessions_exlcuded+=1
     data.close()
-    print len(accessions_exlcuded), "Accession numbers excluded (same as Ensembl transcript), out of",(accessions_included+len(accessions_exlcuded))
-    export_file2 = string.replace(input_gene_file,'all',species+'_UCSC-accession-eliminated')
-    fn=filepath(export_file2); data = open(fn,'w')
-    for ac in accessions_exlcuded: data.write(ac+'\n')
-    data.close()
+    print accessions_exlcuded, "Accession numbers excluded (same as Ensembl transcript), out of",(accessions_included+accessions_exlcuded)
     print 'data written to:',export_file
 
 def exportSimple(filtered_data,title,input_gene_file):
@@ -636,7 +722,8 @@ def exportSimple(filtered_data,title,input_gene_file):
     print 'data written to:',export_file
     
 def filterBuiltAssociations(species):
-    input_gene_file = 'AltDatabase/ucsc/'+species+'/all_mrna.txt'
+    if analysis_type == 'mRNA': input_gene_file = 'AltDatabase/ucsc/'+species+'/all_'+mRNA_type+'.txt'
+    elif analysis_type == 'ncRNA': input_gene_file = 'AltDatabase/ucsc/'+species+'/all_ncRNA.txt'
     filename = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure')
 
     ###Re-import the data and filter it to remove junctions that should be present in the Ensembl database (ensembl-ensembl junction)
@@ -682,6 +769,55 @@ def filterBuiltAssociations(species):
     #print k, "exon pairs that contained two ensembl exons not paired in an Ensembl transcript";kill
     exportSimple(keep,title,input_gene_file)
 
+
+def importExonStructureDataGeneric(filename,filter_db,raw_data):
+    ###Re-import the data and filter it to remove junctions that should be present in the Ensembl database (ensembl-ensembl junction)
+    fn=filepath(filename); x=0
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: title = line; x+=1 ###first line
+        else:
+            gene, chr, strand, exon_start, exon_end, exonid, constitutive_exon, accession = t
+            proceed = 'no'
+            if len(filter_db)>0:
+                if gene in filter_db: proceed = 'yes' ### for Ensembl, only include predicted ncRNAs
+            elif accession not in raw_data: proceed = 'yes' ### only include ncRNAs not already added based on accession overlapp
+            if proceed == 'yes':
+                try: raw_data[accession].append([exonid,x,line])
+                except KeyError: raw_data[accession] = [[exonid,x,line]]
+            x+=1
+    return raw_data
+
+def combineNCRNAPredictions(species):
+
+    ### Include ncRNAs NOT inlcuded in the lists from http://www.noncode.org/
+    ### These include missing microRNAs, tRNAs, rRNAs, snoRNAs, etc.
+    ensembl_annotation_db = getEnsemblAnnotations(species)
+    additional_ncRNAs={}
+    for symbol in ensembl_annotation_db:
+        description,ens_geneid = ensembl_annotation_db[symbol]
+        if 'hsa-mir' in description: additional_ncRNAs[ens_geneid]=[]
+        #elif ('rna' in description or 'RNA' in description) and 'mRNA' not in description: additional_ncRNAs[ens_geneid]=[]
+    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
+    raw_data = importExonStructureDataGeneric(filename,additional_ncRNAs,{})
+    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_1_ncRNA.txt'
+    raw_data = importExonStructureDataGeneric(filename,{},raw_data)
+    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_2_ncRNA.txt'
+    raw_data = importExonStructureDataGeneric(filename,{},raw_data)
+    print len(raw_data);kill
+    #exportSimple(keep,title,input_gene_file)
+
+def getEnsemblAnnotations(species):
+    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl-annotations_simple.txt'
+    fn=filepath(filename); ensembl_annotation_db = {}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if 'Description' in data: ensembl_gene_id,description,symbol = string.split(data,'\t')
+        else: ensembl_gene_id,symbol,description = string.split(data,'\t')
+        ensembl_annotation_db[symbol] = description, ensembl_gene_id
+    return ensembl_annotation_db
+
 def getUCSCAssociations(Species):
     global species; species = Species
     global ensembl_gene_coordinates
@@ -691,9 +827,9 @@ def getUCSCAssociations(Species):
     ensembl_gene_accession_structures,constitutive_gene_db = identifyNewExonsForAnalysis(ensembl_transcript_clusters,transcript_structure_db,ucsc_interim_gene_transcript_db,ucsc_transcript_coordinates)
     exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,species)
 
-def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations, run_from_scratch):
-    global species; species = Species; global mRNA_type; mRNA_type = mRNA_Type
-    global test; global bp_offset; global gap_length; global test_gene
+def runUCSCEnsemblAssociations(Species,Analysis_type,Round,mRNA_Type,export_All_associations, run_from_scratch):
+    global species; species = Species; global round; round = Round; global mRNA_type; mRNA_type = mRNA_Type
+    global test; global bp_offset; global gap_length; global test_gene; global analysis_type; analysis_type = Analysis_type
     global export_all_associations
     bp_offset = 100 ###allowed excesive base pairs added to the distal ends of the Ensembl genes
     gap_length = 12 ###maximum allowed gap length to qualify for merging exons
@@ -710,36 +846,26 @@ def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations, run_fr
         print 'ensembl_gene_accession_structures',len(ensembl_gene_accession_structures)
         ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon = matchUCSCExonsToEnsembl(ensembl_gene_accession_structures)
         exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon,species)
-        if export_all_associations == 'no': filterBuiltAssociations(species)
+        if analysis_type != 'mRNA': exportNonGeneExonStructures(ensembl_gene_accession_structures,transcript_structure_db)
+        if (analysis_type == 'mRNA') and export_all_associations == 'no': filterBuiltAssociations(species)
     else:
-        if export_all_associations == 'no':
+        if (analysis_type == 'mRNA') and export_all_associations == 'no':
             ensembl_chr_coordinate_db = importEnsExonStructureData(species) ###need this to get the unique Ensembl pairs
             filterBuiltAssociations(species)
-            
+
+def updateUCSCEnsemblAssociations(Species,Analysis_type,mRNA_Type,export_all_associations,run_from_scratch):
+    Round = 1; runUCSCEnsemblAssociations(Species,Analysis_type,Round,mRNA_Type,export_all_associations,run_from_scratch)
+    if Analysis_type != 'mRNA':
+        Round = 2; runUCSCEnsemblAssociations(Species,Analysis_type,Round,mRNA_Type,export_all_associations,run_from_scratch)
+        
 if __name__ == '__main__':
     run_from_scratch = 'yes'
     Species = 'Mm'
     mRNA_Type = 'est'
     mRNA_Type = 'mrna'
-    export_all_associations = 'yes' ### YES only for protein prediction analysis
-    #runUCSCEnsemblAssociations(Species,mRNA_Type,export_all_associations,run_from_scratch)
-    #AK049467
-    bp_offset = 100 ###allowed excesive base pairs added to the distal ends of the Ensembl genes
-    gap_length = 12 ###maximum allowed gap length to qualify for merging exons
-    test = 'no'
-    test_gene = ['ENSMUSG00000022194']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']
-    
-    if run_from_scratch == 'yes':
-        """global ensembl_chr_coordinate_db
-        ensembl_chr_coordinate_db = importEnsExonStructureData(species)
-        ucsc_chr_coordinate_db,transcript_structure_db,ucsc_interim_gene_transcript_db,ucsc_transcript_coordinates = importUCSCExonStructureData(species)
-        ensembl_transcript_clusters,no_match_list = getChromosomalOveralap(ucsc_chr_coordinate_db,ensembl_chr_coordinate_db)"""
-        ensembl_gene_accession_structures = identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transcript_structure_db,ucsc_interim_gene_transcript_db,ucsc_transcript_coordinates)
-        print 'ensembl_gene_accession_structures',len(ensembl_gene_accession_structures)
-        ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon = matchUCSCExonsToEnsembl(ensembl_gene_accession_structures)
-        exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon,species)
-        if export_all_associations == 'no': filterBuiltAssociations(species)
-    else:
-        if export_all_associations == 'no':
-            ensembl_chr_coordinate_db = importEnsExonStructureData(species) ###need this to get the unique Ensembl pairs
-            filterBuiltAssociations(species)
+    Analysis_type = 'mRNA'
+    export_all_associations = 'no' ### YES only for protein prediction analysis
+    #updateUCSCEnsemblAssociations(Species,Analysis_type,mRNA_Type,export_all_associations,run_from_scratch)
+    #Analysis_type = 'ncRNA'
+    #combineNCRNAPredictions(Species);kill
+    updateUCSCEnsemblAssociations(Species,Analysis_type,mRNA_Type,export_all_associations,run_from_scratch)

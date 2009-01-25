@@ -1,5 +1,5 @@
 ###UI
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -299,7 +299,11 @@ class GUI:
         #def quitcommand(): parent.destroy; sys.exit()
         #self.button = Button(text="   Quit  ", command=quitcommand)
         #self.button.pack(side = 'bottom', padx = 10, pady = 10)
-        
+
+        if 'input_cel_dir' in option_list: ### For the CEL file selection window, provide a link to get Library files
+            button_text = 'Download Library Files'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
+            self.url = url; text_button = Button(self._parent, text=button_text, command=self.linkout); text_button.pack(side = 'left', padx = 5, pady = 5)
+            
         continue_to_next_win = Button(text = 'Continue', command = self._parent.destroy)
         continue_to_next_win.pack(side = 'right', padx = 10, pady = 10)
 
@@ -309,6 +313,9 @@ class GUI:
         self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
         self._parent.mainloop()
 
+    def linkout(self):
+        webbrowser.open(self.url)
+            
     def setvscrollmode(self, tag):
         self.sf.configure(vscrollmode = tag)
 
@@ -499,7 +506,8 @@ def importArrayGroupsSimple(expr_group_dir):
     for line in open(fn,'rU').xreadlines():             
         data = cleanUpLine(line)
         array_header,group,group_name = string.split(data,'\t')
-        group = int(group); group_db[group]=group_name
+        try: group = int(group); group_db[group]=group_name
+        except ValueError: print group, group_name;kill
         agd = ArrayGroupData(array_header,group,group_name)
         array_group_list.append(agd)
     return array_group_list,group_db
@@ -629,7 +637,7 @@ def probesetSummarize(exp_file_location_db,root):
         elif os.name == 'mac': apt_file = apt_dir + '/Mac/apt-probeset-summarize'
         elif os.name == 'posix': apt_file = apt_dir + '/Linux/apt-probeset-summarize'
         apt_file = filepath(apt_file)
-        print "Begining probeset summarization of input CEL files with Affymetrix Power Tools (APT)"
+        print "Begining probeset summarization of input CEL files with Affymetrix Power Tools (APT)..."
         if array_type == "3'array":
             try:
                 cdf_file = pgf_file; algorithm = 'rma'
@@ -656,6 +664,7 @@ def probesetSummarize(exp_file_location_db,root):
                     shutil.copyfile(summary_exp_file, expression_file)
                     os.remove(summary_exp_file)                    
             except NameError: status = 'failed'
+            #apt-probeset-summarize -a rma-sketch -a plier-mm-sketch -p chip.pgf -c chip.clf -o output-dir *.cel
 
         if array_type == 'exon':
             try:
@@ -677,11 +686,11 @@ def probesetSummarize(exp_file_location_db,root):
             
         cache_delete_status = export.deleteFolder(cache_dir)
         if status == 'failed':
-            print_out = 'apt-probeset-summarize failed. See log and report\nfile in the output folder under "ExpressionInput/APT-output"\nfor more details.'
+            print_out = 'apt-probeset-summarize failed. See log and report file in the output folder under "ExpressionInput/APT-output" for more details.'
             WarningWindow(print_out,'Exit')
             root.destroy(); sys.exit()
         else:
-            print 'CEL files successfully processed. See log and report\nfile in the output folder under "ExpressionInput/APT-output"\nfor more details.' 
+            print 'CEL files successfully processed. See log and report file in the output folder under "ExpressionInput/APT-output" for more details.' 
             
 def importDefaults(array_type,species):
     filename = 'Config/defaults-expr.txt'
@@ -920,7 +929,6 @@ class LinkOutWindow:
         text_button = Button(parent, text=self.button_text, command=parent.destroy); text_button.pack(side = 'bottom', padx = 5, pady = 5)
         parent.mainloop()
 
-        
 def exportCELFileList(cel_files,cel_file_dir):
     fn=cel_file_dir+'/cel_files.txt'; data = open(fn,'w')
     data.write('cel_files'+'\n') ###header
@@ -979,7 +987,7 @@ class ExpressionFileLocationData:
         ### Get directory above ExpressionInput
         split_dirs = string.split(parent_dir,'ExpressionInput')
         root_dir = split_dirs[0]
-        self._root_dir = root_dir
+        self._root_dir = root_dir + '/'
     def RootDir(self): return self._root_dir
     def APTLocation(self): return self._apt_location
     def InputCDFFile(self): return self._cdf_file
@@ -1051,13 +1059,22 @@ def getUserParameters(skip_intro):
 
         array_list = array_list2 ### Filtered based on compatible species arrays
         option_db['array_type'].setArrayOptions(array_list)
-        
-        root = Tk()
-        root.title('AltAnalyze: Main Dataset Parameters')
-        gu = GUI(root,option_db,option_list['AnalysisType'],'')
-        array_full = gu.Results()['array_type']
-        array_type = array_codes[array_full].ArrayCode()
-        run_from_scratch = gu.Results()['run_from_scratch']
+
+        proceed = 'no'
+        while proceed == 'no':        
+            root = Tk()
+            root.title('AltAnalyze: Main Dataset Parameters')
+            gu = GUI(root,option_db,option_list['AnalysisType'],'')
+            array_full = gu.Results()['array_type']
+            array_type = array_codes[array_full].ArrayCode()
+            run_from_scratch = gu.Results()['run_from_scratch']
+            if array_type == "3'array" or array_type == 'gene':
+                if run_from_scratch == 'CEL files' or run_from_scratch == 'expression file':
+                    proceed = 'yes' ### Only certain options are compatible with expression arrays
+                else:
+                    print_out = "The selected option is not compatible with gene expression only arrays."
+                    IndicatorWindow(print_out,'Continue')   
+            else: proceed = 'yes' ### All options are compatible with splicing arrays
         
         if run_from_scratch == 'CEL files':
             assinged = 'no'
@@ -1092,12 +1109,14 @@ def getUserParameters(skip_intro):
                                     ###Check to see if the clf and bgp files are present in this directory 
                                     icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); pgf_short = icf_list[-1]
                                     clf_short = string.replace(pgf_short,'.pgf','.clf')
-                                    bgp_short = string.replace(pgf_short,'.pgf','.antigenomic.bgp')
+                                    if array_type == 'exon': bgp_short = string.replace(pgf_short,'.pgf','.antigenomic.bgp')
+                                    else: bgp_short = string.replace(pgf_short,'.pgf','.bgp')
                                     dir_list = read_directory(parent_dir)
                                     if clf_short in dir_list and bgp_short in dir_list:
                                         pgf_file = input_cdf_file
                                         clf_file = string.replace(pgf_file,'.pgf','.clf')
-                                        bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
+                                        if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
+                                        else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
                                         assinged = 'yes'
                                     else:
                                         print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
@@ -1117,6 +1136,7 @@ def getUserParameters(skip_intro):
             cel_file_list_dir = exportCELFileList(cel_files_fn,cel_file_dir)
         
         ### Define these after establishing CEL file paramters, since 3' and gene arrays won't be synonymous
+        array_type_original = array_type
         array_type = string.replace(array_type,'gene',"3'array")
         manufacturer = array_codes[array_full].Manufacturer()
         constitutive_source = array_codes[array_full].ConstitutiveSource()
@@ -1193,7 +1213,7 @@ def getUserParameters(skip_intro):
                 microRNA_prediction_method = gu.Results()['microRNA_prediction_method']
                 try: p_threshold = float(permute_p_threshold)
                 except ValueError: permute_p_threshold = permute_p_threshold
-    except AttributeError:  ###Occurs when PMW or Tkinter does not propperly load
+    except IndexError:  ###Occurs when PMW or Tkinter does not propperly load
         species, array_type, manufacturer, constitutive_source, run_from_scratch = getPrimaryUserParameters()
         expr_defaults, alt_exon_defaults, functional_analysis_defaults = importDefaults(array_type,species)
 
@@ -1341,13 +1361,13 @@ def getUserParameters(skip_intro):
         ### See if there are any Affymetrix annotation files for this species
         import_dir = '/AltDatabase/affymetrix/'+species; dir_list = read_directory(import_dir)
         fn_dir = filepath(import_dir[1:])
-        if len(dir_list)<1:
+        if len(dir_list)<1 and array_type != 'exon':
             print_out = 'No Affymetrix annnotations file found in the directory:\n'+fn_dir
             print_out += '\n\nTo download, click on the below button, find your array and download the annotation CSV file'
             print_out += '\nlisted under "Current NetAffx Annotation Files". Extract the compressed zip archive to the'
             print_out += '\nabove listed directory and hit continue to include these annotations in your results file.'
     
-            button_text = 'Download Annotations'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays '
+            button_text = 'Download Annotations'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
             IndicatorLinkOutWindow(print_out,button_text,url)
     if microRNA_prediction_method == 'two or more': microRNA_prediction_method = 'multiple'
     else: microRNA_prediction_method = 'any'
@@ -1374,11 +1394,11 @@ def getUserParameters(skip_intro):
         fl = exp_file_location_db[dataset_name]
         fl.setAPTLocation(apt_location)
         if run_from_scratch == 'CEL files':
-            fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
+            fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type_original); fl.setOutputDir(output_dir)
 
     ### Set the primary parent directory for ExpressionBuilder and AltAnalyze (one level above the ExpressionInput directory, if present)
     for dataset in exp_file_location_db: fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
-       
+
     expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,permute_p_threshold, perform_permutation_analysis, export_splice_index_values
     additional_var = exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method

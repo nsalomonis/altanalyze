@@ -1,5 +1,5 @@
 ###ExonArrayEnsemblRules
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -23,7 +23,6 @@ import math
 import EnsemblImport
 import ExonArrayAffyRules
 import SubGeneViewerExport
-
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -322,7 +321,7 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
         if strand == "-": exon_location[key].reverse()
                     
     #alphabet = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','x','y','z']
-    exon_location2={}
+    probeset_aligments={}; exon_location2={}
     x = 0; p = 0; count = 0
     for key in exon_location:
         old_index = 0; index2 = 1; index3 = 0; exon_list=[]; strand = key[-1]; last_added = 'null'
@@ -365,7 +364,10 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
                     for exon_data in ensembl_exon_db[new_key]:
                         t_start = exon_data[1][0]; t_stop = exon_data[1][1]; ed = exon_data[1][2]
                         if ((start >= t_start) and (start <= t_stop)) or ((stop >= t_start) and (stop <= t_stop)):
-
+                            if ((start >= t_start) and (start <= t_stop)) and ((stop >= t_start) and (stop <= t_stop)):
+                                ### Thus the probeset is completely in this exon
+                                try: probeset_aligments[probeset].append([t_start,t_stop])
+                                except KeyError: probeset_aligments[probeset]=[[t_start,t_stop]]
                             """if probeset == 'G6857086:E15' and ens_exon_ida == 'ENSMUSE00000101953':
                                 print probeset, start,t_start,stop,t_stop,exon_values[2], 'goood', ed.ExonID()"""          
                             temp_probeset_exon_id.append(ed.ExonID())
@@ -497,6 +499,9 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
             if len(exon_list)>0: exon_location2[key] = exon_list
     #kill
     #print x,p
+
+    exportProbesetAlignments(probeset_aligments)
+    
     for key in exon_location2:
         if key[0] == 'ENSG00000138231':
             print key
@@ -719,6 +724,20 @@ def removeRedundantProbesets(ensembl_probeset_db,remove_probesets):
     return ensembl_probeset_db
 
 ################# Select files for analysis and output results
+def exportProbesetAlignments(probeset_aligments):
+    ###These are probeset-transcript annotations direclty from Affymetrix, not aligned
+    probeset_annotation_export = 'AltDatabase/' + species + '/exon/'+ species + '_probeset-exon-align-coord.txt'
+    probeset_aligments = eliminateRedundant(probeset_aligments)
+    
+    fn=filepath(probeset_annotation_export); data = open(fn,'w')
+    title = 'probeset_id'+'\t'+'genomic-start'+'\t'+'genomic-stop'+'\n'
+    data.write(title)
+    for probeset_id in probeset_aligments:
+        for coordinates in probeset_aligments[probeset_id]:
+            values = probeset_id +'\t'+ str(coordinates[0]) +'\t'+ str(coordinates[1]) +'\n'
+            data.write(values)
+    data.close()
+    
 def exportProbesetAnnotations(mRNA_associations):
     ###These are probeset-transcript annotations direclty from Affymetrix, not aligned
     probeset_annotation_export = 'AltDatabase/ensembl/' + species + '/'+ species + '_probeset-mRNA_annot.txt'
@@ -784,7 +803,8 @@ def exportEnsemblLinkedProbesets(ensembl_probeset_db,constitutive_gene_db,specie
 
 def eliminateRedundant(database):
     for key in database:
-        list = makeUnique(database[key])
+        try: list = makeUnique(database[key])
+        except TypeError: list = unique.unique(database[key])
         list.sort()
         database[key] = list
     return database
@@ -934,7 +954,7 @@ if __name__ == '__main__':
     z = 'custom'
     m = 'Mm'
     h = 'Hs'
-    source_biotype = 'ncRNA'
+    source_biotype = 'mRNA'
     Species = h
     process_from_scratch = 'yes'
     export_probeset_mRNA_associations = 'no'
@@ -951,8 +971,8 @@ if __name__ == '__main__':
     global filter_sgv_output
     export_probeset_mRNA_associations = 'no'
     filter_sgv_output = 'yes'
-    test = 'no'
-    test_cluster = ['3884624']
+    test = 'yes'
+    test_cluster = ['3621276']
     meta_test_cluster = ["3061319","3061268"]#,"3455632","3258444","3965936","2611056","3864519","3018509","3707352","3404496","3251490"]
     #test_cluster = meta_test_cluster
     partial_process = 'no'; status = 'null'
