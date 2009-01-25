@@ -1,5 +1,5 @@
 ###MatchTargetPredictions
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 

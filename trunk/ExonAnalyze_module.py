@@ -1,5 +1,5 @@
 ###ExonAnalyze_module
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -21,7 +21,6 @@ import sys, string
 import os.path
 import unique
 import statistics
-import FeatureAlignment
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -157,14 +156,15 @@ def importExonSequenceBuild(filename,exon_db):
     filename = string.replace(filename,'SEQUENCE','probeset')
     fn=filepath(filename); probeset_protein_db = {}; positive_protein_associations = {}
     for line in open(fn,'rU').xreadlines():
-        data = cleanUpLine(line)
-        geneid,probeset,exonid,protein_hit_id,protein_null_id = string.split(data,'\t')
+        data = cleanUpLine(line); t = string.split(data,'\t')
+        try: probeset,protein_hit_id,protein_null_id = t
+        except ValueError: gene,probeset,exonid,protein_hit_id,protein_null_id = t
         try:
             ed = exon_db[probeset] ###update this information every time you run (in case a new exon database is used)
             ep = ExonProteinAlignmentData(ed.GeneID(),probeset,ed.ExonID(),protein_hit_id,protein_null_id)
             probeset_protein_db[probeset] = ep
-            try: positive_protein_associations[protein_hit_id].append((probeset,exonid)) ### Record which probesets actually match to which proteins (e.g. informs you which align to which nulls too)
-            except KeyError: positive_protein_associations[protein_hit_id] = [(probeset,exonid)]
+            try: positive_protein_associations[protein_hit_id].append((probeset,ed.ExonID())) ### Record which probesets actually match to which proteins (e.g. informs you which align to which nulls too)
+            except KeyError: positive_protein_associations[protein_hit_id] = [(probeset,ed.ExonID())]
         except KeyError: null=[]
     ###Determine for each null and hit proteins, what exons are they typically associated with (probably not too informative but record anyways)
     for probeset in probeset_protein_db:
@@ -367,7 +367,43 @@ def compareProteinFeatures(protein_ft,neg_coding_seq,pos_coding_seq):
     neg_ft_missing2 = unique.unique(neg_ft_missing2)  
     return neg_ft_missing2,pos_ft_missing2
 
-def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type):    
+def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_domain_db,compare_all_features):
+    """ This function is used by the module IdentifyAltIsoforms to run 'characterizeProteinLevelExonChanges'"""
+    global protein_ft_db; protein_ft_db = protein_domain_db; protein_domain_db=[]
+    exon_db={} ### Create a simplified version of the exon_db dictionary with probesets that map to a match and null protein
+    for probeset in probeset_gene_db:
+        gene, exon_id = probeset_gene_db[probeset]
+        ep = ExonProteinAlignmentData(gene,probeset,exon_id,'',''); exon_db[probeset] = ep
+    global protein_sequence_db
+    if compare_all_features == 'yes': type = 'seqcomp'
+    else: type = 'exoncomp'
+    exon_protein_sequence_file = 'AltDatabase/'+species+'/'+array_type+'/'+'SEQUENCE-protein-dbase_'+type+'.txt'
+    probeset_protein_db,protein_sequence_db = importExonSequenceBuild(exon_protein_sequence_file,exon_db)
+    
+    exon_hits={}
+    for probeset in probeset_protein_db:
+        gene = probeset_protein_db[probeset].GeneID()
+        exon_hits[gene,probeset]=[]
+
+    include_sequences = 'no' ### Sequences for comparisons are unnecessary to store. List array-type as exon since AltMouse data has been re-organized, later get rid of AltMouse specific functionality in this function
+    functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,'exon',include_sequences)
+
+    export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-domain-annotations-'+type+'.txt' 
+    formatAttributeForExport(functional_attribute_db,export_file)
+    
+    export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-annotations-'+type+'.txt' 
+    formatAttributeForExport(protein_features,export_file)
+
+def formatAttributeForExport(attribute_db,filename):
+    import IdentifyAltIsoforms
+    export_db={}
+    for (gene,probeset) in attribute_db:
+        attribute_list = attribute_db[(gene,probeset)]; attribute_list2=[]
+        for (attribute,direction) in attribute_list: attribute_list2.append(attribute+'|'+direction)
+        export_db[probeset]=attribute_list2
+    IdentifyAltIsoforms.exportSimple(export_db,filename,'')
+        
+def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type,include_sequences):    
     functional_attribute_db={}; protein_features={}
     for (array_geneid,uid) in exon_hits: ###uid is probeset or (probeset1,probeset2) value, depending on array_type
             if array_type != 'exon': probeset,probeset2 = uid
@@ -414,7 +450,7 @@ def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type
                             try: protein_features[array_geneid,uid].append(data_tuple)
                             except KeyError: protein_features[array_geneid,uid] = [data_tuple]
                 call=''
-                if pos_coding_seq[0:11] != neg_coding_seq[0:11]:
+                if pos_coding_seq[:5] != neg_coding_seq[:5]:
                     function_var = 'alt-N-terminus'
                     if (neg_length - pos_length)>0: call = '-'
                     elif (pos_length - neg_length)>0: call = '+'
@@ -422,15 +458,15 @@ def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type
                     data_tuple = function_var,call
                     try: functional_attribute_db[array_geneid,uid].append(data_tuple)
                     except KeyError: functional_attribute_db[array_geneid,uid]= [data_tuple]
-                if pos_coding_seq[-11:] != neg_coding_seq[-11:]:
+                if pos_coding_seq[-5:] != neg_coding_seq[-5:]:
                     #print probeset,(1-((neg_length - pos_length)/neg_length)), ((neg_length - pos_length)/neg_length),[neg_length],[pos_length]
                     #print probeset,(1-((pos_length - neg_length)/pos_length)),((pos_length - neg_length)/pos_length)
-                    if (1-((neg_length - pos_length)/neg_length)) < 0.5 and ((neg_length - pos_length)/neg_length) > 0 and (pos_coding_seq[0:11] == neg_coding_seq[0:11]):
+                    if (1-((neg_length - pos_length)/neg_length)) < 0.5 and ((neg_length - pos_length)/neg_length) > 0 and (pos_coding_seq[:5] == neg_coding_seq[:5]):
                         function_var = 'truncated'
                         call = '+'; data_tuple = function_var,call
                         try: functional_attribute_db[array_geneid,uid].append(data_tuple)
                         except KeyError: functional_attribute_db[array_geneid,uid]=[data_tuple]                        
-                    elif (1-((pos_length - neg_length)/pos_length)) < 0.5 and ((pos_length - neg_length)/pos_length) > 0 and (pos_coding_seq[0:11] == neg_coding_seq[0:11]): 
+                    elif (1-((pos_length - neg_length)/pos_length)) < 0.5 and ((pos_length - neg_length)/pos_length) > 0 and (pos_coding_seq[:5] == neg_coding_seq[:5]): 
                         function_var = 'truncated'
                         call = '-'; data_tuple = function_var,call
                         try: functional_attribute_db[array_geneid,uid].append(data_tuple)
@@ -460,17 +496,18 @@ def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type
                 if len(neg_ref_AC)<1: neg_ref_AC = 'NULL'
                 if fcall == '-':  
                     function_var1 = 'AA:' + str(int(pos_length))+'('+pos_ref_AC+')' +'->'+ str(int(neg_length))+'('+neg_ref_AC+')'
-                    function_var2 = 'sequence: ' +'('+pos_ref_AC+')'+pos_coding_seq +' -> '+ '('+neg_ref_AC+')'+neg_coding_seq
+                    if include_sequences == 'yes': function_var2 = 'sequence: ' +'('+pos_ref_AC+')'+pos_coding_seq +' -> '+ '('+neg_ref_AC+')'+neg_coding_seq
                 else:
                     function_var1 = 'AA:' +str(int(neg_length))+ '('+neg_ref_AC+')' +'->'+ str(int(pos_length))+'('+pos_ref_AC+')'
-                    function_var2 = 'sequence: ' +'('+neg_ref_AC+')'+neg_coding_seq +' -> '+'('+pos_ref_AC+')'+pos_coding_seq
+                    if include_sequences == 'yes': function_var2 = 'sequence: ' +'('+neg_ref_AC+')'+neg_coding_seq +' -> '+'('+pos_ref_AC+')'+pos_coding_seq
                 data_tuple1 = function_var1,fcall
                 try: functional_attribute_db[array_geneid,uid].append(data_tuple1)
                 except KeyError: functional_attribute_db[array_geneid,uid]= [data_tuple1]
                 ### Record sequence change
-                data_tuple2 = function_var2,fcall
-                try: functional_attribute_db[array_geneid,uid].append(data_tuple2)
-                except KeyError: functional_attribute_db[array_geneid,uid]= [data_tuple2]
+                if include_sequences == 'yes':
+                    data_tuple2 = function_var2,fcall
+                    try: functional_attribute_db[array_geneid,uid].append(data_tuple2)
+                    except KeyError: functional_attribute_db[array_geneid,uid]= [data_tuple2]
     return functional_attribute_db,protein_features
                                               
 def combine_databases(db1,db2):
@@ -490,7 +527,8 @@ def function_exon_analysis_main(array_type,exon_hits,dataset_name_original,micro
     
     global protein_sequence_db
     protein_sequence_db = protein_sequence_dbase
-    functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type)
+    include_sequences = 'yes'
+    functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type,include_sequences)
     exon_attribute_db={}; gene_top_attribute_db={}
     filtered_microRNA_exon_db = link_microRNA_exon_to_decon_db(microRNA_full_exon_db,exon_hits)
         

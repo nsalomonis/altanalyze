@@ -1,5 +1,5 @@
 ###reorder_arrays
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -116,7 +116,9 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             group_name = x[3]
             group_name_db[group] = group_name
             #for example y = 5, therefore the data[row_id][5] entry is now the first
-            try: new_item = data[row_id][y]
+            try:
+                try: new_item = data[row_id][y]
+                except IndexError: print row_id, len(data[row_id]),y,len(array_order),array_order;kill
             except TypeError: new_item = ''  #this is for a spacer added in the above function
             try: grouped_ordered_array_list[group].append(new_item)
             except KeyError: grouped_ordered_array_list[group] = [new_item]

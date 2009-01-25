@@ -1,5 +1,5 @@
 ###FeatureAlignment
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -106,20 +106,18 @@ def import_arrayid_ensembl(filename):
 
 def findDomainsByGenomeCoordinates(species,array_type):
     ### Grab Ensembl relationships from a custom Ensembl Perl script or BioMart
-    import_dir = '/AltDatabase/ensembl/'+species
-    m = GrabFiles(); m.setdirectory(import_dir)
-    protein_relationship_file = m.searchdirectory(species+'_Ensembl_Protein_')
-    protein_feature_file = m.searchdirectory(species+'_ProteinFeatures_') 
+    protein_relationship_file,protein_seq_file,protein_feature_file = getEnsemblRelationshipDirs(species)
     ens_transcript_protein_db = importEnsemblRelationships(protein_relationship_file,'transcript') ### From Perl script to Ensembl API
+    ens_protein_gene_db = importEnsemblRelationships(protein_relationship_file,'gene') ### From Perl script to Ensembl API
     exon_protein_db = importEnsExonStructureDataSimple(species,ens_transcript_protein_db) ### From BioMart
 
     if array_type == 'exon': ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
     else: ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
-    protein_probeset_db = importSplicingAnnotationDatabase(ens_probeset_file,exon_protein_db) ### Derived from ExonArrayEnsemblRules
-    matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db)
+    protein_probeset_db,gene_probeset_db = importSplicingAnnotationDatabase(ens_probeset_file,exon_protein_db) ### Derived from ExonArrayEnsemblRules
+    matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db,ens_protein_gene_db,gene_probeset_db)
     
-def matchEnsemblDomainCoordinates(filename,species,array_type,protein_probeset_db):
-    fn=filepath(filename); x=0; probeset_domain_match={}
+def matchEnsemblDomainCoordinates(filename,species,array_type,protein_probeset_db,ens_protein_gene_db,gene_probeset_db):
+    fn=filepath(filename); x=0; probeset_domain_match={}; probeset_domain_indirect_match={}
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         if x == 0: x=1 ###Don't extract the headers
@@ -131,20 +129,48 @@ def matchEnsemblDomainCoordinates(filename,species,array_type,protein_probeset_d
             if ensembl_prot in protein_probeset_db and len(description)>1:
                 probeset_data = protein_probeset_db[ensembl_prot]
                 for sad in probeset_data:
-                    if sad.Probeset() == '2399776': print sad.ProbeStart(),sad.ProbeStop(),genomic_start,genomic_stop,interpro_id,description
-
-                    if ((genomic_start <= sad.ProbeStart()) and (genomic_stop >= sad.ProbeStart())) or ((genomic_stop >= sad.ProbeStop()) and (genomic_start <= sad.ProbeStop())):  
+                    proceed = 'no'
+                    #if sad.Probeset() == '2324662': print sad.ProbeStart(),sad.ProbeStop(),genomic_start,genomic_stop,interpro_id,description
+                    if ((genomic_start <= sad.ProbeStart()) and (genomic_stop >= sad.ProbeStart())) and ((genomic_stop >= sad.ProbeStop()) and (genomic_start <= sad.ProbeStop())):
+                        overlap_area = int(abs(sad.ProbeStop()-sad.ProbeStart())/3)
+                        proceed = 'yes'
+                    elif ((genomic_start <= sad.ProbeStart()) and (genomic_stop >= sad.ProbeStart())):
+                        overlap_area = int(abs(genomic_stop - sad.ProbeStart())/3)
+                        proceed = 'yes'
+                    elif ((genomic_stop >= sad.ProbeStop()) and (genomic_start <= sad.ProbeStop())):
+                        overlap_area = int(abs(sad.ProbeStop() - genomic_start)/3)
+                        proceed = 'yes'
+                    if proceed == 'yes':
                         ipd = interpro_id+'-'+description
                         try: probeset_domain_match[sad.Probeset()].append(ipd)
                         except KeyError: probeset_domain_match[sad.Probeset()] = [ipd]
+            if ensembl_prot in ens_protein_gene_db:
+                ens_gene = ens_protein_gene_db[ensembl_prot]
+                if ens_gene in gene_probeset_db:
+                    probeset_data = gene_probeset_db[ens_gene]
+                    for sad in probeset_data:
+                        if ((genomic_start <= sad.ProbeStart()) and (genomic_stop >= sad.ProbeStart())) or ((genomic_stop >= sad.ProbeStop()) and (genomic_start <= sad.ProbeStop())):  
+                            ipd = description+'-'+interpro_id
+                            try: probeset_domain_indirect_match[sad.Probeset()].append(ipd)
+                            except KeyError: probeset_domain_indirect_match[sad.Probeset()] = [ipd]                  
 
+    probeset_domain_indirect_match = eliminateRedundant(probeset_domain_indirect_match)
     probeset_domain_match = eliminateRedundant(probeset_domain_match) ###Remove redundant matches
     print len(probeset_domain_match),'probesets with associated protein domains'
     
+    probeset_domain_indirect_match2={}
+    for probeset in probeset_domain_indirect_match:
+        if probeset not in probeset_domain_match: ### Only have probesets that don't directly map to domains
+            probeset_domain_indirect_match2[probeset] = probeset_domain_indirect_match[probeset]
+
+    exportProbesetDomainMappings(species,array_type,'',probeset_domain_match)
+    exportProbesetDomainMappings(species,array_type,'indirect_',probeset_domain_indirect_match2)
+    
+def exportProbesetDomainMappings(species,array_type,indirect_mapping,probeset_domain_match):            
     import export
-    export_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_domain_aligning_probesets.txt"                       
+    export_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+indirect_mapping+"domain_aligning_probesets.txt"                       
     data = export.createExportFile(export_file,"AltDatabase/"+species+"/"+array_type)
-    data.write('Probeset\tInterPro-Descrption\n')
+    data.write('Probeset\tInterPro-Description\n')
     for probeset in probeset_domain_match:
         domain_info_list = probeset_domain_match[probeset]
         for ipd in domain_info_list: data.write(probeset+'\t'+ipd+'\n')
@@ -152,26 +178,29 @@ def matchEnsemblDomainCoordinates(filename,species,array_type,protein_probeset_d
     print "Direct probeset to domain associations exported to:",export_file
     
 def importSplicingAnnotationDatabase(filename,exon_protein_db):
-    fn=filepath(filename); x=0; protein_probeset_db={}
+    fn=filepath(filename); x=0; protein_probeset_db={}; gene_probeset_db={}
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
         if x == 0: x = 1
         else:
-            t=string.split(probeset_data,'\t'); probeset=t[0]; probeset_start=t[6]; probeset_stop=t[7]; external_exonid=t[10]
+            t=string.split(probeset_data,'\t'); probeset=t[0]; ens_gene=t[2]; probeset_start=t[6]; probeset_stop=t[7]; external_exonid=t[10]
+            sad = SplicingAnnotationData(probeset,probeset_start,probeset_stop)
+            try: gene_probeset_db[ens_gene].append(sad)
+            except KeyError: gene_probeset_db[ens_gene] = [sad]
             if 'ENS' in external_exonid: ### We only need to examine probesets linked to Ensembl transcripts
                 external_exonid_list = string.split(external_exonid,'|'); ens_exonid_list=[]
                 for exon in external_exonid_list:
                     if 'ENS' in exon: ens_exonid_list.append(exon)
-                sad = SplicingAnnotationData(probeset,probeset_start,probeset_stop)
                 for ens_exon in ens_exonid_list:
                     if ens_exon in exon_protein_db:
                         ens_proteins = exon_protein_db[ens_exon]
                         for ens_protein_id in ens_proteins:
                             try: protein_probeset_db[ens_protein_id].append(sad)
                             except KeyError: protein_probeset_db[ens_protein_id] = [sad]
+            
                             
     print len(protein_probeset_db),'Ensembl proteins with associated probesets'
-    return protein_probeset_db
+    return protein_probeset_db,gene_probeset_db
 
 class SplicingAnnotationData:
     def __init__(self,probeset,start,stop):
@@ -202,17 +231,20 @@ def import_ensembl_ft_data(species,filename,ensembl_arrayid_db,array_type):
     grabbing the same type of data (InterPro relationships and protein sequence) from different sets of files"""
     try: ensembl_protein_seq_db,ensembl_ft_db,domain_gene_counts = importCombinedEnsemblFTdata(filename,ensembl_arrayid_db,array_type)
     except IOError:
-        import_dir = '/AltDatabase/ensembl/'+species
-        m = GrabFiles(); m.setdirectory(import_dir)
-        protein_relationship_file = m.searchdirectory(species+'_Ensembl_Protein_')
-        protein_seq_file = m.searchdirectory(species+'_Protein_')
-        protein_feature_file = m.searchdirectory(species+'_ProteinFeatures_')
-        
+        protein_relationship_file,protein_seq_file,protein_feature_file = getEnsemblRelationshipDirs(species)
         ensembl_protein_seq_db = importEnsemblProtSeq(protein_seq_file)
         ensembl_protein_gene_db = importEnsemblRelationships(protein_relationship_file,'gene')
         ensembl_ft_db, domain_gene_counts = importEnsemblFTdata(protein_feature_file,ensembl_arrayid_db,array_type,ensembl_protein_seq_db,ensembl_protein_gene_db)
         
     return ensembl_protein_seq_db,ensembl_ft_db,domain_gene_counts
+
+def getEnsemblRelationshipDirs(species):
+    import_dir = '/AltDatabase/ensembl/'+species
+    m = GrabFiles(); m.setdirectory(import_dir)
+    protein_relationship_file = m.searchdirectory(species+'_Ensembl_Protein_')
+    protein_seq_file = m.searchdirectory(species+'_Protein_')
+    protein_feature_file = m.searchdirectory(species+'_ProteinFeatures_')
+    return protein_relationship_file,protein_seq_file,protein_feature_file
 
 def importEnsemblProtSeq(filename):
     fn=filepath(filename); ensembl_protein_seq_db={}; x=0
@@ -476,7 +508,7 @@ def makeUnique(item):
     list1.sort()
     return list1
 
-def grab_exon_level_feature_calls(exon_sequence_database,species,array_type,arrayid_annotations,genes_analyzed):
+def grab_exon_level_feature_calls(species,array_type,genes_analyzed):
     arrayid_uniprot_file = 'AltDatabase/uniprot/'+species+'/'+'arrayid-uniprot.txt'    
     arrayid_ensembl_file = 'AltDatabase/ensembl/'+species+'/'+array_type+'/'+array_type+'-Ensembl.txt'
     ensembl_ft_file = 'AltDatabase/ensembl/'+species+'/'+'DomainFile_All.txt'
@@ -508,21 +540,21 @@ def clearall():
     for var in all: del globals()[var]
 
 if __name__ == '__main__':
-    species = 'Hs'; array_type = 'exon'
-    #"""
+    species = 'Mm'; array_type = 'exon'
+    findDomainsByGenomeCoordinates(species,array_type); sys.exit()
     ### Grab Ensembl relationships from a custom Ensembl Perl script or BioMart
-    import_dir = '/AltDatabase/ensembl/'+species
-    m = GrabFiles(); m.setdirectory(import_dir)
-    protein_relationship_file = m.searchdirectory(species+'_Ensembl_Protein_')
-    protein_feature_file = m.searchdirectory(species+'_ProteinFeatures_') 
+    protein_relationship_file,protein_seq_file,protein_feature_file = getEnsemblRelationshipDirs(species)
+    """
     ens_transcript_protein_db = importEnsemblRelationships(protein_relationship_file,'transcript') ### From Perl script to Ensembl API
+    ens_protein_gene_db = importEnsemblRelationships(protein_relationship_file,'gene') ### From Perl script to Ensembl API
     exon_protein_db = importEnsExonStructureDataSimple(species,ens_transcript_protein_db) ### From BioMart
-    kill
+    """
     if array_type == 'exon': ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
     else: ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
-    protein_probeset_db = importSplicingAnnotationDatabase(ens_probeset_file,exon_protein_db) ### Derived from ExonArrayEnsemblRules
+    
+    protein_probeset_db,gene_probeset_db = importSplicingAnnotationDatabase(ens_probeset_file,exon_protein_db) ### Derived from ExonArrayEnsemblRules
     #"""
-    matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db)
+    matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db,ens_protein_gene_db,gene_probeset_db)
         
     #findDomainsByGenomeCoordinates('Hs','exon')
     #grab_exon_level_feature_calls(exon_sequence_database,species,array_type,exon_db,genes_being_analyzed)

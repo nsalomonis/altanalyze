@@ -1,5 +1,5 @@
 ###export
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -29,11 +29,54 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir)
     return dir_list
 
+def findParentDir(filename):
+    ### :: reverses string
+    x = string.find(filename[::-1],'\\')*-1 ### get just the parent directory
+    if x == 1:
+        x = string.find(filename[::-1],'//')*-1 ### get just the parent directory
+    if x == 1:
+        x = string.find(filename[::-1],'/')*-1 ### get just the parent directory
+    return filename[:x]
+
+def findFilename(filename):
+    x = string.find(filename[::-1],'\\')*-1 ### get just the parent directory
+    if x == 1:
+        x = string.find(filename[::-1],'//')*-1 ### get just the parent directory
+    if x == 1:
+        x = string.find(filename[::-1],'/')*-1 ### get just the parent directory
+    return filename[x:]
+
+def ExportFile(filename):
+    dir = findParentDir(filename)
+    file_var = createExportFile(filename,dir)
+    return file_var
+
+def isFileOpen(new_file,dir):
+    try: 
+        file_open = 'yes'
+        dir_list = read_directory(dir)
+        if len(dir_list)>0:
+            while file_open == 'yes':
+                file_open = 'no'
+                for file in dir_list:
+                    if file in new_file: ###Thus the file is open
+                        try:
+                            fn=filepath(new_file); file_var = open(fn,'w')
+                            file_open = 'no'
+                        except IOError:
+                            print_out = 'Results file: '+new_file+ '\nis open...can not re-write.\nPlease close file and select "OK".'
+                            try: UI.WarningWindow(print_out,' OK ');
+                            except NameError:
+                                print print_out; print 'Please correct (hit return to continue)'
+                                inp = sys.stdin.readline()
+                            file_open = 'yes'
+    except OSError: null = []
+            
 def createExportFile(new_file,dir):
     try:
+        isFileOpen(new_file,dir)
         fn=filepath(new_file); file_var = open(fn,'w')
     except IOError:
-        #print "IOError", fn
         fn = filepath(dir)
         try:
             os.mkdir(fn) ###Re-Create directory if deleted
@@ -46,6 +89,8 @@ def createExportDir(new_file,dir):
     dir_ls = string.split(dir,'//')
     if len(dir_ls) == 1: ### Thus, '//' not found
         dir_ls = string.split(dir,'/')
+    if len(dir_ls) == 1: ### Thus, '/' not found
+        dir_ls = string.split(dir,'\\')
     if len(dir_ls) != 1:
         index = 1
         while index < (len(dir_ls)+1):
@@ -54,13 +99,38 @@ def createExportDir(new_file,dir):
             print "Trying to create the directory:",parent_dir
             try:
                 pfn = filepath(parent_dir)
+                print pfn
                 os.mkdir(pfn)
                 print parent_dir, 'written' #, index-1, len(dir_ls)
             except OSError:
-                #print "Can not write this dir"
+                print "Can not write this dir"
+                #break
                 continue
         createExportFile(new_file,dir)
     else: print "Parent directory not found locally for", dir_ls; sys.exit()
+
+def createExportFolder(dir):
+    dir_ls = string.split(dir,'//')
+    if len(dir_ls) == 1: ### Thus, '//' not found
+        dir_ls = string.split(dir,'/')
+    if len(dir_ls) == 1: ### Thus, '/' not found
+        dir_ls = string.split(dir,'\\')
+    if len(dir_ls) != 1:
+        index = 1
+        while index < (len(dir_ls)+1):
+            parent_dir = string.join(dir_ls[:index],'/')
+            index+=1
+            print "Trying to create the directory:",parent_dir
+            try:
+                pfn = filepath(parent_dir)
+                print pfn
+                os.mkdir(pfn)
+                print parent_dir, 'written' #, index-1, len(dir_ls)
+            except OSError:
+                print "Can not write this dir"
+                #break
+                continue
+    else: print "Parent directory not found locally for", dir_ls; sys.exit()    
 
 def deleteFolder(dir):
     try:

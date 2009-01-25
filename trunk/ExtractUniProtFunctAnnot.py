@@ -1,5 +1,5 @@
 ###ExtractUniProtFunctAnnot
-#Copyright 2005-2008 J. Davide Gladstone Institutes, San Francisco California
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -43,13 +43,14 @@ def import_ensembl_uniprot_db(filename):
 
 def import_uniprot_db(filename):
     fn=filepath(filename); global species_not_imported; species_not_imported=[]
-    ac = '';id = '';sq = '';osd = ''; gn = '';dr = '';de = '';ft_string = '';ft = []; ensembl = []; mgi = []; unigene = []; embl = []
-    ft_call=''; rc=''; x = 0; y = 0
+    ac = '';sm='';id = '';sq = '';osd = ''; gn = '';dr = '';de = '';ft_string = '';ft = []; ensembl = []; mgi = []; unigene = []; embl = []
+    ft_call=''; rc=''; go=''; x = 0; y = 0
     for line in open(fn,'r').xreadlines():
-        data, newline= string.split(line,'\n')
+        data, newline= string.split(line,'\n'); 
         #if x<3: print data
         #else: kill
-        if data[0:2] == 'ID': id = id + data[5:]
+        if data[0:2] == 'ID': id += data[5:]
+        elif "GO; GO:" in data: go += data[5:]
         elif data[0:2] == 'DE': de += data[5:]
         elif data[0:2] == 'AC': ac += data[5:]
         elif data[0:2] == 'OS': osd += data[5:]
@@ -64,7 +65,6 @@ def import_uniprot_db(filename):
         elif data[0:2] == 'FT':
             try:
                 if len(ft_string) > 0 and data[5] == ' ': ft_string = ft_string + data[33:]
-
                 elif len(ft_string) > 0 and data[5] != ' ': #if previous loop added data but the next ft line is a new piece of functional data
                     ft.append(ft_string) #append the previous value
                     ft_string = data[5:]
@@ -74,8 +74,10 @@ def import_uniprot_db(filename):
         elif data[0:2] == 'CC': ###grab function description information
             if '-!-' in data: x=0;y=0
             if x == 1: ft_call = ft_call + data[8:]
+            if y == 1: sm = sm + data[8:]
             ###if the CC entry is function, begin adding data
-            if '-!- FUNCTION:' in data: ft_call = ft_call + data[19:];  x = 1              
+            if '-!- FUNCTION:' in data: ft_call = ft_call + data[19:];  x = 1
+            if '-!- SIMILARITY' in data: sm = sm + data[21:]; y = 1            
         if data[0] == '/':
             ###Alternatively: if species_name in osd or 'trembl' in filename:
             if species_name == 'Mus musculus': alt_osd = 'mouse'
@@ -85,8 +87,8 @@ def import_uniprot_db(filename):
             except TypeError: print species_name,osd,alt_osd;kill
                     
             if species_name in osd or alt_osd in osd:
-              ft_list2 = []
-              ac = string.split(ac,'; '); ac2=[]
+              class_def,cellular_components = analyzeCommonProteinClassesAndCompartments(sm,ft_call,ft_string,rc,de,go)
+              ft_list2 = []; ac = string.split(ac,'; '); ac2=[]
               for i in ac:  i = string.replace(i,';',''); ac2.append(i)
               ac = ac2
               try: id = string.split(id,' ');id = id[0]
@@ -115,20 +117,90 @@ def import_uniprot_db(filename):
                       for alt_ens in uniprot_ensembl_db[secondary_ac]: alternate_ensembls.append(alt_ens)
                   secondary_to_primary_db[secondary_ac] = id
               ensembl += alternate_ensembls
-              y = UniProtAnnotations(id,ac,sq,ft_list2,ensembl,gn,file_type,de,embl,unigene,mgi,ft_call)
+              y = UniProtAnnotations(id,ac,sq,ft_list2,ensembl,gn,file_type,de,embl,unigene,mgi,ft_call,class_def,cellular_components)
               uniprot_db[id] = y
             else: species_not_imported.append(osd)
-            ac = '';id = '';sq = '';osd = '';gn = '';dr = '';de = ''; ft_call=''; rc=''
+            ac = '';id = '';sq = '';osd = '';gn = '';dr = '';de = ''; ft_call=''; rc='';sm='';go=''
             ft_string = '';ft = []; ensembl = []; mgi = []; unigene = []; embl = []
             
             x+=1
     print "Number of imported swissprot entries:", len(uniprot_db)
 
+def analyzeCommonProteinClassesAndCompartments(sm,ft_call,ft_string,rc,de,go):
+    ### Used to assign "Common Protein Classes" annotations to Gene Expression summary file (ExpressionOutput folder)
+    class_def=[]; annotation=[]; cellular_components = []
+    if 'DNA-binding domain' in sm or 'Transcription' in go: class_def.append('transcription regulator')
+    if 'protein kinase superfamily' in sm or 'Kinase' in go: class_def.append('kinase')
+        
+    if 'G-protein coupled receptor' in sm:
+        g_type = []
+        if ('adenylate cyclase' in ft_call) or ('adenylyl cyclase'in ft_call):
+                ###if both occur
+                if (('stimulat' in ft_call) or ('activat' in ft_call)) and ('inhibit' in ft_call):
+                    if 'inhibit aden' in ft_call: g_type.append('Gi')
+                    if 'stimulate aden' in ft_call or 'activate aden' in ft_call: g_type.append('Gs')
+                elif ('stimulat' in ft_call) or ('activat' in ft_call): g_type.append('Gs')
+                elif ('inhibit' in ft_call): g_type.append('Gi')
+        if ('cAMP' in ft_call):
+            if ('stimulat' in ft_call) or ('activat' in ft_call): g_type.append('Gs')
+            if ('inhibit' in ft_call): g_type.append('Gi')
+        if ('G(s)' in ft_call): g_type.append('Gs')
+        if ('G(i)' in ft_call): g_type.append('Gi')
+        if ('pertussis' in ft_call and 'insensitive' not in ft_call): g_type.append('Gi')
+        if ('G(i/0)' in ft_call) or ('G(i/o)' in ft_call): g_type.append('Gi')
+        if ('G(o)' in ft_call): g_type.append('Go')
+        if ('G(alpha)q' in ft_call): g_type.append('Gq')
+        if ('G(11)' in ft_call): g_type.append('G11')
+        if ('G(12)' in ft_call): g_type.append('G12')
+        if ('G(13)' in ft_call): g_type.append('G13')
+        if ('mobiliz' in ft_call and 'calcium' in ft_call and 'without formation' not in ft_call): g_type.append('Gq')
+        if ('phosphatidyl' in ft_call and 'inositol' in ft_call) or ('G(q)' in ft_call) or ('phospholipase C' in ft_call):
+                g_type.append('Gq')
+        if ('inositol phos' in ft_call) or ('phosphoinositide' in ft_call) or ('PKC'in ft_call) or ('PLC' in ft_call):
+            g_type.append('Gq')
+        if ('intracellular' in ft_call and 'calcium' in ft_call) and 'nor induced' not in ft_call: g_type.append('Gq')
+        if 'G-alpha-11' in ft_call: g_type.append('G11')
+        if 'Orphan' in ft_call or 'orphan' in ft_call: g_type.append('orphan')
+        if 'taste' in ft_call or 'Taste' in ft_call: g_type.append('taste')
+        if 'vision' in ft_call or 'Vision' in ft_call: g_type.append('vision')
+        if 'odorant' in ft_call or 'Odorant' in ft_call: g_type.append('oderant')
+        if 'influx of extracellar calcium' in ft_call: g_type.append('Gq')
+        if 'pheromone receptor' in ft_call or 'Pheromone receptor' in ft_call: g_type.append('pheromone')
+        g_protein_list = unique.unique(g_type); g_protein_str = string.join(g_protein_list,'|')
+        class_def.append('GPCR(%s)' % g_protein_str)
+    elif 'receptor' in sm or 'Receptor' in go: class_def.append('receptor')
+    if len(ft_string)>0: ### Add cellular component annotations
+        if 'ecreted' in sm: k = 1; annotation.append('extracellular')
+        if 'Extraceullar space' in sm: k = 1; annotation.append('extracellular')
+        if 'ecreted' in go: k = 1; annotation.append('extracellular')
+        if 'xtracellular' in go: k = 1; annotation.append('extracellular')
+        if 'Membrane' in sm: k = 1; annotation.append('transmembrane')
+        if 'TRANSMEM' in ft_string: k = 1; annotation.append('transmembrane')
+        if 'integral to membrane' in go: k = 1; annotation.append('transmembrane')
+        if 'Nucleus' in sm: k = 1; annotation.append('nucleus')
+        if 'nucleus' in go: k = 1; annotation.append('nucleus')
+        if 'Cytoplasm' in sm: k = 1; annotation.append('cytoplasm')
+        if 'Mitochondrion' in sm: k = 1; annotation.append('mitochondrion')
+        if 'SIGNAL' in ft_string: k = 1; annotation.append('signal')
+        ###Generate probably secreted annotations
+        if 'signal' in annotation and 'transmembrane' not in annotation:
+            for entry in annotation:
+                if entry != 'signal': cellular_components.append(entry)
+            cellular_components.append('extracellular');annotation = cellular_components
+        elif 'signal' in annotation and 'transmembrane' in annotation:
+            for entry in annotation:
+                if entry != 'signal': cellular_components.append(entry)
+            annotation = cellular_components
+            
+    cellular_components = string.join(annotation,'|')
+    class_def = string.join(class_def,'|')
+    return class_def, cellular_components
+
 class UniProtAnnotations:
-    def __init__(self,primary_id,secondary_ids,sequence,ft_list,ensembl,name,file_type,description,embl,unigene,mgi,ft_call):
-        self._primary_id = primary_id; self._sequence = sequence; self._name = name; self._secondary_ids = secondary_ids;
+    def __init__(self,primary_id,secondary_ids,sequence,ft_list,ensembl,name,file_type,description,embl,unigene,mgi,ft_call,class_def,cellular_components):
+        self._primary_id = primary_id; self._sequence = sequence; self._name = name; self._secondary_ids = secondary_ids; self._class_def = class_def
         self._file_type = file_type; self._description = description; self._ensembl = ensembl; self._ft_list = ft_list
-        self._embl = embl; self._unigene = unigene; self._mgi = mgi; self._ft_call = ft_call
+        self._embl = embl; self._unigene = unigene; self._mgi = mgi; self._ft_call = ft_call; self._cellular_components = cellular_components
     def PrimaryID(self): return self._primary_id
     def SecondaryIDs(self): return self._secondary_ids
     def Sequence(self): return self._sequence
@@ -151,6 +223,8 @@ class UniProtAnnotations:
     def FunctionDescription(self):
         if 'yrighted' in self._ft_call: return ''
         else: return self._ft_call
+    def CellularComponent(self): return self._cellular_components
+    def ClassDefinition(self): return self._class_def
     def ReSetPrimarySecondaryType(self,primary_id,secondary_id,file_type):
         secondary_ids = [secondary_id]
         self._primary_id = primary_id
@@ -160,6 +234,7 @@ class UniProtAnnotations:
         ens_list = unique.unique(self._ensembl)
         ens_str = string.join(ens_list,',')
         return ens_str
+    def EnsemblList(self): return self._ensembl
     def EMBL(self):
         embl_str = string.join(self._embl,',')
         return embl_str
@@ -189,28 +264,26 @@ class DomainData:
 def export():
     fasta_data = uniprot_fildir + 'uniprot_sequence.txt'
     fasta_data2 = uniprot_fildir + 'uniprot_feature_file.txt'
-    fn=filepath(fasta_data)
-    fn2=filepath(fasta_data2)
-    data = open(fn,'w')
-    data2 = open(fn2,'w')
+    fn=filepath(fasta_data); fn2=filepath(fasta_data2)
+    data = open(fn,'w'); data2 = open(fn2,'w')
 
+    custom_annotations = {}
     for id in uniprot_db:
-        y = uniprot_db[id]
-        ac = ''
-        ac_list = y.SecondaryIDs()
-        sq = y.Sequence()
-        ft_list = y.FTList(); ft_call = y.FunctionDescription()
-        ensembl = y.Ensembl()
-        mgi = y.MGI();embl = y.EMBL(); unigene = y.Unigene()
+        y = uniprot_db[id]; ac = ''; ac_list = y.SecondaryIDs(); sq = y.Sequence()
+        ft_list = y.FTList(); ft_call = y.FunctionDescription(); ens_list = y.EnsemblList()
+        ensembl = y.Ensembl(); mgi = y.MGI();embl = y.EMBL(); unigene = y.Unigene()
         gn = y.Name();de = y.Description()
-        file_type = y.FileType()
-        ac = string.join(ac_list,',')
+        file_type = y.FileType(); ac = string.join(ac_list,',')
         
         if '-' in id: ac2 = id; id = ac; ac = ac2
         info = [id,ac,sq,gn,ensembl,de,file_type,unigene,mgi,embl]
         info = string.join(info,'\t')+'\n'
         data.write(info)
-        
+
+        for ens_gene in ens_list:
+            custom_annot=string.join([ens_gene,y.CellularComponent(), y.ClassDefinition()],'\t')+'\n'
+            if len(y.CellularComponent())>1 or len(y.ClassDefinition())>1: custom_annotations[ens_gene] = custom_annot
+                                     
         if len(ft_list)>0:
             for dd in ft_list:  ### Export domain annotations
                 try:
@@ -219,9 +292,14 @@ def export():
                     info2 = string.replace(info2,';,','')
                     data2.write(info2)
                 except ValueError: null=[]
-                
     data.close();data2.close()
 
+    ###Export custom annotations for Ensembl genes
+    output_file = uniprot_fildir + 'custom_annotations.txt'
+    fn=filepath(output_file); data = open(fn,'w')
+    for entry in custom_annotations: data.write(custom_annotations[entry])
+    data.close()
+    
 def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_url,force):
     global uniprot_ensembl_db;uniprot_ensembl_db={}
     global uniprot_db;uniprot_db={}; global species_name; global uniprot_fildir
@@ -234,11 +312,13 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
     uniprot_ens_file = species+'_Ensembl-UniProt.txt'; uniprot_ens_location = uniprot_fildir+uniprot_ens_file
     uniprot_location = uniprot_fildir+uniprot_file
     trembl_location = uniprot_fildir+trembl_file
+
+    add_trembl_annotations = 'no' ### Currently we don't need these annotations    
     try: import_ensembl_uniprot_db(uniprot_ens_location)
     except IOError:
         import update; reload(update)
         ### Download the data from the AltAnalyze website
-        update.downloadCurrentVersion(uniprot_ens_file,uniprot_fildir,species,'txt')
+        update.downloadCurrentVersion(uniprot_ens_location,species,'txt')
         import_ensembl_uniprot_db(uniprot_ens_location)
     ### Import UniProt annotations
     try:
@@ -249,15 +329,17 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
         ### Directly download the data from UniProt
         update.download(uniprot_filename_url,uniprot_fildir,'')
         import_uniprot_db(uniprot_location)
-    ### Import TreMBL annotations
-    try:
-        if force == 'yes': uniprot_location += '!!!!!' ### Force an IOError
-        import_uniprot_db(trembl_location)
-    except IOError:
-        import update; reload(update)
-        ### Directly download the data from UniProt
-        update.download(trembl_filename_url,uniprot_fildir,'')
-        import_uniprot_db(trembl_location)        
+        
+    if add_trembl_annotations == 'yes':
+        ### Import TreMBL annotations
+        try:
+            if force == 'yes': uniprot_location += '!!!!!' ### Force an IOError
+            import_uniprot_db(trembl_location)
+        except IOError:
+            import update; reload(update)
+            ### Directly download the data from UniProt
+            update.download(trembl_filename_url,uniprot_fildir,'')
+            import_uniprot_db(trembl_location)        
     export()
     
 if __name__ == '__main__':

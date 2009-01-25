@@ -1174,7 +1174,7 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
             exon_sets = abs(float(dI)),regulation_call,event_call,exons1,exons1,midas_p
 
             ### Write DomainGraph results
-            values_dg = [probeset1,affygene,'changed',dI,str(si_pvalue),midas_p]; values_dg = string.join(values_dg,'\t')+'\n'
+            values_dg = [probeset,affygene,'changed',dI,str(si_pvalue),midas_p]; values_dg = string.join(values_dg,'\t')+'\n'
             DG_data.write(values_dg)
             
         if len(ed.SplicingEvent())>2:
