@@ -29,6 +29,7 @@ import ExonAnnotate_module
 import ResultsExport_module
 import FeatureAlignment
 import time
+import random
 
 use_Tkinter = 'yes'
 try:
@@ -37,7 +38,7 @@ try:
     from Tkinter import *
     use_Tkinter = 'yes'
 except ImportError: use_Tkinter = 'yes'; print "\nPmw or Tkinter not found... Tkinter print out not available";
-debug_mode = 'no'
+debug_mode = 'yes'
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -78,24 +79,29 @@ def cleanUpLine(line):
     return data
 
 def importGeneric(filename):
-    fn=filepath(filename); key_db = {}; x = 0
+    fn=filepath(filename); key_db = {}
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        if x == 0: x = 1
-        else:
-            t = string.split(data,'\t')
-            key_db[t[0]] = t[1:]
+        t = string.split(data,'\t')
+        key_db[t[0]] = t[1:]
+    return key_db
+
+def importGenericFiltered(filename,filter_db):
+    fn=filepath(filename); key_db = {}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        key = t[0]
+        if key in filter_db: key_db[key] = t[1:]
     return key_db
 
 def importGenericDBList(filename):
-    fn=filepath(filename); key_db = {}; x = 0
+    fn=filepath(filename); key_db = {}
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        if x == 0: x = 1
-        else:
-            t = string.split(data,'\t')
-            try: key_db[t[0]] = t[1:]
-            except KeyError:  key_db[t[0]] = t[1:]
+        t = string.split(data,'\t')
+        try: key_db[t[0]].append(t[1])
+        except KeyError:  key_db[t[0]] = [t[1]]
     return key_db
 
 ########### Parse Input Annotations ###########
@@ -229,7 +235,13 @@ def ProbesetCalls(array_type,probeset_class,splice_event,constitutive_call,exter
             if '|' in exonid: include_probeset = 'no'
         if constitutive_call == 'yes': include_probeset = 'yes'
     return include_probeset,constitutive_call
-                    
+
+def EvidenceOfAltSplicing(slicing_annot):
+    splice_annotations = ["ntron","xon","strangeSplice","Prime","3","5","C-term"]; as_call = 'no'
+    for annot in splice_annotations:
+        if annot in slicing_annot: as_call = 'yes'
+    return as_call
+
 ########### Begin Analyses ###########
 class SplicingAnnotationData:
     def ArrayType(self):
@@ -344,7 +356,9 @@ def importSplicingAnnotationDatabase(filename,array_type,filtered_arrayids,filte
                 if len(exon_region)>1: last_exon_region = exon_region ### some probeset not linked to an exon region
                 ###Record the transcript clusters assoicated with each gene to annotate the results later on
                 if constituitive_call_probeset!=constituitive_call :probesets_included_by_new_evidence +=1#; print probeset_id,[splicing_event],[constituitive_call_probeset];kill
-                if include_call == 'yes' or constituitive_call == 'yes':
+                proceed = 'no'
+                if include_call == 'yes' or constituitive_call == 'yes': proceed = 'yes'
+                if proceed == 'yes':
                     if filter_status == 'no': probe_data = AffyExonSTDataAbbreviated(ensembl_gene_id, exon_id)
                     else: probe_data = AffyExonSTData(ensembl_gene_id, exon_id, external_exonid, transcript_cluster_id, affy_class, constituitive_call, exon_region, splicing_event, splice_junctions)
                     if filter_status == 'yes':
@@ -768,6 +782,49 @@ def constituitive_exp_normalization_raw(gene_db,constituitive_gene_db,array_raw_
                     except KeyError: normalized_raw_exp_ratios[probeset] = [log_exp_ratio]
     return avg_const_exp_db
 
+######### Z Score Analyses #######
+
+class ZScoreData:
+    def __init__(self,element,changed,measured,zscore,null_z,gene_symbols):
+        self._element = element; self._changed = changed; self._measured = measured
+        self._zscore = zscore; self._null_z = null_z; self._gene_symbols = gene_symbols
+    def ElementID(self): return self._element
+    def Changed(self): return str(self._changed)
+    def Measured(self): return str(self._measured)
+    def AssociatedWithElement(self): return str(self._gene_symbols)
+    def ZScore(self): return str(self._zscore)
+    def SetP(self,p): self._permute_p = p
+    def PermuteP(self): return str(self._permute_p)
+    def SetAdjP(self,adjp): self._adj_p = adjp
+    def AdjP(self): return str(self._adj_p)
+    def PercentChanged(self):
+        try: pc = float(self.Changed())/float(self.Measured())*100
+        except ZeroDivisionError: pc = 0
+        return str(pc)
+    def NullZ(self): return self._null_z
+    def Report(self):
+        output = self.ElementID()
+        return output
+    def __repr__(self): return self.Report()
+    
+def countGenesForElement(permute_input_list,probeset_to_gene,gene_element_db):
+    element_gene_db={}
+    for probeset in permute_input_list:
+        gene = probeset_to_gene[probeset]
+        try:
+            element_list = gene_element_db[gene]
+            for element in element_list:
+                try: element_gene_db[element].append(gene)
+                except KeyError: element_gene_db[element] = [gene]
+        except KeyError: null=[]
+
+    ### Count the number of unique genes per element
+    for element in element_gene_db:
+        t = {}
+        for i in element_gene_db[element]: t[i]=[]
+        element_gene_db[element] = len(t)
+    return element_gene_db
+
 def formatGeneSymbolHits(geneid_list):
     symbol_list=[]
     for geneid in geneid_list:
@@ -778,53 +835,127 @@ def formatGeneSymbolHits(geneid_list):
     symbol_str = string.join(symbol_list,', ')
     return symbol_str
 
-def calculateZScores(hit_count_db,denom_count_db,total_gene_denom_count,total_gene_hit_count,z_results_db,gene_results_db,symbol_results_db):
+def zscore(r,n,N,R):
+    try: z = (r - n*(R/N))/math.sqrt(n*(R/N)*(1-(R/N))*(1-((n-1)/(N-1)))) #z = statistics.zscore(r,n,N,R)
+    except ValueError: print 'error:',element,r,n,N,R
+    return z
+
+def calculateZScores(hit_count_db,denom_count_db,total_gene_denom_count,total_gene_hit_count,z_results_db,gene_results_db,symbol_results_db,element_type):
     N = float(total_gene_denom_count)  ###Genes examined
     R = float(total_gene_hit_count)  ###AS genes
 
     for element in denom_count_db:
         element_denom_gene_count = denom_count_db[element]
+        n = float(element_denom_gene_count) ###all genes associated with element
         if element in hit_count_db:
             element_hit_gene_count = len(hit_count_db[element])
             gene_symbols = formatGeneSymbolHits(hit_count_db[element])
-            n = float(element_denom_gene_count) ###all genes associated with element
             r = float(element_hit_gene_count) ###regulated genes associated with element
-            #z = statistics.zscore(r,n,N,R)
-            try: z = (r - n*(R/N))/math.sqrt(n*(R/N)*(1-(R/N))*(1-((n-1)/(N-1))))
-            except ValueError: print 'error:',element,r,n,N,R
-            try: z_results_db[element].append(str(z))
-            except KeyError: z_results_db[element] = [str(z)]
-            try: gene_results_db[element].append(str(r))
-            except KeyError: gene_results_db[element] = [str(r)]
-            try:
-                try: symbol_results_db[element].append(gene_symbols)
-                except KeyError: symbol_results_db[element] = [gene_symbols]
-            except TypeError:
-                print gene_symbols,symbol_results_db;kill
-        else:
-            try: z_results_db[element].append(str(0))
-            except KeyError: z_results_db[element] = [str(0)]
-            try: gene_results_db[element].append(str(0))
-            except KeyError: gene_results_db[element] = [str(0)]
-            try: symbol_results_db[element].append('')
-            except KeyError: symbol_results_db[element] = ['']
-            
-    return z_results_db,gene_results_db,symbol_results_db
+        else: r = 0; gene_symbols = ''
+        
+        z = zscore(r,n,N,R); null_z = zscore(0,n,N,R)
+        zsd = ZScoreData(element,r,n,z,null_z,gene_symbols)
+        if element_type == 'domain': original_domain_z_score_data[element] = zsd
+        elif element_type == 'microRNA': original_microRNA_z_score_data[element] = zsd
+        permuted_z_scores[element] = [z]
+    return N,R
 
-def exportZScoreData(results_db,headers,gene_results_db,denom_count_db,symbol_results_db,element_type):
+######### Begin Permutation Analysis #######
+def calculatePermuteZScores(permute_element_inputs,element_denominator_gene_count,N,R):
+    ###Make this code as efficient as possible
+    for element_input_gene_count in permute_element_inputs:  
+        for element in element_input_gene_count:
+            r = element_input_gene_count[element]
+            n = element_denominator_gene_count[element]
+            try: z = statistics.zscore(r,n,N,R)
+            except ZeroDivisionError: z = 0
+            permuted_z_scores[element].append(abs(z))
+            #if element == '0005488':
+            #a.append(r)
+                
+def calculatePermuteStats(original_element_z_score_data):
+    for element in original_element_z_score_data:
+        zsd = original_element_z_score_data[element]
+        z = abs(permuted_z_scores[element][0])
+        permute_scores = permuted_z_scores[element][1:] ###Exclude the true value
+        nullz = zsd.NullZ()
+        if abs(nullz) == z: ###Only add the nullz values if they can count towards the p-value (if equal to the original z)
+            null_z_to_add = permutations - len(permute_scores)
+            permute_scores+=[abs(nullz)]*null_z_to_add ###Add null_z's in proportion to the amount of times there were not genes found for that element
+        if len(permute_scores)>0: p = permute_p(permute_scores,z)  
+        else: p = 1
+        #if p>1: p=1
+        zsd.SetP(p)
+
+def adjustPermuteStats(original_element_z_score_data):
+    #1. Sort ascending the original input p value vector.  Call this spval.  Keep the original indecies so you can sort back.
+    #2. Define a new vector called tmp.  tmp= spval.  tmp will contain the BH p values.
+    #3. m is the length of tmp (also spval)
+    #4. i=m-1
+    #5  tmp[ i ]=min(tmp[i+1], min((m/i)*spval[ i ],1)) - second to last, last, last/second to last
+    #6. i=m-2
+    #7  tmp[ i ]=min(tmp[i+1], min((m/i)*spval[ i ],1))
+    #8  repeat step 7 for m-3, m-4,... until i=1
+    #9. sort tmp back to the original order of the input p values.
+    
+    global spval; spval=[]
+    for element in original_element_z_score_data:
+        zsd = original_element_z_score_data[element]
+        p = float(zsd.PermuteP())
+        spval.append([p,element])
+        
+    spval.sort(); tmp = spval; m = len(spval); i=m-2; x=0 ###Step 1-4
+    
+    while i > -1:
+        tmp[i]=min(tmp[i+1][0], min((m/(i+1))*spval[i][0],1)),tmp[i][1]; i -= 1
+        
+    for (adjp,element) in tmp:
+        zsd = original_element_z_score_data[element]
+        zsd.SetAdjP(adjp)
+        
+def permute_p(null_list,true_value):
+    y = 0; z = 0; x = permutations
+    for value in null_list:
+        if value >= true_value: y += 1
+    #if true_value > 8: global a; a = null_list; print true_value,y,x;kill
+    return (float(y)/float(x))  ###Multiply probabilty x2?
+
+######### End Permutation Analysis #######
+def exportZScoreData(original_element_z_score_data,element_type):
     element_output = root_dir+'AltResults/AlternativeOutput/' + dataset_name + analysis_method+'-'+element_type+'-zscores.txt'
     data = export.createExportFile(element_output,root_dir+'AltResults/AlternativeOutput')
-    headers_z = []; headers_gene = []; headers_symbol = []
-    for header in headers: headers_z.append(header+'-Zscore')
-    for header in headers: headers_gene.append(header+'-gene-count')
-    for header in headers: headers_symbol.append(header+'-gene-symbols')
-    title = [element_type]+headers_z+headers_gene+headers_symbol+['all-denominator-gene-count']
-    title = string.join(title,'\t')+'\n'; data.write(title)
-    for element in results_db:
-        element_denom_gene_count = str(denom_count_db[element]) ###This is the denominator for all (not inclusion or exclusion which we don't report)
-        values = [element]+results_db[element]+gene_results_db[element]+symbol_results_db[element]+[element_denom_gene_count]
-        values = string.join(values,'\t')+'\n'; data.write(values)
+
+    headers = [element_type+'-Name','Number Changed','Number Measured','Percent Changed', 'Zscore','PermuteP','AdjP','Changed GeneSymbols']
+    headers = string.join(headers,'\t')+'\n'
+    data.write(headers); sort_results=[]
+    print "Results for",len(original_element_z_score_data),"elements exported to",element_output
+    for element in original_element_z_score_data:
+        zsd=original_element_z_score_data[element]
+        try: results = [zsd.Changed(), zsd.Measured(), zsd.PercentChanged(), zsd.ZScore(), zsd.PermuteP(), zsd.AdjP(), zsd.AssociatedWithElement()]
+        except AttributeError: print element,len(permuted_z_scores[element]);kill
+        results = [element] + results
+        results = string.join(results,'\t') + '\n'
+        sort_results.append([float(zsd.PermuteP()),-1/float(zsd.Measured()),results])
         
+    sort_results.sort()
+    for values in sort_results:
+        results = values[2]
+        data.write(results)
+    data.close()
+    
+def getInputsForPermutationAnalysis():
+    probeset_to_gene = {}; denominator_list = [] ### This may seem redundant, but since exon_db is cleared from memory later and re-written we need to have a list of all denominator probesets
+    for probeset in exon_db:
+        proceed = 'no'
+        if filter_for_AS == 'yes':
+            as_call = EvidenceOfAltSplicing(splicing_event)
+            if as_call == 'yes': proceed = 'yes'
+        else: proceed = 'yes'
+        gene = exon_db[probeset].GeneID()
+        probeset_to_gene[probeset] = gene
+        denominator_list.append(probeset)
+    return probeset_to_gene,denominator_list
+
 def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name,gene_expression_diff_db,exon_db):
     protein_exon_feature_db={}
     print "Begining to run", analysis_method, "algorithm on",dataset_name[0:-1],"data"
@@ -832,6 +963,12 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
         splice_event_list, p_value_call, permute_p_values = analyzeJunctionSplicing(relative_splicing_ratio)
     if analysis_method == 'splicing-index':
         splice_event_list, p_value_call, permute_p_values, excluded_probeset_db = analyzeSplicingIndex(fold_dbase)
+
+    global permuted_z_scores; permuted_z_scores={}; global original_domain_z_score_data; original_domain_z_score_data={}
+    global original_microRNA_z_score_data; original_microRNA_z_score_data={}
+
+    if perform_element_permutation_analysis == 'yes':
+        probeset_to_gene,denominator_list = getInputsForPermutationAnalysis()
         
     exon_hits={}
     ###Run analyses in the ExonAnalyze_module module to assess functional changes
@@ -844,7 +981,21 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
     dataset_name_original = analysis_method+'-'+dataset_name[8:-1]
     global functional_attribute_db; global protein_features
     
-    filtered_microRNA_exon_db, exon_attribute_db, gene_top_attribute_db, functional_attribute_db, protein_features = ExonAnalyze_module.function_exon_analysis_main(array_type,exon_hits,dataset_name_original,microRNA_full_exon_db,protein_sequence_dbase,probeset_protein_db,protein_ft_db)
+    #filtered_microRNA_exon_db, functional_attribute_db, protein_features = ExonAnalyze_module.function_exon_analysis_main(array_type,exon_hits,dataset_name_original,microRNA_full_exon_db,protein_sequence_dbase,probeset_protein_db,protein_ft_db)
+
+    ### Possibly Block-out code for DomainGraph export             
+    ###########  Re-import the exon_db for significant entries with full annotaitons
+    exon_db={}; filtered_arrayids={}; filter_status='yes' ###Use this as a means to save memory (import multiple times - only storing different types relevant information)
+    for (score,entry) in splice_event_list:
+        probeset = entry.Probeset1(); filtered_arrayids[probeset] = []
+        if array_type != 'exon':
+            try: probeset = entry.Probeset2(); filtered_arrayids[probeset] = []
+            except AttributeError: null =[] ###occurs when running Splicing 
+    exon_db = importSplicingAnnotationDatabase(probeset_annotations_file,array_type,filtered_arrayids,filter_status);null=[] ###replace existing exon_db (probeset_annotations_file should be a global)
+
+    ###domain_gene_changed_count_db is the number of genes for each domain that are found for regulated probesets
+    protein_features,domain_gene_changed_count_db,functional_attribute_db = importProbesetProteinCompDomains(exon_db,'probeset','exoncomp')
+    filtered_microRNA_exon_db = ExonAnalyze_module.filterMicroRNAProbesetAssociations(microRNA_full_exon_db,exon_hits)
     
     ###add microRNA data to functional_attribute_db
     microRNA_hit_gene_count_db = {}; all_microRNA_gene_hits={}; microRNA_attribute_db={}
@@ -874,8 +1025,6 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
             
     ###Replace the gene list for each microRNA hit with count data            
     microRNA_hit_gene_count_db = eliminate_redundant_dict_values(microRNA_hit_gene_count_db)
-    """for microRNA in microRNA_hit_gene_count_db:
-        microRNA_hit_gene_count_db[microRNA] = len(microRNA_hit_gene_count_db[microRNA])"""
             
     ###Combines any additional feature alignment info identified from 'ExonAnalyze_module.function_exon_analysis_main' (e.g. from Ensembl or junction-based queries rather than exon specific) and combines
     ###this with this database of (Gene,Exon)=[(functional element 1,'~'),(functional element 2,'~')] for downstream result file annotatations
@@ -891,29 +1040,59 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
             all_domain_gene_hits[gene]=[]
     ###Replace the gene list for each microRNA hit with count data
     domain_hit_gene_count_db = eliminate_redundant_dict_values(domain_hit_gene_count_db)
-    """for domain in domain_hit_gene_count_db:
-        domain_hit_gene_count_db[domain] = len(domain_hit_gene_count_db[domain])"""
 
     ############   Perform Element Over-Representation Analysis ############
     """Domain/FT Fishers-Exact test: with "protein_exon_feature_db" (transformed to "domain_hit_gene_count_db") we can analyze over-representation of domain/features WITHOUT taking into account exon-inclusion or exclusion
-    Do this using: "domain_gene_counts", which contains domain tuple ('Tyr_pkinase', 'IPR001245') as a key and count in unique genes as the value in addition to
+    Do this using: "domain_associated_genes", which contains domain tuple ('Tyr_pkinase', 'IPR001245') as a key and count in unique genes as the value in addition to
     Number of genes linked to splice events "regulated" (SI and Midas p<0.05), number of genes with constitutive probesets
 
     MicroRNA Fishers-Exact test: "filtered_microRNA_exon_db" contains gene/exon to microRNA data. For each microRNA, count the representation in spliced genes microRNA (unique gene count - make this from the mentioned file)
     Do this using: "microRNA_count_db"""
-    
+
+    domain_gene_counts = {} ### Get unique gene counts for each domain
+    for domain in domain_associated_genes:
+        domain_gene_counts[domain] = len(domain_associated_genes[domain])
+        
     total_microRNA_gene_hit_count = len(all_microRNA_gene_hits)
-    total_microRNA_gene_denom_count = len(gene_microRNA_denom); microRNA_z_scores={}; microRNA_gene_count={}; microRNA_z_score_headers=[]; microRNA_symbol_results = {}
-    microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results = calculateZScores(microRNA_hit_gene_count_db,microRNA_count_db,total_microRNA_gene_denom_count,total_microRNA_gene_hit_count,microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results)
-    microRNA_z_score_headers+=['all']
+    total_microRNA_gene_denom_count = len(gene_microRNA_denom); microRNA_z_scores={}; microRNA_gene_count={}; microRNA_symbol_results = {}
+    Nm,Rm = calculateZScores(microRNA_hit_gene_count_db,microRNA_count_db,total_microRNA_gene_denom_count,total_microRNA_gene_hit_count,microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results,'microRNA')
     
-    total_domain_gene_hit_count = len(all_domain_gene_hits);domain_z_scores={}; domain_z_score_headers=[]; domain_gene_count={}; domain_symbol_results={}
+    total_domain_gene_hit_count = len(all_domain_gene_hits);domain_z_scores={}; domain_gene_count={}; domain_symbol_results={}
     total_domain_gene_denom_count = len(protein_ft_db) ###genes connected to domain annotations
-    domain_z_scores,domain_gene_count,domain_symbol_results = calculateZScores(domain_hit_gene_count_db,domain_gene_counts,total_domain_gene_denom_count,total_domain_gene_hit_count,domain_z_scores,domain_gene_count,domain_symbol_results)
-    domain_z_score_headers+=['all']
+    Nd,Rd = calculateZScores(domain_hit_gene_count_db,domain_gene_counts,total_domain_gene_denom_count,total_domain_gene_hit_count,domain_z_scores,domain_gene_count,domain_symbol_results,'domain')
+        
+    microRNA_hit_gene_counts={}; gene_to_miR_db={} ### Get unique gene counts for each miR and the converse
+    for microRNA in microRNA_hit_gene_count_db:
+        microRNA_hit_gene_counts[microRNA] = len(microRNA_hit_gene_count_db[microRNA])
+        for gene in microRNA_hit_gene_count_db[microRNA]:
+            try: gene_to_miR_db[gene].append(microRNA)
+            except KeyError: gene_to_miR_db[gene] = [microRNA]
+    gene_to_miR_db = eliminate_redundant_dict_values(gene_to_miR_db)
+        
+    if perform_element_permutation_analysis == 'yes':
+        ###Begin Domain/microRNA Permute Analysis
+        input_count = len(splice_event_list)  ### Number of probesets or probeset pairs (junction array) alternatively regulated
+        start_time = time.time(); print 'Permuting the Domain/miRBS analysis %d times' % permutations
+        x=0; permute_domain_inputs=[]; permute_miR_inputs=[]
+        while x<permutations:
+            permute_input_list = random.sample(denominator_list,input_count); x+=1
+            permute_domain_input_gene_counts = countGenesForElement(permute_input_list,probeset_to_gene,protein_ft_db)
+            permute_domain_inputs.append(permute_domain_input_gene_counts)
+            permute_miR_input_gene_counts = countGenesForElement(permute_input_list,probeset_to_gene,gene_to_miR_db)
+            permute_miR_inputs.append(permute_miR_input_gene_counts)
+        calculatePermuteZScores(permute_domain_inputs,domain_gene_counts,Nd,Rd)
+        calculatePermuteZScores(permute_miR_inputs,microRNA_hit_gene_counts,Nm,Rm)
+        calculatePermuteStats(original_domain_z_score_data)
+        calculatePermuteStats(original_microRNA_z_score_data)
+        adjustPermuteStats(original_domain_z_score_data)
+        adjustPermuteStats(original_microRNA_z_score_data)
+        exportZScoreData(original_domain_z_score_data,'ft-domain')
+        exportZScoreData(original_microRNA_z_score_data,'microRNA')
+        end_time = time.time(); time_diff = int(end_time-start_time)
+        print "Permuted p-values for Domains/miRBS calculated in %d seconds" % time_diff
 
     ###########  Import critical exon annotation for junctions, build through the exon array analysis pipeline - link back to probesets
-    exon_db={}; filtered_arrayids={}; filter_status='yes'; global critical_exon_annotation_db; critical_probeset_annotation_db={}
+    filtered_arrayids={}; global critical_exon_annotation_db; critical_probeset_annotation_db={}
     if array_type != 'exon':
         critical_exon_annotation_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
         for key in exon_hits:
@@ -942,18 +1121,8 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
             else:
                 critical_probeset_annotation_db[junction_probesets] = critical_probeset_annotation_db[junction_probesets][0]
 
-    ### Possibly Block-out code for DomainGraph export             
-    ###########  Re-import the exon_db for significant entries with full annotaitons
-    exon_db={}; filtered_arrayids={} ###Use this as a means to save memory (import multiple times - only storing different types relevant information)
-    for (score,entry) in splice_event_list:
-        probeset = entry.Probeset1(); filtered_arrayids[probeset] = []
-        if array_type != 'exon':
-            try: probeset = entry.Probeset2(); filtered_arrayids[probeset] = []
-            except AttributeError: null =[] ###occurs when running Splicing 
-    exon_db= importSplicingAnnotationDatabase(probeset_annotations_file,array_type,filtered_arrayids,filter_status);null=[] ###replace existing exon_db (probeset_annotations_file should be a global)
-
     if array_type == 'exon':
-        probeset_aligning_db = importProbesetAligningDomains(exon_db)
+        probeset_aligning_db = importProbesetAligningDomains(exon_db,'perfect_match')
     ############   Export exon/junction level results ############    
     splice_event_db={}; protein_length_list=[]; aspire_gene_results={}
     critical_gene_exons={}; unique_exon_event_db={}; comparison_count={}
@@ -1095,9 +1264,9 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
         else:
             try: ed = critical_probeset_annotation_db[probeset1,probeset2]
             except KeyError: ed = exon_db[probeset1] ###not useful data here, but the objects need to exist
-        ucsc_splice_annotations = ["retainedIntron","cassetteExon","strangeSplice","altFivePrime","altThreePrime","altThreePrime","altPromoter","bleedingExon"]
+        ucsc_splice_annotations = ["retainedIntron","cassetteExon","strangeSplice","altFivePrime","altThreePrime","altPromoter","bleedingExon"]
         custom_annotations = ["alt-3'","alt-5'","alt-C-term","alt-N-term","cassette-exon","cassette-exon","exon-region-exclusion","intron-retention"]
-
+       
         custom_exon_annotations_found='no'; ucsc_annotations_found = 'no'; exon_annot_score=0
         if len(ed.SplicingEvent())>0: 
             for annotation in ucsc_splice_annotations:
@@ -1142,10 +1311,6 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
                 midas_p = str(midas_db[probeset1])
                 if float(midas_p)<lowest_raw_p: lowest_raw_p = float(midas_p) ###This is the lowest and SI-pvalue
             else: midas_p = ''
-            try:
-                es = probeset_protein_db[probeset1]
-                hit_exons = es.HitProteinExonIDs(); null_exons = es.NullProteinExonIDs()
-            except KeyError: hit_exons =''; null_exons=''
             
             ###Determine what type of exon-annotations are present to assign a confidence score
             if affygene in annotate_db: ###Determine the transcript clusters used to comprise a splice event (genes and exon specific)
@@ -1214,6 +1379,7 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
     functional_attribute_db = functional_attribute_db2
     functional_attribute_db2 = reorganize_attribute_entries(functional_attribute_db2,'no')
     external_exon_annot = eliminate_redundant_dict_values(external_exon_annot)
+    """
     protein_exon_feature_db = protein_exon_feature_db2
     microRNA_exon_feature_db = microRNA_exon_feature_db2
     protein_exon_feature_db2,incl_domain_hit_count,all_incl_domain_gene_hits,excl_domain_hit_count,all_excl_domain_gene_hits = reorganize_attribute_entries(protein_exon_feature_db2,'yes')
@@ -1221,23 +1387,19 @@ def splicing_analysis_algorithms(relative_splicing_ratio,fold_dbase,dataset_name
     
     ############   Perform Element Over-Representation Analysis ############
     total_microRNA_gene_hit_count = len(all_incl_microRNA_gene_hits)
-    microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results = calculateZScores(incl_microRNA_hit_count,microRNA_count_db,total_microRNA_gene_denom_count,total_microRNA_gene_hit_count,microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results)
-    microRNA_z_score_headers+=['inclusion']
-
+    calculateZScores(incl_microRNA_hit_count,microRNA_count_db,total_microRNA_gene_denom_count,total_microRNA_gene_hit_count,microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results)
+    
     total_microRNA_gene_hit_count = len(all_excl_microRNA_gene_hits)
-    microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results = calculateZScores(excl_microRNA_hit_count,microRNA_count_db,total_microRNA_gene_denom_count,total_microRNA_gene_hit_count,microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results)
-    microRNA_z_score_headers+=['exclusion']
+    calculateZScores(excl_microRNA_hit_count,microRNA_count_db,total_microRNA_gene_denom_count,total_microRNA_gene_hit_count,microRNA_z_scores,microRNA_gene_count,microRNA_symbol_results)
     
     total_domain_gene_hit_count = len(all_incl_domain_gene_hits)
-    domain_z_scores,domain_gene_count,domain_symbol_results = calculateZScores(incl_domain_hit_count,domain_gene_counts,total_domain_gene_denom_count,total_domain_gene_hit_count,domain_z_scores,domain_gene_count,domain_symbol_results)
-    domain_z_score_headers+=['inclusion']
+    calculateZScores(incl_domain_hit_count,domain_associated_genes,total_domain_gene_denom_count,total_domain_gene_hit_count,domain_z_scores,domain_gene_count,domain_symbol_results)
 
     total_domain_gene_hit_count = len(all_excl_domain_gene_hits)
-    domain_z_scores,domain_gene_count,domain_symbol_results = calculateZScores(excl_domain_hit_count,domain_gene_counts,total_domain_gene_denom_count,total_domain_gene_hit_count,domain_z_scores,domain_gene_count,domain_symbol_results)
-    domain_z_score_headers+=['exclusion']    
-
-    exportZScoreData(microRNA_z_scores,microRNA_z_score_headers,microRNA_gene_count,microRNA_count_db,microRNA_symbol_results,'microRNA')
-    exportZScoreData(domain_z_scores,domain_z_score_headers,domain_gene_count,domain_gene_counts,domain_symbol_results,'ft-domain')
+    calculateZScores(excl_domain_hit_count,domain_associated_genes,total_domain_gene_denom_count,total_domain_gene_hit_count,domain_z_scores,domain_gene_count,domain_symbol_results)   
+    """
+    #exportZScoreData(microRNA_z_scores,microRNA_z_score_headers,microRNA_gene_count,microRNA_count_db,microRNA_symbol_results,'microRNA')
+    #exportZScoreData(domain_z_scores,domain_z_score_headers,domain_gene_count,domain_associated_genes,domain_symbol_results,'ft-domain')
 
     ############   Export Gene Data ############        
     up_splice_val_genes = 0; down_dI_genes = 0; diff_exp_spliced_genes = 0; diff_spliced_rna_factor = 0
@@ -1531,26 +1693,117 @@ def analyzeSplicingIndex(fold_dbase):
     p_value_call=''; permute_p_values = {}
     return splicing_index_hash,p_value_call,permute_p_values, excluded_probeset_db
 
-def importProbesetAligningDomains(exon_db):
+def importProbesetAligningDomains(exon_db,report_type):
     filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_domain_aligning_probesets.txt'
     probeset_aligning_db = importGenericDBList(filename)
     filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_indirect_domain_aligning_probesets.txt'
     probeset_indirect_aligning_db = importGenericDBList(filename)
 
+    gene_protein_ft_db={};domain_gene_count_db={};protein_functional_attribute_db={}
     for probeset in probeset_aligning_db:
         if probeset in exon_db:
-            new_domain_list = []
-            for domain in probeset_aligning_db[probeset]: new_domain_list.append('(direct)'+domain)
-            new_domain_list = string.join(new_domain_list,', ')
-            probeset_aligning_db[probeset] = new_domain_list
+            gene = exon_db[probeset].GeneID()
+            new_domain_list=[]; new_domain_list2=[]
+            if report_type == 'gene':
+                for domain in probeset_aligning_db[probeset]:
+                    try: domain_gene_count_db[domain].append(gene)
+                    except KeyError: domain_gene_count_db[domain] = [gene]
+                    try: gene_protein_ft_db[gene].append(domain)
+                    except KeyError: gene_protein_ft_db[gene]=[domain]
+            else:
+                for domain in probeset_aligning_db[probeset]:
+                    new_domain_list.append('(direct)'+domain)
+                    new_domain_list2.append((domain,'+'))
+                new_domain_list = string.join(new_domain_list,', ')
+                gene_protein_ft_db[gene,probeset] = new_domain_list2
+                probeset_aligning_db[probeset] = new_domain_list
 
     for probeset in probeset_indirect_aligning_db:
         if probeset in exon_db:
+            gene = exon_db[probeset].GeneID()
+            new_domain_list=[]; new_domain_list2=[]
+            if report_type == 'gene':
+                for domain in probeset_indirect_aligning_db[probeset]:
+                    try: domain_gene_count_db[domain].append(gene)
+                    except KeyError: domain_gene_count_db[domain] = [gene]
+                    try: gene_protein_ft_db[gene].append(domain)
+                    except KeyError: gene_protein_ft_db[gene]=[domain]
+            else:
+                for domain in probeset_indirect_aligning_db[probeset]:
+                    new_domain_list.append('(indirect)'+domain)
+                    new_domain_list2.append((domain,'-'))
+                new_domain_list = string.join(new_domain_list,', ')
+                gene_protein_ft_db[gene,probeset] = new_domain_list2
+                probeset_aligning_db[probeset] = new_domain_list
+
+    domain_gene_count_db = eliminate_redundant_dict_values(domain_gene_count_db)
+    gene_protein_ft_db = eliminate_redundant_dict_values(gene_protein_ft_db)
+    
+    if report_type == 'perfect_match': return probeset_aligning_db
+    elif report_type == 'probeset': return gene_protein_ft_db,domain_gene_count_db,protein_functional_attribute_db  
+    else: return gene_protein_ft_db,domain_gene_count_db
+
+def importProbesetProteinCompDomains(exon_db,report_type,comp_type):
+    filename = 'AltDatabase/'+species+'/'+array_type+'/probeset-domain-annotations-'+comp_type+'.txt'
+    probeset_aligning_db = importGeneric(filename)
+    filename = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-annotations-'+comp_type+'.txt'
+    probeset_protein_db = importGeneric(filename)
+        
+    gene_protein_ft_db={};domain_gene_count_db={}
+    for probeset in probeset_aligning_db:
+        if probeset in exon_db:
             new_domain_list = []
-            for domain in probeset_indirect_aligning_db[probeset]: new_domain_list.append('(indirect)'+domain)
-            new_domain_list = string.join(new_domain_list,', ')
-            probeset_aligning_db[probeset] = new_domain_list
-    return probeset_aligning_db      
+            gene = exon_db[probeset].GeneID()
+            if report_type == 'gene':
+                for domain_data in probeset_aligning_db[probeset]:
+                    domain,call = string.split(domain_data,'|')                
+                    try: domain_gene_count_db[domain].append(gene)
+                    except KeyError: domain_gene_count_db[domain] = [gene]
+                    try: gene_protein_ft_db[gene].append(domain)
+                    except KeyError: gene_protein_ft_db[gene]=[domain]
+            else:
+                for domain_data in probeset_aligning_db[probeset]:
+                    domain,call = string.split(domain_data,'|')
+                    new_domain_list.append((domain,call))
+                    #new_domain_list = string.join(new_domain_list,', ')
+                gene_protein_ft_db[gene,probeset] = new_domain_list
+
+    domain_gene_count_db = eliminate_redundant_dict_values(domain_gene_count_db)
+        
+    if report_type == 'probeset':
+
+        """for domain in domain_gene_count_db:
+            domain_gene_count_db[domain] = len(domain_gene_count_db[domain])"""
+        protein_functional_attribute_db={}; probeset_protein_associations={}; protein_db={}
+        for probeset in probeset_protein_db:
+            if probeset in exon_db:
+                new_protein_list = []
+                gene = exon_db[probeset].GeneID()
+                for protein_data in probeset_protein_db[probeset]:
+                    protein_info,call = string.split(protein_data,'|')
+                    if 'AA:' in protein_info:
+                        protein_info_r = string.replace(protein_info,')','*')
+                        protein_info_r = string.replace(protein_info_r,'(','*')
+                        protein_info_r = string.split(protein_info_r,'*')
+                        null_protein = protein_info_r[1]; hit_protein = protein_info_r[3]
+                        probeset_protein_associations[probeset] = null_protein,hit_protein
+                        protein_db[null_protein] = []; protein_db[hit_protein] = []
+                    new_protein_list.append((protein_info,call))
+                    #new_protein_list = string.join(new_domain_list,', ')
+                protein_functional_attribute_db[gene,probeset] = new_protein_list
+                    
+        filename = 'AltDatabase/'+species+'/'+array_type+'/SEQUENCE-protein-dbase_'+comp_type+'.txt'
+        protein_seq_db = importGenericFiltered(filename,protein_db)
+        for key in protein_functional_attribute_db:
+            gene,probeset = key
+            try:
+                null_protein,hit_protein = probeset_protein_associations[probeset]
+                null_seq = protein_seq_db[null_protein][0]; hit_seq = protein_seq_db[hit_protein][0]
+                seq_attr = 'sequence: ' +'('+null_protein+')'+null_seq +' -> '+'('+hit_protein+')'+hit_seq
+                protein_functional_attribute_db[key].append(seq_attr)
+            except KeyError: null=[]
+        return gene_protein_ft_db,domain_gene_count_db,protein_functional_attribute_db  
+    else: return gene_protein_ft_db,domain_gene_count_db      
         
 def ttestp(list1,list2,tails,variance):
     t,df,tails = statistics.ttest(list1,list2,tails,variance)
@@ -2090,8 +2343,8 @@ def restrictProbesets():
 
 def RunAltAnalyze():
 
-  global microRNA_count_db; global protein_exon_feature_db; global protein_sequence_dbase; global probeset_protein_db
-  global protein_ft_db; global domain_gene_counts; global annotate_db; annotate_db={}; global splice_event_list; splice_event_list=[]; global critical_exon_junction_db
+  global microRNA_count_db; global protein_exon_feature_db
+  global protein_ft_db; global domain_associated_genes; global annotate_db; annotate_db={}; global splice_event_list; splice_event_list=[]; global critical_exon_junction_db
   global dataset_name; global constituitive_probeset_db; global exon_db; global gene_microRNA_denom; global microRNA_full_exon_db
   
   if array_type == 'AltMouse': import_dir = root_dir+'AltExpression/'+array_type
@@ -2112,18 +2365,20 @@ def RunAltAnalyze():
     else: critical_exon_junction_db = {}
     
     if analyze_functional_attributes == 'yes':
-      exon_protein_sequence_file = "AltDatabase/"+species+"/"+array_type+"/"+"SEQUENCE-protein-dbase.txt"
-      probeset_protein_db,protein_sequence_dbase = ExonAnalyze_module.importExonSequenceBuild(exon_protein_sequence_file,exon_db)
-      protein_ft_db,domain_gene_counts = FeatureAlignment.grab_exon_level_feature_calls(species,array_type,genes_being_analyzed)
+      #exon_protein_sequence_file = "AltDatabase/"+species+"/"+array_type+"/"+"SEQUENCE-protein-dbase.txt"
+      #probeset_protein_db,protein_sequence_dbase = ExonAnalyze_module.importExonSequenceBuild(exon_protein_sequence_file,exon_db)
+      #protein_ft_db,domain_associated_genes = FeatureAlignment.grab_exon_level_feature_calls(species,array_type,genes_being_analyzed)
+      protein_ft_db,domain_associated_genes = importProbesetProteinCompDomains(exon_db,'gene','exoncomp')
       ###Could use this directly for exon arrays by building up-front rather than on-the-fly.  Doesn't appear to be an analagous function for ensembl (that I wrote would have wrote before-NS)
-      
-      ###The 'domain_gene_counts' is not currently only for anything, but reports the number of domains for each gene on the array for ensembl and uniprot combined. Reports a tuple of (feature_type, specific_annotation) related to number of genes with it.
+
+      #protein_ft_db is a db of unique genes linked to domains      
+      ###The 'domain_associated_genes' reports the number of domains for each gene on the array for ensembl and uniprot combined. Reports a tuple of (feature_type, specific_annotation) related to number of genes with it.
       start_time = time.time()
       print "Uniprot & Ensembl feature & domain data imported"
-      print "MicroRNA data imported"
       microRNA_full_exon_db,microRNA_count_db,gene_microRNA_denom = ExonAnalyze_module.importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method)
+      print "MicroRNA data imported"
     else:
-      probeset_protein_db={}; gene_microRNA_denom={}; domain_gene_counts={}
+      probeset_protein_db={}; gene_microRNA_denom={}; domain_associated_genes={}
       protein_ft_db={}; protein_sequence_dbase ={};microRNA_count_db={}
       microRNA_full_exon_db = {}
   #"""
@@ -2236,6 +2491,9 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
   analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,permute_p_threshold,perform_permutation_analysis, export_splice_index_values = alt_var
   exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method = additional_var
 
+  global perform_element_permutation_analysis; global permutations
+  perform_element_permutation_analysis = 'yes'; permutations = 2000
+  
   print_items=[]
   print_items.append("Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'species'+': '+species)
@@ -2269,7 +2527,9 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
   global export_go_annotations; global aspire_output_list; global aspire_output_gene_list
   global filter_probesets_by; global global_addition_factor; global onlyAnalyzeJunctions
   global log_fold_cutoff; global aspire_cutoff; global annotation_system; global alt_exon_logfold_cutoff
-  
+  global filter_for_AS
+
+  filter_for_AS = 'yes'  
   """dabg_p = 0.75; data_type = 'expression' ###used for expression analysis when dealing with AltMouse arrays
   a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; array_type = c
   l = 'log'; n = 'non-log'; expression_data_format = l
