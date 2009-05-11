@@ -22,13 +22,16 @@ import unique ### Import itself as a reference to it's location
 dirfile = unique
 
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
+py2app_adj2 = '/AltAnalyze.app/Contents/Resources/lib/python2.5/site-packages.zip'
+
 py2exe_adj = '\\library.zip' ###py2exe
-py2app_dirs = [py2app_adj,py2exe_adj]
+py2app_dirs = [py2app_adj,py2exe_adj,py2app_adj2]
 
 def filepath(filename):
     dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    if (':' in filename) or ('/Users/' == filename[:7]): fn = filename #':' is for Windows dirs and '/Users/' for Mac
+    if (':' in filename) or ('/Users/' == filename[:7]) or ('/Volumes/' in filename): fn = filename #':' is for Windows dirs and '/Users/' for Mac
     else: fn=os.path.join(dir,filename)
+    if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
     return fn
 
@@ -36,7 +39,7 @@ def read_directory(sub_dir):
     dir=os.path.dirname(dirfile.__file__)
     for py2app_dir in py2app_dirs: 
         dir = string.replace(dir,py2app_dir,'')
-    if (':' in sub_dir) or ('/Users/' == sub_dir[:7]): dir_list = os.listdir(sub_dir) ### Thus, the whole path is provided already
+    if (':' in sub_dir) or ('/Users/' == sub_dir[:7]) or ('/Volumes/' in sub_dir): dir_list = os.listdir(sub_dir) ### Thus, the whole path is provided already
     else: dir_list = os.listdir(dir + sub_dir)
     return dir_list
 

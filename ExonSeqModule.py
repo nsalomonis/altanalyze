@@ -1,3 +1,21 @@
+###ExonSeqModule
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
+#Author Nathan Salomonis - nsalomonis@gmail.com
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy 
+#of this software and associated documentation files (the "Software"), to deal 
+#in the Software without restriction, including without limitation the rights 
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+#copies of the Software, and to permit persons to whom the Software is furnished 
+#to do so, subject to the following conditions:
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+#PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+#HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+#OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import sys, string
 import os.path
 import unique
@@ -5,23 +23,17 @@ import statistics
 import copy
 import time
 
-dirfile = unique
+def filepath(filename):
+    fn = unique.filepath(filename)
+    return fn
 
 def read_directory(sub_dir):
-    dir=os.path.dirname(dirfile.__file__)
-    dir_list = os.listdir(dir + sub_dir)
-    #add in code to prevent folder names from being included
-    dir_list2 = [] 
+    dir_list = unique.read_directory(sub_dir); dir_list2 = []
     for entry in dir_list:
         if entry[-4:] == ".txt" or entry[-4:] == ".TXT" or entry[-3:] == ".fa":
             dir_list2.append(entry)
     return dir_list2
-
-def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
-    return fn
-
+           
 def importSplicingAnnotationDatabase(filename):
     global exon_db; fn=filepath(filename)
     print 'importing', filename
@@ -177,7 +189,7 @@ def exportAssociations(probeset_seq_db,species):
     data.close()
 
 def getParametersAndExecute(probeset_seq_file,array_type,species):
-    probeset_annotations_file = 'AltDatabase/'+species+'/SequenceData/'+species+'_Ensembl_probesets.txt'
+    probeset_annotations_file = 'AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt'
     ###Import probe-level associations
     exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
     start_time = time.time(); chromosome = 1
@@ -233,7 +245,7 @@ def eliminate_redundant_dict_values(database):
     return db1
 
 def importmiRNATargetPredictionsAdvanced(species):
-    filename = 'AltDatabase/'+species+'/SequenceData/combined_gene-target-sequences.txt'
+    filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-target-sequences.txt'
     print 'importing', filename; count = 0
     fn=filepath(filename); ensembl_mirna_db={}; unigene_ids={}; x = 4000; z=0; nulls={}
     for line in open(fn,'r').xreadlines():
@@ -291,7 +303,7 @@ class MicroRNAData:
     def __repr__(self): return self.SummaryValues()
 
 def alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db):
-    output_file = 'output/'+species+'/'+species+'_ensembl_microRNAs.txt'
+    output_file = 'AltDatabase/'+species+'/exon/'+species+'_ensembl_microRNAs.txt'
     if mir_source == 'pictar': fn=filepath(output_file); data = open(fn,'w')
     print "Aligning microRNAs to probesets"
     added = {} ###not sure where
@@ -318,7 +330,9 @@ def alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_d
     if mir_source == 'pictar': data.close()
     
     probeset_miRNA_db = eliminate_redundant_dict_values(probeset_miRNA_db)
-    output_file = 'output/'+species+'/'+species+'_probeset_microRNAs.txt'
+    if stringency == 'lax': export_type = 'any'
+    else: export_type = 'multiple'
+    output_file = 'AltDatabase/'+species+'/exon/'+species+'_probeset_microRNAs_'+export_type+'.txt'
     k=0
     fn=filepath(output_file); data = open(fn,'w')
     for probeset in probeset_miRNA_db:
@@ -328,17 +342,46 @@ def alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_d
         k+=1
     data.close()
     print k, 'entries written to', output_file
-    
+
+def runProgram(Species,Array_type,Process_microRNA_predictions,miR_source,Stringency):
+    global species; species = Species; global array_type; array_type = Array_type
+    global process_microRNA_predictions; process_microRNA_predictions = Process_microRNA_predictions
+    global mir_source; mir_source = miR_source 
+    global stringency; stringency = Stringency
+    import_dir = '/AltDatabase'+'/'+species+'/SequenceData'
+    filedir = import_dir[1:]+'/'
+    dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    for input_file in dir_list:    #loop through each file in the directory to output results
+        if '.probeset.fa' in input_file: probeset_seq_file = filedir+input_file
+
+    probeset_annotations_file = 'AltDatabase/'+species+'/SequenceData/'+species+'_Ensembl_probesets.txt'
+    splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species)
+
+    if process_microRNA_predictions == 'yes':
+        print 'stringency:',stringency 
+        if mir_source == 'pictar':
+            ensembl_mirna_db = importmiRNATargetPredictions(species)
+        else:
+            ensembl_mirna_db = importmiRNATargetPredictionsAdvanced(species)
+        alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
+        
 if __name__ == '__main__':
     species = 'Hs'; array_type = 'exon'
     process_microRNA_predictions = 'yes'
+    mir_source = 'multiple'; stringency = 'strict'
+    runProgram(species,process_microRNA_predictions,mir_source,stringency)
 
+    stringency = 'lax'
+    runProgram(species,process_microRNA_predictions,mir_sourc,stringency); sys.exit()
+    
     print "******Select Species*******"
     print "1) Human"
     print "2) Mouse"
+    print "3) Rat"
     inp = sys.stdin.readline(); inp = inp.strip()
     if inp == '1': species = 'Hs'
     if inp == '2': species = 'Mm'
+    if inp == '3': species = 'Rn'
     
     print "******Source Data*******"
     print "1) Multiple miR database sources"
@@ -354,27 +397,3 @@ if __name__ == '__main__':
     if inp == '1': stringency = 'strict'
     if inp == '2': stringency = 'lax'
     
-    import_dir = '/AltDatabase'+'/'+species+'/SequenceData'
-    filedir = import_dir[1:]+'/'
-    dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-    for input_file in dir_list:    #loop through each file in the directory to output results
-        if '.probeset.fa' in input_file: probeset_seq_file = filedir+input_file
-
-    probeset_annotations_file = 'AltDatabase/'+species+'/SequenceData/'+species+'_Ensembl_probesets.txt'
-    splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species)
-    """
-    ###Import probe-level associations
-    exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
-    chromosome = 1
-    start_time = time.time()
-    probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,exon_db,chromosome,species)
-    end_time = time.time(); time_diff = int(end_time-start_time)
-    print "Analyses finished in %d seconds" % time_diff"""
-
-    if process_microRNA_predictions == 'yes':
-        print 'stringency:',stringency 
-        if mir_source == 'pictar':
-            ensembl_mirna_db = importmiRNATargetPredictions(species)
-        else:
-            ensembl_mirna_db = importmiRNATargetPredictionsAdvanced(species)
-        alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db)

@@ -112,10 +112,15 @@ def simpleSeqMatchProtocol(probeset_seq_data,mRNA_seq):
             probesets_analyzed[probeset]=[]
     return results
 
-def importEnsemblTranscriptSequence(species,array_type,probeset_seq_db):
+def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
+    global species; global array_type
+    species = Species; array_type = Array_type
     start_time = time.time()
 
-    filename = 'AltDatabase/'+species+'/SequenceData/'+species+'_ensembl_cDNA.fasta.txt'      
+    import_dir = '/AltDatabase/'+species+'/SequenceData' ### Multi-species fiel
+    g = GrabFiles(); g.setdirectory(import_dir)
+    seq_files = g.searchdirectory('cdna.all'); seq_files.sort(); filename = seq_files[-1]
+    
     output_file = 'AltDatabase/'+species+'/SequenceData/output/'+array_type+'_Ens-mRNA_alignments.txt'
     dataw = export.ExportFile(output_file)  
     
@@ -142,10 +147,8 @@ def importEnsemblTranscriptSequence(species,array_type,probeset_seq_db):
                             values = [transid,cDNA_seq]
                             values = string.join(values,'\t')+'\n'; datar.write(values); x+=1
                         else: gene_not_found.append(ensembl_id)
-                    sequence = ''; t= string.split(data,'|')
-                    try: ensembl_id,chr,strand,transid,prot_id = t
-                    except ValueError: ensembl_id,chr,strand,transid = t
-                    ensembl_id = ensembl_id[1:]
+                    t= string.split(data[1:],':'); sequence=''
+                    transid_data = string.split(t[0],' '); transid = transid_data[0]; ensembl_id = t[-1]
         except IndexError: continue
         try:
             if data[0] != '>': sequence = sequence + data
@@ -160,8 +163,22 @@ def importEnsemblTranscriptSequence(species,array_type,probeset_seq_db):
     
 def importUCSCTranscriptSequences(species,array_type,probeset_seq_db):
     start_time = time.time()
-    filename = 'AltDatabase/'+species+'/SequenceData/mrna.fa'
 
+    if force == 'yes':
+        ### Download mRNA sequence file from website
+        import UI; import update
+        file_location_defaults = UI.importDefaultFileLocations()
+        fld = file_location_defaults['UCSCseq']
+        for fl in fld:
+            if species in fl.Species(): ucsc_default_dir = fl.Location()
+        ucsc_mRNA_dir = ucsc_default_dir+'mrna.fa.gz'
+        output_dir = 'AltDatabase/'+species+'/SequenceData/'
+        gz_filepath, status = update.download(ucsc_mRNA_dir,output_dir,'')        
+        if status == 'not-removed':
+            try: os.remove(gz_filepath) ### Not sure why this works now and not before
+            except OSError: status = status
+            
+    filename = 'AltDatabase/'+species+'/SequenceData/mrna.fa'
     output_file = 'AltDatabase/'+species+'/SequenceData/output/'+array_type+'_UCSC-mRNA_alignments.txt'
     dataw = export.ExportFile(output_file)      
     output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/'+array_type+'_UCSC_mRNA_seqmatches.txt'
@@ -326,7 +343,7 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     can be used as match-match or match-nulls."""
     
     ### Import AffyGene to Ensembl associations (e.g., AltMouse array)    
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl.txt'
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
     fn=filepath(filename); array_ens_db={}; x = 0
     for line in open(fn,'rU').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
@@ -340,8 +357,8 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     try: probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
     except IOError:
         import update
-        update.downloadCurrentVersion(filename,species,'txt')
-        dir_list = read_directory(import_dir)
+        update.downloadCurrentVersion(filename,array_type,'txt')
+        probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
     
     ###Import reciprocol junctions, so we can compare these directly instead of hits to nulls and combine with sequence data
     ###This short-cuts what we did in two function in ExonModule with exon level data
@@ -439,7 +456,8 @@ def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset
 
 ################# Main Run Options #################
     
-def alignProbesetsToTranscripts(species,array_type,force):
+def alignProbesetsToTranscripts(species,array_type,Force):
+    global force; force = Force
     """Match exon or junction probeset sequences to Ensembl and USCS mRNA transcripts"""
       
     if array_type == 'AltMouse':

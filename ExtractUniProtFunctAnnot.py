@@ -32,14 +32,15 @@ def read_directory(sub_dir):
         if entry[-4:] == ".txt" or entry[-4:] == ".csv": dir_list2.append(entry)
     return dir_list2
 
-def import_ensembl_uniprot_db(filename):
+def importEnsemblUniprot(filename):
     fn=filepath(filename)
     for line in open(fn,'r').xreadlines():
         data, newline= string.split(line,'\n')
         t = string.split(data,'\t')
-        ensembl,uniprot,null = t
+        ensembl=t[0];uniprot=t[1]
         try: uniprot_ensembl_db[uniprot].append(ensembl)
         except KeyError: uniprot_ensembl_db[uniprot] = [ensembl]
+    print len(uniprot_ensembl_db),"UniProt entries with Ensembl annotations"
 
 def import_uniprot_db(filename):
     fn=filepath(filename); global species_not_imported; species_not_imported=[]
@@ -314,20 +315,29 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
     trembl_location = uniprot_fildir+trembl_file
 
     add_trembl_annotations = 'no' ### Currently we don't need these annotations    
-    try: import_ensembl_uniprot_db(uniprot_ens_location)
+    try: importEnsemblUniprot(uniprot_ens_location)
     except IOError:
-        import update; reload(update)
-        ### Download the data from the AltAnalyze website
-        update.downloadCurrentVersion(uniprot_ens_location,species,'txt')
-        import_ensembl_uniprot_db(uniprot_ens_location)
-    ### Import UniProt annotations
+        try:
+            import update; reload(update)
+            ### Download the data from the AltAnalyze website (if there)
+            update.downloadCurrentVersion(uniprot_ens_location,species,'txt')
+            importEnsemblUniprot(uniprot_ens_location)
+        except Exception: null=[]
     try:
-        if force == 'yes': uniprot_location += '!!!!!' ### Force an IOError
-        import_uniprot_db(uniprot_location)
-    except IOError:
+        uniprot_ens_location = string.replace(uniprot_ens_location,'UniProt','Uniprot-SWISSPROT')
+        uniprot_ens_location = string.replace(uniprot_ens_location,'uniprot','Uniprot-SWISSPROT')
+        importEnsemblUniprot(uniprot_ens_location)
+    except Exception: null=[]
+    ### Import UniProt annotations
+    if force == 'no': import_uniprot_db(uniprot_location)
+    else:
         import update; reload(update)
         ### Directly download the data from UniProt
-        update.download(uniprot_filename_url,uniprot_fildir,'')
+        gz_filepath, status = update.download(uniprot_filename_url,uniprot_fildir,'')
+
+        if status == 'not-removed':
+            try: os.remove(gz_filepath) ### Not sure why this works now and not before
+            except OSError: status = status     
         import_uniprot_db(uniprot_location)
         
     if add_trembl_annotations == 'yes':

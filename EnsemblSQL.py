@@ -43,8 +43,8 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-def buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force):
-    import UI; import update; global external_xref_key_db
+def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,force):
+    import UI; import update; global external_xref_key_db; global species; species = Species
     file_location_defaults = UI.importDefaultFileLocations()
     """Identify the appropriate download location for the Ensembl SQL databases for the selected species"""
     fld = file_location_defaults['EnsemblSQL']
@@ -52,6 +52,7 @@ def buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,external
     
     for fl in fld:
         if species in fl.Species(): ensembl_sql_dir = fl.Location()
+        
     fl = fldd[0]; ensembl_sql_description_dir = fl.Location() ### Since the name for the description file varies for species, automatically use human
 
     global ensembl_build; ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
@@ -82,7 +83,28 @@ def buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,external
         buildFilterDBForExternalDB('Interpro')
         xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
         getDomainGenomicCoordinates(species,xref_db)
-                
+
+        ### Download Seqeunce data
+        fldp = file_location_defaults['EnsemblProtSeq']
+        fldc = file_location_defaults['EnsemblCDNASeq']
+        for fl in fldp:
+            if species in fl.Species(): ensembl_protseq_dir = fl.Location()
+        for fl in fldc:
+            if species in fl.Species(): ensembl_cdnaseq_dir = fl.Location()
+
+        if force == 'yes':            
+            output_dir = 'AltDatabase/ensembl/'+species + '/'
+            gz_filepath, status = update.download(ensembl_protseq_dir,output_dir,'')
+            if status == 'not-removed':
+                try: os.remove(gz_filepath) ### Not sure why this works now and not before
+                except OSError: status = status
+
+            output_dir = 'AltDatabase/'+species + '/SequenceData/'
+            gz_filepath, status = update.download(ensembl_cdnaseq_dir,output_dir,'')
+            if status == 'not-removed':
+                try: os.remove(gz_filepath) ### Not sure why this works now and not before
+                except OSError: status = status                
+            
 def buildTranscriptStructureTable():
     ### Function for building Ensembl transcription annotation file
     temp_values_list = []; output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
@@ -104,6 +126,24 @@ def buildTranscriptStructureTable():
     exportEnsemblTable(values_list,headers,output_dir)
 
 def getDomainGenomicCoordinates(species,xref_db):
+
+    ### Get all transcripts relative to genes to export gene, transcript and protein ID relationships
+    transcript_protein_id={}            
+    for protein_id in translation_db:
+        ti = translation_db[protein_id]; transcript_id = ti.TranscriptId()
+        transcript_protein_id[transcript_id] = protein_id
+        
+    output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_Protein_'+ensembl_build+'.tab'
+    headers = ['Gene', 'Trans', 'Protein']; values_list=[]
+    for transcript_id in transcript_db:
+        geneid = transcript_db[transcript_id].GeneId()
+        ens_gene = gene_stable_id_db[geneid].StableId()
+        try: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_stable_id_db[protein_id].StableId()
+        except KeyError: ens_protein = ''
+        ens_transcript = transcript_stable_id_db[transcript_id].StableId()
+        values_list.append([ens_gene,ens_transcript,ens_protein])
+    exportEnsemblTable(values_list,headers,output_dir)
+    
     ### Function for building Ensembl transcription annotation file
     output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_ProteinFeatures_build'+ensembl_build+'.tab'
     headers = ['ID', 'AA_Start', 'AA_Stop', 'Start', 'Stop', 'Name', 'Interpro', 'Description']
@@ -121,30 +161,40 @@ def getDomainGenomicCoordinates(species,xref_db):
         
     protein_coding_exon_db={}            
     for protein_id in translation_db:
-        ti = translation_db[protein_id]; transcript_id = ti.TranscriptId(); 
+        ti = translation_db[protein_id]; transcript_id = ti.TranscriptId()
         seq_start = ti.SeqStart(); start_exon_id = ti.StartExonId(); seq_end = ti.SeqEnd(); end_exon_id = ti.EndExonId()
         eti_list = exon_transcript_db2[transcript_id]; eti_list.sort()
-        ti = transcript_db[transcript_id]; geneid = ti.GeneId(); gi = gene_db[geneid]; strand = gi.SeqRegionStrand() #Get strand 
         coding_exons = []; ce=0
         for (rank,eti) in eti_list:
             exonid = eti.ExonId()
             #print exonid,start_exon_id,end_exon_id
             if exonid == start_exon_id: ### Thus we are in the start exon for this transcript
                 ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
-                exon_length = abs(genomic_exon_end-genomic_exon_start)
-                coding_bp_in_exon = exon_length - seq_start; eti.setCodingBpInExon(coding_bp_in_exon)
+                exon_length = abs(genomic_exon_end-genomic_exon_start)+1
+                coding_bp_in_exon = exon_length - seq_start+1; eti.setCodingBpInExon(coding_bp_in_exon) ### -1 since coding can't start at 0, but rather 1 at a minimum
                 #print 'start',genomic_exon_start,genomic_exon_end,exon_length,seq_start;kill
                 coding_exons.append(eti); ce+=1
-            elif ce != 0: ###If we are in coding exons
-                ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
-                exon_length = abs(genomic_exon_end-genomic_exon_start)
-                eti.setCodingBpInExon(exon_length)
-                coding_exons.append(eti)
             elif exonid == end_exon_id: ### Thus we are in the end exon for this transcript        
                 ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
-                exon_length = abs(genomic_exon_end-genomic_exon_start)
-                coding_bp_in_exon = exon_length - seq_end; eti.setCodingBpInExon(coding_bp_in_exon)
+                exon_length = abs(genomic_exon_end-genomic_exon_start)+1
+                coding_bp_in_exon = seq_end; eti.setCodingBpInExon(coding_bp_in_exon)
                 coding_exons.append(eti); ce = 0
+                #ens_exon = exon_stable_id_db[exonid].StableId()  
+                #if ens_exon == 'ENSE00001484483':
+                    #print 'stop',genomic_exon_start,genomic_exon_end,exon_length,seq_start,coding_bp_in_exon,seq_end;kill
+            elif ce != 0: ###If we are in coding exons
+                ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
+                exon_length = abs(genomic_exon_end-genomic_exon_start)+1
+                eti.setCodingBpInExon(exon_length)
+                coding_exons.append(eti)
+            
+            #ti = transcript_db[transcript_id]; geneid = ti.GeneId(); ens_gene = gene_stable_id_db[geneid].StableId()
+            #ens_exon = exon_stable_id_db[exonid].StableId()
+            #if ens_gene == 'ENSG00000106785':
+            #if ens_exon == 'ENSE00001381077':
+                #print exon_length, seq_start, coding_bp_in_exon;kill
+                #print 'start',ens_gene,rank,len(eti_list),exonid,ens_exon,start_exon_id,end_exon_id,genomic_exon_start,genomic_exon_end,exon_length,seq_start,coding_bp_in_exon,seq_end
+
         protein_coding_exon_db[protein_id] = coding_exons
 
     interprot_match=0
@@ -152,31 +202,62 @@ def getDomainGenomicCoordinates(species,xref_db):
         pfi = protein_feature_db[protein_feature_id]; protein_id = pfi.TranslationId(); evalue = pfi.Evalue()
         ens_protein = translation_stable_id_db[protein_id].StableId()
         seq_start = pfi.SeqStart(); seq_end = pfi.SeqEnd(); hit_id = pfi.HitId() ### hit_id is the domain accession which maps to 'id' in interpro
-        seq_start = seq_start*3; seq_end = seq_end*3 ###convert to transcript basepair positions
+        seq_start = seq_start*3-2; seq_end = seq_end*3 ###convert to transcript basepair positions
         coding_exons = protein_coding_exon_db[protein_id]
         cummulative_coding_length = 0; last_exon_cummulative_coding_length = 1
-
+        ti = translation_db[protein_id]; transcript_id = ti.TranscriptId() ### Get transcript ID, to look up strand
+        ti = transcript_db[transcript_id]; geneid = ti.GeneId(); gi = gene_db[geneid]; strand = gi.SeqRegionStrand() #Get strand
+        if strand == '-1': start_correction = -3; end_correction = 2
+        else: start_correction = 0; end_correction = 0
         if hit_id in interpro_db and evalue<1: ### Only analyze domain-level features that correspond to known protein feature IDs
             interpro_ac = interpro_db[hit_id].InterproAc(); interprot_match+=1
             if interpro_ac in interpro_annotation_db:
                 interpro_name = interpro_annotation_db[interpro_ac] ###Built this annotation database using the xref database
                 #print interpro_name,ens_protein,seq_start,seq_end
+                genomic_domain_start = 0; genomic_domain_end = 0; domain_in_first_exon = 'no'; non_coding_seq_len = 0
                 for eti in coding_exons:
                     coding_bp_in_exon = eti.CodingBpInExon(); cummulative_coding_length += coding_bp_in_exon
                     if seq_start <= cummulative_coding_length and seq_start >= last_exon_cummulative_coding_length: ### Thus, domain starts in this exon
-                        exonid = eti.ExonId(); ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart()
-                        genomic_bp_exon_offset = seq_start - last_exon_cummulative_coding_length
-                        genomic_domain_start = genomic_bp_exon_offset+genomic_exon_start-3 ### This is what we want! (minus 3 so that we start at the first bp of that codon, not the first of the next (don't count the starting coding as 3bp)
+                        exonid = eti.ExonId(); ei = exon_db[exonid]
+                        if abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) != coding_bp_in_exon:
+                            ### Can occur in the first exon
+                            domain_in_first_exon = 'yes'
+                            non_coding_seq_len = abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) - coding_bp_in_exon
+                            genomic_bp_exon_offset = seq_start - last_exon_cummulative_coding_length + non_coding_seq_len
+                        else: genomic_bp_exon_offset = seq_start - last_exon_cummulative_coding_length
+                        if strand == -1:
+                            genomic_exon_start = ei.SeqRegionEnd() ### This needs to be reversed if reverse strand
+                            genomic_domain_start = genomic_exon_start-genomic_bp_exon_offset+start_correction ### This is what we want! (minus 3 so that we start at the first bp of that codon, not the first of the next (don't count the starting coding as 3bp)
+                        else:
+                            genomic_exon_start = ei.SeqRegionStart()                        
+                            genomic_domain_start = genomic_bp_exon_offset+genomic_exon_start+start_correction ### This is what we want! (minus 3 so that we start at the first bp of that codon, not the first of the next (don't count the starting coding as 3bp)
                         #print genomic_exon_start,last_exon_cummulative_coding_length,genomic_domain_start,genomic_bp_exon_offset;kill
                         #pfi.setGenomicStart(genomic_domain_start)
-                    if seq_end <= cummulative_coding_length and seq_end >= last_exon_cummulative_coding_length: ### Thus, domain starts in this exon
-                        exonid = eti.ExonId(); ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart()
+                    if seq_end <= cummulative_coding_length and seq_end >= last_exon_cummulative_coding_length: ### Thus, domain ends in this exon
+                        exonid = eti.ExonId(); ei = exon_db[exonid]
                         genomic_bp_exon_offset = seq_end - last_exon_cummulative_coding_length
-                        genomic_domain_end = genomic_bp_exon_offset+genomic_exon_start-1 ### This is what we want!
+                        if (abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) != coding_bp_in_exon) and domain_in_first_exon == 'yes': genomic_bp_exon_offset += non_coding_seq_len ### If the domain starts/ends in the first exon
+                        if strand == -1:
+                            genomic_exon_start = ei.SeqRegionEnd() ### This needs to be reversed if reverse strand      
+                            genomic_domain_end = genomic_exon_start-genomic_bp_exon_offset+end_correction ### This is what we want!
+                        else:
+                            genomic_exon_start = ei.SeqRegionStart()
+                            genomic_domain_end = genomic_bp_exon_offset+genomic_exon_start+end_correction ### This is what we want!
                         #pfi.setGenomicEnd(genomic_domain_end)
+                    #"""
+                    #ens_exon = exon_stable_id_db[eti.ExonId()].StableId()  
+                    #if cummulative_coding_length == seq_end and strand == -1 and seq_start == 1 and domain_in_first_exon == 'yes':
+                        #print interpro_name,protein_id,eti.ExonId(),ens_protein,ens_exon,seq_end,genomic_domain_start,genomic_domain_end;kill
+                    
+                    #if ens_protein == 'ENSP00000369645':
+                        #ei = exon_db[eti.ExonId()]
+                        #print 'exon',ens_exon,eti.ExonId(),ei.SeqRegionStart(), ei.SeqRegionEnd()#"""
+                        #print interpro_name,seq_end, cummulative_coding_length,last_exon_cummulative_coding_length, genomic_domain_start, genomic_domain_end, ei.SeqRegionStart(), ei.SeqRegionEnd()
                     last_exon_cummulative_coding_length = cummulative_coding_length + 1
-                values = [ens_protein,seq_start/3,seq_end/3,genomic_domain_start,genomic_domain_end,hit_id,interpro_ac,interpro_name]
-                values_list.append(values)
+                if genomic_domain_start !=0 and genomic_domain_end !=0:
+                    values = [ens_protein,(seq_start/3)+1,seq_end/3,genomic_domain_start,genomic_domain_end,hit_id,interpro_ac,interpro_name]
+                    values_list.append(values)
+                
     print 'interprot_matches:',interprot_match
     exportEnsemblTable(values_list,headers,output_dir)
     
@@ -347,6 +428,7 @@ class EnsemblSQLEntryData:
         elif header == "end_exon_id": self.end_exon_id = value
         elif header == "description": self.description = value
         elif header == "hit_id": self.hit_id = value
+        elif header == "hit_name": self.hit_id = value
         elif header == "ensembl_object_type": self.ensembl_object_type = value
         elif header == "start_exon_id": self.start_exon_id = value
         elif header == "seq_region_end": self.seq_region_end = value
@@ -478,7 +560,8 @@ def importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_
 def updateFiles(ensembl_sql_dir,output_dir,filename,force):
     if force == 'yes': ### Download the files, rather than re-use existing
         ftp_url = ensembl_sql_dir+filename + '.gz'
-        gz_filepath, status = update.download(ftp_url,output_dir,'')
+        try: gz_filepath, status = update.download(ftp_url,output_dir,'')
+        except Exception: print ftp_url, 'failed to', output_dir
         if status == 'not-removed':
             try: os.remove(gz_filepath) ### Not sure why this works now and not before
             except OSError: status = status
@@ -582,7 +665,7 @@ if __name__ == '__main__':
     #species='Hs'; force = 'no'; configType = 'Basic'; analysisType = 'ExternalOnly'; externalDBName = 'GO'
     #buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
 
-    species='Mm'; force = 'yes'; configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''
+    species='Rn'; force = 'no'; configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''
     buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
 
     

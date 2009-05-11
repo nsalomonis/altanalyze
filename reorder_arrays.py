@@ -141,11 +141,13 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             #add std-error later
             log_fold = avg1 - avg2
             fold = statistics.log_fold_conversion(log_fold)
-            t,df,tails = statistics.ttest(data_list1,data_list2,2,3) #unpaired student ttest, calls p_value function
-            t = abs(t)
-            df = round(df) #Excel doesn't recognize fractions in a DF
-            ttest = '=tdist('+str(t)+','+str(df)+','+str(tails)+')'
-            p = str(statistics.t_probability(t,df))
+            try:
+                t,df,tails = statistics.ttest(data_list1,data_list2,2,3) #unpaired student ttest, calls p_value function
+                t = abs(t)
+                df = round(df) #Excel doesn't recognize fractions in a DF
+                ttest = '=tdist('+str(t)+','+str(df)+','+str(tails)+')'
+                p = str(statistics.t_probability(t,df))
+            except Exception: p = 1
             comp = group1,group2
             try:
                 stat_results[comp] = groups_name,[avg2,log_fold,fold,p],group2_name #this structure is a little weird, since we will use this data for two differnent output files
