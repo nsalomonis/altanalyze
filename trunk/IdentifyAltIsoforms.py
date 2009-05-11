@@ -1,4 +1,4 @@
-###FeatureAlignment
+###IdentifyAltIsoforms
 #Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
@@ -21,6 +21,7 @@ import os.path
 import unique
 import export
 import time
+import FeatureAlignment; reload(FeatureAlignment)
 from Bio import Entrez
 import ExonAnalyze_module
 
@@ -32,7 +33,7 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir); dir_list2 = []
     ###Code to prevent folder names from being included
     for entry in dir_list:
-        if entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv": dir_list2.append(entry)
+        if entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv" or '.fa' in entry: dir_list2.append(entry)
     return dir_list2
 
 class GrabFiles:
@@ -356,12 +357,12 @@ def compareProteinComposition(species,array_type,translate,compare_all_features)
     probeset_transcript_db,unique_ens_transcripts,unique_transcripts = importProbesetTranscriptMatches(species,array_type,compare_all_features)
     if translate == 'yes': ### Used if we want to re-derive all transcript-protein sequences
         transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch')
-    else: transcript_protein_seq_db = importProteinSequences(species,'no')
+    else: transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch_new')
         
     probeset_protein_db,protein_seq_db = convertTranscriptToProteinAssociations(probeset_transcript_db,transcript_protein_seq_db,compare_all_features)
     transcript_protein_seq_db=[]
 
-    import FeatureAlignment; global protein_ft_db
+    global protein_ft_db
     if array_type == 'exon':
         probeset_gene_db = importSplicingAnnotationDatabase(array_type,species,'no')
     else:
@@ -380,10 +381,11 @@ def compareProteinComposition(species,array_type,translate,compare_all_features)
 
 def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
     if analysis_type == 'local':
-        ### Get protein ACs for UCSC transcripts if provided by UCSC
+        ### Get protein ACs for UCSC transcripts if provided by UCSC (NOT CURRENTLY USED BY THE PROGRAM!!!!)
         mRNA_protein_db,missing_protein_ACs_UCSC = importUCSCSequenceAssociations(species,unique_transcripts)
         ### For missing_protein_ACs, check to see if they are in UniProt. If so, export the protein sequence
-        missing_protein_ACs_UniProt = importUniProtSeqeunces(species,mRNA_protein_db,missing_protein_ACs_UCSC)
+        try: missing_protein_ACs_UniProt = importUniProtSeqeunces(species,mRNA_protein_db,missing_protein_ACs_UCSC)
+        except Exception: null=[]
         ### For transcripts with protein ACs, see if we can find sequence from NCBI
         #missing_protein_ACs_NCBI = importNCBIProteinSeq(mRNA_protein_db)
         ### Combine missing_protein_ACs_NCBI and missing_protein_ACs_UniProt
@@ -391,14 +393,16 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
         ### Import mRNA sequences for mRNA ACs with no associated protein sequence and submit for in silico translation
         missing_protein_ACs_inSilico = importUCSCSequences(missing_protein_ACs_NCBI)
         
-    if analysis_type != 'local': missing_protein_ACs_UniProt = importUniProtSeqeunces(species,{},{})
-        
+    else:
+        try: missing_protein_ACs_UniProt = importUniProtSeqeunces(species,{},{})
+        except Exception: null=[]
+
     ### Export Ensembl protein sequences for matching isoforms and identify transcripts without protein seqeunce
     ensembl_protein_seq_db, missing_protein_ACs_Ensembl = importEnsemblProteinSeqData(species,unique_ens_transcripts)
     ### Import Ensembl mRNA sequences for mRNA ACs with no associated protein sequence and submit for in silico translation
     missing_Ens_protein_ACs_inSilico = importEnsemblTranscriptSequence(missing_protein_ACs_Ensembl)
     
-    if analysis_type != 'local': 
+    if analysis_type == 'fetch': 
         ac_list = []
         for ac in unique_transcripts: ac_list.append(ac)
 
@@ -406,12 +410,11 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
             output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-Protein_sequences_'+str(2)+'.txt'
             fn=filepath(output_file); os.remove(fn)
         except Exception: null=[]
-        
         fetchSeq(ac_list,'nucleotide',1)
-
+        
     ###Import protein sequences
     just_get_ids = 'yes'
-    transcript_protein_db = importProteinSequences(species,just_get_ids)
+    seq_files, transcript_protein_db = importProteinSequences(species,just_get_ids)
     print len(unique_ens_transcripts)+len(unique_transcripts), 'examined transcripts.'
     print len(transcript_protein_db),'transcripts with associated protein sequence.'
     
@@ -423,8 +426,8 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
     try: missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
     except IOError: missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
 
-    fetchSeq(missing_gi_list,'nucleotide',2)
-    transcript_protein_seq_db = importProteinSequences(species,'no')
+    fetchSeq(missing_gi_list,'nucleotide',len(seq_files)-2)
+    seq_files, transcript_protein_seq_db = importProteinSequences(species,'no')
     print len(unique_ens_transcripts)+len(unique_transcripts), 'examined transcripts.'
     print len(transcript_protein_seq_db),'transcripts with associated protein sequence.'
     return transcript_protein_seq_db
@@ -471,7 +474,7 @@ def importProteinSequences(species,just_get_ids):
             mRNA_AC,protein_AC,protein_seq = string.split(probeset_data,'\t')
             if just_get_ids == 'yes': transcript_protein_seq_db[mRNA_AC]=[]
             else: transcript_protein_seq_db[mRNA_AC] = protein_AC,protein_seq
-    return transcript_protein_seq_db
+    return seq_files, transcript_protein_seq_db
 
 def importProbesetTranscriptMatches(species,array_type,compare_all_features):
     if compare_all_features == 'yes': ### Used when comparing all possible PROTEIN pairs    
@@ -518,8 +521,7 @@ def searchEntrez(accession_list,bio_type):
     
 def fetchSeq(accession_list,bio_type,version):
     output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-Protein_sequences_'+str(version)+'.txt'
-    fn2=filepath(output_file)
-    datar = open(fn2,'w')
+    datar = export.ExportFile(output_file)
 
     print len(accession_list), "mRNA Accession numbers submitted to eUTILs."   
     start_time = time.time()
@@ -578,11 +580,14 @@ def fetchSeq(accession_list,bio_type,version):
     datar.close()
 
 def importEnsemblTranscriptSequence(missing_protein_ACs):
-    filename = 'AltDatabase/'+species+'/SequenceData/'+species+'_ensembl_cDNA.fasta.txt'    
+
+    import_dir = '/AltDatabase/'+species+'/SequenceData' ### Multi-species fiel
+    g = GrabFiles(); g.setdirectory(import_dir)
+    seq_files = g.searchdirectory('.cdna.all.fa'); seq_files.sort(); filename = seq_files[-1]
+    #filename = 'AltDatabase/'+species+'/SequenceData/'+species+'_ensembl_cDNA.fasta.txt'    
     start_time = time.time()
     output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-EnsInSilicoProt_sequences.txt'
-    fn2=filepath(output_file)
-    datar = open(fn2,'w')
+    datar = export.ExportFile(output_file)
     
     print "Begining generic fasta import of",filename
     fn=filepath(filename); translated_mRNAs={}; sequence = ''
@@ -600,14 +605,27 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
                                 protein_id, protein_seq = translation_db[mRNA_AC]
                                 values = [mRNA_AC,protein_id,protein_seq]; values = string.join(values,'\t')+'\n'; datar.write(values)
                                 translated_mRNAs[mRNA_AC]=[]
-                    ### Parse new line                      
-                    t= string.split(data,'|'); sequence=''
-                    try: ensembl_id,chr,strand,transid,prot_id = t
-                    except ValueError: ensembl_id,chr,strand,transid = t
+                    ### Parse new line
+                    #>ENST00000400685 cdna:known supercontig::NT_113903:9607:12778:1 gene:ENSG00000215618
+                    t= string.split(data[1:],':'); sequence=''
+                    transid_data = string.split(t[0],' '); transid = transid_data[0]
+                    #try: ensembl_id,chr,strand,transid,prot_id = t
+                    #except ValueError: ensembl_id,chr,strand,transid = t
         except IndexError: continue
         try:
             if data[0] != '>': sequence = sequence + data
         except IndexError:  continue
+
+    #### Add the last entry
+    if len(sequence) > 0:
+        if transid in missing_protein_ACs:
+            ### Perform in silico translation
+            mRNA_db = {}; mRNA_db[transid] = '',sequence[1:]
+            translation_db = BuildInSilicoTranslations(mRNA_db)
+            for mRNA_AC in translation_db: ### Export in silico protein predictions
+                protein_id, protein_seq = translation_db[mRNA_AC]
+                values = [mRNA_AC,protein_id,protein_seq]; values = string.join(values,'\t')+'\n'; datar.write(values)
+                translated_mRNAs[mRNA_AC]=[]
     datar.close()
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "Ensembl transcript sequences analyzed in %d seconds" % time_diff
@@ -619,7 +637,7 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
 
 def importEnsemblProteinSeqData(species,unique_ens_transcripts):
     import FeatureAlignment
-    protein_relationship_file,protein_seq_file,protein_feature_file = FeatureAlignment.getEnsemblRelationshipDirs(species)
+    protein_relationship_file,protein_feature_file,protein_seq_fasta = FeatureAlignment.getEnsemblRelationshipDirs(species)
     ens_transcript_protein_db = FeatureAlignment.importEnsemblRelationships(protein_relationship_file,'transcript')
 
     unique_ens_proteins = {}
@@ -627,7 +645,7 @@ def importEnsemblProteinSeqData(species,unique_ens_transcripts):
         if transcript in unique_ens_transcripts:
             protein_id = ens_transcript_protein_db[transcript]
             unique_ens_proteins[protein_id] = transcript
-    ensembl_protein_seq_db = importEnsemblProtSeq(protein_seq_file,unique_ens_proteins)
+    ensembl_protein_seq_db = importEnsemblProtSeq(protein_seq_fasta,unique_ens_proteins)
 
     transcript_with_prot_seq = {}
     for protein_id in ensembl_protein_seq_db:
@@ -646,17 +664,29 @@ def importEnsemblProtSeq(filename,unique_ens_proteins):
     export_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-EnsProt_sequences.txt'
     export_data = export.ExportFile(export_file)
     
-    fn=filepath(filename); ensembl_protein_seq_db={}; x=0
-    for line in open(fn,'rU').xreadlines():
-        data = cleanUpLine(line)
-        if x == 0: x=1 ###Don't extract the headers
-        else: 
-            ensembl_prot, aa_start, aa_stop, protein_sequence = string.split(data,'\t')
-            if ensembl_prot in unique_ens_proteins:
-                mRNA_AC = unique_ens_proteins[ensembl_prot]
-                values = string.join([mRNA_AC,ensembl_prot,protein_sequence],'\t')+'\n'
-                export_data.write(values)
-                ensembl_protein_seq_db[ensembl_prot] =  []
+    fn=filepath(filename); ensembl_protein_seq_db={}; sequence = ''
+    for line in open(fn,'r').xreadlines():
+        try: data, newline= string.split(line,'\n')
+        except ValueError: continue
+        try:
+            if data[0] == '>':
+                if len(sequence) > 0:
+                    if ensembl_prot in unique_ens_proteins:
+                        mRNA_AC = unique_ens_proteins[ensembl_prot]
+                        values = string.join([mRNA_AC,ensembl_prot,sequence],'\t')+'\n'
+                        export_data.write(values); ensembl_protein_seq_db[ensembl_prot] =  []
+                ### Parse new line                      
+                t= string.split(data[1:],' '); sequence=''
+                ensembl_prot = t[0]
+        except IndexError: continue
+        try:
+            if data[0] != '>': sequence = sequence + data
+        except IndexError:  continue
+
+    if ensembl_prot in unique_ens_proteins:
+        mRNA_AC = unique_ens_proteins[ensembl_prot]
+        values = string.join([mRNA_AC,ensembl_prot,sequence],'\t')+'\n'
+        export_data.write(values); ensembl_protein_seq_db[ensembl_prot] =  []
     export_data.close()
     return ensembl_protein_seq_db
 
@@ -1012,31 +1042,26 @@ def importUCSCSequences(missing_protein_ACs):
 
 ############# END Code currently not used (LOCAL PROTEIN SEQUENCE ANALYSIS) ##############
 
-def runProgram(species,array_type,translate):
+def runProgram(Species,Array_type,translate_seq,run_seqcomp):
+    global species; global array_type; global translate
+    species = Species; array_type = Array_type; translate = translate_seq
     if array_type == 'exon':
         compareExonComposition(species,array_type)
-        compare_all_features = 'yes'
+        compare_all_features = 'no'
         compareProteinComposition(species,array_type,translate,compare_all_features)
-        compare_all_features = 'no'; translate = 'no'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
+        if run_seqcomp == 'yes':
+            compare_all_features = 'yes'; translate = 'no'
+            compareProteinComposition(species,array_type,translate,compare_all_features)
     else:
         compareExonCompositionJunctionArray(species,array_type)
-        compare_all_features = 'yes'
+        compare_all_features = 'no'
         compareProteinComposition(species,array_type,translate,compare_all_features)
-        compare_all_features = 'no'; translate = 'no'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
+        if run_seqcomp == 'yes':
+            compare_all_features = 'yes'; translate = 'no'
+            compareProteinComposition(species,array_type,translate,compare_all_features)
     
 if __name__ == '__main__':
-    species = 'Mm'; array_type = 'AltMouse'; translate='no'
-    if array_type == 'exon':
-        compareExonComposition(species,array_type)
-        compare_all_features = 'yes'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
-        compare_all_features = 'no'; translate = 'no'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
-    else:
-        #compareExonCompositionJunctionArray(species,array_type)
-        compare_all_features = 'yes'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
-        compare_all_features = 'no'; translate = 'no'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
+    species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'
+    species = 'Hs'; array_type = 'exon'; translate='no'
+    species = 'Rn'; array_type = 'exon'; translate='yes'
+    runProgram(species,array_type,translate,run_seqcomp)

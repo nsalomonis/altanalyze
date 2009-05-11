@@ -137,6 +137,11 @@ def eliminate_redundant_dict_values(database):
     return db1
 
 def importAnnotateCriticalExonSequences(species,array_type):
+    ensembl_associations = importArrayAnnotations(species,array_type)
+    critical_exon_seq_db = importCriticalExonSeq('AltDatabase/'+species+'/'+array_type+'/'+ array_type+'_critical-exon-seq.txt',ensembl_associations)
+    return critical_exon_seq_db
+
+def importArrayAnnotations(species,array_type):
     primary_gene_annotation_file = 'AltDatabase/'+species +'/'+ array_type +'/'+ array_type+ '_gene_annotations.txt'
     ensembl_array_gene_annotation_file = 'AltDatabase/'+species+'/'+ array_type + '/'+array_type+ '-Ensembl.txt'
     ensembl_annotations = 'AltDatabase/ensembl/'+ species + '/'+species+ '_Ensembl-annotations_simple.txt'
@@ -162,9 +167,7 @@ def importAnnotateCriticalExonSequences(species,array_type):
                 except KeyError: ensembl_associations[array_geneid] = [ens_geneid]
     ensembl_associations = eliminate_redundant_dict_values(ensembl_associations)
     exportArrayIDEnsemblAssociations(ensembl_associations,species,array_type) ###Use these For LinkEST program
-    
-    critical_exon_seq_db = importCriticalExonSeq('AltDatabase/'+species+'/'+array_type+'/'+ array_type+'_critical-exon-seq.txt',ensembl_associations)
-    return critical_exon_seq_db
+    return ensembl_associations
 
 def exportArrayIDEnsemblAssociations(ensembl_associations,species,array_type):   
     annotation_db_filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'

@@ -82,7 +82,7 @@ def getDirectoryFiles(import_dir,search_term):
 
 ############ Result Export Functions #############
 
-def output_summary_results(summary_results_db,name,analysis_method):
+def outputSummaryResults(summary_results_db,name,analysis_method,root_dir):
     #summary_results_db[dataset_name] = udI,udI-up_diff,ddI,ddI-down_diff,udI_mx,udI_mx-mx_diff,up_dI_genes,down_gene, annotation_list
     annotation_db = {}
     for dataset in summary_results_db:
@@ -112,7 +112,7 @@ def output_summary_results(summary_results_db,name,analysis_method):
                 try: annotation_db2[dataset].append((annotation,0))
                 except KeyError: annotation_db2[dataset] = [(annotation,0)]
       
-    summary_output = 'AltResults/AlternativeOutput/'+analysis_method+'-summary-results'+name+'.txt'
+    summary_output = root_dir+'AltResults/AlternativeOutput/'+analysis_method+'-summary-results'+name+'.txt'
     fn=filepath(summary_output)
     data = export.createExportFile(summary_output,'AltResults/AlternativeOutput')
     title = 'Dataset-name' +'\t'+ 'inclusion-events'+'\t'+'exclusion-events' +'\t'+ 'mutually-exlusive-events' +'\t'+ 'udI-genes' +'\t'+ 'ddI-genes' +'\t'+ 'total-ASPIRE-genes'
@@ -129,7 +129,7 @@ def output_summary_results(summary_results_db,name,analysis_method):
         data.write(values+'\n')
     data.close()
 
-def compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed,analyzing_genes,analysis_method,array_type):
+def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyzed,analyzing_genes,analysis_method,array_type,root_dir):
     aspire_gene_db = {}; aspire_event_db = {}; event_annotation_db = {}; dataset_name_list = []
     #annotate_db[affygene] = name, symbol,ll_id,splicing_annotation
 
@@ -178,8 +178,8 @@ def compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed
                         symbol = data[3]; description = data[5]
                         dI_direction = data[6]; locus_link = affygene
                         exon_set1 = ''; exon_set2 = ''
-                        event_call = data[-4]; functional_attribute = data[-8]
-                        uniprot_attribute = data[-7]; gene_expression_change = data[-5]
+                        event_call = data[-4]; functional_attribute = data[-9]
+                        uniprot_attribute = data[-8]; gene_expression_change = data[-5]
                         if dI_direction == 'upregulated': dI = dI*(-1)
                     else:
                         y = 1
@@ -187,8 +187,8 @@ def compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed
                         symbol = data[3]; description = data[5]
                         dI_direction = data[6]; locus_link = data[4]
                         exon_set1 = ''; exon_set2 = ''
-                        event_call = data[-4]; functional_attribute = data[-8]
-                        uniprot_attribute = data[-7]; gene_expression_change = data[-5]
+                        event_call = data[-4]; functional_attribute = data[-9]
+                        uniprot_attribute = data[-8]; gene_expression_change = data[-5]
                         if dI_direction == 'downregulated': dI = dI*(-1)
                         #print affygene,data[-10:];kill
                 if y == 1:
@@ -232,8 +232,8 @@ def compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed
             aspire_event_db2[affygene,'',''] = temp
             
     if include_all_other_genes == 'yes': analysis_method+= '-all-genes'
-    if analyzing_genes == 'no': summary_output = 'AltResults/AlternativeOutput/'+analysis_method+'-comparisons-events.txt'
-    else: summary_output = 'AltResults/AlternativeOutput/'+analysis_method+'-'+ 'GENE-' +'comparisons-events.txt'
+    if analyzing_genes == 'no': summary_output = root_dir+'AltResults/AlternativeOutput/'+analysis_method+'-comparisons-events.txt'
+    else: summary_output = root_dir+'AltResults/AlternativeOutput/'+analysis_method+'-'+ 'GENE-' +'comparisons-events.txt'
     
     fn=filepath(summary_output)
     data = open(fn,'w')
@@ -281,7 +281,7 @@ def exportTransitResults(array_group_list,array_raw_group_values,array_group_db,
             include_probeset = 'yes'
             ###Examines user input parameters for inclusion of probeset types in the analysis
             if include_probeset == 'yes':
-                if probeset in adj_fold_dbase: ###indicates that this probeset is analyzed for splicing (e.g. has a constitutive probeset, but not a constitutive probeset)
+                if probeset in adj_fold_dbase: ###indicates that this probeset is analyzed for splicing (e.g. has a constitutive probeset)
                     for group_val_list in array_raw_group_values[probeset]:
                         non_log_group_exp_vals = statistics.log_fold_conversion(group_val_list)
                         for val in non_log_group_exp_vals:
@@ -429,8 +429,11 @@ def getAPTDir(apt_fp):
 def runMiDAS(apt_dir,array_type,dataset_name,array_group_list,array_group_db):
     if '/bin' in apt_dir: apt_file = apt_dir +'/apt-midas' ### if the user selects an APT directory
     elif os.name == 'nt': apt_file = apt_dir + '/PC/apt-midas'
-    elif os.name == 'mac': apt_file = apt_dir + '/Mac/apt-midas'
-    elif os.name == 'posix': apt_file = apt_dir + '/Linux/apt-midas'
+    elif 'darwin' in sys.platform: apt_file = apt_dir + '/Mac/apt-midas'
+    elif 'linux' in sys.platform:
+        import platform
+        if '32bit' in platform.architecture(): apt_file = apt_dir + '/Linux/32bit/apt-midas'
+        elif '64bit' in platform.architecture(): apt_file = apt_dir + '/Linux/64bit/apt-midas' 
     apt_file = filepath(apt_file)
 
     ### Each input file for MiDAS requires a full file path, so get the parent path
@@ -579,5 +582,5 @@ if __name__ == '__main__':
     #number_events_analyzed = 0
     #aspire_output_gene_list = ['AltResults/AlternativeOutput/Hs_Exon_CS-d40_vs_hESC-d0.p5_average-splicing_index-exon-inclusion-GENE-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_Cyt-NP_vs_Cyt-ES.p5_average-splicing_index-exon-inclusion-GENE-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average-splicing_index-exon-inclusion-GENE-results.txt']
     #aspire_output_list = ['AltResults/AlternativeOutput/Hs_Exon_CS-d40_vs_hESC-d0.p5_average-splicing_index-exon-inclusion-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_Cyt-NP_vs_Cyt-ES.p5_average-splicing_index-exon-inclusion-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average-splicing_index-exon-inclusion-results.txt']
-    compare_ASPIRE_results(aspire_output_list,annotate_db,number_events_analyzed,'no',analysis_method,array_type)
-    #compare_ASPIRE_results(aspire_output_gene_list,annotate_db,'','yes',analysis_method,array_type)  
+    compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyzed,'no',analysis_method,array_type)
+    #compareAltAnalyzeResults(aspire_output_gene_list,annotate_db,'','yes',analysis_method,array_type)  

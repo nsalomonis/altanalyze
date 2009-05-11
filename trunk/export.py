@@ -20,6 +20,7 @@ import os
 import sys
 import string
 import unique
+import UI
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -47,6 +48,7 @@ def findFilename(filename):
     return filename[x:]
 
 def ExportFile(filename):
+    filename = string.replace(filename,'//','/')
     dir = findParentDir(filename)
     file_var = createExportFile(filename,dir)
     return file_var
@@ -66,7 +68,7 @@ def isFileOpen(new_file,dir):
                         except IOError:
                             print_out = 'Results file: '+new_file+ '\nis open...can not re-write.\nPlease close file and select "OK".'
                             try: UI.WarningWindow(print_out,' OK ');
-                            except NameError:
+                            except Exception:
                                 print print_out; print 'Please correct (hit return to continue)'
                                 inp = sys.stdin.readline()
                             file_open = 'yes'
@@ -80,17 +82,17 @@ def createExportFile(new_file,dir):
         fn = filepath(dir)
         try:
             os.mkdir(fn) ###Re-Create directory if deleted
-            #print fn, 'written'
-        except OSError: createExportDir(new_file,dir) ###Occurs if the parent directory is also missing
+            print fn, 'written'
+        except OSError:
+            createExportDir(new_file,dir) ###Occurs if the parent directory is also missing
         fn=filepath(new_file); file_var = open(fn,'w')
     return file_var
 
 def createExportDir(new_file,dir):
-    dir_ls = string.split(dir,'//')
-    if len(dir_ls) == 1: ### Thus, '//' not found
-        dir_ls = string.split(dir,'/')
-    if len(dir_ls) == 1: ### Thus, '/' not found
-        dir_ls = string.split(dir,'\\')
+    dir = string.replace(dir,'//','/')
+    dir = string.replace(dir,'\\','/')
+    dir = string.replace(dir,'\\','/')
+    dir_ls = string.split(dir,'/')
     if len(dir_ls) != 1:
         index = 1
         while index < (len(dir_ls)+1):
@@ -110,11 +112,10 @@ def createExportDir(new_file,dir):
     else: print "Parent directory not found locally for", dir_ls; sys.exit()
 
 def createExportFolder(dir):
-    dir_ls = string.split(dir,'//')
-    if len(dir_ls) == 1: ### Thus, '//' not found
-        dir_ls = string.split(dir,'/')
-    if len(dir_ls) == 1: ### Thus, '/' not found
-        dir_ls = string.split(dir,'\\')
+    dir = string.replace(dir,'//','/')
+    dir = string.replace(dir,'\\','/')
+    dir = string.replace(dir,'\\','/')
+    dir_ls = string.split(dir,'/')
     if len(dir_ls) != 1:
         index = 1
         while index < (len(dir_ls)+1):
@@ -142,3 +143,8 @@ def deleteFolder(dir):
         return 'success'
     except OSError:
         return 'failed'
+
+if __name__ == '__main__':
+    fn = '/Users/nsalomonis/Desktop/GSE13297_RAW//AltExpression/ExonArray/Hs/Hs_Exon_CS_vs_hESC.p5_average.txt'
+    createExportFile(fn,'/Users/nsalomonis/Desktop/GSE13297_RAW//AltExpression/ExonArray/Hs')
+    ExportFile(fn)

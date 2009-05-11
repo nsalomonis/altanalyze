@@ -4,7 +4,7 @@ import unique
 import statistics
 import copy
 import time
-import ExonModule
+import ExonSeqModule
 
 dirfile = unique
 
@@ -50,7 +50,7 @@ def importProbesetSeqeunces(filename,exon_db,species):
     return probeset_seq_db
         
 def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
-    filename = 'input/'+species+'/'+array_type+'/'+array_type+'-Ensembl.txt'
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
     fn=filepath(filename); array_ens_db={}; x = 0
     for line in open(fn,'r').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
@@ -60,7 +60,7 @@ def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
             try: array_ens_db[array_gene].append(ens_gene)
             except KeyError: array_ens_db[array_gene]=[ens_gene]
 
-    filename = 'input/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'         
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'         
     fn=filepath(filename); probeset_seq_db={}; x = 0
     for line in open(fn,'r').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
@@ -70,8 +70,8 @@ def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
             probeset_seq_db[probeset] = probeset_seq,junction_seq
             
     ###Import reciprocol junctions, so we can compare these directly instead of hits to nulls and combine with sequence data
-    ###This short-cuts what we did in two function in ExonModule with exon level data
-    filename = 'input/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
+    ###This short-cuts what we did in two function in ExonSeqModule with exon level data
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
     fn=filepath(filename); probeset_gene_seq_db={}; x = 0
     for line in open(fn,'r').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
@@ -86,13 +86,13 @@ def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
                         probeset_seq,junction_seq = probeset_seq_db[probeset_id]
                         if biotype == 'gene':
                             for ensembl_gene_id in ensembl_gene_ids:
-                                probe_data = ExonModule.JunctionDataSimple(probeset_id,ensembl_gene_id,array_gene,probesets,critical_exons)
+                                probe_data = ExonSeqModule.JunctionDataSimple(probeset_id,ensembl_gene_id,array_gene,probesets,critical_exons)
                                 probe_data.SetExonSeq(probeset_seq)
                                 probe_data.SetJunctionSeq(junction_seq)
                                 try: probeset_gene_seq_db[ensembl_gene_id].append(probe_data)
                                 except KeyError: probeset_gene_seq_db[ensembl_gene_id] = [probe_data]
                         else: ### Used for probeset annotations downstream of sequence alignment in LinkEST, analagous to exon_db for exon analyses
-                            probe_data = ExonModule.JunctionDataSimple(probeset_id,ensembl_gene_ids,array_gene,probesets,critical_exons)
+                            probe_data = ExonSeqModule.JunctionDataSimple(probeset_id,ensembl_gene_ids,array_gene,probesets,critical_exons)
                             probe_data.SetExonSeq(probeset_seq)
                             probe_data.SetJunctionSeq(junction_seq)                            
                             probeset_gene_seq_db[probeset_id] = probe_data                
@@ -101,9 +101,9 @@ def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
 
 def getParametersAndExecute(probeset_seq_file,array_type,species,data_type):
     if data_type == 'critical-exons':
-        probeset_annotations_file = "input/"+species+"/"+array_type+'/'+species+"_Ensembl_"+array_type+"_probesets.txt"
+        probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_'+array_type+'_probesets.txt'
         ###Import probe-level associations
-        exon_db = ExonModule.importSplicingAnnotationDatabase(probeset_annotations_file)
+        exon_db = ExonSeqModule.importSplicingAnnotationDatabase(probeset_annotations_file)
         start_time = time.time()
         probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,exon_db,species)  ###Do this locally with a function that works on tab-delimited as opposed to fasta sequences (exon array)
         end_time = time.time(); time_diff = int(end_time-start_time)
@@ -114,6 +114,31 @@ def getParametersAndExecute(probeset_seq_file,array_type,species,data_type):
     print "Analyses finished in %d seconds" % time_diff
     return probeset_seq_db
 
+def runProgram(Species,Array_type,mir_source,stringency,Force):
+    global species; global array_type; global force
+    process_microRNA_predictions = 'yes'
+
+    species = Species; array_type = Array_type; force = Force
+    
+    import_dir = '/AltDatabase/'+species+'/'+array_type
+    filedir = import_dir[1:]+'/'
+    dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    for input_file in dir_list:    #loop through each file in the directory to  results
+        if 'critical-exon-seq' in input_file: probeset_seq_file = filedir+input_file
+        
+    data_type = 'critical-exons'
+    try: splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
+    except UnboundLocalError:
+        probeset_seq_file = 'AltDatabase/'+species+'/'+array_type+'/AltMouse_critical-exon-seq_updated.txt'
+        import update; reload(update)
+        update.downloadCurrentVersion(probeset_seq_file,array_type,'txt')
+        splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
+        
+    if process_microRNA_predictions == 'yes':
+        print 'stringency:',stringency 
+        ensembl_mirna_db = ExonSeqModule.importmiRNATargetPredictionsAdvanced(species)
+        ExonSeqModule.alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
+        
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'exon'
     process_microRNA_predictions = 'yes'
@@ -127,16 +152,4 @@ if __name__ == '__main__':
     if inp == '1': stringency = 'strict'
     if inp == '2': stringency = 'lax'
     
-    import_dir = '/input'+'/'+species+'/'+array_type
-    filedir = import_dir[1:]+'/'
-    dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-    for input_file in dir_list:    #loop through each file in the directory to output results
-        if 'critical-exon-seq' in input_file: probeset_seq_file = filedir+input_file
-        
-    data_type = 'critical-exons'
-    splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
-
-    if process_microRNA_predictions == 'yes':
-        print 'stringency:',stringency 
-        ensembl_mirna_db = ExonModule.importmiRNATargetPredictionsAdvanced(species)
-        ExonModule.alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
+    runProgram(species,array_type,mir_source,stringency,force)

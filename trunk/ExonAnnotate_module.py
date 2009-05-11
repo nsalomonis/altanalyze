@@ -104,8 +104,8 @@ def identifyPutativeSpliceEvents(exon_db,constituitive_probeset_db,array_id_db,a
                     #del critical_exon_db[affygene,tuple(event)]
             new_critical_exon_list = unique.unique(new_critical_exon_list); new_critical_exon_list.sort()
             new_critical_exon_list = [1,new_critical_exon_list]
-            incl_exon_sets_str = string.join(incl_exon_sets,'|')
-            event = [('ei',incl_exon_sets_str),excl_event]
+            incl_exon_sets_str = string.join(incl_exon_sets,'|') ### New inclusion exon group
+            event = [('ei',incl_exon_sets_str),excl_event] ### Store new inclusion exon group
             try: alt_junction_db_collapsed[affygene].append(event)
             except KeyError: alt_junction_db_collapsed[affygene] = [event]
             ###Replace exon_dbase entries with new combined probeset IDs
@@ -125,7 +125,9 @@ def identifyPutativeSpliceEvents(exon_db,constituitive_probeset_db,array_id_db,a
                     edat = exon_db[probeset]; ensembl = edat.ExternalGeneID(); block_exon_ids = edat.SecondaryExonID(); block_structure = edat.GeneStructure()
                     new_block_exon_ids.append(block_exon_ids)
                 new_block_exon_ids = string.join(new_block_exon_ids,'')
-                exon_db[incl_probesets_str] = affygene,incl_exon_sets_str,ensembl,new_block_exon_ids,block_structure
+                edat = exon_db[incl_probesets[0]]; edat1 = edat; edat1.setDisplayExonID(incl_exon_sets_str) #; edat1.setExonID(edat.ExonID()) ### Use the first inclusion probeset instance for storing all instance data
+                edat1.setSecondaryExonID(new_block_exon_ids); edat1.setProbeset(incl_probesets[0])
+                exon_db[incl_probesets_str] = edat1
         print "Length of original splice event database:",len(alt_junction_db)
         print "Length of agglomerated splice event database:",len(alt_junction_db_collapsed)
         alt_junction_db = alt_junction_db_collapsed  ### Replace with agglomerated database

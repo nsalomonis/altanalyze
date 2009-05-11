@@ -58,6 +58,83 @@ def identifyCELfiles(dir):
             full_dir_list.append(file)
     return dir_list2,full_dir_list
 
+def identifyArrayType(full_dir_list):
+    arrays={} ### Determine the type of unique arrays in each directory
+    for filename in full_dir_list:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines():             
+            data = cleanUpLine(line)
+            if 'DatHeader' == data[:9]:                
+                array_info,null = string.split(data,'sq')
+                array_info = string.split(array_info,' ')
+                array_type = array_info[-1]
+                if '.' in array_type: array_type,null = string.split(array_type,'.')
+                arrays[array_type]=[]
+                break
+    array_list = []
+    for array in arrays: array_list.append(array)
+    return array_list, array_type
+
+def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+library_file,species)
+    sa = supproted_array_db[array_name]; library_file = sa.LibraryFile(); annot_file = sa.AnnotationFile(); original_library_file = library_file
+    filename = 'AltDatabase/affymetrix/LibraryFiles/'+library_file
+    fn=filepath(filename); library_dir=filename; bgp_file = ''; clf_file = ''
+    import update; reload(update); warn = 'yes'
+    try:
+        for line in open(fn,'rU').xreadlines():break
+        input_cdf_file = filename
+        input_cdf_file_lower = string.lower(input_cdf_file)
+        if '.pgf' in input_cdf_file_lower:
+            ###Check to see if the clf and bgp files are present in this directory 
+            icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); cdf_short = icf_list[-1]
+            clf_short = string.replace(cdf_short,'.pgf','.clf')
+            if array_type == 'exon': bgp_short = string.replace(cdf_short,'.pgf','.antigenomic.bgp')
+            else: bgp_short = string.replace(cdf_short,'.pgf','.bgp')
+            dir_list = read_directory(parent_dir)
+            if clf_short in dir_list and bgp_short in dir_list:
+                pgf_file = input_cdf_file; clf_file = string.replace(pgf_file,'.pgf','.clf')
+                if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
+                else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
+            else:
+                print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
+                IndicatorWindow(print_out,'Continue')                                   
+    except Exception:
+        print_out = "AltAnalyze was not able to find a library file\nfor your arrays. Would you like AltAnalyze to\nautomatically download these files?"
+        dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
+        dw_results = dw.Results(); option = dw_results['selected_option']
+        if option == 1:
+            library_file = string.replace(library_file,'.cdf','.zip')
+            library_file = string.replace(library_file,'.pgf','.zip')
+            filename = 'AltDatabase/affymetrix/LibraryFiles/'+library_file
+            var_list = filename,'LibraryFiles'
+            StatusWindow(var_list,'download')   
+            try: os.remove(filepath(filename)) ### Not sure why this works now and not before
+            except OSError: null=[]
+            input_cdf_file = original_library_file; input_cdf_file_lower = string.lower(input_cdf_file)
+            if '.pgf' in input_cdf_file_lower:
+                pgf_file = input_cdf_file; clf_file = string.replace(pgf_file,'.pgf','.clf')
+                if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
+                else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
+        else: library_dir = ''
+    filename = 'AltDatabase/affymetrix/'+species+'/'+annot_file
+    fn=filepath(filename); annotation_dir = filename
+    try:
+        for line in open(fn,'rU').xreadlines():break
+    except Exception:
+        if warn == 'yes':
+            print_out = "AltAnalyze was not able to find a CSV annotation file\nfor your arrays. Would you like AltAnalyze to\nautomatically download these files?"
+            dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
+            dw_results = dw.Results(); option = dw_results['selected_option']
+        if option == 1:
+            annot_file += '.zip'
+            filename = 'AltDatabase/affymetrix/'+species+'/'+annot_file
+            var_list = filename,'AnnotationFiles'
+            StatusWindow(var_list,'download')
+            try: os.remove(filepath(filename)) ### Not sure why this works now and not before
+            except OSError: null=[]
+        else: annotation_dir = ''
+    return library_dir, annotation_dir, bgp_file, clf_file
+
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
     line = string.replace(line,'\c','')
@@ -65,28 +142,93 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
+########### Status Window Functions ###########
+def copyFiles(file1,file2,root):
+    print 'Copying files from:\n',file1
+    print 'to...',file2
+    shutil.copyfile(file1,file2)
+    root.destroy()
+    
+class StatusWindow:
+    def __init__(self,info_list,analysis_type):
+            root = Tk()
+            self._parent = root
+            root.title('AltAnalyze 1.1 Beta')
+            statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
+
+            height = 250; width = 700
+            self.sf = PmwFreeze.ScrolledFrame(self._parent,
+                    labelpos = 'n', label_text = 'Download File Status Window',
+                    usehullsize = 1, hull_width = width, hull_height = height)
+            self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
+            self.frame = self.sf.interior()
+            
+            group = PmwFreeze.Group(self.sf.interior(),tag_text = 'Output')
+            group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
+                
+            Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
+            import update; reload(update)
+            status = StringVarFile(statusVar,root) ### Likely captures the stdout
+            if analysis_type == 'download':
+                filename,dir = info_list
+                sys.stdout = status; root.after(100,update.downloadCurrentVersionUI(filename,dir,'',self._parent))
+            if analysis_type == 'copy':
+                file1,file2 = info_list
+                sys.stdout = status; root.after(100,copyFiles(file1,file2,self._parent))
+            self._parent.mainloop()
+
+    def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
+    def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
+    
+class StringVarFile:
+    def __init__(self,stringVar,window):
+        self.__newline = 0; self.__stringvar = stringVar; self.__window = window
+    def write(self,s):
+        new = self.__stringvar.get()
+        for c in s:
+            #if c == '\n': self.__newline = 1
+            if c == '\k': self.__newline = 1### This should not be found and thus results in a continous feed rather than replacing a single line
+            else:
+                if self.__newline: new = ""; self.__newline = 0
+                new = new+c
+        self.set(new)
+    def set(self,s): self.__stringvar.set(s); self.__window.update()   
+    def get(self): return self.__stringvar.get()
+
 ################# GUI #################
 
 class GUI:
     def __init__(self, parent, option_db, option_list, defaults): 
         self._parent = parent; self._option_list = option_list; self._option_db = option_db
         self._user_variables = user_variables; i = 0
-
-        filename = 'Config/icon.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
+        
+        filename = 'Config/icon.gif'
+        if 'input_cel_dir' in option_list: filename = 'Config/aa_0.gif'
+        if 'include_raw_data' in option_list: filename = 'Config/aa_1.gif'
+        if 'filter_for_AS' in option_list: filename = 'Config/aa_2.gif'
+        
+        fn=filepath(filename); img = PhotoImage(file=fn)
         can = Canvas(parent); can.pack(side='top'); can.config(width=img.width(), height=img.height())        
         can.create_image(2, 2, image=img, anchor=NW)
-        self.pathdb={}
-        
-        if defaults == 'groups' or defaults == 'comps':
+        self.pathdb={}; use_scroll = 'no'
+
+        #if defaults == 'groups' or defaults == 'comps' or 'filter_for_AS' in option_list:
+        if defaults != 'null':
             height = 400; width = 400
             if defaults == 'groups':
                 notes = "For each CEL file, type in a name for the group it belongs to\n(e.g., 24hrs, 48hrs, 4days, etc.)."
                 Label(self._parent,text=notes).pack(); label_text_str = 'AltAnalyze Group Names'
                 if len(option_list)<15: height = 320; width = 320
-            if defaults == 'comps':
+            elif defaults == 'comps':
                 notes = "Experimental Group\t\t\tControl Group     "
                 label_text_str = 'AltAnalyze Group Comparisons'
                 if len(option_list)<5: height = 250; width = 400
+            elif 'filter_for_AS' in option_list:
+                label_text_str = 'AltAnalyze Alternative Exon Analysis Parameters'
+                height = 420; width = 775; use_scroll = 'yes'
+            else:
+                label_text_str = "AltAnalyze Main Dataset Parameters"
+                height = 300; width = 400; use_scroll = 'yes'
             self.sf = PmwFreeze.ScrolledFrame(self._parent,
                     labelpos = 'n', label_text = label_text_str,
                     usehullsize = 1, hull_width = width, hull_height = height)
@@ -105,11 +247,13 @@ class GUI:
                     if species in compatible_species: valid_display_options.append(array_name)
                 self.display_options = valid_display_options
             if 'radio' in od.DisplayObject() and self.display_options != ['NA']:
+                if use_scroll == 'yes': parent_type = self.sf.interior()
+                else: parent_type = self._parent
                 ### Create and pack a RadioSelect widget, with radiobuttons.
                 self._option = option
                 def radiocallback(tag,callback=self.callback,option=option):
                     callback(tag,option)
-                radiobuttons = PmwFreeze.RadioSelect(self._parent,                       
+                radiobuttons = PmwFreeze.RadioSelect(parent_type,                       
                         buttontype = 'radiobutton', orient = 'vertical',
                         labelpos = 'w', command = radiocallback, label_text = self.title,
                         hull_borderwidth = 2, hull_relief = 'ridge',
@@ -124,8 +268,10 @@ class GUI:
                 radiobuttons.invoke(self.default_option)
                 if len(notes)>0: Label(self._parent, text=notes).pack()
             if 'button' in od.DisplayObject() and self.display_options != ['NA']:
+                if use_scroll == 'yes': parent_type = self.sf.interior()
+                else: parent_type = self._parent
+                
                 self._option = option
-
                 if mac_print_mode == 'yes': button_type = 'radiobutton'
                 else: button_type = 'button'                
                 ### Create and pack a horizontal RadioSelect widget.
@@ -133,7 +279,7 @@ class GUI:
                 else: self.default_option = defaults[i]
                 def buttoncallback(tag,callback=self.callback,option=option):
                     callback(tag,option)
-                horiz = PmwFreeze.RadioSelect(self._parent, buttontype = button_type, orient = 'horizontal',
+                horiz = PmwFreeze.RadioSelect(parent_type, buttontype = button_type, orient = 'horizontal',
                         labelpos = 'w', command = buttoncallback,
                         label_text = self.title, frame_borderwidth = 2,
                         frame_relief = 'ridge'
@@ -146,12 +292,14 @@ class GUI:
                 if len(notes)>0: Label(self._parent, text=notes).pack()
 
             if ('folder' in od.DisplayObject() or 'file' in od.DisplayObject()) and self.display_options != ['NA']:
+              if use_scroll == 'yes': parent_type = self.sf.interior()
+              else: parent_type = self._parent
               proceed = 'yes'
               #if option == 'raw_input': proceed = 'no'
               if proceed == 'yes':
                 self._option = option
 
-                group = PmwFreeze.Group(self._parent,tag_text = self.title)
+                group = PmwFreeze.Group(parent_type,tag_text = self.title)
                 group.pack(fill = 'both', expand = 1, padx = 10, pady = 2)
                 
                 def filecallback(callback=self.callback,option=option): self.getPath(option)
@@ -163,7 +311,7 @@ class GUI:
                 entry = Entry(group.interior(),textvariable=self.pathdb[option]); entry.pack(side=LEFT,fill = 'both', expand = 1, padx = 10, pady = 2)
                 button = Button(group.interior(), text="select "+od.DisplayObject(), width = 10, fg="red", command=filecallback); button.pack(side=LEFT, padx = 2,pady = 2)                    
              
-                if len(notes)>0: ln = Label(self._parent, text=notes,fg="blue"); ln.pack(padx = 10)
+                if len(notes)>0: ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
 
             if 'drop-down' in od.DisplayObject() and self.display_options != ['NA']:
                 self._option = option
@@ -220,6 +368,8 @@ class GUI:
                 ); entry_field.pack(padx = 10, pady = 1)
 
             if 'enter' in od.DisplayObject() and self.display_options != ['NA']:
+                if use_scroll == 'yes': parent_type = self.sf.interior()
+                else: parent_type = self._parent
                 self._option = option
                 ### Create and pack a horizontal RadioSelect widget.
                 if len(defaults) <1: self.default_option = self.display_options[0]
@@ -238,14 +388,14 @@ class GUI:
                     #self.default_option = 'CHANGE TO A NUMERIC VALUE'; use_method = 'i'
                     self.default_option = ''; use_method = 'i'
                 if use_method == 'p':
-                    entry_field = PmwFreeze.EntryField(self._parent,
+                    entry_field = PmwFreeze.EntryField(parent_type,
                             labelpos = 'w',
                             label_text = self.title,
                             validate = custom_validate_p, 
                             value = self.default_option, hull_borderwidth = 2, hull_relief = 'ridge'
                     ); entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 10)
                 if use_method == 'i':
-                    entry_field = PmwFreeze.EntryField(self._parent,
+                    entry_field = PmwFreeze.EntryField(parent_type,
                             labelpos = 'w',
                             label_text = self.title,
                             validate = custom_validate,
@@ -253,13 +403,15 @@ class GUI:
                     ); entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 10)
                 if len(notes)>0: Label(self._parent, text=notes).pack()
             if 'multiple-checkbox' in od.DisplayObject() and self.display_options != ['NA']:
+                if use_scroll == 'yes': parent_type = self.sf.interior()
+                else: parent_type = self._parent
                 self._option = option
                 if len(defaults) <1: self.default_option = self.display_options[0]
                 else: self.default_option = defaults[i]
                 def checkbuttoncallback(tag,state,checkbuttoncallback=self.checkbuttoncallback,option=option):
                     checkbuttoncallback(tag,state,option)                    
                 ### Create and pack a vertical RadioSelect widget, with checkbuttons.
-                self.checkbuttons = PmwFreeze.RadioSelect(self._parent,
+                self.checkbuttons = PmwFreeze.RadioSelect(parent_type,
                         buttontype = 'checkbutton', orient = 'vertical',
                         labelpos = 'w', command = self.checkbuttoncallback,
                         label_text = self.title, hull_borderwidth = 2, hull_relief = 'ridge',
@@ -273,6 +425,8 @@ class GUI:
                 if len(notes)>0: Label(self._parent, text=notes).pack()
                 
             if 'single-checkbox' in od.DisplayObject() and self.display_options != ['NA']:
+                if use_scroll == 'yes': parent_type = self.sf.interior()
+                else: parent_type = self._parent
                 self._option = option
                 proceed = 'yes'
                 """if option == 'export_splice_index_values':
@@ -284,7 +438,7 @@ class GUI:
                         def checkbuttoncallback(tag,state,checkbuttoncallback=self.checkbuttoncallback,option=option):
                             checkbuttoncallback(tag,state,option)                
                         ### Create and pack a vertical RadioSelect widget, with checkbuttons.
-                        self.checkbuttons = PmwFreeze.RadioSelect(self._parent,
+                        self.checkbuttons = PmwFreeze.RadioSelect(parent_type,
                                 buttontype = 'checkbutton', command = checkbuttoncallback,
                                 hull_borderwidth = 2, hull_relief = 'ridge',
                         ); self.checkbuttons.pack(side = 'left', expand = 1, padx = 10, pady = 10)
@@ -307,12 +461,22 @@ class GUI:
         continue_to_next_win = Button(text = 'Continue', command = self._parent.destroy)
         continue_to_next_win.pack(side = 'right', padx = 10, pady = 10)
 
+        back_button = Button(self._parent, text="Back", command=self.goBack) 
+        back_button.pack(side = 'right', padx =10, pady = 5)
+        
         quit_win = Button(self._parent, text="Quit", command=self.quit) 
         quit_win.pack(side = 'right', padx =10, pady = 5)
+
+        help = Button(self._parent, text="Help", command=self.quit) 
+        help.pack(side = 'left', padx =10, pady = 5)        
 
         self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
         self._parent.mainloop()
 
+    def goBack(self):
+        self._parent.destroy()
+        getUserParameters('no'); sys.exit()
+        
     def linkout(self):
         webbrowser.open(self.url)
             
@@ -452,6 +616,39 @@ def getPrimaryUserParameters():
     
     return species_code, array_code, manufacturer, constitutive_source, run_from_scratch
 
+class SupprotedArrays:
+    def __init__(self, array_name, library_file, annotation_file, species, array_type):
+        self.array_name = array_name; self.library_file = library_file; self.annotation_file = annotation_file
+        self.species = species; self.array_type = array_type
+    def ArrayName(self): return self.array_name
+    def LibraryFile(self): return self.library_file
+    def AnnotationFile(self): return self.annotation_file
+    def Species(self): return self.species
+    def ArrayType(self): return self.array_type
+    def __repr__(self): return self.Report()
+    
+def importSupportedArrayInfo():
+    filename = 'Config/ArrayFileInfo.txt'; x=0
+    fn=filepath(filename); global supproted_array_db; supproted_array_db={}
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        array_name,library_file,annotation_file,species,array_type = string.split(data,'\t')
+        if x==0: x=1
+        else:
+            sd = SupprotedArrays(array_name,library_file,annotation_file,species,array_type)
+            supproted_array_db[array_name] = sd
+
+def exportSupportedArrayInfo():
+    fn=filepath('Config/ArrayFileInfo.txt'); data = open(fn,'w'); x=0
+    header = string.join(['ArrayName','LibraryFile','AnnotationFile','Species','ArrayType'],'\t')+'\n'
+    data.write(header)
+    for array_name in supproted_array_db:
+        sd = supproted_array_db[array_name]
+        values = [array_name,sd.LibraryFile(),sd.AnnotationFile(),sd.Species(),sd.ArrayType()]
+        values = string.join(values,'\t')+'\n'
+        data.write(values)
+    data.close()
+            
 class SpeciesData:
     def __init__(self, abrev, species, algorithms):
         self._abrev = abrev; self._species = species; self._algorithms = algorithms
@@ -631,11 +828,13 @@ def probesetSummarize(exp_file_location_db,root):
         output_dir = fl.OutputDir() + '/APT-output'
         cache_dir = output_dir + '/apt-probeset-summarize-cache'
 
-        import subprocess
+        import subprocess; import platform
         if '/bin' in apt_dir: apt_file = apt_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
         elif os.name == 'nt': apt_file = apt_dir + '/PC/apt-probeset-summarize'
-        elif os.name == 'mac': apt_file = apt_dir + '/Mac/apt-probeset-summarize'
-        elif os.name == 'posix': apt_file = apt_dir + '/Linux/apt-probeset-summarize'
+        elif 'darwin' in sys.platform: apt_file = apt_dir + '/Mac/apt-probeset-summarize'
+        elif 'linux' in sys.platform:
+            if '32bit' in platform.architecture(): apt_file = apt_dir + '/Linux/32bit/apt-probeset-summarize'
+            elif '64bit' in platform.architecture(): apt_file = apt_dir + '/Linux/64bit/apt-probeset-summarize'
         apt_file = filepath(apt_file)
         print "Begining probeset summarization of input CEL files with Affymetrix Power Tools (APT)..."
         if array_type == "3'array":
@@ -716,16 +915,15 @@ def importDefaultInfo(filename,array_type):
                 return dabg_p, expression_threshold, perform_alt_analysis, expression_data_format, avg_all_for_ss, include_raw_data
             
         if '-alt' in filename:
-            array_abrev, analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, MiDAS_analysis, export_splice_index_values = string.split(data,'\t')
+            array_abrev, analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, MiDAS_analysis, export_splice_index_values, filter_for_AS = string.split(data,'\t')
             if array_type == array_abrev:
                 ### NOTE: p_threshold is used for MiDAS and t-test comparison p-values thresholds
                 if MiDAS_analysis == 'yes': exportTransitResultsforAnalysis = 'yes'
                 else: exportTransitResultsforAnalysis = 'no'
-                if  analysis_method != 'splicing-index': exportTransitResultsforAnalysis='NA'; export_splice_index_values='NA'
-                return [analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, exportTransitResultsforAnalysis, export_splice_index_values]
+                return [analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, exportTransitResultsforAnalysis, export_splice_index_values, filter_for_AS]
             
         if '-funct' in filename:
-            array_abrev, analyze_functional_attributes,microRNA_prediction_method = string.split(data,'\t')
+            array_abrev, analyze_functional_attributes, microRNA_prediction_method = string.split(data,'\t')
             if array_type == array_abrev:
                 return [analyze_functional_attributes,microRNA_prediction_method]
 
@@ -779,6 +977,26 @@ class IndicatorWindow:
         text_button = Button(parent, text=self.button_text, command=parent.destroy); text_button.pack(side = 'bottom', padx = 5, pady = 5)
         parent.mainloop()
     def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
+
+class DownloadWindow:
+    def __init__(self,message,option1,option2):
+        self._user_variables = {}
+        self.message = message; self.option1 = option1; self.option2 = option2
+        parent = Tk(); self._parent = parent; nulls = '\t\t\t\t\t\t\t'; parent.title('Attention!!!')
+
+        filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
+        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
+        can.create_image(2, 2, image=img, anchor=NW)
+        
+        Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
+        text_button = Button(parent, text=self.option1, command=self.selected1); text_button.pack(side = 'bottom', padx = 5, pady = 5)
+        text_button2 = Button(parent, text=self.option2, command=self.selected2); text_button2.pack(side = 'bottom', padx = 5, pady = 5)
+        parent.mainloop()
+    def selected1(self):
+        self._user_variables['selected_option']=1; self._parent.destroy()
+    def selected2(self):
+        self._user_variables['selected_option']=2; self._parent.destroy()
+    def Results(self): return self._user_variables
 
 class IndicatorLinkOutWindow:
     def __init__(self,message,button_text,url):
@@ -853,7 +1071,7 @@ class MainMenu:
             callback(tag)
         horiz = PmwFreeze.RadioSelect(parent,
                 labelpos = 'w', command = buttoncallback,
-                label_text = 'GO-Elite version 1.0 Main', frame_borderwidth = 2,
+                label_text = 'AltAnalyze version 1.1 Main', frame_borderwidth = 2,
                 frame_relief = 'ridge'
         ); horiz.pack(fill = 'x', padx = 10, pady = 10)
         for text in ['Continue']: horiz.add(text)
@@ -872,7 +1090,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze 1.01 beta.\n'
+        about = 'AltAnalyze 1.1 beta.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.genmapp.org/AltAnalyze\n'
@@ -893,7 +1111,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze 1.02 beta.\n')
+        txt.insert(END, 'AltAnalyze 1.1 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.genmapp.org/AltAnalyze\n", ('link', str(0)))
@@ -1004,6 +1222,7 @@ def getUserParameters(skip_intro):
         try: MainMenu()
         except TclError: null=[]
     global species; species=''; global user_variables; user_variables={}; global analysis_method; global array_type
+    global analysis_status; analysis_status = 'continue'
     ### Get default options for ExpressionBuilder and AltAnalyze
 
     na = 'NA'; log = 'log'; no = 'no'
@@ -1012,7 +1231,8 @@ def getUserParameters(skip_intro):
     analysis_method=na; p_threshold=na; filter_probeset_types=na; alt_exon_fold_cutoff=na
     permute_p_threshold=na; perform_permutation_analysis=na; export_splice_index_values=no
     exportTransitResultsforAnalysis=no; analyze_functional_attributes=no; microRNA_prediction_method=na
-    gene_expression_cutoff='any'; cel_file_dir=na; input_exp_file=na; input_stats_file=na
+    gene_expression_cutoff='any'; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
+    calculate_splicing_index_p=no
             
     option_list,option_db = importUserOptions('exon')  ##Initially used to just get the info for species and array_type
     importSpeciesInfo()
@@ -1022,8 +1242,8 @@ def getUserParameters(skip_intro):
         ###Update this informatin in option_db which will be over-written after the user selects a species and array_type
         option_db['species'].setArrayOptions(species_list)
 
-        root = Tk()
-        root.title('AltAnalyze: Main Dataset Parameters')
+        global root; root = Tk()
+        root.title('AltAnalyze: Species Selection')
         gu = GUI(root,option_db,option_list['Species'],'')
         species_full = gu.Results()['species']
         species = species_codes[species_full].SpeciesCode()
@@ -1063,7 +1283,7 @@ def getUserParameters(skip_intro):
         proceed = 'no'
         while proceed == 'no':        
             root = Tk()
-            root.title('AltAnalyze: Main Dataset Parameters')
+            root.title('AltAnalyze: Select Microarray and Analysis Method')
             gu = GUI(root,option_db,option_list['AnalysisType'],'')
             array_full = gu.Results()['array_type']
             array_type = array_codes[array_full].ArrayCode()
@@ -1075,16 +1295,18 @@ def getUserParameters(skip_intro):
                     print_out = "The selected option is not compatible with gene expression only arrays."
                     IndicatorWindow(print_out,'Continue')   
             else: proceed = 'yes' ### All options are compatible with splicing arrays
+
+        array_type_original = array_type
+        array_type = string.replace(array_type,'gene',"3'array")
+        manufacturer = array_codes[array_full].Manufacturer()
+        constitutive_source = array_codes[array_full].ConstitutiveSource()
+        option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
         
         if run_from_scratch == 'CEL files':
+            """Designate CEL file directory, Dataset Name and Output Directory"""
             assinged = 'no'
             while assinged == 'no': ### Assigned indicates whether or not the CEL directory and CDF files are defined
                 root = Tk()
-                if array_type == "3'array":
-                    op = option_db['input_cdf_file']; input_cdf_file_label = op.Display()
-                    op.setNotes('')
-                    input_cdf_file_label = string.replace(input_cdf_file_label,'PGF','CDF')
-                    op.setDisplay(input_cdf_file_label)
                 root.title('AltAnalyze: Select CEL files for APT')
                 gu = GUI(root,option_db,option_list['InputCELFiles'],'')
                 dataset_name = gu.Results()['dataset_name']
@@ -1096,37 +1318,7 @@ def getUserParameters(skip_intro):
                     cel_files,cel_files_fn=identifyCELfiles(cel_file_dir)
                     try: output_dir = gu.Results()['output_dir']
                     except KeyError: output_dir = cel_file_dir
-                    if len(cel_files)>0: ### CEL files are present in this directory
-                        if 'input_cdf_file' in gu.Results():
-                            input_cdf_file = gu.Results()['input_cdf_file']; input_cdf_file_lower = string.lower(input_cdf_file)
-                            if array_type == "3'array":
-                                if '.cdf' in input_cdf_file_lower: clf_file='';bgp_file=''; assinged = 'yes'
-                                else:
-                                    print_out = "The file;\n"+input_cdf_file+"\ndoes not appear to be a valid Affymetix\nlibrary file. If you do not have library files, you must\ngo to the Affymetrix website to download."
-                                    IndicatorWindow(print_out,'Continue')            
-                            else:
-                                if '.pgf' in input_cdf_file_lower:
-                                    ###Check to see if the clf and bgp files are present in this directory 
-                                    icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); pgf_short = icf_list[-1]
-                                    clf_short = string.replace(pgf_short,'.pgf','.clf')
-                                    if array_type == 'exon': bgp_short = string.replace(pgf_short,'.pgf','.antigenomic.bgp')
-                                    else: bgp_short = string.replace(pgf_short,'.pgf','.bgp')
-                                    dir_list = read_directory(parent_dir)
-                                    if clf_short in dir_list and bgp_short in dir_list:
-                                        pgf_file = input_cdf_file
-                                        clf_file = string.replace(pgf_file,'.pgf','.clf')
-                                        if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
-                                        else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
-                                        assinged = 'yes'
-                                    else:
-                                        print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
-                                        IndicatorWindow(print_out,'Continue')                                   
-                                else:
-                                    print_out = "The file;\n"+input_cdf_file+"\ndoes not appear to be a valid Affymetix\nlibrary file. If you do not have library files, you must\ngo to the Affymetrix website to download."
-                                    IndicatorWindow(print_out,'Continue')                                       
-                        else: 
-                            print_out = "No library file has been assigned. Please\nselect a valid library file for this array."
-                            IndicatorWindow(print_out,'Continue')                                
+                    if len(cel_files)>0: assinged = 'yes' ### CEL files are present in this directory
                     else:
                         print_out = "No valid .CEL files were found in the directory\n"+cel_file_dir+"\nPlease verify and try again."
                         IndicatorWindow(print_out,'Continue')
@@ -1134,14 +1326,108 @@ def getUserParameters(skip_intro):
                     print_out = "The directory containing CEL files has not\nbeen assigned! Select a directory before proceeding."
                     IndicatorWindow(print_out,'Continue')
             cel_file_list_dir = exportCELFileList(cel_files_fn,cel_file_dir)
-        
-        ### Define these after establishing CEL file paramters, since 3' and gene arrays won't be synonymous
-        array_type_original = array_type
-        array_type = string.replace(array_type,'gene',"3'array")
-        manufacturer = array_codes[array_full].Manufacturer()
-        constitutive_source = array_codes[array_full].ConstitutiveSource()
-        option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
-        
+
+            """Determine if Library and Annotations for the array exist, if not, download or prompt for selection"""
+            try: specific_array_types,specific_array_type = identifyArrayType(cel_files_fn); num_array_types = len(specific_array_types)
+            except Exception: null=[]
+            importSupportedArrayInfo()
+            try:
+                sa = supproted_array_db[specific_array_type]; array_species = sa.Species(); cel_array_type = sa.ArrayType()
+            except KeyError: library_dir=''; array_species=''; annotation_dir=''; cel_array_type=''
+            ### Check for issues with arrays or user input options
+            if num_array_types>1: ### More than one array type found in the directory
+                print_out = 'Warning!!!!!!!\n\nMultiple array_types found ("'+specific_array_types[0]+'" and "'+specific_array_types[1]+'").\nIt is recommended you restart, otherwise, APT will try\n to process all different array types together as "'+specific_array_types[-1]+'".'
+                IndicatorWindow(print_out,'Continue with Existing')
+            if array_species != species and len(array_species)>0:
+                print_out = "The CEL files indicate that the proper\nspecies is "+array_species+", however, you\nindicated "+species+ ". The species indicated by the CEL\nfiles will be used instead."
+                IndicatorWindow(print_out,'Continue')
+                species = array_species
+            if cel_array_type != array_type and len(cel_array_type)>0:
+                print_out = "The CEL files indicate that the proper\narray type is "+cel_array_type+", however, you\nindicated "+array_type+ ". The array type indicated by the CEL\nfiles will be used instead."
+                IndicatorWindow(print_out,'Continue')
+                array_type = cel_array_type
+            ### See if the library and annotation files are on the server or are local
+            if specific_array_type in supproted_array_db:
+                input_cdf_file, annotation_dir, bgp_file, clf_file = getAffyFiles(specific_array_type,species)
+            else: bgp_file = ''; clf_file = ''
+            ### Remove the variable names for Library and Annotation file selection if these files are found
+            option_list_library=[]
+            if len(input_cdf_file)>0:
+                for i in option_list['InputLibraryFiles']:
+                    if i != 'input_cdf_file': option_list_library.append(i)
+            if len(annotation_dir)>0:
+                for i in option_list['InputLibraryFiles']:
+                    if i != 'input_annotation_file': option_list_library.append(i)
+            if len(option_list_library)==0:
+                option_list_library = option_list['InputLibraryFiles']
+
+            """Identify and copy over any Libary or Annotation files on the computer"""                    
+            if len(input_cdf_file)==0 or len(annotation_dir) == 0:
+                assinged = 'no'
+                while assinged == 'no': ### Assigned indicates whether or not the CEL directory and CDF files are defined
+                    if array_type == "3'array":
+                        op = option_db['input_cdf_file']; input_cdf_file_label = op.Display()
+                        op.setNotes('')
+                        input_cdf_file_label = string.replace(input_cdf_file_label,'PGF','CDF')
+                        op.setDisplay(input_cdf_file_label)      
+                    root = Tk()
+                    root.title('AltAnalyze: Select Affymetrix Library and Annotation files')
+                    gu = GUI(root,option_db,option_list_library,'')
+                    if 'input_cdf_file' in option_list_library: ### Deals with Annotation Files
+                        if 'input_cdf_file' in gu.Results():
+                            input_cdf_file = gu.Results()['input_cdf_file']; input_cdf_file_lower = string.lower(input_cdf_file)
+                            if array_type == "3'array":
+                                if '.cdf' in input_cdf_file_lower:
+                                    clf_file='';bgp_file=''; assinged = 'yes'
+                                    ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
+                                    icf_list = string.split(input_cdf_file,'/'); cdf_short = icf_list[-1]
+                                    destination_parent = 'AltDatabase/affymetrix/LibraryFiles/'
+                                    info_list = input_cdf_file,filepath(destination_parent+cdf_short); StatusWindow(info_list,'copy')
+                                else:
+                                    print_out = "The file;\n"+input_cdf_file+"\ndoes not appear to be a valid Affymetix\nlibrary file. If you do not have library files, you must\ngo to the Affymetrix website to download."
+                                    IndicatorWindow(print_out,'Continue')            
+                            else:
+                                if '.pgf' in input_cdf_file_lower:
+                                    ###Check to see if the clf and bgp files are present in this directory 
+                                    icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); cdf_short = icf_list[-1]
+                                    clf_short = string.replace(cdf_short,'.pgf','.clf')
+                                    if array_type == 'exon': bgp_short = string.replace(cdf_short,'.pgf','.antigenomic.bgp')
+                                    else: bgp_short = string.replace(cdf_short,'.pgf','.bgp')
+                                    dir_list = read_directory(parent_dir)
+                                    if clf_short in dir_list and bgp_short in dir_list:
+                                        pgf_file = input_cdf_file
+                                        clf_file = string.replace(pgf_file,'.pgf','.clf')
+                                        if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
+                                        else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
+                                        assinged = 'yes'
+                                        ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
+                                        destination_parent = 'AltDatabase/affymetrix/Library/'
+                                        info_list = input_cdf_file,filepath(destination_parent+cdf_short); StatusWindow(info_list,'copy')
+                                        info_list = clf_file,filepath(destination_parent+clf_short); StatusWindow(info_list,'copy')
+                                        info_list = bgp_file,filepath(destination_parent+bgp_short); StatusWindow(info_list,'copy')
+                                    else:
+                                        print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
+                                        IndicatorWindow(print_out,'Continue')                                   
+                                else:
+                                    print_out = "The file;\n"+input_cdf_file+"\ndoes not appear to be a valid Affymetix\nlibrary file. If you do not have library files, you must\ngo to the Affymetrix website to download."
+                                    IndicatorWindow(print_out,'Continue')
+                        else: 
+                            print_out = "No library file has been assigned. Please\nselect a valid library file for this array."
+                            IndicatorWindow(print_out,'Continue')                                
+                    if 'input_annotation_file' in option_list_library: ### Deals with Annotation Files
+                        if 'input_annotation_file' in gu.Results():
+                            input_annotation_file = gu.Results()['input_annotation_file']; input_annotation_lower = string.lower(input_annotation_file)
+                            if '.csv' in input_annotation_lower:
+                                assinged = 'yes'
+                                ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
+                                icf_list = string.split(input_annotation_file,'/'); csv_short = icf_list[-1]
+                                destination_parent = 'AltDatabase/affymetrix/'+species+'/'
+                                info_list = input_annotation_file,filepath(destination_parent+csv_short); StatusWindow(info_list,'copy')
+                                sd = SupprotedArrays(specific_array_type,cdf_short,csv_short,species,array_type)
+                                supproted_array_db[specific_array_type] = sd
+                                try: exportSupportedArrayInfo()
+                                except Exception: continue ### Occurs if the file is open... not critical to worry about
+                                
         if run_from_scratch == 'expression file':
             status = 'repeat'
             while status == 'repeat':
@@ -1160,7 +1446,7 @@ def getUserParameters(skip_intro):
                 else:
                     print_out = "The expression file:\n"+input_exp_file+"\ndoes not appear to be a valid expression file. Check to see that\nthis is the correct tab-delimited text file."
                     IndicatorWindow(print_out,'Continue')
-        if run_from_scratch != 'update DBs': ### Update DBs is an option which has been removed from 1.02. Should be a separate menu item soon.
+        if run_from_scratch != 'update DBs': ### Update DBs is an option which has been removed from 1.1. Should be a separate menu item soon.
             expr_defaults, alt_exon_defaults, functional_analysis_defaults = importDefaults(array_type,species)
             
             if run_from_scratch != 'AltAnalyze filtered':
@@ -1209,10 +1495,23 @@ def getUserParameters(skip_intro):
                 except KeyError: export_splice_index_values = export_splice_index_values
                 try: exportTransitResultsforAnalysis = gu.Results()['exportTransitResultsforAnalysis']
                 except KeyError: exportTransitResultsforAnalysis = exportTransitResultsforAnalysis
+                try: calculate_splicing_index_p = gu.Results()['calculate_splicing_index_p']
+                except KeyError: calculate_splicing_index_p = calculate_splicing_index_p
                 analyze_functional_attributes = gu.Results()['analyze_functional_attributes']
+                filter_for_AS = gu.Results()['filter_for_AS']
                 microRNA_prediction_method = gu.Results()['microRNA_prediction_method']
-                try: p_threshold = float(permute_p_threshold)
-                except ValueError: permute_p_threshold = permute_p_threshold
+                if analysis_method == 'splicing-index': p_threshold = float(p_threshold)
+                else:
+                    try: p_threshold = float(permute_p_threshold)
+                    except ValueError: permute_p_threshold = permute_p_threshold
+                if analysis_method == 'linearregres-rlm':
+                    ### Test installation of rpy and/or R
+                    x = [5.05, 6.75, 3.21, 2.66]; y = [1.65, 26.5, -5.93, 7.96]
+                    try: s = statistics.LinearRegression(x,y,'no')
+                    except Exception:
+                        print_out = "The local installation of R and rpy is missing or\nis not properly configured. See the AltAnalyze ReadMe\nfor more information (may require loading AltAnalyze from source code)."
+                        IndicatorWindow(print_out,'Continue'); getUserParameters('no'); sys.exit()
+
     except IndexError:  ###Occurs when PMW or Tkinter does not propperly load
         species, array_type, manufacturer, constitutive_source, run_from_scratch = getPrimaryUserParameters()
         expr_defaults, alt_exon_defaults, functional_analysis_defaults = importDefaults(array_type,species)
@@ -1265,7 +1564,8 @@ def getUserParameters(skip_intro):
                 exp_file_location_db = importExpressionFiles() ###Don't create 'array_group_list', but pass the 'exp_file_location_db' onto ExpressionBuilder                
 
         ### Import array-group and group comparisons. Only time relevant for probesetSummarization is when an error is encountered and re-running
-        dir_files = read_directory(parent_dir)
+        try: dir_files = read_directory(parent_dir)
+        except Exception: dir_files=[]
         if groups_name in dir_files and comps_name in dir_files:
             array_group_list,group_db = importArrayGroupsSimple(groups_file_dir) #agd = ArrayGroupData(array_header,group,group_name)
             comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
@@ -1401,7 +1701,7 @@ def getUserParameters(skip_intro):
 
     expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,permute_p_threshold, perform_permutation_analysis, export_splice_index_values
-    additional_var = exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method
+    additional_var = calculate_splicing_index_p, exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method, filter_for_AS
     return expr_var, alt_var, additional_var, exp_file_location_db
 
 def getAPTLocations(file_location_defaults,run_from_scratch,exportTransitResultsforAnalysis):

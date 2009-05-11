@@ -64,10 +64,57 @@ def grabJunctionData(species,array_type,key_type):
                 else: critical_exon_junction_db[(probeset1, probeset2)] = critical_exons
     return critical_exon_junction_db
 
+class GeneAnnotationData:
+    def __init__(self, geneid, description, symbol, external_geneid, rna_processing_annot):
+        self._geneid = geneid; self._description = description; self._symbol = symbol
+        self._rna_processing_annot = rna_processing_annot; self._external_geneid = external_geneid
+    def GeneID(self): return self._geneid
+    def Description(self): return self._description
+    def Symbol(self): return self._symbol
+    def ExternalGeneID(self): return self._external_geneid
+    def TranscriptClusterIDs(self):
+        if self.GeneID() in gene_transcript_cluster_db:
+            transcript_cluster_list = gene_transcript_cluster_db[self.GeneID()]
+            return transcript_cluster_list
+        else:
+            try: return transcript_cluster_list
+            except UnboundLocalError: return [''] ### Occurs for SplicingIndex method with AltMouse data
+    def RNAProcessing(self): return self._rna_processing_annot
+    def Report(self):
+        output = self.GeneID() +'|'+ self.Symbol() +'|'+ self.Description()
+        return output
+    def __repr__(self): return self.Report()
+    
+def import_annotations(filename,array_type):
+    fn=filepath(filename); annotate_db = {}; x = 0
+    if array_type != 'exon':
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            if x == 0: x = 1
+            else:
+                try: affygene, description, ll_id, symbol, rna_processing_annot = string.split(data,'\t')
+                except ValueError: affygene, description, ll_id, symbol = string.split(data,'\t'); splicing_annotation = ''
+                if '"' in description: null,description,null = string.split(description,'"')
+                y = GeneAnnotationData(affygene, description, symbol, ll_id, rna_processing_annot)
+                annotate_db[affygene] = y
+    else:
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            rna_processing_annot=''
+            try: ensembl, symbol, description, rna_processing_annot = string.split(data,'\t')
+            except ValueError: ensembl, description, symbol = string.split(data,'\t')
+            y = GeneAnnotationData(ensembl, description, symbol, ensembl, rna_processing_annot)
+            annotate_db[ensembl] = y
+    return annotate_db
+
 def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method):
     filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_probeset_microRNAs_"+microRNA_prediction_method+".txt"
     fn=filepath(filename); microRNA_full_exon_db={}; microRNA_count_db={}; gene_microRNA_denom={}
-    if array_type != 'exon': critical_exon_junction_db = grabJunctionData(species,array_type,'gene-exon')
+    if array_type != 'exon':
+        critical_exon_junction_db = grabJunctionData(species,array_type,'gene-exon')
+        gene_annotation_file = "AltDatabase/"+species+"/"+array_type+"/"+array_type+"_gene_annotations.txt"
+        annotate_db = import_annotations(gene_annotation_file,array_type)
+
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -75,18 +122,27 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
         try: mir_seq=t[2];mir_sources=t[3]
         except IndexError: mir_seq='';mir_sources=''
         try:
-            if array_type == 'exon': ed = exon_db[probeset]; probeset_list = [probeset]; exonid = ed.ExonID()
+            if array_type == 'exon':
+                ed = exon_db[probeset]; probeset_list = [probeset]; exonid = ed.ExonID(); symbol = ed.Symbol(); geneid = ed.GeneID()
             else:
                 probeset_list = []; uid = probeset ###This is the gene with the critical exon it's mapped to
-                for junctions in critical_exon_junction_db[uid]: probeset_list.append(junctions); ed = exon_db[junctions[0]]
-            microRNA_info = microRNA, ed.Symbol(), mir_seq, mir_sources
-            for probeset in probeset_list:
-                try: microRNA_full_exon_db[ed.GeneID(),probeset].append(microRNA_info)
-                except KeyError: microRNA_full_exon_db[ed.GeneID(),probeset] = [microRNA_info]
-                
-                try: microRNA_count_db[microRNA].append(ed.GeneID())
-                except KeyError: microRNA_count_db[microRNA] = [ed.GeneID()]
-                gene_microRNA_denom[ed.GeneID()] = []
+                for junctions in critical_exon_junction_db[uid]:
+                    if junctions in exon_db:
+                        geneid = exon_db[junctions].GeneID()
+                        if geneid in annotate_db: symbol = annotate_db[geneid].Symbol()
+                        else: symbol = geneid
+                    else: geneid = ''
+                    #if junctions in exon_db:
+                    probeset_list.append(junctions)
+            if len(geneid)>0:
+                microRNA_info = microRNA, symbol, mir_seq, mir_sources
+                for probeset in probeset_list:
+                    try: microRNA_full_exon_db[geneid,probeset].append(microRNA_info)
+                    except KeyError: microRNA_full_exon_db[geneid,probeset] = [microRNA_info]
+                    
+                    try: microRNA_count_db[microRNA].append(geneid)
+                    except KeyError: microRNA_count_db[microRNA] = [geneid]
+                    gene_microRNA_denom[geneid] = []
         except KeyError: null=[]
     microRNA_count_db = eliminate_redundant_dict_values(microRNA_count_db)
 
@@ -95,7 +151,7 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
     print len(gene_microRNA_denom),"genes with a predicted microRNA binding site alinging to a probeset"
     return microRNA_full_exon_db,microRNA_count_db,gene_microRNA_denom
         
-def link_microRNA_exon_to_decon_db(microRNA_full_exon_db,exon_hits):
+def filterMicroRNAProbesetAssociations(microRNA_full_exon_db,exon_hits):
     filtered_microRNA_exon_db = {}
     microRNA_gene_count_db = {}
     for key in microRNA_full_exon_db:
@@ -389,10 +445,10 @@ def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_d
     functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,'exon',include_sequences)
 
     export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-domain-annotations-'+type+'.txt' 
-    formatAttributeForExport(functional_attribute_db,export_file)
+    formatAttributeForExport(protein_features,export_file)
     
     export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-annotations-'+type+'.txt' 
-    formatAttributeForExport(protein_features,export_file)
+    formatAttributeForExport(functional_attribute_db,export_file)
 
 def formatAttributeForExport(attribute_db,filename):
     import IdentifyAltIsoforms
@@ -529,10 +585,9 @@ def function_exon_analysis_main(array_type,exon_hits,dataset_name_original,micro
     protein_sequence_db = protein_sequence_dbase
     include_sequences = 'yes'
     functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type,include_sequences)
-    exon_attribute_db={}; gene_top_attribute_db={}
-    filtered_microRNA_exon_db = link_microRNA_exon_to_decon_db(microRNA_full_exon_db,exon_hits)
+    filtered_microRNA_exon_db = filterMicroRNAProbesetAssociations(microRNA_full_exon_db,exon_hits)
         
-    return filtered_microRNA_exon_db, exon_attribute_db, gene_top_attribute_db, functional_attribute_db, protein_features
+    return filtered_microRNA_exon_db, functional_attribute_db, protein_features
 
 if __name__ == '__main__':
     species = 'Mm'; array_type='AltMouse'
