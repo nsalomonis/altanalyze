@@ -183,8 +183,11 @@ def parse_affymetrix_annotations(filename):
                 ps = tc; version = 2 ### Used to define where the non-UID data exists
             except UnboundLocalError: probesets = [affy_data[ps]]; version = 1
             
-            uniprot = affy_data[sp]; unigene = affy_data[ug]; uniprot_list = string.split(uniprot,' /// ')
-            symbol = ''; description = ''; pathway_data = affy_data[gp]
+            try: uniprot = affy_data[sp]; unigene = affy_data[ug]; uniprot_list = string.split(uniprot,' /// ')
+            except IndexError: uniprot=''; unigene=''; uniprot_list=[] ### This occurs due to a random python error, typically once twice in the file
+            symbol = ''; description = ''
+            try: pathway_data = affy_data[gp]
+            except IndexError: pathway_data='' ### This occurs due to a random python error, typically once twice in the file
             for probeset in probesets:
                 if version == 1: ###Applies to 3' biased arrays only (Conventional Format)
                     description = affy_data[gt]; symbol = affy_data[gs]; goa=''; entrez = affy_data[ll]
@@ -220,20 +223,25 @@ def parse_affymetrix_annotations(filename):
                             try: a = int(uniprot_id[1]); uniprot_list2.append(uniprot_id)
                             except ValueError: null = []
                     uniprot_list = uniprot_list2
-                    
-                    mrna_associations = affy_data[ma]; ensembl_list=[]; descriptions=[]
+                    ensembl_list=[]; descriptions=[]
+                    try: mrna_associations = affy_data[ma]
+                    except IndexError: mrna_associations=''; 
                     ensembl_data = string.split(mrna_associations,' /// ')
                     for entry in ensembl_data:
                         annotations = string.split(entry,' // ')
                         #if probeset == '8148358': print annotations
                         for i in annotations:
                             if 'gene:ENS' in i:
-                                description, ensembl_id = string.split(i,'gene:ENS'); descriptions.append((len(description),description))
-                                ensembl_id = string.split(ensembl_id,' ')
-                                ensembl_id = 'ENS'+ensembl_id[0]; ensembl_list.append(ensembl_id)
+                                ensembl_id_data = string.split(i,'gene:ENS')
+                                ensembl_ids = ensembl_id_data[1:]; description = ensembl_id_data[0] ###There can be multiple IDs
+                                descriptions.append((len(description),description))
+                                for ensembl_id in ensembl_ids:
+                                    ensembl_id = string.split(ensembl_id,' ')
+                                    ensembl_id = 'ENS'+ensembl_id[0]; ensembl_list.append(ensembl_id)
 
                     #if probeset == '8148358': print ensembl_list; kill
-                    gene_assocs = affy_data[ga]; entrez_list=[]
+                    try: gene_assocs = affy_data[ga]; entrez_list=[]
+                    except IndexError: gene_assocs=''; entrez_list=[]
                     entrez_data = string.split(gene_assocs,' /// ')
                     for entry in entrez_data:
                         try:
@@ -246,7 +254,7 @@ def parse_affymetrix_annotations(filename):
                                 try: entrez_annotation_db[str(entrez_gene)] = z ###create an inferred Entrez gene database
                                 except NameError: null = []
                         except ValueError: null = []
-                    gene_assocs = affy_data[ga]; gene_assocs = string.replace(gene_assocs,'---','')
+                    gene_assocs = string.replace(gene_assocs,'---','')
                     unigene_data = string.split(unigene,' /// '); unigene_list = []
                     for entry in unigene_data:
                         if len(entry)>0:
@@ -255,7 +263,8 @@ def parse_affymetrix_annotations(filename):
                             except Exception: null = []
                     ###Only applies to optional GOID inclusion
                     if process_go == 'yes':
-                        process = affy_data[bp]; component = affy_data[cc]; function = affy_data[mf]
+                        try: process = affy_data[bp]; component = affy_data[cc]; function = affy_data[mf]
+                        except IndexError: process = ''; component=''; function=''### This occurs due to a random python error, typically once twice in the file
                         process_goids, process_names = extractPathwayData(process,'GO',version)
                         component_goids, component_names = extractPathwayData(component,'GO',version)
                         function_goids, function_names = extractPathwayData(function,'GO',version)
@@ -441,7 +450,8 @@ def extractAndIntegrateAffyData(species):
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
     for affy_data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = 'Databases/BuildDBs/Affymetrix/'+species+'/'+affy_data
-        parse_affymetrix_annotations(affy_data_dir)
+        if '.csv' in affy_data_dir:
+            parse_affymetrix_annotations(affy_data_dir)
         
     import gene_associations
     if incorporate_previous_associations == 'yes':    
@@ -467,10 +477,10 @@ def importAffymetrixAnnotations(dir,Species,Process_go,Extract_go_names,Extract_
 
     import_dir = '/'+dir+'/'+species
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-    print 'Parsing Affymetrix Annotations files...'
+    print 'Parsing Affymetrix Annotation files...'
     for affy_data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = dir+'/'+species+'/'+affy_data
-        parse_affymetrix_annotations(affy_data_dir)
+        if '.csv' in affy_data_dir: parse_affymetrix_annotations(affy_data_dir)
     return affy_annotation_db
 
 def runBuildAffymetrixAssociations():
@@ -570,4 +580,9 @@ def runBuildAffymetrixAssociations():
     print "Press any key to exit"
     inp = sys.stdin.readline()
 if __name__ == '__main__':
+    process_go='yes';extract_go_names='yes';extract_pathway_names='yes'
+    species = 'Mm'
+    affy_data_dir = 'AltDatabase/affymetrix'
+    conventional_array_db = importAffymetrixAnnotations(affy_data_dir,species,process_go,extract_go_names,extract_pathway_names)
+    sys.exit()
     runBuildAffymetrixAssociations()

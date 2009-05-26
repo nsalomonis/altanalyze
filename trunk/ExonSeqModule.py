@@ -170,8 +170,6 @@ def importProbesetSeqeunces(filename,exon_db,chromosome,species):
         try: probeset_seq_db[gene].append(y)
         except KeyError: probeset_seq_db[gene] = [y]
     except KeyError: null=[]
-    
-
 
     #datar.close()
     #exportAssociations(probeset_seq_db,species)
@@ -302,8 +300,8 @@ class MicroRNAData:
         return output
     def __repr__(self): return self.SummaryValues()
 
-def alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db):
-    output_file = 'AltDatabase/'+species+'/exon/'+species+'_ensembl_microRNAs.txt'
+def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,splice_event_db):
+    output_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_ensembl_microRNAs.txt'
     if mir_source == 'pictar': fn=filepath(output_file); data = open(fn,'w')
     print "Aligning microRNAs to probesets"
     added = {} ###not sure where
@@ -363,7 +361,7 @@ def runProgram(Species,Array_type,Process_microRNA_predictions,miR_source,String
             ensembl_mirna_db = importmiRNATargetPredictions(species)
         else:
             ensembl_mirna_db = importmiRNATargetPredictionsAdvanced(species)
-        alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
+        alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
         
 if __name__ == '__main__':
     species = 'Hs'; array_type = 'exon'

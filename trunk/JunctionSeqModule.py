@@ -137,7 +137,7 @@ def runProgram(Species,Array_type,mir_source,stringency,Force):
     if process_microRNA_predictions == 'yes':
         print 'stringency:',stringency 
         ensembl_mirna_db = ExonSeqModule.importmiRNATargetPredictionsAdvanced(species)
-        ExonSeqModule.alignmiRNAData(mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
+        ExonSeqModule.alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
         
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'exon'

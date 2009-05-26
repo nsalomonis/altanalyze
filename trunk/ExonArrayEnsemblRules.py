@@ -95,8 +95,10 @@ def getProbesetAssociations(filename,ensembl_exon_db,ens_transcript_db,source_bi
                       for entry in ensembl_data:
                           if 'ENS' == entry[:3]:
                               ens_entry = string.split(entry,' // ')
-                              if ens_entry[0] in ens_transcript_db: ens_list.append(ens_transcript_db[ens_entry[0]])
-                      if len(ens_list)>0: trans_annotation_db[transcript_cluster_id] = ens_list
+                              if ens_entry[0] in ens_transcript_db: ens_list.append(ens_transcript_db[ens_entry[0]][0])
+                      if len(ens_list)>0:
+                          ens_list = unique.unique(ens_list)
+                          trans_annotation_db[transcript_cluster_id] = ens_list
 
               if source_biotype == 'ncRNA':
                   ### transcript_cluster_ids are only informative for looking at mRNA encoding genes (can combine diff. ncRNAs in diff. introns of the same gene)
@@ -909,9 +911,9 @@ def getSplicingAnalysisProbesets(probeset_db,constitutive_db,annotate_db):
                 count2 += 1
             else:
                 count3 += 1
-    print 'Number of probesets with constitutive probes:',count
-    print 'Number of other mRNA processing probesets:',count2
-    print 'Number of probesets excluded:',count3
+    #print 'Number of probesets with constitutive probes:',count
+    #print 'Number of other mRNA processing probesets:',count2
+    #print 'Number of probesets excluded:',count3
     return splicing_analysis_db
     
 def getAnnotations(process_from_scratch,x,source_biotype,Species):
@@ -925,7 +927,7 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
     export_probeset_mRNA_associations = 'no'
     filter_sgv_output = 'no'
     test = 'no'
-    test_cluster = [3874023]
+    test_cluster = [3811670, 3811714, 3811716, 3811718]
     partial_process = 'no'; status = 'null'
     if process_from_scratch == 'yes':
         if partial_process == 'no':
@@ -943,7 +945,7 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
                 probeset_db_mRNA,constitutive_db = reimportEnsemblProbesets('AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt')
                 probeset_db_ncRNA,constitutive_db = reimportEnsemblProbesets('AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets_ncRNA.txt')
                 probeset_db = {}
-                print len(probeset_db_mRNA), len(probeset_db_ncRNA), len(probeset_db)
+                #print len(probeset_db_mRNA), len(probeset_db_ncRNA), len(probeset_db)
                 for probeset in probeset_db_ncRNA:
                     if probeset not in probeset_db_mRNA: probeset_db[probeset] = probeset_db_ncRNA[probeset]
                 probeset_db_mRNA={}; probeset_db_ncRNA={}
@@ -951,9 +953,9 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
                 probeset_db,constitutive_db = reimportEnsemblProbesets('AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt')
             annotate_db = EnsemblImport.reimportEnsemblAnnotations(species)
             splicing_analysis_db = getSplicingAnalysisProbesets(probeset_db,constitutive_db,annotate_db)
-            print "Probeset database and Annotation database reimported"
-            print "STATs: probeset database:",len(probeset_db),"probesets imported"
-            print "       annotation database:",len(annotate_db),"genes imported"
+            #print "Probeset database and Annotation database reimported"
+            #print "STATs: probeset database:",len(probeset_db),"probesets imported"
+            #print "       annotation database:",len(annotate_db),"genes imported"
     return probeset_db,annotate_db,constitutive_db,splicing_analysis_db
 
 if __name__ == '__main__':
@@ -982,7 +984,7 @@ if __name__ == '__main__':
     export_probeset_mRNA_associations = 'no'
     filter_sgv_output = 'yes'
     test = 'yes'
-    test_cluster = ['3874023']
+    test_cluster = ['3811670']
     meta_test_cluster = ["3061319","3061268"]#,"3455632","3258444","3965936","2611056","3864519","3018509","3707352","3404496","3251490"]
     #test_cluster = meta_test_cluster
     partial_process = 'no'; status = 'null'

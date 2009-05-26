@@ -138,17 +138,40 @@ def importSpeciesInfo():
     
 def download(url,dir,file_type):
     try: gz_filepath, status = download_protocol(url,dir,file_type)
-    except Exception: gz_filepath='failed'; status = "Internet connection not established. Re-establsih and try again."
+    except KeyError: gz_filepath='failed'; status = "Internet connection not established. Re-establsih and try again."
     if status == 'remove':
         print "\nRemoving zip file:",gz_filepath
         try: os.remove(gz_filepath); status = 'removed'
-        except OSError: status = 'not-removed' ### Not sure why this error occurs since the file is not open
+        except Exception: null=[] ### Not sure why this error occurs since the file is not open
     return gz_filepath, status
+
+def reporthook(blocks_read, block_size, total_size):
+    if not blocks_read:
+        print 'Connection opened'
+        return
+    if total_size < 0:
+        # Unknown size
+        print 'Read %d blocks' % blocks_read
+    else:
+        amount_read = blocks_read * block_size
+        percent_read = ((amount_read)*1.00/total_size)*100
+        print percent_read, increment;kill
+        if percent_read>increment:
+            print '%d% downloaded' % increment
+            increment += original_increment
+        #print 'Read %d blocks, or %d/%d' % (blocks_read, amount_read, (amount_read/total_size)*100.000)
+    return
 
 def download_protocol(url,dir,file_type):
     """Copy the contents of a file from a given URL to a local file."""
     print "Downloading the following file:",url
-    import urllib2
+
+    global increment; global original_increment; original_increment = 25; increment = 0
+    from urllib import urlretrieve
+    filename, msg = urlretrieve(url, reporthook=reporthook)
+    print '\n\n\n'
+    print filename, msg;kill
+    """import urllib2
     webFile = urllib2.urlopen(url)
     filename = url.split('/')[-1]
     output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
@@ -156,12 +179,13 @@ def download_protocol(url,dir,file_type):
     localFile = open(output_filepath, 'wb')
     localFile.write(webFile.read())
     webFile.close()
-    localFile.close()
+    localFile.close()"""
     print "File downloaded to:",output_filepath
     if '.zip' in filename:
         import zipfile
         zfile = zipfile.ZipFile(output_filepath)
         for name in zfile.namelist():
+            print name
             outfile = open(filepath(dir+name), 'wb')
             outfile.write(zfile.read(name)); outfile.close()
         gz_filepath = filepath(output_filepath); status = 'remove'
@@ -175,15 +199,18 @@ def download_protocol(url,dir,file_type):
             ### Below code can be too memory intensive
             file_size = os.path.getsize(output_filepath)
             megabtyes = file_size/1000000.00
-            if megabtyes>40: force_error ### force_error is an undefined variable which causes an exception
-            import gzip; zfile = gzip.GzipFile(gz_filepath); content = zfile.read(); zfile.close()
-            data = open(decompressed_filepath,'w')
-            print "\nExtracting downloaded file:",gz_filepath; data.write(content); data.close()
+            if megabtyes>5000: force_error ### force_error is an undefined variable which causes an exception
+            import gzip
+            content = gzip.GzipFile(gz_filepath, 'rb')
+            data = open(decompressed_filepath,'wb')
+            print "\nExtracting downloaded file:",gz_filepath
+            import shutil
+            shutil.copyfileobj(content,data)
             status = 'remove'
         except Exception:
             ### If file(s) will be over-written, user will be prompted
-            try: os.remove(decompressed_filepath) ### So OS does not prompt you to see if you want to over-write existing
-            except OSError: null=[]
+            try: os.remove(decompressed_filepath) ### So OS does not prompt youpro to see if you want to over-write existing
+            except Exception: null=[]
             gz_filepath = string.replace('"'+output_filepath+'"','\\','/')
             os.system("gunzip " + gz_filepath)
             gz_filepath = filepath(output_filepath)
@@ -212,30 +239,35 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
     
     file,status = download(url,dir,file_type); continue_analysis = 'yes'
     if 'Internet' in status:
-        import UI
-        print_out = "File could not be found on server\nor internet connection is unavailable."
-        UI.WarningWindow(print_out,'WARNING!!!')
-        continue_analysis = 'no'
+        print_out = "File:\n"+url+"\ncould not be found on server or internet connection is unavailable."
+        try:
+            UI.WarningWindow(print_out,'WARNING!!!')
+            continue_analysis = 'no'
+        except Exception:
+            print url
+            print 'cannot be downloaded';die
     elif status == 'remove':
         try: os.remove(file) ### Not sure why this works now and not before
-        except OSError: status = status
+        except Exception: status = status
     return continue_analysis
             
 def updateDBs(species,array_type):
     update_uniprot='no'; update_ensembl='no'; update_probeset_to_ensembl='no'; update_domain='no'; update_all='no'; update_miRs='no'
-    proceed = 'no'
+    proceed = 'no'; genomic_build = 'old'
 
     while proceed == 'no':
         print "\n*****Select Species*****"
         print "1) Human"
         print "2) Mouse"
         print "3) Rat"
-        print "4) Quit"
+        print "4) all"
+        print "5) Quit"
         inp = sys.stdin.readline(); inp = inp.strip()
-        if inp  == '1': species = 'Hs'; proceed = 'yes'
-        elif inp == '2': species = 'Mm'; proceed = 'yes'
-        elif inp == '3': species = 'Rn'; proceed = 'yes'
-        elif inp == '4': sys.exit()
+        if inp  == '1': species = ['Hs']; proceed = 'yes'
+        elif inp == '2': species = ['Mm']; proceed = 'yes'
+        elif inp == '3': species = ['Rn']; proceed = 'yes'
+        elif inp == '4': species = ['Mm','Hs','Rn']; proceed = 'yes'
+        elif inp == '5': sys.exit()
         else: print "Sorry... that command is not an option\n"  
 
     proceed = 'no'
@@ -243,11 +275,13 @@ def updateDBs(species,array_type):
         print "\n*****Select Array Type*****"
         print "1) Exon"
         print "2) AltMouse"
-        print "3) Quit"
+        print "3) both"
+        print "4) Quit"
         inp = sys.stdin.readline(); inp = inp.strip()
-        if inp  == '1': array_type = 'exon'; proceed = 'yes'
-        elif inp == '2': array_type = 'AltMouse'; proceed = 'yes'
-        elif inp == '3': sys.exit()
+        if inp  == '1': array_type = ['exon']; proceed = 'yes'
+        elif inp == '2': array_type = ['AltMouse']; proceed = 'yes'
+        elif inp == '3': array_type = ['AltMouse','exon']; proceed = 'yes'
+        elif inp == '4': sys.exit()
         else: print "Sorry... that command is not an option\n"
 
     proceed = 'no'        
@@ -284,7 +318,7 @@ def updateDBs(species,array_type):
         elif inp == '3': sys.exit()
         else: print "Sorry... that command is not an option\n"        
 
-    if array_type == 'AltMouse':
+    if 'AltMouse' in array_type:
         proceed = 'no'
         while proceed == 'no':
             print "\n*****Update AltAnalyze Database Options*****"
@@ -296,7 +330,17 @@ def updateDBs(species,array_type):
             elif inp == '2': genomic_build = 'old'; proceed = 'yes'
             elif inp == '3': sys.exit()
             else: print "Sorry... that command is not an option\n"
-        
+            
+    for specific_species in species:
+        for specific_array_type in array_type:
+            if specific_array_type == 'AltMouse' and specific_species == 'Mm': proceed = 'yes'
+            elif specific_array_type == 'exon': proceed = 'yes'
+            else: proceed = 'no'
+            if proceed == 'yes':
+                print "Analyzing", specific_species, specific_array_type
+                executeParameters(specific_species,specific_array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all)
+    
+def executeParameters(species,array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all):    
     if update_all == 'yes':
         update_uniprot='yes'; update_ensembl='yes'; update_probeset_to_ensembl='yes'; update_domain='yes'; update_miRs = 'yes'
         
@@ -352,6 +396,9 @@ def updateDBs(species,array_type):
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             stringency = 'lax'
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
+            filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-target-sequences.txt'; ef=filepath(filename)
+            er = string.split(ef,'miRBS-combined_gene-target-sequences.txt',species+'_microRNA-Ensembl.txt')
+            shutil.copyfile(ef,er)
         else:
             import JunctionSeqModule
             stringency = 'strict'; mir_source = 'multiple'
@@ -362,7 +409,7 @@ def updateDBs(species,array_type):
 if __name__ == '__main__':
     #buildUniProtFunctAnnotations('Hs',force='no')
 
-    url='http://altanalyze.org/archiveDBs/LibraryFiles/MoGene-1_0-st-v1.r3.zip'
+    url='http://altanalyze.org/archiveDBs/LibraryFiles/MoEx-1_0-st-v1.r2.antigenomic.bgp.gz'
     dir='AltDatabase/affymetrix/LibraryFiles/'
     file_type = ''
     download(url,dir,file_type);kill

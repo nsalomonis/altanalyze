@@ -44,6 +44,11 @@ def filepath(filename):
     fn = unique.filepath(filename)
     return fn
 
+def osfilepath(filename):
+    fn = filepath(filename)
+    fn = string.replace(fn,'\\','/')
+    return fn
+
 def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir)
     return dir_list
@@ -52,7 +57,7 @@ def identifyCELfiles(dir):
     dir_list = read_directory(dir); dir_list2=[]; full_dir_list=[]
     for file in dir_list:
         file_lower = string.lower(file)
-        if '.cel' in file_lower:
+        if '.cel' in file_lower and '.cel.' not in file_lower:
             dir_list2.append(file)
             file = dir+'/'+file
             full_dir_list.append(file)
@@ -83,38 +88,43 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
     try:
         for line in open(fn,'rU').xreadlines():break
         input_cdf_file = filename
-        input_cdf_file_lower = string.lower(input_cdf_file)
-        if '.pgf' in input_cdf_file_lower:
+        if '.pgf' in input_cdf_file:
             ###Check to see if the clf and bgp files are present in this directory 
             icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); cdf_short = icf_list[-1]
             clf_short = string.replace(cdf_short,'.pgf','.clf')
             if array_type == 'exon': bgp_short = string.replace(cdf_short,'.pgf','.antigenomic.bgp')
             else: bgp_short = string.replace(cdf_short,'.pgf','.bgp')
-            dir_list = read_directory(parent_dir)
+            try: dir_list = read_directory(parent_dir)
+            except Exception: dir_list = read_directory('/'+parent_dir)
             if clf_short in dir_list and bgp_short in dir_list:
                 pgf_file = input_cdf_file; clf_file = string.replace(pgf_file,'.pgf','.clf')
                 if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
                 else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
             else:
                 print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
-                IndicatorWindow(print_out,'Continue')                                   
+                IndicatorWindow(print_out,'Continue')
     except Exception:
         print_out = "AltAnalyze was not able to find a library file\nfor your arrays. Would you like AltAnalyze to\nautomatically download these files?"
         dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
         dw_results = dw.Results(); option = dw_results['selected_option']
         if option == 1:
             library_file = string.replace(library_file,'.cdf','.zip')
-            library_file = string.replace(library_file,'.pgf','.zip')
             filename = 'AltDatabase/affymetrix/LibraryFiles/'+library_file
-            var_list = filename,'LibraryFiles'
-            StatusWindow(var_list,'download')   
-            try: os.remove(filepath(filename)) ### Not sure why this works now and not before
-            except OSError: null=[]
-            input_cdf_file = original_library_file; input_cdf_file_lower = string.lower(input_cdf_file)
-            if '.pgf' in input_cdf_file_lower:
+            input_cdf_file = filename
+            if '.pgf' in input_cdf_file:
                 pgf_file = input_cdf_file; clf_file = string.replace(pgf_file,'.pgf','.clf')
                 if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
                 else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
+                filenames = [pgf_file+'.gz',clf_file+'.gz',bgp_file+'.gz']
+            else: filenames = [input_cdf_file]
+            for filename in filenames:
+                var_list = filename,'LibraryFiles'
+                if debug_mode == 'no': StatusWindow(var_list,'download')
+                else:
+                    for filename in filenames:
+                        update.downloadCurrentVersionUI(filename,'LibraryFiles','',Tk())
+                try: os.remove(filepath(filename)) ### Not sure why this works now and not before
+                except Exception: null=[]
         else: library_dir = ''
     filename = 'AltDatabase/affymetrix/'+species+'/'+annot_file
     fn=filepath(filename); annotation_dir = filename
@@ -127,11 +137,15 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
             dw_results = dw.Results(); option = dw_results['selected_option']
         if option == 1:
             annot_file += '.zip'
-            filename = 'AltDatabase/affymetrix/'+species+'/'+annot_file
-            var_list = filename,'AnnotationFiles'
-            StatusWindow(var_list,'download')
-            try: os.remove(filepath(filename)) ### Not sure why this works now and not before
-            except OSError: null=[]
+            filenames = ['AltDatabase/affymetrix/'+species+'/'+annot_file]
+            for filename in filenames:
+                var_list = filename,'AnnotationFiles'
+                if debug_mode == 'no': StatusWindow(var_list,'download')
+                else:
+                    for filename in filenames:
+                        update.downloadCurrentVersionUI(filename,'AnnotationFiles','',Tk())
+                try: os.remove(filepath(filename)) ### Not sure why this works now and not before
+                except Exception: null=[]
         else: annotation_dir = ''
     return library_dir, annotation_dir, bgp_file, clf_file
 
@@ -153,7 +167,7 @@ class StatusWindow:
     def __init__(self,info_list,analysis_type):
             root = Tk()
             self._parent = root
-            root.title('AltAnalyze 1.1 Beta')
+            root.title('AltAnalyze 1.11 Beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 250; width = 700
@@ -454,7 +468,7 @@ class GUI:
         #self.button = Button(text="   Quit  ", command=quitcommand)
         #self.button.pack(side = 'bottom', padx = 10, pady = 10)
 
-        if 'input_cel_dir' in option_list: ### For the CEL file selection window, provide a link to get Library files
+        if 'input_cdf_file' in option_list: ### For the CEL file selection window, provide a link to get Library files
             button_text = 'Download Library Files'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
             self.url = url; text_button = Button(self._parent, text=button_text, command=self.linkout); text_button.pack(side = 'left', padx = 5, pady = 5)
             
@@ -467,8 +481,8 @@ class GUI:
         quit_win = Button(self._parent, text="Quit", command=self.quit) 
         quit_win.pack(side = 'right', padx =10, pady = 5)
 
-        help = Button(self._parent, text="Help", command=self.quit) 
-        help.pack(side = 'left', padx =10, pady = 5)        
+        button_text = 'Help'; url = 'ReadMe/help_main.htm'; url = filepath(url)
+        self.url = url; help_button = Button(self._parent, text=button_text, command=self.linkout); help_button.pack(side = 'left', padx = 5, pady = 5)
 
         self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
         self._parent.mainloop()
@@ -478,7 +492,8 @@ class GUI:
         getUserParameters('no'); sys.exit()
         
     def linkout(self):
-        webbrowser.open(self.url)
+        try: webbrowser.open(self.url)
+        except Exception: null=[]
             
     def setvscrollmode(self, tag):
         self.sf.configure(vscrollmode = tag)
@@ -814,7 +829,7 @@ class Defaults:
     def Species(self): return self._species
     def __repr__(self): return self.Report()
 
-def probesetSummarize(exp_file_location_db,root):
+def probesetSummarize(exp_file_location_db,species,root):
     for dataset in exp_file_location_db: ### Instance of the Class ExpressionFileLocationData
         fl = exp_file_location_db[dataset]
         apt_dir =fl.APTLocation()
@@ -822,6 +837,7 @@ def probesetSummarize(exp_file_location_db,root):
         pgf_file=fl.InputCDFFile()
         clf_file=fl.CLFFile()
         bgp_file=fl.BGPFile()
+        xhyb_remove = fl.XHybRemoval()
         cel_dir=fl.CELFileDir() + '/cel_files.txt'
         expression_file = fl.ExpFile()
         stats_file = fl.StatsFile()
@@ -866,10 +882,13 @@ def probesetSummarize(exp_file_location_db,root):
             #apt-probeset-summarize -a rma-sketch -a plier-mm-sketch -p chip.pgf -c chip.clf -o output-dir *.cel
 
         if array_type == 'exon':
+            if xhyb_remove == 'yes':
+                kill_list_dir = osfilepath('AltDatabase/'+species+'/exon/'+species+'_probes_to_remove.txt')
+            else: kill_list_dir = osfilepath('AltDatabase/affymetrix/APT/probes_to_remove.txt')
             try:
                 algorithm = 'rma-sketch'; pval = 'dabg'
                 retcode = subprocess.call([
-                apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file,
+                apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir,
                 "-a", algorithm, "-a", pval, "-o", output_dir, "--cel-files", cel_dir])
                 if retcode: status = 'failed'
                 else:
@@ -915,12 +934,12 @@ def importDefaultInfo(filename,array_type):
                 return dabg_p, expression_threshold, perform_alt_analysis, expression_data_format, avg_all_for_ss, include_raw_data
             
         if '-alt' in filename:
-            array_abrev, analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, MiDAS_analysis, export_splice_index_values, filter_for_AS = string.split(data,'\t')
+            array_abrev, analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, MiDAS_analysis, export_splice_index_values, calculate_splicing_index_p, filter_for_AS = string.split(data,'\t')
             if array_type == array_abrev:
                 ### NOTE: p_threshold is used for MiDAS and t-test comparison p-values thresholds
                 if MiDAS_analysis == 'yes': exportTransitResultsforAnalysis = 'yes'
                 else: exportTransitResultsforAnalysis = 'no'
-                return [analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, exportTransitResultsforAnalysis, export_splice_index_values, filter_for_AS]
+                return [analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, exportTransitResultsforAnalysis, export_splice_index_values, calculate_splicing_index_p, filter_for_AS]
             
         if '-funct' in filename:
             array_abrev, analyze_functional_attributes, microRNA_prediction_method = string.split(data,'\t')
@@ -962,6 +981,29 @@ def importUserOptions(array_type):
             try: option_list_db[group].append(option) ###group is the name of the GUI menu group
             except KeyError: option_list_db[group] = [option]
     return option_list_db,option_db
+
+class SummaryResults:
+    def __init__(self):
+        def showLink(event):
+            idx= int(event.widget.tag_names(CURRENT)[1])
+            webbrowser.open(LINKS[idx])
+        LINKS=('http://www.altanalyze.org','')
+        self.LINKS = LINKS
+        tl = Toplevel(); tl.title('AltAnalyze')
+        
+        filename = 'Config/icon.gif'
+        fn=filepath(filename); img = PhotoImage(file=fn)
+        can = Canvas(tl); can.pack(side='top'); can.config(width=img.width(), height=img.height())        
+        can.create_image(2, 2, image=img, anchor=NW); use_scroll = 'no'
+
+        label_text_str = 'AltAnalyze Result Summary'; height = 250; width = 700      
+        self.sf = PmwFreeze.ScrolledFrame(tl,
+            labelpos = 'n', label_text = label_text_str,
+            usehullsize = 1, hull_width = width, hull_height = height)
+        self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
+        self.frame = self.sf.interior()
+        tl.mainloop()
+        
 
 class IndicatorWindow:
     def __init__(self,message,button_text):
@@ -1071,7 +1113,7 @@ class MainMenu:
             callback(tag)
         horiz = PmwFreeze.RadioSelect(parent,
                 labelpos = 'w', command = buttoncallback,
-                label_text = 'AltAnalyze version 1.1 Main', frame_borderwidth = 2,
+                label_text = 'AltAnalyze version 1.11 Main', frame_borderwidth = 2,
                 frame_relief = 'ridge'
         ); horiz.pack(fill = 'x', padx = 10, pady = 10)
         for text in ['Continue']: horiz.add(text)
@@ -1090,7 +1132,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze 1.1 beta.\n'
+        about = 'AltAnalyze 1.11 beta.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.genmapp.org/AltAnalyze\n'
@@ -1111,7 +1153,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze 1.1 beta.\n')
+        txt.insert(END, 'AltAnalyze 1.11 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.genmapp.org/AltAnalyze\n", ('link', str(0)))
@@ -1194,11 +1236,11 @@ class ExpressionFileLocationData:
     def GroupsFile(self): return self._groups_file
     def CompsFile(self): return self._comps_file
     def StatsFile(self): return self._stats_file
-    def setAPTLocation(self,apt_location): self._apt_location = apt_location
-    def setInputCDFFile(self,cdf_file): self._cdf_file = cdf_file
-    def setCLFFile(self,clf_file): self._clf_file = clf_file
-    def setBGPFile(self,bgp_file): self._bgp_file = bgp_file
-    def setCELFileDir(self,cel_file_dir): self._cel_file_dir = cel_file_dir
+    def setAPTLocation(self,apt_location): self._apt_location = osfilepath(apt_location)
+    def setInputCDFFile(self,cdf_file): self._cdf_file = osfilepath(cdf_file)
+    def setCLFFile(self,clf_file): self._clf_file = osfilepath(clf_file)
+    def setBGPFile(self,bgp_file): self._bgp_file = osfilepath(bgp_file)
+    def setCELFileDir(self,cel_file_dir): self._cel_file_dir = osfilepath(cel_file_dir)
     def setArrayType(self,array_type): self._array_type = array_type
     def setOutputDir(self,output_dir): self._output_dir = output_dir
     def setRootDir(self,parent_dir):
@@ -1206,6 +1248,8 @@ class ExpressionFileLocationData:
         split_dirs = string.split(parent_dir,'ExpressionInput')
         root_dir = split_dirs[0]
         self._root_dir = root_dir + '/'
+    def setXHybRemoval(self,xhyb): self._xhyb = xhyb
+    def XHybRemoval(self): return self._xhyb
     def RootDir(self): return self._root_dir
     def APTLocation(self): return self._apt_location
     def InputCDFFile(self): return self._cdf_file
@@ -1308,8 +1352,11 @@ def getUserParameters(skip_intro):
             while assinged == 'no': ### Assigned indicates whether or not the CEL directory and CDF files are defined
                 root = Tk()
                 root.title('AltAnalyze: Select CEL files for APT')
+                if species == 'Rn': del option_list['InputCELFiles'][-1] ### Don't examine xyb
                 gu = GUI(root,option_db,option_list['InputCELFiles'],'')
                 dataset_name = gu.Results()['dataset_name']
+                try: remove_xhyb = gu.Results()['remove_xhyb']
+                except KeyError: remove_xhyb = 'no'
                 if len(dataset_name)<1:
                     print_out = "Please provide a name for the dataset before proceeding."
                     IndicatorWindow(print_out,'Continue')
@@ -1349,7 +1396,7 @@ def getUserParameters(skip_intro):
             ### See if the library and annotation files are on the server or are local
             if specific_array_type in supproted_array_db:
                 input_cdf_file, annotation_dir, bgp_file, clf_file = getAffyFiles(specific_array_type,species)
-            else: bgp_file = ''; clf_file = ''
+            else: input_cdf_file=''; bgp_file = ''; clf_file = ''
             ### Remove the variable names for Library and Annotation file selection if these files are found
             option_list_library=[]
             if len(input_cdf_file)>0:
@@ -1367,7 +1414,7 @@ def getUserParameters(skip_intro):
                 while assinged == 'no': ### Assigned indicates whether or not the CEL directory and CDF files are defined
                     if array_type == "3'array":
                         op = option_db['input_cdf_file']; input_cdf_file_label = op.Display()
-                        op.setNotes('')
+                        op.setNotes('   note: the CDF file is apart of the standard library files for this array.   ')
                         input_cdf_file_label = string.replace(input_cdf_file_label,'PGF','CDF')
                         op.setDisplay(input_cdf_file_label)      
                     root = Tk()
@@ -1570,7 +1617,10 @@ def getUserParameters(skip_intro):
             array_group_list,group_db = importArrayGroupsSimple(groups_file_dir) #agd = ArrayGroupData(array_header,group,group_name)
             comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
             for group1,group2 in comp_group_list:
-                group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
+                try: group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
+                except KeyError:
+                    print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
+                    WarningWindow(print_out,'Exit'); getUserParameters('no'); sys.exit()
                 original_comp_group_list.append((group_name1,group_name2)) ### If comparisons already exist, default to these
         else:
             array_group_list=[]
@@ -1613,6 +1663,7 @@ def getUserParameters(skip_intro):
             i=2; px=0 ###Determine the number of possible comparisons based on the number of groups
             while i<=len(group_name_list): px = px + i - 1; i+=1
             group_name_list.reverse(); group_name_list.append(''); group_name_list.reverse() ### add a null entry first
+            if px > 100: px = 100 ### With very large datasets, AltAnalyze stalls
             possible_comps = px
         
             ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
@@ -1690,14 +1741,14 @@ def getUserParameters(skip_intro):
     ### Find the current verison of APT (if user deletes location in Config file) and set APT file locations
     apt_location = getAPTLocations(file_location_defaults,run_from_scratch,exportTransitResultsforAnalysis)
 
+    ### Set the primary parent directory for ExpressionBuilder and AltAnalyze (one level above the ExpressionInput directory, if present)
     for dataset in exp_file_location_db:
         fl = exp_file_location_db[dataset_name]
         fl.setAPTLocation(apt_location)
         if run_from_scratch == 'CEL files':
-            fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type_original); fl.setOutputDir(output_dir)
-
-    ### Set the primary parent directory for ExpressionBuilder and AltAnalyze (one level above the ExpressionInput directory, if present)
-    for dataset in exp_file_location_db: fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
+            fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setXHybRemoval(remove_xhyb)
+            fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type_original); fl.setOutputDir(output_dir)
+        fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
 
     expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,permute_p_threshold, perform_permutation_analysis, export_splice_index_values
@@ -1731,10 +1782,10 @@ if __name__ == '__main__':
     input_cdf_file = 'C:/Documents and Settings/Nathan Salomonis/Desktop/zebrafish_libraryfile/CD_Zebrafish/Full/Zebrafish/LibFiles/Zebrafish.cdf'
     clf_file=''; bgp_file=''; array_type = "3'array"
     output_dir = 'C:/Documents and Settings/Nathan Salomonis/Desktop/test-AA'
-    #output_dir = ''
+    species = 'Hs'
     cel_file_dir = 'C:/Documents and Settings/Nathan Salomonis/My Documents/1-collaborations/Keerthi'
     
     fl.setAPTLocation(apt_location); fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
             
-    probesetSummarize(exp_file_location_db)
+    probesetSummarize(exp_file_location_db,species,'')
     

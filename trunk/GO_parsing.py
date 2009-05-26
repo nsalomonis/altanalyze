@@ -191,7 +191,8 @@ def parseAffyGO(use_exon_data,get_splicing_factors,species):
         affy_data_dir = import_dir[1:]+affy_data
         if use_exon_data == 'yes':
             affy_data_dir = getDirectoryFiles('/AltDatabase/'+species+'/exon',species)
-        parse_affymetrix_annotations(affy_data_dir)
+        try: parse_affymetrix_annotations(affy_data_dir)
+        except Exception: null=[]
     print len(go_annotations),"Ensembl gene annotations parsed"
     if get_splicing_factors == 'yes':
         go = go_annotations; mRNA_processing_ensembl=[]
