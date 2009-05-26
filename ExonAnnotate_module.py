@@ -68,9 +68,9 @@ def identifyPutativeSpliceEvents(exon_db,constituitive_probeset_db,array_id_db,a
                             e1 = exon_probeset1
                             try: probe_level_db[affygene,e2].append(e1)
                             except KeyError: probe_level_db[affygene,e2] = [e1]
-    print "Looking for exon events defined by probeset exon associations"
+    #print "Looking for exon events defined by probeset exon associations"
     alt_junction_db,critical_exon_db = independently_rank_analyze_junction_sets(probe_level_db,onlyAnalyzeJunctions)
-    print "Associations Built\n"
+    #print "Associations Built\n"
 
     ### Rearange alt_junction_db and agglomerate data for inclusion probesets
     exon_inclusion_db={}; exon_inclusion_event_db={}; alt_junction_db_collapsed={}

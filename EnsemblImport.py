@@ -991,7 +991,8 @@ def getEnsemblAssociations(Species,data_type,test_status):
     global test; test = test_status
     global test_gene
     meta_test = ["ENSG00000215305","ENSG00000179676","ENSG00000170484","ENSG00000138180","ENSG00000100258","ENSG00000132170","ENSG00000105767","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
-    test_gene = ['ENSG00000215305']
+    test_gene = ['ENSG00000179676']
+    test_gene = ['ENSMUSG00000059857'] ### for JunctionArrayEnsemblRules
     #test_gene = meta_test
     exon_annotation_db,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
     exon_annotation_db2 = annotate_exons(exon_annotation_db); ensembl_descriptions={}
@@ -1004,11 +1005,13 @@ def getEnsemblAssociations(Species,data_type,test_status):
     
     ###Grab rna_processing Ensembl associations
     use_exon_data='no';get_splicing_factors = 'yes'
-    rna_processing_ensembl = GO_parsing.parseAffyGO(use_exon_data,get_splicing_factors,species)
+    try: rna_processing_ensembl = GO_parsing.parseAffyGO(use_exon_data,get_splicing_factors,species)
+    except Exception: null=[]
     
     ensembl_annot_file = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl-annotations_simple.txt'
     ensembl_annotation_db = getEnsemblAnnotations(ensembl_annot_file,rna_processing_ensembl)
     #exportExonClusters(exon_clusters)
+
     return exon_annotation_db2,ensembl_annotation_db,exon_clusters,intron_clusters,exon_regions,intron_retention_db,ucsc_splicing_annot_db,transcript_gene_db
 
 def getExonTranscriptDomainAssociations(Species):

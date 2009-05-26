@@ -246,7 +246,8 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
     if data_type == 'expression':
         new_file = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
         data = export.createExportFile(new_file,expression_dataset_output_dir[:-1])
-        custom_annotation_dbase = importCustomAnnotations()
+        try: custom_annotation_dbase = importCustomAnnotations()
+        except Exception: custom_annotation_dbase={}
         x=0;y=0;z=0
         for arrayid in array_folds:
             if arrayid in annotate_db and arrayid in probeset_db: x = 1
@@ -333,7 +334,7 @@ def cleanUpLine(line):
     return data
 
 def exportSplicingInput(species,array_type,expr_group_db,raw_data_comp_headers,comp_group_list2,raw_data_comps,export_summary_stats,data_type):
-    print "Writing AltAnalyze input...."
+    #print "Writing AltAnalyze input...."
     ###Write individual comparison files out for AltAnalyze analysis
     AltAnalzye_input_dir = "AltExpression/pre-filtered/"+data_type+'/'
     array_type_name = 'Exon'

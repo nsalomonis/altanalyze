@@ -100,7 +100,7 @@ def import_altmerge(filename,array_type):
 
 def parse_input_data(filename,data_type):
     fn=filepath(filename); first_line = 1; array_group_db = {}; array_group_name_db = {}; z=0
-    print "Reading",filename
+    #print "Reading",filename
     for line in open(fn,'rU').xreadlines():
       data = cleanUpLine(line); data2 = string.split(data,'\t'); probeset = data2[0]; z+=1
       if first_line == 1:
@@ -268,21 +268,21 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
         array_db = array_db[1:] #not sure why, but the '\' needs to be there while reading initally but not while accessing the file late
         dabg_db = dabg_db[1:]
         dataset_name = altanalzye_input[0:-4] + '-'
-        print "Begining to process",dataset_name[0:-1]
-        print "Array type is:",array_type
-        print "Species is:", species
-        print "Expression format is:",exp_data_format
-        print "DABG p-value cut-off is:",p
-        print "Filter method is:",filter_method
-        print "Log2 expression cut-off is:",log_expression_threshold
+        #print "Begining to process",dataset_name[0:-1]
+        #print "Array type is:",array_type
+        #print "Species is:", species
+        #print "Expression format is:",exp_data_format
+        #print "DABG p-value cut-off is:",p
+        #print "Filter method is:",filter_method
+        #print "Log2 expression cut-off is:",log_expression_threshold
 
         ###Import expression data and stats
         try: expr_analysis(array_db,dabg_db,altmerge_constituitive,exon_db,analyze_dabg)    #filter the expression data based on fold and p-value OR expression threshold
         except KeyError: print "Impropper array type (",dataset_name[0:-1],") for",array_type,species,'. Skipping array.'
         ind_end_time = time.time(); time_diff = int(ind_end_time-ind_start_time)
-        print dataset_name,"filtering finished in %d seconds" % time_diff
+        #print dataset_name,"filtering finished in %d seconds" % time_diff
   end_time = time.time(); time_diff = int(end_time-start_time)
-  print "Filtering complete for all files in %d seconds" % time_diff
+  #print "Filtering complete for all files in %d seconds" % time_diff
   exon_db={}; altmerge_constituitive={}
   
 if __name__ == '__main__':

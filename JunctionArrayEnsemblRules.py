@@ -119,7 +119,7 @@ def getEnsemblAnnotations(species):
 def getAnnotations(Species,array_type,force):
     """Annotate Affymetrix exon array data using files Ensembl data (sync'ed to genome release)."""
     global species; species = Species; global test; global test_cluster
-    test = 'no'; test_cluster = ['G7022992']; data_type = 'mRNA'
+    test = 'no'; test_cluster = ['G7055024']; data_type = 'mRNA'
 
     global ensembl_exon_db; global ensembl_exon_db; global exon_clusters; global exon_region_db
     ensembl_exon_db,ensembl_annot_db,exon_clusters,intron_clusters,exon_region_db,intron_retention_db,ucsc_splicing_annot_db,ens_transcript_db = EnsemblImport.getEnsemblAssociations(species,data_type,test)
