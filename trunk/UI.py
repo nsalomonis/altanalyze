@@ -28,7 +28,8 @@ import time
 import webbrowser
 from sys import argv
 try:
-    import Tkinter
+    import Tkinter 
+    #import bwidget; from bwidget import *
     from Tkinter import *
     import PmwFreeze
     from Tkconstants import LEFT
@@ -159,7 +160,7 @@ def cleanUpLine(line):
 ########### Status Window Functions ###########
 def copyFiles(file1,file2,root):
     print 'Copying files from:\n',file1
-    print 'to...',file2
+    data = export.ExportFile(file2) ### Ensures the directory exists
     shutil.copyfile(file1,file2)
     root.destroy()
     
@@ -182,14 +183,16 @@ class StatusWindow:
                 
             Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
             import update; reload(update)
+
             status = StringVarFile(statusVar,root) ### Likely captures the stdout
+            #ProgressBar('Download',self._parent)
             if analysis_type == 'download':
                 filename,dir = info_list
                 sys.stdout = status; root.after(100,update.downloadCurrentVersionUI(filename,dir,'',self._parent))
             if analysis_type == 'copy':
                 file1,file2 = info_list
                 sys.stdout = status; root.after(100,copyFiles(file1,file2,self._parent))
-            self._parent.mainloop()
+            self._parent.mainloop();
 
     def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
     def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
@@ -211,10 +214,30 @@ class StringVarFile:
 
 ################# GUI #################
 
+
+class ProgressBar:
+	def __init__(self,method,t):
+		#http://tkinter.unpythonic.net/wiki/ProgressBar
+		self.progval = IntVar(t)
+		self.progmsg = StringVar(t); self.progmsg.set(method+" in Progress...")
+		#b = Button(t, relief=LINK, text="Quit (using bwidget)", command=t.destroy); b.pack()
+		self.c = ProgressDialog(t, title="Please wait...",
+			type="infinite",
+			width=30,
+			textvariable=self.progmsg,
+			variable=self.progval,
+			command=lambda: self.c.destroy()
+			)
+		self.update_progress()
+	def update_progress(self):
+		self.progval.set(2)
+		self.c.after(10, self.update_progress)
+	
+
 class GUI:
     def __init__(self, parent, option_db, option_list, defaults): 
         self._parent = parent; self._option_list = option_list; self._option_db = option_db
-        self._user_variables = user_variables; i = 0
+        self._user_variables = user_variables; self.pathdb={}; i = 0
         
         filename = 'Config/icon.gif'
         if 'input_cel_dir' in option_list: filename = 'Config/aa_0.gif'
@@ -469,8 +492,8 @@ class GUI:
         #self.button.pack(side = 'bottom', padx = 10, pady = 10)
 
         if 'input_cdf_file' in option_list: ### For the CEL file selection window, provide a link to get Library files
-            button_text = 'Download Library Files'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
-            self.url = url; text_button = Button(self._parent, text=button_text, command=self.linkout); text_button.pack(side = 'left', padx = 5, pady = 5)
+            button_text = 'Download Library Files'; d_url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
+            self.d_url = d_url; text_button = Button(self._parent, text=button_text, command=self.Dlinkout); text_button.pack(side = 'left', padx = 5, pady = 5)
             
         continue_to_next_win = Button(text = 'Continue', command = self._parent.destroy)
         continue_to_next_win.pack(side = 'right', padx = 10, pady = 10)
@@ -481,7 +504,10 @@ class GUI:
         quit_win = Button(self._parent, text="Quit", command=self.quit) 
         quit_win.pack(side = 'right', padx =10, pady = 5)
 
-        button_text = 'Help'; url = 'ReadMe/help_main.htm'; url = filepath(url)
+        button_text = 'Help'
+        #url = 'ReadMe/help_main.htm'
+        url = 'http://www.altanalyze.org/help_main.htm'
+        url = filepath(url)
         self.url = url; help_button = Button(self._parent, text=button_text, command=self.linkout); help_button.pack(side = 'left', padx = 5, pady = 5)
 
         self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
@@ -493,6 +519,10 @@ class GUI:
         
     def linkout(self):
         try: webbrowser.open(self.url)
+        except Exception: null=[]
+
+    def Dlinkout(self):
+        try: webbrowser.open(self.d_url)
         except Exception: null=[]
             
     def setvscrollmode(self, tag):
@@ -1345,7 +1375,7 @@ def getUserParameters(skip_intro):
         manufacturer = array_codes[array_full].Manufacturer()
         constitutive_source = array_codes[array_full].ConstitutiveSource()
         option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
-        
+
         if run_from_scratch == 'CEL files':
             """Designate CEL file directory, Dataset Name and Output Directory"""
             assinged = 'no'
@@ -1393,6 +1423,8 @@ def getUserParameters(skip_intro):
                 print_out = "The CEL files indicate that the proper\narray type is "+cel_array_type+", however, you\nindicated "+array_type+ ". The array type indicated by the CEL\nfiles will be used instead."
                 IndicatorWindow(print_out,'Continue')
                 array_type = cel_array_type
+                option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
+                option_db['array_type'].setArrayOptions(array_list)
             ### See if the library and annotation files are on the server or are local
             if specific_array_type in supproted_array_db:
                 input_cdf_file, annotation_dir, bgp_file, clf_file = getAffyFiles(specific_array_type,species)
@@ -1429,7 +1461,8 @@ def getUserParameters(skip_intro):
                                     ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
                                     icf_list = string.split(input_cdf_file,'/'); cdf_short = icf_list[-1]
                                     destination_parent = 'AltDatabase/affymetrix/LibraryFiles/'
-                                    info_list = input_cdf_file,filepath(destination_parent+cdf_short); StatusWindow(info_list,'copy')
+                                    destination_parent = osfilepath(destination_parent+cdf_short)
+                                    info_list = input_cdf_file,destination_parent; StatusWindow(info_list,'copy')
                                 else:
                                     print_out = "The file;\n"+input_cdf_file+"\ndoes not appear to be a valid Affymetix\nlibrary file. If you do not have library files, you must\ngo to the Affymetrix website to download."
                                     IndicatorWindow(print_out,'Continue')            
@@ -1449,9 +1482,9 @@ def getUserParameters(skip_intro):
                                         assinged = 'yes'
                                         ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
                                         destination_parent = 'AltDatabase/affymetrix/Library/'
-                                        info_list = input_cdf_file,filepath(destination_parent+cdf_short); StatusWindow(info_list,'copy')
-                                        info_list = clf_file,filepath(destination_parent+clf_short); StatusWindow(info_list,'copy')
-                                        info_list = bgp_file,filepath(destination_parent+bgp_short); StatusWindow(info_list,'copy')
+                                        info_list = input_cdf_file,osfilepath(destination_parent+cdf_short); StatusWindow(info_list,'copy')
+                                        info_list = clf_file,osfilepath(destination_parent+clf_short); StatusWindow(info_list,'copy')
+                                        info_list = bgp_file,osfilepath(destination_parent+bgp_short); StatusWindow(info_list,'copy')
                                     else:
                                         print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
                                         IndicatorWindow(print_out,'Continue')                                   

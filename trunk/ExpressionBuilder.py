@@ -225,6 +225,46 @@ def exportDataForGenMAPP(headers):
         genmapp.write(data_val)
     genmapp.close()
 
+    ### Filter statistics based on user-defined thresholds as input for GO-Elite analysis
+    criterion_db={}; denominator_geneids={}; index = 0; ttest=[]
+    for column in headers:
+        if 'ttest' in column: ttest.append(index)
+        index+=1
+        
+    for probeset in array_folds:
+        index = 0; af = array_folds[probeset]
+        for value in array_folds[probeset]:
+            denominator_geneids[probeset]=[]
+            if index in ttest:
+                criterion_name = headers[index][6:]
+                log_fold = float(af[index-2])
+                p_value = float(value)
+                if abs(log_fold)>m_cutoff and p_value<p_cutoff:
+                    try: criterion_db[criterion_name].append((probeset,log_fold,p_value))
+                    except KeyError: criterion_db[criterion_name] = [(probeset,log_fold,p_value)]
+            index += 1
+
+    ### Export denominator gene IDs
+    expression_dir = string.replace(expression_dataset_output_dir,'ExpressionOutput/','')
+    goelite_file = expression_dir +'GO-Elite/denominator/GE.'+ experiment_name+'-denominator.txt'
+    goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/denominator')        
+    goelite_title = ['GeneID','SystemCode']
+    goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
+    for probeset in denominator_geneids:
+        values = string.join([probeset,system_code],'\t')+'\n'; goelite.write(values)
+    goelite.close()
+
+    ### Export criterion gene IDs and minimal data     
+    for criterion_name in criterion_db:
+        goelite_file = expression_dir + 'GO-Elite/input/GE.'+criterion_name+'.txt'
+        goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/input')        
+        goelite_title = ['GeneID','SystemCode',criterion_name+'log_fold',criterion_name+'p_value']
+        goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
+        for (probeset,log_fold,p_value) in criterion_db[criterion_name]:
+            values = string.join([probeset,system_code,str(log_fold),str(p_value)],'\t')+'\n'
+            goelite.write(values)
+        goelite.close()
+        
 def removeRawData(array_fold_headers):
     ### Prior to exporting data for GenMAPP, remove raw data columns
     columns_with_stats=[]; i=0; stat_headers = ['avg', 'log_fold', 'fold', 'ttest']; filtered_headers=[]
@@ -479,7 +519,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
   global filter_by_dabg; filter_by_dabg = 'yes' ### shouldn't matter, since the program should just continue on without it
   global expression_data_format; global expression_dataset_output_dir; global AltAnalzye_input_dir; global data_type
   global conventional_array_db; global custom_array_db; global constitutive_db; global include_raw_data; global experiment_name
-  global annotate_db; global probeset_db; global process_custom
+  global annotate_db; global probeset_db; global process_custom; global m_cutoff; global p_cutoff
   include_raw_data = Include_raw_data; expression_data_format = Expression_data_format
   data_type = 'expression' ###Default, otherwise is 'dabg'
   d = "core"; e = "extendend"; f = "full"; exons_to_grab = d ### Currently, not used by the program... intended as an option for ExonArrayAffymetrixRules full annotation (deprecated)
@@ -499,6 +539,8 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
   ct = 'count'; avg = 'average'; filter_method = avg
   filter_by_dabg = 'yes'
 
+  m_cutoff = 1; p_cutoff = 0.05
+  
   print "Begining to Process the",species,array_type,'dataset'
   
   process_custom = 'no'  
