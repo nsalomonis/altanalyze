@@ -28,6 +28,7 @@ import ExonAnalyze_module; reload(ExonAnalyze_module)
 import ExonAnnotate_module; reload(ExonAnnotate_module)
 import ResultsExport_module
 import FeatureAlignment
+import GO_Elite
 import time
 import webbrowser
 import random
@@ -327,8 +328,15 @@ def importSplicingAnnotationDatabase(filename,array_type,filtered_arrayids,filte
     if filter_status == 'yes': return new_exon_db
     else:
         summary_data_db['gene_assayed'] = len(genes_being_analyzed)
+        if array_type == 'exon': exportDenominatorGenes(genes_being_analyzed)
         return constituitive_probeset_db,exon_db,genes_being_analyzed
 
+def exportDenominatorGenes(genes_being_analyzed):
+    goelite_output = root_dir+'GO-Elite/denominator/AS.' + dataset_name + analysis_method+'.txt'
+    goelite_data = export.ExportFile(goelite_output)
+    goelite_data.write("GeneID\tSystemCode\n")
+    for gene in genes_being_analyzed: goelite_data.write(gene+'\tEn'+'\n')
+            
 def performExpressionAnalysis(filename,constituitive_probeset_db,exon_db,annotate_db,dataset_name):
     """import list of expression values for arrayids and calculates statistics"""
     global fold_dbase; global stats_dbase
@@ -1118,6 +1126,9 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
             DG_output = root_dir+'AltResults/DomainGraph/' + dataset_name + analysis_method+'-DomainGraph.txt'
             DG_data = export.ExportFile(DG_output)
             DG_data.write("Probeset\tGeneID\tRegulation call\tSI\tSI p-value\tMiDAS p-value\n")
+            goelite_output = root_dir+'GO-Elite/input/AS.' + dataset_name + analysis_method+'.txt'
+            goelite_data = export.ExportFile(goelite_output)
+            goelite_data.write("GeneID\tSI\tSI p-value\tMiDAS p-value\n")
         
         title= ['Ensembl','dI','symbol','description','exons','regulation_call','event_call','probeset','lowest_p (MIDAS or SI)','midas p-value','fold','adjfold']
         title+=['up_exons','down_exons','functional_prediction','uniprot-ens_feature_predictions','peptide_predictions','ens_overlapping_domains','baseline_probeset_exp']
@@ -1344,7 +1355,8 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
 
             ### Write DomainGraph results
             values_dg = [probeset1,affygene,'changed',dI,str(si_pvalue),midas_p]; values_dg = string.join(values_dg,'\t')+'\n'
-            if array_type == 'exon': DG_data.write(values_dg)
+            values_ge = [affygene,dI,str(si_pvalue),midas_p]; values_ge = string.join(values_dg,'\t')+'\n'
+            if array_type == 'exon': DG_data.write(values_dg); goelite_data.write(values_ge)
             
         if len(ed.SplicingEvent())>2:
             try: external_exon_annot[affygene].append(ed.SplicingEvent())
@@ -2497,9 +2509,13 @@ def RunAltAnalyze():
   run=1
   try: dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
   except Exception:
-        print_out = 'The expression files were not found. Please make sure\nyou selected the correct species and array type.\n\nselected species: '+species+'\nselected array type: '+array_type
-        UI.WarningWindow(print_out,'Exit')
-        root.destroy(); sys.exit()
+        try:
+            import_dir = string.replace(import_dir,'AltExpression/'+array_type+'/'+species+'/','')
+            import_dir = string.replace(import_dir,'AltExpression/'+array_type+'/',''); dir_list = read_directory(import_dir)
+        except Exception: 
+            print_out = 'The expression files were not found. Please make\nsure you selected the correct species and array type.\n\nselected species: '+species+'\nselected array type: '+array_type+'\nselected directory:'+import_dir
+            UI.WarningWindow(print_out,'Exit')
+            root.destroy(); sys.exit()
 
   for altanalzye_input in dir_list:    #loop through each file in the directory to output results
     ###Import probe-level associations
@@ -2562,7 +2578,8 @@ class SummaryResultsWindow:
             idx= int(event.widget.tag_names(CURRENT)[1])
             webbrowser.open(LINKS[idx])
         #def urlcallback(url,linkout=self.linkout): linkout(url)
-        url = 'ReadMe/help_main.htm'; url = filepath(url)
+        #url = 'ReadMe/help_main.htm'; url = filepath(url)
+        url = 'http://www.altanalyze.org/help_main.htm'; url = filepath(url)
         LINKS=(url,'')
         self.LINKS = LINKS
         tl.title('AltAnalyze 1.11 beta'); self.tl = tl
@@ -2592,10 +2609,15 @@ class SummaryResultsWindow:
         txt.insert(END, "AltAnalyze Help", ('link', str(0)))
         txt.insert(END, '\n\n')
         if analysis_type == 'AS':
+
+            if os.name == 'nt': spacer = '      ' #Windows
+            elif 'darwin' in sys.platform: spacer = ''#Mac
+            elif 'linux' in sys.platform: spacer = '      ' #Linux
+    
             result_list=[]
             for key in summary_data_db: summary_data_db[key] = str(summary_data_db[key])
             d = 'Dataset name: '+ dataset_name[:-1]; result_list.append(d+'\n')
-            d = 'All genes examined:                                 \t'+ summary_data_db['gene_assayed']; result_list.append(d)
+            d = 'All genes examined:                            '+spacer+'\t'+ summary_data_db['gene_assayed']; result_list.append(d)
             d = 'Expressed genes examined for AS:               \t'+ summary_data_db['denominator_exp_genes']; result_list.append(d)
 
             if array_type == 'exon': 
@@ -2607,7 +2629,7 @@ class SummaryResultsWindow:
             d = 'Alternatively regulated genes (ARGs):          \t'+ summary_data_db['alt_genes']; result_list.append(d)
             d = 'ARGs - overlaping with domain/motifs:          \t'+ summary_data_db['direct_domain_genes']; result_list.append(d)
             d = 'ARGs - overlaping with microRNA binding sites: \t'+ summary_data_db['miRNA_gene_hits']; result_list.append(d)
-            for d in result_list: txt.insert(END, d+'\n')
+            for d in result_list: txt.insert(END, d+'\n'); log_report.append(d+'\n')
             
         txt.tag_config('link', foreground="blue", underline = 1)
         txt.tag_bind('link', '<Button-1>', showLink)
@@ -2618,7 +2640,7 @@ class SummaryResultsWindow:
             self.dg_url = 'http://groups.google.com/group/alt_predictions/web/visualizing-altanalyze-results-in-domaingraph'
             text_button = Button(self.tl, text='Analyze in DomainGraph', command=self.DGlinkout)
             text_button.pack(side = 'right', padx = 5, pady = 5)
-            self.output_dir = output_dir + "AltResults/AlternativeOutput"
+            self.output_dir = output_dir + "AltResults"
             self.whatNext_url = 'http://groups.google.com/group/alt_predictions/web/analyzing-as-results'
         else:
             self.output_dir = output_dir + "ExpressionOutput"
@@ -2633,19 +2655,22 @@ class SummaryResultsWindow:
         quit_button = Button(root,text='Quit', command=self.quit)
         quit_button.pack(side = 'right', padx = 5, pady = 5)
 
-        button_text = 'Help'; url = 'ReadMe/help_main.htm'; self.help_url = filepath(url)        
+        button_text = 'Help'; url = 'http://www.altanalyze.org/help_main.htm'; self.help_url = filepath(url)        
         help_button = Button(root, text=button_text, command=self.Helplinkout)
         help_button.pack(side = 'left', padx = 5, pady = 5); root.mainloop()
-
+        
         tl.mainloop() ###Needed to show graphic
     def openDirectory(self):
-        os.startfile('"'+self.output_dir+'"')
+        try: os.startfile('"'+self.output_dir+'"')
+        except Exception: 
+            os.system('open "'+self.output_dir+'"')
+
     def DGlinkout(self): webbrowser.open(self.dg_url)
     def Helplinkout(self): webbrowser.open(self.help_url)
     def whatNextlinkout(self): webbrowser.open(self.whatNext_url)
     def quit(self):
         root.quit()
-        root.destroy()
+        root.destroy(); exportLog(log_report)
         sys.exit()
     def close(self):
         self.tl.quit()
@@ -2791,6 +2816,7 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
                   fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
               tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir)
               exportLog(log_report)
+              GO_Elite.remoteAnalysis(root)
           except NameError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
           AltAnalyzeSetup('no')
   elif run_from_scratch == 'update DBs':
@@ -2868,8 +2894,7 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
       UI.InfoWindow(print_out,'Analysis Completed!')
       for dataset in exp_file_location_db:
           fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
-      tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir)
-      exportLog(log_report)
+      tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir); exportLog(log_report)
               
   except NameError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
   skip_intro = 'yes'

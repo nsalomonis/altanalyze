@@ -21,11 +21,16 @@ import os.path
 import unique ### Import itself as a reference to it's location
 dirfile = unique
 
+py2app_adj = '/GO_Elite.app/Contents/Resources/Python/site-packages.zip'
+py2app_adj2 = '/GO_Elite.app/Contents/Resources/lib/python2.5/site-packages.zip'
+py2exe_adj = '\\library.zip' ###py2exe
+py2app_ge_dirs = [py2app_adj,py2exe_adj,py2app_adj2]
+
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 py2app_adj2 = '/AltAnalyze.app/Contents/Resources/lib/python2.5/site-packages.zip'
-
 py2exe_adj = '\\library.zip' ###py2exe
-py2app_dirs = [py2app_adj,py2exe_adj,py2app_adj2]
+py2app_aa_dirs = [py2app_adj,py2exe_adj,py2app_adj2]
+py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
 def filepath(filename):
     dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
@@ -42,6 +47,25 @@ def read_directory(sub_dir):
     if (':' in sub_dir) or ('/Users/' == sub_dir[:7]) or ('/Volumes/' in sub_dir): dir_list = os.listdir(sub_dir) ### Thus, the whole path is provided already
     else: dir_list = os.listdir(dir + sub_dir)
     return dir_list
+
+def returnDirectories(sub_dir):
+    dir=os.path.dirname(dirfile.__file__)
+    for py2app_dir in py2app_dirs:
+        dir = string.replace(dir,py2app_dir,'')
+        dir_list = os.listdir(dir + sub_dir)
+    return dir_list
+
+def refDir():
+    reference_dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
+    for py2app_dir in py2app_dirs: 
+        reference_dir = string.replace(reference_dir,py2app_adj,'')
+    return reference_dir
+
+def whatProgramIsThis():
+    reference_dir = refDir()
+    if 'AltAnalyze' in reference_dir: type = 'AltAnalyze'; database_dir = 'AltDatabase/goelite'
+    elif 'GO-Elite' in reference_dir: type = 'GO-Elite'; database_dir = 'Databases'
+    return type,database_dir
 
 def unique(s):
     #we need to remove duplicates from a list, unsuccessfully tried many different methods
@@ -66,12 +90,24 @@ def unique(s):
         for x in s:
             if x not in u: u.append(x)
         return u
+    
+def dictionary(s):
+    d={}
+    for i in s:
+        try: d[i]=[]
+        except TypeError: d[tuple(i)]=[]
+    return d
 
 def unique_db(s):
     d={}; t=[]
     for i in s:
         try: d[i]=[]
         except TypeError: d[tuple(i)]=[]
+    for i in d: t.append(i)
+    return t
+
+def list(d):
+    t=[]
     for i in d: t.append(i)
     return t
 
