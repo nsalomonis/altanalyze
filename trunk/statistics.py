@@ -587,6 +587,13 @@ if __name__ == '__main__':
     dirfile = unique    
     #r = pearson([0.0, -0.58999999999999997], [0.0, 0.000000])
     #print rdf=7
+    r=1749
+    n=2536
+    R=9858
+    N=16595
+    
+    z = zscore(r,n,N,R)
+    print z;kill
     x = choose(4,4)
     #print x;kill
     t=2.365

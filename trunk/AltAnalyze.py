@@ -328,14 +328,20 @@ def importSplicingAnnotationDatabase(filename,array_type,filtered_arrayids,filte
     if filter_status == 'yes': return new_exon_db
     else:
         summary_data_db['gene_assayed'] = len(genes_being_analyzed)
-        if array_type == 'exon': exportDenominatorGenes(genes_being_analyzed)
+        exportDenominatorGenes(genes_being_analyzed)
         return constituitive_probeset_db,exon_db,genes_being_analyzed
 
 def exportDenominatorGenes(genes_being_analyzed):
-    goelite_output = root_dir+'GO-Elite/denominator/AS.' + dataset_name + analysis_method+'.txt'
+    goelite_output = root_dir+'GO-Elite/denominator/AS.' + analysis_method+'.txt'
     goelite_data = export.ExportFile(goelite_output)
+    if array_type == 'exon': systemcode = 'En'
+    else: systemcode = 'L'
     goelite_data.write("GeneID\tSystemCode\n")
-    for gene in genes_being_analyzed: goelite_data.write(gene+'\tEn'+'\n')
+    for gene in genes_being_analyzed:
+        if array_type == 'AltMouse':
+            try: gene = annotate_db[gene].ExternalGeneID()
+            except KeyError: null = []
+        goelite_data.write(gene+'\t'+systemcode+'\n')
             
 def performExpressionAnalysis(filename,constituitive_probeset_db,exon_db,annotate_db,dataset_name):
     """import list of expression values for arrayids and calculates statistics"""
@@ -1115,7 +1121,9 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
     external_exon_annot={}; gene_exon_region={}; gene_smallest_p={}; gene_splice_event_score={}; alternatively_reg_tc={}
     aspire_output = root_dir+'AltResults/AlternativeOutput/' + dataset_name + analysis_method+'-exon-inclusion-results.txt'
     data = export.ExportFile(aspire_output)
-
+    goelite_output = root_dir+'GO-Elite/input/AS.' + dataset_name + analysis_method+'.txt'
+    goelite_data = export.ExportFile(goelite_output)
+    
     if analysis_method != 'splicing-index':
         title = ['AffyGene','dI','symbol','description','exons1','exons2','regulation_call','event_call','probeset1','rawp1','probeset2','rawp2','fold1','fold2']
         title +=['adj-fold1' ,'adj-fold2' ,'block_structure','critical_up_exons','critical_down_exons','functional_prediction','uniprot-ens_feature_predictions']
@@ -1126,9 +1134,7 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
             DG_output = root_dir+'AltResults/DomainGraph/' + dataset_name + analysis_method+'-DomainGraph.txt'
             DG_data = export.ExportFile(DG_output)
             DG_data.write("Probeset\tGeneID\tRegulation call\tSI\tSI p-value\tMiDAS p-value\n")
-            goelite_output = root_dir+'GO-Elite/input/AS.' + dataset_name + analysis_method+'.txt'
-            goelite_data = export.ExportFile(goelite_output)
-            goelite_data.write("GeneID\tSI\tSI p-value\tMiDAS p-value\n")
+            goelite_data.write("GeneID\tSystemCode\tSI\tSI p-value\tMiDAS p-value\n")
         
         title= ['Ensembl','dI','symbol','description','exons','regulation_call','event_call','probeset','lowest_p (MIDAS or SI)','midas p-value','fold','adjfold']
         title+=['up_exons','down_exons','functional_prediction','uniprot-ens_feature_predictions','peptide_predictions','ens_overlapping_domains','baseline_probeset_exp']
@@ -1354,8 +1360,11 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
             exon_sets = abs(float(dI)),regulation_call,event_call,exons1,exons1,midas_p
 
             ### Write DomainGraph results
+            try: midas_p = str(midas_db[probeset])
+            except KeyError: midas_p = 'NA'
+            
             values_dg = [probeset1,affygene,'changed',dI,str(si_pvalue),midas_p]; values_dg = string.join(values_dg,'\t')+'\n'
-            values_ge = [affygene,dI,str(si_pvalue),midas_p]; values_ge = string.join(values_dg,'\t')+'\n'
+            values_ge = [affygene,'En',dI,str(si_pvalue),midas_p]; values_ge = string.join(values_ge,'\t')+'\n'
             if array_type == 'exon': DG_data.write(values_dg); goelite_data.write(values_ge)
             
         if len(ed.SplicingEvent())>2:
@@ -1418,6 +1427,8 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
     aspire_output_gene = root_dir+'AltResults/AlternativeOutput/' + dataset_name + analysis_method + '-exon-inclusion-GENE-results.txt'
     fn=filepath(aspire_output_gene)
     data = open(fn,'w')
+    if array_type == 'AltMouse': goelite_data.write("GeneID\tSystemCode\n")
+    
     title = ['AffyGene','max_dI','midas-p (corresponding)','symbol','external gene ID','description','regulation_call','event_call']
     title +=['number_of_comparisons','num_critical_exons','up_exons','down_exons','functional_attribute','uniprot-ens_exon_features','direct_domain_aligments']
     title +=['go-annotations','mean_fold_change','exon-annotations','exon-region IDs','transcript-cluster-ids','splice-annotation score']
@@ -1435,6 +1446,9 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
         if ensembl in go_annotations: goa = go_annotations[ensembl]
         else: goa = ''
 
+        if array_type == 'AltMouse':
+            if len(ensembl) >0: goelite_data.write(ensembl+'\tL\n')
+            
         try: gene_splice_event_score[affygene].sort(); top_se_score = str(gene_splice_event_score[affygene][-1])
         except KeyError: top_se_score = 'NA'
         try: gene_regions = gene_exon_region[affygene]; gene_regions = makeUnique(gene_regions); gene_regions = string.join(gene_regions,'|')
@@ -2510,13 +2524,16 @@ def RunAltAnalyze():
   try: dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
   except Exception:
         try:
-            import_dir = string.replace(import_dir,'AltExpression/'+array_type+'/'+species+'/','')
-            import_dir = string.replace(import_dir,'AltExpression/'+array_type+'/',''); dir_list = read_directory(import_dir)
+            if array_type == 'exon': array_type_dir = 'ExonArray'
+            else: array_type_dir = array_type
+            import_dir = string.replace(import_dir,'AltExpression/'+array_type_dir+'/'+species+'/','')
+            import_dir = string.replace(import_dir,'AltExpression/'+array_type_dir+'/','');
+            dir_list = read_directory(import_dir)
         except Exception: 
             print_out = 'The expression files were not found. Please make\nsure you selected the correct species and array type.\n\nselected species: '+species+'\nselected array type: '+array_type+'\nselected directory:'+import_dir
             UI.WarningWindow(print_out,'Exit')
             root.destroy(); sys.exit()
-
+            
   for altanalzye_input in dir_list:    #loop through each file in the directory to output results
     ###Import probe-level associations
     if run>1: ### Only re-set these databases after the run when batch analysing multiple files
@@ -2548,9 +2565,9 @@ def universalPrintFunction(print_items):
     for item in print_items: log_report.append(item+'\n')
     
 class StatusWindow:
-    def __init__(self,root,expr_var,alt_var,additional_var,exp_file_location_db):
+    def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
             self._parent = root
-            root.title('AltAnalyze 1.11 Beta')
+            root.title('AltAnalyze 1.12 Beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 450; width = 500
@@ -2566,14 +2583,14 @@ class StatusWindow:
             Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
 
             status = StringVarFile(statusVar,root) ### Likely captures the stdout
-            sys.stdout = status; root.after(100, AltAnalyzeMain(expr_var, alt_var, additional_var, exp_file_location_db, root))
+            sys.stdout = status; root.after(100, AltAnalyzeMain(expr_var, alt_var, goelite_var, additional_var, exp_file_location_db, root))
             self._parent.mainloop(); self._parent.destroy()
 
     def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
     def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
 
 class SummaryResultsWindow:
-    def __init__(self,tl,analysis_type,output_dir):
+    def __init__(self,tl,analysis_type,output_dir,dataset_name,output_type):
         def showLink(event):
             idx= int(event.widget.tag_names(CURRENT)[1])
             webbrowser.open(LINKS[idx])
@@ -2582,7 +2599,7 @@ class SummaryResultsWindow:
         url = 'http://www.altanalyze.org/help_main.htm'; url = filepath(url)
         LINKS=(url,'')
         self.LINKS = LINKS
-        tl.title('AltAnalyze 1.11 beta'); self.tl = tl
+        tl.title('AltAnalyze 1.12 beta'); self.tl = tl
         self.analysis_type = analysis_type
         
         #"""
@@ -2609,15 +2626,15 @@ class SummaryResultsWindow:
         txt.insert(END, "AltAnalyze Help", ('link', str(0)))
         txt.insert(END, '\n\n')
         if analysis_type == 'AS':
-
-            if os.name == 'nt': spacer = '      ' #Windows
-            elif 'darwin' in sys.platform: spacer = ''#Mac
-            elif 'linux' in sys.platform: spacer = '      ' #Linux
+            
+            if os.name == 'nt': spacer = '      '; spacer2 = spacer #Windows
+            elif 'darwin' in sys.platform: spacer = ''; spacer2 = spacer #Mac
+            elif 'linux' in sys.platform: spacer = '      '; spacer2 = ''
     
             result_list=[]
             for key in summary_data_db: summary_data_db[key] = str(summary_data_db[key])
             d = 'Dataset name: '+ dataset_name[:-1]; result_list.append(d+'\n')
-            d = 'All genes examined:                            '+spacer+'\t'+ summary_data_db['gene_assayed']; result_list.append(d)
+            d = 'All genes examined:                            '+spacer2+'\t'+ summary_data_db['gene_assayed']; result_list.append(d)
             d = 'Expressed genes examined for AS:               \t'+ summary_data_db['denominator_exp_genes']; result_list.append(d)
 
             if array_type == 'exon': 
@@ -2637,14 +2654,17 @@ class SummaryResultsWindow:
         open_results_folder = Button(self.tl, text = 'Results Folder', command = self.openDirectory)
         open_results_folder.pack(side = 'left', padx = 5, pady = 5);
         if analysis_type == 'AS':
-            self.dg_url = 'http://groups.google.com/group/alt_predictions/web/visualizing-altanalyze-results-in-domaingraph'
+            self.dg_url = 'http://www.genmapp.org/AltAnalyze/domaingraph.htm'
             text_button = Button(self.tl, text='Analyze in DomainGraph', command=self.DGlinkout)
             text_button.pack(side = 'right', padx = 5, pady = 5)
             self.output_dir = output_dir + "AltResults"
-            self.whatNext_url = 'http://groups.google.com/group/alt_predictions/web/analyzing-as-results'
+            self.whatNext_url = 'http://www.genmapp.org/AltAnalyze/what_next_altexon.htm'
+            if output_type == 'parent': self.output_dir = output_dir ###Used for fake datasets
         else:
-            self.output_dir = output_dir + "ExpressionOutput"
-            self.whatNext_url = 'http://groups.google.com/group/alt_predictions/web/analyzing-ge-results'
+            if pathway_permutations == 'NA':
+                self.output_dir = output_dir + "ExpressionOutput"
+            else: self.output_dir = output_dir
+            self.whatNext_url = 'http://www.genmapp.org/AltAnalyze/what_next_expression.htm'
         what_next = Button(self.tl, text='What Next?', command=self.whatNextlinkout)
         what_next.pack(side = 'right', padx = 5, pady = 5)
         quit_buttonTL = Button(self.tl,text='Close View', command=self.close)
@@ -2661,9 +2681,11 @@ class SummaryResultsWindow:
         
         tl.mainloop() ###Needed to show graphic
     def openDirectory(self):
-        try: os.startfile('"'+self.output_dir+'"')
-        except Exception: 
-            os.system('open "'+self.output_dir+'"')
+        if os.name == 'nt':
+            try: os.startfile('"'+self.output_dir+'"')
+            except Exception:  os.system('open "'+self.output_dir+'"')
+        elif 'darwin' in sys.platform: os.system('open "'+self.output_dir+'"')
+        elif 'linux' in sys.platform: os.system('xdg-open "'+self.output_dir+'"')             
 
     def DGlinkout(self): webbrowser.open(self.dg_url)
     def Helplinkout(self): webbrowser.open(self.help_url)
@@ -2694,17 +2716,16 @@ class StringVarFile:
                 
 def AltAnalyzeSetup(skip_intro):
     global apt_location; global root_dir; global log_report; log_report=[]; global summary_data_db; summary_data_db={}
-    expr_var, alt_var, additional_var, exp_file_location_db = UI.getUserParameters(skip_intro)
+    expr_var, alt_var, additional_var, goelite_var, exp_file_location_db = UI.getUserParameters(skip_intro)
     for dataset in exp_file_location_db:
         fl = exp_file_location_db[dataset]
         apt_location = fl.APTLocation()
         root_dir = fl.RootDir()
-
     if use_Tkinter == 'yes' and debug_mode == 'no':
         global root; root = Tk()
-        StatusWindow(root,expr_var, alt_var, additional_var, exp_file_location_db)
+        StatusWindow(root,expr_var, alt_var, goelite_var, additional_var, exp_file_location_db)
         root.destroy()
-    else: AltAnalyzeMain(expr_var, alt_var, additional_var, exp_file_location_db,'')
+    else: AltAnalyzeMain(expr_var, alt_var, goelite_var, additional_var, exp_file_location_db,'')
 
 def exportLog(log_report):
     log_file = root_dir+'AltAnalyze_report.log'
@@ -2712,7 +2733,7 @@ def exportLog(log_report):
     log_report = string.join(log_report,'')
     data.write(log_report); data.close()
     
-def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
+def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location_db,root):
   ### Hard-coded defaults
   w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'any'; data_source = y; constitutive_source = z; manufacturer = x ### Constitutive source, is only really paid attention to if Ensembl, otherwise Affymetrix is used (even if default)
   ### Get default options for ExpressionBuilder and AltAnalyze    
@@ -2722,7 +2743,7 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
   global analysis_method; global p_threshold; global filter_probeset_types
   global permute_p_threshold; global perform_permutation_analysis; global export_splice_index_values
   global run_MiDAS; global analyze_functional_attributes;  global microRNA_prediction_method
-  global calculate_splicing_index_p
+  global calculate_splicing_index_p; global pathway_permutations
 
   global agglomerate_inclusion_probesets; global get_non_log_avg; global expression_threshold; global factor_out_expression_changes
   global only_include_constitutive_containing_genes; global remove_transcriptional_regulated_genes; global add_exons_to_annotations
@@ -2731,6 +2752,7 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
   species,array_type,manufacturer,constitutive_source,dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis = expr_var
   analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,permute_p_threshold,perform_permutation_analysis, export_splice_index_values = alt_var
   calculate_splicing_index_p, run_MiDAS, use_direct_domain_alignments_only, microRNA_prediction_method, filter_for_AS = additional_var
+  ge_fold_cutoffs,ge_pvalue_cutoffs,filter_method,z_threshold,p_val_threshold,change_threshold,pathway_permutations,mod = goelite_var
 
   global perform_element_permutation_analysis; global permutations
   perform_element_permutation_analysis = 'yes'; permutations = 2000
@@ -2795,8 +2817,43 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
   (3) build array annotations files matched to gene structure features (e.g. exons, introns) using chromosomal coordinates
   options 1-2 are executed in remoteExpressionBuilder and option 3 is by running ExonArrayEnsembl rules"""
 
+  ### Check to see if this is a real or FAKE dataset
+  if run_from_scratch == 'CEL files': 
+    for dataset in exp_file_location_db:
+        fl = exp_file_location_db[dataset]
+        pgf_file=fl.InputCDFFile()
+        results_dir = filepath(fl.RootDir())
+        if '_demo' in pgf_file: ### Thus we are running demo CEL files and want to quit immediately
+          print_out = 'Analysis complete. AltAnalyze results\nexported to "AltResults/AlternativeOutput".'
+          try:      
+              print "Analysis Complete\n";
+              UI.InfoWindow(print_out,'Analysis Completed!')
+              tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset,'parent'); exportLog(log_report)              
+          except Exception: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
+          skip_intro = 'yes'
+          if pathway_permutations == 'NA':
+              UI.getUpdatedParameters(array_type,species,run_from_scratch,results_dir)
+          AltAnalyzeSetup('no')
+          
   if run_from_scratch == 'CEL files':
-      try: UI.probesetSummarize(exp_file_location_db,species,root)
+      try:
+          try: UI.probesetSummarize(exp_file_location_db,species,root)
+          except Exception:
+              print "Trying to change APT binary access priveledges"
+              for dataset in exp_file_location_db: ### Instance of the Class ExpressionFileLocationData
+                  fl = exp_file_location_db[dataset]; apt_dir =fl.APTLocation()
+              if '/bin' in apt_dir: apt_file = apt_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
+              elif os.name == 'nt': apt_file = apt_dir + '/PC/apt-probeset-summarize'
+              elif 'darwin' in sys.platform: apt_file = apt_dir + '/Mac/apt-probeset-summarize'
+              elif 'linux' in sys.platform:
+                  import platform
+                  if '32bit' in platform.architecture(): apt_file = apt_dir + '/Linux/32bit/apt-probeset-summarize'
+                  elif '64bit' in platform.architecture(): apt_file = apt_dir + '/Linux/64bit/apt-probeset-summarize'
+                  apt_file = filepath(apt_file)
+              os.chmod(apt_file,0777)
+              midas_dir = string.replace(apt_file,'apt-probeset-summarize','apt-midas')
+              os.chmod(midas_dir,0777)
+              UI.probesetSummarize(exp_file_location_db,species,root)
       except Exception:
         print_out = 'AltAnalyze encountered an un-expected error while running Affymetrix\n'
         print_out += 'Power Tools (APT). Additional information may be found in the directory\n'
@@ -2806,18 +2863,72 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
         print_out += 'of AltAnalyze and import the results using the analysis option "expression file".\n'
         UI.WarningWindow(print_out,'Exit')
         root.destroy(); sys.exit()
+        
   if run_from_scratch == 'expression file' or run_from_scratch == 'CEL files':
-      status = ExpressionBuilder.remoteExpressionBuilder(species,array_type,dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,manufacturer,constitutive_source,data_source,include_raw_data,perform_alt_analysis,exp_file_location_db,root)
+      status = ExpressionBuilder.remoteExpressionBuilder(species,array_type,
+            dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,
+            manufacturer,constitutive_source,data_source,include_raw_data,
+            perform_alt_analysis,ge_fold_cutoffs,ge_pvalue_cutoffs,
+            exp_file_location_db,root)
+      reload(ExpressionBuilder) ### Clears Memory
       if status == 'stop':
-          print_out = 'Analysis complete. Gene expression summary \nexported to "ExpressionOutput".'
+          ### See if the array and species are compatible with GO-Elite analysis
+          system_codes = UI.getSystemInfo()
+          go_elite_analysis_supported = 'yes'
+          species_names = UI.getSpeciesInfo()
+          goelite_species_codes = importGOEliteSpeciesInfo()
+          species_full = species_names[species]
+          import BuildAffymetrixAssociations
+          if array_type != 'exon' and array_type != 'AltMouse':
+              status = GO_Elite.checkGOEliteSpecies(species)
+              if status == 'no':
+                  ###Add species to GO-Elite species database
+                  sd = SpeciesData(species,species_full,['En','L'],'')
+                  goelite_species_codes[species_full]=sd
+                  exportGOEliteSpeciesInfo(goelite_species_codes)
+
+                  date = TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
+                  import update
+                  fln,status = update.download('http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab','AltDatabase/wikipathways/',file_type)
+                  if 'Internet' not in status:
+                      incorporate_previous_associations = 'yes'; process_go = 'yes'; parse_wikipathways = 'yes'; overwrite_affycsv = 'over-write previous'
+                      BuildAffymetrixAssociations.importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,overwrite_affycsv)
+              else:
+                  import_dir = '/AltDatabase/affymetrix/'+species; dir_list = read_directory(import_dir)
+                  fn_dir = filepath(import_dir[1:])
+                  if len(dir_list)>0:
+                      for file in dir_list:
+                          fn = fn_dir+'/'+file
+                          if '.csv' in fn:
+                              probesets_found = checkGOEliteProbesets(fn,species)
+                              print probesets_found, file
+                              if probesets_found == 'no': go_elite_analysis_supported = 'no'
+                  if go_elite_analysis_supported == 'no':
+                      ###Add annotations for a missing array
+                      incorporate_previous_associations = 'yes'; process_go = 'no'; parse_wikipathways = 'no'; overwrite_affycsv = 'over-write previous'
+                      BuildAffymetrixAssociations.buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,overwrite_affycsv)
+                      go_elite_analysis_supported = 'yes'
+          for dataset in exp_file_location_db:
+              fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
+              file_dirs = results_dir+'GO-Elite/input',results_dir+'GO-Elite/denominator',results_dir+'GO-Elite'
+          ### Perform GO-Elite Analysis
+          if pathway_permutations != 'NA':
+              variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,file_dirs,root
+              if go_elite_analysis_supported == 'yes':
+                  print '\nBegining to run GO-Elite analysis on gene expression criterion'
+                  GO_Elite.remoteAnalysis(variables,'non-UI')
+              else: print '\GO-Elite analysis not supported for this array or species.'
           try:
+              print_out = 'Analysis complete. Gene expression summary \nexported to "ExpressionOutput".'
               print "Analysis Complete\n"; UI.InfoWindow(print_out,'Analysis Completed!')
-              for dataset in exp_file_location_db:
-                  fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
-              tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir)
+              tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir,dataset,'parent')
               exportLog(log_report)
-              GO_Elite.remoteAnalysis(root)
-          except NameError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
+          except TypeError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
+
+          if pathway_permutations == 'NA':                
+              if go_elite_analysis_supported == 'yes': 
+                  UI.getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
+
           AltAnalyzeSetup('no')
   elif run_from_scratch == 'update DBs':
       null=[] ###Add link to new module
@@ -2887,19 +2998,112 @@ def AltAnalyzeMain(expr_var,alt_var,additional_var,exp_file_location_db,root):
   end_time = time.time(); time_diff = int(end_time-start_time)
   universalPrintFunction(["Analyses finished in %d seconds" % time_diff])
   #universalPrintFunction(["Hit Enter/Return to exit AltAnalyze"])
-
+  for dataset in exp_file_location_db:
+      fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
+      file_dirs = results_dir+'GO-Elite/input',results_dir+'GO-Elite/denominator',results_dir+'GO-Elite'
+      
+  ### Perform GO-Elite Analysis
+  if pathway_permutations != 'NA':
+      variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,file_dirs,root
+      print '\nBegining to run GO-Elite analysis on alternative exon resutlts'
+      GO_Elite.remoteAnalysis(variables,'non-UI')
   print_out = 'Analysis complete. AltAnalyze results\nexported to "AltResults/AlternativeOutput".'
-  try:
+  try:      
       print "Analysis Complete\n";
       UI.InfoWindow(print_out,'Analysis Completed!')
-      for dataset in exp_file_location_db:
-          fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
-      tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir); exportLog(log_report)
-              
-  except NameError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
+      tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset_name,'specific'); exportLog(log_report)              
+  except IndexError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
   skip_intro = 'yes'
+  if pathway_permutations == 'NA':
+      UI.getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
   AltAnalyzeSetup('no')
-  
+          
+def checkGOEliteProbesets(fn,species):
+    ### Get all probesets in GO-Elite files
+    mod_source = 'Ensembl'+'-'+'Affymetrix'
+    import gene_associations
+    try: ensembl_to_probeset_id = gene_associations.getGeneToUid(species,mod_source)
+    except Exception: ensembl_to_probeset_id={}
+    mod_source = 'EntrezGene'+'-'+'Affymetrix'
+    try: entrez_to_probeset_id = gene_associations.getGeneToUid(species,mod_source)
+    except Exception: entrez_to_probeset_id={}
+    probeset_db={}
+    for gene in ensembl_to_probeset_id:
+        for probeset in ensembl_to_probeset_id[gene]: probeset_db[probeset]=[]
+    for gene in entrez_to_probeset_id:
+        for probeset in entrez_to_probeset_id[gene]: probeset_db[probeset]=[]
+
+    ###Import an Affymetrix array annotation file (from http://www.affymetrix.com) and parse out annotations
+    csv_probesets = {}; x=0; y=0
+    fn=filepath(fn); status = 'no'
+    for line in open(fn,'r').readlines():             
+        probeset_data = string.replace(line,'\n','')  #remove endline
+        probeset_data = string.replace(probeset_data,'---','')
+        affy_data = string.split(probeset_data[1:-1],'","')
+        if x==0 and line[0]!='#':
+            x=1; affy_headers = affy_data
+            for header in affy_headers:
+                y = 0
+                while y < len(affy_headers):
+                    if 'Probe Set ID' in affy_headers[y] or 'probeset_id' in affy_headers[y]: ps = y
+                    y+=1
+        elif x == 1:
+            try: probeset = affy_data[ps]; csv_probesets[probeset]=[]
+            except Exception: null=[]
+    for probeset in csv_probesets:
+        if probeset in probeset_db: status = 'yes';break
+    return status
+
+class SpeciesData:
+    def __init__(self, abrev, species, systems, taxid):
+        self._abrev = abrev; self._species = species; self._systems = systems; self._taxid = taxid
+    def SpeciesCode(self): return self._abrev
+    def SpeciesName(self): return self._species
+    def Systems(self): return self._systems
+    def TaxID(self): return self._taxid
+    def __repr__(self): return self.SpeciesCode()+'|'+SpeciesName
+    
+def getSpeciesInfo():
+    ### Used by AltAnalyze
+    importSpeciesInfo(); species_names={}
+    for species_full in species_codes:
+        sc = species_codes[species_full]; abrev = sc.SpeciesCode()
+        species_names[abrev] = species_full
+    return species_codes,species_names
+
+def importGOEliteSpeciesInfo():
+    filename = 'Config/goelite_species.txt'; x=0
+    fn=filepath(filename); species_codes={}
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        abrev,species,taxid,compatible_mods = string.split(data,'\t')
+        if x==0: x=1
+        else:
+            compatible_mods = string.split(compatible_mods,'|')
+            sd = SpeciesData(abrev,species,compatible_mods,taxid)
+            species_codes[species] = sd
+    return species_codes
+
+def exportGOEliteSpeciesInfo(species_codes):
+    fn=filepath('Config/goelite_species.txt'); data = open(fn,'w'); x=0
+    header = string.join(['species_code','species_name','tax_id','compatible_algorithms'],'\t')+'\n'
+    data.write(header)
+    for species in species_codes:
+        if 'other' not in species and 'all-' not in species:
+            sd = species_codes[species]
+            mods = string.join(sd.Systems(),'|')
+            values = [sd.SpeciesCode(),sd.SpeciesName(),sd.TaxID(),mods]
+            values = string.join(values,'\t')+'\n'
+            data.write(values)
+    data.close()
+
+def TimeStamp():
+    time_stamp = time.localtime()
+    year = str(time_stamp[0]); month = str(time_stamp[1]); day = str(time_stamp[2])
+    if len(month)<2: month = '0'+month
+    if len(day)<2: day = '0'+day
+    return year+month+day
+
 if __name__ == '__main__':
     skip_intro = 'yes'
     AltAnalyzeSetup(skip_intro)

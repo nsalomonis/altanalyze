@@ -169,7 +169,7 @@ def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_
         for probeset in possible_constitutive_probeset: import_these_probesets[probeset] = []
         #for probeset in pre_filtered_db: import_these_probesets[probeset] = []
         
-        print "Processing Expression Dataset..."
+        #print "Processing Expression Dataset..."
         constitutive_exp_dbase,array_linker_db,array_names = importExonProbesetData(filename,import_these_probesets,'raw') 
         """constitutive_exp_dbase={} ### Create a new dictionary containing just constitutive probesets
         for probeset in possible_constitutive_probeset:
@@ -211,7 +211,7 @@ def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_
                 comparision_export_db[comparison] = data ###store the export file write data so we can write after organizing
 
             #reorder_arrays.reorderArraysOnly(filtered_exp_db,expr_group_list,comp_group_list)
-            print len(pre_filtered_db), 'pre_filtered_db probesets being selected from expression file'
+            #print len(pre_filtered_db), 'pre_filtered_db probesets being selected from expression file'
             importExonProbesetData(filename,pre_filtered_db,'comparisons')
             pre_filtered_db={}
             
@@ -329,8 +329,8 @@ def generateConstitutiveExpression(exp_dbase,constitutive_gene_db,probeset_gene_
         data.write(ss_vals+'\n')
     data.close()
     exp_dbase={}; steady_state_db={}
-    print k, "probesets were not found in the expression file, that could be used for the constitutive expression calculation"
-    print l, "genes were also not included that did not have such expression data"
+    #print k, "probesets were not found in the expression file, that could be used for the constitutive expression calculation"
+    #print l, "genes were also not included that did not have such expression data"
     print "Steady-state data exported to",steady_state_export
             
 def permformFtests(filtered_exp_db,group_count,probeset_db):
@@ -395,7 +395,7 @@ def filterFilteredData(db1,db2):
                     null = db2[probeset] ###faster than find (or if statement)
                     combined_db[probeset]=[]
                 except KeyError: null = []
-    print 'Number of filtered probesets (expression p-value and choosen annotation method):', len(combined_db)
+    #print 'Number of filtered probesets (expression p-value and choosen annotation method):', len(combined_db)
     return combined_db
 
 def makeGeneLevelAnnotations(probeset_db):
@@ -435,7 +435,7 @@ def getAnnotations(fl,stats_input_dir,p,exons_to_grab,data_source,manufacturer,c
         if constitutive_analyzed == 'yes':
             return probeset_gene_db,annotate_db
     if filter_by_dabg == 'yes':
-        print len(splicing_analysis_db),"genes included in the splicing annotation database (constitutive only containing)"
+        #print len(splicing_analysis_db),"genes included in the splicing annotation database (constitutive only containing)"
         ###Step 1) generate a list of probesets with a DABG p<threshold
         expr_input_dir = fl.ExpFile(); stats_input_dir = fl.StatsFile()
         filtered_exon_list = getFilteredExons(stats_input_dir,p,probeset_db)
@@ -561,10 +561,10 @@ def exportExonIntronPromoterSequences(filename,ensembl_probeset_db,data_type,out
                         seq_line = seq_data[i:e]; data.write(seq_line+'\n')
                         i+=100; e+=100
 
-    print len(gene_data_exported), 'gene entries exported'
-    print len(probe_data_exported), 'probeset entries exported'
+    #print len(gene_data_exported), 'gene entries exported'
+    #print len(probe_data_exported), 'probeset entries exported'
     data.close()
-    print exon_seq_db_filename, 'exported....'
+    #print exon_seq_db_filename, 'exported....'
         
 if __name__ == '__main__':
     m = 'Mm'

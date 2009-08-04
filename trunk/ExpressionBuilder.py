@@ -224,7 +224,26 @@ def exportDataForGenMAPP(headers):
         data_val += '\t'+ str(smallest_p) +'\t'+ str(largest_fold) +'\n'
         genmapp.write(data_val)
     genmapp.close()
+    exportGOEliteInput(headers,system_code)
 
+def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, main_output_folder, system_code):
+    global array_folds; global m_cutoff; global p_cutoff; global expression_dataset_output_dir
+    m_cutoff = ge_fold_cutoffs; p_cutoff = ge_pvalue_cutoffs
+    expression_dataset_output_dir = string.replace(main_output_folder,'GO-Elite','ExpressionOutput/')
+    dir_list = read_directory(expression_dataset_output_dir[:-1])
+    for filename in dir_list:
+        if 'GenMAPP-' in filename: 
+            fn=filepath(expression_dataset_output_dir+filename)
+            array_folds = {}; x=0
+            for line in open(fn,'rU').xreadlines():
+                data = cleanUpLine(line); t = string.split(data,'\t')
+                if x==0: x=1; headers = t[1:-2]
+                else: 
+                    values = t[1:-2]; probeset = t[0]
+                    array_folds[probeset] = values
+            exportGOEliteInput(headers,system_code)
+      
+def exportGOEliteInput(headers,system_code):
     ### Filter statistics based on user-defined thresholds as input for GO-Elite analysis
     criterion_db={}; denominator_geneids={}; index = 0; ttest=[]
     for column in headers:
@@ -246,7 +265,7 @@ def exportDataForGenMAPP(headers):
 
     ### Export denominator gene IDs
     expression_dir = string.replace(expression_dataset_output_dir,'ExpressionOutput/','')
-    goelite_file = expression_dir +'GO-Elite/denominator/GE.'+ experiment_name+'-denominator.txt'
+    goelite_file = expression_dir +'GO-Elite/denominator/GE.denominator.txt'
     goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/denominator')        
     goelite_title = ['GeneID','SystemCode']
     goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
@@ -256,9 +275,11 @@ def exportDataForGenMAPP(headers):
 
     ### Export criterion gene IDs and minimal data     
     for criterion_name in criterion_db:
-        goelite_file = expression_dir + 'GO-Elite/input/GE.'+criterion_name+'.txt'
+        if criterion_name[-1] == ' ': criterion_file_name = criterion_name[:-1]
+        else: criterion_file_name = criterion_name
+        goelite_file = expression_dir + 'GO-Elite/input/GE.'+criterion_file_name+'.txt'
         goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/input')        
-        goelite_title = ['GeneID','SystemCode',criterion_name+'log_fold',criterion_name+'p_value']
+        goelite_title = ['GeneID','SystemCode',criterion_name+'-log_fold',criterion_name+'-p_value']
         goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
         for (probeset,log_fold,p_value) in criterion_db[criterion_name]:
             values = string.join([probeset,system_code,str(log_fold),str(p_value)],'\t')+'\n'
@@ -299,7 +320,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
             #probeset_db[gene] = transcluster_string, exon_id_string
             title = "Ensembl_gene" +'\t'+ 'Definition' +'\t'+ 'Symbol' +'\t'+ 'Transcript_cluster_ids' +'\t'+ 'Constitutive_exons' +'\t'+ 'Constitutive_probesets' +'\t'+ 'Putative microRNA binding sites'
         elif x == 1:
-            title = "Probesets" +'\t'+ 'Symbol' +'\t'+ 'Definition' +'\t'+ 'affygene' +'\t'+ 'exons' +'\t'+ 'probe_type_call' +'\t'+ 'ensembl' '\t'+ 'RNA_processing/binding'
+            title = "Probesets" +'\t'+ 'Definition' +'\t'+ 'Symbol' +'\t'+ 'affygene' +'\t'+ 'exons' +'\t'+ 'probe_type_call' +'\t'+ 'ensembl'
         elif y==1: title = "Probesets" +'\t'+ 'Symbol' +'\t'+ 'Definition'
         elif array_type == "3'array":
              title = ['Probesets','Symbol','Definition','Ensembl_id','Entrez_id','Unigene_id','GO-Process','GO-Function','GO-Component','Pathway_info','Select Cellular Compartments','Select Protein Classes']
@@ -328,8 +349,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 exons = probeset_db[arrayid][1]
                 probe_type_call = probeset_db[arrayid][2]
                 ensembl = probeset_db[arrayid][3]
-                rna_processing = annotate_db[arrayid][2]
-                data_val = arrayid +'\t'+ definition +'\t'+ symbol +'\t'+ affygene +'\t'+ exons +'\t'+ probe_type_call +'\t'+ ensembl +'\t'+ rna_processing
+                data_val = arrayid +'\t'+ definition +'\t'+ symbol +'\t'+ affygene +'\t'+ exons +'\t'+ probe_type_call +'\t'+ ensembl
             elif arrayid in annotate_db:
                 definition = annotate_db[arrayid][0]
                 symbol = annotate_db[arrayid][1]
@@ -511,7 +531,7 @@ def parse_custom_annotations(filename):
     print len(custom_array_db), "custom array entries process"
     return custom_array_db
 
-def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,manufacturer,constitutive_source,data_source,Include_raw_data,perform_alt_analysis,exp_file_location_db,Root):
+def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,manufacturer,constitutive_source,data_source,Include_raw_data,perform_alt_analysis,GE_fold_cutoffs,GE_pvalue_cutoffs,exp_file_location_db,Root):
   start_time = time.time()
   global root; root = Root
   #def remoteExpressionBuilder():
@@ -539,7 +559,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
   ct = 'count'; avg = 'average'; filter_method = avg
   filter_by_dabg = 'yes'
 
-  m_cutoff = 1; p_cutoff = 0.05
+  m_cutoff = math.log(float(GE_fold_cutoffs),2); p_cutoff = float(GE_pvalue_cutoffs)
   
   print "Begining to Process the",species,array_type,'dataset'
   
@@ -591,8 +611,9 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
           else: expr_input_dir = string.replace(expr_input_dir,'rma','rma-filtered')"""                             
       calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
       if array_type == 'AltMouse':  ###For AltMouse, we specifically need to generate a dabg file with all data (similiar to what is done for the exon arrays specifically in the ExonArray module
-          stats_input = string.replace(expr_input,'exp.','stats.')
-          if stats_input in dir_list:
+          stats_input = string.replace(expr_input_dir,'exp.','stats.')
+          status = verifyFile(stats_input)
+          if status == 'yes':
               expr_input_dir = string.replace(expr_input_dir,'exp.','stats.')
               data_type = 'dabg' ### when data_type is not expression, not 'DATASET' file is exported, but the same analysis is performed (exported to 'dabg' folder instead of expression)
               calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
@@ -613,6 +634,13 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
 
       return 'stop'
 
+def verifyFile(filename):
+    fn=filepath(filename)
+    try:
+        for line in open(fn,'rU').xreadlines(): found = 'yes'; break
+    except Exception: found = 'no'
+    return found
+        
 if __name__ == '__main__':
   """
   dabg_p = 0.75
