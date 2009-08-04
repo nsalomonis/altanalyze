@@ -155,7 +155,7 @@ def parse_affymetrix_annotations(filename,species):
     temp_affy_db = {}; x=0; y=0
     fn=filepath(filename); mod_db = buildMODDbase()
     for line in open(fn,'r').readlines():             
-        probeset_data,null = string.split(line,'\n')  #remove endline
+        probeset_data = string.replace(line,'\n','')  #remove endline
         probeset_data = string.replace(probeset_data,'---','')
         affy_data = string.split(probeset_data[1:-1],'","')  #remove endline
         try: mod_name = mod_db[species]
@@ -373,9 +373,12 @@ def extractPathwayData(terms,type,version):
     return goids, go_names
           
 def exportResultsSummary(dir_list,species,type):
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
+    else: parent_dir = 'Databases'
+    
     if overwrite_previous == 'over-write previous':
-        parent_dir = 'Databases'
-        import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     
     new_file = parent_dir+'/'+species+'/'+type+'_files_summarized.txt'
@@ -384,11 +387,40 @@ def exportResultsSummary(dir_list,species,type):
     for filename in dir_list: data.write(filename+'\t'+today+'\n')
     if parse_wikipathways == 'yes': data.write(wikipathways_file+'\t'+today+'\n')
     data.close()
+
+def exportMetaGeneData(species):
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
+    else: parent_dir = 'Databases'
+    
+    if overwrite_previous == 'over-write previous':
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+    else: parent_dir = 'NewDatabases'
+    
+    new_file = parent_dir+'/'+species+'/uid-gene/Ensembl_EntrezGene-meta.txt'
+    data = export.ExportFile(new_file)
+
+    for (primary,gene) in meta: data.write(primary+'\t'+gene+'\n')
+    data.close()
+
+def importMetaGeneData(species):
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
+    else: parent_dir = 'Databases'
+    filename = parent_dir+'/'+species+'/uid-gene/Ensembl_EntrezGene-meta.txt'
+    fn=filepath(filename)
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        primary,gene = string.split(data,'\t')
+        meta[primary,gene]=[]
     
 def exportRelationshipDBs(species):
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
+    else: parent_dir = 'Databases'
+    
     if overwrite_previous == 'over-write previous':
-        parent_dir = 'Databases'
-        import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     
     new_file1 = parent_dir+'/'+species+'/uid-gene/Ensembl-Affymetrix.txt'
@@ -474,7 +506,10 @@ def integratePreviousAssociations():
             affy_annotation_db[uid] = ai
 
 def parseGene2GO(tax_id,species,overwrite_entrezgo):
-    import_dir = '/BuildDBs/Entrez/Gene2GO'
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': database_dir = '/AltDatabase'
+    else: database_dir = '/BuildDBs'
+    import_dir = database_dir+'/Entrez/Gene2GO'
     g = GrabFiles(); g.setdirectory(import_dir)
     filename = g.searchdirectory('gene2go') ###Identify gene files corresponding to a particular MOD
     if len(filename)>1:
@@ -495,7 +530,10 @@ def parseGene2GO(tax_id,species,overwrite_entrezgo):
 def importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,overwrite_affycsv):
     global wikipathways_file; global overwrite_previous
     overwrite_previous = overwrite_affycsv
-    import_dir = '/BuildDBs/wikipathways'
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': database_dir = '/AltDatabase'
+    else: database_dir = '/BuildDBs'
+    import_dir = database_dir+'/wikipathways'
     g = GrabFiles(); g.setdirectory(import_dir); wikipathway_gene_db={}
     filename = g.searchdirectory('wikipathways') ###Identify gene files corresponding to a particular MOD
     print "Parsing",filename; wikipathways_file = string.split(filename,'/')[-1]
@@ -579,9 +617,12 @@ def splitEntry(str_value):
     return str_list
 
 def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
+    else: parent_dir = 'Databases'
+    
     if overwrite_previous == 'over-write previous':
-        parent_dir = 'Databases'
-        import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     
     new_file = parent_dir+'/'+species+'/gene-mapp/'+system_name+'-MAPP.txt'
@@ -600,9 +641,12 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
     
 def exportEntrezGO(gene_go,species,overwrite_entrezgo):
     global overwrite_previous; overwrite_previous = overwrite_entrezgo
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
+    else: parent_dir = 'Databases'
+    
     if overwrite_previous == 'over-write previous':
-        parent_dir = 'Databases'
-        import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     new_file = parent_dir+'/'+species+'/gene-go/EntrezGene-GeneOntology.txt'
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
@@ -622,12 +666,20 @@ def extractAndIntegrateAffyData(species, Parse_wikipathways):
     global parse_wikipathways
     parse_wikipathways = Parse_wikipathways
     if parse_wikipathways == 'yes': global meta; meta = {}
-    import_dir = '/BuildDBs/Affymetrix/'+species
+    try: importMetaGeneData(species) ### If meta gene relationships previously built (then don't need Affy files)
+    except Exception: null=[]
+    
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': database_dir = '/AltDatabase/affymetrix'
+    else: database_dir = '/BuildDBs/Affymetrix'
+    import_dir = database_dir+'/'+species
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
     for affy_data in dir_list:    #loop through each file in the directory to output results
-        affy_data_dir = 'BuildDBs/Affymetrix/'+species+'/'+affy_data
+        affy_data_dir = database_dir[1:]+'/'+species+'/'+affy_data
         if '.csv' in affy_data_dir: parse_affymetrix_annotations(affy_data_dir,species)
     if len(affy_annotation_db)>0: exportAffymetrixCSVAnnotations(species,dir_list)
+    try: exportMetaGeneData(species)
+    except Exception: null=[]
 
 def exportAffymetrixCSVAnnotations(species,dir_list):
     import gene_associations; global entrez_annotations
@@ -675,9 +727,12 @@ def buildAffymetrixCSVAnnotations(Species,Incorporate_previous_associations,Proc
 def runBuildAffymetrixAssociations():
     global incorporate_previous_associations; global species; global process_go; global extract_go_names
     global extract_pathway_names
-    import_dir = '/BuildDBs/Affymetrix'
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': import_dir = '/AltDatabase/affymetrix'; import_dir2 = '/AltDatabase/Entrez'
+    else: import_dir = '/BuildDBs/Affymetrix'; import_dir2 = '/BuildDBs/Entrez'
+    
     dir_list = returnDirectories(import_dir)
-    import_dir2 = '/BuildDBs/Entrez/Gene2GO'
+    import_dir2 = import_dir2+'/Gene2GO'
     dir_list2 = returnDirectories(import_dir2)
     proceed = 'no'
     extract_go_names = 'no' ### Not currently used
@@ -726,7 +781,7 @@ def runBuildAffymetrixAssociations():
                 else: print "Sorry... that command is not an option\n"
                 
             affy_annotation_db = extractAndIntegrateAffyData(species)
-            print "New databases built...see the folder 'BuildDBs\BuiltDBs'"
+            #print "New databases built...see the folder 'BuildDBs\BuiltDBs'"
         else:
             proceed = 'no'
             while proceed == 'no':
@@ -804,7 +859,7 @@ if __name__ == '__main__':
     #parseGene2GO(tax_id,species_code,overwrite);kill
 
     date = TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
-    #fln,status = update.download('http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab','BuildDBs/wikipathways/',file_type)
+    fln,status = update.download('http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab','BuildDBs/wikipathways/',file_type)
     status = ''
     if 'Internet' not in status:
         importWikipathways(System_codes,incorporate_previous_associations,process_go,Species_full,Species_code,overwrite)

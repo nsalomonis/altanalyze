@@ -92,7 +92,7 @@ def reorderArraysOnly(data,array_order,comp_group_list):
             group1 = int(info[0]); group2 = int(info[1]); comp = str(info[0]),str(info[1])
             g1_data = grouped_ordered_array_list[group1]
             g2_data = grouped_ordered_array_list[group2]
-            print g1_data
+            #print g1_data
             data = comparision_export_db[comp]
             values = [row_id]+g1_data+g2_data; values = string.join(values,'\t')+'\n'
             #raw_data_comps[row_id,comp] = temp_raw

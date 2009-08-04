@@ -23,7 +23,7 @@ import sys, string
 import os.path
 import unique
 import export
-import update
+import update; reload(update)
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -45,6 +45,7 @@ def cleanUpLine(line):
 
 def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,force):
     import UI; import update; global external_xref_key_db; global species; species = Species
+    global rewrite_existing; rewrite_existing = 'yes'
     file_location_defaults = UI.importDefaultFileLocations()
     """Identify the appropriate download location for the Ensembl SQL databases for the selected species"""
     fld = file_location_defaults['EnsemblSQL']
@@ -291,16 +292,35 @@ def buildEnsemblGeneAnnotationTable(species,xref_db):
 def buildEnsemblExternalDBRelationshipTable(external_system,xref_db,object_xref_db,output_id_type,species):
     ### Get xref annotations (e.g., external geneID) for a set of Ensembl IDs (e.g. gene IDs)
     external_system = string.replace(external_system,'/','-') ###Some external relationship systems have a slash in them which will create unwanted directories
-    output_dir = 'AltDatabase/'+external_system+'/'+species+'/'+species+'_Ensembl-'+external_system+'.txt'
-    headers = ['Ensembl ID',external_system]; id_type_db={}
+    
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze':
+        output_dir = 'AltDatabase/'+external_system+'/'+species+'/'+species+'_Ensembl-'+external_system+'.txt'
+    else:
+        if 'over-write previous' in overwrite_previous: parent_dir = 'Databases'
+        else: parent_dir = 'NewDatabases'
+        if external_system == 'GO':
+            output_dir = parent_dir+'/'+species+'/gene-go/Ensembl-GeneOntology.txt'
+        elif 'AFFY' in external_system:
+            output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-Affymetrix.txt'
+        elif 'meta' in external_system:
+            output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl_EntrezGene-meta.txt'
+        else:
+            output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-'+external_system+'.txt'
+        
+    
+    headers = ['Ensembl ID',external_system + ' ID']; id_type_db={}; index=0
     id_type_db={}; gene_relationship_db={}; transcript_relationship_db={}; translation_relationship_db={}
     for xref_id in object_xref_db:
         for ox in object_xref_db[xref_id]:
             ens_numeric_id = ox.EnsemblId()
-            if xref_id in xref_db:
+            try:
+                index+=1
                 dbprimary_acc = xref_db[xref_id].DbprimaryAcc()
                 external_db_id = xref_db[xref_id].ExternalDbId()
                 ens_object_type = ox.EnsemblObjectType()
+                #print len(xref_db),len(object_xref_db),len(external_filter_db),xref_id,dbprimary_acc,external_db_id,ens_object_type;kill
+                #if '13065181' == external_db_id or '13065181' == xref_id or '13065181' == dbprimary_acc: print 'blah';kill
                 if external_db_id in external_filter_db: ###Make sure other gene systems are not included
                     ### For testing determine the most likely system linked to by the xref (e.g. gene, transcript or translation ID).
                     try: id_type_db[ox.EnsemblObjectType()]+=1
@@ -309,14 +329,19 @@ def buildEnsemblExternalDBRelationshipTable(external_system,xref_db,object_xref_
                     if ens_object_type == 'Gene': gene_relationship_db[ens_numeric_id,dbprimary_acc]=[]
                     if ens_object_type == 'Transcript': transcript_relationship_db[ens_numeric_id,dbprimary_acc]=[]
                     if ens_object_type == 'Translation': translation_relationship_db[ens_numeric_id,dbprimary_acc]=[]
-                            
-    ids=['ID types linked to '+external_system+' are:']
+            except KeyError: null=[]       
+    ids=['ID types linked to '+external_system+' are: ']
     for id_type in id_type_db: ### Tells us which ID types are most connected to a given external reference ID (don't often know)
         ids+=[str(id_type),': ',str(id_type_db[id_type]),'\t']
     ids = string.join(ids,''); print ids
-
+    
     values_list = convertBetweenEnsemblIDTypes(output_id_type,transcript_relationship_db,translation_relationship_db,gene_relationship_db)
-    exportEnsemblTable(values_list,headers,output_dir)
+    if 'meta' in external_system:
+        values_list2=[]
+        for values in values_list: values_list2.append([values[1],values[0]]); values_list2.append(values)
+        values_list = values_list2
+    if len(values_list)>0:
+        exportEnsemblTable(values_list,headers,output_dir)
             
 def convertBetweenEnsemblIDTypes(output_id_type,transcript_relationship_db,translation_relationship_db,gene_relationship_db):
     ### Starting with gene, transcript or protein relationships to an xref, convert to a single bio-type
@@ -376,6 +401,10 @@ def convertBetweenEnsemblIDTypes(output_id_type,transcript_relationship_db,trans
     return values_list
                 
 def exportEnsemblTable(values_list,headers,output_dir):
+    if rewrite_existing == 'no':
+        try: values_list = combineEnsemblTables(values_list,output_dir) ###Combine with previous
+        except Exception: null=[]
+    
     data = export.ExportFile(output_dir)
     if len(headers)>0:
         headers = string.join(headers,'\t')+'\n'
@@ -389,7 +418,18 @@ def exportEnsemblTable(values_list,headers,output_dir):
         data.write(values)
     data.close()
     print 'File:',output_dir,'exported.'
-   
+
+def combineEnsemblTables(values_list,filename):
+    fn=filepath(filename); x=0
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        if x==0: x=1
+        else:
+            t = string.split(data,'\t')
+            values_list.append(t)
+    values_list = unique.unique(values_list)
+    return values_list
+
 class EnsemblSQLInfo:
     def __init__(self, filename, url_type, importGroup, key, values, comments):
         self._filename = filename; self._url_type = url_type; self._importGroup = importGroup
@@ -558,10 +598,14 @@ def importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_
         return object_xref_db
         
 def updateFiles(ensembl_sql_dir,output_dir,filename,force):
+    if force == 'no':
+        file_found = verifyFile(output_dir+filename)
+        #print file_found,output_dir+filename
+        if file_found == 'no': force = 'yes'
     if force == 'yes': ### Download the files, rather than re-use existing
         ftp_url = ensembl_sql_dir+filename + '.gz'
         try: gz_filepath, status = update.download(ftp_url,output_dir,'')
-        except Exception: print ftp_url, 'failed to', output_dir
+        except KeyError: print 'FTP_dir',ftp_url, 'failed to', output_dir; sys.exit()
         if status == 'not-removed':
             try: os.remove(gz_filepath) ### Not sure why this works now and not before
             except OSError: status = status
@@ -624,7 +668,7 @@ def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
                 print len(key_value_db);kill
 
     #key_filter_db={}; external_filter_db={}; external_xref_key_db={}
-    print "Extracted",len(key_value_db),"entries for",filename
+    #print "Extracted",len(key_value_db),"entries for",filename
     return key_value_db
         
 def importSQLDescriptions(filename,sql_file_db):
@@ -651,21 +695,107 @@ def importSQLDescriptions(filename,sql_file_db):
                 sql_data.setIndexDB(index_db)
             index_db = {}; index=0 ### re-set
         else: index+=1
-    if len(index_db)>0:
-        sql_data.setIndexDB(index_db)
+    if len(index_db)>0: asql_data.setIndexDB(index_db)
     return sql_file_db
+
+def storeFTPDirs(ftp_server,subdir):
+    from ftplib import FTP
+    ftp = FTP(ftp_server); ftp.login()
+    ftp.cwd(subdir)
+    data = []; child_dirs={};species_list=[]
+    ftp.dir(data.append); ftp.quit()
+    for line in data:
+        line = string.split(line,' '); file_dir = line[-1]
+        if '_core_' in file_dir:
+            species_name_data = string.split(file_dir,'_core_')
+            species_name = species_name_data[0]
+            species_name = string.replace(string.upper(species_name[0])+species_name[1:],'_',' ')
+            ensembl_sql_dir = 'ftp://'+ftp_server+subdir+'/'+file_dir+'/'
+            ensembl_sql_description_dir = file_dir+'.sql'
+            child_dirs[species_name] = ensembl_sql_dir,ensembl_sql_description_dir
+            species_list.append(species_name)
+    species_list.sort()
+    return child_dirs,species_list
 
 def clearall():
     all = [var for var in globals() if (var[:2], var[-2:]) != ("__", "__")]
     for var in all: del globals()[var]
+
+def getCurrentEnsemblSpecies():
+    ftp_server = 'ftp.ensembl.org'
+    subdir = '/pub/current_mysql'
+    child_dirs, species_list = storeFTPDirs(ftp_server,subdir)
+    return child_dirs, species_list
     
+def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,Overwrite_previous,Rewrite_existing,force):
+    global external_xref_key_db; global species; species = Species; global overwrite_previous; overwrite_previous = Overwrite_previous
+    global rewrite_existing; rewrite_existing = Rewrite_existing
+    global ensembl_build; ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
+        
+    sql_file_db,sql_group_db = importEnsemblSQLInfo(configType) ###Import the Config file with the files and fields to parse from the donwloaded SQL files
+
+    sql_group_db['Description'] = [ensembl_sql_description_dir]
+    sq = EnsemblSQLInfo(ensembl_sql_description_dir, 'EnsemblSQLDescriptions', 'Description', '', '', '')
+    sql_file_db[ensembl_sql_description_dir] = sq
+    
+    output_dir = 'BuildDBs/EnsemblSQL/'+species+'/'
+    importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
+
+    if 'over-write previous' in overwrite_previous: output_ens_dir = 'Databases/'+species+'/gene/Ensembl.txt'
+    else: output_ens_dir = 'NewDatabases/'+species+'/gene/Ensembl.txt'
+    file_found = verifyFile(output_ens_dir)
+    revert_force = 'no'
+    if file_found == 'no':
+        if force == 'yes': force = 'no'; revert_force = 'yes'
+        xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
+        buildEnsemblGeneGOEliteTable(species,xref_db,overwrite_previous)
+        
+    ###Export data for Ensembl-External gene system
+    buildFilterDBForExternalDB(externalDBName)
+    xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
+    external_xref_key_db = xref_db
+    if revert_force == 'yes': force = 'yes'
+    object_xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Object-Xref',force)
+    export_status='yes';output_id_type='Gene'
+    buildEnsemblExternalDBRelationshipTable(externalDBName,xref_db,object_xref_db,output_id_type,species)
+    if 'EntrezGene' in externalDBName: ### Make a meta DB table for translating WikiPathway primary IDs
+        buildEnsemblExternalDBRelationshipTable('meta',xref_db,object_xref_db,output_id_type,species)
+    
+def buildEnsemblGeneGOEliteTable(species,xref_db,overwrite_previous):
+    ### Get Definitions and Symbol for each Ensembl gene ID
+    values_list = [];
+    if 'over-write previous' in overwrite_previous: output_dir = 'Databases/'+species+'/gene/Ensembl.txt'
+    else: output_dir = 'NewDatabases/'+species+'/gene/Ensembl.txt'
+    headers = ['ID','Symbol','Description']
+    for geneid in gene_db:
+        gi = gene_db[geneid]; display_xref_id = gi.DisplayXrefId(); description = gi.Description()
+        if description == '\\N': description = ''
+        try: symbol = xref_db[display_xref_id].DisplayLabel()
+        except KeyError: symbol = ''
+        ens_gene = gene_stable_id_db[geneid].StableId()
+        values = [ens_gene,symbol,description]
+        values_list.append(values)
+        ###Also, create a filter_db that allows for the creation of Ensembl-external gene db tables
+    exportEnsemblTable(values_list,headers,output_dir)
+
+def verifyFile(filename):
+    fn=filepath(filename); file_found = 'yes'
+    try:
+        for line in open(fn,'rU').xreadlines():break
+    except Exception: file_found = 'no'
+    return file_found
+            
 if __name__ == '__main__':
-    analysisType = 'AltAnalyzeDBs'; analysisType = 'GeneAndExternal'
+    analysisType = 'GeneAndExternal'; externalDBName_list = ['GO','AFFY_Zebrafish','EntrezGene']
+    force = 'no'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0
+
+    child_dirs, species_list = getCurrentEnsemblSpecies()
+    species_full = 'Danio rerio'; genus,species = string.split(species_full,' '); species = genus[0]+species[0]
+    ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
+
+    for externalDBName in externalDBName_list:
+        if force == 'yes' and iteration == 1: force = 'no'
+        EnsemblSQL.buildGOEliteDBs(species,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,overwrite_previous,force); iteration+=1
+
     
-    #species='Hs'; force = 'no'; configType = 'Basic'; analysisType = 'ExternalOnly'; externalDBName = 'GO'
     #buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
-
-    species='Rn'; force = 'no'; configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''
-    buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
-
-    

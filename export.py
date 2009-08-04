@@ -82,7 +82,7 @@ def createExportFile(new_file,dir):
         fn = filepath(dir)
         try:
             os.mkdir(fn) ###Re-Create directory if deleted
-            print fn, 'written'
+            #print fn, 'written'
         except OSError:
             createExportDir(new_file,dir) ###Occurs if the parent directory is also missing
         fn=filepath(new_file); file_var = open(fn,'w')
@@ -98,14 +98,14 @@ def createExportDir(new_file,dir):
         while index < (len(dir_ls)+1):
             parent_dir = string.join(dir_ls[:index],'/')
             index+=1
-            print "Trying to create the directory:",parent_dir
+            #print "Trying to create the directory:",parent_dir
             try:
                 pfn = filepath(parent_dir)
-                print pfn
+                #print pfn
                 os.mkdir(pfn)
-                print parent_dir, 'written' #, index-1, len(dir_ls)
+                #print parent_dir, 'written' #, index-1, len(dir_ls)
             except OSError:
-                print "Can not write this dir"
+                #print "Can not write this dir"
                 #break
                 continue
         createExportFile(new_file,dir)
@@ -121,14 +121,14 @@ def createExportFolder(dir):
         while index < (len(dir_ls)+1):
             parent_dir = string.join(dir_ls[:index],'/')
             index+=1
-            print "Trying to create the directory:",parent_dir
+            #print "Trying to create the directory:",parent_dir
             try:
                 pfn = filepath(parent_dir)
-                print pfn
+                #print pfn
                 os.mkdir(pfn)
-                print parent_dir, 'written' #, index-1, len(dir_ls)
+                #print parent_dir, 'written' #, index-1, len(dir_ls)
             except OSError:
-                print "Can not write this dir"
+                #print "Can not write this dir"
                 #break
                 continue
     else: print "Parent directory not found locally for", dir_ls; sys.exit()    
