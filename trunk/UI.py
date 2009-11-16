@@ -22,12 +22,13 @@ import sys, string
 import shutil
 import os.path
 import unique
+import update; reload(update)
 import export
 import ExpressionBuilder
-import AltAnalyze
 import time
 import webbrowser
 from sys import argv
+
 try:
     import Tkinter 
     #import bwidget; from bwidget import *
@@ -36,12 +37,12 @@ try:
     from Tkconstants import LEFT
     import tkMessageBox
     import tkFileDialog
-except ImportError: print "\nPmw or Tkinter not found... proceeding with manual input"
-
+except Exception: print "\nPmw or Tkinter not found... proceeding with manual input"
+    
 mac_print_mode = 'no' 
 if os.name == 'posix':  mac_print_mode = 'yes' #os.name is  'posix', 'nt', 'os2', 'mac', 'ce' or 'riscos'
 debug_mode = 'no'
-
+    
 def filepath(filename):
     fn = unique.filepath(filename)
     return fn
@@ -92,7 +93,7 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
     sa = supproted_array_db[array_name]; library_file = sa.LibraryFile(); annot_file = sa.AnnotationFile(); original_library_file = library_file
     filename = 'AltDatabase/affymetrix/LibraryFiles/'+library_file
     fn=filepath(filename); library_dir=filename; bgp_file = ''; clf_file = ''
-    import update; reload(update); warn = 'yes'
+    warn = 'yes'
     try:
         for line in open(fn,'rU').xreadlines():break
         input_cdf_file = filename
@@ -109,12 +110,16 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
                 if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
                 else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
             else:
-                print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
-                IndicatorWindow(print_out,'Continue')
+                try:
+                    print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
+                    IndicatorWindow(print_out,'Continue')
+                except Exception: print print_out; sys.exit()
     except Exception:
         print_out = "AltAnalyze was not able to find a library file\nfor your arrays. Would you like AltAnalyze to\nautomatically download these files?"
-        dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
-        dw_results = dw.Results(); option = dw_results['selected_option']
+        try:
+            dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
+            dw_results = dw.Results(); option = dw_results['selected_option']
+        except Exception: option = 1 ### Occurs when Tkinter is not present - used by CommandLine mode
         if option == 1:
             library_file = string.replace(library_file,'.cdf','.zip')
             filename = 'AltDatabase/affymetrix/LibraryFiles/'+library_file
@@ -130,7 +135,8 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
                 if debug_mode == 'no': StatusWindow(var_list,'download')
                 else:
                     for filename in filenames:
-                        update.downloadCurrentVersionUI(filename,'LibraryFiles','',Tk())
+                        try: update.downloadCurrentVersionUI(filename,'LibraryFiles','',Tk())
+                        except Exception: update.downloadCurrentVersion(filename,'LibraryFiles',None)
                 try: os.remove(filepath(filename)) ### Not sure why this works now and not before
                 except Exception: null=[]
         else: library_dir = ''
@@ -141,8 +147,10 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
     except Exception:
         if warn == 'yes':
             print_out = "AltAnalyze was not able to find a CSV annotation file\nfor your arrays. Would you like AltAnalyze to\nautomatically download these files?"
-            dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
-            dw_results = dw.Results(); option = dw_results['selected_option']
+            try:
+                dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
+                dw_results = dw.Results(); option = dw_results['selected_option']
+            except Exception: option = 1 ### Occurs when Tkinter is not present - used by CommandLine mode
         if option == 1:
             annot_file += '.zip'
             filenames = ['AltDatabase/affymetrix/'+species+'/'+annot_file]
@@ -151,7 +159,8 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
                 if debug_mode == 'no': StatusWindow(var_list,'download')
                 else:
                     for filename in filenames:
-                        update.downloadCurrentVersionUI(filename,'AnnotationFiles','',Tk())
+                        try: update.downloadCurrentVersionUI(filename,'AnnotationFiles','',Tk())
+                        except Exception: update.downloadCurrentVersion(filename,'AnnotationFiles',None)
                 try: os.remove(filepath(filename)) ### Not sure why this works now and not before
                 except Exception: null=[]
         else: annotation_dir = ''
@@ -173,9 +182,10 @@ def copyFiles(file1,file2,root):
     
 class StatusWindow:
     def __init__(self,info_list,analysis_type):
+        try:
             root = Tk()
             self._parent = root
-            root.title('AltAnalyze 1.12 Beta')
+            root.title('AltAnalyze 1.13')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 250; width = 700
@@ -189,17 +199,21 @@ class StatusWindow:
             group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
                 
             Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
-            import update; reload(update)
 
             status = StringVarFile(statusVar,root) ### Likely captures the stdout
             #ProgressBar('Download',self._parent)
-            if analysis_type == 'download':
-                filename,dir = info_list
-                sys.stdout = status; root.after(100,update.downloadCurrentVersionUI(filename,dir,'',self._parent))
-            if analysis_type == 'copy':
-                file1,file2 = info_list
-                sys.stdout = status; root.after(100,copyFiles(file1,file2,self._parent))
-            self._parent.mainloop();
+        except Exception: None
+        if analysis_type == 'download':
+            filename,dir = info_list
+            try: sys.stdout = status; root.after(100,update.downloadCurrentVersionUI(filename,dir,None,self._parent))
+            except Exception:
+                update.downloadCurrentVersion(filename,dir,None)
+        if analysis_type == 'copy':
+            file1,file2 = info_list
+            try: sys.stdout = status; root.after(100,copyFiles(file1,file2,self._parent))
+            except Exception: copyFiles(file1,file2,None)
+        try: self._parent.mainloop()
+        except Exception: None
 
     def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
     def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
@@ -701,6 +715,7 @@ def importSupportedArrayInfo():
         else:
             sd = SupprotedArrays(array_name,library_file,annotation_file,species,array_type)
             supproted_array_db[array_name] = sd
+    return supproted_array_db
 
 def exportSupportedArrayInfo():
     fn=filepath('Config/ArrayFileInfo.txt'); data = open(fn,'w'); x=0
@@ -940,7 +955,7 @@ def probesetSummarize(exp_file_location_db,species,root):
         apt_file = filepath(apt_file)
         #print 'AltAnalyze has choosen APT for',plat
         print "Begining probeset summarization of input CEL files with Affymetrix Power Tools (APT)..."
-        if array_type == "3'array" or array_type == 'AltMouse':
+        if array_type == "3'array" or array_type == 'AltMouse' or array_type == 'gene':
             if xhyb_remove == 'yes' and array_type == 'AltMouse':
                 kill_list_dir = osfilepath('AltDatabase/'+species+'/AltMouse/'+species+'_probes_to_remove.txt')
             else: kill_list_dir = osfilepath('AltDatabase/affymetrix/APT/probes_to_remove.txt')
@@ -957,7 +972,7 @@ def probesetSummarize(exp_file_location_db,species,root):
                     os.remove(summary_exp_file)
             except NameError: status = 'failed'
             
-        if array_type == 'gene':
+        elif array_type == 'gene':
             try:
                 algorithm = 'rma-sketch'; pval = 'dabg'
                 retcode = subprocess.call([
@@ -972,7 +987,7 @@ def probesetSummarize(exp_file_location_db,species,root):
             except NameError: status = 'failed'
             #apt-probeset-summarize -a rma-sketch -a plier-mm-sketch -p chip.pgf -c chip.clf -o output-dir *.cel
 
-        if array_type == 'exon':
+        elif array_type == 'exon':
             if xhyb_remove == 'yes':
                 kill_list_dir = osfilepath('AltDatabase/'+species+'/exon/'+species+'_probes_to_remove.txt')
             else: kill_list_dir = osfilepath('AltDatabase/affymetrix/APT/probes_to_remove.txt')
@@ -1008,7 +1023,7 @@ def importDefaults(array_type,species):
     
     filename = 'Config/defaults-alt_exon.txt'
     alt_exon_defaults = importDefaultInfo(filename,array_type)
-    #analysis_method, alt_exon_fold_variable, p_threshold, filter_probeset_types, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold,exportTransitResultsforAnalysis, export_splice_index_values = values
+    #analysis_method, alt_exon_fold_variable, p_threshold, filter_probeset_types, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold,run_MiDAS, export_splice_index_values = values
     
     filename = 'Config/defaults-funct.txt'
     functional_analysis_defaults = importDefaultInfo(filename,array_type)
@@ -1031,9 +1046,9 @@ def importDefaultInfo(filename,array_type):
             array_abrev, analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, MiDAS_analysis, export_splice_index_values, calculate_splicing_index_p, filter_for_AS = string.split(data,'\t')
             if array_type == array_abrev:
                 ### NOTE: p_threshold is used for MiDAS and t-test comparison p-values thresholds
-                if MiDAS_analysis == 'yes': exportTransitResultsforAnalysis = 'yes'
-                else: exportTransitResultsforAnalysis = 'no'
-                return [analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, exportTransitResultsforAnalysis, export_splice_index_values, calculate_splicing_index_p, filter_for_AS]
+                if MiDAS_analysis == 'yes': run_MiDAS = 'yes'
+                else: run_MiDAS = 'no'
+                return [analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, run_MiDAS, export_splice_index_values, calculate_splicing_index_p, filter_for_AS]
             
         if '-funct' in filename:
             array_abrev, analyze_functional_attributes, microRNA_prediction_method = string.split(data,'\t')
@@ -1212,7 +1227,7 @@ class MainMenu:
             callback(tag)
         horiz = PmwFreeze.RadioSelect(parent,
                 labelpos = 'w', command = buttoncallback,
-                label_text = 'AltAnalyze version 1.12 Main', frame_borderwidth = 2,
+                label_text = 'AltAnalyze version 1.13 Main', frame_borderwidth = 2,
                 frame_relief = 'ridge'
         ); horiz.pack(fill = 'x', padx = 10, pady = 10)
         for text in ['Continue']: horiz.add(text)
@@ -1231,7 +1246,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze 1.12 beta.\n'
+        about = 'AltAnalyze 1.13 beta.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.genmapp.org/AltAnalyze\n'
@@ -1252,7 +1267,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze 1.12 beta.\n')
+        txt.insert(END, 'AltAnalyze 1.13 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.genmapp.org/AltAnalyze\n", ('link', str(0)))
@@ -1295,6 +1310,43 @@ def exportCELFileList(cel_files,cel_file_dir):
         data.write(cel_file+'\n')
     data.close()
     return fn
+
+def predictGroupsAndComps(cel_files,output_dir,exp_name):
+    fn=output_dir+'/ExpressionInput/groups.'+exp_name+'.txt'; gdata = export.ExportFile(fn)
+    fn=output_dir+'/ExpressionInput/comps.'+exp_name+'.txt'; cdata = export.ExportFile(fn)
+    delimited_db={}; delim_type={}; files_exported = 'no'
+
+    for cel_file in cel_files:
+        cel_name = cel_file
+        cel_file = string.replace(cel_file,'.CEL','')
+        cel_file = string.replace(cel_file,'.cel','')
+        dashed_delim = string.split(cel_file,'-')
+        dot_delim = string.split(cel_file,'.')
+        under_delim = string.split(cel_file,'_')
+        if len(dashed_delim) == 2:
+            delim_type[1]=None
+            try: delimited_db[dashed_delim[0]].append(cel_name)
+            except KeyError: delimited_db[dashed_delim[0]] = [cel_name]
+        elif len(under_delim) == 2:
+            delim_type[2]=None
+            try: delimited_db[under_delim[0]].append(cel_name)
+            except KeyError: delimited_db[under_delim[0]] = [cel_name]
+        elif len(dot_delim) == 2:
+            delim_type[3]=None
+            try: delimited_db[dot_delim[0]].append(cel_name)
+            except KeyError: delimited_db[dot_delim[0]] = [cel_name]
+    if len(delim_type)==1 and len(delimited_db)>1: ###only 1 type of delimiter used and at least 2 groups present
+        group_index=0; group_db={}; files_exported = 'yes'
+        for group in delimited_db:
+            group_index+=1; group_db[str(group_index)]=None
+            for array in delimited_db[group]:
+                gdata.write(string.join([array,str(group_index),group],'\t')+'\n')
+        for index1 in group_db: ### Create a comps file for all possible comps
+            for index2 in group_db:
+                if index1 != index2:
+                    cdata.write(string.join([index1,index2],'\t')+'\n')
+    gdata.close(); cdata.close()
+    return files_exported
 
 def formatArrayGroupsForGUI(array_group_list):
         ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
@@ -1406,6 +1458,7 @@ def getUpdatedParameters(array_type,species,run_from_scratch,file_dirs):
         IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
     
 def getUserParameters(skip_intro):
+    global AltAnalyze; import AltAnalyze
     if skip_intro == 'yes':
         try: MainMenu()
         except TclError: null=[]
@@ -1418,7 +1471,7 @@ def getUserParameters(skip_intro):
     include_raw_data=na; avg_all_for_ss=na; dabg_p=na;
     analysis_method=na; p_threshold=na; filter_probeset_types=na; alt_exon_fold_cutoff=na
     permute_p_threshold=na; perform_permutation_analysis=na; export_splice_index_values=no
-    exportTransitResultsforAnalysis=no; analyze_functional_attributes=no; microRNA_prediction_method=na
+    run_MiDAS=no; analyze_functional_attributes=no; microRNA_prediction_method=na
     gene_expression_cutoff='any'; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
     calculate_splicing_index_p=no; run_goelite=no
     ge_fold_cutoffs=2;ge_pvalue_cutoffs=0.05;filter_method=na;z_threshold=1.96;p_val_threshold=0.05
@@ -1522,7 +1575,7 @@ def getUserParameters(skip_intro):
 
             """Determine if Library and Annotations for the array exist, if not, download or prompt for selection"""
             try: specific_array_types,specific_array_type = identifyArrayType(cel_files_fn); num_array_types = len(specific_array_types)
-            except Exception: null=[]; num_array_types=1; specific_array_type='null'
+            except Exception: null=[]; num_array_types=1; specific_array_type = None
             importSupportedArrayInfo()
             try:
                 sa = supproted_array_db[specific_array_type]; array_species = sa.Species(); cel_array_type = sa.ArrayType()
@@ -1695,8 +1748,8 @@ def getUserParameters(skip_intro):
                 except KeyError: perform_permutation_analysis = perform_permutation_analysis
                 try: export_splice_index_values = gu.Results()['export_splice_index_values']
                 except KeyError: export_splice_index_values = export_splice_index_values
-                try: exportTransitResultsforAnalysis = gu.Results()['exportTransitResultsforAnalysis']
-                except KeyError: exportTransitResultsforAnalysis = exportTransitResultsforAnalysis
+                try: run_MiDAS = gu.Results()['run_MiDAS']
+                except KeyError: run_MiDAS = run_MiDAS
                 try: calculate_splicing_index_p = gu.Results()['calculate_splicing_index_p']
                 except KeyError: calculate_splicing_index_p = calculate_splicing_index_p
                 analyze_functional_attributes = gu.Results()['analyze_functional_attributes']
@@ -1735,7 +1788,7 @@ def getUserParameters(skip_intro):
         expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = importDefaults(array_type,species)
 
         dabg_p, expression_threshold, perform_alt_analysis, expression_data_format, avg_all_for_ss, include_raw_data = expr_defaults
-        analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_cutoff, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, exportTransitResultsforAnalysis, export_splice_index_values = alt_exon_defaults
+        analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_cutoff, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, run_MiDAS, export_splice_index_values = alt_exon_defaults
         analyze_functional_attributes,microRNA_prediction_method = functional_analysis_defaults
         
     """In this next section, create a set of GUI windows NOT defined by the options.txt file.
@@ -1884,8 +1937,8 @@ def getUserParameters(skip_intro):
         import_dir = '/AltDatabase/affymetrix/'+species
         try: dir_list = read_directory(import_dir); fn_dir = filepath(import_dir[1:]); species_dir_found = 'yes'
         except Exception: fn_dir = filepath(import_dir); dir_list = []; species_dir_found = 'no'
-        
-        if (len(dir_list)<1 or species_dir_found) and array_type != 'exon':
+
+        if (len(dir_list)<1 or species_dir_found == 'no') and array_type != 'exon':
             print_out = 'No Affymetrix annnotations file found in the directory:\n'+fn_dir
             print_out += '\n\nTo download, click on the below button, find your array and download the annotation CSV file'
             print_out += '\nlisted under "Current NetAffx Annotation Files". Extract the compressed zip archive to the'
@@ -1912,7 +1965,7 @@ def getUserParameters(skip_intro):
     except ValueError: gene_expression_cutoff = gene_expression_cutoff    
 
     ### Find the current verison of APT (if user deletes location in Config file) and set APT file locations
-    apt_location = getAPTLocations(file_location_defaults,run_from_scratch,exportTransitResultsforAnalysis)
+    apt_location = getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS)
 
     ### Set the primary parent directory for ExpressionBuilder and AltAnalyze (one level above the ExpressionInput directory, if present)
     for dataset in exp_file_location_db:
@@ -1925,12 +1978,12 @@ def getUserParameters(skip_intro):
 
     expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,permute_p_threshold, perform_permutation_analysis, export_splice_index_values
-    additional_var = calculate_splicing_index_p, exportTransitResultsforAnalysis, analyze_functional_attributes, microRNA_prediction_method, filter_for_AS
+    additional_var = calculate_splicing_index_p, run_MiDAS, analyze_functional_attributes, microRNA_prediction_method, filter_for_AS
     goelite_var = ge_fold_cutoffs,ge_pvalue_cutoffs,filter_method,z_threshold,p_val_threshold,change_threshold,pathway_permutations,mod
 
     return expr_var, alt_var, additional_var, goelite_var, exp_file_location_db
 
-def getAPTLocations(file_location_defaults,run_from_scratch,exportTransitResultsforAnalysis):
+def getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS):
     import ResultsExport_module
     if 'APT' in file_location_defaults:
         for fl in file_location_defaults['APT']: 
@@ -1938,14 +1991,14 @@ def getAPTLocations(file_location_defaults,run_from_scratch,exportTransitResults
           if len(apt_location)<1: ###If no APT version is designated, prompt the user to find the directory
               if run_from_scratch == 'CEL_summarize':
                   print_out = 'To proceed with probeset summarization from CEL files,\nyou must select a valid Affymetrix Power Tools Directory.'
-              elif exportTransitResultsforAnalysis == 'yes': 
+              elif run_MiDAS == 'yes': 
                   print_out = "To proceed with running MiDAS, you must select\na valid Affymetrix Power Tools Directory."
               win_info = IndicatorChooseWindow(print_out,'Continue') ### Prompt the user to locate the APT directory
               apt_location = win_info.Folder()
               fl.ResetLocation(apt_location)
               exportDefaultFileLocations(file_location_defaults)
     return apt_location
-
+    
 if __name__ == '__main__':
     getUserParameters('yes'); sys.exit()
     #file_dirs = ('C:/Documents and Settings/Nathan Salomonis/Desktop/Rs1//GO-Elite/input', 'C:/Documents and Settings/Nathan Salomonis/Desktop/Rs1//GO-Elite/denominator', 'C:/Documents and Settings/Nathan Salomonis/Desktop/Rs1//GO-Elite')

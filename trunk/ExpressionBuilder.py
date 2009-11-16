@@ -132,7 +132,12 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     comp_group_list, comp_group_list2 = importComparisonGroups(comp_group_dir)
 
     global array_fold_headers; global statistics_summary_db; global stat_summary_names; global summary_filtering_stats; global raw_data_comp_headers; global raw_data_comps
-    array_folds, array_fold_headers, statistics_summary_db, stat_summary_names, summary_filtering_stats,raw_data_comp_headers, raw_data_comps = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data)
+
+    try: array_folds, array_fold_headers, statistics_summary_db, stat_summary_names, summary_filtering_stats,raw_data_comp_headers, raw_data_comps = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data)
+    except Exception: 
+        print_out = 'AltAnalyze encountered an error with the format of the expression file.\nIf the data was designated as log intensities and it is not, then re-run as non-log.'
+        try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); sys.exit()
+        except NameError: print print_out; sys.exit()
     exportAnalyzedData(comp_group_list2,expr_group_db)
     
     ### Export formatted results for input as an expression dataset into GenMAPP or PathVisio
@@ -241,7 +246,7 @@ def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, main_output_folder, syste
                 else: 
                     values = t[1:-2]; probeset = t[0]
                     array_folds[probeset] = values
-            exportGOEliteInput(headers,system_code)
+            input_files_exported = exportGOEliteInput(headers,system_code)
       
 def exportGOEliteInput(headers,system_code):
     ### Filter statistics based on user-defined thresholds as input for GO-Elite analysis
@@ -262,29 +267,32 @@ def exportGOEliteInput(headers,system_code):
                     try: criterion_db[criterion_name].append((probeset,log_fold,p_value))
                     except KeyError: criterion_db[criterion_name] = [(probeset,log_fold,p_value)]
             index += 1
-
-    ### Export denominator gene IDs
-    expression_dir = string.replace(expression_dataset_output_dir,'ExpressionOutput/','')
-    goelite_file = expression_dir +'GO-Elite/denominator/GE.denominator.txt'
-    goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/denominator')        
-    goelite_title = ['GeneID','SystemCode']
-    goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
-    for probeset in denominator_geneids:
-        values = string.join([probeset,system_code],'\t')+'\n'; goelite.write(values)
-    goelite.close()
-
-    ### Export criterion gene IDs and minimal data     
-    for criterion_name in criterion_db:
-        if criterion_name[-1] == ' ': criterion_file_name = criterion_name[:-1]
-        else: criterion_file_name = criterion_name
-        goelite_file = expression_dir + 'GO-Elite/input/GE.'+criterion_file_name+'.txt'
-        goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/input')        
-        goelite_title = ['GeneID','SystemCode',criterion_name+'-log_fold',criterion_name+'-p_value']
+    if len(criterion_db)>0:
+        ### Export denominator gene IDs
+        input_files_exported = 'yes'
+        expression_dir = string.replace(expression_dataset_output_dir,'ExpressionOutput/','')
+        goelite_file = expression_dir +'GO-Elite/denominator/GE.denominator.txt'
+        goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/denominator')        
+        goelite_title = ['GeneID','SystemCode']
         goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
-        for (probeset,log_fold,p_value) in criterion_db[criterion_name]:
-            values = string.join([probeset,system_code,str(log_fold),str(p_value)],'\t')+'\n'
-            goelite.write(values)
+        for probeset in denominator_geneids:
+            values = string.join([probeset,system_code],'\t')+'\n'; goelite.write(values)
         goelite.close()
+
+        ### Export criterion gene IDs and minimal data     
+        for criterion_name in criterion_db:
+            if criterion_name[-1] == ' ': criterion_file_name = criterion_name[:-1]
+            else: criterion_file_name = criterion_name
+            goelite_file = expression_dir + 'GO-Elite/input/GE.'+criterion_file_name+'.txt'
+            goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/input')        
+            goelite_title = ['GeneID','SystemCode',criterion_name+'-log_fold',criterion_name+'-p_value']
+            goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
+            for (probeset,log_fold,p_value) in criterion_db[criterion_name]:
+                values = string.join([probeset,system_code,str(log_fold),str(p_value)],'\t')+'\n'
+                goelite.write(values)
+            goelite.close()
+    else: input_files_exported = 'no'
+    return input_files_exported
         
 def removeRawData(array_fold_headers):
     ### Prior to exporting data for GenMAPP, remove raw data columns
@@ -559,7 +567,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
   ct = 'count'; avg = 'average'; filter_method = avg
   filter_by_dabg = 'yes'
 
-  m_cutoff = math.log(float(GE_fold_cutoffs),2); p_cutoff = float(GE_pvalue_cutoffs)
+  m_cutoff = GE_fold_cutoffs; p_cutoff = float(GE_pvalue_cutoffs)
   
   print "Begining to Process the",species,array_type,'dataset'
   

@@ -21,7 +21,8 @@ import statistics
 import sys, string
 import os.path
 import unique
-import UI; reload(UI)
+import update
+import UI
 import export; reload(export)
 import ExpressionBuilder; reload(ExpressionBuilder)
 import ExonAnalyze_module; reload(ExonAnalyze_module)
@@ -33,14 +34,9 @@ import time
 import webbrowser
 import random
 
-use_Tkinter = 'yes'
-try:
-    import Tkinter
-    import PmwFreeze
-    from Tkinter import *
-    use_Tkinter = 'yes'
-except ImportError: use_Tkinter = 'yes'; print "\nPmw or Tkinter not found... Tkinter print out not available";
+use_Tkinter = 'no'
 debug_mode = 'no'
+analysis_start_time = time.time()
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -1360,7 +1356,7 @@ def splicingAnalysisAlgorithms(relative_splicing_ratio,fold_dbase,dataset_name,g
             exon_sets = abs(float(dI)),regulation_call,event_call,exons1,exons1,midas_p
 
             ### Write DomainGraph results
-            try: midas_p = str(midas_db[probeset])
+            try: midas_p = str(midas_db[probeset1])
             except KeyError: midas_p = 'NA'
             
             values_dg = [probeset1,affygene,'changed',dI,str(si_pvalue),midas_p]; values_dg = string.join(values_dg,'\t')+'\n'
@@ -2567,7 +2563,7 @@ def universalPrintFunction(print_items):
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
             self._parent = root
-            root.title('AltAnalyze 1.12 Beta')
+            root.title('AltAnalyze 1.13 Beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 450; width = 500
@@ -2599,7 +2595,7 @@ class SummaryResultsWindow:
         url = 'http://www.altanalyze.org/help_main.htm'; url = filepath(url)
         LINKS=(url,'')
         self.LINKS = LINKS
-        tl.title('AltAnalyze 1.12 beta'); self.tl = tl
+        tl.title('AltAnalyze 1.13 beta'); self.tl = tl
         self.analysis_type = analysis_type
         
         #"""
@@ -2888,11 +2884,11 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                   exportGOEliteSpeciesInfo(goelite_species_codes)
 
                   date = TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
-                  import update
                   fln,status = update.download('http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab','AltDatabase/wikipathways/',file_type)
                   if 'Internet' not in status:
                       incorporate_previous_associations = 'yes'; process_go = 'yes'; parse_wikipathways = 'yes'; overwrite_affycsv = 'over-write previous'
-                      BuildAffymetrixAssociations.importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,overwrite_affycsv)
+                      integrate_affy_associations = 'yes'
+                      BuildAffymetrixAssociations.importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,integrate_affy_associations,overwrite_affycsv)
               else:
                   import_dir = '/AltDatabase/affymetrix/'+species; dir_list = read_directory(import_dir)
                   fn_dir = filepath(import_dir[1:])
@@ -2901,35 +2897,39 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                           fn = fn_dir+'/'+file
                           if '.csv' in fn:
                               probesets_found = checkGOEliteProbesets(fn,species)
-                              print probesets_found, file
+                              #print probesets_found, file
                               if probesets_found == 'no': go_elite_analysis_supported = 'no'
                   if go_elite_analysis_supported == 'no':
                       ###Add annotations for a missing array
                       incorporate_previous_associations = 'yes'; process_go = 'no'; parse_wikipathways = 'no'; overwrite_affycsv = 'over-write previous'
-                      BuildAffymetrixAssociations.buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,overwrite_affycsv)
+                      integrate_affy_associations = 'yes'
+                      BuildAffymetrixAssociations.buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv)
                       go_elite_analysis_supported = 'yes'
           for dataset in exp_file_location_db:
               fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
               file_dirs = results_dir+'GO-Elite/input',results_dir+'GO-Elite/denominator',results_dir+'GO-Elite'
           ### Perform GO-Elite Analysis
           if pathway_permutations != 'NA':
-              variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,file_dirs,root
-              if go_elite_analysis_supported == 'yes':
-                  print '\nBegining to run GO-Elite analysis on gene expression criterion'
-                  GO_Elite.remoteAnalysis(variables,'non-UI')
-              else: print '\GO-Elite analysis not supported for this array or species.'
+              try:
+                  input_dir_list = read_directory(file_dirs[0]) ### returns an error if no input files exported
+                  variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,file_dirs,root
+                  if go_elite_analysis_supported == 'yes':
+                      print '\nBegining to run GO-Elite analysis on gene expression criterion'
+                      GO_Elite.remoteAnalysis(variables,'non-UI')
+                  else: print '\GO-Elite analysis not supported for this array or species.'
+              except Exception: print '\nNo GO-Elite input files to analyze...'
+          print_out = 'Analysis complete. Gene expression summary \nexported to "ExpressionOutput".'
           try:
-              print_out = 'Analysis complete. Gene expression summary \nexported to "ExpressionOutput".'
-              print "Analysis Complete\n"; UI.InfoWindow(print_out,'Analysis Completed!')
-              tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir,dataset,'parent')
-              exportLog(log_report)
-          except TypeError: print "Analysis Complete (hit the return key to exit)\n"; sys.stdin.readline()
-
-          if pathway_permutations == 'NA':                
-              if go_elite_analysis_supported == 'yes': 
-                  UI.getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
-
-          AltAnalyzeSetup('no')
+              if use_Tkinter == 'yes':
+                  print "Analysis Complete\n"; UI.InfoWindow(print_out,'Analysis Completed!')
+                  tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir,dataset,'parent')
+                  exportLog(log_report)
+                  if pathway_permutations == 'NA':                
+                      if go_elite_analysis_supported == 'yes': 
+                          UI.getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
+                  AltAnalyzeSetup('no')
+              else:  print '\n'+print_out; sys.exit()
+          except Exception: sys.exit()
   elif run_from_scratch == 'update DBs':
       null=[] ###Add link to new module
       #updateDBs(species,array_type)
@@ -2966,22 +2966,24 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       add_exons_to_annotations = 'no'
       exclude_protein_details = 'no'
 
-      use_external_file_for_probeset_filtering = 'no'
+      use_external_file_for_probeset_filtering = 'yes'
 
       if analysis_method != 'splicing-index': annotation_system = d
       if array_type == 'AltMouse': species = 'Mm'
       if export_splice_index_values == 'yes': remove_transcriptional_regulated_genes = 'no'
 
       global filtered_probeset_db; filtered_probeset_db={}
-      if use_external_file_for_probeset_filtering == 'yes': filtered_probeset_db = restrictProbesets()
-
+      try:
+          if use_external_file_for_probeset_filtering == 'yes':
+              filtered_probeset_db = restrictProbesets()
+      except Exception: use_external_file_for_probeset_filtering = 'no'
       universalPrintFunction(["Parsing out Affymetrix GO annotations"])
       global go_annotations; go_annotations={}
       ###Saves run-time while testing the software (global variable stored)
       import_dir = '/AltDatabase/affymetrix/'+species
       dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-      parse_affymetrix_annotations()  
-
+      try: parse_affymetrix_annotations()
+      except Exception: go_annotations = go_annotations
       global probeset_annotations_file
       if array_type == 'exon': probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"
       else: probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+"MASTER-probeset-transcript.txt"
@@ -3104,6 +3106,264 @@ def TimeStamp():
     if len(day)<2: day = '0'+day
     return year+month+day
 
+def verifyFile(filename):
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines(): status = 'found';break
+    except Exception: status = 'not found'
+    return status
+        
+###### Command Line Functions (AKA Headless Mode) ######
+def commandLineRun():
+    import getopt
+    #/hd3/home/nsalomonis/normalization/mir1 - boxer
+    #python AltAnalyze.py --species Mm --arraytype "3'array" --celdir "C:/CEL" --output "C:/CEL" --expname miR1_column --runGOElite yes --GEelitepval 1.1 --elitepermut 20
+    #python AltAnalyze.py --celdir "C:/CEL" --output "C:/CEL" --expname miR1_column
+    #open ./AltAnalyze.app --celdir "/Users/nsalomonis/Desktop" --output "/Users/nsalomonis/Desktop" --expname test
+    #python AltAnalyze.py --species Mm --arraytype "3'array" --expdir "C:/CEL/ExpressionInput/exp.miR1_column.txt" --output "C:/CEL" --runGOElite yes --GEelitepval 1.1 --elitepermut 20
+
+    global apt_location; global root_dir; global log_report; log_report=[]; global summary_data_db; summary_data_db={}
+    
+    ###required
+    manufacturer='Affymetrix'
+    constitutive_source='Affymetrix'
+    species_code = None
+    main_input_folder = None
+    output_dir = None
+    array_type = "exon"
+    input_annotation_file = None
+    input_cdf_file = None
+    exp_name = None
+    run_GOElite = None
+    input_exp_file = ''
+    cel_file_dir = ''
+    input_stats_file = ''
+    input_filtered_dir = ''
+    remove_xhyb = 'no'
+    
+    options, remainder = getopt.getopt(sys.argv[1:],'', ['species=', 'mod=','elitepval=', 'elitepermut=',
+                                                         'method=','zscore=','pval=','num=',
+                                                         'runGOElite=','denom=','output=','arraytype=',
+                                                         'celdir=','expdir=','output=','statdir=',
+                                                         'filterdir=','cdfdir=','csvdir=','expname=',
+                                                         'dabgp=','rawexp=','avgallss=','logexp=',
+                                                         'inclraw=','runalt=','altmethod=','altp=',
+                                                         'probetype=','altscore=','GEcutoff=','domainpval=',
+                                                         'altpval=','exportnormexp=','calcSIp=','runMiDAS=',
+                                                         'GEcutoff=','GEelitepval=','mirmethod=','ASfilter=',
+                                                         'GEelitefold='])
+    for opt, arg in options:
+        if opt == '--species': species=arg
+        elif opt == '--arraytype': array_type=arg
+        elif opt == '--celdir': cel_file_dir=arg
+        elif opt == '--expdir': input_exp_file=arg
+        elif opt == '--statdir': input_stats_file=arg
+        elif opt == '--filterdir': input_filtered_dir=arg
+        elif opt == '--cdfdir': input_cdf_file=arg
+        elif opt == '--csvdir': input_annotation_file=arg
+        elif opt == '--expname': exp_name=arg
+        elif opt == '--output': output_dir=arg
+        
+    annotation_found = verifyFile(input_annotation_file)
+    proceed = 'no'
+    if len(input_filtered_dir)>0:
+        run_from_scratch ='AltAnalyze filtered'; proceed='yes'
+    if len(input_exp_file)>0:
+        run_from_scratch = 'expression file'; proceed='yes'
+        ief_list = string.split(input_exp_file,'/'); parent_dir = string.join(ief_list[:-1],'/'); exp_name = ief_list[-1]
+    if len(cel_file_dir)>0:
+        if exp_name == None: print "No experiment name defined. Please sumbit a name (e.g., --expname CancerComp) before proceeding."; sys.exit()
+        else: dataset_name = 'exp.'+exp_name+'.txt'; exp_file_dir = filepath(output_dir+'/ExpressionInput/'+dataset_name)
+        run_from_scratch = 'CEL files'; proceed='yes'
+        try: cel_files,cel_files_fn = UI.identifyCELfiles(cel_file_dir)
+        except Exception: print "No .CEL files found in the directory:",cel_file_dir;sys.exit()
+        cel_file_list_dir = UI.exportCELFileList(cel_files_fn,cel_file_dir)
+
+        """Determine if Library and Annotations for the array exist, if not, download or prompt for selection"""
+        try: specific_array_types,specific_array_type = UI.identifyArrayType(cel_files_fn); num_array_types = len(specific_array_types)
+        except Exception: null=[]; num_array_types=1; specific_array_type=None
+        supproted_array_db = UI.importSupportedArrayInfo()
+
+        if specific_array_type in supproted_array_db and input_cdf_file == None and input_annotation_file == None:
+            sa = supproted_array_db[specific_array_type]; species = sa.Species(); array_type = sa.ArrayType()
+            input_cdf_file, input_annotation_file, bgp_file, clf_file = UI.getAffyFiles(specific_array_type,species)
+        else: array_type = "3'array"
+
+        cdf_found = verifyFile(input_cdf_file)
+        annotation_found = verifyFile(input_annotation_file)
+        
+        if cdf_found != "found":
+            ### Copy valid Library files to a local AltAnalyze database directory
+            input_cdf_file_lower = string.lower(input_cdf_file)
+            if array_type == "3'array":
+                if '.cdf' in input_cdf_file_lower:
+                    clf_file='';bgp_file=''; assinged = 'yes'
+                    ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
+                    icf_list = string.split(input_cdf_file,'/'); cdf_short = icf_list[-1]
+                    destination_parent = 'AltDatabase/affymetrix/LibraryFiles/'
+                    destination_parent = osfilepath(destination_parent+cdf_short)
+                    info_list = input_cdf_file,destination_parent; UI.StatusWindow(info_list,'copy')
+                else: print "Valid CDF file not found. Exiting program.";sys.exit()          
+            else:
+                if '.pgf' in input_cdf_file_lower:
+                    ###Check to see if the clf and bgp files are present in this directory 
+                    icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); cdf_short = icf_list[-1]
+                    clf_short = string.replace(cdf_short,'.pgf','.clf')
+                    if array_type == 'exon': bgp_short = string.replace(cdf_short,'.pgf','.antigenomic.bgp')
+                    else: bgp_short = string.replace(cdf_short,'.pgf','.bgp')
+                    dir_list = read_directory(parent_dir)
+                    if clf_short in dir_list and bgp_short in dir_list:
+                        pgf_file = input_cdf_file
+                        clf_file = string.replace(pgf_file,'.pgf','.clf')
+                        if array_type == 'exon': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
+                        else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
+                        assinged = 'yes'
+                        ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
+                        destination_parent = 'AltDatabase/affymetrix/LibraryFiles/'
+                        info_list = input_cdf_file,osfilepath(destination_parent+cdf_short); UI.StatusWindow(info_list,'copy')
+                        info_list = clf_file,osfilepath(destination_parent+clf_short); UI.StatusWindow(info_list,'copy')
+                        info_list = bgp_file,osfilepath(destination_parent+bgp_short); UI.StatusWindow(info_list,'copy')
+                        
+    if annotation_found != "found":
+        ### Copy valid Annotation files to a local AltAnalyze database directory
+        try:
+            input_annotation_lower = string.lower(input_annotation_file)
+            if '.csv' in input_annotation_lower:
+                assinged = 'yes'
+                ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
+                icf_list = string.split(input_annotation_file,'/'); csv_short = icf_list[-1]
+                destination_parent = 'AltDatabase/affymetrix/'+species+'/'
+                info_list = input_annotation_file,filepath(destination_parent+csv_short); UI.StatusWindow(info_list,'copy')
+        except Exception: print "No Affymetrix annotation file provided. AltAnalyze will use any .csv annotations files in AltDatabase/Affymetrix/"+species
+
+    array_type_original = array_type
+    if array_type == 'gene': array_type = "3'array"
+    
+    if array_type != None and species != None:          
+        expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = UI.importDefaults(array_type,species)
+        ge_fold_cutoffs, ge_pvalue_cutoffs, filter_method, z_threshold, p_val_threshold, change_threshold, goelite_permutations, mod = goelite_defaults
+        use_direct_domain_alignments_only,microRNA_prediction_method = functional_analysis_defaults
+        analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, run_MiDAS, export_splice_index_values, calculate_splicing_index_p, filter_for_AS = alt_exon_defaults
+        dabg_p, expression_threshold, perform_alt_analysis, expression_data_format, avg_all_for_ss, include_raw_data, null = expr_defaults
+    else: print 'No species defined. Please include the species code (e.g., "--species Hs") and array type (e.g., "--arraytype exon") before proceeding.'; sys.exit()     
+
+    for opt, arg in options:
+        if opt == '--runGOElite': run_GOElite=arg
+        elif opt == '--mod': mod=arg
+        elif opt == '--elitepermut': goelite_permutations=arg
+        elif opt == '--method': filter_method=arg
+        elif opt == '--zscore': z_threshold=arg
+        elif opt == '--elitepval': p_val_threshold=arg
+        elif opt == '--num': change_threshold=arg
+        elif opt == '--GEelitepval': ge_pvalue_cutoffs=arg
+        elif opt == '--GEelitefold': ge_fold_cutoffs=arg
+        
+        elif opt == '--dabgp': dabg_p=arg
+        elif opt == '--rawexp': expression_threshold=arg
+        elif opt == '--avgallss': avg_all_for_ss=arg
+        elif opt == '--logexp': expression_data_format=arg
+        elif opt == '--inclraw': include_raw_data=arg
+        elif opt == '--runalt': perform_alt_analysis=arg
+        elif opt == '--altmethod': analysis_method=arg
+        elif opt == '--altp': p_threshold=arg
+        elif opt == '--probetype': filter_probeset_types=arg
+        elif opt == '--altscore': alt_exon_fold_variable=arg
+        elif opt == '--GEcutoff': gene_expression_cutoff=arg
+        elif opt == '--altpermutep': permute_p_threshold=arg
+        elif opt == '--altpermute': perform_permutation_analysis=arg
+        elif opt == '--exportnormexp': export_splice_index_values=arg
+
+        elif opt == '--calcSIp': calculate_splicing_index_p=arg
+        elif opt == '--runMiDAS': run_MiDAS=arg
+        elif opt == '--GEcutoff': use_direct_domain_alignments_only=arg
+        elif opt == '--mirmethod': microRNA_prediction_method=arg
+        elif opt == '--ASfilter': filter_for_AS=arg
+        elif opt == '--noxhyb': remove_xhyb=arg
+        
+    if proceed == 'yes':
+        try:
+            #print ge_fold_cutoffs,ge_pvalue_cutoffs, change_threshold, goelite_permutations, p_val_threshold, z_threshold
+            ge_fold_cutoffs = math.log(float(ge_fold_cutoffs),2); ge_pvalue_cutoffs = float(ge_pvalue_cutoffs)
+            change_threshold = change_threshold-1
+            goelite_permutations = int(goelite_permutations);change_threshold = int(change_threshold)
+            p_val_threshold = float(p_val_threshold); z_threshold = float(z_threshold)
+        except Exception: None
+        if run_GOElite == None: goelite_permutations = 'NA' ### This haults GO-Elite from running
+        
+        ### Store variables for AltAnalyzeMain
+        expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
+        alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,permute_p_threshold,perform_permutation_analysis, export_splice_index_values
+        additional_var = calculate_splicing_index_p, run_MiDAS, use_direct_domain_alignments_only, microRNA_prediction_method, filter_for_AS
+        goelite_var = ge_fold_cutoffs,ge_pvalue_cutoffs,filter_method,z_threshold,p_val_threshold,change_threshold,goelite_permutations,mod
+
+        if run_from_scratch == 'expression file':
+            if len(input_exp_file)>0:
+                try:
+                    cel_files, array_linker_db = ExpressionBuilder.getArrayHeaders(input_exp_file)
+                    if len(input_stats_file)>1: ###Make sure the files have the same arrays and order first
+                        cel_files2, array_linker_db2 = ExpressionBuilder.getArrayHeaders(input_stats_file)
+                        if cel_files2 != cel_files:
+                            print "The probe set p-value file:\n"+input_stats_file+"\ndoes not have the same array order as the\nexpression file. Correct before proceeding."; sys.exit()
+                except Exception: print '\nWARNING...Expression file not found: "'+input_exp_file+'"\n\n'; sys.exit()
+        if run_from_scratch == 'expression file':
+            exp_name = string.replace(exp_name,'exp.',''); dataset_name = exp_name; exp_name = string.replace(exp_name,'.txt','')
+            groups_name = 'groups.'+dataset_name; comps_name = 'comps.'+dataset_name
+            groups_file_dir = parent_dir+'/'+groups_name; comps_file_dir = parent_dir+'/'+comps_name
+            groups_found = verifyFile(groups_file_dir)
+            comps_found = verifyFile(comps_file_dir)
+            if groups_found != 'found' or comps_found != 'found':
+                files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
+                if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
+                else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
+            fl = UI.ExpressionFileLocationData(input_exp_file,input_stats_file,groups_file_dir,comps_file_dir)
+            dataset_name = exp_name
+            exp_file_location_db={}; exp_file_location_db[exp_name]=fl
+            
+        elif run_from_scratch == 'CEL files': 
+            stats_file_dir = string.replace(exp_file_dir,'exp.','stats.')
+            groups_file_dir = string.replace(exp_file_dir,'exp.','groups.')
+            comps_file_dir = string.replace(exp_file_dir,'exp.','comps.')
+            groups_found = verifyFile(groups_file_dir)
+            comps_found = verifyFile(comps_file_dir)
+            if groups_found != 'found' or comps_found != 'found':
+                files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
+                if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
+                else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
+            fl = UI.ExpressionFileLocationData(exp_file_dir,stats_file_dir,groups_file_dir,comps_file_dir)
+            exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
+            parent_dir = output_dir  ### interchangable terms (parent_dir used with expression file import)
+        elif run_from_scratch == 'AltAnalyze filtered': 
+            fl = ExpressionFileLocationData('','','',''); dataset_name = 'filtered-exp_dir'
+            dirs = string.split(input_filtered_dir,'AltExpression'); parent_dir = dirs[0]
+            exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
+            
+        for dataset in exp_file_location_db:
+            fl = exp_file_location_db[dataset_name]
+            file_location_defaults = UI.importDefaultFileLocations()
+            apt_location = UI.getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS)
+            fl.setAPTLocation(apt_location)
+            if run_from_scratch == 'CEL files':
+                fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setXHybRemoval(remove_xhyb)
+                fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type_original); fl.setOutputDir(output_dir)
+            fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
+            apt_location = fl.APTLocation()
+            root_dir = fl.RootDir()
+
+        AltAnalyzeMain(expr_var, alt_var, goelite_var, additional_var, exp_file_location_db,None)
+    else:
+        print 'Insufficient flags entered (requires --species, --input, --denom and --output)'
+
+###### Determine Command Line versus GUI Control ######
+command_args = string.join(sys.argv,' ')
+if len(sys.argv[1:])>1 and '-' in command_args: commandLineRun()
+else:
+    try:
+        import Tkinter
+        from Tkinter import *
+        import PmwFreeze
+        use_Tkinter = 'yes'
+    except ImportError: use_Tkinter = 'yes'; print "\nPmw or Tkinter not found... Tkinter print out not available";
+    
 if __name__ == '__main__':
     skip_intro = 'yes'
-    AltAnalyzeSetup(skip_intro)
+    if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)

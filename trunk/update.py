@@ -149,7 +149,9 @@ class download_protocol:
     def __init__(self,url,dir,file_type):
         """Copy the contents of a file from a given URL to a local file."""
         filename = url.split('/')[-1]
-        if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
+        try:
+            if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
+        except Exception: None
         output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
         output_filepath = filepath(dir+filename)
         
