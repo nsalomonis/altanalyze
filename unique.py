@@ -44,10 +44,16 @@ def read_directory(sub_dir):
     dir=os.path.dirname(dirfile.__file__)
     for py2app_dir in py2app_dirs: 
         dir = string.replace(dir,py2app_dir,'')
-    if (':' in sub_dir) or ('/Users/' == sub_dir[:7]) or ('/Volumes/' in sub_dir) or ('Linux' in platform.system()): dir_list = os.listdir(sub_dir) ### Thus, the whole path is provided already
-    else:
-        try: dir_list = os.listdir(dir + sub_dir)
-        except Exception: dir_list = os.listdir(sub_dir) ### For linux
+    try:
+        if (':' in sub_dir) or ('/Users/' == sub_dir[:7]) or ('/Volumes/' in sub_dir) or ('Linux' in platform.system()): dir_list = os.listdir(dir+sub_dir) ### Thus, the whole path is provided already
+        else:
+            try: dir_list = os.listdir(dir + sub_dir)
+            except Exception: dir_list = os.listdir(sub_dir) ### For linux
+    except Exception:
+        if (':' in sub_dir) or ('/Users/' == sub_dir[:7]) or ('/Volumes/' in sub_dir) or ('Linux' in platform.system()): dir_list = os.listdir(sub_dir) ### Thus, the whole path is provided already
+        else:
+            try: dir_list = os.listdir(dir + sub_dir)
+            except Exception: dir_list = os.listdir(sub_dir) ### For linux
     return dir_list
 
 def returnDirectories(sub_dir):
@@ -68,6 +74,7 @@ def whatProgramIsThis():
     reference_dir = refDir()
     if 'AltAnalyze' in reference_dir: type = 'AltAnalyze'; database_dir = 'AltDatabase/goelite'
     elif 'GO-Elite' in reference_dir: type = 'GO-Elite'; database_dir = 'Databases'
+    if 'Linux' in platform.system(): database_dir += '/'
     return type,database_dir
 
 def unique(s):

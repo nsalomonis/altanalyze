@@ -16,11 +16,17 @@
 #OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+"""This module contains methods for reading Affymetrix formatted CSV annotations files
+from http://www.affymetrix.com, extracting out various direct and inferred gene relationships,
+downloading, integrating and inferring WikiPathway gene relationships and downloading and
+extracting EntrezGene-Gene Ontology relationships from NCBI."""
+
 import sys, string
 import os.path
 import unique
 import datetime
 import export
+import update
 ################# Parse directory files
 
 def filepath(filename):
@@ -28,12 +34,16 @@ def filepath(filename):
     return fn
 
 def read_directory(sub_dir):
-    dir_list = unique.read_directory(sub_dir)
-    #add in code to prevent folder names from being included
-    dir_list2 = [] 
-    for entry in dir_list:
-        if entry[-4:] == ".txt" or entry[-4:] == ".csv" or entry[-4:] == ".TXT" or entry[-4:] == ".tab":
-            dir_list2.append(entry)
+    try:
+        dir_list = unique.read_directory(sub_dir)
+        #add in code to prevent folder names from being included
+        dir_list2 = [] 
+        for entry in dir_list:
+            if entry[-4:] == ".txt" or entry[-4:] == ".csv" or entry[-4:] == ".TXT" or entry[-4:] == ".tab" or '.zip' in entry:
+                dir_list2.append(entry)
+    except Exception:
+        print sub_dir, "NOT FOUND!!!!"
+        dir_list2=[]
     return dir_list2
 
 def returnDirectories(sub_dir):
@@ -262,7 +272,7 @@ def parse_affymetrix_annotations(filename,species):
                             try: a = int(uniprot_id[1]); uniprot_list2.append(uniprot_id)
                             except ValueError: null = []
                     uniprot_list = uniprot_list2
-                    ensembl_list=[]; descriptions=[]
+                    ensembl_list=[]; descriptions=[]; refseq_list=[]; symbol_list=[]
                     try: mrna_associations = affy_data[ma]
                     except IndexError: mrna_associations=''; 
                     ensembl_data = string.split(mrna_associations,' /// ')
@@ -277,7 +287,9 @@ def parse_affymetrix_annotations(filename,species):
                                 for ensembl_id in ensembl_ids:
                                     ensembl_id = string.split(ensembl_id,' ')
                                     ensembl_id = 'ENS'+ensembl_id[0]; ensembl_list.append(ensembl_id)
-
+                            if 'NM_' in i:
+                                refseq_id = string.replace(i,' ','')
+                                refseq_list.append(refseq_id)
                     #if probeset == '8148358': print ensembl_list; kill
                     try: gene_assocs = affy_data[ga]; entrez_list=[]
                     except IndexError: gene_assocs=''; entrez_list=[]
@@ -288,6 +300,7 @@ def parse_affymetrix_annotations(filename,species):
                                 annotations = string.split(entry,' // ')
                                 entrez_gene = int(annotations[-1]); entrez_list.append(str(entrez_gene))
                                 symbol = annotations[1]; description = annotations[2]; descriptions.append((len(description),description))
+                                symbol_list.append(symbol)
                                 #print entrez_gene,symbol, descriptions;kill
                                 z = InferredEntrezInformation(symbol,entrez_gene,description)
                                 try: entrez_annotation_db[str(entrez_gene)] = z ###create an inferred Entrez gene database
@@ -378,7 +391,7 @@ def exportResultsSummary(dir_list,species,type):
     else: parent_dir = 'Databases'
     
     if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     
     new_file = parent_dir+'/'+species+'/'+type+'_files_summarized.txt'
@@ -394,7 +407,9 @@ def exportMetaGeneData(species):
     else: parent_dir = 'Databases'
     
     if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze':
+            null = None
+            #import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     
     new_file = parent_dir+'/'+species+'/uid-gene/Ensembl_EntrezGene-meta.txt'
@@ -420,7 +435,7 @@ def exportRelationshipDBs(species):
     else: parent_dir = 'Databases'
     
     if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     
     new_file1 = parent_dir+'/'+species+'/uid-gene/Ensembl-Affymetrix.txt'
@@ -527,14 +542,14 @@ def parseGene2GO(tax_id,species,overwrite_entrezgo):
         return 'run'
     else: return 'not run'
 
-def importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,overwrite_affycsv):
+def importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,integrate_affy_associations,overwrite_affycsv):
     global wikipathways_file; global overwrite_previous
     overwrite_previous = overwrite_affycsv
     program_type,database_dir = unique.whatProgramIsThis()
     if program_type == 'AltAnalyze': database_dir = '/AltDatabase'
     else: database_dir = '/BuildDBs'
     import_dir = database_dir+'/wikipathways'
-    g = GrabFiles(); g.setdirectory(import_dir); wikipathway_gene_db={}
+    g = GrabFiles(); g.setdirectory(import_dir); wikipathway_gene_db={}; eg_wikipathway_db={}; ens_wikipathway_db={}
     filename = g.searchdirectory('wikipathways') ###Identify gene files corresponding to a particular MOD
     print "Parsing",filename; wikipathways_file = string.split(filename,'/')[-1]
     print "Extracting data for species:",species_full,species
@@ -569,9 +584,18 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                         if len(gene_id)>1:
                             try: wikipathway_gene_db[gene_id].append(pathway_name)
                             except KeyError: wikipathway_gene_db[gene_id] = [pathway_name]
+                    for gene_id in ensembl:
+                        if len(gene_id)>1:
+                            try: ens_wikipathway_db[pathway_name].append(gene_id)
+                            except KeyError: ens_wikipathway_db[pathway_name] = [gene_id]
+                    for gene_id in entrez:
+                        if len(gene_id)>1:
+                            try: eg_wikipathway_db[pathway_name].append(gene_id)
+                            except KeyError: eg_wikipathway_db[pathway_name] = [gene_id]
+                        
         print "Number of unique gene IDs linked to Wikipathways for species:",len(wikipathway_gene_db)
         parse_wikipathways = 'yes'
-        buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,overwrite_affycsv)
+        buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv)
         """global affy_annotation_db; affy_annotation_db={}; global entrez_annotation_db; entrez_annotation_db = {}
         global ens_to_uid; global entrez_to_uid; global entrez_annotations; global parse_wikipathways
 
@@ -581,12 +605,13 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
         for affy_data in dir_list:    #loop through each file in the directory to output results
             affy_data_dir = 'BuildDBs/Affymetrix/'+species+'/'+affy_data
             parse_affymetrix_annotations(affy_data_dir,species)"""
+        #if len(affy_annotation_db)>0 or len(meta)>0:
         try:
             print len(meta), "gene relationships imported"
             print len(wikipathway_gene_db), "gene IDs extracted from Wikipathway pathways"
             """for (primary,gene_id) in meta:
                 if gene_id == 'NP_598767': print wikipathway_gene_db[gene_id];kill"""
-            eg_wikipathway_db={}; ens_wikipathway_db={}
+            ### Since relationships are inferred in new versions of the WikiPathways tables, we don't require meta
             for (primary,gene_id) in meta:
                 try:
                     pathway_names = wikipathway_gene_db[gene_id]
@@ -595,8 +620,11 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                             try: ens_wikipathway_db[pathway].append(primary)
                             except KeyError: ens_wikipathway_db[pathway] = [primary]
                         else:
-                            try: eg_wikipathway_db[pathway].append(primary)
-                            except KeyError: eg_wikipathway_db[pathway] = [primary]
+                            try:
+                                check = int(primary) ### Ensure this is numeric - thus EntrezGene
+                                try: eg_wikipathway_db[pathway].append(primary)
+                                except KeyError: eg_wikipathway_db[pathway] = [primary]
+                            except Exception: null = []
                 except KeyError: null=[]
             #print len(eg_wikipathway_db), len(ens_wikipathway_db)
             ad = system_codes['EntrezGene']
@@ -605,11 +633,8 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
             ad = system_codes['Ensembl']
             system_code = ad.SystemCode()
             exportGeneToMAPPs(species,'Ensembl',system_code,ens_wikipathway_db)
-            
             return len(meta)
-        except ValueError:
-            print 'no CSV files found'
-            return 'no CSV files found'
+        except ValueError: null = []
     else: return 'not run'
 
 def splitEntry(str_value):
@@ -622,7 +647,9 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
     else: parent_dir = 'Databases'
     
     if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze':
+            #import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
+            null = None
     else: parent_dir = 'NewDatabases'
     
     new_file = parent_dir+'/'+species+'/gene-mapp/'+system_name+'-MAPP.txt'
@@ -646,7 +673,7 @@ def exportEntrezGO(gene_go,species,overwrite_entrezgo):
     else: parent_dir = 'Databases'
     
     if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','OBO/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     new_file = parent_dir+'/'+species+'/gene-go/EntrezGene-GeneOntology.txt'
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
@@ -661,13 +688,13 @@ def exportEntrezGO(gene_go,species,overwrite_entrezgo):
     global parse_wikipathways; parse_wikipathways = 'no'
     exportResultsSummary(['Gene2GO.zip'],species,'EntrezGene_GO')
     
-def extractAndIntegrateAffyData(species, Parse_wikipathways):
+def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipathways):
     global affy_annotation_db; affy_annotation_db={}; global entrez_annotation_db; entrez_annotation_db = {}
-    global parse_wikipathways
+    global parse_wikipathways; global meta; meta = {}
     parse_wikipathways = Parse_wikipathways
-    if parse_wikipathways == 'yes': global meta; meta = {}
-    try: importMetaGeneData(species) ### If meta gene relationships previously built (then don't need Affy files)
-    except Exception: null=[]
+    if parse_wikipathways == 'yes':
+        try: importMetaGeneData(species) ### If meta gene relationships previously built (then don't need Affy files)
+        except Exception: null=[]
     
     program_type,database_dir = unique.whatProgramIsThis()
     if program_type == 'AltAnalyze': database_dir = '/AltDatabase/affymetrix'
@@ -676,10 +703,21 @@ def extractAndIntegrateAffyData(species, Parse_wikipathways):
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
     for affy_data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = database_dir[1:]+'/'+species+'/'+affy_data
-        if '.csv' in affy_data_dir: parse_affymetrix_annotations(affy_data_dir,species)
-    if len(affy_annotation_db)>0: exportAffymetrixCSVAnnotations(species,dir_list)
-    try: exportMetaGeneData(species)
-    except Exception: null=[]
+        if '.csv' in affy_data_dir:
+            if '.zip' in affy_data_dir:
+                ### unzip the file
+                print "Extracting the zip file:",filepath(affy_data_dir)
+                update.unzipFiles(affy_data,filepath(database_dir[1:]+'/'+species+'/'))
+                try:
+                    print "Removing the zip file:",filepath(affy_data_dir)
+                    os.remove(filepath(affy_data_dir)); status = 'removed'
+                except Exception: null=[] ### Not sure why this error occurs since the file is not open
+                affy_data_dir = string.replace(affy_data_dir,'.zip','')
+            parse_affymetrix_annotations(affy_data_dir,species)
+    if len(affy_annotation_db)>0 and integrate_affy_associations == 'yes': exportAffymetrixCSVAnnotations(species,dir_list)
+    if parse_wikipathways == 'yes':
+        try: exportMetaGeneData(species)
+        except Exception: null=[]
 
 def exportAffymetrixCSVAnnotations(species,dir_list):
     import gene_associations; global entrez_annotations
@@ -717,113 +755,13 @@ def importAffymetrixAnnotations(dir,Species,Process_go,Extract_go_names,Extract_
         if '.csv' in affy_data_dir: parse_affymetrix_annotations(affy_data_dir,species)
     return affy_annotation_db
 
-def buildAffymetrixCSVAnnotations(Species,Incorporate_previous_associations,Process_go,parse_wikipathways,overwrite_affycsv):
+def buildAffymetrixCSVAnnotations(Species,Incorporate_previous_associations,Process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv):
     global incorporate_previous_associations; global process_go; global species; global extract_go_names
     global wikipathways_file; global overwrite_previous; overwrite_previous = overwrite_affycsv
     global extract_pathway_names; extract_go_names = 'no'; extract_pathway_names = 'no'
     process_go = Process_go; incorporate_previous_associations = Incorporate_previous_associations; species = Species
-    extractAndIntegrateAffyData(species,parse_wikipathways)
+    extractAndIntegrateAffyData(species,integrate_affy_associations,parse_wikipathways)
     
-def runBuildAffymetrixAssociations():
-    global incorporate_previous_associations; global species; global process_go; global extract_go_names
-    global extract_pathway_names
-    program_type,database_dir = unique.whatProgramIsThis()
-    if program_type == 'AltAnalyze': import_dir = '/AltDatabase/affymetrix'; import_dir2 = '/AltDatabase/Entrez'
-    else: import_dir = '/BuildDBs/Affymetrix'; import_dir2 = '/BuildDBs/Entrez'
-    
-    dir_list = returnDirectories(import_dir)
-    import_dir2 = import_dir2+'/Gene2GO'
-    dir_list2 = returnDirectories(import_dir2)
-    proceed = 'no'
-    extract_go_names = 'no' ### Not currently used
-    extract_pathway_names = 'no'
-
-    if len(dir_list)>0 or len(dir_list2)>0:
-        while proceed == 'no':
-            print "\n*****Build Affymetrix Association Module version 1.0***** \nBuild GO-Elite Relational Database from Affymetrix or Unigene Annotation Files\n"
-            print "Program Options"
-            print "1) Build uid-gene tables and Entrez gene table from Affymetrix CSV files"
-            print "2) Build gene-GO relationship tables for EntrezGene for any species"
-            print "3) Quit"
-            inp = sys.stdin.readline(); inp = inp.strip()
-            if inp  == '1': parse_csv = 'yes';proceed = 'yes'
-            elif inp == '2': parse_csv = 'no';proceed = 'yes'
-            elif inp == '3': sys.exit()
-            else: print "Sorry... that command is not an option\n"
-            
-        if parse_csv == 'yes':
-            proceed = 'no'
-            while proceed == 'no':
-                print "Choose species directory containing Affymetrix CSV files:"
-                x = 1
-                for dir in dir_list: print str(x)+')',dir; x+=1
-                inp = sys.stdin.readline(); inp = int(inp.strip())
-                try: species = dir_list[int(inp)-1]; proceed = 'yes'
-                except ValueError:
-                    print "Sorry... that command is not an option\n"
-                
-            proceed = 'no'
-            while proceed == 'no':
-                print "Data to include in build"
-                print "1) Include gene associations from gene and uid-gene files in current directories"
-                print "2) Build new database exclusively from new Affymetrix CSV files"
-                inp = sys.stdin.readline(); inp = inp.strip()
-                if inp  == '1': incorporate_previous_associations = 'yes';proceed = 'yes'
-                elif inp == '2': incorporate_previous_associations = 'no';proceed = 'yes'
-                else: print "Sorry... that command is not an option\n"
-
-                print "Extracting GO information"
-                print "1) Skip this"
-                print "2) Extract and infer gene-GeneOntology information from Affymetrix (not ideal - will create a new set of tables, rather than updating existing)"
-                inp = sys.stdin.readline(); inp = inp.strip()
-                if inp  == '1': process_go = 'no';proceed = 'yes'
-                elif inp == '2': process_go = 'yes';proceed = 'yes'
-                else: print "Sorry... that command is not an option\n"
-                
-            affy_annotation_db = extractAndIntegrateAffyData(species)
-            #print "New databases built...see the folder 'BuildDBs\BuiltDBs'"
-        else:
-            proceed = 'no'
-            while proceed == 'no':
-                print "Choose species to build gene-GO tables using EntrezGene:"
-                print "note: you must have already downloaded the gene2go file from NCBI (see Gene2GO dir for URL)"
-                print "1) Human"
-                print "2) Mouse"
-                print "3) Zebrafish"
-                print "4) Rat"
-                print "5) Other"
-                inp = sys.stdin.readline(); inp = inp.strip()
-                if inp  == '1': tax_id = '9606'; species = 'Hs';proceed = 'yes'
-                elif inp == '2': tax_id = '10090'; species = 'Mm';proceed = 'yes'
-                elif inp == '3': tax_id = '7955';species = 'Dr'; proceed = 'yes'
-                elif inp == '4': tax_id = '10116';species = 'Rn'; proceed = 'yes'
-                elif inp == '5': tax_id = '';proceed = 'yes'
-                else: print "Sorry... that command is not an option\n"
-            if tax_id == '':
-                print "Enter taxid (see: http://www.ncbi.nlm.nih.gov/sites/entrez?db=taxonomy)"
-                inp = sys.stdin.readline(); inp = inp.strip()
-                tax_id = inp; species = inp
-            try: parseGene2GO(tax_id,species,'no')
-            except IOError:
-                print '\nThe file "gene2go.txt" was not found.\n'
-                proceed = 'no'
-                while proceed == 'no':
-                    print "Would you like this program to fetch this file (~9MB)?"
-                    print "1) Yes"
-                    print "2) No"
-                    inp = sys.stdin.readline(); inp = inp.strip()
-                    if inp  == '1' or inp == 'y' or inp == 'Y': download_entrez_go = 'yes';proceed = 'yes'
-                    elif inp  == '2' or inp == 'n' or inp == 'N': download_entrez_go = 'no';proceed = 'yes'
-                    else: print "Sorry... that command is not an option\n"
-                    if download_entrez_go == 'yes':
-                        print 'downloading....'
-                        url = 'http://conklinwolf.ucsf.edu/informatics/thesis/thesis_Salomonis_6-27-08.pdf'
-                        update.download('ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2go.gz','BuildDBs/Entrez/Gene2GO/','txt')
-                        #download(url,'BuildDBs/Entrez/Gene2GO')
-    else: print "No Affymetrix folders or files present. Download these files to a new directory in the folder 'BuildDBs\Affymetrix'."
-    print "Press any key to exit"
-    inp = sys.stdin.readline()
-
 def importSystemInfo():
     import UI
     filename = 'Config/source_data.txt'; x=0
@@ -851,15 +789,15 @@ def TimeStamp():
     return year+month+day
 
 if __name__ == '__main__':
-    Species_full = 'Mus musculus'; Species_code = 'Mm'; tax_id = '10090'; overwrite_affycsv = 'no'
+    Species_full = 'Rattus norvegicus'; Species_code = 'Rn'; tax_id = '10090'; overwrite_affycsv = 'yes'
     System_codes = importSystemInfo(); process_go = 'yes'; incorporate_previous_associations = 'yes'
-    import update; overwrite = 'nover-write previous'
+    import update; overwrite = 'over-write previous'
 
-    #buildAffymetrixCSVAnnotations(Species_code,incorporate_previous_associations,process_go,'no',overwrite);kill   
+    #buildAffymetrixCSVAnnotations(Species_code,incorporate_previous_associations,process_go,'no',integrate_affy_associations,overwrite);kill   
     #parseGene2GO(tax_id,species_code,overwrite);kill
 
     date = TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
     fln,status = update.download('http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab','BuildDBs/wikipathways/',file_type)
     status = ''
     if 'Internet' not in status:
-        importWikipathways(System_codes,incorporate_previous_associations,process_go,Species_full,Species_code,overwrite)
+        importWikipathways(System_codes,incorporate_previous_associations,process_go,Species_full,Species_code,'no',overwrite)
