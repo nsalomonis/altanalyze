@@ -33,7 +33,6 @@ Now you are ready to process your raw input files and obtain alternative probe s
     * Performing GO-Elite Analysis within AltAnalyze. To determine if there are biological pathways (WikiPathways) or Gene Ontology (GO) categories that contain a disproportionate number of alternatively regulated genes, you can use the GO-Elite option in AltAnalyze. GO-Elite (http://www.genmapp.org/go_elite) performs typical over-representation analysis (ORA), filter-out redundant GO-terms and pathways for publication ready tables, summarize all AltAnalyze statistics at the pathway level and easily view gene annotations for each pathways.
 
 ==Interpreting the Results==
-
 When AltAnalyze was running it produced a number of output files, most to the folder AltResults/AlternativeOutput in the user output directory. These include:
 
   * 1. ExpressionOutput/DATASET-dataset_name.txt
@@ -54,7 +53,7 @@ File #3 is a summarization of probeset data at the gene level from file #2. In a
 
 Files #4 and #5 report over-representation results for protein domains (or other protein features) and microRNA-binding sites, predicted to be regulated by AltAnalyze.  These files include over-representation statistics and genes associated with the different domains or features¸ predicted to be regulated.
 
-More information about these files can be found in the AltAnalyze ReadMe (section 2.3).
+More information about these files can be found in the [http://www.altanalyze.org/help_main.htm AltAnalyze ReadMe] (section 2.3).
 
 ==Full Directory Tree of Output Files==
 
