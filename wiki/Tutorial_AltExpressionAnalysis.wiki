@@ -12,19 +12,19 @@ Before you run AltAnalyze, you should have either CEL files or two text files (e
 AltAnalyze can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account). In addition to AltAnalyze, DomainGraph is now also included in the same download. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
 
 ==Creating a Comparison and Groups File (OPTIONAL)==
-If your dataset has over 30 CEL files or dozens of groups, it may save you time to make the groups and comps files in advance. Although not recommended when working with this sample dataset, go here if this applies to your own dataset.
+If your dataset has over 30 CEL files or dozens of groups, it may save you time to make the groups and comps files in advance. Although not recommended when working with this sample dataset, go [ManualGroupsCompsCreation here] if this applies to your own dataset.
 
 ==Running AltAnalyze==
 Now you are ready to process your raw input files and obtain alternative probe sets with splicing and functional annotations. To proceed:
 
     * Open the AltAnalyze_v1release program folder and select the binary file “AltAnalyze”. In Windows, this file has the extension “.exe”. If you are having problems starting AltAnalyze, you can also start the program directly from the source code.
-    * (AltAnalyze: Introduction) In the resulting introduction window, select “Begin Analysis”.
-    * (AltAnalyze: Download Databases) When starting AltAnalyze for the first time you will be prompted to download databases. In this initial prompt, select "Continue", unless you are working on a computer without an internet connection. If the latter applies, click here. Otherwise, select the species "Homo sapiens" from the species select drop down menu (leaving the default Ensembl version) and then "Continue".
-    * (AltAnalyze: Select Species and Array Type) Select the species type “Homo sapiens”, the array type "Exon ST array" and “Continue”.
-    * (AltAnalyze: Select Analysis Method) Select the “Process CEL files” button and "Continue".  
-    * (AltAnalyze: Select CEL files for APT) For dataset name, type in "hESC_differentiation", select the directory containing the CEL files (make sure these have been extracted from the TAR file and Gzip files) and then select an empty directory to save the results to.
-    * (AltAnalyze: Select CEL files for APT) In the resulting warning window, select download for AltAnalyze to automatically download and install the library and annotaiton files for that array.
-    * (AltAnalyze: Expression Analysis Parameters) Accept the default parameters by clicking “Continue”.  These coptions can be modified later on, if you wish to increase or decrease the stringency of the analysis.
+    * ([http://altanalyze.org/images/Introduction.jpg AltAnalyze: Introduction]) In the resulting introduction window, select “Begin Analysis”.
+    * ([http://altanalyze.org/images/dbselection.jpg AltAnalyze: Download Databases]) When starting AltAnalyze for the first time you will be prompted to download databases. In this initial prompt, select "Continue", unless you are working on a computer without an internet connection. If the latter applies, click here. Otherwise, select the species "Homo sapiens" from the species select drop down menu (leaving the default Ensembl version) and then "Continue".
+    * ([[http://altanalyze.org/images/selectArray.jpg AltAnalyze: Select Species and Array Type]) Select the species type “Homo sapiens”, the array type "Exon ST array" and “Continue”.
+    * ([http://altanalyze.org/images/SelectAnalysisMethod.jpg AltAnalyze: Select Analysis Method]) Select the “Process CEL files” button and "Continue".  
+    * ([http://altanalyze.org/images/SelectCELfiles.jpg AltAnalyze: Select CEL files for APT]) For dataset name, type in "hESC_differentiation", select the directory containing the CEL files (make sure these have been extracted from the TAR file and Gzip files) and then select an empty directory to save the results to.
+    * ([http://altanalyze.org/images/SelectCELfiles.jpg AltAnalyze: Select CEL files for APT]) In the resulting warning window, select download for AltAnalyze to automatically download and install the library and annotaiton files for that array.
+    * ([http://altanalyze.org/images/SelectCELfiles.jpg AltAnalyze: Expression Analysis Parameters]) Accept the default parameters by clicking “Continue”.  These coptions can be modified later on, if you wish to increase or decrease the stringency of the analysis.
     * (AltAnalyze: Alternative Exon Analysis Parameters) Accept the default parameters by clicking “Continue”. 
     * (AltAnalyze: Assign CEL files to a Group) Type in the group name for each sample (first three are hESC and second three are cardiac_precursors).
     * (AltAnalyze: Establish All Pairwise Comparisons) Selects the groups to compare (cardiac_precursors vs. hESC).
