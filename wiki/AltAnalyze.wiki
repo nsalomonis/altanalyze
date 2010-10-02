@@ -5,7 +5,7 @@
 AltAnalyze is an analysis tool designed to analyze your Affymetrix CEL files to produce annotated gene expression files with group statistics and alternative exon analysis results. AltAnalyze can be used for conventional microarrays (gene expression only) as well as splicing sensitive arrays (exon and junction). This software performs identical analyses on both Affymetrix Gene 1.0 and Exon 1.0 arrays. In addition to Affymetrix CEL file analyses, AltAnalyze can perform gene expression analyses on post-normalized expression files for array manufacturers with annotations at Ensembl (e.g., Illumina, Agilent, CodeLink).
 
 
-A comprehensive documentation is available at:
+A comprehensive documentation page is available at:
 [http://www.altanalyze.org/help_main.htm http://www.altanalyze.org/help_main.htm]
 = Alternative Exon Analyses=
 
