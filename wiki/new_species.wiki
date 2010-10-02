@@ -1,5 +1,6 @@
+#summary Instructions for adding a new species in AltAnalyze
 #labels Featured
-# support Instructions for adding a new species in AltAnalyze
+
 = Adding a New Species for Gene Expression Analysis =
 
 Adding Affymetrix 3' array or gene array support for a new species couldn't be easier in AltAnalyze. The user just has to follow the three below easy steps:
