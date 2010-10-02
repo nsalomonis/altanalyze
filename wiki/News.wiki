@@ -1,0 +1,30 @@
+#summary News and Updates
+#labels Featured
+
+=News and Updates
+==4-12-10==
+Introducing AltAnalyze version 1.15 with expanded features for alternative exon array analysis. New to AltAnalyze; 1) Alternative exon analysis of Affymetrix Gene 1.0 ST arrays, 2) FIRMA analysis, 3) Bundled version of Cytoscape and DomainGraph included, 4) AltAnalyze DomainGraph start option, 5) Import and filtering based on 3rd party alternative exon analysis results and 6) Linux exectuable version. Please contact us with any questions.
+
+==2-01-10==
+Posted a significant update to AltAnalyze (beta 1.14). Although this version also uses database version EnsMart54 (optional), the referenced database has also been updated specifically for this version (version 1.13 downloads a distinct EnsMart54 database which has not changed). This new database includes new constitutive probeset predictions that will cause the alternative exon scores to differ than version 1.13, as a result of constitutive fold change estimates based on a slightly different set of constitutive probesets. These constitutive probesets are now derived in AltAnalyze, by determining which exon-regions are most common to all Ensembl and UCSC database mRNAs rather than relying on Affymetrix probeset mRNA counts (see Section 3.4 and Section 6.2 of the online documentation). Additional changes include; (1) Improved filtering methods for gene expression data, (2) Support for core probe set only gene expression calculation, 3) Addition of advanced gene expression analysis statistics, 4) Support for multi-group (>2) alternative exon analyses, 5) GO-Elite support for adjusted p-value filtering optional settings, 6) Improved automatic array type identification and 7) More streamlined graphical user interface options. For more details, click here.
+
+==12-23-09==
+A single Mac OS X installer is now posted. Due to python default installation differences on Mac OS X, separate OS X version installers were previously required, however, a compiling configureation on Leopard (10.5) with Python 2.4.3 was found sufficient to build a cross Mac OS X build. A previously un-identified OS X 10.5 bug crashing or preventing folder browsing was also repaired.
+
+==12-10-09==
+Posted an update to AltAnalyze (release 1.13) that includes; (1) versioned database releases based on Ensembl-Affymetrix release cycle and archival updates, (2) improved annotation support for non-Affymetrix arrays for gene expression analysis, (3) addressed unix file related errors, (4) improved user interface (remembering prior directory selections, error handling), (5) introudced a command-line version of AltAnalyze for python source code remote server use, (6) google groups issues resolved.s been causing problems.
+
+==6-23-09==
+Posted an update to AltAnalyze (beta 1.12) that includes; (1) built-in GO-Elite pathway over-representation analysis options, (2) fixed linux directory read error and UI window size issues, (3) fixed 'back' button error that caused AltAnalyze to exit after establishing options, (4) posted a more intuitive linux version, (5) exception for result folder opening in Linux is properly handled.
+
+==5-29-09==
+Posted an update to AltAnalyze (beta 1.11) that includes additional improvements to the new UI, bug fixes, integrated help, a new database build (synched with version 52 of Ensembl) and automated download of Affymetrix library and annotation files.
+
+==4-29-09==
+Posted a substantial update to AltAnalyze (beta 1.1) that adds new functionality and improved methods to AltAnalyze. These include running on RMA on CEL files (using bundled Affymetrix Power Tools modules), an improved interface, ability to define groups and comparisons in the UI, specialized export files for GenMAPP and DomainGraph, improved error handling and log files and improved domain-level predictions and more (see Feature Request page).
+
+==10-29-08==
+Posted an update to AltAnalyze (beta 1.01) that addresses specific bugs. These include processing of conventional gene expression microarrays (e.g., Affymetrix 3' and gene arrays). Also, better handling of errors has been implemented for comparison ("comps.") files where the headers do not match those in the expression ("exp.") file. Posted a stand-alone Mac version that no longer requires a Terminal interface to run, but is rather a standard Mac OS X application. NOTE: The update function is still not implemented within the GUI, however, is available through the command line via the "update.py" module. Update should be implemented as apart of the GUI in the next version.
+
+==7-20-08==
+Posted the first public version of AltAnalyze (beta 1.0). This software currently supports Affymetrix Exon 1.0 ST array analyses (exon-level) and the custom Affymetrix splicing array AltMouse (exon and junction-level). See Overview and Instruction information or the Google Groups page for more information. Database is based on build 49 of Ensembl.
