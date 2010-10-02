@@ -34,6 +34,14 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir)
     return dir_list
 
+def verifyFile(filename):
+    fn=filepath(filename)
+    try:
+        for line in open(fn,'rU').xreadlines():break
+    except Exception:
+        import update; reload(update); server_folder = 'AltMouse'
+        update.downloadCurrentVersion(filename,server_folder,'txt')
+        
 def filterExpressionData(filename1,filename2,pre_filtered_db,constitutive_db):
     fn2=filepath(filename2)
     probeset_translation_db={}
@@ -118,6 +126,7 @@ def cleanUpLine(line):
     return data
 
 def importGeneric(filename):
+    verifyFile(filename)
     fn=filepath(filename); key_db = {}; x = 0
     for line in open(fn,'rU').readlines():
         data = cleanUpLine(line)
@@ -215,6 +224,7 @@ class ExonSeqData:
     
 def importCriticalExonSeq(filename,ensembl_associations):
     fn=filepath(filename); key_db = {}; x = 0
+    verifyFile(filename)
     for line in open(fn,'rU').readlines():
         data = cleanUpLine(line)
         if x == 0: x = 1
@@ -242,6 +252,7 @@ def updateCriticalExonSequences(filename,ensembl_probeset_db):
             except AttributeError: null=[] ### Occurs when no sequence data is associated with exon (probesets without exon associations)
             
     fn1=filepath(filename); key_db = {}; x = 0
+    verifyFile(filename)
     for line in open(fn1,'rU').readlines():
         line_data = cleanUpLine(line)
         if x == 0: x = 1; data.write(line)

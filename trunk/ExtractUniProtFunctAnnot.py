@@ -57,7 +57,8 @@ def import_uniprot_db(filename):
         elif data[0:2] == 'OS': osd += data[5:]
         elif data[0:2] == 'RC': rc = rc + data[5:]
         elif data[0:2] == '  ': sq += data[5:]
-        elif 'DR   Ensembl;' in data: null,dr,null= string.split(data,'; '); ensembl.append(dr)
+        elif 'DR   Ensembl;' in data:
+            null,dr= string.split(data,'Ensembl; '); dr = string.split(dr,'; '); ensembl+=dr[:-1]
         elif 'DR   MGI;' in data: null,dr,null= string.split(data,'; '); mgi.append(dr)
         elif 'DR   UniGene;' in data: null,dr,null= string.split(data,'; '); unigene.append(dr)
         elif 'DR   EMBL;' in data: null,dr,null,null,null= string.split(data,'; '); embl.append(dr)
@@ -133,7 +134,7 @@ def analyzeCommonProteinClassesAndCompartments(sm,ft_call,ft_string,rc,de,go):
     if 'DNA-binding domain' in sm or 'Transcription' in go: class_def.append('transcription regulator')
     if 'protein kinase superfamily' in sm or 'Kinase' in go: class_def.append('kinase')
         
-    if 'G-protein coupled receptor' in sm:
+    if 'G-protein coupled receptor' in sm or 'LU7TM' in sm:
         g_type = []
         if ('adenylate cyclase' in ft_call) or ('adenylyl cyclase'in ft_call):
                 ###if both occur
@@ -282,8 +283,9 @@ def export():
         data.write(info)
 
         for ens_gene in ens_list:
-            custom_annot=string.join([ens_gene,y.CellularComponent(), y.ClassDefinition()],'\t')+'\n'
-            if len(y.CellularComponent())>1 or len(y.ClassDefinition())>1: custom_annotations[ens_gene] = custom_annot
+            if 'T0' not in ens_gene and 'P0' not in ens_gene: ### Exclude protein and transcript IDs
+                custom_annot=string.join([ens_gene,y.CellularComponent(), y.ClassDefinition(),gn,de,id,ac,unigene],'\t')+'\n'
+                if len(y.CellularComponent())>1 or len(y.ClassDefinition())>1: custom_annotations[ens_gene] = custom_annot
                                      
         if len(ft_list)>0:
             for dd in ft_list:  ### Export domain annotations

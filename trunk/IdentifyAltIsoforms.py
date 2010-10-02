@@ -355,6 +355,7 @@ def compareExonCompositionJunctionArray(species,array_type):
         
 def compareProteinComposition(species,array_type,translate,compare_all_features):
     probeset_transcript_db,unique_ens_transcripts,unique_transcripts = importProbesetTranscriptMatches(species,array_type,compare_all_features)
+
     if translate == 'yes': ### Used if we want to re-derive all transcript-protein sequences
         transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch')
     else: transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch_new')
@@ -363,9 +364,10 @@ def compareProteinComposition(species,array_type,translate,compare_all_features)
     transcript_protein_seq_db=[]
 
     global protein_ft_db
-    if array_type == 'exon':
+    if array_type != 'AltMouse':
         probeset_gene_db = importSplicingAnnotationDatabase(array_type,species,'no')
     else:
+        print [array_type]
         probeset_gene_db = importJunctionDatabase(species,array_type)
 
     genes_being_analyzed={} ### Need to tell 'grab_exon_level_feature_calls' what genes to analyze
@@ -1045,7 +1047,7 @@ def importUCSCSequences(missing_protein_ACs):
 def runProgram(Species,Array_type,translate_seq,run_seqcomp):
     global species; global array_type; global translate
     species = Species; array_type = Array_type; translate = translate_seq
-    if array_type == 'exon':
+    if array_type != 'AltMouse':
         compareExonComposition(species,array_type)
         compare_all_features = 'no'
         compareProteinComposition(species,array_type,translate,compare_all_features)

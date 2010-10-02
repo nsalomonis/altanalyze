@@ -1,3 +1,5 @@
+#!/usr/local/bin/python2.5 
+
 ###update
 #Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
@@ -15,6 +17,10 @@
 #HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
 #OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+"""This module contains generic methods for downloading and decompressing files designated
+online files and coordinating specific database build operations for all AltAnalyze supported
+gene ID systems with other program modules. """
 
 import os
 import sys
@@ -39,6 +45,41 @@ def cleanUpLine(line):
     data = string.replace(line,'\r','')
     data = string.replace(data,'"','')
     return data
+
+def zipDirectory(dir):
+    #http://www.testingreflections.com/node/view/8173
+    import zipfile
+    dir = filepath(dir); zip_file = dir+'.zip'
+    p = string.split(dir,'/'); top=p[-1]
+    zip = zipfile.ZipFile(zip_file, 'w', compression=zipfile.ZIP_DEFLATED)
+    root_len = len(os.path.abspath(dir))
+    for root, dirs, files in os.walk(dir):
+        archive_root = os.path.abspath(root)[root_len:]
+        for f in files:
+            fullpath = os.path.join(root, f)
+            archive_name = os.path.join(top+archive_root, f)
+            zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
+    zip.close()
+    return zip_file
+
+def unzipFiles(filename,dir):
+    import zipfile
+    output_filepath = filepath(dir+filename)
+    try:
+        zfile = zipfile.ZipFile(output_filepath)
+        for name in zfile.namelist():
+            if name.endswith('/'):null=[] ### Don't need to export
+            else: 
+                try: outfile = export.ExportFile(dir+name)
+                except Exception: outfile = export.ExportFile(dir+name[1:])
+                outfile.write(zfile.read(name)); outfile.close()
+        #print 'Zip extracted to:',output_filepath
+        status = 'completed'
+    except Exception, e:
+        print e
+        print 'WARNING!!!! The zip file',output_filepath,'does not appear to be a valid zip archive file or is currupt.'
+        status = 'failed'
+    return status
 
 ############## Update Databases ##############
 def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
@@ -83,10 +124,11 @@ def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
     
     if genomic_build == 'new':
         ### Need to run with every new genomic build (match up new coordinates
+        print "Begining to derive exon sequence from new genomic build"
         JunctionArray.identifyCriticalExonLocations(species,array_type)
     JunctionArrayEnsemblRules.getAnnotations(species,array_type,force)
 
-def buildExonArrayExonAnnotations(species,force):
+def buildExonArrayExonAnnotations(species, array_type, force):
 
     ### Get UCSC associations (download databases if necessary)
     import UCSCImport
@@ -99,6 +141,7 @@ def buildExonArrayExonAnnotations(species,force):
     constitutive_source='default'
     ### Build the databases and return the variables (not used here)
     source_biotype = 'mRNA'
+    if array_type == 'gene': source_biotype = 'gene'
     probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,source_biotype,species)
 
 def buildUniProtFunctAnnotations(species,force):
@@ -137,58 +180,66 @@ def importSpeciesInfo():
     return species_codes
     
 def download(url,dir,file_type):
-    try: dp = download_protocol(url,dir,file_type); gz_filepath, status  = dp.getStatus()
-    except KeyError: gz_filepath='failed'; status = "Internet connection not established. Re-establsih and try again."
-    if status == 'remove':
-        print "\nRemoving zip file:",gz_filepath
-        try: os.remove(gz_filepath); status = 'removed'
+    try: dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
+    except Exception:
+        output_filepath='failed'; status = "Internet connection not established. Re-establish and try again."
+        fp = filepath(dir+url.split('/')[-1]) ### Remove this empty object if saved
+
+    if '.zip' in fp or '.gz' in fp or '.tar' in fp:
+        #print "\nRemoving zip file:",fp
+        try: os.remove(fp); status = 'removed'
         except Exception: null=[] ### Not sure why this error occurs since the file is not open
-    return gz_filepath, status
+    return output_filepath, status
 
 class download_protocol:
     def __init__(self,url,dir,file_type):
         """Copy the contents of a file from a given URL to a local file."""
-        filename = url.split('/')[-1]
-        try:
-            if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
-        except Exception: None
+        filename = url.split('/')[-1]; self.status = ''
+        if file_type == None: file_type =''
+        if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
         output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
-        output_filepath = filepath(dir+filename)
+        output_filepath = filepath(dir+filename); self.output_filepath = output_filepath
         
-        print "Downloading the following file:",url
-        self.original_increment = 25
+        print "Downloading the following file:",filename,' ',
+        self.original_increment = 5
         self.increment = 0
         from urllib import urlretrieve
         webfile, msg = urlretrieve(url, output_filepath,reporthook=self.reporthookFunction)
-        #print webfile, msg
         
-        print "\nFile downloaded to:",output_filepath
-        if '.zip' in filename:
-            try: decompressZipStackOverflow(output_filepath,dir)
-            except Exception:
-                import zipfile; zfile = zipfile.ZipFile(output_filepath)
-                for name in zfile.namelist():
-                    outfile = open(filepath(dir+name), 'wb')
-                    #import shutil; shutil.copyfileobj(a,filepath(dir+name))
-                    outfile.write(zfile.read(name)); outfile.close()
-            self.gz_filepath = filepath(output_filepath); self.status = 'remove'
-            print "zip file extracted..."
-        elif '.gz' in filename:
-            self.gz_filepath = output_filepath
-            if len(file_type)==0: extension = '.gz'
-            else: extension = 'gz'
-            decompressed_filepath = string.replace(self.gz_filepath,extension,file_type)
-            ### Below code can be too memory intensive
-            #file_size = os.path.getsize(output_filepath)
-            #megabtyes = file_size/1000000.00
-            #if megabtyes>5000: force_error ### force_error is an undefined variable which causes an exception
-            import gzip; content = gzip.GzipFile(self.gz_filepath, 'rb')
-            data = open(decompressed_filepath,'wb')
-            print "\nExtracting downloaded file:",self.gz_filepath
-            import shutil; shutil.copyfileobj(content,data)
-            self.status = 'remove'
-        else: self.gz_filepath = ''; self.status = 'NA'
-    def getStatus(self): return self.gz_filepath, self.status
+        print ''; self.testFile()
+        if 'Internet' not in self.status:
+            if '.zip' in filename:
+                print "Extracting zip file...",
+                try: decompressZipStackOverflow(filename,dir); status = 'completed'
+                except Exception:
+                    status = unzipFiles(filename,dir)
+                    if status == 'failed': print 'zip extraction failed!'
+                self.gz_filepath = filepath(output_filepath); self.status = 'remove'
+                print "zip file extracted"
+            elif '.gz' in filename:
+                self.gz_filepath = output_filepath
+                if len(file_type)==0: extension = '.gz'
+                else: extension = 'gz'
+                decompressed_filepath = string.replace(self.gz_filepath,extension,file_type)
+                ### Below code can be too memory intensive
+                #file_size = os.path.getsize(output_filepath)
+                #megabtyes = file_size/1000000.00
+                #if megabtyes>5000: force_error ### force_error is an undefined variable which causes an exception
+                import gzip; content = gzip.GzipFile(self.gz_filepath, 'rb')
+                data = open(decompressed_filepath,'wb')
+                #print "\nExtracting downloaded file:",self.gz_filepath
+                import shutil; shutil.copyfileobj(content,data)
+                self.status = 'remove'
+            else: self.gz_filepath = ''; self.status = 'remove'
+    def testFile(self):
+        fn=filepath(self.output_filepath)
+        try:
+            for line in open(fn,'rU').xreadlines():
+                if '!DOCTYPE' in line: self.status = "Internet connection not established. Re-establish and try again."
+                break
+        except Exception: null=[]
+        
+    def getStatus(self): return self.output_filepath, self.status
     def reporthookFunction(self, blocks_read, block_size, total_size):
         if not blocks_read:
             print 'Connection opened. Downloading (be patient)'
@@ -199,29 +250,44 @@ class download_protocol:
             amount_read = blocks_read * block_size
             percent_read = ((amount_read)*1.00/total_size)*100
             if percent_read>self.increment:
-                print '%d%% downloaded' % self.increment
-                #print '.',
+                #print '%d%% downloaded' % self.increment
+                print '*',
                 self.increment += self.original_increment
             #print 'Read %d blocks, or %d/%d' % (blocks_read, amount_read, (amount_read/total_size)*100.000)
-            
+
+def createExportFile(new_file,dir):
+    try:
+        fn=filepath(new_file); file_var = open(fn,'w')
+    except IOError:
+        #print "IOError", fn
+        fn = filepath(dir)
+        try:
+            os.mkdir(fn) ###Re-Create directory if deleted
+            #print fn, 'written'
+        except OSError: createExportDir(new_file,dir) ###Occurs if the parent directory is also missing
+        fn=filepath(new_file); file_var = open(fn,'w')
+    return file_var
+
 def downloadCurrentVersionUI(filename,secondary_dir,file_type,root):
     continue_analysis = downloadCurrentVersion(filename,secondary_dir,file_type)
     if continue_analysis == 'no':
         import UI
-        root.destroy(); UI.getUserParameters('no'); sys.exit()
-    root.destroy()
+        try: root.destroy(); UI.getUserParameters('no'); sys.exit()
+        except Exception: sys.exit()
+    try: root.destroy()
+    except Exception(): null=[] ### Occurs when running from command-line
         
 def downloadCurrentVersion(filename,secondary_dir,file_type):
     import UI
     file_location_defaults = UI.importDefaultFileLocations()
 
-    uds = file_location_defaults['url'] ### Get the location of the download site from Config/default-files.csv
-    for ud in uds: url_dir = ud.Location() ### Only one entry
+    ud = file_location_defaults['url'] ### Get the location of the download site from Config/default-files.csv
+    url_dir = ud.Location() ### Only one entry
     
     dir = export.findParentDir(filename)  
     filename = export.findFilename(filename)
     url = url_dir+secondary_dir+'/'+filename
-    
+
     file,status = download(url,dir,file_type); continue_analysis = 'yes'
     if 'Internet' in status:
         print_out = "File:\n"+url+"\ncould not be found on server or internet connection is unavailable."
@@ -237,6 +303,7 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
     return continue_analysis
 
 def decompressZipStackOverflow(zip_file,dir):
+    zip_file = filepath(dir+zip_file)
     ###http://stackoverflow.com/questions/339053/how-do-you-unzip-very-large-files-in-python
     import zipfile
     import zlib
@@ -285,14 +352,16 @@ def updateDBs(species,array_type):
     while proceed == 'no':
         print "\n*****Select Array Type*****"
         print "1) Exon"
-        print "2) AltMouse"
-        print "3) both"
-        print "4) Quit"
+        print "2) Gene"
+        print "3) AltMouse"
+        print "4) all"
+        print "5) Quit"
         inp = sys.stdin.readline(); inp = inp.strip()
         if inp  == '1': array_type = ['exon']; proceed = 'yes'
-        elif inp == '2': array_type = ['AltMouse']; proceed = 'yes'
-        elif inp == '3': array_type = ['AltMouse','exon']; proceed = 'yes'
-        elif inp == '4': sys.exit()
+        elif inp == '2': array_type = ['gene']; proceed = 'yes'
+        elif inp == '3': array_type = ['AltMouse']; proceed = 'yes'
+        elif inp == '4': array_type = ['AltMouse','gene','exon']; proceed = 'yes'
+        elif inp == '5': sys.exit()
         else: print "Sorry... that command is not an option\n"
 
     proceed = 'no'        
@@ -345,7 +414,7 @@ def updateDBs(species,array_type):
     for specific_species in species:
         for specific_array_type in array_type:
             if specific_array_type == 'AltMouse' and specific_species == 'Mm': proceed = 'yes'
-            elif specific_array_type == 'exon': proceed = 'yes'
+            elif specific_array_type == 'exon' or specific_array_type == 'gene': proceed = 'yes'
             else: proceed = 'no'
             if proceed == 'yes':
                 print "Analyzing", specific_species, specific_array_type
@@ -373,7 +442,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
     if update_probeset_to_ensembl == 'yes':
         if species == 'Mm' and array_type == 'AltMouse':
             buildAltMouseExonAnnotations(species,array_type,force,genomic_build)
-        else: buildExonArrayExonAnnotations(species,force)
+        else: buildExonArrayExonAnnotations(species,array_type,force)
 
     if update_domain == 'yes':
 
@@ -399,17 +468,19 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             
     if update_miRs == 'yes':
         import MatchMiRTargetPredictions; only_add_sequence_to_previous_results = 'no'
-        MatchMiRTargetPredictions.runProgram(species,force,only_add_sequence_to_previous_results)
+        #MatchMiRTargetPredictions.runProgram(species,force,only_add_sequence_to_previous_results)
 
-        if array_type == 'exon':        
+        if array_type == 'exon' or array_type == 'gene':        
             import ExonSeqModule
             stringency = 'strict'; process_microRNA_predictions = 'yes'; mir_source = 'multiple'
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             stringency = 'lax'
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-target-sequences.txt'; ef=filepath(filename)
-            er = string.split(ef,'miRBS-combined_gene-target-sequences.txt',species+'_microRNA-Ensembl.txt')
-            shutil.copyfile(ef,er)
+            er = string.replace(ef,species+'/SequenceData/miRBS-combined_gene-target-sequences.txt','ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt')
+            import shutil; shutil.copyfile(ef,er)
+            import ExonArray
+            ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
         else:
             import JunctionSeqModule
             stringency = 'strict'; mir_source = 'multiple'
@@ -418,14 +489,45 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             JunctionSeqModule.runProgram(species,array_type,mir_source,stringency,force)
             
 if __name__ == '__main__':
+    #zipDirectory('Rn/EnsMart49');kill
+    #unzipFiles('Rn.zip', 'AltDatabaseNoVersion/');kill    
+    #filename = 'http://altanalyze.org/archiveDBs/LibraryFiles/Mouse430_2.zip'
+    #filename = 'AltDatabase/affymetrix/LibraryFiles/Mouse430_2.zip'
+    #downloadCurrentVersionUI(filename,'LibraryFiles','','')
+    #dp = download_protocol('http://genmapp.org/go_elite/Databases/EnsMart56/Dr.zip','Databases','')
+    #kill
+    #target_folder = 'Databases/Ci'; zipDirectory(target_folder)
+    #unzipFiles('Cs.zip', 'Databases/');kill
     #buildUniProtFunctAnnotations('Hs',force='no')
-
+    """import UI
+    date = UI.TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
+    url  ='http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab'
+    output = 'BuildDBs/wikipathways/'
+    file_type = ''
+    url = 'http://www.genmapp.org/go_elite/Databases/EnsMart56/Cs.zip'
+    output = 'Databases/'
+    fln,status = download(url,output,file_type)
+    print status;kill
+        
     url='http://altanalyze.org/archiveDBs/LibraryFiles/MoEx-1_0-st-v1.r2.antigenomic.bgp.gz'
     dir='AltDatabase/affymetrix/LibraryFiles/'
     file_type = ''
-    download(url,dir,file_type);kill
+    download(url,dir,file_type)"""
     
-    species='Hs'; array_type = 'exon'
-    updateDBs(species,array_type); sys.exit()
- 
-    
+    species='Mm'; array_type = 'gene'
+    #updateDBs(species,array_type); sys.exit()
+    #"""
+    array_type = ['gene']; species = ['Rn']; force = 'yes'
+    update_uniprot='no'; update_ensembl='no'; update_probeset_to_ensembl='no'; update_domain='no'; update_all='no'; update_miRs='yes'
+    proceed = 'no'; genomic_build = 'old'
+
+    for specific_species in species:
+        for specific_array_type in array_type:
+            if specific_array_type == 'AltMouse' and specific_species == 'Mm': proceed = 'yes'
+            elif specific_array_type == 'exon' or specific_array_type == 'gene': proceed = 'yes'
+            else: proceed = 'no'
+            if proceed == 'yes':
+                print "Analyzing", specific_species, specific_array_type
+                executeParameters(specific_species,specific_array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all)
+
+    #"""    

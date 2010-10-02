@@ -59,7 +59,7 @@ def import_altmerge(filename,array_type):
     exon_db={}   #use this as a general annotation database
     count = 0; x = 0
     original_probesets_add = 0
-    if array_type != 'exon':
+    if array_type == 'AltMouse':
         for line in open(fn,'rU').xreadlines():             
             probeset_data = cleanUpLine(line)  #remove endline
             probeset,affygene,exons,transcript_num,transcripts,probe_type_call,ensembl,block_exon_ids,block_structure,comparison_info = string.split(probeset_data,'\t')
@@ -99,7 +99,7 @@ def import_altmerge(filename,array_type):
     return altmerge_constituitive,exon_db
 
 def parse_input_data(filename,data_type):
-    fn=filepath(filename); first_line = 1; array_group_db = {}; array_group_name_db = {}; z=0
+    fn=filepath(filename); first_line = 1; array_group_name_db = {}; z=0; array_group_db = {}
     #print "Reading",filename
     for line in open(fn,'rU').xreadlines():
       data = cleanUpLine(line); data2 = string.split(data,'\t'); probeset = data2[0]; z+=1
@@ -108,6 +108,7 @@ def parse_input_data(filename,data_type):
           ###Below ocucrs if the data is raw opposed to precomputed
           if data_type == 'export':
               if array_type == 'exon': folder = 'ExonArray'+'/'+species + '/'
+              elif array_type == 'gene': folder = 'GeneArray'+'/'+species + '/'
               else: folder = array_type + '/'
               output_file = root_dir+'AltExpression/'+folder + altanalzye_input[0:-4] + '.p' + str(int(100*p)) +'_'+ filter_method+'.txt'
               print "...Exporting",output_file
@@ -127,6 +128,7 @@ def parse_input_data(filename,data_type):
                       ### below only occurs with a new group addition
                       array_group_list.append(array_group) #use this to generate comparisons in the below linked function
                   x += 1
+          #print '##### array_group_list',array_group_list
       elif len(probeset)>0 and data_type != 'export':
           ###Use the index values from above to assign each expression value to a new database
           temp_group_array={}; array_index_list = []  ###Use this list for permutation analysis
@@ -146,10 +148,11 @@ def parse_input_data(filename,data_type):
                   else: k=0
                   try: expression_status_db[probeset].append(k)
                   except KeyError: expression_status_db[probeset] = [k]
+                  #if probeset == '3209315': print [group],k,len(group_values),array_group_list
               if data_type == 'p-value':
                   if avg_stat<p: k=1
                   else: k=0
-                  if 'G7216513_a_at' in probeset: print k, avg_stat
+                  #if 'G7216513_a_at' in probeset: print k, avg_stat
                   try: pvalue_status_db[probeset].append(k)
                   except KeyError: pvalue_status_db[probeset] = [k]
       elif data_type == 'export':
@@ -168,13 +171,23 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
     if analyze_dabg == 'yes':
         parse_input_data(filename2,'p-value') ### Parse DABG p-value file
 
+    count=0
     for probeset in expression_status_db:
-        proceed = 'no'
+        proceed = 'no'; count+=1
         if probeset in pvalue_status_db: proceed = 'yes' ### Indicates there are both expression and dabg files with the same probe sets
         elif analyze_dabg == 'no': proceed = 'yes' ### Indicates there is only an expression file and no dabg
         if proceed == 'yes':
-            exp_stat1,exp_stat2 = expression_status_db[probeset]
-            if analyze_dabg == 'yes': p_stat1,p_stat2 = pvalue_status_db[probeset]
+            try: exp_stats = expression_status_db[probeset]; exp_stat1,exp_stat2 = exp_stats[:2]
+            except Exception:
+                print 'probeset:',probeset, 'count:',count
+                print "expression values (should only be 2):",expression_status_db[probeset]
+                print 'expression file:', filename
+                print 'dabg file:', filename2
+                print "length of expression_status_db", len(expression_status_db)
+                print "UNEXPECTED ERROR ENCOUNTERED - REPORT THIS ERROR TO THE ALTANALYZE HELP DESK"
+                forceBadExit
+                
+            if analyze_dabg == 'yes': p_stats = pvalue_status_db[probeset]; p_stat1,p_stat2 = p_stats[:2]
             else: p_stat1=1; p_stat2=1 ### Automatically assigned an "expressed" call.
             affygene = exon_db[probeset]
             if exp_stat1 == 1 and p_stat1 == 1: k = 1 ### Thus it is "expressed"
@@ -244,47 +257,48 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
   try: log_expression_threshold = math.log(expression_threshold,2)
   except OverflowError: log_expression_threshold = 0 ###Occurs if expression_threshold == 0
   
-  import_dir = '/AltExpression/pre-filtered/expression/'; import_dir_dabg = '/AltExpression/pre-filtered/dabg/'
-  
-  dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+  import_dir = root_dir+'AltExpression/pre-filtered/expression/'; import_dir_dabg = root_dir+'AltExpression/pre-filtered/dabg/'
+  try: dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+  except Exception: dir_list=[]
   try: dir_list2 = read_directory(import_dir_dabg)
   except Exception: dir_list2=[]
 
   if len(altanalyze_files) == 0: altanalyze_files = dir_list  ###if no filenames input
 
-  if array_type == 'exon': altmerge_db = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"
+  if array_type != 'AltMouse': altmerge_db = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"
   else: altmerge_db = "AltDatabase/"+species+"/"+array_type+"/MASTER-probeset-transcript.txt"
   ###Import probe-level associations
   altmerge_constituitive,exon_db = import_altmerge(altmerge_db,array_type)
-        
+            
   global altanalzye_input
-  for altanalzye_input in dir_list:    #loop through each file in the directory to output results
-    if altanalzye_input in altanalyze_files:
-        if altanalzye_input in dir_list2: analyze_dabg = 'yes'
-        else: analyze_dabg = 'no'
-        ind_start_time = time.time()
-        array_db = import_dir + "/"+ altanalzye_input
-        dabg_db = import_dir_dabg + "/"+ altanalzye_input
-        array_db = array_db[1:] #not sure why, but the '\' needs to be there while reading initally but not while accessing the file late
-        dabg_db = dabg_db[1:]
-        dataset_name = altanalzye_input[0:-4] + '-'
-        #print "Begining to process",dataset_name[0:-1]
-        #print "Array type is:",array_type
-        #print "Species is:", species
-        #print "Expression format is:",exp_data_format
-        #print "DABG p-value cut-off is:",p
-        #print "Filter method is:",filter_method
-        #print "Log2 expression cut-off is:",log_expression_threshold
+  if len(dir_list)>0:
+      for altanalzye_input in dir_list:    #loop through each file in the directory to output results
+        if altanalzye_input in altanalyze_files:
+            if altanalzye_input in dir_list2: analyze_dabg = 'yes'
+            else: analyze_dabg = 'no'
+            ind_start_time = time.time()
+            array_db = import_dir + "/"+ altanalzye_input
+            dabg_db = import_dir_dabg + "/"+ altanalzye_input
+            #array_db = array_db[1:] #not sure why, but the '\' needs to be there while reading initally but not while accessing the file late
+            #dabg_db = dabg_db[1:]
+            dataset_name = altanalzye_input[0:-4] + '-'
+            print "Begining to process",dataset_name[0:-1]
+            #print "Array type is:",array_type
+            #print "Species is:", species
+            #print "Expression format is:",exp_data_format
+            #print "DABG p-value cut-off is:",p
+            #print "Filter method is:",filter_method
+            #print "Log2 expression cut-off is:",log_expression_threshold
+            ###Import expression data and stats
+            try: expr_analysis(array_db,dabg_db,altmerge_constituitive,exon_db,analyze_dabg)    #filter the expression data based on fold and p-value OR expression threshold
+            except KeyError: print "Impropper array type (",dataset_name[0:-1],") for",array_type,species,'. Skipping array.'
+            ind_end_time = time.time(); time_diff = int(ind_end_time-ind_start_time)
+            #print dataset_name,"filtering finished in %d seconds" % time_diff
+      end_time = time.time(); time_diff = int(end_time-start_time)
+      #print "Filtering complete for all files in %d seconds" % time_diff
+      exon_db={}; altmerge_constituitive={}
+  else: print "No expression files to filter found..."
 
-        ###Import expression data and stats
-        try: expr_analysis(array_db,dabg_db,altmerge_constituitive,exon_db,analyze_dabg)    #filter the expression data based on fold and p-value OR expression threshold
-        except KeyError: print "Impropper array type (",dataset_name[0:-1],") for",array_type,species,'. Skipping array.'
-        ind_end_time = time.time(); time_diff = int(ind_end_time-ind_start_time)
-        #print dataset_name,"filtering finished in %d seconds" % time_diff
-  end_time = time.time(); time_diff = int(end_time-start_time)
-  #print "Filtering complete for all files in %d seconds" % time_diff
-  exon_db={}; altmerge_constituitive={}
-  
 if __name__ == '__main__':
   m = 'Mm'; h = 'Hs'
   species = m

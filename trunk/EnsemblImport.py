@@ -59,6 +59,7 @@ def exportSubGeneViewerData(exon_regions,critical_gene_junction_db,intron_region
             except KeyError: intron_retention_db2[gene] = [pos_list]
             
     exon_annotation_export = 'AltDatabase/ensembl/'+species+'/'+species+'_SubGeneViewer_exon-structure-data.txt'
+    print 'Writing the file:',exon_annotation_export
     fn=filepath(exon_annotation_export); data = open(fn,'w')
     title = ['gene','exon-id','type','block','region','constitutive','start-exon','annotation']
     title = string.join(title,'\t')+'\n'; data.write(title)
@@ -77,7 +78,7 @@ def exportSubGeneViewerData(exon_regions,critical_gene_junction_db,intron_region
                         if exon_pos == retained_pos: splice_event = 'exon-region-exclusion'
                         elif exon_pos[0] == retained_pos[0] or exon_pos[1] == retained_pos[1]: splice_event = 'exon-region-exclusion'
                         elif exon_pos[0]>retained_pos[0] and exon_pos[0]<retained_pos[1] and exon_pos[1]>retained_pos[0] and exon_pos[1]<retained_pos[1]: splice_event = 'exon-region-exclusion'
-                values = [gene,rd.ExonRegionID2(),'e',str(index),str(rd.RegionNumber()),rd.ConstitutiveCall(),'n',splice_event]#,str(exon_pos[0]),str(exon_pos[1])]
+                values = [gene,rd.ExonRegionID2(),'e',str(index),str(rd.RegionNumber()),rd.ConstitutiveCallAbrev(),'n',splice_event]#,str(exon_pos[0]),str(exon_pos[1])]
                 values = string.join(values,'\t')+'\n'; data.write(values)
             index+=1
             if introns == 'yes':
@@ -92,7 +93,7 @@ def exportSubGeneViewerData(exon_regions,critical_gene_junction_db,intron_region
                                 if intron_pos == retained_pos: splice_event = 'intron-retention'
                                 elif intron_pos[0] == retained_pos[0] or intron_pos[1] == retained_pos[1]: splice_event = 'intron-retention'
                                 elif intron_pos[0]>retained_pos[0] and intron_pos[0]<retained_pos[1] and intron_pos[1]>retained_pos[0] and intron_pos[1]<retained_pos[1]: splice_event = 'intron-retention'                            
-                        values = [gene,intronid,'i',str(index),str(rd.RegionNumber()),rd.ConstitutiveCall(),'n',splice_event]#,str(intron_pos[0]),str(intron_pos[1])]
+                        values = [gene,intronid,'i',str(index),str(rd.RegionNumber()),rd.ConstitutiveCallAbrev(),'n',splice_event]#,str(intron_pos[0]),str(intron_pos[1])]
                         values = string.join(values,'\t')+'\n'; data.write(values)
                     index+=1
                 except KeyError: null=[]
@@ -135,9 +136,15 @@ class EnsemblInformation:
     def NewGeneStop(self): return self._newgenestop
     def NewExonStart(self): return self._newexonstart
     def NewExonStop(self): return self._newexonstop
+    def setConstitutive(self,constitutive_exon): self._constitutive_exon = constitutive_exon
     def Constitutive(self): return self._constitutive_exon
     def ConstitutiveCall(self):
-        if self.Constitutive() == '1': call = 'y'
+        if self.Constitutive() == '1': call = 'yes'
+        else: call = 'no'
+        return call
+    def ConstitutiveCallAbrev(self):
+        if self.Constitutive() == 'yes': call = 'y'
+        elif self.Constitutive() == '1': call = 'y'
         else: call = 'n'
         return call
     def setSpliceData(self,splice_event,splice_junctions):
@@ -161,7 +168,6 @@ class EnsemblInformation:
     def ExonRegionID(self): return 'E'+str(self._exon_num)+'-'+str(self._region_num)
     def ExonRegionID2(self): return 'E'+str(self._exon_num)+'.'+str(self._region_num)
     def IntronRegionID(self): return 'I'+str(self._exon_num)+'.1'
-    
     def setExonSeq(self,exon_seq): self._exon_seq = exon_seq
     def ExonSeq(self): return self._exon_seq
     def setPrevExonSeq(self,prev_exon_seq): self._prev_exon_seq = prev_exon_seq
@@ -290,54 +296,59 @@ def importEnsExonStructureDataSimple(species,type,gene_strand_db,exon_location_d
     print filename,"parsed in %d seconds" % time_diff
     return gene_strand_db,exon_location_db,adjacent_exon_locations,first_exon_dbase
 
-def importEnsExonStructureData(filename,species):
+def importEnsExonStructureData(filename,species,data2process):
     start_time = time.time()
     fn=filepath(filename); x=0; k=[]
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        if x==0:
-            if 'Chromosome' in t[0]:  type = 'old'###when using older builds of EnsMart versus BioMart
-            else: type = 'current'
-            x=1
+        if x==0: x=1
         else:
-            if type == 'old': chr, strand, gene, ens_transcriptid, ens_exonid, exon_start, exon_end, constitutive_exon = t
-            else: gene, chr, strand, exon_start, exon_end, ens_exonid, constitutive_exon, ens_transcriptid = t
-            ###switch exon-start and stop if in the reverse orientation
-            if strand == '-1' or strand == '-': strand = '-'; exon_start2 = int(exon_end); exon_end2 = int(exon_start); exon_start=exon_start2; exon_end=exon_end2
-            else: strand = '+'; exon_end = int(exon_end); exon_start = int(exon_start)
-            ens_exonid_data = string.split(ens_exonid,'.'); ens_exonid = ens_exonid_data[0]
-            if abs(exon_end-exon_start)>-1:
-                if abs(exon_end-exon_start)<1:
-                    try: too_short[gene].append(exon_start)
-                    except KeyError: too_short[gene] = [exon_start]
-                exon_coordinates = [exon_start,exon_end]
-                continue_analysis = 'no'
+            gene, chr, strand, exon_start, exon_end, ens_exonid, constitutive_exon, ens_transcriptid = t
+            if data2process == 'all':
+                ###switch exon-start and stop if in the reverse orientation
+                if strand == '-1' or strand == '-': strand = '-'; exon_start2 = int(exon_end); exon_end2 = int(exon_start); exon_start=exon_start2; exon_end=exon_end2
+                else: strand = '+'; exon_end = int(exon_end); exon_start = int(exon_start)
+                ens_exonid_data = string.split(ens_exonid,'.'); ens_exonid = ens_exonid_data[0]
+                if abs(exon_end-exon_start)>-1:
+                    if abs(exon_end-exon_start)<1:
+                        try: too_short[gene].append(exon_start)
+                        except KeyError: too_short[gene] = [exon_start]
+                    exon_coordinates = [exon_start,exon_end]
+                    continue_analysis = 'no'
+                    if test=='yes': ###used to test the program for a single gene
+                        if gene in test_gene: continue_analysis='yes' 
+                    else: continue_analysis='yes'
+                    if  continue_analysis=='yes':
+                        ###Create temporary databases storing just exon and just trascript and then combine in the next block of code
+                        initial_exon_annotation_db[ens_exonid] = gene,chr,strand,exon_start,exon_end,constitutive_exon                    
+                        try: exon_transcript_db[ens_exonid].append(ens_transcriptid)
+                        except KeyError: exon_transcript_db[ens_exonid] = [ens_transcriptid]
+                        ###Use this database to figure out which ensembl exons represent intron retention as a special case down-stream
+                        try: transcript_exon_db[gene,chr,strand,ens_transcriptid].append(exon_coordinates)
+                        except KeyError: transcript_exon_db[gene,chr,strand,ens_transcriptid] = [exon_coordinates]
+                        ###Store transcript data for downstream analyses
+                        transcript_gene_db[ens_transcriptid] = gene,chr,strand
+                        try: gene_transcript[gene].append(ens_transcriptid)
+                        except KeyError: gene_transcript[gene] = [ens_transcriptid]
+            elif data2process == 'exon-transcript':
+                continue_analysis = 'yes'
                 if test=='yes': ###used to test the program for a single gene
-                    if gene in test_gene: continue_analysis='yes' 
-                else: continue_analysis='yes'
-                if  continue_analysis=='yes':
-                    ###Create temporary databases storing just exon and just trascript and then combine in the next block of code
-                    initial_exon_annotation_db[ens_exonid] = gene,chr,strand,exon_start,exon_end,constitutive_exon                    
+                    if gene not in test_gene: continue_analysis='no'
+                if continue_analysis == 'yes':
                     try: exon_transcript_db[ens_exonid].append(ens_transcriptid)
                     except KeyError: exon_transcript_db[ens_exonid] = [ens_transcriptid]
-                    ###Use this database to figure out which ensembl exons represent intron retention as a special case down-stream
-                    try: transcript_exon_db[gene,chr,strand,ens_transcriptid].append(exon_coordinates)
-                    except KeyError: transcript_exon_db[gene,chr,strand,ens_transcriptid] = [exon_coordinates]
-                    ###Store transcript data for downstream analyses
-                    transcript_gene_db[ens_transcriptid] = gene,chr,strand
-                    try: gene_transcript[gene].append(ens_transcriptid)
-                    except KeyError: gene_transcript[gene] = [ens_transcriptid]
     end_time = time.time(); time_diff = int(end_time-start_time)
     print len(transcript_gene_db), "number of transcripts included"
     print filename,"parsed in %d seconds" % time_diff
-    
+
 def getEnsExonStructureData(species,data_type):
     start_time = time.time()
     ###Simple function to import and organize exon/transcript data
     filename1 = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
     filename2 = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_filtered_mrna.txt'
     filename3 = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_filtered_ncRNA.txt'
+    data2process = 'all'
     global initial_exon_annotation_db; initial_exon_annotation_db={}
     global exon_transcript_db; exon_transcript_db={}
     global transcript_gene_db; transcript_gene_db={}
@@ -347,10 +358,10 @@ def getEnsExonStructureData(species,data_type):
     global ensembl_annotations; ensembl_annotations={}; global ensembl_gene_coordinates; ensembl_gene_coordinates = {}
 
     if data_type == 'mRNA':
-        importEnsExonStructureData(filename2,species)
-        importEnsExonStructureData(filename1,species)
+        importEnsExonStructureData(filename2,species,data2process)
+        importEnsExonStructureData(filename1,species,data2process)
     elif data_type == 'ncRNA':  ###Builds database based on a mix of Ensembl, GenBank and UID ncRNA IDs
-        importEnsExonStructureData(filename3,species)
+        importEnsExonStructureData(filename3,species,data2process)
         
     global exon_annotation_db; exon_annotation_db={} ###Agglomerate the data from above and store as an instance of the ExonStructureData class
     for ens_exonid in initial_exon_annotation_db:
@@ -991,8 +1002,8 @@ def getEnsemblAssociations(Species,data_type,test_status):
     global test; test = test_status
     global test_gene
     meta_test = ["ENSG00000215305","ENSG00000179676","ENSG00000170484","ENSG00000138180","ENSG00000100258","ENSG00000132170","ENSG00000105767","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
-    test_gene = ['ENSG00000179676']
-    test_gene = ['ENSMUSG00000059857'] ### for JunctionArrayEnsemblRules
+    test_gene = ['ENSG00000174437']
+    #test_gene = ['ENSMUSG00000059857'] ### for JunctionArrayEnsemblRules
     #test_gene = meta_test
     exon_annotation_db,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
     exon_annotation_db2 = annotate_exons(exon_annotation_db); ensembl_descriptions={}
@@ -1006,14 +1017,14 @@ def getEnsemblAssociations(Species,data_type,test_status):
     ###Grab rna_processing Ensembl associations
     use_exon_data='no';get_splicing_factors = 'yes'
     try: rna_processing_ensembl = GO_parsing.parseAffyGO(use_exon_data,get_splicing_factors,species)
-    except Exception: null=[]
+    except Exception: rna_processing_ensembl={}
     
     ensembl_annot_file = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl-annotations_simple.txt'
     ensembl_annotation_db = getEnsemblAnnotations(ensembl_annot_file,rna_processing_ensembl)
     #exportExonClusters(exon_clusters)
 
     return exon_annotation_db2,ensembl_annotation_db,exon_clusters,intron_clusters,exon_regions,intron_retention_db,ucsc_splicing_annot_db,transcript_gene_db
-
+  
 def getExonTranscriptDomainAssociations(Species):
     global species; species = Species
     import_dir = '/AltDatabase/ensembl/'+species
@@ -1051,20 +1062,30 @@ def checkforEnsemblExons(trans_exon_data):
         #else: print ste.ExonRegionNumbers(),spe.ExonRegionNumbers(), [ste.ExonID(),spe.ExonID()];kill
     return proceed_status
 
+def getAllEnsemblUCSCTranscriptExons():
+    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
+    importEnsExonStructureData(filename,species,'exon-transcript')
+    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_mrna.txt'
+    importEnsExonStructureData(filename,species,'exon-transcript')
+    exon_transcripts = eliminate_redundant_dict_values(exon_transcript_db)
+    return exon_transcripts
+
 def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_db,gene_transcript,transcript_exon_db,intron_retention_db):
     ###Parses transcript to exon relationships and links these to previously described distinct exon regions.
     ###The exon blocks and region numbers provide a simple semantic for determining where in the transcript and what event is occuring
     ###when directly comparing junctions to each other
-    transcript_exon_db={}; null=[]; k=[]
+    exon_transcripts = getAllEnsemblUCSCTranscriptExons()
+    transcript_exon_db={}; constitutive_region_gene_db={}; null=[]; k=[]
     for (gene,chr,strand) in exon_annotation_db:
+        constitutive_region_count_db={}; constitutive_region_count_list=[]; count_db={}
         for exon_info in exon_annotation_db[(gene,chr,strand)]:
             if strand == '+': exon_start,exon_end,y = exon_info ###Link the original exon-start/stop data back to the region based data
             else: exon_end,exon_start,y = exon_info ###This shouldn't be necessary, but the coordinates get reversed in annotate_exons and copying the original via deepcopy takes way too much time
             if gene in exon_regions:
                 ste=''; spe=''
                 for ed in exon_regions[gene]:
-                    if exon_start == ed.ExonStart(): ste = ed
-                    if exon_end == ed.ExonStop(): spe = ed
+                    if exon_start == ed.ExonStart(): ste = ed  ### Two exon regions can not have the same start position in this database
+                    if exon_end == ed.ExonStop(): spe = ed ### Two exon regions can not have the same end position in this database
                     if spe!='' and ste!='': break 
                     #print ed.ExonStart(),ed.ExonStop()
                 if spe!='' and ste!='':
@@ -1073,22 +1094,53 @@ def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_
                     for ens_transcriptid in y.TranscriptID():
                         try: transcript_exon_db[ens_transcriptid].append(values)
                         except KeyError: transcript_exon_db[ens_transcriptid] = [values]
+                        
+                    ### Since we know which exon region each Ensembl/UCSC exon begins and ends, we can just count the number of transcripts
+                    ### that contain each of the Ensembl/UCSC exon ID, which will give us our constitutive exon count for each gene
+                    transcripts = exon_transcripts[y.ExonID()]
+                    #print ste.ExonRegionID(), spe.ExonRegionID(), y.ExonID(), transcripts
+                    ### Since overlapping Ensembl/UCSC exons shouldn't align to the same transcripts, we can just add the counts
+                    try: constitutive_region_count_db[ste.ExonRegionID()]+=len(transcripts) #rd.ExonNumber() rd.ExonRegionID()
+                    except KeyError: constitutive_region_count_db[ste.ExonRegionID()]=len(transcripts)
+                    try: constitutive_region_count_db[spe.ExonRegionID()]+=len(transcripts)
+                    except KeyError: constitutive_region_count_db[spe.ExonRegionID()]=len(transcripts)
                 else:
-                    #"""
                     print len(exon_regions[gene]), gene,chr,strand,[spe],[ste],exon_start,exon_end
                     #for ed in exon_regions[gene]: print [ed.ExonID()],ed.ExonStart(),ed.ExonStop(), ed.ExonRegionNumbers()
                     for ed in exon_regions[gene]:
                         #if ed.ExonID() == ens_exonid: print exon_start,exon_end,ens_exonid, ed.ExonStart(),ed.ExonStop(), ed.ExonID(), ed.ExonRegionNumbers();kill
                         print [ed.ExonID()],[exon_start],[exon_end], [ed.ExonStart()],[ed.ExonStop()], [ed.ExonRegionNumbers()]
-
-                    kill#"""
-                    null.append(gene)
+                    null.append(gene); kill                
             else: k.append(gene)
-    null = unique.unique(null)      
-    print len(null)
+        ### Get the number of transcripts associated with each region
+        for exon_region in constitutive_region_count_db:
+            transcript_count = constitutive_region_count_db[exon_region]
+            constitutive_region_count_list.append(transcript_count)
+            try: count_db[transcript_count].append(exon_region)
+            except KeyError: count_db[transcript_count] = [exon_region]
+        constitutive_region_count_list.sort()
+        max_count = constitutive_region_count_list[-1]
+        cs_exon_region_ids = count_db[max_count]
+        ### If there is only one constitutive region and one set of strong runner ups, include these to improve the constitutive expression prediction
+        if len(cs_exon_region_ids)==1 and len(constitutive_region_count_list)>2:
+            second_highest_count = constitutive_region_count_list[-2]
+            cs_exon_region_ids += count_db[second_highest_count]
+        constitutive_region_gene_db[gene] = cs_exon_region_ids
+        #print gene, cs_exon_region_ids;kill
+
+    del exon_transcripts
+    ### Reset the constitutive exon, previously assigned by Ensembl - ours should be more informative since it uses more transcript data and specific region info
+    #"""
+    for gene in constitutive_region_gene_db:
+        if gene in exon_regions:
+            for ed in exon_regions[gene]:
+                if ed.ExonRegionID() in constitutive_region_gene_db[gene]: ed.setConstitutive('1')
+                else: ed.setConstitutive('0')
+    #"""   
+    null = unique.unique(null); #print len(null)
     print len(k), 'genes, not matched up to region database'
     print len(transcript_gene_db), 'transcripts from Ensembl being analyzed'
-    
+
     transcript_exon_db = eliminate_redundant_dict_values(transcript_exon_db)
     gene_transcript = eliminate_redundant_dict_values(gene_transcript)
     
@@ -1505,11 +1557,13 @@ def customLSDeepCopy(ls):
 
 if __name__ == '__main__':
     ###KNOWN PROBLEMS: the junction analysis program calls exons as cassette-exons if there a new C-terminal exon occurs downstream of that exon in a different transcript (ENSG00000197991).
-    species = 'Hs'
+    Species = 'Hs'
     #species = 'Mm'
     test = 'yes'
-    data_type = 'ncRNA'
-    data_type = 'mRNA'
+    Data_type = 'ncRNA'
+    Data_type = 'mRNA'
+    getEnsemblAssociations(Species,Data_type,test); sys.exit()
+    
     test_gene = ['ENSG00000201902']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']
     meta_test = ["ENSG00000215305","ENSG00000179676","ENSG00000170484","ENSG00000138180","ENSG00000100258","ENSG00000132170","ENSG00000105767","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
     #test_gene = meta_test

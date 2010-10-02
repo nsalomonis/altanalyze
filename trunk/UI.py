@@ -56,44 +56,80 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir)
     return dir_list
 
+def getFolders(sub_dir):
+    dir_list = unique.read_directory(sub_dir); dir_list2 = []
+    ###Only get folder names
+    for entry in dir_list:
+        if entry[-4:] != ".txt" and entry[-4:] != ".csv" and ".zip" not in entry: dir_list2.append(entry)
+    return dir_list2
+
+def returnDirectoriesNoReplace(dir):
+    dir_list = unique.returnDirectoriesNoReplace(dir); dir_list2 = []
+    for entry in dir_list:
+        if '.' not in entry and 'affymetrix' not in entry:
+            if 'EnsMart' in entry: dir_list2.append(entry)
+    return dir_list2
+
+def returnFilesNoReplace(dir):
+    dir_list = unique.returnDirectoriesNoReplace(dir); dir_list2 = []
+    for entry in dir_list:
+        if '.' in entry: dir_list2.append(entry)
+    return dir_list2
+    
 def identifyCELfiles(dir):
     dir_list = read_directory(dir); dir_list2=[]; full_dir_list=[]
     for file in dir_list:
         file_lower = string.lower(file)
-        if '.cel' in file_lower and '.cel.' not in file_lower:
+        if '.cel' in file_lower[-4:] and '.cel.' not in file_lower:
             dir_list2.append(file)
             file = dir+'/'+file
             full_dir_list.append(file)
+    dir_list2.sort(); full_dir_list.sort()
     return dir_list2,full_dir_list
 
 def identifyArrayType(full_dir_list):
-    arrays={}; ln=0 ### Determine the type of unique arrays in each directory
+    arrays={} ### Determine the type of unique arrays in each directory
     for filename in full_dir_list:
-        fn=filepath(filename)
+        fn=filepath(filename); ln=0
         for line in open(fn,'rU').xreadlines():
             if ln<150:
                 data = cleanUpLine(line); ln+=1
-                if 'DatHeader' == data[:9] or 'sq' in data:
-                    array_info,null = string.split(data,'sq')
-                    array_info = string.split(array_info,' ')
-                    array_type = array_info[-1]
+                if 'sq' in data:
+                    try:
+                        array_info,null = string.split(data,'sq')
+                        array_info = string.split(array_info,' ')
+                        array_type = array_info[-1]
+                        if '.' in array_type: array_type,null = string.split(array_type,'.')
+                        arrays[array_type]=[]
+                        break
+                    except Exception: null=[]
+                elif 'affymetrix-array-type' in data:
+                    null, array_type = string.split(data,'affymetrix-array-type')
                     if '.' in array_type: array_type,null = string.split(array_type,'.')
                     arrays[array_type]=[]
-                    break
                 """else: ### some CEL file versions are encoded
                     fileencoding = "iso-8859-1"
                     txt = line.decode(fileencoding)
                     print txt;kill"""
             else: break
-    array_list = []
-    for array in arrays: array_list.append(array)
-    return array_list, array_type
+    array_ls = []
+    for array in arrays: array_ls.append(array)
+    return array_ls, array_type
 
+def getAffyFilesRemote(array_name,arraytype,species):
+    global backSelect; global array_type; global debug_mode
+    debug_mode = 'yes'
+    backSelect = 'yes'
+    array_type = arraytype
+    library_dir, annotation_dir, bgp_file, clf_file = getAffyFiles(array_name,species)
+    return library_dir, annotation_dir, bgp_file, clf_file
+    
 def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+library_file,species)
     sa = supproted_array_db[array_name]; library_file = sa.LibraryFile(); annot_file = sa.AnnotationFile(); original_library_file = library_file
     filename = 'AltDatabase/affymetrix/LibraryFiles/'+library_file
     fn=filepath(filename); library_dir=filename; bgp_file = ''; clf_file = ''
-    warn = 'yes'
+    if backSelect == 'yes': warn = 'no'
+    else: warn = 'yes'
     try:
         for line in open(fn,'rU').xreadlines():break
         input_cdf_file = filename
@@ -114,6 +150,7 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
                     print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
                     IndicatorWindow(print_out,'Continue')
                 except Exception: print print_out; sys.exit()
+                        
     except Exception:
         print_out = "AltAnalyze was not able to find a library file\nfor your arrays. Would you like AltAnalyze to\nautomatically download these files?"
         try:
@@ -135,11 +172,11 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
                 if debug_mode == 'no': StatusWindow(var_list,'download')
                 else:
                     for filename in filenames:
-                        try: update.downloadCurrentVersionUI(filename,'LibraryFiles','',Tk())
-                        except Exception: update.downloadCurrentVersion(filename,'LibraryFiles',None)
+                        continue_analysis = update.downloadCurrentVersion(filename,'LibraryFiles','')
                 try: os.remove(filepath(filename)) ### Not sure why this works now and not before
                 except Exception: null=[]
         else: library_dir = ''
+    
     filename = 'AltDatabase/affymetrix/'+species+'/'+annot_file
     fn=filepath(filename); annotation_dir = filename
     try:
@@ -150,8 +187,11 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
             try:
                 dw = DownloadWindow(print_out,'Download','Continue'); warn = 'no'
                 dw_results = dw.Results(); option = dw_results['selected_option']
-            except Exception: option = 1 ### Occurs when Tkinter is not present - used by CommandLine mode
-        if option == 1:
+            except OSError: option = 1 ### Occurs when Tkinter is not present - used by CommandLine mode
+        else:
+            try: option = option
+            except Exception: option = 2
+        if option == 1 or debug_mode=='yes':
             annot_file += '.zip'
             filenames = ['AltDatabase/affymetrix/'+species+'/'+annot_file]
             for filename in filenames:
@@ -177,7 +217,8 @@ def cleanUpLine(line):
 def copyFiles(file1,file2,root):
     print 'Copying files from:\n',file1
     data = export.ExportFile(file2) ### Ensures the directory exists
-    shutil.copyfile(file1,file2)
+    try: shutil.copyfile(file1,file2)
+    except Exception: print "This file already exists in the destination directory."
     root.destroy()
     
 class StatusWindow:
@@ -185,7 +226,7 @@ class StatusWindow:
         try:
             root = Tk()
             self._parent = root
-            root.title('AltAnalyze 1.13')
+            root.title('AltAnalyze 1.15')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 250; width = 700
@@ -212,11 +253,21 @@ class StatusWindow:
             file1,file2 = info_list
             try: sys.stdout = status; root.after(100,copyFiles(file1,file2,self._parent))
             except Exception: copyFiles(file1,file2,None)
+        if analysis_type == 'getOnlineDBConfig':
+            file_location_defaults = info_list
+            try: sys.stdout = status; root.after(100,getOnlineDBConfig(file_location_defaults,self._parent))
+            except Exception,e: getOnlineDBConfig(file_location_defaults,None)
+        if analysis_type == 'getOnlineEliteDatabase':
+            file_location_defaults,db_version,new_species_codes = info_list
+            try: sys.stdout = status; root.after(100,getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,self._parent))
+            except Exception,e: getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,None)
         try: self._parent.mainloop()
         except Exception: None
 
     def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
-    def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
+    def quit(self):
+        try: self._parent.quit(); self._parent.destroy(); sys.exit()
+        except Exception: self._parent.quit(); sys.exit()
     
 class StringVarFile:
     def __init__(self,stringVar,window):
@@ -230,11 +281,10 @@ class StringVarFile:
                 if self.__newline: new = ""; self.__newline = 0
                 new = new+c
         self.set(new)
-    def set(self,s): self.__stringvar.set(s); self.__window.update()   
+    def set(self,s): self.__stringvar.set(s); self.__window.update()
     def get(self): return self.__stringvar.get()
 
 ################# GUI #################
-
 
 class ProgressBar:
 	def __init__(self,method,t):
@@ -257,17 +307,20 @@ class ProgressBar:
 class GUI:
     def __init__(self, parent, option_db, option_list, defaults): 
         self._parent = parent; self._option_list = option_list; self._option_db = option_db
-        self._user_variables = user_variables; self.pathdb={}; i = 0
+        self._user_variables = user_variables; self.pathdb={}; i = -1
+        enter_index=0; radio_index=0; dropdown_index=0; check_index=0 ### used to keep track of how many enter boxes we have
+        self.default_dir = PathDir; self.default_file = PathFile
         
-        filename = 'Config/icon.gif'
+        filename = 'Config/icon.gif'; orient_type = 'left'
         if 'input_cel_dir' in option_list: filename = 'Config/aa_0.gif'
-        if 'include_raw_data' in option_list: filename = 'Config/aa_1.gif'
-        if 'filter_for_AS' in option_list: filename = 'Config/aa_2.gif'
+        if 'include_raw_data' in option_list: filename = 'Config/aa_1.gif'; orient_type = 'top'
+        if 'filter_for_AS' in option_list: filename = 'Config/aa_2.gif'; orient_type = 'top'
         if 'pathway_permutations' in option_list: filename = 'Config/goelite.gif'
         
         fn=filepath(filename); img = PhotoImage(file=fn)
         can = Canvas(parent); can.pack(side='top'); can.config(width=img.width(), height=img.height())        
         can.create_image(2, 2, image=img, anchor=NW)
+        #except Exception: print filename; 'what?';kill
         self.pathdb={}; use_scroll = 'no'
 
         #if defaults == 'groups' or defaults == 'comps' or 'filter_for_AS' in option_list:
@@ -279,19 +332,24 @@ class GUI:
                 if len(option_list)<15: height = 320; width = 320
             elif defaults == 'comps':
                 notes = "Experimental Group\t\t\tControl Group     "
-                label_text_str = 'AltAnalyze Group Comparisons'
+                label_text_str = 'AltAnalyze Pairwise Group Comparisons'
                 if len(option_list)<5: height = 250; width = 400
             elif 'filter_for_AS' in option_list:
                 label_text_str = 'AltAnalyze Alternative Exon Analysis Parameters'
-                height = 420; width = 775; use_scroll = 'yes'
+                height = 350; width = 400; use_scroll = 'yes'
+                if os.name != 'nt': width+=50
             elif 'pathway_permutations' in option_list:
                 label_text_str = 'GO-Elite Parameters'
                 height = 400; width = 425; use_scroll = 'yes'
+            elif 'expression_data_format' in option_list:
+                label_text_str = "AltAnalyze Expression Dataset Parameters"
+                height = 350; width = 400; use_scroll = 'yes'
+                if os.name != 'nt': width+=50
             else:
                 label_text_str = "AltAnalyze Main Dataset Parameters"
                 height = 300; width = 400; use_scroll = 'yes'
                 
-            if os.name != 'nt':height+=50; width+=50
+            if os.name != 'nt':height+=50; width+=100
             self.sf = PmwFreeze.ScrolledFrame(self._parent,
                     labelpos = 'n', label_text = label_text_str,
                     usehullsize = 1, hull_width = width, hull_height = height)
@@ -300,23 +358,42 @@ class GUI:
             if defaults == 'comps':
                 Label(self.frame,text=notes).pack()
 
-        object_directions = ['top','bottom','up','down']      
+        create_group = 'yes'
+        if 'pathway_permutations' in option_list or 'expression_data_format' in option_list or 'filter_probeset_types' in option_list:
+            if 'ge_ptype' in option_list:
+                self.group_tag = 'GO-Elite Gene Expression Analysis Filters'; od = option_db['dabg_p']
+                if od.ArrayOptions() == ['NA']: create_group = 'no'
+            elif 'pathway_permutations' in option_list:
+                self.group_tag = 'GO-Elite Over-Representation and Filtering Parameters'
+            if 'dabg_p' in option_list:
+                self.group_tag = 'Probesets Filtering Options'
+                option_db['dabg_p']; od = option_db['dabg_p']
+                if od.ArrayOptions() == ['NA']: create_group = 'no'
+            elif 'expression_data_format' in option_list:
+                self.group_tag = 'Gene Expression Analysis Options'
+            if 'filter_probeset_types' in option_list:
+                self.group_tag = 'Primary Alternative Exon Parameters'
+            if create_group == 'yes': 
+                custom_group = PmwFreeze.Group(self.sf.interior(),tag_text = self.group_tag)
+                custom_group.pack(fill = 'both', expand = 1, padx = 10, pady = 2)
+                insert_into_group = 'yes'
+            else: insert_into_group = 'no'
+        else: insert_into_group = 'no'
+                
+        object_directions = ['top','bottom','up','down']
         for option in option_list:
+          i+=1 ####Keep track of index - if options are deleted, count these to select the appropriate default from defaults
+          if option in option_db:
             od = option_db[option]; self.title = od.Display(); notes = od.Notes()      
             self.display_options = od.ArrayOptions()
-            #if len(defaults)>0: print i, od.DisplayObject(),self.display_options, option_list, defaults
-            if option == 'array_type':
-                valid_display_options=[]
-                for array_name in self.display_options:
-                    compatible_species = array_codes[array_name].SpeciesCodes()
-                    if species in compatible_species: valid_display_options.append(array_name)
-                self.display_options = valid_display_options
+            try: override_default = od.DefaultOption()
+            except Exception: override_default = ''
             if 'radio' in od.DisplayObject() and self.display_options != ['NA']:
                 if use_scroll == 'yes': parent_type = self.sf.interior()
                 else: parent_type = self._parent
                 if 'pathway_permutations' in option_list or 'new_run' in option_list: orient_type = 'top'
-                else: orient_type = 'left'
-                
+                if insert_into_group == 'yes': parent_type = custom_group.interior(); radio_index+=1
+
                 ### Create and pack a RadioSelect widget, with radiobuttons.
                 self._option = option
                 def radiocallback(tag,callback=self.callback,option=option):
@@ -324,14 +401,18 @@ class GUI:
                 radiobuttons = PmwFreeze.RadioSelect(parent_type,                       
                         buttontype = 'radiobutton', orient = 'vertical',
                         labelpos = 'w', command = radiocallback, label_text = self.title,
-                        hull_borderwidth = 2, hull_relief = 'ridge',
-                ); radiobuttons.pack(side = orient_type, expand = 1, padx = 10, pady = 10)
-
+                        hull_borderwidth = 2, hull_relief = 'ridge')
+                if insert_into_group == 'no': radiobuttons.pack(side = orient_type, expand = 1, padx = 10, pady = 10)
+                elif radio_index == 1: radiobuttons1 = radiobuttons
+                elif radio_index == 2: radiobuttons2 = radiobuttons
                 ### print self.display_options
                 ### Add some buttons to the radiobutton RadioSelect.
                 for text in self.display_options:
                     if text != ['NA']: radiobuttons.add(text)
-                if len(defaults) <1: self.default_option = self.display_options[0]
+                if len(override_default)>0: self.default_option = override_default
+                elif len(defaults) <1:
+                    try: self.default_option = self.display_options[0]
+                    except Exception: print option; kill
                 else: self.default_option = defaults[i]
                 radiobuttons.invoke(self.default_option)
                 if len(notes)>0: Label(self._parent, text=notes).pack()
@@ -343,13 +424,15 @@ class GUI:
                 if mac_print_mode == 'yes' or 'radbutton' in od.DisplayObject(): button_type = 'radiobutton'
                 else: button_type = 'button'
                 ### Create and pack a horizontal RadioSelect widget.
-                if len(defaults) <1: self.default_option = self.display_options[0]
+                if len(override_default)>0: self.default_option = override_default
+                elif len(defaults) <1: self.default_option = self.display_options[0]
                 else: self.default_option = defaults[i]
                 def buttoncallback(tag,callback=self.callback,option=option):
                     callback(tag,option)
-                if 'pathway_permutations' in option_list or 'new_run' in option_list: orient_type = 'vertical'
-                else: orient_type = 'horizontal'
-                horiz = PmwFreeze.RadioSelect(parent_type, buttontype = button_type, orient = orient_type,
+                if 'pathway_permutations' in option_list or 'new_run' in option_list: orientation = 'vertical'
+                elif 'run_from_scratch' in option_list: orientation = 'vertical'
+                else: orientation = 'horizontal'
+                horiz = PmwFreeze.RadioSelect(parent_type, buttontype = button_type, orient = orientation,
                         labelpos = 'w', command = buttoncallback,
                         label_text = self.title, frame_borderwidth = 2,
                         frame_relief = 'ridge'
@@ -372,33 +455,73 @@ class GUI:
                 group = PmwFreeze.Group(parent_type,tag_text = self.title)
                 group.pack(fill = 'both', expand = 1, padx = 10, pady = 2)
                 
-                def filecallback(callback=self.callback,option=option): self.getPath(option)
-                self.default_dir = ''                
+                def filecallback(callback=self.callback,option=option): self.getPath(option)             
                 entrytxt = StringVar(); #self.entrytxt.set(self.default_dir)
-                if len(od.GlobalDefault())>0: entrytxt.set(od.GlobalDefault())
-                self.pathdb[option] = entrytxt ###This should normally occur, unless setGlobalDefault has been set
+                try: default_option = string.replace(override_default,'---','')
+                except Exception: default_option = ''
+                entrytxt.set(default_option)
+                self.pathdb[option] = entrytxt
+                self._user_variables[option] = default_option
+                
                 #l = Label(group.interior(), text=self.title); l.pack(side=LEFT)        
-                entry = Entry(group.interior(),textvariable=self.pathdb[option]); entry.pack(side=LEFT,fill = 'both', expand = 1, padx = 10, pady = 2)
+                entry = Entry(group.interior(),textvariable=self.pathdb[option]);
+                entry.pack(side='left',fill = 'both', expand = 1, padx = 10, pady = 2)
                 button = Button(group.interior(), text="select "+od.DisplayObject(), width = 10, fg="red", command=filecallback); button.pack(side=LEFT, padx = 2,pady = 2)                    
-             
+
+                #print option,run_mappfinder, self.title, self.default_option
                 if len(notes)>0: ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
 
             if 'drop-down' in od.DisplayObject() and self.display_options != ['NA']:
+                #print option, defaults,  self.display_options
+                if use_scroll == 'yes': parent_type = self.sf.interior()
+                else: parent_type = self._parent
+                if insert_into_group == 'yes': parent_type = custom_group.interior(); dropdown_index+=1
+
                 self._option = option
                 self.default_option = self.display_options
-                ### Pack these into a groups to maintain organization
-                #group = PmwFreeze.Group(self._parent,tag_text = self.title)
-                #group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
-                    
+
                 def comp_callback1(tag,callback=self.callback,option=option):
                     callback(tag,option)
 
-                self.comp = PmwFreeze.OptionMenu(self._parent,
+                self.comp = PmwFreeze.OptionMenu(parent_type,
                     labelpos = 'w', label_text = self.title,                                                 
-                    items = self.default_option, command = comp_callback1,
-                ); self.comp.pack(anchor = 'w', padx = 10, pady = 0)
-                self.comp.invoke(self.default_option[0]) ###Just pick the first option
-                
+                    items = self.default_option, command = comp_callback1)
+
+                try: selected_default = od.DefaultOption()
+                except Exception:
+                    if len(defaults)>0: selected_default = defaults[i]
+                    else: selected_default = self.default_option[0] ###Just pick the first option
+
+                if 'species' in option:
+                    if 'selected_species2' in option:
+                        self.speciescomp2 = self.comp; self.speciescomp2.pack(anchor = 'w', padx = 10, pady = 0)
+                    elif 'selected_species3' in option:
+                        self.speciescomp3 = self.comp; self.speciescomp3.pack(anchor = 'w', padx = 10, pady = 0)
+                    else: self.speciescomp = self.comp; self.speciescomp.pack(anchor = 'w', padx = 10, pady = 0)
+                    self.speciescomp.invoke(selected_default) 
+                elif 'array_type' in option:
+                    self.arraycomp = self.comp; self.arraycomp.pack(anchor = 'w', padx = 10, pady = 0)
+                    self.arraycomp.invoke(selected_default)
+                elif 'manufacturer_selection' in option:
+                    self.vendorcomp = self.comp; self.vendorcomp.pack(anchor = 'w', padx = 10, pady = 0)
+                    self.vendorcomp.invoke(selected_default)
+                else:
+                    if insert_into_group == 'no':
+                        if 'version' in option: pady_int = 0
+                        else: pady_int = 1
+                        self.comp.pack(anchor = 'w', padx = 10, pady = pady_int)
+                    elif dropdown_index == 1: comp1 = self.comp
+                    elif dropdown_index == 2: comp2 = self.comp
+                    elif dropdown_index == 3: comp3 = self.comp
+                    elif dropdown_index == 4: comp4 = self.comp
+                    elif dropdown_index == 5: comp5 = self.comp
+                    elif dropdown_index == 6: comp6 = self.comp
+                    elif dropdown_index == 7: comp7 = self.comp
+                    self.comp.invoke(selected_default)
+                    if option == 'selected_version':
+                        notes = 'Note: Available species may vary based on database selection    \n'
+                        ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
+                        
             if 'pulldown_comps' in od.DisplayObject() and self.display_options != ['NA']:
                 self._option = option
                 self.default_option = self.display_options
@@ -407,6 +530,19 @@ class GUI:
                 ### Pack these into a groups to maintain organization
                 group = PmwFreeze.Group(self.sf.interior(),tag_text = self.title)
                 group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
+
+                if check_index == -1:
+                    check_option = 'analyze_all_conditions'
+                    def checkbuttoncallback(tag,state,checkbuttoncallback=self.checkbuttoncallback,option=check_option):
+                        checkbuttoncallback(tag,state,option)                
+                    ### Create and pack a vertical RadioSelect widget, with checkbuttons.
+                    self.checkbuttons = PmwFreeze.RadioSelect(self._parent,
+                            buttontype = 'checkbutton', command = checkbuttoncallback)
+                    self.checkbuttons.pack(side = 'top', expand = 1, padx = 0, pady = 0)
+                    ### Add some buttons to the checkbutton RadioSelect.
+                    self.checkbuttons.add('Analyze ALL GROUPS in addition to specifying comparisons')
+                    self._user_variables[check_option] = 'no'
+                    check_index+=1
                     
                 def comp_callback1(tag,callback=self.callback,option1=option1):
                     callback(tag,option1)
@@ -415,19 +551,23 @@ class GUI:
 
                 #labelpos = 'w', label_text = self.title,  -inside of OptionMenu
                 self.comp1 = PmwFreeze.OptionMenu(group.interior(),
-                    items = self.default_option, menubutton_width = 20, command = comp_callback1,
-                ); self.comp1.pack(side = LEFT, anchor = 'w', padx = 10, pady = 0)
+                    items = self.default_option, menubutton_width = 20, command = comp_callback1)
+                self.comp1.pack(side = LEFT, anchor = 'w', padx = 10, pady = 0)
 
                 self.comp2 = PmwFreeze.OptionMenu (group.interior(), 
                     items = self.default_option, menubutton_width = 20, command = comp_callback2,
                 ); self.comp2.pack(side = LEFT, anchor = 'w', padx = 10, pady = 0)
 
-                self.comp1.invoke(notes[0]) ; self.comp2.invoke(notes[1])
+                try: self.comp1.invoke(notes[0])
+                except Exception: null=[]
+                try: self.comp2.invoke(notes[1])
+                except Exception: null=[]
                 
             if 'simple_entry' in od.DisplayObject() and self.display_options != ['NA']:
                 self._option = option
                 ### Create and pack a horizontal RadioSelect widget.
-                self.default_option = self.display_options[0]
+                if len(override_default)>0: self.default_option = override_default
+                else: self.default_option = self.display_options[0]
                 def enter_callback(tag,enter_callback=self.enter_callback,option=option):
                     enter_callback(tag,option)
                 self.title = self.title + '\t '
@@ -440,12 +580,13 @@ class GUI:
             if 'enter' in od.DisplayObject() and self.display_options != ['NA']:
                 if use_scroll == 'yes': parent_type = self.sf.interior()
                 else: parent_type = self._parent
+                if insert_into_group == 'yes': parent_type = custom_group.interior(); enter_index+=1
                 self._option = option
                 ### Create and pack a horizontal RadioSelect widget.
-                if len(defaults) <1: self.default_option = self.display_options[0]
+                if len(override_default)>0: self.default_option = override_default
+                elif len(defaults) <1: self.default_option = self.display_options[0]
                 else: self.default_option = defaults[i]
                 #print self.default_option, self.title; kill
-
                 def custom_validate(tag,custom_validate=self.custom_validate,option=option):
                     validate = custom_validate(tag,option)
                 def custom_validate_p(tag,custom_validate_p=self.custom_validate_p,option=option):
@@ -456,27 +597,33 @@ class GUI:
                     else: use_method = 'i'
                 except ValueError:
                     #self.default_option = 'CHANGE TO A NUMERIC VALUE'; use_method = 'i'
-                    self.default_option = ''; use_method = 'i'
+                    self.default_option = string.replace(self.default_option,'---','')
+                    use_method = 'i'
                 if use_method == 'p':
                     entry_field = PmwFreeze.EntryField(parent_type,
-                            labelpos = 'w',
-                            label_text = self.title,
-                            validate = custom_validate_p, 
-                            value = self.default_option, hull_borderwidth = 2, hull_relief = 'ridge'
-                    ); entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 10)
+                            labelpos = 'w', label_text = self.title, validate = custom_validate_p, 
+                            value = self.default_option, hull_borderwidth = 2, hull_relief = 'ridge')
+                    if insert_into_group == 'no': entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 10)
+                    elif enter_index == 1: entry_field1 = entry_field
+                    elif enter_index == 2: entry_field2 = entry_field
+                    elif enter_index == 3: entry_field3 = entry_field
+                    elif enter_index == 4: entry_field4 = entry_field                     
                 if use_method == 'i':
                     entry_field = PmwFreeze.EntryField(parent_type,
-                            labelpos = 'w',
-                            label_text = self.title,
-                            validate = custom_validate,
-                            value = self.default_option, hull_borderwidth = 2, hull_relief = 'ridge'
-                    ); entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 10)
+                            labelpos = 'w', label_text = self.title, validate = custom_validate,
+                            value = self.default_option, hull_borderwidth = 2, hull_relief = 'ridge')
+                    if insert_into_group == 'no': entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 10)
+                    elif enter_index == 1: entry_field1 = entry_field
+                    elif enter_index == 2: entry_field2 = entry_field
+                    elif enter_index == 3: entry_field3 = entry_field
+                    elif enter_index == 4: entry_field4 = entry_field  
                 if len(notes)>0: Label(self._parent, text=notes).pack()
             if 'multiple-checkbox' in od.DisplayObject() and self.display_options != ['NA']:
                 if use_scroll == 'yes': parent_type = self.sf.interior()
                 else: parent_type = self._parent
                 self._option = option
-                if len(defaults) <1: self.default_option = self.display_options[0]
+                if len(override_default)>0: self.default_option = override_default
+                elif len(defaults) <1: self.default_option = self.display_options[0]
                 else: self.default_option = defaults[i]
                 def checkbuttoncallback(tag,state,checkbuttoncallback=self.checkbuttoncallback,option=option):
                     checkbuttoncallback(tag,state,option)                    
@@ -484,8 +631,8 @@ class GUI:
                 self.checkbuttons = PmwFreeze.RadioSelect(parent_type,
                         buttontype = 'checkbutton', orient = 'vertical',
                         labelpos = 'w', command = self.checkbuttoncallback,
-                        label_text = self.title, hull_borderwidth = 2, hull_relief = 'ridge',
-                ); self.checkbuttons.pack(side = 'left', expand = 1, padx = 10, pady = 10)
+                        label_text = self.title, hull_borderwidth = 2, hull_relief = 'ridge')
+                self.checkbuttons.pack(side = 'left', expand = 1, padx = 10, pady = 10)
 
                 ### Add some buttons to the checkbutton RadioSelect.
                 for text in self.display_options:
@@ -497,29 +644,91 @@ class GUI:
             if 'single-checkbox' in od.DisplayObject() and self.display_options != ['NA']:
                 if use_scroll == 'yes': parent_type = self.sf.interior()
                 else: parent_type = self._parent
+                if defaults == 'comps': parent_type = self._parent; orient_type = 'top'
+                if insert_into_group == 'yes': parent_type = custom_group.interior(); check_index+=1
+                
                 self._option = option
                 proceed = 'yes'
                 """if option == 'export_splice_index_values':
                     if analysis_method != 'splicing-index': proceed = 'no' ### only export corrected constitutive ratios if splicing index method chosen"""
                 if proceed == 'yes':
-                    if len(defaults) <1: self.default_option = self.display_options[0]
+                    if len(override_default)>0: self.default_option = override_default
+                    elif len(defaults) <1: self.default_option = self.display_options[0]
                     else: self.default_option = defaults[i]
                     if self.default_option != 'NA':
                         def checkbuttoncallback(tag,state,checkbuttoncallback=self.checkbuttoncallback,option=option):
                             checkbuttoncallback(tag,state,option)                
                         ### Create and pack a vertical RadioSelect widget, with checkbuttons.
                         self.checkbuttons = PmwFreeze.RadioSelect(parent_type,
-                                buttontype = 'checkbutton', command = checkbuttoncallback,
-                                hull_borderwidth = 2, hull_relief = 'ridge',
-                        ); self.checkbuttons.pack(side = 'left', expand = 1, padx = 10, pady = 10)
-
+                                buttontype = 'checkbutton', command = checkbuttoncallback)
+                                #hull_borderwidth = 2, hull_relief = 'ridge')
+                        if insert_into_group == 'no': self.checkbuttons.pack(side = orient_type, expand = 1, padx = 10, pady = 10)
+                        elif check_index == 1:  checkbuttons1 = self.checkbuttons
+                        elif check_index == 2:  checkbuttons2 = self.checkbuttons
+                        elif check_index == 3:  checkbuttons3 = self.checkbuttons
+                        elif check_index == 4:  checkbuttons4 = self.checkbuttons
                         ### Add some buttons to the checkbutton RadioSelect.
                         self.checkbuttons.add(self.title)
                         if self.default_option == 'yes': self.checkbuttons.invoke(self.title)
                         else: self._user_variables[option] = 'no'
                 if len(notes)>0: Label(self._parent, text=notes).pack()
-            i+=1 ####Keep track of index
-            
+
+            custom_group_endpoints = ['ge_ptype', 'mod', 'expression_threshold', 'run_goelite', 'gene_expression_cutoff', 'microRNA_prediction_method']
+            if option in custom_group_endpoints and insert_into_group == 'yes':
+                ### This is employed when we want to place several items into a group frame together.
+                ### Since this is a generic class, we need to setup special cases to do this, however,
+                ### this same code could be used in other instances as well
+                reorganize = 'no'
+                self.group_tag = 'GO-Elite Over-Representation and Filtering Parameters'; pady_int = 5
+                if 'run_goelite' in option_list: self.group_tag = 'Gene Expression Analysis Options'; pady_int = 1                
+                if 'microRNA_prediction_method' in option_list: self.group_tag = 'Advanced Options'; pady_int = 1; reorganize = 'yes'
+
+                try: checkbuttons1.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                except Exception: null=[]
+                try: checkbuttons2.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                except Exception: null=[]
+                try: checkbuttons3.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                except Exception: null=[]
+                try: checkbuttons4.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                except Exception: null=[]
+                try: radiobuttons2.pack(side = orient_type, expand = 1, padx = 10, pady = 5)
+                except Exception: null=[]
+                
+                try: comp1.pack(anchor = 'w', padx = 10, pady = pady_int)
+                except Exception: null=[]
+                try: radiobuttons1.pack(side = orient_type, expand = 1, padx = 10, pady = 5)
+                except Exception: null=[]
+                if reorganize == 'yes':
+                    try: comp2.pack(anchor = 'w', padx = 10, pady = pady_int)
+                    except Exception: null=[]
+                try: entry_field1.pack(fill = 'x', expand = 1, padx = 10, pady = 5)
+                except Exception: null=[]
+                try: entry_field2.pack(fill = 'x', expand = 1, padx = 10, pady = 5)
+                except Exception: null=[]
+                try: entry_field3.pack(fill = 'x', expand = 1, padx = 10, pady = 5)
+                except Exception: null=[]
+                try: entry_field4.pack(fill = 'x', expand = 1, padx = 8, pady = 5)
+                except Exception: null=[]
+                if reorganize == 'no':
+                    try: comp2.pack(anchor = 'w', padx = 10, pady = pady_int)
+                    except Exception: null=[]
+                try: comp3.pack(anchor = 'w', padx = 10, pady = pady_int)
+                except Exception: null=[]
+                try: comp4.pack(anchor = 'w', padx = 10, pady = pady_int)
+                except Exception: null=[]
+                try: comp5.pack(anchor = 'w', padx = 10, pady = pady_int)
+                except Exception: null=[]
+                try: comp6.pack(anchor = 'w', padx = 10, pady = pady_int)
+                except Exception: null=[]
+                try: comp7.pack(anchor = 'w', padx = 10, pady = pady_int)
+                except Exception: null=[]
+                enter_index=0; radio_index=0; dropdown_index=0
+                if 'ge_ptype' in option or 'expression_threshold' in option or 'gene_expression_cutoff' in option:
+                    custom_group = PmwFreeze.Group(self.sf.interior(),tag_text = self.group_tag)
+                    custom_group.pack(fill = 'both', expand = 1, padx = 10, pady = 10)
+                    insert_into_group = 'yes'
+                
+            #i+=1 ####Keep track of index
         #def quitcommand(): parent.destroy; sys.exit()
         #self.button = Button(text="   Quit  ", command=quitcommand)
         #self.button.pack(side = 'bottom', padx = 10, pady = 10)
@@ -531,29 +740,88 @@ class GUI:
         continue_to_next_win = Button(text = 'Continue', command = self._parent.destroy)
         continue_to_next_win.pack(side = 'right', padx = 10, pady = 10)
 
+        if 'input_annotation_file' in option_list:
+            skip_win = Button(text = 'Skip', command = self._parent.destroy)
+            skip_win.pack(side = 'right', padx = 10, pady = 10)
+            
         back_button = Button(self._parent, text="Back", command=self.goBack) 
         back_button.pack(side = 'right', padx =10, pady = 5)
         
         quit_win = Button(self._parent, text="Quit", command=self.quit) 
         quit_win.pack(side = 'right', padx =10, pady = 5)
-
+        
         button_text = 'Help'
-        #url = 'ReadMe/help_main.htm'
-        url = 'http://www.altanalyze.org/help_main.htm'
-        url = filepath(url)
-        self.url = url; help_button = Button(self._parent, text=button_text, command=self.linkout); help_button.pack(side = 'left', padx = 5, pady = 5)
+        url = 'http://www.altanalyze.org/help_main.htm'; self.url = url
+        pdf_help_file = 'Documentation/AltAnalyze-Manual.pdf'; pdf_help_file = filepath(pdf_help_file); self.pdf_help_file = pdf_help_file
+        
+        try: help_button = Button(self._parent, text=button_text, command=self.GetHelpTopLevel); help_button.pack(side = 'left', padx = 5, pady = 5)
+        except Exception: help_button = Button(self._parent, text=button_text, command=self.linkout); help_button.pack(side = 'left', padx = 5, pady = 5)
+
+        if 'species' in option_list or 'selected_species1' in option_list:
+            new_species_button = Button(self._parent, text='Add New Species', command=self.newSpecies)
+            new_species_button.pack(side = 'left', padx = 5, pady = 5)
 
         self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
         self._parent.mainloop()
-
+        
     def goBack(self):
         self._parent.destroy()
-        AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+        selected_options = selected_parameters; selected_options2=[] ### If we don't do this we get variable errors
+        if 'Library' == selected_options[-1]: selected_options[-1] = ''
+        for i in selected_options:
+            if i!='Library': selected_options2.append(i)
+        selected_options = selected_options2
+        try:
+            while selected_options[-2]==selected_options[-1]:
+                selected_options = selected_options[:-1] ### When clicking back on the next loop of a back, makes sure you don't get looped back to the same spot
+        except Exception: selected_options = selected_options
+        if len(selected_options)<3: run_parameter = 'no'
+        else: run_parameter = selected_options[:-1], self._user_variables
+        AltAnalyze.AltAnalyzeSetup(run_parameter); sys.exit()
         
+    def newSpecies(self):
+        self._user_variables['species'] = 'Add Species'
+        self._parent.destroy()
+        
+    def GetHelpTopLevel(self):
+        message = ''
+        self.message = message; self.online_help = 'Online Documentation'; self.pdf_help = 'Local PDF File'
+        tl = Toplevel(); self._tl = tl; nulls = '\t\t\t\t'; tl.title('Please select one of the options')
+
+        self.sf = PmwFreeze.ScrolledFrame(self._tl,
+                labelpos = 'n', label_text = '',
+                usehullsize = 1, hull_width = 320, hull_height = 200)
+        self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
+        self.frame = self.sf.interior()
+
+        group = PmwFreeze.Group(self.sf.interior(),tag_text = 'Options')
+        group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
+
+        filename = 'Config/icon.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
+        can = Canvas(group.interior()); can.pack(side='left',padx = 10, pady = 20); can.config(width=img.width(), height=img.height())        
+        can.create_image(2, 2, image=img, anchor=NW)
+
+        l1 = Label(group.interior(), text=nulls);  l1.pack(side = 'bottom')
+        text_button2 = Button(group.interior(), text=self.online_help, command=self.openOnlineHelp); text_button2.pack(side = 'top', padx = 5, pady = 5) 
+        try: text_button = Button(group.interior(), text=self.pdf_help, command=self.openPDFHelp); text_button.pack(side = 'top', padx = 5, pady = 5)
+        except Exception: text_button = Button(group.interior(), text=self.pdf_help, command=self.openPDFHelp); text_button.pack(side = 'top', padx = 5, pady = 5)
+        tl.mainloop()
+    def openPDFHelp(self):
+        if os.name == 'nt':
+            try: os.startfile('"'+self.pdf_help_file+'"')
+            except Exception:  os.system('open "'+self.pdf_help_file+'"')
+        elif 'darwin' in sys.platform: os.system('open "'+self.pdf_help_file+'"')
+        elif 'linux' in sys.platform: os.system('xdg-open "'+self.pdf_help_file+'"')   
+        self._tl.destroy()
+    def openOnlineHelp(self):
+        try: webbrowser.open(self.url)
+        except Exception: null=[]
+        self._tl.destroy()
+    
     def linkout(self):
         try: webbrowser.open(self.url)
         except Exception: null=[]
-
+        
     def Dlinkout(self):
         try: webbrowser.open(self.d_url)
         except Exception: null=[]
@@ -568,15 +836,13 @@ class GUI:
         tkMessageBox.showwarning("Quit","Use 'Quit' button to end program!",parent=self._parent)
 
     def quit(self):
-        self._parent.quit()
-        self._parent.destroy()
-        sys.exit()
+        try: self._parent.quit(); self._parent.destroy(); sys.exit()
+        except Exception: self._parent.quit(); sys.exit()
 
     def continue_win(self):
         ### Currently not used - can be used to check data integrity before closing a window
-        self._parent.quit()
-        self._parent.destroy()
-        sys.exit()
+        try: self._parent.quit(); self._parent.destroy(); sys.exit()
+        except Exception: self._parent.quit(); sys.exit()
         
     def chooseDirectory(self,option):
         tag = tkFileDialog.askdirectory(parent=self._parent)
@@ -585,32 +851,87 @@ class GUI:
     def chooseFile(self,option):
         tag = tkFileDialog.askopenfile(parent=self._parent)
         self._user_variables[option] = tag.name
-
+        
     def getPath(self,option):
-        if 'dir' in option:
-            dirPath = tkFileDialog.askdirectory(parent=self._parent) #initialdir=self.default_dir
+        if 'dir' in option or 'folder' in option:
+            try: dirPath = tkFileDialog.askdirectory(parent=self._parent,initialdir=self.default_dir)
+            except Exception: 
+                self.default_dir = ''
+                try: dirPath = tkFileDialog.askdirectory(parent=self._parent,initialdir=self.default_dir)
+                except Exception: 
+                    try: dirPath = tkFileDialog.askdirectory(parent=self._parent)
+                    except Exception:
+                        print_out = "AltAnalyze is unable to initialize directory opening.\nThis error may be due to one of the following issues:\n"
+                        print_out += "1) (if running directly from source code) Tkinter/PMW components are not installed or are incompatible.\n"
+                        print_out += "2) (if running directly from source code) Python version is untested with AltAnalyze.\n"
+                        print_out += "3) There is a conflict between the AltAnalyze packaged version of python on the OS.\n\n"
+                        print_out += "Contact genmapp@gladstone.ucsf.edu if this error persists with your system information.\n"
+                        print_out += "Alternatively, try AltAnalyze using command-line options (http://www.AltAnalyze.org)."
+                        try: InfoWindow(print_out,'Continue')
+                        except Exception: print print_out
+                        try: self._parent.destroy(); sys.exit()
+                        except Exception: sys.exit()
+            self.default_dir = dirPath
+            entrytxt = self.pathdb[option]
+            entrytxt.set(dirPath)
+            self._user_variables[option] = dirPath
+            try: file_location_defaults['PathDir'].SetLocation(dirPath) ### Possible unknown exception here... may need to correct before deployment
+            except Exception:
+                try:
+                    ### Entry was deleted from Config file - re-create it
+                    fl = FileLocationData('local', dirPath, 'all')
+                    file_location_defaults['PathDir'] = fl
+                except Exception: null=[]
+            exportDefaultFileLocations(file_location_defaults)
+
         if 'file' in option:
-            tag = tkFileDialog.askopenfile(parent=self._parent)
-            try: dirPath = tag.name #initialdir=self.default_dir
-            except AttributeError: dirPath = ''
-        entrytxt = self.pathdb[option]
-        entrytxt.set(dirPath)
-        self._user_variables[option] = dirPath
-        ### Allows the option_db to be updated for the next round (if an error is encountered)
-        od = self._option_db[option]
-        od.setGlobalDefault(dirPath)
+            try: tag = tkFileDialog.askopenfile(parent=self._parent,initialdir=self.default_file)
+            except Exception: 
+                self.default_file = ''
+                try: tag = tkFileDialog.askopenfile(parent=self._parent,initialdir=self.default_file)
+                except Exception: 
+                    try: tag = tkFileDialog.askopenfile(parent=self._parent)
+                    except Exception:
+                        print_out = "AltAnalyze is unable to initialize directory opening.\nThis error may be due to one of the following issues:\n"
+                        print_out += "1) (if running directly from source code) Tkinter/PMW components are not installed or are incompatible.\n"
+                        print_out += "2) (if running directly from source code) Python version is untested with AltAnalyze.\n"
+                        print_out += "3) There is a conflict between the AltAnalyze packaged version of python on the OS.\n\n"
+                        print_out += "Contact genmapp@gladstone.ucsf.edu if this error persists with your system information.\n"
+                        print_out += "Alternatively, try AltAnalyze using command-line options (see documentation at http://AltAnalyze.org)."
+                        try: InfoWindow(print_out,'Continue')
+                        except Exception: print print_out
+                        try: self._parent.destroy(); sys.exit()
+                        except Exception: sys.exit()
+            try: filePath = tag.name #initialdir=self.default_dir
+            except AttributeError: filePath = ''
+            filePath_dir = string.join(string.split(filePath,'/')[:-1],'/')
+            self.default_file = filePath_dir
+            entrytxt = self.pathdb[option]
+            entrytxt.set(filePath)
+            self._user_variables[option] = filePath
+            try: file_location_defaults['PathFile'].SetLocation(filePath_dir)
+            except Exception:
+                try:
+                    ### Entry was deleted from Config file - re-create it
+                    fl = FileLocationData('local', filePath_dir, 'all')
+                    file_location_defaults['PathFile'] = fl
+                except Exception: null = None
+            exportDefaultFileLocations(file_location_defaults)
         
     def Report(self,tag,option):
         output = tag
         return output
     def __repr__(self,tag,option): return self.Report(tag,option)
     
-    def Results(self): return self._user_variables
-
+    def Results(self):
+        for i in self._user_variables:
+            user_variables[i]=self._user_variables[i]
+        return self._user_variables
+    
     def custom_validate(self, text, option):
         self._user_variables[option] = text
-        try: text = float(text);return 1
-        except ValueError: return -1
+        #try: text = float(text);return 1
+        #except ValueError: return -1
 
     def enter_callback(self, tag, option):
         self._user_variables[option] = tag
@@ -627,7 +948,75 @@ class GUI:
     def callback(self, tag, option):
         #print 'Button',[option], tag,'was pressed.'
         self._user_variables[option] = tag
+        change_var = ''
+        if option == 'dbase_version':
+            ###Export new species info
+            exportDBversion(tag); change_var = 'all'
+            try: self.changeVendorSelection(); self.changeSpeciesSelection(); self.changeArraySelection()
+            except Exception: null=[]
+        elif option == 'species':
+            try: self.changeArraySelection()
+            except Exception: null=[]
+        elif option == 'manufacturer_selection':
+            try: self.changeSpeciesSelection(); self.changeArraySelection()
+            except Exception: null=[]
+        #elif option == 'array_type':
+            #self.checkSpeciesArraySelection(array_type)
 
+        elif option == 'selected_version':
+            current_species_names = db_versions[tag]
+            current_species_names.sort()
+            try: self.speciescomp.setitems(['---']+current_species_names)
+            except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+            try: self.speciescomp2.setitems(['---']+current_species_names)
+            except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+            try: self.speciescomp3.setitems(['---']+current_species_names)
+            except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+
+    def changeSpeciesSelection(self):
+        vendor = self._user_variables['manufacturer_selection'] ### Get vendor (stored as global)
+        current_species_names = getSpeciesList(vendor) ### Need to change species, manufacturers and array_type
+        try: self.speciescomp.setitems(current_species_names)
+        except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+        for i in self._option_list:
+            if 'species' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
+                last_selected_species = self._user_variables[i]
+                if last_selected_species not in current_species_names:
+                    try: self._user_variables[i] = current_species_names[0]
+                    except Exception: null = []
+
+    def checkSpeciesArraySelection(self,array_type):
+        current_species_names = getSpeciesForArray(array_type)
+        try: self.speciescomp.setitems(current_species_names)
+        except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+        for i in self._option_list:
+            if 'species' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
+                try: self._user_variables[i] = current_species_names[0]
+                except Exception: null = []
+        
+    def changeArraySelection(self):
+        species_name = self._user_variables['species'] ### Get species (stored as global)
+        vendor = self._user_variables['manufacturer_selection'] ### Get vendor (stored as global)
+        species = species_codes[species_name].SpeciesCode()
+        current_array_types, manufacturer_list = getArraysAndVendors(species,vendor)
+        try: self.arraycomp.setitems(current_array_types)
+        except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+        for i in self._option_list:
+            if 'array_type' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
+                if self._user_variables[i] not in current_array_types: ### If the current array type is supported by the new species selection, keep it the same
+                    try: self._user_variables[i] = current_array_types[0]
+                    except Exception: null = []
+
+    def changeVendorSelection(self):
+        species_name = self._user_variables['species'] ### Get species (stored as global)
+        current_array_types, manufacturer_list = getArraysAndVendors(species,'')
+        try: self.vendorcomp.setitems(manufacturer_list)
+        except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+        for i in self._option_list:
+            if 'manufacturer_selection' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
+                try: self._user_variables[i] = manufacturer_list[0]
+                except Exception: null = []
+                
     def multcallback(self, tag, state):
         if state: action = 'pressed.'
         else: action = 'released.'
@@ -645,55 +1034,157 @@ class GUI:
         #print '---blahh', [option], [tag], [state], [action], [self.checkbuttons.getcurselection()]
         self._user_variables[option] = tag2
 
- ################# Import Options and Defaults ##################
+ ################# Database Version Handling ##################
 
-def getPrimaryUserParameters():
-    print "\n******Analysis Options*******"
-    species_code=''; array_code=''
-    while species_code == '':
-        x = 1; print "Select Species for Analyses"
-        for species_name in species_list: print str(x)+')',species_name; x+=1
+class PreviousResults:
+    def __init__(self, user_variables): 
+        self._user_variables = user_variables
+    def Results(self): return self._user_variables
+        
+def exportDefaultFileLocations(file_location_defaults):
+    ### If the user supplies new defaults, over-write the existing
+    fn=filepath('Config/default-files.csv'); data = open(fn,'w')
+    for app in file_location_defaults:
+        fl_list = file_location_defaults[app]
         try:
-            inp = sys.stdin.readline(); inp = int(inp.strip())
-            try: species = species_list[inp-1]; species_code = species_codes[species].SpeciesCode()
-            except IndexError: print "!!!!!Requires a numeric value between 1-"+str(len(species_list)),'\n'
-        except ValueError: print "!!!!!Requires a numeric value between 1-"+str(len(species_list)),'\n'
-    
-    while array_code == '':
-        x = 1; array_list2=[]; print "\nSelect Array Type"
-        for array_name in array_list:
-            if species_code in array_codes[array_name].SpeciesCodes():
-                print str(x)+')',array_name; x+=1; array_list2.append(array_name)
+            for fl in fl_list:
+                values = [app,fl.Status(),fl.Location(),fl.Species()]
+                values = '"'+string.join(values,'","')+'"'+'\n'
+                data.write(values)
+        except Exception:
+            fl = fl_list
+            values = [app,fl.Status(),fl.Location(),fl.Species()]
+            values = '"'+string.join(values,'","')+'"'+'\n'
+            data.write(values)
+    data.close()
+
+def getSpeciesList(vendor):
+    try: current_species_dirs = unique.read_directory('/AltDatabase')
+    except Exception: ### Occurs when the version file gets over-written with a bad directory name
         try:
-            inp = sys.stdin.readline(); inp = int(inp.strip())
-            try: array = array_list2[inp-1]; array_code = array_codes[array].ArrayCode()
-            except IndexError: print "!!!!!Requires a numeric value between 1-"+str(len(species_list)),'\n'
-        except ValueError: print "!!!!!Requires a numeric value between 1-"+str(len(species_list)),'\n'
-    if "3'" in array: ###Thus the user is analyzing a conventional 3' array
-        print '\nMake sure that an Affymetrix .CSV annotation file for your microarray has been to "AltDatabases/Affymetrix/*species-code*/"'
-        print "(Select enter/return to continue...)"; inp = sys.stdin.readline()
+            ### Remove the version file and wipe the species file
+            os.remove(filepath('Config/version.txt'))
+            #raw = export.ExportFile('Config/species.txt'); raw.close()
+            os.mkdir(filepath('AltDatabase'))
+            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+        except Exception: null = []
+        try: elite_db_versions = returnDirectoriesNoReplace('/AltDatabase')
+        except Exception:
+            try: os.mkdir(filepath('AltDatabase'))
+            except Exception: null=[]
+            elite_db_versions = returnDirectoriesNoReplace('/AltDatabase')
+        try: exportDBversion(elite_db_versions[0])
+        except Exception: exportDBversion('')
+        current_species_dirs = unique.read_directory('/AltDatabase')
 
-    manufacturer = array_codes[array].Manufacturer()
-    constitutive_source = array_codes[array].ConstitutiveSource()
-    
-    print "\nSelect Analysis"
-    print '1) Run analyses from scratch using expression file files ("ExpressionInput")'
-    print '2) Directly run alternative exon analyses using AltAnalyze filtered files ("AltExpression")'
-    print '3) Update existing AltAnalyze databases'
-    inp = sys.stdin.readline(); inp = inp.strip()
-    if inp == "1": run_from_scratch = 'expression file'
-    elif inp == "2": run_from_scratch = 'AltAnalyze filtered'
-    elif inp == "3": run_from_scratch = 'update DBs'
-    
-    print "Proceed Using Default Parameters?"
-    print '1) Use defaults (see "Config/default-**.txt")'
-    print '2) Change defaults (see "Config/options.txt" and associated default files)'
-    inp = sys.stdin.readline(); inp = inp.strip()
-    if inp == "1": proceed = 'yes'
-    elif inp == "2": proceed = 'no'; sys.exit()
-    
-    return species_code, array_code, manufacturer, constitutive_source, run_from_scratch
+    current_species_names=[]; manufacturers_list=[]
+    for species in species_codes:
+        species_code = species_codes[species].SpeciesCode()
+        if species_code in current_species_dirs:
+            if len(vendor)>0:
+                proceed = 'no'
+                for array_name in array_codes:
+                    manufacturer = array_codes[array_name].Manufacturer()
+                    if manufacturer == vendor:
+                        if species_code in array_codes[array_name].SpeciesCodes(): proceed = 'yes'
+            else:
+                for array_name in array_codes:
+                    manufacturer = array_codes[array_name].Manufacturer()
+                    if species_code in array_codes[array_name].SpeciesCodes():
+                        manufacturers_list.append(manufacturer)
+                proceed = 'yes'
+            if proceed == 'yes': current_species_names.append(species)
+    current_species_names.sort(); manufacturers_list = unique.unique(manufacturers_list); manufacturers_list.sort()
+    if len(vendor)>0:
+        return current_species_names
+    else: return current_species_names, manufacturers_list
 
+def exportDBversion(db_version):
+    import datetime
+    today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
+    exportVersionData(db_version,today,'Config/')
+
+def exportVersionData(version,version_date,dir):   
+    new_file = dir+'version.txt'
+    data = export.ExportFile(new_file)
+    data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
+
+def importConfigFile():
+    #print "importing config file"
+    filename = 'Config/config.txt'
+    fn=filepath(filename); config_db={}
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        config_type,options = string.split(data,'\t')
+        config_db[config_type] = options
+    return config_db
+
+def exportConfigFile(config_db):
+    #print "exporting config file"
+    new_file = 'Config/config.txt'
+    data = export.ExportFile(new_file)
+    for config in config_db:
+        data.write(config+'\t'+str(config_db[config])+'\n'); data.close()
+    
+def importOnlineDatabaseVersions():
+    filename = 'Config/array_versions.txt'
+    fn=filepath(filename); global db_versions; db_versions={}; global db_versions_vendors; db_versions_vendors={}
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        species,version,vendors = string.split(data,'\t')
+        vendors  = string.split(vendors,'|')
+        ad = ArrayData('','',vendors,'',species)
+        version = string.replace(version,'Plus','') ### The user won't understand the Plus which relates to the GO-Elite version (AltAnalyze does not have a plus but we want the Plus for goelite)
+        try: db_versions[version].append(species)
+        except KeyError: db_versions[version] = [species]
+        try: db_versions_vendors[version].append(ad)
+        except KeyError: db_versions_vendors[version] = [ad]
+    return db_versions
+
+def getOnlineDBConfig(file_location_defaults,root):
+    base_url = file_location_defaults['url'].Location()
+    fln1,status1 = update.download(base_url+'Config/species_all.txt','Config/','')
+    fln2,status2 = update.download(base_url+'Config/source_data.txt','Config/','')
+    fln3,status3 = update.download(base_url+'Config/array_versions.txt','Config/','')
+    try:
+        if 'Internet' not in status3:
+            print 'Finished downloading the latest configuration files.'; root.destroy()
+        else:
+            try: WarningWindow(status3,'Error Encountered!'); root.destroy(); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+            except Exception: print status3; root.destroy(); sys.exit()
+    except Exception: null=[]
+
+def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,root):
+    base_url = file_location_defaults['url'].Location()
+    goelite_url = file_location_defaults['goelite'].Location()
+    dbs_added = 0
+
+    fln,status = update.download(goelite_url+'Databases/'+db_version+'Plus/OBO.zip','AltDatabase/goelite/','')
+    if 'Internet' not in status: print "Gene Ontology structure files downloaded."
+    
+    for species_code in new_species_codes:
+        #print [base_url+'AltDatabase/'+db_version+'/'+species_code+'.zip']
+        fln,status = update.download(base_url+'AltDatabase/updated/'+db_version+'/'+species_code+'.zip','AltDatabaseNoVersion/','')
+        if 'Internet' not in status:
+            print 'Finished downloading the latest species database files.'
+            dbs_added+=1
+            #print goelite_url+'Databases/'+db_version+'Plus/'+species_code+'.zip'
+        try: fln,status = update.download(goelite_url+'Databases/'+db_version+'Plus/'+species_code+'.zip','AltDatabase/goelite/','')
+        except Exception: print "No species GO-Elite database found."
+        if 'Internet' not in status: print "GO-Elite database installed." ; dbs_added+=1
+        else: print "No species GO-Elite database found."
+        try: os.mkdir(filepath('AltDatabase/'+species_code))
+        except Exception: null=[]
+    if dbs_added>0:
+        print_out = "New species data successfully added to database."
+        try: InfoWindow(print_out,'Continue')
+        except Exception: print print_out
+        try: root.destroy()
+        except Exception: null=[]
+    else:
+        if root !='' and root !=None: WarningWindow(status,'Error Encountered!'); root.destroy(); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+        else: print status; root.destroy(); sys.exit()
+        
 class SupprotedArrays:
     def __init__(self, array_name, library_file, annotation_file, species, array_type):
         self.array_name = array_name; self.library_file = library_file; self.annotation_file = annotation_file
@@ -703,7 +1194,7 @@ class SupprotedArrays:
     def AnnotationFile(self): return self.annotation_file
     def Species(self): return self.species
     def ArrayType(self): return self.array_type
-    def __repr__(self): return self.Report()
+    def __repr__(self): return self.ArrayName()
     
 def importSupportedArrayInfo():
     filename = 'Config/ArrayFileInfo.txt'; x=0
@@ -746,7 +1237,13 @@ def importSystemInfo():
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        sysname=t[0];syscode=t[1]
+        if '!DOCTYPE' in data:
+            fn2 = string.replace(fn,'.txt','_archive.txt')
+            import shutil; shutil.copyfile(fn2,fn) ### Bad file was downloaded (with warning)
+            importSystemInfo(); break
+        else:
+            try: sysname=t[0];syscode=t[1]
+            except Exception: sysname=''            
         try: mod = t[2]
         except KeyError: mod = ''
         if x==0: x=1
@@ -756,6 +1253,18 @@ def importSystemInfo():
             if len(mod)>1: mod_list.append(sysname)
             system_codes[sysname] = ad
     return system_list,mod_list
+
+def exportSystemInfo():
+    if len(system_codes)>0:
+        filename = 'Config/source_data.txt'
+        fn=filepath(filename); data = open(fn,'w')
+        header = string.join(['System','SystemCode','MOD_status'],'\t')+'\n'
+        data.write(header)
+        for sysname in system_codes:
+            ad = system_codes[sysname]
+            values = string.join([sysname,ad.SystemCode(),ad.MOD()],'\t')+'\n'
+            data.write(values)
+        data.close()
 
 class SpeciesData:
     def __init__(self, abrev, species, algorithms):
@@ -774,32 +1283,38 @@ def getSpeciesInfo():
     return species_names
     
 def importSpeciesInfo():
-    filename = 'Config/species.txt'; x=0
-    fn=filepath(filename); global species_list; species_list=[]; global species_codes; species_codes={}
+    try:
+        if integrate_online_species == 'yes': filename = 'Config/species_all.txt'
+        else: filename = 'Config/species.txt'
+    except Exception: filename = 'Config/species.txt'
+    
+    fn=filepath(filename); global species_list; species_list=[]; global species_codes; species_codes={}; x=0
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
-        abrev,species,algorithms = string.split(data,'\t')
+        try:
+            try: abrev,species,algorithms = string.split(data,'\t')
+            except Exception: abrev,species = string.split(data,'\t'); algorithms = ''
+        except Exception:
+            if '!DOCTYPE': print_out = "A internet connection could not be established.\nPlease fix the problem before proceeding."
+            else: print_out = "Unknown file error encountered."
+            IndicatorWindow(print_out,'Continue')
+            raw = export.ExportFile(fn); raw.close(); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
         if x==0: x=1
         else:
             algorithms = string.split(algorithms,'|')
             species_list.append(species)
             sd = SpeciesData(abrev,species,algorithms)
             species_codes[species] = sd
-    ### Add an other entry
-    species_list.append('other')
-    sd = SpeciesData('other','other',[])
-    species_codes['other'] = sd
 
 def exportSpeciesInfo(species_codes):
     fn=filepath('Config/species.txt'); data = open(fn,'w'); x=0
     header = string.join(['species_code','species_name','compatible_algorithms'],'\t')+'\n'
     data.write(header)
     for species in species_codes:
-        if 'other' not in species:
-            sd = species_codes[species]; algorithms = string.join(sd.Algorithms(),'|')
-            values = [sd.SpeciesCode(),species,algorithms]
-            values = string.join(values,'\t')+'\n'
-            data.write(values)
+        sd = species_codes[species]; algorithms = string.join(sd.Algorithms(),'|')
+        values = [sd.SpeciesCode(),species,algorithms]
+        values = string.join(values,'\t')+'\n'
+        data.write(values)
     data.close()
             
 class ArrayGroupData:
@@ -835,7 +1350,7 @@ class ArrayData:
     def ConstitutiveSource(self): return self._constitutive_source
     def SpeciesCodes(self): return self._species
     def setSpeciesCodes(self,species): species = self._species
-    def __repr__(self): return self.Report()
+    def __repr__(self): return self.ArrayCode()+'|'+str(self.SpeciesCodes())+'|'+str(self.Manufacturer())
     
 def importArrayInfo():
     filename = 'Config/arrays.txt'; x=0
@@ -862,12 +1377,12 @@ def exportArrayInfo(array_codes):
         data.write(values)
     data.close()
             
-class DefaultFileLocationData:
+class FileLocationData:
     def __init__(self, status, location, species):
         self._status = status; self._location = location; self._species = species
     def Status(self): return self._status
     def Location(self): return self._location
-    def ResetLocation(self,location): self._location = location
+    def SetLocation(self,location): self._location = location
     def Species(self): return self._species
     def __repr__(self): return self.Report()
     
@@ -879,8 +1394,8 @@ def importDefaultFileLocations():
         data = cleanUpLine(line)
         ###Species can be multiple species - still keep in one field
         app,status,location,species = string.split(data,'\t')
-        fl = DefaultFileLocationData(status, location, species)
-        if x==0: x=1
+        fl = FileLocationData(status, location, species)
+        if species == 'all': file_location_defaults[app] = fl
         else:
             try: file_location_defaults[app].append(fl)
             except KeyError: file_location_defaults[app] = [fl]
@@ -889,10 +1404,32 @@ def importDefaultFileLocations():
 def exportDefaultFileLocations(file_location_defaults):
     ### If the user supplies new defaults, over-write the existing
     fn=filepath('Config/default-files.csv'); data = open(fn,'w')
-    data.write('Program/Download,Status,Location,Species\n')
     for app in file_location_defaults:
         fl_list = file_location_defaults[app]
-        for fl in fl_list:
+        try:
+            for fl in fl_list:
+                values = [app,fl.Status(),fl.Location(),fl.Species()]
+                values = '"'+string.join(values,'","')+'"'+'\n'
+                data.write(values)
+        except Exception:
+            fl = fl_list
+            values = [app,fl.Status(),fl.Location(),fl.Species()]
+            values = '"'+string.join(values,'","')+'"'+'\n'
+            data.write(values)
+    data.close()
+    
+def exportDefaultFileLocations(file_location_defaults):
+    ### If the user supplies new defaults, over-write the existing
+    fn=filepath('Config/default-files.csv'); data = open(fn,'w')
+    for app in file_location_defaults:
+        fl_list = file_location_defaults[app]
+        try:
+            for fl in fl_list:
+                values = [app,fl.Status(),fl.Location(),fl.Species()]
+                values = '"'+string.join(values,'","')+'"'+'\n'
+                data.write(values)
+        except Exception:
+            fl = fl_list
             values = [app,fl.Status(),fl.Location(),fl.Species()]
             values = '"'+string.join(values,'","')+'"'+'\n'
             data.write(values)
@@ -930,7 +1467,47 @@ class Defaults:
     def Species(self): return self._species
     def __repr__(self): return self.Report()
 
-def probesetSummarize(exp_file_location_db,species,root):
+def annotateMetaProbesetGenes(summary_exp_file, expression_file, metaprobeset_file, species):
+    metaprobeset_cv_file = string.replace(metaprobeset_file,species+'_',species+'_Conversion_')
+    metaprobeset_cv_file = string.replace(metaprobeset_cv_file,'.mps','.txt')
+
+    fn=filepath(metaprobeset_cv_file); uid_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        uid,ens_gene = string.split(data,'\t')
+        uid_db[uid] = ens_gene
+
+    export_data = export.ExportFile(expression_file)        
+    fn=filepath(summary_exp_file); x=0
+    for line in open(fn,'rU').xreadlines():
+        if line[0] == '#': null=[]
+        elif x == 0: export_data.write(line); x+=1
+        else:
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            uid = t[0]; ens_gene = uid_db[uid]
+            export_data.write(string.join([ens_gene]+t[1:],'\t')+'\n')
+    export_data.close()
+
+def reformatResidualFile(residual_exp_file,residual_destination_file):
+    ### Re-write the residuals file so it has a single combined unique ID (arbitrary gene ID + probe ID)
+    print 'Re-formatting and moving the calculated residuals file...'
+    export_data = export.ExportFile(residual_destination_file)   
+    fn=filepath(residual_exp_file); x=0
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if x==0 and data[0]=='#': null=[]
+        elif x == 0:
+            x+=1; t = string.split(data,'\t')
+            export_data.write(string.join(['UID']+t[5:],'\t')+'\n')
+        else:
+            t = string.split(data,'\t')
+            uid = t[0]+'-'+t[2] ### arbitrary numeric gene ID + probes ID
+            export_data.write(string.join([uid]+t[5:],'\t')+'\n')
+    export_data.close()
+    os.remove(residual_exp_file)
+    
+def probesetSummarize(exp_file_location_db,analyze_metaprobesets,probeset_type,species,root):
     for dataset in exp_file_location_db: ### Instance of the Class ExpressionFileLocationData
         fl = exp_file_location_db[dataset]
         apt_dir =fl.APTLocation()
@@ -945,6 +1522,11 @@ def probesetSummarize(exp_file_location_db,species,root):
         output_dir = fl.OutputDir() + '/APT-output'
         cache_dir = output_dir + '/apt-probeset-summarize-cache'
 
+        if xhyb_remove == 'yes' and array_type == 'gene': xhyb_remove = 'no' ### This is set when the user mistakenly selects exon array, initially
+        if analyze_metaprobesets == 'yes':
+            export_features = 'true'
+            metaprobeset_file = filepath('AltDatabase/'+species+'/'+array_type+'/'+species+'_'+array_type+'_'+probeset_type+'.mps')
+        
         import subprocess; import platform
         if '/bin' in apt_dir: apt_file = apt_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
         elif os.name == 'nt': apt_file = apt_dir + '/PC/apt-probeset-summarize'; plat = 'Windows'
@@ -955,7 +1537,7 @@ def probesetSummarize(exp_file_location_db,species,root):
         apt_file = filepath(apt_file)
         #print 'AltAnalyze has choosen APT for',plat
         print "Begining probeset summarization of input CEL files with Affymetrix Power Tools (APT)..."
-        if array_type == "3'array" or array_type == 'AltMouse' or array_type == 'gene':
+        if 'cdf' in pgf_file or 'CDF' in pgf_file:
             if xhyb_remove == 'yes' and array_type == 'AltMouse':
                 kill_list_dir = osfilepath('AltDatabase/'+species+'/AltMouse/'+species+'_probes_to_remove.txt')
             else: kill_list_dir = osfilepath('AltDatabase/affymetrix/APT/probes_to_remove.txt')
@@ -970,42 +1552,42 @@ def probesetSummarize(exp_file_location_db,species,root):
                     summary_exp_file = output_dir+'/'+algorithm+'.summary.txt'
                     shutil.copyfile(summary_exp_file, expression_file)
                     os.remove(summary_exp_file)
+                    try: residual_dabg = output_dir+'/dabg.residuals.txt'; os.remove(residual_dabg)
+                    except Exception: null = []
             except NameError: status = 'failed'
-            
-        elif array_type == 'gene':
-            try:
-                algorithm = 'rma-sketch'; pval = 'dabg'
-                retcode = subprocess.call([
-                apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file,
-                "-a", algorithm, "-o", output_dir, "--cel-files", cel_dir]) # use "--feature-details" instead of "-a" for dabg to get probe level p-values
-                if retcode: status = 'failed'
-                else:
-                    status = 'run'
-                    summary_exp_file = output_dir+'/'+algorithm+'.summary.txt'
-                    shutil.copyfile(summary_exp_file, expression_file)
-                    os.remove(summary_exp_file)                    
-            except NameError: status = 'failed'
-            #apt-probeset-summarize -a rma-sketch -a plier-mm-sketch -p chip.pgf -c chip.clf -o output-dir *.cel
-
-        elif array_type == 'exon':
+        else:
             if xhyb_remove == 'yes':
                 kill_list_dir = osfilepath('AltDatabase/'+species+'/exon/'+species+'_probes_to_remove.txt')
             else: kill_list_dir = osfilepath('AltDatabase/affymetrix/APT/probes_to_remove.txt')
             try:
                 algorithm = 'rma-sketch'; pval = 'dabg'
-                retcode = subprocess.call([
-                apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir,
-                "-a", algorithm, "-a", pval, "-o", output_dir, "--cel-files", cel_dir])
+                if analyze_metaprobesets != 'yes':
+                    retcode = subprocess.call([
+                    apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir,
+                    "-a", algorithm, "-a", pval, "-o", output_dir, "--cel-files", cel_dir])
+                else:
+                    retcode = subprocess.call([
+                    apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir, "-m", metaprobeset_file,
+                    "-a", algorithm, "-a", pval, "-o", output_dir, "--cel-files", cel_dir, "--feature-details", export_features])
                 if retcode: status = 'failed'
                 else:
                     status = 'run'
                     summary_exp_file = output_dir+'/'+algorithm+'.summary.txt'
+                    #if analyze_metaprobesets == 'yes': annotateMetaProbesetGenes(summary_exp_file, expression_file, metaprobeset_file, species)
                     shutil.copyfile(summary_exp_file, expression_file)
                     os.remove(summary_exp_file)
 
                     summary_exp_file = output_dir+'/'+pval+'.summary.txt'
+                    #if analyze_metaprobesets == 'yes': annotateMetaProbesetGenes(summary_exp_file, stats_file, metaprobeset_file, species)
                     shutil.copyfile(summary_exp_file, stats_file)
-                    os.remove(summary_exp_file) 
+                    os.remove(summary_exp_file)
+                    
+                    if analyze_metaprobesets == 'yes':
+                        residual_destination_file = string.replace(expression_file,'exp.','residuals.')
+                        residual_exp_file = output_dir+'/'+algorithm+'.residuals.txt' 
+                        #shutil.copyfile(residual_exp_file, residual_destination_file);os.remove(residual_exp_file)
+                        reformatResidualFile(residual_exp_file,residual_destination_file)
+                        residual_dabg_file = output_dir+'/dabg.residuals.txt'; os.remove(residual_dabg_file)
             except NameError:  status = 'failed'
             
         cache_delete_status = export.deleteFolder(cache_dir)
@@ -1043,12 +1625,9 @@ def importDefaultInfo(filename,array_type):
                 return dabg_p, expression_threshold, perform_alt_analysis, expression_data_format, avg_all_for_ss, include_raw_data, run_goelite
             
         if '-alt' in filename:
-            array_abrev, analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, MiDAS_analysis, export_splice_index_values, calculate_splicing_index_p, filter_for_AS = string.split(data,'\t')
+            array_abrev, analysis_method, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, permute_p_threshold, gene_expression_cutoff, perform_permutation_analysis, export_splice_index_values, run_MiDAS, calculate_splicing_index_p, filter_for_AS = string.split(data,'\t')
             if array_type == array_abrev:
-                ### NOTE: p_threshold is used for MiDAS and t-test comparison p-values thresholds
-                if MiDAS_analysis == 'yes': run_MiDAS = 'yes'
-                else: run_MiDAS = 'no'
-                return [analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_variable, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, run_MiDAS, export_splice_index_values, calculate_splicing_index_p, filter_for_AS]
+                return  [analysis_method, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, permute_p_threshold, gene_expression_cutoff, perform_permutation_analysis, export_splice_index_values, run_MiDAS, calculate_splicing_index_p, filter_for_AS]
             
         if '-funct' in filename:
             array_abrev, analyze_functional_attributes, microRNA_prediction_method = string.split(data,'\t')
@@ -1056,9 +1635,9 @@ def importDefaultInfo(filename,array_type):
                 return [analyze_functional_attributes,microRNA_prediction_method]
 
         if '-goelite' in filename:
-            array_abrev, ge_fold_cutoffs, ge_pvalue_cutoffs, filter_method, z_threshold, p_val_threshold, change_threshold, pathway_permutations, mod = string.split(data,'\t')
+            array_abrev, ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, filter_method, z_threshold, p_val_threshold, change_threshold, resources_to_analyze, pathway_permutations, mod = string.split(data,'\t')
             if array_type == array_abrev:
-                return [ge_fold_cutoffs, ge_pvalue_cutoffs, filter_method, z_threshold, p_val_threshold, change_threshold, pathway_permutations, mod]
+                return [ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, filter_method, z_threshold, p_val_threshold, change_threshold, resources_to_analyze, pathway_permutations, mod]
         
 class OptionData:
     def __init__(self,option,displayed_title,display_object,notes,array_options,global_default):
@@ -1069,8 +1648,9 @@ class OptionData:
     def setDisplay(self,display_title): self._displayed_title = display_title
     def DisplayObject(self): return self._display_object
     def Notes(self): return self._notes
-    def GlobalDefault(self): return self._global_default
-    def setGlobalDefault(self,global_default): self._global_default = global_default
+    def setNotes(self,notes): self._notes = notes
+    def DefaultOption(self): return self._default_option
+    def setDefaultOption(self,default_option): self._default_option = default_option
     def setNotes(self,notes): self._notes = notes
     def ArrayOptions(self): return self._array_options
     def setArrayOptions(self,array_options): self._array_options = array_options
@@ -1119,6 +1699,19 @@ class SummaryResults:
         tl.mainloop()
         
 
+class IndicatorWindowSimple:
+    def __init__(self,message,button_text):
+        self.message = message; self.button_text = button_text
+        parent = Tk(); self._parent = parent; nulls = '\t\t\t\t\t\t\t'; parent.title('Attention!!!')
+
+        filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
+        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
+        can.create_image(2, 2, image=img, anchor=NW)
+        
+        Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
+        text_button = Button(parent, text=self.button_text, command=parent.destroy); text_button.pack(side = 'bottom', padx = 5, pady = 5)
+        parent.mainloop()
+        
 class IndicatorWindow:
     def __init__(self,message,button_text):
         self.message = message; self.button_text = button_text
@@ -1132,11 +1725,15 @@ class IndicatorWindow:
         quit_button = Button(parent, text='Quit', command=self.quit); quit_button.pack(side = 'bottom', padx = 5, pady = 5)
         text_button = Button(parent, text=self.button_text, command=parent.destroy); text_button.pack(side = 'bottom', padx = 5, pady = 5)
         parent.mainloop()
-    def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
+    def quit(self):
+        try: self._parent.quit(); self._parent.destroy(); sys.exit()
+        except Exception: self._parent.quit(); sys.exit()
 
 class DownloadWindow:
     def __init__(self,message,option1,option2):
-        self._user_variables = {}
+        self._user_variables = user_variables
+        if len(option2)==2: option2,option3 = option2; num_options = 3; self.option3 = option3
+        else: num_options = 2
         self.message = message; self.option1 = option1; self.option2 = option2
         parent = Tk(); self._parent = parent; nulls = '\t\t\t\t\t\t\t'; parent.title('Attention!!!')
 
@@ -1147,11 +1744,15 @@ class DownloadWindow:
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
         text_button = Button(parent, text=self.option1, command=self.selected1); text_button.pack(side = 'bottom', padx = 5, pady = 5)
         text_button2 = Button(parent, text=self.option2, command=self.selected2); text_button2.pack(side = 'bottom', padx = 5, pady = 5)
+        if num_options == 3:
+            text_button3 = Button(parent, text=self.option3, command=self.selected3); text_button3.pack(side = 'bottom', padx = 5, pady = 5)
         parent.mainloop()
     def selected1(self):
         self._user_variables['selected_option']=1; self._parent.destroy()
     def selected2(self):
         self._user_variables['selected_option']=2; self._parent.destroy()
+    def selected3(self):
+        self._user_variables['selected_option']=3; self._parent.destroy()
     def Results(self): return self._user_variables
 
 class IndicatorLinkOutWindow:
@@ -1186,7 +1787,9 @@ class IndicatorChooseWindow:
         choose_win = Button(self._parent, text=self.button_text,command=foldercallback); choose_win.pack(padx =  3, pady = 3)
         quit_button = Button(parent, text='Quit', command=self.quit); quit_button.pack(padx = 3, pady = 3)
         parent.mainloop()
-    def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()      
+    def quit(self):
+        try: self._parent.quit(); self._parent.destroy(); sys.exit()
+        except Exception: self._parent.quit(); sys.exit()
     def callback(self, tag, option): null = ''
     def chooseDirectory(self,option):
         tag = tkFileDialog.askdirectory(parent=self._parent)
@@ -1200,17 +1803,24 @@ class IndicatorChooseWindow:
             self._tag = ''
         else: self._tag = apt_location
         self.destroy_win()
-    def destroy_win(self): self._parent.quit(); self._parent.destroy()  
+    def destroy_win(self):
+        try: self._parent.quit(); self._parent.destroy()
+        except Exception: self._parent.quit(); sys.exit()
     def Folder(self): return self._tag
     
 class WarningWindow:
     def __init__(self,warning,window_name):
-        tkMessageBox.showerror(window_name, warning)
+        try: tkMessageBox.showerror(window_name, warning)
+        except Exception: print 'Warning encountered...exiting program';sys.exit()
 
 class InfoWindow:
     def __init__(self,dialogue,header):
-        tkMessageBox.showinfo(header, dialogue)
-
+        try: tkMessageBox.showinfo(header, dialogue)
+        except Exception:
+            print dialogue
+            #print 'Attempted to open a GUI that is not accessible...exiting program';sys.exit()
+            #print "Analysis finished...exiting AltAnalyze."; sys.exit()
+        
 class MainMenu:
     def __init__(self):
         parent = Tk()
@@ -1227,7 +1837,7 @@ class MainMenu:
             callback(tag)
         horiz = PmwFreeze.RadioSelect(parent,
                 labelpos = 'w', command = buttoncallback,
-                label_text = 'AltAnalyze version 1.13 Main', frame_borderwidth = 2,
+                label_text = 'AltAnalyze version 1.15 Main', frame_borderwidth = 2,
                 frame_relief = 'ridge'
         ); horiz.pack(fill = 'x', padx = 10, pady = 10)
         for text in ['Continue']: horiz.add(text)
@@ -1246,7 +1856,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze 1.13 beta.\n'
+        about = 'AltAnalyze 1.15 beta.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.genmapp.org/AltAnalyze\n'
@@ -1267,7 +1877,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze 1.13 beta.\n')
+        txt.insert(END, 'AltAnalyze 1.15 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.genmapp.org/AltAnalyze\n", ('link', str(0)))
@@ -1312,8 +1922,9 @@ def exportCELFileList(cel_files,cel_file_dir):
     return fn
 
 def predictGroupsAndComps(cel_files,output_dir,exp_name):
-    fn=output_dir+'/ExpressionInput/groups.'+exp_name+'.txt'; gdata = export.ExportFile(fn)
-    fn=output_dir+'/ExpressionInput/comps.'+exp_name+'.txt'; cdata = export.ExportFile(fn)
+    fn1=output_dir+'/ExpressionInput/groups.'+exp_name+'.txt'; gdata = export.ExportFile(fn1)
+    fn2=output_dir+'/ExpressionInput/comps.'+exp_name+'.txt'; cdata = export.ExportFile(fn2)
+    fn3=output_dir+'/ExpressionInput/exp.'+exp_name+'.txt'
     delimited_db={}; delim_type={}; files_exported = 'no'
 
     for cel_file in cel_files:
@@ -1346,11 +1957,15 @@ def predictGroupsAndComps(cel_files,output_dir,exp_name):
                 if index1 != index2:
                     cdata.write(string.join([index1,index2],'\t')+'\n')
     gdata.close(); cdata.close()
+    if files_exported == 'no':
+        os.remove(fn1); os.remove(fn2)
+        try: ExpressionBuilder.checkArrayHeaders(fn3,fn1) ### Create just the groups template file
+        except Exception: null=[] ### This error will more likely occur since no expression file has been created 
     return files_exported
 
 def formatArrayGroupsForGUI(array_group_list):
         ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
-        category = 'GroupArrays'; option_db={}; option_list={}; user_variables={}
+        category = 'GroupArrays'; option_db={}; option_list={}; 
         for agd in array_group_list:
             option = agd.Array(); array_options = [agd.GroupName()]; displayed_title=option; display_object='simple_entry'; notes=''
             od = OptionData(option,displayed_title,display_object,notes,array_options,'')
@@ -1409,61 +2024,187 @@ class ExpressionFileLocationData:
     def CELFileDir(self): return self._cel_file_dir
     def ArrayType(self): return self._array_type
     def OutputDir(self): return self._output_dir
-    def Report(self): return self.ExpFile()+len(self.StatsFile())+len(self.GroupsFile())+len(self.CompsFile())
+    def Report(self): return self.ExpFile()+'|'+str(len(self.StatsFile()))+'|'+str(len(self.GroupsFile()))+'|'+str(len(self.CompsFile()))
     def __repr__(self): return self.Report()
 
 def getUpdatedParameters(array_type,species,run_from_scratch,file_dirs):
     ### Get default options for ExpressionBuilder and AltAnalyze
     na = 'NA'; log = 'log'; no = 'no'
-    global user_variables; user_variables={}
+    global user_variables; user_variables={}; global selected_parameters; selected_parameters = []
 
-    run_goelite=no; change_threshold=na;pathway_permutations=na;mod=na
+    run_goelite=no; change_threshold=na;pathway_permutations=na;mod=na; ge_ptype = 'rawp';resources_to_analyze = na
     ge_fold_cutoffs=2;ge_pvalue_cutoffs=0.05;filter_method=na;z_threshold=1.96;p_val_threshold=0.05
     
     option_list,option_db = importUserOptions(array_type)
     global root; root = Tk()
     root.title('AltAnalyze: Perform Additional Analyses')
+    selected_parameters.append('AdditionalOptions'); backSelect = 'no'
     gu = GUI(root,option_db,option_list['AdditionalOptions'],'')
     new_run = gu.Results()['new_run']
     if new_run == 'Change Parameters and Re-Run': AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
     else:
         expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = importDefaults(array_type,species)
-
-        root = Tk(); root.title('AltAnalyze: Pathway Analysis Parameters')
-        if new_run == 'AltAnalyze filtered':
-            option_list['GOElite'] = option_list['GOElite'][2:]; goelite_defaults = goelite_defaults[2:]
-        gu = GUI(root,option_db,option_list['GOElite'],goelite_defaults)       
-        if run_from_scratch != 'AltAnalyze filtered':
-            ge_fold_cutoffs = gu.Results()['ge_fold_cutoffs']
-            ge_pvalue_cutoffs = gu.Results()['ge_pvalue_cutoffs']
-        filter_method = gu.Results()['filter_method']
-        z_threshold = gu.Results()['z_threshold']
-        p_val_threshold = gu.Results()['p_val_threshold']
-        change_threshold = gu.Results()['change_threshold']
-        pathway_permutations = gu.Results()['pathway_permutations']
-        mod = gu.Results()['mod']
-        ge_fold_cutoffs = math.log(float(ge_fold_cutoffs),2)
-
+        proceed = 'no'
+        while proceed == 'no':
+            root = Tk(); root.title('AltAnalyze: Pathway Analysis Parameters')
+            if run_from_scratch == 'Process AltAnalyze filtered':
+                option_list['GOElite'] = option_list['GOElite'][3:]; goelite_defaults = goelite_defaults[3:]
+            selected_parameters.append('GOElite'); backSelect = 'no'
+            gu = GUI(root,option_db,option_list['GOElite'],goelite_defaults)
+            if run_from_scratch != 'Process AltAnalyze filtered':
+                ge_fold_cutoffs = gu.Results()['ge_fold_cutoffs']
+                ge_pvalue_cutoffs = gu.Results()['ge_pvalue_cutoffs']
+                ge_ptype = gu.Results()['ge_ptype']
+            filter_method = gu.Results()['filter_method']
+            z_threshold = gu.Results()['z_threshold']
+            p_val_threshold = gu.Results()['p_val_threshold']
+            change_threshold = gu.Results()['change_threshold']
+            resources_to_analyze = gu.Results()['resources_to_analyze']
+            pathway_permutations = gu.Results()['pathway_permutations']
+            mod = gu.Results()['mod']
+            try:
+                z_threshold = float(z_threshold)
+                change_threshold = float(change_threshold)
+                p_val_threshold = float(p_val_threshold)
+                pathway_permutations = int(pathway_permutations)
+                if run_from_scratch != 'Process AltAnalyze filtered':
+                    ge_fold_cutoffs = float(ge_fold_cutoffs)
+                    ge_pvalue_cutoffs = float(ge_pvalue_cutoffs)
+                    ge_fold_cutoffs = math.log(float(ge_fold_cutoffs),2)
+                proceed = 'yes'
+            except Exception:
+                print_out = "Invalid numerical entry. Try again."
+                IndicatorWindow(print_out,'Continue')
     try:
         criterion_input_folder, criterion_denom_folder, main_output_folder = file_dirs
         import GO_Elite
-        if array_type == 'exon': system_code = 'En'
-        else: system_code = 'L'
         ###Export dataset criterion using user-defined filters
-        ExpressionBuilder.buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, main_output_folder, system_code)
-        goelite_var = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,file_dirs,''
+        ExpressionBuilder.buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_folder)
+        #except Exception: null = []; # print 'No expression files to summarize'
+        goelite_var = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,file_dirs,''
         GO_Elite.remoteAnalysis(goelite_var,'UI')
-    except ValueError:
+        AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+    except OSError:
         print_out = "Unexpected error encountered. Please see log file."
         IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+   
+def addOnlineSpeciesDatabases(backSelect):
+    StatusWindow(file_location_defaults,'getOnlineDBConfig')
+    #except Exception,e: print [e]; null = []
+
+    importSystemInfo(); exportSystemInfo() ### By re-importing we incorporate new source data from the downloaded file    
+    existing_species_codes = species_codes
+    importSpeciesInfo(); online_species = ['']
+    for species in species_codes: online_species.append(species)
+    online_species.sort()
     
-def getUserParameters(skip_intro):
+    importOnlineDatabaseVersions(); db_version_list=[]
+    for version in db_versions: db_version_list.append(version)
+    db_version_list.sort(); db_version_list.reverse(); select_version = db_version_list[0]
+    db_versions[select_version].sort()
+    option_db['selected_species1'].setArrayOptions(['---']+db_versions[select_version])
+    option_db['selected_species2'].setArrayOptions(['---']+db_versions[select_version])
+    option_db['selected_species3'].setArrayOptions(['---']+db_versions[select_version])
+    option_db['selected_version'].setArrayOptions(db_version_list)
+    proceed = 'no'
+    
+    while proceed == 'no':
+        if backSelect == 'no' or 'OnlineDatabases' == selected_parameters[-1]:
+            selected_parameters.append('OnlineDatabases'); backSelect = 'no'
+            root = Tk(); root.title('AltAnalyze: Species Databases Available for Download')
+            gu = GUI(root,option_db,option_list['OnlineDatabases'],'')
+        else: gu = PreviousResults(old_options)
+        db_version = gu.Results()['selected_version']
+        exportDBversion(db_version)
+        try: species1 = gu.Results()['selected_species1']
+        except Exception: species1='---'
+        try: species2 = gu.Results()['selected_species2']
+        except Exception: species2='---'
+        try: species3 = gu.Results()['selected_species3']
+        except Exception: species3='---'
+        try: species_full = gu.Results()['species']
+        except Exception: species_full = ''
+        if species_full == 'Add Species':
+            AltAnalyze.AltAnalyzeSetup(species_full); sys.exit()
+        new_species_list = [species1,species2,species3]; new_species_codes={}
+        for species in new_species_list:
+            if '---' not in species:
+                #try:
+                ### Export basic species information
+                sc = species_codes[species].SpeciesCode()
+                existing_species_codes[species] = species_codes[species]
+                new_species_codes[sc]=[]
+                #except Exception: sc = None
+            if sc != None:
+                for ad in db_versions_vendors[db_version]:
+                    if ad.SpeciesCodes() == species:
+                        for array_system in array_codes:
+                            ac = array_codes[array_system]
+                            compatible_species = ac.SpeciesCodes()
+                            if ac.Manufacturer() in ad.Manufacturer() and 'expression' in ac.ArrayName():
+                                if sc not in compatible_species: compatible_species.append(sc)
+                            ac.setSpeciesCodes(compatible_species)
+                exportArrayInfo(array_codes)
+        if len(new_species_codes) > 0:
+            analysis = 'getOnlineEliteDatabase'
+            values = file_location_defaults,db_version,new_species_codes
+            StatusWindow(values,analysis)
+            proceed = 'yes'
+        else:
+            print_out = "Please select a species before continuing."
+            IndicatorWindow(print_out,'Try Again')
+    
+    #db_versions_vendors
+    exportSpeciesInfo(existing_species_codes)
+    integrate_online_species = 'no'
+
+def getArraysAndVendors(species,vendor):
+    array_list2=[]; manufacturer_list=[]
+    compatible_species,manufacturer_list_all = getSpeciesList('')
+    for array_name in array_list:
+        manufacturer = array_codes[array_name].Manufacturer()
+        if species in array_codes[array_name].SpeciesCodes():
+            manufacturer_list.append(manufacturer)
+            if len(vendor)>0:
+                if vendor == manufacturer: proceed = 'yes'
+                else: proceed = 'no'
+            else: proceed = 'yes'
+            if proceed == 'yes':
+                array_list2.append(array_name)
+                
+    manufacturer_list = unique.unique(manufacturer_list)
+    array_list2 = unique.unique(array_list2) ### Filtered based on compatible species arrays
+    array_list2.sort(); manufacturer_list.sort()
+    return array_list2, manufacturer_list
+
+def getSpeciesForArray(array_type):
+    array_list2=[]; manufacturer_list=[]; manufacturer_list_all=[]
+    for array_name in array_list:
+        current_species_codes = array_codes[array_type].SpeciesCodes()
+
+    try: current_species_dirs = unique.read_directory('/AltDatabase')
+    except Exception: current_species_dirs = current_species_codes
+    
+    current_species_names=[]
+    for species in species_codes:
+        species_code = species_codes[species].SpeciesCode()
+        if species_code in current_species_codes:
+            if species_code in current_species_dirs: current_species_names.append(species)
+    current_species_names.sort()
+    return current_species_names
+
+def getUserParameters(run_parameter):
     global AltAnalyze; import AltAnalyze
-    if skip_intro == 'yes':
-        try: MainMenu()
-        except TclError: null=[]
+    if run_parameter == 'yes':
+        try:
+            try: MainMenu()
+            except TclError: null=[]
+        except NameError: print "Tcl is not availalbe on this machine. Please install Tkinter for Python before using AltAnalyze with the GUI. Running AltAnalyze via command line options are also availalble without the GUI."; sys.exit()
     global species; species=''; global user_variables; user_variables={}; global analysis_method; global array_type
-    global analysis_status; analysis_status = 'continue'
+    global PathDir; global PathFile; global file_location_defaults; global integrate_online_species; integrate_online_species = 'no'
+    global option_db; global option_list; global analysis_status; analysis_status = 'continue'; global selected_parameters; selected_parameters=[]
+    global backSelect
+    
     ### Get default options for ExpressionBuilder and AltAnalyze
 
     na = 'NA'; log = 'log'; no = 'no'
@@ -1472,87 +2213,215 @@ def getUserParameters(skip_intro):
     analysis_method=na; p_threshold=na; filter_probeset_types=na; alt_exon_fold_cutoff=na
     permute_p_threshold=na; perform_permutation_analysis=na; export_splice_index_values=no
     run_MiDAS=no; analyze_functional_attributes=no; microRNA_prediction_method=na
-    gene_expression_cutoff='any'; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
-    calculate_splicing_index_p=no; run_goelite=no
+    gene_expression_cutoff=na; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
+    calculate_splicing_index_p=no; run_goelite=no; ge_ptype = 'rawp'
     ge_fold_cutoffs=2;ge_pvalue_cutoffs=0.05;filter_method=na;z_threshold=1.96;p_val_threshold=0.05
-    change_threshold=2;pathway_permutations=na;mod=na
+    change_threshold=2;pathway_permutations=na;mod=na; analyze_all_conditions=no; resources_to_analyze=na
                 
     option_list,option_db = importUserOptions('exon')  ##Initially used to just get the info for species and array_type
     importSpeciesInfo()
     file_location_defaults = importDefaultFileLocations()
-    array_list = importArrayInfo()
-    try:   
+    importArrayInfo()
+
+    try: elite_db_versions = returnDirectoriesNoReplace('/AltDatabase')
+    except Exception:
+        try: elite_db_versions=[]; os.mkdir(filepath('AltDatabase'))
+        except Exception: null=[] ### directory already exists      
+    try: gene_database_dir = unique.getCurrentGeneDatabaseVersion()
+    except Exception: gene_database_dir=''
+    if len(elite_db_versions)>0 and gene_database_dir == '':
+        gene_database_dir = elite_db_versions[-1]; exportDBversion(elite_db_versions[-1])
+    
+    current_species_names,manufacturer_list_all = getSpeciesList('')
+    option_db['species'].setArrayOptions(current_species_names)
+    
+    try: PathDir = file_location_defaults['PathDir'].Location()
+    except Exception:
+        try:
+            ### Entry was deleted from Config file - re-create it
+            fl = FileLocationData('local', '', 'all')
+            file_location_defaults['PathDir'] = fl
+        except Exception: null = None   
+        PathDir = ''
+    try: PathFile = file_location_defaults['PathFile'].Location()
+    except Exception:
+        try:
+            ### Entry was deleted from Config file - re-create it
+            fl = FileLocationData('local', '', 'all')
+            file_location_defaults['PathFile'] = fl
+        except Exception: null = None        
+        PathFile = ''
+    
+    try:
+        #### Get information from previous loop
+        if len(run_parameter) == 2 and run_parameter != 'no': ### Occurs when selecting "Back" from Elite parameter window
+            old_options = run_parameter[1]; selected_parameters = run_parameter[0]
+            try:
+                if selected_parameters[-2]==selected_parameters[-1]: selected_parameters = selected_parameters[:-1] 
+            except Exception: selected_parameters = selected_parameters
+            backSelect = 'yes'
+            #print selected_parameters
+            #print old_options,'\n'
+            for option in old_options: ### Set options to user selected
+                try: option_db[option].setDefaultOption(old_options[option])
+                except Exception: null=[]
+                user_variables[option] = old_options[option]
+            if 'array_type' in old_options:
+                specific_array = old_options['array_type']
+                vendor = old_options['manufacturer_selection']
+                species_full = old_options['species']
+                species = species_codes[species_full].SpeciesCode()
+            if selected_parameters == []: backSelect = 'no'
+        else: backSelect = 'no'; old_options=[]
+        
         ###Update this informatin in option_db which will be over-written after the user selects a species and array_type
-        option_db['species'].setArrayOptions(species_list)
+        option_db['species'].setArrayOptions(current_species_names)
+        if len(current_species_names)==0 and run_parameter != 'Add Species':
+            print_out = "No species databases found. Select\ncontinue to proceed with species download."
+            IndicatorWindow(print_out,'Continue')
+            integrate_online_species = 'yes'
+            addOnlineSpeciesDatabases(backSelect)
+            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+        
+        ### Set defaults based on avialable species
+        if run_parameter == 'Add Species': species_full = 'Homo sapiens'; species = 'Hs'; vendor = 'Affymetrix'; specific_array = 'Exon ST array'
+        if backSelect == 'yes' and 'array_type' in old_options: null=[]
+        elif 'Homo sapiens' in current_species_names: species_full = 'Homo sapiens'; species = 'Hs'; vendor = 'Affymetrix'; specific_array = 'Exon ST array'
+        elif 'Mus musculus' in current_species_names: species_full = 'Mus musculus'; species = 'Mm'; vendor = 'Affymetrix'; specific_array = 'Exon ST array'
+        elif 'Rattus norvegicus' in current_species_names: species_full = 'Rattus norvegicus'; species = 'Rn'; vendor = 'Affymetrix'; specific_array = 'Exon ST array'
+        else:
+            for species_full in current_species_names:
+                species = species_codes[species_full].SpeciesCode()
+                for array_name in array_list:
+                    vendor = array_codes[array_name].Manufacturer()
+                    if species in array_codes[array_name].SpeciesCodes(): specific_array = array_name; break
+        array_list2, manufacturer_list = getArraysAndVendors(species,vendor)
+        #print [[array_list2]], species, vendor
+        option_db['species'].setDefaultOption(species_full)
+        option_db['array_type'].setArrayOptions(array_list2)
+        option_db['array_type'].setDefaultOption(specific_array)
+        option_db['manufacturer_selection'].setArrayOptions(manufacturer_list_all)
+        option_db['manufacturer_selection'].setDefaultOption(vendor)
 
-        global root; root = Tk()
-        root.title('AltAnalyze: Species Selection')
-        gu = GUI(root,option_db,option_list['Species'],'')
-        species_full = gu.Results()['species']
-        species = species_codes[species_full].SpeciesCode()
+        manufacturer_list_all_possible=[]        
+        for array_name in array_list:
+            manufacturer = array_codes[array_name].Manufacturer(); manufacturer_list_all_possible.append(manufacturer) 
+        manufacturer_list_all_possible = unique.unique(manufacturer_list_all_possible); manufacturer_list_all_possible.sort()
 
-        if species == 'other':
+        if len(elite_db_versions)>1:
+            option_db['dbase_version'].setArrayOptions(elite_db_versions)
+            option_db['dbase_version'].setDefaultOption(gene_database_dir)
+        else:
+            ### Otherwise, remove this option
+            del option_db['dbase_version']
+        
+        ### Get user array and species selections
+        if run_parameter != 'Add Species':
+            if backSelect == 'no' or 'ArrayType' == selected_parameters[-1]:
+                selected_parameters.append('ArrayType'); backSelect = 'no'
+                root = Tk(); root.title('AltAnalyze: Select Species and Microarray Type')
+                gu = GUI(root,option_db,option_list['ArrayType'],'')
+            else: gu = PreviousResults(old_options)
+            species_full = gu.Results()['species']
+
+        if species_full == 'Add Species' or 'NewSpecies' == selected_parameters[-1]:
             species_added = 'no'
+            option_db['new_manufacturer'].setArrayOptions(manufacturer_list_all_possible)
             while species_added == 'no':
-                root = Tk()
-                root.title('AltAnalyze: Add New Species Support')
-                gu = GUI(root,option_db,option_list['NewSpecies'],'')
+                if backSelect == 'no' or 'NewSpecies' == selected_parameters[-1]:
+                    selected_parameters.append('NewSpecies'); backSelect = 'no'
+                    root = Tk(); root.title('AltAnalyze: Add New Species Support')
+                    gu = GUI(root,option_db,option_list['NewSpecies'],'')
+                else: gu = PreviousResults(old_options)
                 new_species_code = gu.Results()['new_species_code']
                 new_species_name = gu.Results()['new_species_name']
-                allowed_array_systems = gu.Results()['allowed_array_systems']
-                if len(new_species_code)==2 and len(new_species_name)>0 and len(allowed_array_systems)>0:
+                new_manufacturer = gu.Results()['new_manufacturer']
+
+                if len(new_species_code)==2 and len(new_species_name)>0 and len(new_manufacturer)>0:
                     species_added = 'yes'
                     sd = SpeciesData(new_species_code,new_species_name,[''])
                     species_codes[new_species_name] = sd
                     exportSpeciesInfo(species_codes)
-                    ac = array_codes[allowed_array_systems]; compatible_species = ac.SpeciesCodes()
-                    if new_species_code not in compatible_species: compatible_species.append(new_species_code)
-                    ac.setSpeciesCodes(compatible_species)
-                    exportArrayInfo(array_codes)
+                    try: os.mkdir(filepath('AltDatabase/'+new_species_code))
+                    except Exception: null=[]
+                    for array_system in array_codes:
+                        ac = array_codes[array_system]
+                        manufacturer=ac.Manufacturer()
+                        compatible_species = ac.SpeciesCodes()
+                        if manufacturer == new_manufacturer and 'expression array' in ac.ArrayName():
+                            if new_species_code not in compatible_species: compatible_species.append(new_species_code)
+                        ac.setSpeciesCodes(compatible_species)
+                        exportArrayInfo(array_codes)
                     fn = filepath('AltDatabase/affymetrix/'+ new_species_code)
                     try: os.mkdir(fn)
                     except OSError: null = [] ### Directory already exists
-                    species = new_species_code; species_full = new_species_name
+                    AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
                 else:
                     print_out = "Valid species data was not added. You must\nindicate a two letter species code and full species name."
                     IndicatorWindow(print_out,'Continue')  
-        array_list2=[]
-        for array_name in array_list:
-            if species in array_codes[array_name].SpeciesCodes(): array_list2.append(array_name)
+        else: species = species_codes[species_full].SpeciesCode()    
+        update_dbs = gu.Results()['update_dbs']
+        array_full = gu.Results()['array_type']
+        array_type = array_codes[array_full].ArrayCode()
+        vendor = gu.Results()['manufacturer_selection']
+        if update_dbs == 'yes':
+            integrate_online_species = 'yes'
+            addOnlineSpeciesDatabases(backSelect)
+            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+        new_analysis_options=[]
+        if array_type == 'gene':
 
-        array_list = array_list2 ### Filtered based on compatible species arrays
-        option_db['array_type'].setArrayOptions(array_list)
+            try: gene_database = unique.getCurrentGeneDatabaseVersion()
+            except Exception: gene_database='00'
+            if int(gene_database[-2:]) < 54:
+                print_out = 'The AltAnalyze database indicated for Gene 1.0 ST\narray analysis is not supported for alternative exon\nanalysis. Please update to EnsMart54 or greater\nbefore proceeding.'
+                IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+        if array_type == "3'array":
+            for i in option_db['run_from_scratch'].ArrayOptions():
+                if 'AltAnalyze' not in i:
+                    if array_type == "3'array":
+                        if 'CEL' in i and vendor != 'Affymetrix': proceed = 'no'
+                        else: proceed = 'yes'
+                    else: proceed = 'yes'
+                    if proceed == 'yes': new_analysis_options.append(i)
+            option_db['run_from_scratch'].setArrayOptions(new_analysis_options)
+
+        if array_type == 'exon' or array_type == 'AltMouse' or array_type == 'gene':
+            try: dirs = read_directory('/AltDatabase/'+species)
+            except Exception: dirs=[]
+            if len(dirs)==0:
+                print_out = 'Valid database directories were not found for this array.\nPlease re-install database.'
+                IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
 
         proceed = 'no'
-        while proceed == 'no':        
-            root = Tk()
-            root.title('AltAnalyze: Select Microarray and Analysis Method')
-            gu = GUI(root,option_db,option_list['AnalysisType'],'')
-            array_full = gu.Results()['array_type']
-            array_type = array_codes[array_full].ArrayCode()
+        if len(new_analysis_options)!=1:
+            if backSelect == 'no' or 'AnalysisType' == selected_parameters[-1]:
+                selected_parameters.append('AnalysisType'); backSelect = 'no'
+                root = Tk(); root.title('AltAnalyze: Select Analysis Method')
+                gu = GUI(root,option_db,option_list['AnalysisType'],'')
+            else: gu = PreviousResults(old_options)
             run_from_scratch = gu.Results()['run_from_scratch']
-            if array_type == "3'array" or array_type == 'gene':
-                if run_from_scratch == 'CEL files' or run_from_scratch == 'expression file':
-                    proceed = 'yes' ### Only certain options are compatible with expression arrays
-                else:
-                    print_out = "The selected option is not compatible with gene expression only arrays."
-                    IndicatorWindow(print_out,'Continue')   
-            else: proceed = 'yes' ### All options are compatible with splicing arrays
-
-        array_type_original = array_type
-        array_type = string.replace(array_type,'gene',"3'array")
-        manufacturer = array_codes[array_full].Manufacturer()
+        else: run_from_scratch = 'Process Expression file'
+        vendor = array_codes[array_full].Manufacturer()
         constitutive_source = array_codes[array_full].ConstitutiveSource()
         option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
 
-        if run_from_scratch == 'CEL files':
+        if backSelect == 'yes':
+            for option in old_options: ### Set options to user selected
+                try: option_db[option].setDefaultOption(old_options[option])
+                except Exception: null=[]
+                
+        if run_from_scratch == 'Process CEL files':
             """Designate CEL file directory, Dataset Name and Output Directory"""
             assinged = 'no'
             while assinged == 'no': ### Assigned indicates whether or not the CEL directory and CDF files are defined
-                root = Tk()
-                root.title('AltAnalyze: Select CEL files for APT')
                 if species == 'Rn': del option_list['InputCELFiles'][-1] ### Don't examine xyb
-                gu = GUI(root,option_db,option_list['InputCELFiles'],'')
+                #print (((backSelect,selected_parameters)))
+                if backSelect == 'no' or 'InputCELFiles' == selected_parameters[-1]:
+                    selected_parameters.append('InputCELFiles'); backSelect = 'no'
+                    root = Tk(); root.title('AltAnalyze: Select CEL files for APT')
+                    gu = GUI(root,option_db,option_list['InputCELFiles'],'')
+                else: gu = PreviousResults(old_options)
                 dataset_name = gu.Results()['dataset_name']
                 try: remove_xhyb = gu.Results()['remove_xhyb']
                 except KeyError: remove_xhyb = 'no'
@@ -1562,8 +2431,9 @@ def getUserParameters(skip_intro):
                 elif 'input_cel_dir' in gu.Results():
                     cel_file_dir = gu.Results()['input_cel_dir']
                     cel_files,cel_files_fn=identifyCELfiles(cel_file_dir)
-                    try: output_dir = gu.Results()['output_dir']
+                    try: output_dir = gu.Results()['output_CEL_dir']
                     except KeyError: output_dir = cel_file_dir
+                    if len(output_dir)==0: output_dir = cel_file_dir
                     if len(cel_files)>0: assinged = 'yes' ### CEL files are present in this directory
                     else:
                         print_out = "No valid .CEL files were found in the directory\n"+cel_file_dir+"\nPlease verify and try again."
@@ -1580,21 +2450,40 @@ def getUserParameters(skip_intro):
             try:
                 sa = supproted_array_db[specific_array_type]; array_species = sa.Species(); cel_array_type = sa.ArrayType()
             except Exception: library_dir=''; array_species=''; annotation_dir=''; cel_array_type=''
-            ### Check for issues with arrays or user input options
-            if num_array_types>1: ### More than one array type found in the directory
-                print_out = 'Warning!!!!!!!\n\nMultiple array_types found ("'+specific_array_types[0]+'" and "'+specific_array_types[1]+'").\nIt is recommended you restart, otherwise, APT will try\n to process all different array types together as "'+specific_array_types[-1]+'".'
-                IndicatorWindow(print_out,'Continue with Existing')
-            if array_species != species and len(array_species)>0:
-                print_out = "The CEL files indicate that the proper\nspecies is "+array_species+", however, you\nindicated "+species+ ". The species indicated by the CEL\nfiles will be used instead."
-                IndicatorWindow(print_out,'Continue')
-                species = array_species
-            if cel_array_type != array_type and len(cel_array_type)>0:
-                print_out = "The CEL files indicate that the proper\narray type is "+cel_array_type+", however, you\nindicated "+array_type+ ". The array type indicated by the CEL\nfiles will be used instead."
-                IndicatorWindow(print_out,'Continue')
-                array_type = cel_array_type
-                option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
-                option_db['array_type'].setArrayOptions(array_list)
-            ### See if the library and annotation files are on the server or are local
+            if backSelect == 'no':
+                ### Check for issues with arrays or user input options
+                if num_array_types>1: ### More than one array type found in the directory
+                    print_out = 'Warning!!!!!!!\n\nMultiple array_types found ("'+specific_array_types[0]+'" and "'+specific_array_types[1]+'").\nIt is recommended you restart, otherwise, APT will try\n to process all different array types together as "'+specific_array_types[-1]+'".'
+                    IndicatorWindow(print_out,'Continue with Existing')
+                if array_species != species and len(array_species)>0:
+                    print_out = "The CEL files indicate that the proper\nspecies is "+array_species+", however, you\nindicated "+species+ ". The species indicated by the CEL\nfiles will be used instead."
+                    IndicatorWindow(print_out,'Continue')
+                    species = array_species
+                    try: spdirs = read_directory('/AltDatabase/'+species)
+                    except Exception: spdirs = []
+                    if len(spdirs)==0:
+                        print_out = 'Valid database directories were not found for this species.\nPlease re-install database.'
+                        IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+
+                if cel_array_type != array_type and len(cel_array_type)>0:
+                    print_out = "The CEL files indicate that the proper\narray type is "+cel_array_type+", however, you\nindicated "+array_type+ ". The array type indicated by the CEL\nfiles will be used instead."
+                    IndicatorWindow(print_out,'Continue')
+                    array_type = cel_array_type
+                    option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
+                    option_db['array_type'].setArrayOptions(array_list)
+                    #user_variables['array_type'] = array_type
+                ### See if the library and annotation files are on the server or are local
+            if specific_array_type == None:
+                if array_type == 'exon':
+                    if species == 'Hs': specific_array_type = 'HuEx-1_0-st-v2'
+                    if species == 'Mm': specific_array_type = 'MoEx-1_0-st-v2'
+                    if species == 'Rn': specific_array_type = 'RaEx-1_0-st-v2'
+                elif array_type == 'gene':
+                    if species == 'Hs': specific_array_type = 'HuGene-1_0-st-v1'
+                    if species == 'Mm': specific_array_type = 'MoGene-1_0-st-v1'
+                    if species == 'Rn': specific_array_type = 'RaGene-1_0-st-v1'
+                elif array_type == 'AltMouse': specific_array_type = 'altMouseA'
+                
             if specific_array_type in supproted_array_db:
                 input_cdf_file, annotation_dir, bgp_file, clf_file = getAffyFiles(specific_array_type,species)
             else: input_cdf_file=''; bgp_file = ''; clf_file = ''
@@ -1610,17 +2499,26 @@ def getUserParameters(skip_intro):
                 option_list_library = option_list['InputLibraryFiles']
 
             """Identify and copy over any Libary or Annotation files on the computer"""                    
-            if len(input_cdf_file)==0 or len(annotation_dir) == 0:
+            if (len(input_cdf_file)==0 or len(annotation_dir) == 0) and backSelect == 'no':
                 assinged = 'no'
                 while assinged == 'no': ### Assigned indicates whether or not the CEL directory and CDF files are defined
                     if array_type == "3'array":
                         op = option_db['input_cdf_file']; input_cdf_file_label = op.Display()
                         op.setNotes('   note: the CDF file is apart of the standard library files for this array.   ')
                         input_cdf_file_label = string.replace(input_cdf_file_label,'PGF','CDF')
-                        op.setDisplay(input_cdf_file_label)      
-                    root = Tk()
-                    root.title('AltAnalyze: Select Affymetrix Library and Annotation files')
+                        op.setDisplay(input_cdf_file_label)
+                    if array_type == 'exon':
+                        op = option_db['input_annotation_file']
+                        new_notes = string.replace(op.Notes(),'this array','the Gene 1.0 array (NOT Exon)')
+                        new_notes = string.replace(new_notes,'annotations','transcript cluster annotations')
+                        new_display = string.replace(op.Display(),'your array','the Gene 1.0 array')
+                        op.setDisplay(new_display)
+                        op.setNotes(new_notes)
+                    #if backSelect == 'no' or 'Library' == selected_parameters[-1]:
+                    selected_parameters.append('Library')#; backSelect = 'no'
+                    root = Tk(); root.title('AltAnalyze: Select Affymetrix Library and Annotation files')
                     gu = GUI(root,option_db,option_list_library,'')
+                    #else: gu = PreviousResults(old_options)                    
                     if 'input_cdf_file' in option_list_library: ### Deals with Annotation Files
                         if 'input_cdf_file' in gu.Results():
                             input_cdf_file = gu.Results()['input_cdf_file']; input_cdf_file_lower = string.lower(input_cdf_file)
@@ -1664,10 +2562,10 @@ def getUserParameters(skip_intro):
                             print_out = "No library file has been assigned. Please\nselect a valid library file for this array."
                             IndicatorWindow(print_out,'Continue')                                
                     if 'input_annotation_file' in option_list_library: ### Deals with Annotation Files
+                        assinged = 'yes'
                         if 'input_annotation_file' in gu.Results():
                             input_annotation_file = gu.Results()['input_annotation_file']; input_annotation_lower = string.lower(input_annotation_file)
                             if '.csv' in input_annotation_lower:
-                                assinged = 'yes'
                                 ###Thus the CDF or PDF file was confirmed, so copy it over to AltDatabase
                                 icf_list = string.split(input_annotation_file,'/'); csv_short = icf_list[-1]
                                 destination_parent = 'AltDatabase/affymetrix/'+species+'/'
@@ -1675,128 +2573,231 @@ def getUserParameters(skip_intro):
                                 sd = SupprotedArrays(specific_array_type,cdf_short,csv_short,species,array_type)
                                 supproted_array_db[specific_array_type] = sd
                                 try: exportSupportedArrayInfo()
-                                except Exception: continue ### Occurs if the file is open... not critical to worry about
-                                
-        if run_from_scratch == 'expression file':
+                                except Exception: continue ### Occurs if the file is open... not critical to worry about       
+        if run_from_scratch == 'Process Expression file':
             status = 'repeat'
             while status == 'repeat':
-                root = Tk()
-                root.title('AltAnalyze: Select Expression File for Filtering')
-                gu = GUI(root,option_db,option_list['InputExpFiles'],'')
+                if backSelect == 'no' or 'InputExpFiles' == selected_parameters[-1]:
+                    root = Tk(); root.title('AltAnalyze: Select Expression File for Filtering')
+                    selected_parameters.append('InputExpFiles'); backSelect = 'no'
+                    gu = GUI(root,option_db,option_list['InputExpFiles'],'')
+                else: gu = PreviousResults(old_options)
                 try: input_exp_file = gu.Results()['input_exp_file']
                 except KeyError: input_exp_file = '' ### Leave this blank so that the default directory is used
                 try: input_stats_file = gu.Results()['input_stats_file']
                 except KeyError: input_stats_file = '' ### Leave this blank so that the default directory is used
                 #if array_type == 'exon':
-                try: output_dir = gu.Results()['output_dir']
-                except KeyError: output_dir = '' ### Leave this blank so that the default directory is used
-                cel_files, array_linker_db = ExpressionBuilder.getArrayHeaders(input_exp_file)
-                if len(cel_files)>0: status = 'continue'
+                if 'steady-state' in input_exp_file or 'steady-state' in input_stats_file:
+                    print_out = "Do not select steady-state expression files.."
+                    IndicatorWindow(print_out,'Continue'); output_dir=''
+                elif len(input_exp_file)>0:
+                    try: output_dir = gu.Results()['output_dir']
+                    except KeyError: output_dir = '' ### Leave this blank so that the default directory is used
+                    try: cel_files, array_linker_db = ExpressionBuilder.getArrayHeaders(input_exp_file)
+                    except Exception:
+                        print_out = "Input Expression file does not have a valid format."
+                        IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()  
+                    if len(cel_files)>0: status = 'continue'
+                    else:
+                        print_out = "The expression file:\n"+input_exp_file+"\ndoes not appear to be a valid expression file. Check to see that\nthis is the correct tab-delimited text file."
+                        IndicatorWindow(print_out,'Continue')
                 else:
-                    print_out = "The expression file:\n"+input_exp_file+"\ndoes not appear to be a valid expression file. Check to see that\nthis is the correct tab-delimited text file."
+                    print_out = "No input expression file selected."
                     IndicatorWindow(print_out,'Continue')
+                    
+                if len(output_dir)<1:
+                    ### Set output to the same directory or parent if none selected
+                    if 'ExpressionInput' in input_exp_file: i = -2
+                    else: i = -1
+                    output_dir = string.join(string.split(input_exp_file,'/')[:i],'/')
+
         if run_from_scratch != 'update DBs': ### Update DBs is an option which has been removed from 1.1. Should be a separate menu item soon.
             expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = importDefaults(array_type,species)
             
-            if run_from_scratch != 'AltAnalyze filtered':
-                root = Tk(); root.title('AltAnalyze: Expression Analysis Parameters')
-                gu = GUI(root,option_db,option_list['GeneExpression'],expr_defaults)
-                if array_type != "3'array":          
-                    dabg_p = gu.Results()['dabg_p']
-                    run_from_scratch = gu.Results()['run_from_scratch']
-                    expression_threshold = gu.Results()['expression_threshold']
-                    perform_alt_analysis = gu.Results()['perform_alt_analysis']
-                    avg_all_for_ss = gu.Results()['avg_all_for_ss']
-                expression_data_format = gu.Results()['expression_data_format']
-                include_raw_data = gu.Results()['include_raw_data']
-                run_goelite = gu.Results()['run_goelite']
-                if 'immediately' in run_goelite: run_goelite = 'yes'
-                else: run_goelite = 'no'
-                            
-            if (perform_alt_analysis == 'both') or (run_from_scratch == 'AltAnalyze filtered'):
+            if run_from_scratch != 'Process AltAnalyze filtered' and run_from_scratch != 'Annotate External Results':
+                proceed = 'no'
+                while proceed == 'no':
+                    if backSelect == 'no' or 'GeneExpression' == selected_parameters[-1]:
+                        selected_parameters.append('GeneExpression'); backSelect = 'no'
+                        root = Tk(); root.title('AltAnalyze: Expression Analysis Parameters')
+                        gu = GUI(root,option_db,option_list['GeneExpression'],expr_defaults)
+                    else: gu = PreviousResults(old_options)
+                    if array_type != "3'array":          
+                        dabg_p = gu.Results()['dabg_p']
+                        run_from_scratch = gu.Results()['run_from_scratch']
+                        expression_threshold = gu.Results()['expression_threshold']
+                        perform_alt_analysis = gu.Results()['perform_alt_analysis']
+                        if perform_alt_analysis == 'just expression': perform_alt_analysis = 'expression'
+                        else: perform_alt_analysis = 'both'
+                        try: avg_all_for_ss = gu.Results()['avg_all_for_ss']
+                        except Exception: avg_all_for_ss = 'no'
+                        if 'core probesets' in avg_all_for_ss: avg_all_for_ss = 'yes'
+                        else: avg_all_for_ss = 'no'
+                    expression_data_format = gu.Results()['expression_data_format']
+                    include_raw_data = gu.Results()['include_raw_data']
+                    run_goelite = gu.Results()['run_goelite']
+                    if 'immediately' in run_goelite: run_goelite = 'yes'
+                    else: run_goelite = 'no'
+                    passed = 'yes'; print_out = 'Invalid threshold entered for '
+                    if array_type != "3'array":    
+                        try: expression_threshold = float(expression_threshold)
+                        except Exception: passed = 'no'; print_out+= 'expression threshold'
+                        try: dabg_p = float(dabg_p)
+                        except Exception: passed = 'no'; print_out+= 'DABG p-value cutoff'
+                        if expression_threshold<1: passed = 'no'; print_out+= 'expression threshold'
+                        elif dabg_p<=0 or dabg_p>1: passed = 'no'; print_out+= 'DABG p-value cutoff'
+                    if passed == 'no': IndicatorWindow(print_out,'Continue')
+                    else: proceed = 'yes'
+                    
+            if (perform_alt_analysis == 'both') or (run_from_scratch == 'Process AltAnalyze filtered') or (run_from_scratch == 'Annotate External Results'):
                 perform_alt_analysis = 'alt'
 
-                if run_from_scratch == 'AltAnalyze filtered':
+                if run_from_scratch == 'Process AltAnalyze filtered':
                     input_filtered_dir = ''
                     while len(input_filtered_dir)<1:
-                        root = Tk(); root.title('AltAnalyze: Select AltAnalyze Filtered Probe set Files')
-                        gu = GUI(root,option_db,option_list['InputFilteredFiles'],'')
-                        if 'input_filtered_dir' in gu.Results():
-                            input_filtered_dir = gu.Results()['input_filtered_dir']
-                        else: 
+                        if backSelect == 'no' or 'InputFilteredFiles' == selected_parameters[-1]:
+                            selected_parameters.append('InputFilteredFiles'); backSelect = 'no'
+                            root = Tk(); root.title('AltAnalyze: Select AltAnalyze Filtered Probe set Files')
+                            gu = GUI(root,option_db,option_list['InputFilteredFiles'],'')
+                        else: gu = PreviousResults(old_options)
+                        try: input_filtered_dir = gu.Results()['input_filtered_dir']
+                        except Exception: input_filtered_dir = ''
+                        if input_filtered_dir == '': 
                             print_out = "The directory containing filtered probe set text files has not\nbeen assigned! Select a valid directory before proceeding."
                             IndicatorWindow(print_out,'Continue')
                     fl = ExpressionFileLocationData('','','',''); dataset_name = 'filtered-exp_dir'
                     dirs = string.split(input_filtered_dir,'AltExpression'); parent_dir = dirs[0]
                     exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
+
+                if run_from_scratch == 'Annotate External Results':
+                    input_filtered_dir = ''
+                    while len(input_filtered_dir)<1:
+                        if backSelect == 'no' or 'InputExternalFiles' == selected_parameters[-1]:
+                            selected_parameters.append('InputExternalFiles'); backSelect = 'no'
+                            root = Tk(); root.title('AltAnalyze: Select AltAnalyze Filtered Probe set Files')
+                            gu = GUI(root,option_db,option_list['InputExternalFiles'],'')
+                        else: gu = PreviousResults(old_options)
+                        try: input_filtered_dir = gu.Results()['input_external_dir']
+                        except Exception: input_filtered_dir = ''
+                        if input_filtered_dir == '': 
+                            print_out = "The directory containing external probe set text files has not\nbeen assigned! Select a valid directory before proceeding."
+                            IndicatorWindow(print_out,'Continue')
+                    fl = ExpressionFileLocationData('','','',''); dataset_name = 'external-results_dir'
+                    dirs = string.split(input_filtered_dir,'AltExpression'); parent_dir = dirs[0]
+                    exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
+
                 #print option_list[i:i+len(alt_exon_defaults)+len(functional_analysis_defaults)], alt_exon_defaults+functional_analysis_defaults;kill
                 option_list,option_db = importUserOptions(array_type)  ##Initially used to just get the info for species and array_type
 
-                if run_goelite == 'no' and run_from_scratch == 'AltAnalyze filtered':
+                if backSelect == 'yes':
+                    for option in old_options: ### Set options to user selected
+                        try: option_db[option].setDefaultOption(old_options[option])
+                        except Exception: null=[]
+                    
+                if run_goelite == 'no' and run_from_scratch == 'Process AltAnalyze filtered':
                     functional_analysis_defaults.append('decide later'); option_list['AltAnalyze'].append('run_goelite')
-                root = Tk(); root.title('AltAnalyze: Alternative Exon Analysis Parameters')
-                gu = GUI(root,option_db,option_list['AltAnalyze'],alt_exon_defaults+functional_analysis_defaults); user_variables = {}
 
-                analysis_method = gu.Results()['analysis_method']
-                p_threshold = gu.Results()['p_threshold']
-                gene_expression_cutoff = gu.Results()['gene_expression_cutoff']
-                filter_probeset_types = gu.Results()['filter_probeset_types']
-                alt_exon_fold_cutoff = gu.Results()['alt_exon_fold_cutoff']
-                try: permute_p_threshold = gu.Results()['permute_p_threshold']
-                except KeyError: permute_p_threshold = 0.05 ### Doesn't matter, not used
-                try: perform_permutation_analysis = gu.Results()['perform_permutation_analysis']
-                except KeyError: perform_permutation_analysis = perform_permutation_analysis
-                try: export_splice_index_values = gu.Results()['export_splice_index_values']
-                except KeyError: export_splice_index_values = export_splice_index_values
-                try: run_MiDAS = gu.Results()['run_MiDAS']
-                except KeyError: run_MiDAS = run_MiDAS
-                try: calculate_splicing_index_p = gu.Results()['calculate_splicing_index_p']
-                except KeyError: calculate_splicing_index_p = calculate_splicing_index_p
-                analyze_functional_attributes = gu.Results()['analyze_functional_attributes']
-                filter_for_AS = gu.Results()['filter_for_AS']
-                microRNA_prediction_method = gu.Results()['microRNA_prediction_method']
-                if analysis_method == 'splicing-index': p_threshold = float(p_threshold)
-                else:
-                    try: p_threshold = float(permute_p_threshold)
-                    except ValueError: permute_p_threshold = permute_p_threshold
-                if analysis_method == 'linearregres-rlm':
-                    ### Test installation of rpy and/or R
-                    x = [5.05, 6.75, 3.21, 2.66]; y = [1.65, 26.5, -5.93, 7.96]
-                    try: s = statistics.LinearRegression(x,y,'no')
-                    except Exception:
-                        print_out = "The local installation of R and rpy is missing or\nis not properly configured. See the AltAnalyze ReadMe\nfor more information (may require loading AltAnalyze from source code)."
-                        IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+                if run_from_scratch == 'Annotate External Results':
+                    ### Remove options relating to expression analysis when importing filtered probeset lists
+                    options_to_exclude = ['analysis_method','p_threshold','gene_expression_cutoff','alt_exon_fold_cutoff','run_MiDAS']
+                    options_to_exclude+= ['export_splice_index_values','run_goelite','analyze_all_conditions','calculate_splicing_index_p']
+                    for option in options_to_exclude: del option_db[option]
+                    
+                proceed = 'no'
+                while proceed == 'no':
+                    if backSelect == 'no' or 'AltAnalyze' == selected_parameters[-1]:
+                        selected_parameters.append('AltAnalyze'); backSelect = 'no'; proceed = 'no'
 
+                        root = Tk(); root.title('AltAnalyze: Alternative Exon Analysis Parameters')
+                        gu = GUI(root,option_db,option_list['AltAnalyze'],alt_exon_defaults+functional_analysis_defaults); #user_variables = {};
+                        try: analyze_all_conditions = gu.Results()['analyze_all_conditions']
+                        except KeyError: analyze_all_conditions = 'pairwise'
+                        if analyze_all_conditions != 'pairwise':
+                            print_out = 'Please note: When AltAnalyze compares all groups, the\nalternative exon fold to be filtered will be based on the\nlargest alternative exon fold for all possible comparisons.' 
+                            IndicatorWindowSimple(print_out,'Continue')
+                    else: gu = PreviousResults(old_options)
+                    try: analysis_method = gu.Results()['analysis_method']
+                    except Exception: analysis_method = analysis_method
+                    try: p_threshold = gu.Results()['p_threshold']
+                    except Exception: p_threshold = 0.05
+                    try: gene_expression_cutoff = gu.Results()['gene_expression_cutoff']
+                    except Exception: gene_expression_cutoff = 3
+                    try: filter_probeset_types = gu.Results()['filter_probeset_types']
+                    except Exception: filter_probeset_types = 'core'
+                    try: alt_exon_fold_cutoff = gu.Results()['alt_exon_fold_cutoff']
+                    except KeyError: alt_exon_fold_cutoff = 2
+                    try: permute_p_threshold = gu.Results()['permute_p_threshold']
+                    except KeyError: permute_p_threshold = 0.05 ### Doesn't matter, not used
+                    try: perform_permutation_analysis = gu.Results()['perform_permutation_analysis']
+                    except KeyError: perform_permutation_analysis = perform_permutation_analysis
+                    try: export_splice_index_values = gu.Results()['export_splice_index_values']
+                    except KeyError: export_splice_index_values = export_splice_index_values
+                    try: run_MiDAS = gu.Results()['run_MiDAS']
+                    except KeyError: run_MiDAS = run_MiDAS
+                    try: analyze_all_conditions = gu.Results()['analyze_all_conditions']
+                    except KeyError: analyze_all_conditions = analyze_all_conditions
+                    try: run_goelite = gu.Results()['run_goelite']
+                    except KeyError: run_goelite = run_goelite
+                    if 'immediately' in run_goelite: run_goelite = 'yes'
+                    else: run_goelite = 'no'
+                    try: calculate_splicing_index_p = gu.Results()['calculate_splicing_index_p']
+                    except KeyError: calculate_splicing_index_p = calculate_splicing_index_p
+                    analyze_functional_attributes = gu.Results()['analyze_functional_attributes']
+                    filter_for_AS = gu.Results()['filter_for_AS']
+                    microRNA_prediction_method = gu.Results()['microRNA_prediction_method']
+                    if analysis_method == 'splicing-index': p_threshold = float(p_threshold)
+                    else:
+                        try: p_threshold = float(permute_p_threshold)
+                        except ValueError: permute_p_threshold = permute_p_threshold
+                    if analysis_method == 'linearregres-rlm':
+                        ### Test installation of rpy and/or R
+                        x = [5.05, 6.75, 3.21, 2.66]; y = [1.65, 26.5, -5.93, 7.96]
+                        try: s = statistics.LinearRegression(x,y,'no')
+                        except Exception:
+                            print_out = "The local installation of R and rpy is missing or\nis not properly configured. See the AltAnalyze ReadMe\nfor more information (may require loading AltAnalyze from source code)."
+                            IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+                    passed = 'yes'; print_out = 'Invalid threshold entered for '
+                    try: gene_expression_cutoff = float(gene_expression_cutoff)
+                    except Exception: passed = 'no'; print_out+= 'gene expression cutoff'
+                    try: alt_exon_fold_cutoff = float(alt_exon_fold_cutoff)
+                    except Exception: passed = 'no'; print_out+= 'alternative exon fold change'
+                    try: p_threshold = float(p_threshold)
+                    except Exception: passed = 'no'; print_out+= 'alternative exon p-value'
+                    if gene_expression_cutoff <= 1: passed = 'no'; print_out+= 'gene expression cutoff'
+                    elif alt_exon_fold_cutoff < 1:
+                        if analysis_method == 'splicing-index': passed = 'no'; print_out+= 'splicing-index fold change'
+                        elif alt_exon_fold_cutoff < 0: passed = 'no'; print_out+= 'alternative exon fold change'
+                    elif p_threshold <= 0: passed = 'no'; print_out+= 'alternative exon p-value'
+                    if passed == 'no': IndicatorWindow(print_out,'Continue')
+                    else: proceed = 'yes'
             if run_goelite == 'yes':
-                root = Tk(); root.title('AltAnalyze: Pathway Analysis Parameters')
-                if run_from_scratch == 'AltAnalyze filtered':
-                    option_list['GOElite'] = option_list['GOElite'][2:]; goelite_defaults = goelite_defaults[2:]
-                gu = GUI(root,option_db,option_list['GOElite'],goelite_defaults)       
-                if run_from_scratch != 'AltAnalyze filtered':
+                if run_from_scratch == 'Process AltAnalyze filtered':
+                    option_list['GOElite'] = option_list['GOElite'][3:]; goelite_defaults = goelite_defaults[3:]
+                if backSelect == 'no' or 'GOElite' == selected_parameters[-1]:
+                    selected_parameters.append('GOElite'); backSelect = 'no'
+                    root = Tk(); root.title('AltAnalyze: Pathway Analysis Parameters')
+                    gu = GUI(root,option_db,option_list['GOElite'],goelite_defaults)
+                else: gu = PreviousResults(old_options)
+                if run_from_scratch != 'Process AltAnalyze filtered':
                     ge_fold_cutoffs = gu.Results()['ge_fold_cutoffs']
                     ge_pvalue_cutoffs = gu.Results()['ge_pvalue_cutoffs']
+                    ge_ptype = gu.Results()['ge_ptype']
                 filter_method = gu.Results()['filter_method']
                 z_threshold = gu.Results()['z_threshold']
                 p_val_threshold = gu.Results()['p_val_threshold']
                 change_threshold = gu.Results()['change_threshold']
+                resources_to_analyze = gu.Results()['resources_to_analyze']
                 pathway_permutations = gu.Results()['pathway_permutations']
                 mod = gu.Results()['mod']
                 ge_fold_cutoffs = math.log(float(ge_fold_cutoffs),2)
-                
-    except KeyError:  ###Occurs when PMW or Tkinter does not propperly load
-        species, array_type, manufacturer, constitutive_source, run_from_scratch = getPrimaryUserParameters()
-        expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = importDefaults(array_type,species)
-
-        dabg_p, expression_threshold, perform_alt_analysis, expression_data_format, avg_all_for_ss, include_raw_data = expr_defaults
-        analysis_method, p_threshold, filter_probeset_types, alt_exon_fold_cutoff, gene_expression_cutoff, perform_permutation_analysis, permute_p_threshold, run_MiDAS, export_splice_index_values = alt_exon_defaults
-        analyze_functional_attributes,microRNA_prediction_method = functional_analysis_defaults
-        
+    except OSError:
+        null=[]; sys.exit()
     """In this next section, create a set of GUI windows NOT defined by the options.txt file.
     These are the groups and comps files"""
     original_comp_group_list=[]; array_group_list=[]; group_name_list=[]
-    if run_from_scratch != 'AltAnalyze filtered': ### Groups and Comps already defined
+    if run_from_scratch != 'Process AltAnalyze filtered' and run_from_scratch != 'Annotate External Results': ### Groups and Comps already defined
 
-        if run_from_scratch == 'CEL files':
+        if run_from_scratch == 'Process CEL files':
             if 'exp.' not in dataset_name: dataset_name = 'exp.'+dataset_name+'.txt'
             groups_name = string.replace(dataset_name,'exp.','groups.')
             comps_name = string.replace(dataset_name,'exp.','comps.')
@@ -1813,10 +2814,13 @@ def getUserParameters(skip_intro):
             exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
             parent_dir = output_dir  ### interchangable terms (parent_dir used with expression file import)
             
-        if run_from_scratch == 'expression file':
+        if run_from_scratch == 'Process Expression file':
             if len(input_exp_file)>0:
                 if len(input_stats_file)>1: ###Make sure the files have the same arrays and order first
-                    cel_files2, array_linker_db2 = ExpressionBuilder.getArrayHeaders(input_stats_file)
+                    try: cel_files2, array_linker_db2 = ExpressionBuilder.getArrayHeaders(input_stats_file)
+                    except Exception:
+                        print_out = "Input Expression file does not have a valid format."
+                        IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()               
                     if cel_files2 != cel_files:
                         print_out = "The probe set p-value file:\n"+input_stats_file+"\ndoes not have the same array order as the\nexpression file. Correct before proceeding."
                         IndicatorWindow(print_out,'Continue')
@@ -1837,30 +2841,44 @@ def getUserParameters(skip_intro):
         ### Import array-group and group comparisons. Only time relevant for probesetSummarization is when an error is encountered and re-running
         try: dir_files = read_directory(parent_dir)
         except Exception: dir_files=[]
-        if groups_name in dir_files and comps_name in dir_files:
-            array_group_list,group_db = importArrayGroupsSimple(groups_file_dir) #agd = ArrayGroupData(array_header,group,group_name)
-            comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
-            for group1,group2 in comp_group_list:
-                try: group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
-                except KeyError:
-                    print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
-                    WarningWindow(print_out,'Exit'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
-                original_comp_group_list.append((group_name1,group_name2)) ### If comparisons already exist, default to these
-        else:
-            array_group_list=[]
+
+        array_group_list=[]
+        if backSelect == 'yes':
             for cel_file in cel_files:
-                group = ''; group_name = '' ### temporarily assign group and group_name as blanks, until assigned
+                if cel_file in user_variables: group_name = user_variables[cel_file]; group = ''
+                else: group = ''; group_name = ''    
+                agd = ArrayGroupData(cel_file,group,group_name); array_group_list.append(agd)      
+        elif groups_name in dir_files:
+            array_group_list,group_db = importArrayGroupsSimple(groups_file_dir) #agd = ArrayGroupData(array_header,group,group_name)
+            if comps_name in dir_files:
+                comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
+                for group1,group2 in comp_group_list:
+                    try: group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
+                    except KeyError:
+                        print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
+                        WarningWindow(print_out,'Exit'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+                    original_comp_group_list.append((group_name1,group_name2)) ### If comparisons already exist, default to these
+        else:
+            for cel_file in cel_files:
+                group = ''; group_name = ''    
                 agd = ArrayGroupData(cel_file,group,group_name); array_group_list.append(agd)
-                        
+                
         if len(array_group_list)>0: ### Thus we are not analyzing the default (ExpressionInput) directory of expression, group and comp data.
             option_db,option_list = formatArrayGroupsForGUI(array_group_list)
             ###Force this GUI to repeat until the user fills in each entry, but record what they did add
             user_variables_long={}
             while len(user_variables_long) != len(option_db):
-                root = Tk(); root.title('AltAnalyze: Assign CEL files to a Group Annotation'); user_variables={}; user_variables_long={}
-                gu = GUI(root,option_db,option_list['GroupArrays'],'groups')
+                if backSelect == 'no' or 'GroupArrays' == selected_parameters[-1]:
+                    selected_parameters.append('GroupArrays'); backSelect = 'no'
+                    root = Tk(); root.title('AltAnalyze: Assign CEL files to a Group Annotation'); user_variables_long={}
+                    #import copy; user_variables_original = copy.deepcopy(user_variables); user_variables={}
+                    gu = GUI(root,option_db,option_list['GroupArrays'],'groups')
+                else: gu = PreviousResults(old_options)
                 for option in user_variables: ### By default, all arrays will be assigned a group of ''
-                    if len(user_variables[option])>0: user_variables_long[option]=[]
+                    try:
+                        if len(user_variables[option])>0:
+                            if option in option_db: user_variables_long[option]=[]
+                    except Exception: null=[]
                 ###Store the group names and assign group numbers
                 group_name_db={}; group_name_list = []; group_number = 1
                 for cel_file in option_list['GroupArrays']: ### start we these CEL files, since they are ordered according to their order in the expression dataset
@@ -1868,6 +2886,7 @@ def getUserParameters(skip_intro):
                     if group_name not in group_name_db:
                         group_name_db[group_name]=group_number; group_number+=1
                         group_name_list.append(group_name)
+                if len(group_name_db)==2: analyze_all_conditions = 'pairwise' ### Don't allow multiple comparison analysis if only two conditions present
                 
                 ###Store the group names and numbers with each array_id in memory   
                 for agd in array_group_list:
@@ -1875,7 +2894,6 @@ def getUserParameters(skip_intro):
                     group_name = gu.Results()[cel_file] ###Lookup the new group assignment entered by the user
                     group_number = group_name_db[group_name]
                     agd.setGroupName(group_name); agd.setGroup(group_number)
-                    
                 if (len(user_variables_long) != len(option_db)) or len(group_name_db)<2:
                     if len(group_name_db)<2:
                         print_out = "At least two array groups must be established\nbefore proceeding."
@@ -1891,7 +2909,7 @@ def getUserParameters(skip_intro):
             possible_comps = px
         
             ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
-            category = 'SetupComps'; option_db={}; option_list={}; user_variables={}; cn = 0
+            category = 'SetupComps'; option_db={}; option_list={}; cn = 0 #; user_variables={}
             while cn < px:
                 try: group1,group2 = original_comp_group_list[cn]
                 except IndexError: group1='';group2=''
@@ -1900,20 +2918,40 @@ def getUserParameters(skip_intro):
                 option_db[option] = od
                 try: option_list[category].append(option) ###group is the name of the GUI menu group
                 except KeyError: option_list[category] = [option]
-
-            root = Tk(); root.title('AltAnalyze: Establish All Pairwise Comparisons')
-            gu = GUI(root,option_db,option_list['SetupComps'],'comps'); comp_groups_db={}
-            ### Sort comparisons from user for export
-            for comparison in gu.Results():
-                group_name = gu.Results()[comparison]
-                if len(group_name)>0: ### Group_names are by default blank
-                    cn_main,cn_minor = string.split(comparison[11:],'-') ### e.g. 1-1 and 1-2
-                    try: comp_groups_db[cn_main].append([cn_minor,group_name])
-                    except KeyError: comp_groups_db[cn_main]=[[cn_minor,group_name]]
-            comp_group_list=[]
-            for cn_main in comp_groups_db: cg = comp_groups_db[cn_main]; cg.sort(); comp_group_list.append([cn_main,[group_name_db[cg[0][1]],group_name_db[cg[1][1]]]]) 
-            comp_group_list.sort()
-            
+                
+            proceed = 'no'
+            while proceed == 'no' and analyze_all_conditions != 'all groups':
+                identical_groups = 'no'; comp_groups_db={}; proceed = 'no'
+                if (backSelect == 'no' or 'SetupComps' == selected_parameters[-1]):
+                    selected_parameters.append('SetupComps'); backSelect = 'no'
+                    root = Tk(); root.title('AltAnalyze: Establish All Pairwise Comparisons')
+                    gu = GUI(root,option_db,option_list['SetupComps'],'comps')
+                else: gu = PreviousResults(old_options)
+                ### Sort comparisons from user for export
+                for comparison in gu.Results():
+                    try:
+                        group_name = gu.Results()[comparison]
+                        if len(group_name)>0: ### Group_names are by default blank
+                            cn_main,cn_minor = string.split(comparison[11:],'-') ### e.g. 1-1 and 1-2
+                            try:
+                                null = int(cn_main); null = int(cn_minor)
+                                try: comp_groups_db[cn_main].append([cn_minor,group_name])
+                                except KeyError: comp_groups_db[cn_main]=[[cn_minor,group_name]]
+                            except Exception: null=[]
+                    except Exception: null=[]
+                print_out = "You must pick at least one comparison group before proceeding."
+                if len(comp_groups_db)>0:
+                    try:
+                        comp_group_list=[]
+                        for cn_main in comp_groups_db:
+                            cg = comp_groups_db[cn_main]; cg.sort(); comp_group_list.append([cn_main,[group_name_db[cg[0][1]],group_name_db[cg[1][1]]]])
+                            if cg[0][1] == cg[1][1]: identical_groups = 'yes' ### Thus the two groups in the comparisons are identical, flag
+                        comp_group_list.sort()                    
+                        proceed = 'yes'
+                    except Exception: print_out = "You must pick at least two groups for each comparison."
+                if identical_groups == 'yes': proceed = 'no'; print_out = "The same group is listed as both the experimental and\ncontrol group in a comparison. Fix before proceeding."
+                if proceed == 'no': IndicatorWindow(print_out,'Continue')   
+                
             ### Export user modified groups and comps files
             exported = 0
             while exported == 0:
@@ -1928,7 +2966,7 @@ def getUserParameters(skip_intro):
             while exported == 0:
                 try:
                     fl = exp_file_location_db[dataset_name]; comps_file = fl.CompsFile()
-                    exportComps(exp_file_location_db,comp_group_list)
+                    if analyze_all_conditions != 'all groups': exportComps(exp_file_location_db,comp_group_list)
                     exported = 1
                 except Exception:
                     print_out = "The file:\n"+comps_file+"\nis still open. This file must be closed before proceeding"
@@ -1938,6 +2976,8 @@ def getUserParameters(skip_intro):
         try: dir_list = read_directory(import_dir); fn_dir = filepath(import_dir[1:]); species_dir_found = 'yes'
         except Exception: fn_dir = filepath(import_dir); dir_list = []; species_dir_found = 'no'
 
+        ### Used to check if the user has an Affymetrix CSV file around... no longer needed        
+        """
         if (len(dir_list)<1 or species_dir_found == 'no') and array_type != 'exon':
             print_out = 'No Affymetrix annnotations file found in the directory:\n'+fn_dir
             print_out += '\n\nTo download, click on the below button, find your array and download the annotation CSV file'
@@ -1946,6 +2986,7 @@ def getUserParameters(skip_intro):
     
             button_text = 'Download Annotations'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
             IndicatorLinkOutWindow(print_out,button_text,url)
+            """
     if microRNA_prediction_method == 'two or more': microRNA_prediction_method = 'multiple'
     else: microRNA_prediction_method = 'any'
 
@@ -1971,56 +3012,36 @@ def getUserParameters(skip_intro):
     for dataset in exp_file_location_db:
         fl = exp_file_location_db[dataset_name]
         fl.setAPTLocation(apt_location)
-        if run_from_scratch == 'CEL files':
+        if run_from_scratch == 'Process CEL files':
             fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setXHybRemoval(remove_xhyb)
-            fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type_original); fl.setOutputDir(output_dir)
+            fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
         fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
 
-    expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
-    alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,permute_p_threshold, perform_permutation_analysis, export_splice_index_values
+    expr_var = species,array_type,vendor,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
+    alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,permute_p_threshold, perform_permutation_analysis, export_splice_index_values, analyze_all_conditions
     additional_var = calculate_splicing_index_p, run_MiDAS, analyze_functional_attributes, microRNA_prediction_method, filter_for_AS
-    goelite_var = ge_fold_cutoffs,ge_pvalue_cutoffs,filter_method,z_threshold,p_val_threshold,change_threshold,pathway_permutations,mod
+    goelite_var = ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,pathway_permutations,mod
 
     return expr_var, alt_var, additional_var, goelite_var, exp_file_location_db
 
 def getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS):
     import ResultsExport_module
     if 'APT' in file_location_defaults:
-        for fl in file_location_defaults['APT']: 
-          apt_location = fl.Location() ###Only one entry for all species
-          if len(apt_location)<1: ###If no APT version is designated, prompt the user to find the directory
-              if run_from_scratch == 'CEL_summarize':
-                  print_out = 'To proceed with probeset summarization from CEL files,\nyou must select a valid Affymetrix Power Tools Directory.'
-              elif run_MiDAS == 'yes': 
-                  print_out = "To proceed with running MiDAS, you must select\na valid Affymetrix Power Tools Directory."
-              win_info = IndicatorChooseWindow(print_out,'Continue') ### Prompt the user to locate the APT directory
-              apt_location = win_info.Folder()
-              fl.ResetLocation(apt_location)
-              exportDefaultFileLocations(file_location_defaults)
+        fl = file_location_defaults['APT']
+        apt_location = fl.Location() ###Only one entry for all species
+        if len(apt_location)<1: ###If no APT version is designated, prompt the user to find the directory
+            if run_from_scratch == 'CEL_summarize':
+                print_out = 'To proceed with probeset summarization from CEL files,\nyou must select a valid Affymetrix Power Tools Directory.'
+            elif run_MiDAS == 'yes': 
+                print_out = "To proceed with running MiDAS, you must select\na valid Affymetrix Power Tools Directory."
+            win_info = IndicatorChooseWindow(print_out,'Continue') ### Prompt the user to locate the APT directory
+            apt_location = win_info.Folder()
+            fl.SetLocation(apt_location)
+            exportDefaultFileLocations(file_location_defaults)
     return apt_location
     
 if __name__ == '__main__':
-    getUserParameters('yes'); sys.exit()
-    #file_dirs = ('C:/Documents and Settings/Nathan Salomonis/Desktop/Rs1//GO-Elite/input', 'C:/Documents and Settings/Nathan Salomonis/Desktop/Rs1//GO-Elite/denominator', 'C:/Documents and Settings/Nathan Salomonis/Desktop/Rs1//GO-Elite')
-    #array_type = 'exon'; species = 'Mm'; run_from_scratch = 'expression'
     #getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
-    ###Test probesetSummarize
-    exp_file_location_db={}
-    fl = ExpressionFileLocationData('','','','')
-    exp_file_location_db['test'] = fl
-
-    apt_location = 'AltDatabase/affymetrix/APT'
-    input_cdf_file = 'C:/Documents and Settings/Nathan Salomonis/Desktop/zebrafish_libraryfile/CD_Zebrafish/Full/Zebrafish/LibFiles/Zebrafish.cdf'
-    input_cdf_file =  '/hd3/home/nsalomonis/mir195'
-    clf_file=''; bgp_file=''; array_type = "3'array"
-    output_dir = 'C:/Documents and Settings/Nathan Salomonis/Desktop/test-AA'
-    output_dir = '/hd3/home/nsalomonis/mir195'
-    species = 'Hs'
-    species = 'Mm'
-    cel_file_dir = 'C:/Documents and Settings/Nathan Salomonis/My Documents/1-collaborations/Keerthi'
-    cel_file_dir = '/hd3/home/nsalomonis/mir195'
     
-    fl.setAPTLocation(apt_location); fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
-    fl.setXHybRemoval('no')
-    probesetSummarize(exp_file_location_db,species,'')
+    a = getUserParameters('yes'); print a; sys.exit()
     
