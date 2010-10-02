@@ -1,7 +1,7 @@
 #summary News and Updates
 #labels Featured
 
-=News and Updates
+=News and Updates=
 ==4-12-10==
 Introducing AltAnalyze version 1.15 with expanded features for alternative exon array analysis. New to AltAnalyze; 1) Alternative exon analysis of Affymetrix Gene 1.0 ST arrays, 2) FIRMA analysis, 3) Bundled version of Cytoscape and DomainGraph included, 4) AltAnalyze DomainGraph start option, 5) Import and filtering based on 3rd party alternative exon analysis results and 6) Linux exectuable version. Please contact us with any questions.
 
