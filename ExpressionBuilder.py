@@ -131,12 +131,13 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     expr_group_list,expr_group_db = importArrayGroups(expr_group_dir,array_linker_db)
     comp_group_list, comp_group_list2 = importComparisonGroups(comp_group_dir)
 
-    global array_fold_headers; global statistics_summary_db; global stat_summary_names; global summary_filtering_stats; global raw_data_comp_headers; global raw_data_comps
+    global array_fold_headers; global summary_filtering_stats; global raw_data_comp_headers; global raw_data_comps
 
-    try: array_folds, array_fold_headers, statistics_summary_db, stat_summary_names, summary_filtering_stats,raw_data_comp_headers, raw_data_comps = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data)
-    except Exception: 
+    try:
+        array_folds, array_fold_headers, summary_filtering_stats, raw_data_comp_headers, raw_data_comps = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data)
+    except OSError: 
         print_out = 'AltAnalyze encountered an error with the format of the expression file.\nIf the data was designated as log intensities and it is not, then re-run as non-log.'
-        try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); sys.exit()
+        try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
         except NameError: print print_out; sys.exit()
     exportAnalyzedData(comp_group_list2,expr_group_db)
     
@@ -145,30 +146,37 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
         if include_raw_data == 'yes': headers = removeRawData(array_fold_headers)
         else: headers = array_fold_headers
         exportDataForGenMAPP(headers)
-
+    array_folds = []; summary_filtering_stats = [] ### Clear these global variables
+    
 def importArrayGroups(expr_group_dir,array_linker_db):
     new_index_order = 0    
     expr_group_list=[]
     expr_group_db = {} ### use when writing out data
     fn=filepath(expr_group_dir)
-    for line in open(fn,'rU').xreadlines():             
-        data = cleanUpLine(line)
-        array_header,group,group_name = string.split(data,'\t')
-        group = int(group)
-        ### compare new to original index order of arrays
-        try:
-            original_index_order = array_linker_db[array_header]
-        except KeyError:
-            print_out = 'WARNING!!! At least one array-ID listed in the "groups." file (e.g.,'+array_header+')'+'\n is not in the array "exp." file. See the new file "arrays." with all "exp." header names\nand correct "groups."' 
-            try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!')
-            except NameError: print print_out
-            exportArrayHeaders(expr_group_dir,array_linker_db)
-            root.destroy(); sys.exit()            
-        entry = new_index_order, original_index_order, group, group_name
-        expr_group_list.append(entry)
-        new_index_order += 1 ### add this aftwards since these will also be used as index values
-        expr_group_db[str(group)] = group_name
-    expr_group_list.sort() ### sorting put's this in the original array order
+    try: 
+        for line in open(fn,'rU').xreadlines():             
+            data = cleanUpLine(line)
+            array_header,group,group_name = string.split(data,'\t')
+            group = int(group)
+            ### compare new to original index order of arrays
+            try:
+                original_index_order = array_linker_db[array_header]
+            except KeyError:
+                print_out = 'WARNING!!! At least one array-ID listed in the "groups." file (e.g.,'+array_header+')'+'\n is not in the array "exp." file. See the new file "arrays." with all "exp." header names\nand correct "groups."' 
+                try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!')
+                except NameError: print print_out
+                exportArrayHeaders(expr_group_dir,array_linker_db)
+                try: root.destroy(); sys.exit()
+                except Exception: sys.exit()
+            entry = new_index_order, original_index_order, group, group_name
+            expr_group_list.append(entry)
+            new_index_order += 1 ### add this aftwards since these will also be used as index values
+            expr_group_db[str(group)] = group_name
+        expr_group_list.sort() ### sorting put's this in the original array order
+    except Exception:
+        exportArrayHeaders(expr_group_dir,array_linker_db)
+        print 'No groups or comps files found... created template groups file... exiting program.'; sys.exit()
+        
     return expr_group_list,expr_group_db
 
 def exportArrayHeaders(expr_group_dir,array_linker_db):
@@ -178,15 +186,16 @@ def exportArrayHeaders(expr_group_dir,array_linker_db):
     data.close()
     
 def importComparisonGroups(comp_group_dir):
-    comp_group_list=[]
-    comp_group_list2=[]
-    fn=filepath(comp_group_dir)
-    for line in open(fn,'rU').xreadlines():            
-        data = cleanUpLine(line)
-        groups = string.split(data,'\t')
-        groups2 = groups[0],groups[1] #as a list these would be unhashable
-        comp_group_list.append(groups)
-        comp_group_list2.append(groups2)
+    comp_group_list=[]; comp_group_list2=[]
+    try:
+        fn=filepath(comp_group_dir)
+        for line in open(fn,'rU').xreadlines():            
+            data = cleanUpLine(line)
+            groups = string.split(data,'\t')
+            groups2 = groups[0],groups[1] #as a list these would be unhashable
+            comp_group_list.append(groups)
+            comp_group_list2.append(groups2)
+    except Exception: null=[] ### Occcurs when no file present
     return comp_group_list, comp_group_list2
 
 def importMicrornaAssociations(species,report):
@@ -212,28 +221,46 @@ def importMicrornaAssociations(species,report):
         
     return ensembl_microRNA_db
 
+def importSystemCodes():
+    filename = 'Config/source_data.txt'
+    fn=filepath(filename); x=0; systems={}
+    for line in open(fn,'rU').readlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        system_name=t[0];system_code=t[1]
+        if x==0: x=1
+        else: systems[system_name] = system_code
+    return systems
+            
 def exportDataForGenMAPP(headers):
-    ###Export summary columns for GenMAPP analysis 
+    ###Export summary columns for GenMAPP analysis
+    systems = importSystemCodes()
     GenMAPP_file = expression_dataset_output_dir + 'GenMAPP-'+experiment_name+'.txt'
-    genmapp = export.createExportFile(GenMAPP_file,expression_dataset_output_dir[:-1])
-    if array_type == "exon": system_code = 'En'
-    else: system_code = 'X'
+    try: genmapp = export.createExportFile(GenMAPP_file,expression_dataset_output_dir[:-1])
+    except RuntimeError:
+        export.isFileOpen(GenMAPP_file,expression_dataset_output_dir[:-1])
+        genmapp = export.createExportFile(GenMAPP_file,expression_dataset_output_dir[:-1])
+    if array_type == "exon" or array_type == 'gene': system_code = 'En'
+    else:
+        try: system_code = systems[vendor]
+        except Exception: system_code = 'X'
     genmapp_title = ['GeneID','SystemCode'] + headers
-    genmapp_title = string.join(genmapp_title,'\t')+'\t'+'smallest-p'+'\t'+'largest fold'+'\n'
+    genmapp_title = string.join(genmapp_title,'\t')+'\t'+'ANOVA-rawp'+'\t'+'ANOVA-adjp'+'\t'+'largest fold'+'\n'
     genmapp.write(genmapp_title)
 
     for probeset in array_folds:
         data_val = probeset+'\t'+system_code
         for value in array_folds[probeset]: data_val += '\t'+ str(value)
-        smallest_p, largest_fold = summary_filtering_stats[probeset][:2]
-        data_val += '\t'+ str(smallest_p) +'\t'+ str(largest_fold) +'\n'
+        gs = summary_filtering_stats[probeset]
+        data_val += '\t'+ str(gs.Pval()) +'\t'+ str(gs.AdjP()) +'\t'+ str(gs.LogFold()) +'\n'
         genmapp.write(data_val)
     genmapp.close()
     exportGOEliteInput(headers,system_code)
 
-def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, main_output_folder, system_code):
+def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_folder):
     global array_folds; global m_cutoff; global p_cutoff; global expression_dataset_output_dir
-    m_cutoff = ge_fold_cutoffs; p_cutoff = ge_pvalue_cutoffs
+    global ptype_to_use
+    m_cutoff = ge_fold_cutoffs; p_cutoff = ge_pvalue_cutoffs; ptype_to_use = ge_ptype
     expression_dataset_output_dir = string.replace(main_output_folder,'GO-Elite','ExpressionOutput/')
     dir_list = read_directory(expression_dataset_output_dir[:-1])
     for filename in dir_list:
@@ -244,7 +271,7 @@ def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, main_output_folder, syste
                 data = cleanUpLine(line); t = string.split(data,'\t')
                 if x==0: x=1; headers = t[1:-2]
                 else: 
-                    values = t[1:-2]; probeset = t[0]
+                    values = t[1:-2]; probeset = t[0]; system_code = t[1]
                     array_folds[probeset] = values
             input_files_exported = exportGOEliteInput(headers,system_code)
       
@@ -252,7 +279,7 @@ def exportGOEliteInput(headers,system_code):
     ### Filter statistics based on user-defined thresholds as input for GO-Elite analysis
     criterion_db={}; denominator_geneids={}; index = 0; ttest=[]
     for column in headers:
-        if 'ttest' in column: ttest.append(index)
+        if ptype_to_use in column and 'ANOVA' not in column: ttest.append(index)
         index+=1
         
     for probeset in array_folds:
@@ -260,7 +287,7 @@ def exportGOEliteInput(headers,system_code):
         for value in array_folds[probeset]:
             denominator_geneids[probeset]=[]
             if index in ttest:
-                criterion_name = headers[index][6:]
+                criterion_name = headers[index][5:]
                 log_fold = float(af[index-2])
                 p_value = float(value)
                 if abs(log_fold)>m_cutoff and p_value<p_cutoff:
@@ -296,7 +323,7 @@ def exportGOEliteInput(headers,system_code):
         
 def removeRawData(array_fold_headers):
     ### Prior to exporting data for GenMAPP, remove raw data columns
-    columns_with_stats=[]; i=0; stat_headers = ['avg', 'log_fold', 'fold', 'ttest']; filtered_headers=[]
+    columns_with_stats=[]; i=0; stat_headers = ['avg', 'log_fold', 'fold', 'rawp', 'adjp']; filtered_headers=[]
     for header in array_fold_headers:
         broken_header = string.split(header,'-')
         ### Only keep those headers and indexes with recognized ExpressionBuilder inserted prefixes
@@ -310,11 +337,15 @@ def removeRawData(array_fold_headers):
     return filtered_headers
 
 def exportAnalyzedData(comp_group_list2,expr_group_db):
-    try: ensembl_microRNA_db = importMicrornaAssociations(species,'multiple')
+    report = 'multiple'; report = 'single'
+    try: ensembl_microRNA_db = importMicrornaAssociations(species,report)
     except IOError: ensembl_microRNA_db={}
     if data_type == 'expression':
         new_file = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
-        data = export.createExportFile(new_file,expression_dataset_output_dir[:-1])
+        try: data = export.createExportFile(new_file,expression_dataset_output_dir[:-1])
+        except RuntimeError:
+            export.isFileOpen(new_file,expression_dataset_output_dir[:-1])
+            data = export.createExportFile(new_file,expression_dataset_output_dir[:-1])
         try: custom_annotation_dbase = importCustomAnnotations()
         except Exception: custom_annotation_dbase={}
         x=0;y=0;z=0
@@ -323,10 +354,11 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
             if arrayid in annotate_db: y = 1
             if arrayid in conventional_array_db: z = 1
             break
-        if array_type == "exon":
+        if array_type == "exon" or array_type == "gene":
             #annotate_db[gene] = symbol, definition,rna_processing
             #probeset_db[gene] = transcluster_string, exon_id_string
-            title = "Ensembl_gene" +'\t'+ 'Definition' +'\t'+ 'Symbol' +'\t'+ 'Transcript_cluster_ids' +'\t'+ 'Constitutive_exons' +'\t'+ 'Constitutive_probesets' +'\t'+ 'Putative microRNA binding sites'
+            title = ["Ensembl_gene",'Definition','Symbol','Transcript_cluster_ids','Constitutive_exons','Constitutive_probesets','Putative microRNA binding sites','Select Cellular Compartments','Select Protein Classes']
+            title = string.join(title,'\t')
         elif x == 1:
             title = "Probesets" +'\t'+ 'Definition' +'\t'+ 'Symbol' +'\t'+ 'affygene' +'\t'+ 'exons' +'\t'+ 'probe_type_call' +'\t'+ 'ensembl'
         elif y==1: title = "Probesets" +'\t'+ 'Symbol' +'\t'+ 'Definition'
@@ -335,10 +367,10 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
              title = string.join(title,'\t')
         else: title = "Probesets"
         for entry in array_fold_headers: title = title + '\t' + entry
-        title = title +'\t'+ 'smallest-p' +'\t'+ 'largest fold' + '\n'
+        title = title +'\t'+ 'ANOVA-rawp' +'\t'+ 'ANOVA-adjp' +'\t'+'largest fold' + '\n'
         data.write(title)
         for arrayid in array_folds:
-            if array_type == "exon":
+            if array_type == "exon" or array_type == "gene":
                 try:
                     try: definition = annotate_db[arrayid][0]; symbol = annotate_db[arrayid][1]; rna_processing = annotate_db[arrayid][2]
                     except TypeError: print arrayid, annotate_db[arrayid]; kill
@@ -349,7 +381,10 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 trans_cluster = probeset_db[arrayid][0]
                 exon_ids = probeset_db[arrayid][1]
                 probesets = probeset_db[arrayid][2]
-                data_val = arrayid +'\t'+ symbol +'\t'+ definition +'\t'+ trans_cluster +'\t'+ exon_ids +'\t'+ probesets +'\t'+ miRs
+                try: compartmement,custom_class = custom_annotation_dbase[arrayid]
+                except KeyError: compartmement=''; custom_class=''
+                data_val = [arrayid,symbol,definition,trans_cluster,exon_ids,probesets,miRs,compartmement,custom_class]
+                data_val = string.join(data_val,'\t')
             elif arrayid in annotate_db and arrayid in probeset_db:
                 symbol = annotate_db[arrayid][0]
                 definition = annotate_db[arrayid][1]
@@ -383,9 +418,8 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 data_val = arrayid
             for value in array_folds[arrayid]:
                 data_val = data_val + '\t' + str(value)
-            smallest_p = summary_filtering_stats[arrayid][0]
-            largest_fold = summary_filtering_stats[arrayid][1]
-            data_val = data_val +'\t'+ str(smallest_p) +'\t'+ str(largest_fold) +'\n'
+            gs = summary_filtering_stats[arrayid]
+            data_val = data_val +'\t'+ str(gs.Pval()) +'\t'+ str(gs.AdjP()) +'\t'+ str(gs.LogFold()) +'\n'
             data.write(data_val)
         data.close()
         print "Full Dataset with statistics:",'DATASET-'+experiment_name+'.txt', 'written'
@@ -404,7 +438,7 @@ def cleanUpLine(line):
 def exportSplicingInput(species,array_type,expr_group_db,raw_data_comp_headers,comp_group_list2,raw_data_comps,export_summary_stats,data_type):
     #print "Writing AltAnalyze input...."
     ###Write individual comparison files out for AltAnalyze analysis
-    AltAnalzye_input_dir = "AltExpression/pre-filtered/"+data_type+'/'
+    AltAnalyze_input_dir = root_dir+"AltExpression/pre-filtered/"+data_type+'/'
     array_type_name = 'Exon'
     if array_type == "AltMouse": array_type_name = "AltMouse"
     for comparison in comp_group_list2: #loop throught the list of comparisons
@@ -413,31 +447,9 @@ def exportSplicingInput(species,array_type,expr_group_db,raw_data_comp_headers,c
         group1_name = expr_group_db[group1]
         group2_name = expr_group_db[group2]
         
-        if export_summary_stats == 'yes':
-            file_name = species+'_'+array_type_name+'_'+ group1_name + '_vs_' + group2_name + '-ttest.txt'
-            new_file = AltAnalzye_input_dir + file_name
-            fn=filepath(new_file)
-            data = open(fn,'w')
-            try: avg_baseline_name = stat_summary_names[comparison][0]
-            except TypeError: print stat_summary_names, comparison;dog
-            ttest_name = stat_summary_names[comparison][3]
-            exp_log_fold_name = stat_summary_names[comparison][1]
-            title = "Probesets" +'\t'+ avg_baseline_name +'\t'+ ttest_name +'\t'+ 'null' +'\t'+ 'baseline_fold' +'\t'+ exp_log_fold_name + '\n'
-            data.write(title)
-            for key in statistics_summary_db:
-                array_id = key[0]; comp = key[1]; comp =  str(comp[0]),str(comp[1])
-                if comp == comparison: #if this is the comparison file we wish to generate
-                    avg_baseline = statistics_summary_db[key][0]  #[avg1,log_fold,fold,ttest]
-                    ttest = statistics_summary_db[key][3]
-                    exp_log_fold = statistics_summary_db[key][1]
-                    data_val = array_id +'\t'+ str(avg_baseline) +'\t'+ str(ttest) +'\t'+ '1' +'\t'+ '0' +'\t'+ str(exp_log_fold) + '\n'
-                    data.write(data_val)
-            data.close()
-            print "Comparison statistics for",array_type_name,":",file_name, 'written'
-            
         file_name2 = species+'_'+array_type_name+'_'+ group1_name + '_vs_' + group2_name + '.txt'
-        new_file2 = AltAnalzye_input_dir + file_name2; altanalyze_files.append(file_name2)
-        data2 = export.createExportFile(new_file2,AltAnalzye_input_dir[:-1])
+        new_file2 = AltAnalyze_input_dir + file_name2; altanalyze_files.append(file_name2)
+        data2 = export.createExportFile(new_file2,AltAnalyze_input_dir[:-1])
         
         try: array_names = raw_data_comp_headers[comparison]
         except KeyError: print raw_data_comp_headers,dog
@@ -498,8 +510,7 @@ def import_annotations(filename):
                 probeset,definition,symbol = string.split(data,'\t')
                 rna_processing  = ''
             annotation_dbase[probeset] = definition, symbol,rna_processing
-        except ValueError:
-            continue
+        except ValueError: continue
     return annotation_dbase
 
 def importCustomAnnotations():
@@ -507,14 +518,13 @@ def importCustomAnnotations():
     fn=filepath(filename); custom_annotation_dbase = {}
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        ens_gene,compartmement,custom_class = string.split(data,'\t')
+        t = string.split(data,'\t')
+        ens_gene,compartmement,custom_class = t[:3]
         custom_annotation_dbase[ens_gene] = compartmement,custom_class
     return custom_annotation_dbase
 
 def import_altmerge(filename):
-    probeset_db = {}
-    constitutive_db = {}
-    fn=filepath(filename)
+    probeset_db = {}; constitutive_db = {}; fn=filepath(filename)
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)
         probeset,affygene,exons,transcript_num,transcripts,probe_type_call,ensembl,block_exon_ids,block_structure,comparison_info = string.split(probeset_data,'\t')
@@ -539,15 +549,19 @@ def parse_custom_annotations(filename):
     print len(custom_array_db), "custom array entries process"
     return custom_array_db
 
-def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,manufacturer,constitutive_source,data_source,Include_raw_data,perform_alt_analysis,GE_fold_cutoffs,GE_pvalue_cutoffs,exp_file_location_db,Root):
+def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
+                            avg_all_for_ss,Expression_data_format,Vendor,
+                            constitutive_source,data_source,Include_raw_data,
+                            perform_alt_analysis,GE_fold_cutoffs,GE_pvalue_cutoffs,
+                            GE_ptype,exp_file_location_db,Root):
   start_time = time.time()
   global root; root = Root
   #def remoteExpressionBuilder():
-  global species; global array_type ; species = Species; array_type = Array_type; global altanalyze_files
+  global species; global array_type ; species = Species; array_type = Array_type; global altanalyze_files; global vendor; vendor = Vendor
   global filter_by_dabg; filter_by_dabg = 'yes' ### shouldn't matter, since the program should just continue on without it
-  global expression_data_format; global expression_dataset_output_dir; global AltAnalzye_input_dir; global data_type
+  global expression_data_format; global expression_dataset_output_dir; global root_dir; global data_type
   global conventional_array_db; global custom_array_db; global constitutive_db; global include_raw_data; global experiment_name
-  global annotate_db; global probeset_db; global process_custom; global m_cutoff; global p_cutoff
+  global annotate_db; global probeset_db; global process_custom; global m_cutoff; global p_cutoff; global ptype_to_use
   include_raw_data = Include_raw_data; expression_data_format = Expression_data_format
   data_type = 'expression' ###Default, otherwise is 'dabg'
   d = "core"; e = "extendend"; f = "full"; exons_to_grab = d ### Currently, not used by the program... intended as an option for ExonArrayAffymetrixRules full annotation (deprecated)
@@ -557,17 +571,17 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
   dabg_p = 0.75; data_type = 'expression' ###used for expression analysis when dealing with AltMouse arrays
   a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; array_type = c
   l = 'log'; n = 'non-log'; expression_data_format = l
-  w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; manufacturer = x
+  w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; vendor = x
   hs = 'Hs'; mm = 'Mm'; dr = 'Dr'; rn = 'Rn'; species = mm
   include_raw_data = 'yes'  
   expression_threshold = 70 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
   avg_all_for_ss = 'no'  ###Default is 'no' since we don't want all probes averaged for the exon arrays
   """
 
-  ct = 'count'; avg = 'average'; filter_method = avg
+  ct = 'count'
   filter_by_dabg = 'yes'
 
-  m_cutoff = GE_fold_cutoffs; p_cutoff = float(GE_pvalue_cutoffs)
+  m_cutoff = GE_fold_cutoffs; p_cutoff = float(GE_pvalue_cutoffs); ptype_to_use = GE_ptype
   
   print "Begining to Process the",species,array_type,'dataset'
   
@@ -591,9 +605,19 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
       probeset_db = ""; annotate_db = ""
       constitutive_db = ""; conventional_array_db = {}
       affy_data_dir = 'AltDatabase/affymetrix'
-      conventional_array_db = BuildAffymetrixAssociations.importAffymetrixAnnotations(affy_data_dir,species,process_go,extract_go_names,extract_pathway_names)
+      try: conventional_array_db = BuildAffymetrixAssociations.importAffymetrixAnnotations(affy_data_dir,species,process_go,extract_go_names,extract_pathway_names)
+      except Exception: print 'Error in processing CSV data. Getting this data from goelite annotations instead.'
+      exon_species = ['Hs','Rn','Mm']
+      if vendor == 'Affymetrix' and len(conventional_array_db)>0 and species in exon_species: use_go='no'
+      else: use_go = 'yes'
+      try:
+          print "Adding additional gene, GO and WikiPathways annotations"
+          conventional_array_db = BuildAffymetrixAssociations.getArrayAnnotationsFromGOElite(conventional_array_db,species,vendor,use_go)
+      except Exception: print "Additional annotation import failed"
       print len(conventional_array_db), "Array IDs with annotations from Affymetrix annotation files imported."
   elif array_type == "exon":
+      probeset_db = ""; annotate_db = ""; constitutive_db = ""; conventional_array_db = ""
+  elif array_type == "gene":
       probeset_db = ""; annotate_db = ""; constitutive_db = ""; conventional_array_db = ""
 
   altanalyze_files = []; datasets_with_all_necessary_files=0
@@ -604,19 +628,24 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
       stats_input_dir = fl.StatsFile()
       expr_group_dir = fl.GroupsFile()
       comp_group_dir = fl.CompsFile()
+      residuals_input_dir = string.replace(expr_input_dir,'exp.','residuals.')
       root_dir = fl.RootDir()
       datasets_with_all_necessary_files +=1
       checkArrayHeaders(expr_input_dir,expr_group_dir)
       expression_dataset_output_dir = root_dir+"ExpressionOutput/"
-      if array_type == "exon":
-          probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(fl,stats_input_dir,dabg_p,exons_to_grab,data_source,manufacturer,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis)
+      if array_type == "exon" or array_type == "gene":
+          probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(fl,array_type,dabg_p,expression_threshold,data_source,vendor,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis)
           expr_input_dir = expr_input_dir[:-4]+'-steady-state.txt'
           for file in comparison_filename_list: altanalyze_files.append(file)
-          """"if array_type == "AltMouse" and filter_by_dabg == 'yes':
+          residual_file_status = ExonArray.verifyFile(residuals_input_dir)
+          ### Separate residual file into comparison files for AltAnalyze (if running FIRMA)
+          if residual_file_status == 'found': ExonArray.processResiduals(fl,Array_type,Species,perform_alt_analysis)
+          
+          """if array_type == "AltMouse" and filter_by_dabg == 'yes':
           import JunctionArray; analysis_method = 'rma'
           JunctionArray.getAnnotations(expr_input_dir,dabg_p,species,analysis_method,constitutive_db)
           if analysis_method == 'plier': expr_input_dir = string.replace(expr_input_dir,'plier','plier-filtered')
-          else: expr_input_dir = string.replace(expr_input_dir,'rma','rma-filtered')"""                             
+          else: expr_input_dir = string.replace(expr_input_dir,'rma','rma-filtered')"""
       calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
       if array_type == 'AltMouse':  ###For AltMouse, we specifically need to generate a dabg file with all data (similiar to what is done for the exon arrays specifically in the ExonArray module
           stats_input = string.replace(expr_input_dir,'exp.','stats.')
@@ -626,21 +655,16 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_a
               data_type = 'dabg' ### when data_type is not expression, not 'DATASET' file is exported, but the same analysis is performed (exported to 'dabg' folder instead of expression)
               calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
 
-  annotate_db={}; probeset_db={}; constitutive_db={}; array_fold_db={}; array_folds={}; statistics_summary_db={}; raw_data_comps={}
+  annotate_db={}; probeset_db={}; constitutive_db={}; array_fold_db={}; array_folds={}; raw_data_comps={}
   if datasets_with_all_necessary_files == 0:
       ###Thus no files were found with valid inputs for all file types
       print 'WARNING....No propperly named datasets were found. ExpressionBuilder requires that there are at least 3 files with the prefixes "exp.", "groups." and "comps.", with the following dataset name being identical with all three files.'
       print "...check these file names before running again."
       inp = sys.stdin.readline(); sys.exit()
   altanalyze_files = unique.unique(altanalyze_files) ###currently not used, since declaring altanalyze_files a global is problematic (not available from ExonArray... could add though)
-  if array_type != "3'array" and perform_alt_analysis != 'expression':
-      import FilterDabg
-      FilterDabg.remoteRun(species,array_type,expression_threshold,filter_method,dabg_p,expression_data_format,altanalyze_files,root_dir)
-      return 'continue'
-  else:
-      end_time = time.time(); time_diff = int(end_time-start_time)
-
-      return 'stop'
+  end_time = time.time(); time_diff = int(end_time-start_time)
+  print "Gene Expression Analyses finished in %d seconds" % time_diff
+  return altanalyze_files
 
 def verifyFile(filename):
     fn=filepath(filename)
@@ -654,11 +678,11 @@ if __name__ == '__main__':
   dabg_p = 0.75
   a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; Array_type = c
   l = 'log'; n = 'non-log'; Expression_data_format = l
-  w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; manufacturer = x
+  w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; vendor = x
   hs = 'Hs'; mm = 'Mm'; dr = 'Dr'; rn = 'Rn'; Species = mm
   Include_raw_data = 'yes'  
   expression_threshold = 0 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
   avg_all_for_ss = 'no'  ###Default is 'no' since we don't want all probes averaged for the exon arrays
   
-  remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,manufacturer,constitutive_source,data_source,Include_raw_data)
+  remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,vendor,constitutive_source,data_source,Include_raw_data)
   """

@@ -42,10 +42,12 @@ def importSplicingAnnotationDatabase(filename):
         probeset_data,null = string.split(line,'\n')  #remove endline
         if x == 0: x = 1
         else:
-            probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, ens_exon_ids, ens_const_exons, exon_region, exon_region_start, exon_region_stop, splicing_event, splice_junctions = string.split(probeset_data,'\t')
+            try: probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, ens_exon_ids, ens_const_exons, exon_region, exon_region_start, exon_region_stop, splicing_event, splice_junctions = string.split(probeset_data,'\t')
+            except Exception: t = string.split(probeset_data,'\t'); print len(t), t;kill
             #probe_data = AffyExonSTData(probeset_id,ensembl_gene_id,exon_id,ens_exon_ids,transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, exon_region, splicing_event, splice_junctions)
-            probe_data = AffyExonSTDataSimple(probeset_id,ensembl_gene_id,exon_id,ens_exon_ids)
+            probe_data = AffyExonSTDataSimple(probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop)
             exon_db[probeset_id] = probe_data
+    print len(exon_db), 'probesets imported'
     return exon_db
 
 class SplicingAnnotationData:
@@ -91,6 +93,7 @@ class SplicingAnnotationData:
     def SetJunctionSeq(self,seq): self._junction_seq = seq
     def JunctionSeq(self): return string.upper(self._junction_seq)
     def RecipricolProbesets(self): return self._junction_probesets
+    def ExonRegionID(self): return self._exon_region
     def Report(self):
         output = self.Probeset() +'|'+ self.ExternalGeneID()
         return output
@@ -114,19 +117,20 @@ class AffyExonSTData(SplicingAnnotationData):
             else: return self._constitutive_status
 
 class AffyExonSTDataSimple(SplicingAnnotationData):
-    def __init__(self,probeset_id,ensembl_gene_id,exon_id,ens_exon_ids):
-        self._geneid = ensembl_gene_id; self._external_gene = ensembl_gene_id; self._exonid = exon_id
-        self._external_exonids = ens_exon_ids; self._probeset=probeset_id
-
+    def __init__(self,probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop):
+        self._geneid = ensembl_gene_id; self._external_gene = ensembl_gene_id; self._exon_region = exon_region
+        self._external_exonids = ens_exon_ids; self._probeset=probeset_id; self._start=int(probeset_start); self._stop = int(probeset_stop)
+    
 class JunctionDataSimple(SplicingAnnotationData):
     def __init__(self,probeset_id,ensembl_gene_id,array_geneid,junction_probesets,critical_exons):
         self._geneid = ensembl_gene_id; self._junction_probesets = junction_probesets; self._exonid = critical_exons
         self._probeset=probeset_id; self._external_gene = array_geneid; self._external_exonids = ''
         
-def importProbesetSeqeunces(filename,exon_db,chromosome,species):
+def importProbesetSeqeunces(filename,array_type,exon_db,chromosome,species):
     #output_file = 'input/'+species+'/filtered_probeset_sequence.txt'
     #fn=filepath(output_file)
     #datar = open(fn,'w')
+                                  
     print 'importing', filename
     probeset_seq_db={}; probesets_parsed=0; probesets_added=0
     chromosome = 'chr'+str(chromosome)
@@ -191,17 +195,102 @@ def getParametersAndExecute(probeset_seq_file,array_type,species):
     ###Import probe-level associations
     exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
     start_time = time.time(); chromosome = 1
-    probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,exon_db,chromosome,species)
+    probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,array_type,exon_db,chromosome,species)
+    if array_type == 'gene':
+        probeset_annotations_file = string.replace(probeset_annotations_file,'exon','gene')
+        gene_exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
+        translation_db = exportAllExonToGeneArrayAssociations(exon_db,gene_exon_db)
+        probeset_seq_db = convertExonProbesetSequencesToGene(probeset_seq_db,gene_exon_db,translation_db)
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "Analyses finished in %d seconds" % time_diff
     return probeset_seq_db
 
-def getExonAnnotationsAndSequence(probeset_seq_file,species):
-    probeset_annotations_file = 'AltDatabase/'+species+'/SequenceData/'+species+'_Ensembl_probesets.txt'
+def convertExonProbesetSequencesToGene(probeset_seq_db,gene_exon_db,translation_db):
+    probeset_gene_seq_db={}; probeset_db = {}
+    print len(probeset_seq_db), 'gene entries with exon probeset sequence'
+    for probeset in gene_exon_db:
+        y = gene_exon_db[probeset]
+        if probeset in translation_db:
+            try:
+                for z in probeset_seq_db[y.GeneID()]:
+                    if z.Probeset() in translation_db[probeset]:
+                        y.SetExonSeq(z.ExonSeq()) ### Use the exon array sequence if the exon regions are the same
+                        try: probeset_gene_seq_db[y.GeneID()].append(y)
+                        except KeyError: probeset_gene_seq_db[y.GeneID()] = [y]
+                        probeset_db[probeset]=[]
+            except KeyError: null=[]
+    print len(probeset_db), 'gene probesets annotated with exon sequence'
+    return probeset_gene_seq_db
+
+def exportAllExonToGeneArrayAssociations(exon_db,gene_exon_db):
+    ### Above function basically does this but some exon array probesets may not be sequence matched (probably not necessary)
+
+    output_file = 'AltDatabase/'+species+'/gene/'+species+'_gene-exon_probesets.txt'
+    fn=filepath(output_file)
+    data = open(fn,'w')
+    data.write('gene_probeset\texon_probeset\n')
+    
+    exon_db_gene = {}
+    for probeset in exon_db:
+        y = exon_db[probeset]
+        try: exon_db_gene[y.GeneID()].append(y)
+        except KeyError: exon_db_gene[y.GeneID()] = [y]
+    #print gene_exon_db['10411047'].ExonRegionID(),exon_db['4355948'].ExonRegionID()
+    translation_db={}
+    for probeset in gene_exon_db:
+        y = gene_exon_db[probeset]
+        try:
+            for z in exon_db_gene[y.GeneID()]:
+                if z.ExonRegionID() == y.ExonRegionID():
+                    try: translation_db[probeset].append(z.Probeset())
+                    except KeyError: translation_db[probeset] = [z.Probeset()]
+        except KeyError: null=[]
+        
+    ### Mop-ups (get imperfect relationships)
+    for probeset in gene_exon_db:
+        if probeset not in translation_db:
+            y = gene_exon_db[probeset]
+            try:
+                for z in exon_db_gene[y.GeneID()]:
+                    if (z.ExonRegionID()+'|') in (y.ExonRegionID()+'|') or (y.ExonRegionID()+'|') in (z.ExonRegionID()+'|'):
+                        #print z.ExonRegionID(), y.ExonRegionID();kill
+                        try: translation_db[probeset].append(z.Probeset())
+                        except KeyError: translation_db[probeset] = [z.Probeset()]
+            except KeyError: null=[]
+
+    translation_db2={}
+    for probeset in translation_db:
+        y = gene_exon_db[probeset]
+        #if probeset == '10411047': print '******',translation_db[probeset]
+        for exon_probeset in translation_db[probeset]:
+            z = exon_db[exon_probeset]
+            coordinates = [y.ProbeStart(), y.ProbeStop(), z.ProbeStart(), z.ProbeStop()]
+            coordinates.sort(); include = 'yes'
+            ### Ensures that the coordinates overlap versus are separate
+            if [y.ProbeStart(), y.ProbeStop()] == coordinates[:2]: include ='no'
+            elif [y.ProbeStart(), y.ProbeStop()] == coordinates[-2:]: include = 'no'
+            ### Include a probeset if the exon and gene probeset locations overlap or if there is only one associations
+            if include == 'yes' or len(translation_db[probeset]) == 1:
+                data.write(probeset+'\t'+exon_probeset+'\n')
+                try: translation_db2[probeset].append(exon_probeset)
+                except Exception: translation_db2[probeset] = [exon_probeset]
+        if probeset not in translation_db2:
+            ### If nothing got added, then just add the last match
+            data.write(probeset+'\t'+exon_probeset+'\n')
+            try: translation_db2[probeset].append(exon_probeset)
+            except Exception: translation_db2[probeset] = [exon_probeset]
+                
+    data.close()
+    print 'Out of all',len(gene_exon_db),'gene array probesets',len(translation_db2), 'had corresponding exon array probesets found.'
+    return translation_db2
+
+def getExonAnnotationsAndSequence(probeset_seq_file,array_type,species):
+    probeset_annotations_file = 'AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt'
     exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
     chromosome = 1
     ###By running this next function, we can update exon_db to include probeset sequence data
-    try: probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,exon_db,chromosome,species)
+    array_type=''
+    try: probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,array_type,exon_db,chromosome,species)
     except IOError: null = []
     return exon_db
 
@@ -315,7 +404,7 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
                 for ed in splice_event_db[gene]:
                     probeset = ed.Probeset()
                     probeset_seq = ed.ExonSeq()
-                    exonid = ed.ExonID()
+                    #exonid = ed.ExonID()
                     proceed = 'no'
                     if len(miRNA_seq)>0 and len(probeset_seq)>0:
                         if miRNA_seq in probeset_seq:
@@ -330,7 +419,7 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
     probeset_miRNA_db = eliminate_redundant_dict_values(probeset_miRNA_db)
     if stringency == 'lax': export_type = 'any'
     else: export_type = 'multiple'
-    output_file = 'AltDatabase/'+species+'/exon/'+species+'_probeset_microRNAs_'+export_type+'.txt'
+    output_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset_microRNAs_'+export_type+'.txt'
     k=0
     fn=filepath(output_file); data = open(fn,'w')
     for probeset in probeset_miRNA_db:
@@ -346,13 +435,14 @@ def runProgram(Species,Array_type,Process_microRNA_predictions,miR_source,String
     global process_microRNA_predictions; process_microRNA_predictions = Process_microRNA_predictions
     global mir_source; mir_source = miR_source 
     global stringency; stringency = Stringency
-    import_dir = '/AltDatabase'+'/'+species+'/SequenceData'
+    import_dir = '/AltDatabase'+'/'+species+'/exon'
     filedir = import_dir[1:]+'/'
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
     for input_file in dir_list:    #loop through each file in the directory to output results
+        ### No probeset sequence file currently for gene arrays, so use the same exon region probeset sequence from the exon array
         if '.probeset.fa' in input_file: probeset_seq_file = filedir+input_file
 
-    probeset_annotations_file = 'AltDatabase/'+species+'/SequenceData/'+species+'_Ensembl_probesets.txt'
+    probeset_annotations_file = 'AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt'
     splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species)
 
     if process_microRNA_predictions == 'yes':

@@ -87,7 +87,7 @@ class GeneAnnotationData:
     
 def import_annotations(filename,array_type):
     fn=filepath(filename); annotate_db = {}; x = 0
-    if array_type != 'exon':
+    if array_type != 'exon' and array_type != 'gene':
         for line in open(fn,'rU').xreadlines():
             data = cleanUpLine(line)
             if x == 0: x = 1
@@ -110,7 +110,7 @@ def import_annotations(filename,array_type):
 def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method):
     filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_probeset_microRNAs_"+microRNA_prediction_method+".txt"
     fn=filepath(filename); microRNA_full_exon_db={}; microRNA_count_db={}; gene_microRNA_denom={}
-    if array_type != 'exon':
+    if array_type != 'exon' and array_type != 'gene':
         critical_exon_junction_db = grabJunctionData(species,array_type,'gene-exon')
         gene_annotation_file = "AltDatabase/"+species+"/"+array_type+"/"+array_type+"_gene_annotations.txt"
         annotate_db = import_annotations(gene_annotation_file,array_type)
@@ -122,7 +122,7 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
         try: mir_seq=t[2];mir_sources=t[3]
         except IndexError: mir_seq='';mir_sources=''
         try:
-            if array_type == 'exon':
+            if array_type == 'exon' or array_type == 'gene':
                 ed = exon_db[probeset]; probeset_list = [probeset]; exonid = ed.ExonID(); symbol = ed.Symbol(); geneid = ed.GeneID()
             else:
                 probeset_list = []; uid = probeset ###This is the gene with the critical exon it's mapped to
@@ -462,18 +462,18 @@ def formatAttributeForExport(attribute_db,filename):
 def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type,include_sequences):    
     functional_attribute_db={}; protein_features={}
     for (array_geneid,uid) in exon_hits: ###uid is probeset or (probeset1,probeset2) value, depending on array_type
-            if array_type != 'exon': probeset,probeset2 = uid
+            if array_type != 'exon' and array_type != 'gene': probeset,probeset2 = uid
             else: probeset = uid
             hv=0
             try:
                 pp = probeset_protein_db[probeset]; hv=1
                 pos_ref_AC = pp.HitProteinID()
                 neg_ref_AC = pp.NullProteinID()
-                if array_type != 'exon': ### Instead of using the null_hit, use the second juncition probeset
+                if array_type != 'exon' and array_type != 'gene': ### Instead of using the null_hit, use the second juncition probeset
                     try: np = probeset_protein_db[probeset2]; neg_ref_AC = np.HitProteinID()
                     except KeyError: null =[] ###just use the existing null                
             except KeyError: ###occurs if there is not protein associated with the first probeset (NA for exon arrays)
-                if array_type != 'exon': ###Reverse of above
+                if array_type != 'exon' and array_type != 'gene': ###Reverse of above
                     try:
                         np = probeset_protein_db[probeset2]; hv=2
                         pos_ref_AC = np.NullProteinID()

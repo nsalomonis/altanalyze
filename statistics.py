@@ -54,6 +54,35 @@ def LinearRegression(ls1,ls2,return_rsqrd):
     else:
         return slope
 
+def adjustPermuteStats(pval_db):
+    #1. Sort ascending the original input p value vector.  Call this spval.  Keep the original indecies so you can sort back.
+    #2. Define a new vector called tmp.  tmp= spval.  tmp will contain the BH p values.
+    #3. m is the length of tmp (also spval)
+    #4. i=m-1
+    #5  tmp[ i ]=min(tmp[i+1], min((m/i)*spval[ i ],1)) - second to last, last, last/second to last
+    #6. i=m-2
+    #7  tmp[ i ]=min(tmp[i+1], min((m/i)*spval[ i ],1))
+    #8  repeat step 7 for m-3, m-4,... until i=1
+    #9. sort tmp back to the original order of the input p values.
+    
+    global spval; spval=[]
+    for element in pval_db:
+        zsd = pval_db[element]
+        try: p = float(zsd.PermuteP())
+        except Exception: p = 1
+        spval.append([p,element])
+
+    spval.sort(); tmp = spval; m = len(spval); i=m-2; x=0 ###Step 1-4       
+    #spval.sort(); tmp = spval; m = len(spval)-1; i=m-1; x=0 ###Step 1-4
+    
+    while i > -1:
+        tmp[i]=min(tmp[i+1][0], min((float(m)/(i+1))*spval[i][0],1)),tmp[i][1]; i -= 1
+        
+    for (adjp,element) in tmp:
+        zsd = pval_db[element]
+        zsd.SetAdjP(adjp)
+    return pval_db
+        
 def zscore(associated_in_group,in_static_interval,total,in_flexible_interval):               
     r = float(associated_in_group)       #number of genes with this domain regulated (in one direction)
     _n = float(in_static_interval)       #measured genes in genomic interval - !!from chr_info!!
@@ -63,10 +92,10 @@ def zscore(associated_in_group,in_static_interval,total,in_flexible_interval):
     elif r==0 and _n == 0: return 0
     else:
         try:
-            try:
-                z = (r - _n*(R/N))/math.sqrt(_n*(R/N)*(1-(R/N))*(1-((_n-1)/(N-1))))
-                return z
-            except ZeroDivisionError: print 'r,_n,R,N: ', r,_n,R,N;kill
+            #try:
+            z = (r - _n*(R/N))/math.sqrt(_n*(R/N)*(1-(R/N))*(1-((_n-1)/(N-1))))
+            return z
+            #except ZeroDivisionError: print 'r,_n,R,N: ', r,_n,R,N;kill
         except ValueError: print (r - _n*(R/N)), _n*(R/N)*(1-(R/N))*(1-((_n-1)/(N-1))),r,_n,N,R;kill
     
 def factorial(n):
@@ -587,11 +616,11 @@ if __name__ == '__main__':
     dirfile = unique    
     #r = pearson([0.0, -0.58999999999999997], [0.0, 0.000000])
     #print rdf=7
+    a = median([1,2,3.212,4]); print a; kill
     r=1749
     n=2536
     R=9858
     N=16595
-    
     z = zscore(r,n,N,R)
     print z;kill
     x = choose(4,4)
@@ -644,4 +673,4 @@ if __name__ == '__main__':
     print p"""
     #beta = permute_arrays(delta)
     #print len(beta)
-    a = median([])
+   

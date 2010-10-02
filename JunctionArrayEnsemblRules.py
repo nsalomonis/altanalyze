@@ -125,7 +125,7 @@ def getAnnotations(Species,array_type,force):
     ensembl_exon_db,ensembl_annot_db,exon_clusters,intron_clusters,exon_region_db,intron_retention_db,ucsc_splicing_annot_db,ens_transcript_db = EnsemblImport.getEnsemblAssociations(species,data_type,test)
     ensembl_probeset_db = importCriticalExonLocations(species,array_type,ensembl_exon_db,force) ###Get Pre-computed genomic locations for critical exons
     ensembl_probeset_db = ExonArrayEnsemblRules.annotateExons(ensembl_probeset_db,exon_clusters,ensembl_exon_db,exon_region_db,intron_retention_db,intron_clusters,ucsc_splicing_annot_db); constitutive_gene_db={}
-    ExonArrayEnsemblRules.exportEnsemblLinkedProbesets(ensembl_probeset_db,constitutive_gene_db,species)
+    ExonArrayEnsemblRules.exportEnsemblLinkedProbesets(ensembl_probeset_db,species)
     print "\nCritical exon data exported coordinates, exon associations and splicing annotations exported..."
     
     ### Change filenames to reflect junction array type

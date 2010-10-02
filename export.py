@@ -16,6 +16,9 @@
 #OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+"""This module contains generic methods for creating export paths that include new
+multiple nested folders and deleting all files within a directory."""
+
 import os
 import sys
 import string
@@ -49,9 +52,20 @@ def findFilename(filename):
 
 def ExportFile(filename):
     filename = string.replace(filename,'//','/')
+    filename = string.replace(filename,'\\','/')
     dir = findParentDir(filename)
-    file_var = createExportFile(filename,dir)
+    try: file_var = createExportFile(filename,dir)
+    except RuntimeError:
+        isFileOpen(filename,dir)
+        file_var = createExportFile(filename,dir)
     return file_var
+
+def customFileMove(old_fn,new_fn):
+    raw = ExportFile(new_fn)
+    for line in open(old_fn,'rU').xreadlines():
+        raw.write(line)
+    raw.close()
+    os.remove(old_fn)
 
 def isFileOpen(new_file,dir):
     try: 
@@ -63,10 +77,18 @@ def isFileOpen(new_file,dir):
                 for file in dir_list:
                     if file in new_file: ###Thus the file is open
                         try:
-                            fn=filepath(new_file); file_var = open(fn,'w')
+                            fn=filepath(new_file);
+                            file_var = open(fn,'w')
+                            """
+                            except Exception:
+                                try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
+                                except Exception:
+                                    print "This user account does not have write priveledges to change the file:"
+                                    print fn,"\nPlease login as an administrator or re-install the software as a non-admin.";sys.exit()
+                                file_var = open(fn,'w')"""
                             file_open = 'no'
                         except IOError:
-                            print_out = 'Results file: '+new_file+ '\nis open...can not re-write.\nPlease close file and select "OK".'
+                            print_out = 'Results file: '+fn+ '\nis open...can not re-write.\nPlease close file and select "OK".'
                             try: UI.WarningWindow(print_out,' OK ');
                             except Exception:
                                 print print_out; print 'Please correct (hit return to continue)'
@@ -76,8 +98,15 @@ def isFileOpen(new_file,dir):
             
 def createExportFile(new_file,dir):
     try:
-        isFileOpen(new_file,dir)
-        fn=filepath(new_file); file_var = open(fn,'w')
+        #isFileOpen(new_file,dir)  ###Creates problems on Mac - not clear why
+        fn=filepath(new_file)
+        file_var = open(fn,'w')
+        """except Exception:
+            try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
+            except Exception:
+                print "This user account does not have write priveledges to change the file:"
+                print fn,"\nPlease login as an administrator or re-install the software as a non-admin.";sys.exit()
+            file_var = open(fn,'w')"""
     except IOError:
         fn = filepath(dir)
         try:
@@ -85,7 +114,14 @@ def createExportFile(new_file,dir):
             #print fn, 'written'
         except OSError:
             createExportDir(new_file,dir) ###Occurs if the parent directory is also missing
-        fn=filepath(new_file); file_var = open(fn,'w')
+        fn=filepath(new_file)
+        file_var = open(fn,'w')
+        """except Exception:
+            try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
+            except Exception:
+                print "This user account does not have write priveledges to change the file:"
+                print fn,"\nPlease login as an administrator or re-install the software as a non-admin.";sys.exit()
+            file_var = open(fn,'w')"""
     return file_var
 
 def createExportDir(new_file,dir):
@@ -109,6 +145,7 @@ def createExportDir(new_file,dir):
                 #break
                 continue
         createExportFile(new_file,dir)
+            
     else: print "Parent directory not found locally for", dir_ls; sys.exit()
 
 def createExportFolder(dir):
@@ -138,13 +175,15 @@ def deleteFolder(dir):
         dir = filepath(dir); dir_list = read_directory(dir) ### Get all files in directory
         for file in dir_list:
             fn = filepath(dir+'/'+file)
-            os.remove(fn)
+            if '.' in fn: os.remove(fn)
+            else: deleteFolder(fn) ### Remove subdirectories
         os.removedirs(dir)
+        print dir
         return 'success'
-    except OSError:
-        return 'failed'
+    except OSError: return 'failed'
 
 if __name__ == '__main__':
+    deleteFolder('BuildDBs/Entrez/Gene2GO');kill
     fn = '/Users/nsalomonis/Desktop/GSE13297_RAW//AltExpression/ExonArray/Hs/Hs_Exon_CS_vs_hESC.p5_average.txt'
     createExportFile(fn,'/Users/nsalomonis/Desktop/GSE13297_RAW//AltExpression/ExonArray/Hs')
     ExportFile(fn)

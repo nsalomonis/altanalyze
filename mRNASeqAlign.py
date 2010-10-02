@@ -117,7 +117,7 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
     species = Species; array_type = Array_type
     start_time = time.time()
 
-    import_dir = '/AltDatabase/'+species+'/SequenceData' ### Multi-species fiel
+    import_dir = '/AltDatabase/'+species+'/SequenceData' ### Multi-species file
     g = GrabFiles(); g.setdirectory(import_dir)
     seq_files = g.searchdirectory('cdna.all'); seq_files.sort(); filename = seq_files[-1]
     

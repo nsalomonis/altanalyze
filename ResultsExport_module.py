@@ -151,7 +151,9 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
             else:
                 if analyzing_genes == 'no':
                     if (analysis_method == 'splicing-index') and array_type == 'exon':
-                        lowest_pvalue = float(data[8]); si_p = float(data[-10])
+                        lowest_pvalue = float(data[8]);
+                        try: si_p = float(data[-10])
+                        except Exception: si_p = 1
                         try: midas_p = float(data[9])
                         except ValueError: midas_p = 0
                         #print si_p,midas_p;kill
@@ -469,12 +471,12 @@ def runMiDAS(apt_dir,array_type,dataset_name,array_group_list,array_group_db):
             else: status = 'run'        
         except Exception: status = 'failed'
         if status == 'failed': print "apt-midas failed"
-    else: print "apt-midas run sucessfully"
+    else: print "apt-midas run successfully"
     return status
 
 def importMidasOutput(dataset_name):
     coversionfile = 'AltResults/MIDAS/probeset-conversion-'+dataset_name[0:-1]+'.txt'
-    print "Looking for", coversionfile
+    #print "Looking for", coversionfile
  
     fn=filepath(coversionfile); x=0; probeset_conversion_db={}
     for line in open(fn,'rU').xreadlines():         
@@ -533,7 +535,7 @@ def combineRawSpliceResults(species,analysis_method):
         elif count >2: j+=1
     combined_data = combined_data2
 
-    print k,j
+    #print k,j
     export_file = import_dir[1:]+'/combined.txt'
     fn=filepath(export_file);data = open(fn,'w')
     title = string.join(['gene-probeset']+headers,'\t')+'\n'; data.write(title)

@@ -107,6 +107,7 @@ class AffymetrixInformation:
     def GOProcessIDs(self): return self._goids[0]
     def GOComponentIDs(self): return self._goids[1]
     def GOFunctionIDs(self): return self._goids[2]
+    def GONameLists(self): return self._go_names
     def GOProcessNames(self):
         go_names = string.join(self._go_names[0],' // ')
         return go_names
@@ -159,10 +160,24 @@ def buildMODDbase():
     mod_db['At'] = 'AGI'
     return mod_db
 
+def verifyFile(filename):
+    fn=filepath(filename); file_found = 'yes'
+    try:
+        for line in open(fn,'rU').xreadlines():break
+    except Exception: file_found = 'no'
+    return file_found
+
 ######### Import New Data ##########
 def parse_affymetrix_annotations(filename,species):
     ###Import an Affymetrix array annotation file (from http://www.affymetrix.com) and parse out annotations
     temp_affy_db = {}; x=0; y=0
+
+    if process_go == 'yes':
+        eg_go_found = verifyFile('Databases/'+species+'/gene-go/EntrezGene-GeneOntology.txt')
+        ens_go_found = verifyFile('Databases/'+species+'/gene-go/Ensembl-GeneOntology.txt')
+        if eg_go_found == 'no' or ens_go_found == 'no': process_go_var = 'yes'
+    else: process_go_var = 'yes'
+
     fn=filepath(filename); mod_db = buildMODDbase()
     for line in open(fn,'r').readlines():             
         probeset_data = string.replace(line,'\n','')  #remove endline
@@ -222,7 +237,7 @@ def parse_affymetrix_annotations(filename,species):
                     ref_prot = affy_data[rp]; ref_prot_list = string.split(ref_prot,' /// ')
                     ref_tran = affy_data[rt]; ref_tran_list = string.split(ref_tran,' /// ')
                     ###Process GO information if desired
-                    if process_go == 'yes':
+                    if process_go_var == 'yes':
                         process = affy_data[bp]; component = affy_data[cc]; function = affy_data[mf]
                         process_goids, process_names = extractPathwayData(process,'GO',version)
                         component_goids, component_names = extractPathwayData(component,'GO',version)
@@ -232,6 +247,7 @@ def parse_affymetrix_annotations(filename,species):
                     else: goids=[]; go_names=[]
                     if extract_pathway_names == 'yes': null, pathways = extractPathwayData(pathway_data,'pathway',version)
                     else: pathways = []
+
                     ai = AffymetrixInformation(probeset, symbol, ensembl_list, entrez_list, unigene_list, uniprot_list, description, goids, go_names, pathways)
                     if len(entrez_list)<5: affy_annotation_db[probeset] = ai
                     if parse_wikipathways == 'yes':
@@ -262,9 +278,14 @@ def parse_affymetrix_annotations(filename,species):
                         for entrez in entrez_list:
                             #symbol = symbol_list[iter]; description = description_list[iter] ###grab the symbol that matches the EntrezGene entry
                             z = InferredEntrezInformation(symbol,entrez,description)
-                            try: entrez_annotation_db[entrez] = z
+                            try: gene_annotation_db[entrez] = z
                             except NameError: null=[]
                             iter += 1
+                    if len(ensembl_list)<2: ###Only store annotations for EntrezGene if there is only one listed ID, since the symbol, description and Entrez Gene are sorted alphabetically, not organized relative to each other (stupid)
+                        for ensembl in ensembl_list:
+                            z = InferredEntrezInformation(symbol,ensembl,description)
+                            try: gene_annotation_db['ENS:'+ensembl] = z
+                            except NameError: null=[]
                 else: ### Applies to Exon, Transcript, whole geneome Gene arrays.
                     uniprot_list2 = []
                     for uniprot_id in uniprot_list:
@@ -290,6 +311,7 @@ def parse_affymetrix_annotations(filename,species):
                             if 'NM_' in i:
                                 refseq_id = string.replace(i,' ','')
                                 refseq_list.append(refseq_id)
+                                
                     #if probeset == '8148358': print ensembl_list; kill
                     try: gene_assocs = affy_data[ga]; entrez_list=[]
                     except IndexError: gene_assocs=''; entrez_list=[]
@@ -303,9 +325,16 @@ def parse_affymetrix_annotations(filename,species):
                                 symbol_list.append(symbol)
                                 #print entrez_gene,symbol, descriptions;kill
                                 z = InferredEntrezInformation(symbol,entrez_gene,description)
-                                try: entrez_annotation_db[str(entrez_gene)] = z ###create an inferred Entrez gene database
+                                try: gene_annotation_db[str(entrez_gene)] = z ###create an inferred Entrez gene database
                                 except NameError: null = []
                         except ValueError: null = []
+                        
+                    if len(symbol_list) == 1 and len(ensembl_list)>0:
+                        symbol = symbol_list[0]
+                        for ensembl in ensembl_list:
+                            z = InferredEntrezInformation(symbol,ensembl,description)
+                            try: gene_annotation_db['ENS:'+ensembl] = z ###create an inferred Entrez gene database
+                            except NameError: null = []
                     gene_assocs = string.replace(gene_assocs,'---','')
                     unigene_data = string.split(unigene,' /// '); unigene_list = []
                     for entry in unigene_data:
@@ -332,7 +361,7 @@ def parse_affymetrix_annotations(filename,species):
                                         if len(gene)>1: meta[primary,gene]=[]
                                     for gene in entrez_list:
                                         if len(gene)>1: meta[primary,gene]=[]
-                    if process_go == 'yes':
+                    if process_go_var == 'yes':
                         try: process = affy_data[bp]; component = affy_data[cc]; function = affy_data[mf]
                         except IndexError: process = ''; component=''; function=''### This occurs due to a random python error, typically once twice in the file
                         process_goids, process_names = extractPathwayData(process,'GO',version)
@@ -353,6 +382,158 @@ def parse_affymetrix_annotations(filename,species):
                         if description[0] == ' ': description = description[1:] ### some entries begin with a blank
                     ai = AffymetrixInformation(probeset,symbol,ensembl_list,entrez_list,unigene_list,uniprot_list,description,goids,go_names,pathways)
                     if len(entrez_list)<5 and len(ensembl_list)<5: affy_annotation_db[probeset] = ai
+    print 'Affymetrix CSV annotations imported..'
+    
+def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use_go):
+    import gene_associations; import time
+    start_time = time.time()
+    ### Get Gene Ontology gene associations    
+    try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl')
+    except Exception: gene_to_mapp_ens = {}
+    try: gene_to_mapp_eg = gene_associations.importGeneMAPPData(species_code,'EntrezGene')
+    except Exception: gene_to_mapp_eg = {}
+    if vendor == 'Affymetrix': ### Remove exon associations which decrease run efficency and are superfulous
+        try: ens_to_array = gene_associations.getGeneToUidNoExon(species_code,'Ensembl-'+vendor); print 'Ensembl-'+vendor,'relationships imported'
+        except Exception: ens_to_array={}
+        try: eg_to_array = gene_associations.getGeneToUidNoExon(species_code,'EntrezGene-'+vendor); print 'EntrezGene-'+vendor,'relationships imported'
+        except Exception: eg_to_array={}
+        print '* *',
+    else:
+        try: ens_to_array = gene_associations.getGeneToUid(species_code,'Ensembl-'+vendor)
+        except Exception: ens_to_array = {}
+        try: eg_to_array = gene_associations.getGeneToUid(species_code,'EntrezGene-'+vendor)
+        except Exception: eg_to_array = {}
+    print '* *',
+    try: ens_annotations = gene_associations.importGeneData(species_code,'Ensembl')
+    except Exception: ens_annotations = {}
+    try: eg_annotations = gene_associations.importGeneData(species_code,'EntrezGene')
+    except Exception: eg_annotations = {}
+    
+    if use_go == 'yes':
+        import OBO_import
+        go_annotations = OBO_import.importPreviousGOAnnotations()
+
+        try: gene_to_go_ens = gene_associations.importGeneGOData(species_code,'Ensembl','null')
+        except Exception: gene_to_go_ens = {}
+        print '* *',
+        try: gene_to_go_eg = gene_associations.importGeneGOData(species_code,'EntrezGene','null')
+        except Exception: gene_to_go_eg = {}
+        print '* *',
+        component_db,process_db,function_db = annotateGOElitePathways('GO',go_annotations,gene_to_go_ens,ens_to_array)
+        print '* *',
+        component_eg_db,process_eg_db,function_eg_db = annotateGOElitePathways('GO',go_annotations,gene_to_go_eg,eg_to_array)
+        print '* *',
+        component_db = combineDBs(component_eg_db,component_db)
+        print '* *',
+        process_db = combineDBs(process_eg_db,process_db)
+        print '* *',
+        function_db = combineDBs(function_eg_db,function_db)
+        print '* *',
+    else: print '* * * * * * * * * *',
+    unique_arrayids={} ### Get all unique probesets
+    for gene in ens_to_array:
+        for uid in ens_to_array[gene]: unique_arrayids[uid]=[]
+    for gene in eg_to_array:
+        for uid in eg_to_array[gene]: unique_arrayids[uid]=[]
+    
+    array_ens_mapp_db = annotateGOElitePathways('MAPP','',gene_to_mapp_ens,ens_to_array)
+    array_eg_mapp_db = annotateGOElitePathways('MAPP','',gene_to_mapp_eg,eg_to_array)
+    array_mapp_db = combineDBs(array_ens_mapp_db,array_eg_mapp_db)
+    print '* *',
+    array_to_ens = swapKeyValues(ens_to_array)
+    array_to_eg = swapKeyValues(eg_to_array)
+    
+    global array_symbols; global array_descriptions; array_symbols={}; array_descriptions={}
+    getArrayIDAnnotations(ens_to_array,ens_annotations)
+    getArrayIDAnnotations(eg_to_array,eg_annotations)
+    print '* *',
+    for arrayid in unique_arrayids:
+        try: component_names = component_db[arrayid]
+        except Exception: component_names=[]
+        try: process_names = process_db[arrayid]
+        except Exception: process_names=[]
+        try: function_names = function_db[arrayid]
+        except Exception: function_names=[]
+        try: wp_names = array_mapp_db[arrayid]
+        except Exception: wp_names=[]
+        try: ensembls = array_to_ens[arrayid]
+        except Exception: ensembls=[]
+        try: entrezs = array_to_eg[arrayid]
+        except Exception: entrezs=[]
+        try: symbol = array_symbols[arrayid]
+        except Exception: symbol=''
+        try: description = array_descriptions[arrayid]
+        except Exception: description=''
+        #if len(wp_names)>0:
+            #print arrayid, component_names, process_names, function_names, wp_names, ensembls, entrezs, symbol, description;kill
+        
+        try:
+            ca = conventional_array_db[arrayid]
+            definition = ca.Description()
+            symbol = ca.Symbol()
+            ens = ca.Ensembl()
+            entrez = ca.Entrez()
+            pathways = ca.Pathways()
+            process, component, function = ca.GONameLists()
+            ensembls+=ens; entrezs+=entrez; wp_names+=pathways
+            component_names+=component; process_names+=process; function_names+=function
+            ensembls=unique.unique(ensembls); entrezs=unique.unique(entrezs); wp_names=unique.unique(wp_names)
+            component_names=unique.unique(component_names); process_names=unique.unique(process_names); function_names=unique.unique(function_names)
+        except Exception: null=[]
+        go_names = process_names,component_names,function_names
+        ai = AffymetrixInformation(arrayid,symbol,ensembls,entrezs,[],[],description,[],go_names,wp_names)
+        conventional_array_db[arrayid] = ai
+    #print len(conventional_array_db),'ArrayIDs with annotations.'
+    end_time = time.time(); time_diff = int(end_time-start_time)
+    print 'ArrayID annotations imported in',time_diff, 'seconds'
+    return conventional_array_db
+
+def getArrayIDAnnotations(gene_to_uid,gene_annotations):
+    for gene in gene_annotations:
+        if gene in gene_to_uid:
+            uids = gene_to_uid[gene]
+            s = gene_annotations[gene]
+            if len(s.Symbol()) > 0:
+                for uid in uids:
+                    array_symbols[uid] = s.Symbol()
+                    array_descriptions[uid] = s.Description()
+                
+def combineDBs(db1,db2):
+    for i in db1:
+        try: db1[i]+=db2[i]
+        except Exception: null=[]
+    for i in db2:
+        try: db2[i]+=db1[i]
+        except Exception: db1[i]=db2[i]
+    db1 = eliminate_redundant_dict_values(db1)
+    return db1
+
+def annotateGOElitePathways(pathway_type,go_annotations,gene_to_pathway,gene_to_uid):
+    array_pathway_db={}
+    for gene in gene_to_uid:
+        try:
+            pathways = gene_to_pathway[gene]
+            for pathway in pathways:
+                for arrayid in gene_to_uid[gene]:           
+                    if pathway_type == 'GO':
+                        s = go_annotations[pathway]
+                        go_name = string.replace(s.GOName(),'\\','')
+                        try: array_pathway_db[arrayid,s.GOType()].append(go_name)
+                        except Exception: array_pathway_db[arrayid,s.GOType()] = [go_name]
+                    else:
+                        try: array_pathway_db[arrayid].append(pathway + '(WikiPathways)')
+                        except Exception: array_pathway_db[arrayid] = [pathway + '(WikiPathways)']
+        except Exception: null=[]
+                                    
+    array_pathway_db = eliminate_redundant_dict_values(array_pathway_db)
+    if pathway_type == 'GO':
+        component_db={}; process_db={}; function_db={}
+        for (arrayid,gotype) in array_pathway_db:
+            if gotype == 'C': component_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+            if gotype == 'P': process_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+            if gotype == 'F': function_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+        return component_db,process_db,function_db
+    else: return array_pathway_db
 
 def extractPathwayData(terms,type,version):
     goids = []; go_names = []
@@ -393,12 +574,14 @@ def exportResultsSummary(dir_list,species,type):
     if overwrite_previous == 'over-write previous':
         if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
-    
+
     new_file = parent_dir+'/'+species+'/'+type+'_files_summarized.txt'
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
     fn=filepath(new_file); data = open(fn,'w')
     for filename in dir_list: data.write(filename+'\t'+today+'\n')
-    if parse_wikipathways == 'yes': data.write(wikipathways_file+'\t'+today+'\n')
+    try:
+        if parse_wikipathways == 'yes': data.write(wikipathways_file+'\t'+today+'\n')
+    except Exception: null=[]
     data.close()
 
 def exportMetaGeneData(species):
@@ -437,46 +620,76 @@ def exportRelationshipDBs(species):
     if overwrite_previous == 'over-write previous':
         if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
-    
-    new_file1 = parent_dir+'/'+species+'/uid-gene/Ensembl-Affymetrix.txt'
-    new_file2 = parent_dir+'/'+species+'/uid-gene/EntrezGene-Affymetrix.txt'
-    new_file3 = parent_dir+'/'+species+'/gene/EntrezGene.txt'
+  
+    x1=0; x2=0; x3=0; x4=0; x5=0; x6=0
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
-    data1 = export.ExportFile(new_file1)
-    data2 = export.ExportFile(new_file2)
-    data3 = export.ExportFile(new_file3)
-    data3.write('ID'+'\t'+'Symbol'+'\t'+'Name'+'\t'+'Species'+'\t'+'Date'+'\t'+'Remarks'+'\n')
-    if process_go == 'yes':
-        new_file4 = parent_dir+'/'+species+'/gene-go/Ensembl-GeneOntology.txt'
-        new_file5 = parent_dir+'/'+species+'/gene-go/EntrezGene-GeneOntology.txt'
-        header = 'GeneID'+'\t'+'GOID'+'\n'
-        data4 = export.ExportFile(new_file4); data4.write(header)
-        data5 = export.ExportFile(new_file5); data5.write(header)
+    import UI; header = 'GeneID'+'\t'+'GOID'+'\n'
+    ens_annotations_found = verifyFile('Databases/'+species+'/gene/Ensembl.txt')
+        
+    if process_go == 'yes': ens_process_go = 'yes'; eg_process_go = 'yes'
+    else:
+        ens_process_go = 'no'; eg_process_go = 'no'
+        eg_go_found = verifyFile('Databases/'+species+'/gene-go/EntrezGene-GeneOntology.txt')
+        ens_go_found = verifyFile('Databases/'+species+'/gene-go/Ensembl-GeneOntology.txt')
+        if eg_go_found == 'no': eg_process_go = 'yes'
+        if ens_go_found == 'no': ens_process_go = 'yes'
+
     for probeset in affy_annotation_db:
         ai = affy_annotation_db[probeset]
         ensembls = unique.unique(ai.Ensembl()); entrezs = unique.unique(ai.Entrez())
         for ensembl in ensembls:
             if len(ensembl)>0:
+                if x1 == 0: ### prevents the file from being written if no data present
+                    new_file1 = parent_dir+'/'+species+'/uid-gene/Ensembl-Affymetrix.txt'
+                    data1 = export.ExportFile(new_file1); x1=1
                 data1.write(ensembl+'\t'+probeset+'\n')
-                if process_go == 'yes':
+                if ens_process_go == 'yes':
                     goids = unique.unique(ai.GOIDs())
                     for goid_ls in goids:
                         for goid in goid_ls:
-                            if len(goid)>0: data4.write(ensembl+'\t'+goid+'\n')
+                            if len(goid)>0:
+                                if x4==0:
+                                    new_file4 = parent_dir+'/'+species+'/gene-go/Ensembl-GeneOntology.txt'
+                                    data4 = export.ExportFile(new_file4); data4.write(header); x4=1
+                                data4.write(ensembl+'\t'+goid+'\n')
         for entrez in entrezs:
             if len(entrez)>0:
+                if x2 == 0:
+                    new_file2 = parent_dir+'/'+species+'/uid-gene/EntrezGene-Affymetrix.txt'
+                    data2 = export.ExportFile(new_file2); x2=1
                 data2.write(entrez+'\t'+probeset+'\n')
-                if process_go == 'yes':
+                if eg_process_go == 'yes':
                     goids = unique.unique(ai.GOIDs())
                     for goid_ls in goids:
                         for goid in goid_ls:
-                            if len(goid)>0: data5.write(entrez+'\t'+goid+'\n')
-    for entrez in entrez_annotation_db:
-        ea = entrez_annotation_db[entrez]
-        if len(entrez)>0: data3.write(entrez+'\t'+ea.Symbol()+'\t'+ea.Description()+'\t'+species+'\t'+today+'\t'+''+'\n')
-    data1.close(); data2.close(); data3.close()
-    if process_go == 'yes': data4.close(); data5.close()
-
+                            if len(goid)>0:
+                                if x5==0:
+                                    new_file5 = parent_dir+'/'+species+'/gene-go/EntrezGene-GeneOntology.txt'
+                                    data5 = export.ExportFile(new_file5); data5.write(header); x5=1
+                                data5.write(entrez+'\t'+goid+'\n')
+    for geneid in gene_annotation_db:
+        ea = gene_annotation_db[geneid]
+        if len(geneid)>0 and 'ENS:' not in geneid:
+            if x3 == 0:
+                new_file3 = parent_dir+'/'+species+'/gene/EntrezGene.txt'
+                data3 = export.ExportFile(new_file3); x3=1
+                data3.write('ID'+'\t'+'Symbol'+'\t'+'Name'+'\t'+'Species'+'\t'+'Date'+'\t'+'Remarks'+'\n')
+            data3.write(geneid+'\t'+ea.Symbol()+'\t'+ea.Description()+'\t'+species+'\t'+today+'\t'+''+'\n')
+        elif ens_annotations_found == 'no' and 'ENS:' in geneid:
+            geneid = string.replace(geneid,'ENS:','')
+            if x6 == 0:
+                new_file6 = parent_dir+'/'+species+'/gene/EntrezGene.txt'
+                data6 = export.ExportFile(new_file6); x6=1
+                data6.write('ID'+'\t'+'Symbol'+'\t'+'Name'+'\n')
+            data6.write(geneid+'\t'+ea.Symbol()+'\t'+ea.Description()+'\n')
+            
+    if x1==1: data1.close()
+    if x2==1: data2.close()
+    if x3==1: data3.close()
+    if x4==1: data4.close()
+    if x5==1: data5.close()
+    if x6==1: data6.close()
+    
 def swapKeyValues(db):
     swapped={}
     for key in db:
@@ -491,19 +704,22 @@ def integratePreviousAssociations():
     print 'Integrating associations from previous databases...'
     #print len(entrez_annotations),len(ens_to_uid), len(entrez_to_uid)
     for gene in entrez_annotations:
-        if gene not in entrez_annotation_db:
+        if gene not in gene_annotation_db:
             ### Add previous gene information to the new database
             y = entrez_annotations[gene]
             z = InferredEntrezInformation(y.Symbol(),gene,y.Description())
-            entrez_annotation_db[gene] = z
+            gene_annotation_db[gene] = z
     uid_to_ens = swapKeyValues(ens_to_uid); uid_to_entrez = swapKeyValues(entrez_to_uid)
 
-    ###Add prior missing gene relationships for all probesets in the new database and that are missing    
+    ###Add prior missing gene relationships for all probesets in the new database and that are missing
     for uid in uid_to_ens:
         if uid in affy_annotation_db:
             y = affy_annotation_db[uid]
             ensembl_ids = uid_to_ens[uid]
             if y.Ensembl() == ['']: y.resetEnsembl(ensembl_ids)
+            else:
+                ensembl_ids = unique.unique(y.Ensembl()+ensembl_ids)
+                y.resetEnsembl(ensembl_ids)
         else:
             ensembl_ids = uid_to_ens[uid]; entrez_ids = []
             if uid in uid_to_entrez: entrez_ids = uid_to_entrez[uid]
@@ -520,7 +736,8 @@ def integratePreviousAssociations():
             ai = AffymetrixInformation(uid, '', ensembl_ids, entrez_ids, [], [], '',[],[],[])
             affy_annotation_db[uid] = ai
 
-def parseGene2GO(tax_id,species,overwrite_entrezgo):
+def parseGene2GO(tax_id,species,overwrite_prev,rewrite_existing):
+    global overwrite_previous; overwrite_previous = overwrite_prev; status = 'run'
     program_type,database_dir = unique.whatProgramIsThis()
     if program_type == 'AltAnalyze': database_dir = '/AltDatabase'
     else: database_dir = '/BuildDBs'
@@ -528,19 +745,34 @@ def parseGene2GO(tax_id,species,overwrite_entrezgo):
     g = GrabFiles(); g.setdirectory(import_dir)
     filename = g.searchdirectory('gene2go') ###Identify gene files corresponding to a particular MOD
     if len(filename)>1:
-        fn=filepath(filename); gene_go={}; x = 0
+        fn=filepath(filename); gene_go=[]; x = 0
         for line in open(fn,'rU').readlines():             
             data = cleanUpLine(line)
             t = string.split(data,'\t')
             if x == 0: x = 1 ###skip the first line
             else:
                 taxid=t[0];entrez=t[1];goid=t[2]
-                if taxid == tax_id:
-                    try: gene_go[entrez].append(goid)
-                    except KeyError: gene_go[entrez] = [goid]
-        exportEntrezGO(gene_go,species,overwrite_entrezgo)
-        return 'run'
-    else: return 'not run'
+                if taxid == tax_id: gene_go.append([entrez,goid])
+    else: status = 'not run'        
+    if len(gene_go)>0:
+        program_type,database_dir = unique.whatProgramIsThis()
+        if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
+        else: parent_dir = 'Databases'
+        
+        if overwrite_previous == 'over-write previous':
+            if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
+        else: parent_dir = 'NewDatabases'
+        new_file = parent_dir+'/'+species+'/gene-go/EntrezGene-GeneOntology.txt'
+        today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
+
+        import EnsemblSQL
+        headers = ['EntrezGene ID','GO ID']
+        EnsemblSQL.exportListstoFiles(gene_go,headers,new_file,rewrite_existing)
+
+        print 'Exported',len(gene_go),'gene-GO relationships for species:',species
+        exportResultsSummary(['Gene2GO.zip'],species,'EntrezGene_GO')  
+    else: print 'No NCBI Gene Ontology support for this species'
+    return 'run'
 
 def importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,integrate_affy_associations,overwrite_affycsv):
     global wikipathways_file; global overwrite_previous
@@ -596,7 +828,7 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
         print "Number of unique gene IDs linked to Wikipathways for species:",len(wikipathway_gene_db)
         parse_wikipathways = 'yes'
         buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv)
-        """global affy_annotation_db; affy_annotation_db={}; global entrez_annotation_db; entrez_annotation_db = {}
+        """global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
         global ens_to_uid; global entrez_to_uid; global entrez_annotations; global parse_wikipathways
 
         parse_wikipathways = 'yes'        
@@ -627,14 +859,17 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                             except Exception: null = []
                 except KeyError: null=[]
             #print len(eg_wikipathway_db), len(ens_wikipathway_db)
+            #print system_codes
             ad = system_codes['EntrezGene']
             system_code = ad.SystemCode()
-            exportGeneToMAPPs(species,'EntrezGene',system_code,eg_wikipathway_db)
+            if len(eg_wikipathway_db)>0:
+                exportGeneToMAPPs(species,'EntrezGene',system_code,eg_wikipathway_db)
             ad = system_codes['Ensembl']
             system_code = ad.SystemCode()
-            exportGeneToMAPPs(species,'Ensembl',system_code,ens_wikipathway_db)
+            if len(ens_wikipathway_db)>0:
+                exportGeneToMAPPs(species,'Ensembl',system_code,ens_wikipathway_db)
             return len(meta)
-        except ValueError: null = []
+        except ValueError: return 'ValueError'
     else: return 'not run'
 
 def splitEntry(str_value):
@@ -666,30 +901,8 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
     data1.close()
     print 'Exported',y,'gene-MAPP relationships for species:',species
     
-def exportEntrezGO(gene_go,species,overwrite_entrezgo):
-    global overwrite_previous; overwrite_previous = overwrite_entrezgo
-    program_type,database_dir = unique.whatProgramIsThis()
-    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite'
-    else: parent_dir = 'Databases'
-    
-    if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
-    else: parent_dir = 'NewDatabases'
-    new_file = parent_dir+'/'+species+'/gene-go/EntrezGene-GeneOntology.txt'
-    today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
-    y=0
-    data = export.ExportFile(new_file)
-    data.write('EntrezGene ID'+'\t'+'GO ID'+'\n')
-    for gene in gene_go:
-        goids = unique.unique(gene_go[gene])
-        for goid in goids: data.write(gene+'\t'+goid+'\n'); y+=1
-    data.close()
-    print 'Exported',y,'gene-GO relationships for species:',species
-    global parse_wikipathways; parse_wikipathways = 'no'
-    exportResultsSummary(['Gene2GO.zip'],species,'EntrezGene_GO')
-    
 def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipathways):
-    global affy_annotation_db; affy_annotation_db={}; global entrez_annotation_db; entrez_annotation_db = {}
+    global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
     global parse_wikipathways; global meta; meta = {}
     parse_wikipathways = Parse_wikipathways
     if parse_wikipathways == 'yes':
@@ -737,8 +950,9 @@ def exportAffymetrixCSVAnnotations(species,dir_list):
             entrez_to_go = gene_associations.importGeneGOData(species,'EntrezGene','null')
             ens_to_go = gene_associations.importGeneGOData(species,'Ensembl','null')"""
         integratePreviousAssociations()
-    exportRelationshipDBs(species)
-    exportResultsSummary(dir_list,species,'Affymetrix')
+    if len(gene_annotation_db)>1:
+        exportRelationshipDBs(species)
+        exportResultsSummary(dir_list,species,'Affymetrix')
 
 def importAffymetrixAnnotations(dir,Species,Process_go,Extract_go_names,Extract_pathway_names):
     global species; global process_go; global extract_go_names; global extract_pathway_names
@@ -792,9 +1006,11 @@ if __name__ == '__main__':
     Species_full = 'Rattus norvegicus'; Species_code = 'Rn'; tax_id = '10090'; overwrite_affycsv = 'yes'
     System_codes = importSystemInfo(); process_go = 'yes'; incorporate_previous_associations = 'yes'
     import update; overwrite = 'over-write previous'
-
+    import time; start_time = time.time()
+    getArrayAnnotationsFromGOElite({},'Hs','Agilent','yes')
+    end_time = time.time(); time_diff = int(end_time-start_time); print time_diff, 'seconds'; kill
     #buildAffymetrixCSVAnnotations(Species_code,incorporate_previous_associations,process_go,'no',integrate_affy_associations,overwrite);kill   
-    #parseGene2GO(tax_id,species_code,overwrite);kill
+    species_code = Species_code; parseGene2GO(tax_id,species_code,overwrite,'no');kill
 
     date = TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
     fln,status = update.download('http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab','BuildDBs/wikipathways/',file_type)
