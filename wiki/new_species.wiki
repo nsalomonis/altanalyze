@@ -10,4 +10,4 @@ Adding Affymetrix 3' array or gene array support for a new species couldn't be e
 
 Once these steps are completed are you ready analyze your conventional microrarray data! By saving the CSV annotation for your array into the AltDatabase/affymetrix directory, AltAnalyze will be able to propperly annotate the genes and probesets on your array with the most up-to-date gene IDs and information, inlcuding the Gene Ontology and pathways.
 
-Note: these additions only allow for the analysis of 3' Affymetrix and Gene 1.0 arrays and do not allow for more complex splicing analyses for a new array in AltAnalyze.  Adding such support can be complex, usually involving the help of AltAnalyze developers, 
+Note: these additions only allow for the analysis of 3' Affymetrix and Gene 1.0 arrays and do not allow for more complex splicing analyses for a new array in AltAnalyze.  Adding such support can be complex, usually involving the help of AltAnalyze developers.
