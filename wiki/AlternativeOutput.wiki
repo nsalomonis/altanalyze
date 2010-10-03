@@ -1,0 +1,3 @@
+#summary AlternativeOutput Description
+
+The AlternativeOutput directory contains results from an alternative exon analysis.
