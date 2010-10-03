@@ -1,4 +1,5 @@
 #summary Working with AltAnalyze Offline
+#labels Featured
 
 = Working with AltAnalyze Offline =
 
