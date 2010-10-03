@@ -6,7 +6,7 @@
    1. Directly process CEL files and run MiDAS via APT remotely (no user command line interface required - cross-platform).
    2. Add an a new interface for creating groups and comparison files using just an expression dataset.
    3. User-defined input and results directories.
-   4. Export a GenMAPP/PathViso import text file.
+   4. Export a GenMAPP/PathVisio import text file.
    5. Include direct domain aligningment for probesets annotations in the primary alternative exon results file (similar to DomainGraph).
    6. Export a new DomainGraph input file containing analyzed and not-regulated probesets with all primary splicing statistics.
    7. Select files and folders for analysis using the browse option.
