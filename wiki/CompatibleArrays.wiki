@@ -1,0 +1,5 @@
+#summary FAQ-CompatibleArrays
+
+===_What microarrays can AltAnalyze work with?_===
+
+*_Answer_*: AltAnalyze can work with nearly any gene expression microarrays. While alternative splicing analysis are currently only compatible with the Exon 1.0 and AltMouse? custom arrays, AltAnalyze is also equiped to summarize gene expression data from conventional gene expression microarrays (e.g., 3' arrays and Gene 1.0 arrays). For these arrays, AltAnalyze organizes the raw data, annotates probe set level data, and calculates statistics (folds and ttest p-values). For non-Affymetrix arrays (Illumina, Agilent and Codelink), AltAnalyze will organize input expression values, calculate statistics and annotate probe level data using annotations from Ensembl and WikiPathways. 
