@@ -1,4 +1,4 @@
-#summary AltAnalyze Required Files
+#summary FAQ-AltAnalyze Required Files
 
 ===_What files do I need when analyzing Affymetrix arrays?_===
 
