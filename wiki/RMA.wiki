@@ -1,0 +1,8 @@
+#summary RMA Description
+
+= Introduction =
+
+RMA or Robust MultiArray Average is a method commonly used for microarray summarization and normalization. This is one method used by the program [APT] to obtain probeset expression values from analyzed CEL files, in addition to PLIER (not currently used by AltAnalyze). The result of RMA are sample expression values with a near identical distribution of expression values. 
+
+= Details =
+[www.plexdb.org/modules/documentation/RMAexplained.pdf www.plexdb.org/modules/documentation/RMAexplained.pdf]
