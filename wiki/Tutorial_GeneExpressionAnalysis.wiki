@@ -5,7 +5,7 @@
 One of the most basic functions in AltAnalyze is to summarize data from a typical gene expression microarray experiment. Unlike more advanced features (e.g., analysis of splicing with exon or exon-junction data), this option allows you to easily get statistics and annotations for your dataset without having had to had prior experience with analyzing microarray data. The below steps will walk you through performing a basic gene expression analysis with AltAnalyze using sample data.
 
 ==Downloading AltAnalyze==
-AltAnalyze can be downloaded for multiple operating systems from http://www.genmapp.org/AltAnalyze. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account).
+AltAnalyze can be downloaded for multiple operating systems from [http://www.altanalyze.org]. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account).
 
 ==Downloading Sample Data==
 
