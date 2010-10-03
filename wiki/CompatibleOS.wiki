@@ -1,0 +1,5 @@
+#summary FAQ-CompatibleOS
+
+===_What operating systems are AltAnalyze compatible with?_===
+
+_*Answer*_: AltAnalyze is compatible with Windows, Mac and Linux operating system. Stand-alone executable programs are available for Windows and Mac, while cross-platform source code can be easily used on Linux. Refer to the ReadMe? for more information. 
