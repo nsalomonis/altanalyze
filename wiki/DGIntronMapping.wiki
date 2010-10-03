@@ -1,0 +1,5 @@
+#summary FAQ-DomainGraph Intron Mappingsd
+
+===_In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?_===
+
+_*Answer*_: AltAnalyze uses both Ensembl and UCSC mRNAs (those in the mrna.txt annotation file) to determine which regions of a gene encode for possible exons. Thus, intron-retention can be identified from a non-Ensembl transcript. Indeed, Ensembl tends to be fairly conservative when adding a transcript to their database, such that valid alternative isoforms (with mRNA evidence) can be missing. In such a case, a probeset would not map to an Ensembl transcript and would not be shown in DomainGraph. Such probesets wouldn't also necessarily overlap with a protein domain, but could still result in large scale protein domain changes (e.g., due to protein truncation) and would be annotated as domain regulation in AltAnalyze. 
