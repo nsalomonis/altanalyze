@@ -115,7 +115,7 @@ After you run AltAnalyze, the following directory tree and set of files will be 
          * ...
 
 ==Visualizing AltAnalyze Results in DomainGraph==
-The text file results produced by AltAnalyze can be directly used as input in the protein domain and microRNA binding site visualization program, DomainGraph (click here for graphical example). DomainGraph is a plugin for the Java program Cytoscape which can be immediately opened from AltAnalyze.
+The text file results produced by AltAnalyze can be directly used as input in the protein domain and microRNA binding site visualization program, DomainGraph. DomainGraph is a plugin for the Java program Cytoscape which can be immediately opened from AltAnalyze.
 
 ==Visualizing Over-Represented GO terms and Pathways==
 Once over-represented pathways have been found or before doing this analysis, you can see which genes on which pathways are alternatively regulated in the program PathVisio or GenMAPP 2.1. PathVisio is a cross-platform analysis program, while GenMAPP is restricted to Windows. Both tools are easy use and have access to a large archive of curated pathways. An input file for either PathVisio or GenMAPP is found in the directory "ExpressionOutput" with the prefix "GenMAPP-". For making pathways, PathVisio or WikiPathways is recommended, since these resources produce superior pathway content (valid interactions between genes and metabolite IDs) in the same format (gpml). PathVisio can also export pathways to the GenMAPP format. A PathVisio tutorial can be [http://www.pathvisio.org/wiki/PathVisioTutorials found here], while a GenMAPP tutorial can be [http://www.genmapp.org/tutorial_v2.html found here].
