@@ -1,0 +1,11 @@
+#summary ExpressionInput Description
+
+The ExpressionInput directory contains files used for all downstream AltAnalyze expression analyses. 
+
+When beginning with Affymetrix CEL files, normalized expression values for all probesets are stored to this directory (exp.YourExperiment.txt) that result from APT (RMA). 
+
+For splicing-sensitive arrays, a file containing detection probability statistics (DABG) for all probesets is also saved (stats.YourExperiment.txt).
+
+When groups and comparisons are designated for your experimental samples, the files groups.YourExperiment.txt and comps.YourExperiment.txt are also saved here.
+
+In addition to these files, interim files created by AltAnalyze are also saved here and used by the program. Currently, these include probeset residuals (residuals.YourExperiment.txt) and constitutive gene summarized expression values (exp.YourExperiment-steady-state.txt).
