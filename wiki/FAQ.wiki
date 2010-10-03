@@ -4,20 +4,20 @@
 =AltAnalyze Frequently Asked Questions=
 ===Data Analysis and Import===
 
-    * What microarrays can AltAnalyze work with?
-    * What operating systems areAltAnalyze compatible with?
-    * What files do I need when analyzing Affymetrix arrays?
-    * How can I visualize splicing and domain level changes from AltAnalyze? 
+    * [CompatibleArrays What microarrays can AltAnalyze work with?]
+    * [CompatibleOS What operating systems areAltAnalyze compatible with?]
+    * [RequiredFiles What files do I need when analyzing Affymetrix arrays?]
+    * [SpliceVisualization How can I visualize splicing and domain level changes from AltAnalyze?]
 
 ===Probeset Alignments and DomainGraph===
 
-    * How do AltAnalyze probeset-to-gene and probeset-to-exon mappings differ from those in the Affymetrix annotation files?
-    * In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?
-    * Can DomainGraph show protein domain changes not predicted in AltAnalyze?  
+    * [ExonMappings How do AltAnalyze probeset-to-gene and probeset-to-exon mappings differ from those in the Affymetrix annotation files?]
+    * [DGIntronMapping In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?]
+    * [DGvsAltAnalyzeDomain Can DomainGraph show protein domain changes not predicted in AltAnalyze?]
 
 ===Interpreting Results===
 
-    * If two probesets align to one exon and have opposite splicing changes, what does this mean?
+    * [OppositeMappings If two probesets align to one exon and have opposite splicing changes, what does this mean?]
 
 =Answers=
 
