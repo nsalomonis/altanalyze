@@ -26,6 +26,6 @@ Figure 1: Visualization of AltAnalyze regulated probests along exons and protein
 
 http://altanalyze.org/images/probeset_select_75p.jpg
 
-http://altanalyze.org/images/miRBS_select_75p
+http://altanalyze.org/images/miRBS_select_75p.jpg
 
 Figure 2: Accessing Splicing and MicroRNA Binding Site Annotations. Two panels are shown for the DomainGraph view of one isoform of the protein CDC42, with AltAnalyze regulated probesets aligning to an alternative C-terminal exon. The top panel displays the probeset ID (Probeset no.), probeset position and length parameters, the splicing-index fold change or aka change in exon-inclusion (dI) score and the alternative exon annotation from AltAnalyze (Alternative splicing annotation), when the highlighted probeset (pink box) is moused-over. Likewise, when the blue line below it is moused-over, the users sees all of the predicted microRNA binding sites that exist within the sequence space of the probeset.
