@@ -1,4 +1,5 @@
 #summary Frequently Asked Questions
+#labels Featured
 
 =AltAnalyze Frequently Asked Questions=
 ===Data Analysis and Import===
