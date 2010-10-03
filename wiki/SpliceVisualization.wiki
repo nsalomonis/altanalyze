@@ -1,4 +1,4 @@
-#summary AltAnalyze Visualization Options
+#summary FAQ-AltAnalyze Visualization Options
 
 ===_How can I visualize splicing and domain level changes from AltAnalyze?_===
 
