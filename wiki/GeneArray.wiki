@@ -1,0 +1,5 @@
+#summary GeneArray Description
+
+The GeneArray directory contains exon probeset-level input expression files for Affymetrix Gene 1.0 array alternative exon analysis. Files in this folder are used for alternative expression analysis, but contain probeset raw expression values (not normalized to gene expression values). Since these files are filtered, they can be directly selected for analysis by AtlAnalyze using the option "Process AltAnalyze Filtered".
+
+http://altanalyze.org/images/SelectAnalysisMethod.jpg
