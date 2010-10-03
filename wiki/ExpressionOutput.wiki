@@ -1,0 +1,8 @@
+#summary ExpressionOutput Description
+
+The ExpressionOutput directory contains the gene-level constitutive expression results from an exon, junction or conventional array analysis. For conventional arrays (non-splicing sensitive), these results are probeset expression values, group comparison statistics and annotations. For other splicing-sensitive arrays, these results are reported for unique Ensembl genes. The reported expression values correspond to constitutive expression values (obtained from a subset of probesets for the gene) or all mRNA aligning probesets (based on user preference). Two files are exported to this directory:
+ * DATASET-YourExperiment.txt
+ * GenMAPP-YourExperiment.txt
+
+The DATASET-YourExperiment.txt file contains all expression values, comparison statistics and other annotations, while the GenMAPP-YourExperiment.txt contains these same group statistics (mean, fold, p-values) without the annotations or raw sample expression values. This smaller file is more suitably formatted for input and analysis in the pathway visualization programs [GenMAPP] and [PathVisio].
+
