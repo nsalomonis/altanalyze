@@ -1,0 +1,46 @@
+#summary Tutorial 1 - Analyzing Gene Expression Data Only
+#labels Featured
+
+==Introduction==
+One of the most basic functions in AltAnalyze is to summarize data from a typical gene expression microarray experiment. Unlike more advanced features (e.g., analysis of splicing with exon or exon-junction data), this option allows you to easily get statistics and annotations for your dataset without having had to had prior experience with analyzing microarray data. The below steps will walk you through performing a basic gene expression analysis with AltAnalyze using sample data.
+
+==Downloading AltAnalyze==
+AltAnalyze can be downloaded for multiple operating systems from http://www.genmapp.org/AltAnalyze. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account).
+
+==Downloading Sample Data==
+
+===Starting with CEL files===
+
+AltAnalyze can directly process Affymetrix CEL files. Click here to download sample data and obtain expression values.
+
+===Starting with expression values (OPTIONAL)===
+
+Download sample expression values for a mouse gene expression dataset, from here. This dataset is an embryonic stem cell differentiation time-course. Add the following prefix to the downloaded expression file, “exp.”.
+
+===Making Group and Comps files outside of AltAnalyze (OPTIONAL)===
+If your dataset has over 30 CEL files or dozens of groups, it may save you time to make the groups and comps files in advance. Although not recommended when working with this dataset, go here if this applies to your own dataset.
+
+==Running AltAnalyze==
+Now you are ready to process your raw input files and obtain gene expression statistics and annotations. To proceed:
+
+    * Download the "Current NetAffx Annotation File" for your array (e.g., MOE430A Annotations, CSV format) from the Affymetrix website to the directory "AltAnalyze_v1beta/AltDatabase/affymetrix/<species>". This is used to annotate your array.
+    * Open the AltAnalyze_v1beta folder and select the binary file “AltAnalyze”. In Windows, this file has the extension “.exe”. If you are working on a Linux machine or are having problems starting AltAnalyze, you can also start the program directly from the source code.
+    * (AltAnalyze: Introduction) In the resulting introduction window, select “Begin Analysis”.
+    * (AltAnalyze: Main Dataset Parameters) Select the species type “Mus musculus” and “Continue”.
+    * (AltAnalyze: Main Dataset Parameters) Select the “CEL files” button and the array type “Affymetrix 3’ Array" (if you have an expression file already, choose the option "expression file" and skip the next step).
+    * (AltAnalyze: Select CEL files for APT) For dataset name, type in "mESC_differentiation". Click the link at the lower left of the window, "Download Library Files". Download the library files for this array by clicking here or by following the link "Download Library Files" at the bottom of this Window (MOE430 Array Set) (requires an Affymetrix username and password).
+    * (AltAnalyze: Select CEL files for APT) Designate a folder to save all of your results to.
+    * (AltAnalyze: Expression Analysis Parameters) Accept all of the default parameters clicking “Continue”.
+    * (AltAnalyze: Assign CEL files to a Group) Type in the group name for each sample.
+    * (AltAnalyze: Establish All Pairwise Comparisons) Selects the groups to compare.
+    * A new window will appear that displays the progress of the analysis. Analysis of the sample dataset should take approximately 5 minutes, but can take longer depending upon the machine and operating system. When finished, AltAnalyze will display a new pop-up window, informing the user that the analysis is complete. If analyzing expression files, these will be run in succession.
+
+==Interpreting the Results==
+
+AltAnalyze will produce a single file from your expression study that will be saved to the folder “ExpressionOutput” in the user-defined results directory. This is a tab-delimited text file that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents. It reports gene expression values for each sample and group in your probeset input expression file. Along with the raw gene expression values, statistics for each indicated comparison (mean expression, folds, t-test p-values) will be included along with gene annotations for that array, including Ensembl and EntrezGene associations and Gene Ontology annotations.
+ 
+==Finding and Visualizing Over-Represented GO terms and Pathways==
+
+To quickly determine if there are biological pathways (WikiPathways) or Gene Ontology (GO) categories that contain a disproportionate number of regulated genes, you can use the free, open-source program GO-Elite (http://www.genmapp.org/go_elite). In addition to performing typical over-representation analysis (ORA) this tools allows the user to run permutation tests on these results (to assess the overall likelihood of over-representation), filter-out redundant GO-terms and pathways for publication ready tables, summarize all AltAnalyze statistics at the pathway level and easily view gene annotations for each pathways. A tutorial for GO-Elite can be found here. Note: the most valid denominator gene IDs for ORA is the complete list of Affymetrix probesets present in the Affymetrix CSV annotation file that you downloaded to the "AltAnalyze/AltDatabase/affymetrix/<species>" folder. If your gene expression values are from an exon array, the most valid denominator gene IDs for ORA are those found in the file "Hs_Ensembl-annotations.txt" file in the AltAnalyze directory "AltAnalyze_v1beta/AltDatabase/ensembl/<species>".
+
+Once over-represented pathways have been found or before doing this analysis, you can see which genes on which pathways are alternatively regulated in the program PathVisio or GenMAPP 2.1. PathVisio is a cross-platform analysis program, while GenMAPP is restricted to Windows. Both tools are easy use and have access to a large archive of curated pathways. An input file for either PathViso or GenMAPP is found in the directory "ExpressionOutput" with the prefix "GenMAPP-". For making pathways, PathVisio or WikiPathways is recommended, since these resources produce superior pathway content (valid interactions between genes and metabolite IDs) in the same format (gpml). PathVisio can also export pathways to the GenMAPP format. A PathVisio tutorial can be found here, while a GenMAPP tutorial can be found [http://www.genmapp.org/tutorial_v2.html here].
