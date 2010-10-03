@@ -1,0 +1,5 @@
+#summary AltAnalyze Visualization Options
+
+===_How can I visualize splicing and domain level changes from AltAnalyze?_===
+
+_*Answer*_: Two Cytoscape plugins are in development to allow for users to take AltAnalyze result files (exon-inclusion-results.txt file) and view AltAnalyze splicing scores in the context of a (1) gene structure graph (Subgeneviewer) or (2) protein domains and microRNA binding sites (DomainGraph). Both plugins will be available from the Plugins>Manage Plugins>Network Inference menu in Cytoscape (11-9-08). For details on using AltAnalyze results in DomainGraph, [DomainGraph click here]. 
