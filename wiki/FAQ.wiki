@@ -1,0 +1,63 @@
+#summary Frequently Asked Questions
+
+=AltAnalyze Frequently Asked Questions=
+===Data Analysis and Import===
+
+    * What microarrays can AltAnalyze work with?
+    * What operating systems areAltAnalyze compatible with?
+    * What files do I need when analyzing Affymetrix arrays?
+    * How can I visualize splicing and domain level changes from AltAnalyze? 
+
+===Probeset Alignments and DomainGraph===
+
+    * How do AltAnalyze probeset-to-gene and probeset-to-exon mappings differ from those in the Affymetrix annotation files?
+    * In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?
+    * Can DomainGraph show protein domain changes not predicted in AltAnalyze?  
+
+===Interpreting Results===
+
+    * If two probesets align to one exon and have opposite splicing changes, what does this mean?
+
+=Answers=
+
+===Data Analysis and Import===
+
+"What microarrays can AltAnalyze work with?"
+
+Answer: AltAnalyze can work with nearly abt gene expression microarrays. While alternative splicing analysis are currently only compatible with the Exon 1.0 and AltMouse custom arrays, AltAnalyze is also equiped to summarize gene expression data from conventional gene expression microarrays (e.g., 3' arrays and Gene 1.0 arrays). For these arrays, AltAnalyze organizes the raw data, annotates probe set level data, and calculates statistics (folds and ttest p-values). For non-Affymetrix arrays (Illumina, Agilent and Codelink), AltAnalyze will organize input expression values, calculate statistics and annotate probe level data using annotations from Ensembl and WikiPathways.
+
+"What operating systems are AltAnalyze compatible with?"
+
+Answer: AltAnalyze is compatible with Windows, Mac and Linux operating system. Stand-alone executable programs are available for Windows and Mac, while cross-platform source code can be easily used on Linux. Refer to the ReadMe for more information.
+
+"What files do I need when analyzing Affymetrix arrays?"
+
+Answer: If you are analyzing any human, mouse or rat Affymetrix arrays, only your CEL files are needed. Affymetrix can download any other library and annotation files needed to analyze and annotate your array results. The include the library files needed to perform RMA summarization and annotation files to add probeset and gene annotations to your results.
+
+"How can I visualize splicing and domain level changes from AltAnalyze?"
+
+Answer: Two Cytoscape plugins are in development to allow for users to take AltAnalyze result files (exon-inclusion-results.txt file) and view AltAnalyze splicing scores in the context of a (1) gene structure graph (Subgeneviewer) or (2) protein domains and microRNA binding sites (DomainGraph). Both plugins will be available from the Plugins>Manage Plugins>Network Inference menu in Cytoscape (11-9-08). For details on using AltAnalyze results in DomainGraph, click here.
+
+===Probeset Alignments and DomainGraph===
+
+"How do AltAnalyze probeset-to-gene and probeset-to-exon mappings differ from those in the Affymetrix annotation files?"
+
+Answer: We have found some discrepancies between probeset and transcript cluster mapping to Ensembl genes. Mainly, these issues relate to a probeset or transcript cluster missing the proper mapping. Thus, in AltAnalyze, probesets are aligned to Ensembl genes based on their relative genomic. If a single probeset maps to only one Ensembl gene or just outside that Ensembl gene (e.g., in the 5' or 3' UTR of the gene) in a one-to-one manner, then the probeset is associated with the gene. When assigning a UTR, exon or intron annotation to a probeset, AltAnalyze check's to see if the probeset coordinates first overlap with an exon, next with an intron and last in a UTR region. Currently, a probeset only has to overlap with an exon to be associated with an exon annotation, however, in some cases, the probeset will only partially overlap with the exon and can bleed into the intron. Although this can lead to improper exon alignments, this does not affect the AltAnalyze analysis, since the probeset to gene assignment will still be valid. This also doesn't affect the probeset to microRNA binding site and protein associations, since these are made by direct sequence alignment. Thus, since some probesets do not align directly to an Ensembl mRNA, but are annotated as overlapping with an Ensembl exon, these probesets can be called by AltAnalyze as regulated but may not appear in DomainGraph (since the alignment strategies vary slightly).
+
+
+"In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?"
+
+Answer: AltAnalyze uses both Ensembl and UCSC mRNAs (those in the mrna.txt annotation file) to determine which regions of a gene encode for possible exons. Thus, intron-retention can be identified from a non-Ensembl transcript. Indeed, Ensembl tends to be fairly conservative when adding a transcript to their database, such that valid alternative isoforms (with mRNA evidence) can be missing. In such a case, a probeset would not map to an Ensembl transcript and would not be shown in DomainGraph. Such probesets wouldn't also necessarily overlap with a protein domain, but could still result in large scale protein domain changes (e.g., due to protein truncation) and would be annotated as domain regulation in AltAnalyze.
+
+"Can DomainGraph show protein domain changes not predicted in AltAnalyze?"
+
+Answer: Yes! AltAnalyze tries to identify domain level difference by comparing the two alternative isoforms linked to a probeset (one protein that aligns and another which does not). If a splicing event is novel (not corresponding to a known mRNA), AltAnalyze can not propperly predict domain-level changes. DomainGraph, however may predict a domain-level change, since it directly aligns domains to probesets and thus has a greater ability to predict novel splicing event domain-level changes. Also, since AltAnalyze predictions currently rely on comparing just two variants, if variants are choosen with other sequence changes outside of the measured probeset aligning region, additional domain changes may be falsely introduced. Future versions of AltAnalyze will likely include both direct domain comparison and comparison between multiple isoforms to find those alternative isoforms that produce the minimal but maximally informative domain-level changes.
+
+Interpreting Results
+"If two probesets align to one exon and have opposite splicing changes, what does this mean?"
+Answer: Such a result may be meaningful. For example:
+
+    *
+      Two adjacent probesets may associate with an alternative 5' or 3' splice site, where one isoform is up and the other is down. In AltAnalyze, if this is a characterized splice event, one probeset will have the annoation "FivePrime" or "ThreePrime". In DomainGraph, you can also see if the probesets have different distributions in different transcripts. This can still be alternative splicing however, even if the annotation is missing if this is an uncharacterized event or in an EST not analyzed by AltAnalyze. We also recommend you check http://www.genome.ucsc.edu for that probeset.
+    *
+      Alternatively, this could be due to a hybridization issue, where a probeset targets multiple locations in the genome. You can BLAT the probeset sequence (obtain from NetAffx) at http://www.genome.ucsc.edu to verify.
