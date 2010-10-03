@@ -38,7 +38,7 @@ When AltAnalyze was running it produced a number of output files, most to the fo
   * 1. ExpressionOutput/DATASET-dataset_name.txt
   * 2. AltResults/AlternativeOutput/comparison-splicing-index-exon-inclusion-results.txt
   * 3. AltResults/AlternativeOutput/comparison-splicing-index-exon-inclusion-GENE-results.txt
-  * 4. AltResults/AlternativeOutputcomparison-splicing-index-ft-domain-zscores.txt
+  * 4. AltResults/AlternativeOutput/comparison-splicing-index-ft-domain-zscores.txt
   * 5. AltResults/AlternativeOutput/comparison-splicing-index-miRNA-zscores
 
 These files are tab-delimited text files that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents.
