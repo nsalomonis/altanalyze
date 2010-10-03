@@ -1,0 +1,5 @@
+#summary FAQ-DomainGraph versus AltAnalyze domain mapping
+
+===_Can DomainGraph show protein domain changes not predicted in AltAnalyze?_===
+
+_*Answer*_: Yes! AltAnalyze tries to identify domain level difference by comparing the two alternative isoforms linked to a probeset (one protein that aligns and another which does not). If a splicing event is novel (not corresponding to a known mRNA), AltAnalyze can not propperly predict domain-level changes. DomainGraph, however may predict a domain-level change, since it directly aligns domains to probesets and thus has a greater ability to predict novel splicing event domain-level changes. Also, since AltAnalyze predictions currently rely on comparing just two variants, if variants are choosen with other sequence changes outside of the measured probeset aligning region, additional domain changes may be falsely introduced. Future versions of AltAnalyze will likely include both direct domain comparison and comparison between multiple isoforms to find those alternative isoforms that produce the minimal but maximally informative domain-level changes. 
