@@ -1,4 +1,5 @@
 #summary Analyzing Alternative Exon Results
+#labels Featured
 
 =What To Do After Getting Alternative Exon Results?=
 Below are some suggestions. 
