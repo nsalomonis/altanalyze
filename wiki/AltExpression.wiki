@@ -1,5 +1,5 @@
 #summary AltExpression Description
 
-The AltExpression directory contains various files created during alternative exon dataset processing and filtering. Files the folders "ExonArray", "JunctionArray" or "GeneArray" contain filtered probeset raw expression values (not normalized to gene expression values). Since these files are filtered, they can be directly selected for analysis by AtlAnalyze using the option "Process AltAnalyze Filtered".
+The AltExpression directory contains various files created during alternative exon dataset processing and filtering. Files the folders "ExonArray", "JunctionArray" or "GeneArray" contain filtered probeset raw expression values (not normalized to gene expression values). Since these files are filtered, they can be directly selected for analysis by AltAnalyze using the option "Process AltAnalyze Filtered".
 
 http://altanalyze.org/images/SelectAnalysisMethod.jpg
