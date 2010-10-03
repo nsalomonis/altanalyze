@@ -1,0 +1,5 @@
+#summary AltAnalyze Required Files
+
+===_What files do I need when analyzing Affymetrix arrays?_===
+
+_*Answer*_: If you are analyzing any human, mouse or rat Affymetrix arrays, only your CEL files are needed. Affymetrix can download any other library and annotation files needed to analyze and annotate your array results. The include the library files needed to perform RMA summarization and annotation files to add probeset and gene annotations to your results. 
