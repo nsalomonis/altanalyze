@@ -36,6 +36,7 @@ At this point you have many options but some of the most common are:
    * Look for Gene Ontology terms and over-represented pathways.
    * Load the data in a pathway analysis program to see your data on pathways.
    * Find novel gene interaction networks using Cytoscape.
+   * Cluster alternative exon data in Cytoscape.
 
 ===Visualizing AltAnalyze Results in DomainGraph===
 The text file results produced by AltAnalyze can be directly used as input in the protein domain and microRNA binding site visualization program, DomainGraph. DomainGraph is a plugin for the Java program Cytoscape which can be immediately opened from AltAnalyze.
@@ -50,3 +51,6 @@ Once over-represented pathways have been found or before doing this analysis, yo
 
 ===Find novel gene interaction networks using Cytoscape===
 You can also use the program Cytoscape to create literature based networks and view your data on networks. Tutorials are present at Cytoscape.org.
+
+===Cluster the data===
+If you have multiple comparisons in your dataset, you may be interested in looking for global similarities in alternative expression. One way to do this is to select the option to export normalized intensities for an alternative exon analysis, select the significant alternative exon results from one or more comparison analyses, use the normalized intensities to calculate alternative exon scores for all samples (relative to an appropriate control group) and then analyze these data in a clustering program, such as clusterMaker in Cytoscape.
