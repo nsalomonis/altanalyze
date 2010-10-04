@@ -1,0 +1,7 @@
+#summary SubgeneViewer Description
+
+== Introduction ==
+SubgeneViewer is a plugin in development for the network visualization software Cytoscape. Slated to be released as a part of GenMAPP-CS beta in early 2011, SubgeneViewer allows users to examine the complete exon, junction and intron structure of a gene and view associated exon expression data. Annotations for SubgeneViewer are derived from AltAnalyze during the database build process. 
+
+== Details ==
+[http://dx.plos.org/10.1371/journal.pcbi.1000553]
