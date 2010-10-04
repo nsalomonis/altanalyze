@@ -30,6 +30,7 @@ $ python AltAnalyze.py --species Hs --arraytype exon --filterdir
 "C:/CELFiles/Filtered/Hs_Exon_prostate_vs_lung.p5_average.txt" --output "C:/CELFiles"
 
 _*Annotate External Probe set results – Exon 1.0 array using default options*_
+
 $ python AltAnalyze.py --species Rn --arraytype exon --annotatedir
 "C:/JETTA_Results/Hs_tumor_progression.txt" --output "C:/JETTA_Results" --runGOElite yes
 
