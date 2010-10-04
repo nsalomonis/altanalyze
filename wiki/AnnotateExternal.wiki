@@ -5,4 +5,5 @@
 _*Answer*_: If you would like to annotate an existing list of regulated probesets (PSRs) by AltAnalyze, you can directly load these probesets and associated scores using the main menu option "Annotate External Results". Select this option and load a tab-delimited text file with the first column being regulated probesets. AltAnalyze will return alternative exon annotations for these probests.
 
 http://altanalyze.org/images/SelectAnalysisMethod.jpg
+
 For more information, see the [http://www.altanalyze.org/help.htm#algorithm_description associated online documentation].
