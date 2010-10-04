@@ -19,7 +19,7 @@
 
     * [ExonMappings How do AltAnalyze probeset-to-gene and probeset-to-exon mappings differ from those in the Affymetrix annotation files?]
     * [DGIntronMapping In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?]
-    * [StartingDG How do I start DomainGraph and what can I do?]
+    * [StartingDG How do I start DomainGraph and what can I do in DomainGraph?]
 
 ===Interpreting Alternative Exon Results===
     * [ConstitutiveProbeset What is a constitutive probeset?]
