@@ -14,7 +14,6 @@
     * [GroupsAndComps Why do I need to define groups and comparisons?]
     * [AnnotateExternal How can I annotate my splicing results from another program in AltAnalyze?]
     * [GOEliteDefault What doesn't AltAnalyze run GO-Elite by default?]
-    * [AboutUs Who are you and what's your deal?]
 
 ===Probeset Alignments and DomainGraph===
 
@@ -33,3 +32,6 @@
     * [EventCall Why do all alternative exons have the indicator "exon-inclusion" in the column "event_call"?]
     * [GraphingExonData How can I graph my splicing scores for all exons in a gene?]
     * [ExonVsGene What is the difference between exon-level and gene-level alternative exon results?]
+
+===Other===
+    * [AboutUs Who are you and what's your deal?]
