@@ -4,4 +4,6 @@
 
 _*Answer*_: There are multiple algorithm choices for alternative exon analysis in AltAnalyze. Some of these only work for single probeset analyses (e.g., exon arrays), while others are only available for reciprocal exon-junction analyses.
 
-The methods splicing-index, FIRMA and MiDAS are used to compare the expression of a single probeset to the gene expression, whereas Linear Regression and ASPIRE are used when you have two probeset measuring the exclusion and inclusion of an exon (e.g, two junctions).
+The methods splicing-index, FIRMA and MiDAS are used to compare the expression of a single probeset to the gene expression, whereas Linear Regression and ASPIRE are used when you have two probeset measuring the exclusion and inclusion of an exon (e.g, two junctions). All of these produce a score which is basically equivalent to a fold change, except for MiDAS which produces a p-value. The "fold-changes", however, have different scales depending on the method use. Each scoring method has a corresponding p-value which is calculated based on an f-test between the individual sample scores in the two groups. Some methods, like FIRMA, tend to produce much larger scores than others, such as splicing-index. Likewise, scores for ASPIRE typically range from -1 to 1 while Linear Regression ranges from -10 to 10.
+
+For details on these methods, see the associated [http://www.altanalyze.org/help.htm#algorithm_description online documentation].
