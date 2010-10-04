@@ -11,6 +11,6 @@ If you would like to contribute to AltAnalyze development or to the documentatio
 == Development Team ==
 ||*_Name_*||*_Role_*||*_Affiliation_*||
 ||Nathan Salomonis||Lead Developer||Gladstone Institutes||
-||Dorothea Emig||Core Developer||Max Planck Institute||
-||Mario Albrecht||Principle Investigator||Max Planck Institute||
+||Dorothea Emig||Software Design||Max Planck Institute||
+||Mario Albrecht||Software Design||Max Planck Institute||
 ||Bruce Conklin||Principle Investigator||Gladstone Institutes||
