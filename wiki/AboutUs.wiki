@@ -1,4 +1,5 @@
 #summary About Us Page
+#labels Featured
 
 ==About Us==
 
