@@ -1,0 +1,5 @@
+#summary FAQ-Event Call Description
+
+===_Why do all alternative exons have the indicator "exon-inclusion" in the column "event_call"?_===
+
+_*Answer*_: Some users are confused by this column, since for exon arrays, all probesets have the annotation exon-inclusion. This column was added for junction arrays, in which some probesets are supplied with the annotation "mutually-exclusive" in addition to "exon-inclusion". Exon inclusion only indicates that the probeset measures exon-inclusion, but does not indicate whether there is more exon inclusion or exclusion. In most cases, users can ignore this column. 
