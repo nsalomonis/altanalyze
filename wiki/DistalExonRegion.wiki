@@ -1,0 +1,5 @@
+#summary One-sentence summary of this page.
+
+===_What does the column "distal exon-region-ID" indicate?_===
+
+_*Answer*_: The [ExonRegionIDs exon ID]
