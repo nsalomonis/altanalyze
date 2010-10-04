@@ -24,8 +24,8 @@
 ===Interpreting Alternative Exon Results===
     * [ConstitutiveProbeset What is a constitutive probeset?]
     * [OppositeMappings If two probesets align to one exon and have opposite splicing changes, what does this mean?]
-    * [ProteinDirectionIndicator What does the (+) and (-) mean proceeding a protein domain, miRNA binding site or protein ID?]
-    * [ExonRegionIDs What does the ID E14-1 indicate and where does this annotation come from?]
+    * [ProteinDirectionIndicator What does the (+) and (-) mean proceeding a protein domain, miRNA binding site or protein identifier?]
+    * [ExonRegionIDs What does the identifier E14-1 indicate and where does this annotation come from?]
     * [ASAnnotations Where do the alternative splicing annotations provided in the column "exon annotations" come from?]
     * [DistalExonRegion What does the column "distal exon-region-ID" indicate?]
     * [AdjFoldChange What is the adjusted fold versus the non-adjusted fold change?]
