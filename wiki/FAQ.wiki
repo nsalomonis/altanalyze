@@ -5,7 +5,7 @@
 ===Data Analysis and Import===
 
     * [CompatibleArrays What microarrays can AltAnalyze work with?]
-    * [CompatibleOS What operating systems areAltAnalyze compatible with?]
+    * [CompatibleOS What operating systems is AltAnalyze compatible with?]
     * [RequiredFiles What files do I need when analyzing Affymetrix arrays?]
     * [SpliceVisualization How can I visualize splicing and domain level changes from AltAnalyze?]
 
