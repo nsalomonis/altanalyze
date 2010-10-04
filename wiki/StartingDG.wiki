@@ -10,4 +10,4 @@ From this menu, choose "Start DomainGraph in Cytoscape":
 
 http://altanalyze.org/images/R2.jpg
 
-Once open, follow these [http://domaingraph.bioinf.mpi-inf.mpg.de/workflow/altanalyze.php directions].
+Once open, follow these [http://domaingraph.bioinf.mpi-inf.mpg.de/workflow/altanalyze.php directions], starting with Installing the DomainGraph database.
