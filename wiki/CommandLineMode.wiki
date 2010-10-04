@@ -1,0 +1,42 @@
+#summary FAQ-Command Line Mode
+
+===_Can I run AltAnalyze on a remote machine without using the graphical user interface?_===
+
+_*Answer*_: Although the graphical user interface (GUI) is intended to be the primary way that a user establishes AltAnalyze parameters, users will often want to run AltAnalyze jobs by command-line, locally or remotely. An example would be a job that is run for hundreds of arrays on a remote Linux server. AltAnalyze is intended to work just fine in such a scenario, given that the user knows the file paths of the directories containing input files, the output directory and has already created files containing the groups and comparisons for all samples analyzed. The latter is fairly easy, in fact, just following the directions listed [ManualGroupsCompsCreation here]. This can be done in an automated fashion as well, if the CEL files have a [PredictGroupsComps defined naming structure].
+
+To run AltAnalyze from command-line, you will need to have installed AltAnalyze and make sure the source code is in the AltAnalyze program main directory. If you have downloaded the python-source code or Linux version, this will be the case, otherwise, you will need to copy the contents of the folder "Source_code" to the parent AltAnalyze directory. Before supplying the command-line argument to this program, you will need to open a command prompt and change to the directory with the AltAnalyze source code. 
+
+Examples:
+
+_*(Analyzing CEL files – Affymetrix 3’ array using default options and GO-Elite)*_
+$ python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium"
+
+_*(Analyzing  CEL files – Exon 1.0 array using default options)*_
+$ python AltAnalyze.py --species Hs --arraytype exon --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium"
+
+_*(Analyzing  CEL files – Exon 1.0 array using custom options)*_
+$ python AltAnalyze.py --species Hs --arraytype exon --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes ––noxhyb yes --analyzeAllGroups " all groups" ––GEcutoff 4 --probetype core --altp 0.001 --altmethod FIRMA ––altscore 8 --exportnormexp yes ––runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes
+
+_*(Analyzing Expression file – Gene 1.0 array using default options, without GO-Elite)*_
+$ python AltAnalyze.py --species Mm --arraytype gene --expdir "C:/CELFiles/ExpressionInput/exp.CancerCompendium.txt" --statdir "C:/CELFiles/ExpressionInput/stats.CancerCompendium.txt" --output "C:/CELFiles"
+
+_*(Analyzing Filtered Expression file – Exon 1.0 array using default options)*_
+$ python AltAnalyze.py --species Hs --arraytype exon --filterdir
+"C:/CELFiles/Filtered/Hs_Exon_prostate_vs_lung.p5_average.txt" --output "C:/CELFiles"
+
+_*(Annotate External Probe set results – Exon 1.0 array using default options)*_
+$ python AltAnalyze.py --species Rn --arraytype exon --annotatedir
+"C:/JETTA_Results/Hs_tumor_progression.txt" --output "C:/JETTA_Results" --runGOElite yes
+
+_*(Filter AltAnalyze results with predefined IDs – Exon 1.0 array using default options)*_
+$ python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --returnAll yes
+
+_*(Updating the database for a species)*_
+$ python AltAnalyze.py --species Mm --update Official --version EnsMart54
+ 
+_*(Operating System Example Folder Locations)*_
+PC: "C:/CELFiles"
+Mac OSX: "/root/user/admin/CELFiles
+Linux: "/hd3/home/admin/CELFiles
+
+When the analysis is finished, the results will be stored just as with the GUI (e.g., alternative exon results in AltResults and gene expression results in ExpressionOutput.
