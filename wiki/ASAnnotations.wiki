@@ -1,0 +1,6 @@
+#summary FAQ-Alternative Splicing Annotation
+
+
+===_Where do the alternative splicing annotations provided in the column "exon annotations" come from?_===
+
+_*Answer*_: Exon annotations in AltAnalyze are provided in order to assess whether or not a particular exon is known to participate in a splicing event or alternative promoter. Users can use this information to search for regulated exons known to have external evidence of regulation or to identify novel alternative exons. AltAnalyze obtains these annotations from the UCSC genome database and by comparing overlapping exons from different transcripts during each database build process. Details on this methodology are supplied in the following [http://www.altanalyze.org/help.htm#as_predict online documentation]. 
