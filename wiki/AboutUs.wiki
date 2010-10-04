@@ -9,7 +9,7 @@ Our hope, is that AltAnalyze and associated tools will help researchers to provi
 If you would like to contribute to AltAnalyze development or to the documentation on this site, we welcome your contributions. 
 
 == Development Team ==
-||*_Name_*||*_Role_*||*_Affiliation_*||
+||_*Name*_||_*Role*_||_*Affiliation*_||
 ||Nathan Salomonis||Lead Developer||Gladstone Institutes||
 ||Dorothea Emig||Software Design||Max Planck Institute||
 ||Mario Albrecht||Software Design||Max Planck Institute||
