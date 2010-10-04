@@ -1,4 +1,4 @@
-#summary One-sentence summary of this page.
+#summary FAQ-Starting DomainGraph
 
 ===_How do I start DomainGraph and what can I do in DomainGraph?_===
 
