@@ -28,3 +28,6 @@ Gene expression values for all genes are saved to the folder ExpressionOutput fo
 http://altanalyze.org/images/ExpAnalysisParamet.jpg
 
 If the default *no* is selected, AltAnalyze will use only constitutive annotated probesets when possible. If yes
+
+==Additional Information==
+For more details, see our associated [http://www.altanalyze.org/help.htm#cs online documentation]
