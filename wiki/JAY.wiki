@@ -4,7 +4,7 @@
 
 The mouse and human JAY arrays (MJAY and HJAY) are next generation Affymetrix exon and exon-junction microarrays that probe several hundred thousand thanscript features and over 20 thousand genes. Support for these arrays is introduced in AltAnalyze version 1.16. Gene database versions prior to EnsMart55 and executable versions of AltAnalyze prior to version 1.16 are not compatible with JAY array analyses.
 
-Both exon and exon-junction analyses are executed in series on these arrays, produced separate result files for exon based alternative exon analyses (FIRMA, splicing-index, MiDAS) for single probesets and reciprocal exon-junction paired analyses (Linear Regression, ASPIRE). This allows the user to assess a change in exon inclusion based on combined junction and exon evidence. Methods used for reciprocal exon-junction analyses are the same as those used for the older generation [AltMouse] junction array (http://www.pnas.org/content/107/23/10514 Salomonis N. et al. PNAS 2010). 
+Both exon and exon-junction analyses are executed in series on these arrays, produced separate result files for exon based alternative exon analyses (FIRMA, splicing-index, MiDAS) for single probesets and reciprocal exon-junction paired analyses (Linear Regression, ASPIRE). This allows the user to assess a change in exon inclusion based on combined junction and exon evidence. Methods used for reciprocal exon-junction analyses are the same as those used for the older generation [AltMouse] junction array ([http://www.pnas.org/content/107/23/10514 Salomonis N. et al. PNAS 2010]). 
 
 == Details ==
 
