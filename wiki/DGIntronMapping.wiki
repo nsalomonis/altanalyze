@@ -1,4 +1,4 @@
-#summary FAQ-DomainGraph Intron Mappingsd
+#summary FAQ-DomainGraph Intron Mappings
 
 ===_In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?_===
 
