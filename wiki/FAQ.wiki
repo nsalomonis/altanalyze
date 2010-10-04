@@ -22,7 +22,7 @@
     * [StartingDG How do I start DomainGraph and what can I do in DomainGraph?]
 
 ===Interpreting Alternative Exon Results===
-    * [ConstitutiveProbeset What is a constitutive probeset?]
+    * [GeneExpCalculation What is a constitutive probeset?]
     * [OppositeMappings If two probesets align to one exon and have opposite splicing changes, what does this mean?]
     * [ProteinDirectionIndicator What does the (+) and (-) mean proceeding a protein domain, miRNA binding site or protein identifier?]
     * [ExonRegionIDs What does the identifier E2-3 indicate and where does this annotation come from?]
