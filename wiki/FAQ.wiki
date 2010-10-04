@@ -3,18 +3,30 @@
 
 =AltAnalyze Frequently Asked Questions=
 ===Data Analysis and Import===
-
     * [CompatibleArrays What microarrays can AltAnalyze work with?]
     * [CompatibleOS What operating systems is AltAnalyze compatible with?]
     * [RequiredFiles What files do I need when analyzing Affymetrix arrays?]
     * [SpliceVisualization How can I visualize splicing and domain level changes from AltAnalyze?]
+    * [FilteringData Why does AltAnalyze need to filter my data?]
+    * [Constitutive_vs_all Should I calculate gene expression using constitutive or all mRNA aligning probests?]
+    * [ScoringMethod What is the difference between the splicing-index, FIRMA and MiDAS methods?]
+    * [CommandLineMode Can I run AltAnalyze on a remote machine without using the graphical user interface?]
+    * [GroupsAndComps Why do I need to define groups and comparisons?]
+    * [AnnotateExternal How can I annotate my splicing results from another program in AltAnalyze?]
 
 ===Probeset Alignments and DomainGraph===
 
     * [ExonMappings How do AltAnalyze probeset-to-gene and probeset-to-exon mappings differ from those in the Affymetrix annotation files?]
     * [DGIntronMapping In AltAnalyze a probeset associated with an intron is predicted to alter protein domain composition of the protein, but in DomainGraph why don't I see the probeset?]
-    * [DGvsAltAnalyzeDomain Can DomainGraph show protein domain changes not predicted in AltAnalyze?]
 
-===Interpreting Results===
-
+===Interpreting Alternative Exon Results===
+    * [ConstitutiveProbeset What is a constitutive probeset?]
     * [OppositeMappings If two probesets align to one exon and have opposite splicing changes, what does this mean?]
+    * [ProteinDirectionIndicator What does the (+) and (-) mean proceeding a protein domain, miRNA binding site or protein ID?]
+    * [ExonRegionIDs What does the ID E14-1 indicate and where does this annotation come from?]
+    * [ASAnnotations Where do the alternative splicing annotations provided in the column "exon annotations" come from?]
+    * [DistalExonRegion What does the column "distal exon-region-ID" indicate?]
+    * [AdjFoldChange What is the adjusted fold versus the non-adjusted fold change?]
+    * [EventCall Why do all alternative exons have the indicator "exon-inclusion" in the column "event_call"?]
+    * [GraphingExonData How can I graph my splicing scores for all exons in a gene?]
+    * [ExonVsGene What is the difference between exon-level and gene-level alternative exon results?]
