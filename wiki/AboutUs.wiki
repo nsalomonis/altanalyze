@@ -9,6 +9,18 @@ Our hope, is that AltAnalyze and associated tools will help researchers to provi
 
 If you would like to contribute to AltAnalyze development or to the documentation on this site, we welcome your contributions. 
 
+== Citing AltAnalyze ==
+
+The following citations are most relevant:
+
+[http://www.ncbi.nlm.nih.gov/pubmed/20513647 AltAnalyze and DomainGraph: analyzing and visualizing exon expression data]. Emig D, Salomonis N, Baumbach J, Lengauer T, Conklin BR, Albrecht M.
+Nucleic Acids Res. 2010 Jul 1;38 Suppl:W755-62. Epub 2010 May 31.
+
+[http://www.ncbi.nlm.nih.gov/pubmed/20498046 Alternative splicing regulates mouse embryonic stem cell pluripotency and differentiation]. Salomonis N, Schlieve CR, Pereira L, Wahlquist C, Colas A, Zambon AC, Vranizan K, Spindler MJ, Pico AR, Cline MS, Clark TA, Williams A, Blume JE, Samal E, Mercola M, Merrill BJ, Conklin BR.
+Proc Natl Acad Sci U S A. 2010 Jun 8;107(23):10514-9. Epub 2010 May 24.
+
+[http://www.ncbi.nlm.nih.gov/pubmed/19893621 Alternative splicing in the differentiation of human embryonic stem cells into cardiac precursors]. Salomonis N, Nelson B, Vranizan K, Pico AR, Hanspers K, Kuchinsky A, Ta L, Mercola M, Conklin BR. PLoS Comput Biol. 2009 Nov;5(11):e1000553. Epub 2009 Nov 6. 
+
 == Development Team ==
 ||_*Name*_||_*Role*_||_*Affiliation*_||
 ||[mailto:nsalomonis@gmail.com Nathan Salomonis]||Lead Developer||Gladstone Institutes||
