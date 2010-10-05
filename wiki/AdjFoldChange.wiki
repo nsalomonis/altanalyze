@@ -1,4 +1,4 @@
-#summary One-sentence summary of this page.
+#summary FAQ-Adjusted Fold Change
 
 ===_What is the adjusted fold versus the non-adjusted fold change?_===
 
