@@ -1,0 +1,8 @@
+#summary FAQ-Graphic Exon Data
+
+===_How can I graph my splicing scores for all exons in a gene?_===
+
+Add your content here.
+
+
+http://www.ploscompbiol.org/article/fetchObject.action?uri=info%3Adoi%2F10.1371%2Fjournal.pcbi.1000553.g006&representation=PNG_M
