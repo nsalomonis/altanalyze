@@ -1,4 +1,4 @@
-#summary Annotate External Results Description
+#summary FAQ-Annotate External Results Description
 
 ===_How can I annotate my splicing results from another program in AltAnalyze?_===
 
