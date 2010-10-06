@@ -2,6 +2,13 @@
 #labels Featured
 
 =News and Updates=
+
+==10-6-10==
+The AltAnalyze website has been updated to include links to a new support site hosted at http://code.google.com/p/altanalyze. This site includes wiki documentation, an SVN repository, downloads and a bug tracking system.
+
+==10-1-10==
+Posted an updated version of 1.15 that had a bug resulting in problems with the [http://code.google.com/p/altanalyze/wiki/AnnotateExternal "Annotate External Results"] option on 9-27-10, however, a subsequent update was performed on 10-1-10, since an important line of code was missing from the 9-27-10 version. Thus, AltAnalyze 1.15 PC and Linux installations downloaded during that period are faulty.
+
 ==4-12-10==
 Introducing AltAnalyze version 1.15 with expanded features for alternative exon array analysis. New to AltAnalyze; 1) Alternative exon analysis of Affymetrix Gene 1.0 ST arrays, 2) FIRMA analysis, 3) Bundled version of Cytoscape and DomainGraph included, 4) AltAnalyze DomainGraph start option, 5) Import and filtering based on 3rd party alternative exon analysis results and 6) Linux exectuable version. Please contact us with any questions.
 
