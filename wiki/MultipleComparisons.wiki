@@ -1,6 +1,6 @@
 #summary One-sentence summary of this page.
 
-===_How does a pair-wise alternative exon analysis differ from multiple group comparisons?===_
+===_How does a pair-wise alternative exon analysis differ from multiple group comparisons?_===
 
 _*Answer*_: Statistics for a pair-wise comparison are calculated by comparing the expression values for two biological groups. For exon array analyses (splicing-index or FIRMA), these means comparison of the gene expression corrected intensities (or residuals) in the control and experimental groups to derive a alternative exon fold change and p-value based on those two groups. For a junction array analysis, this also relies on two groups, control and experimental, but with different algorithm options (ASPIRE and linear regression), involving multiple probesets.
 
