@@ -10,6 +10,7 @@
     * [FilteringData Why does AltAnalyze need to filter my data?]
     * [Constitutive_vs_all Should I calculate gene expression using constitutive or all mRNA aligning probests?]
     * [ScoringMethod What is the difference between the splicing-index, FIRMA, MiDAS, Linear Regression and ASPIRE methods?]
+    * [MultipleComparisons How does a pair-wise alternative exon analysis differ from multiple group comparisons?]
     * [CommandLineMode Can I run AltAnalyze on a remote machine without using the graphical user interface?]
     * [GroupsAndComps Why do I need to define groups and comparisons?]
     * [AnnotateExternal How can I annotate my splicing results from another program in AltAnalyze?]
