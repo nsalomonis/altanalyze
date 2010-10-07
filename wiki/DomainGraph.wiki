@@ -13,9 +13,9 @@ Furthermore, the detailed analysis of interaction networks and pathways is possi
 
 Once alternative probesets have been identified from an AltAnalyze exon array analysis, you can easily load this data in the Cytoscape plugin DomainGraph to:
 
-   * Visualize interaction networks between proteins and specific protein domains.
-   * Assess which probesets overlap with a set of loaded genes and which specific protein domains at a high-level (protein/domain network) and low-level (domain/exon/probeset view).
-   * Immediately see which probesets overlap with known/predicted alternative splicing events, alternative promoter selection or microRNA binding sites.
+   # Visualize interaction networks between proteins and specific protein domains.
+   # Assess which probesets overlap with a set of loaded genes and which specific protein domains at a high-level (protein/domain network) and low-level (domain/exon/probeset view).
+   # Immediately see which probesets overlap with known/predicted alternative splicing events, alternative promoter selection or microRNA binding sites.
 
 Installing DomainGraph and Instructions
 The most up-to-date DomainGraph installers, documentation and tutorials can be at [http://domaingraph.de].
