@@ -1,4 +1,4 @@
-#summary FAQ
+#summary FAQ-Gene Array Transcript Annotations for Exon Analyses
 
 ===_Why does AltAnalyze download the Gene 1.0 transcript annotation file for Exon 1.0 array analyses?_===
 
