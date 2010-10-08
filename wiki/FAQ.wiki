@@ -15,6 +15,7 @@
     * [GroupsAndComps Why do I need to define groups and comparisons?]
     * [AnnotateExternal How can I annotate my splicing results from another program in AltAnalyze?]
     * [GOEliteDefault Why doesn't AltAnalyze run GO-Elite by default?]
+    * [GeneArrayCSVForExon Why does AltAnalyze download the Gene 1.0 transcript annotation file for Exon 1.0 array analyses?]
 
 ===Probeset Alignments and DomainGraph===
 
