@@ -8,13 +8,13 @@ Typically, groups and comparisons for array samples are assigned by the user in 
 
 A specialized method was written in AltAnalyze named predictGroupsAndComps (UI.py), that predicts which Affymetrix CEL files correspond to which groups based on their filename and then builds a comparison file based on all possible pairwise group comparisons. The naming convention of these files is the group name first and the sample name second, delimited by a period, dash or an underscore. 
 
-||*Proper Example Names*||
+||_*Proper Example Names*_||
 ||tumor.sample1.CEL||
 ||tumor-sample1.CEL||
 ||tumor_sample1.CEL||
 ||Day 1 tumor.sample1.CEL||
 
-||*Improper Example Names*||
+||_*Improper Example Names*_||
 ||tumor-day1.sample1.CEL||
 ||tumor.day1.sample1.CEL||
 ||tumor_day1.sample1.CEL||
