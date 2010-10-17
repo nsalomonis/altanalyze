@@ -89,6 +89,9 @@ R01 GM080223 (Conklin) GenMAPP-CS, a dynamic resource of pathway analysis	08/01/
 The major goal of this project is to develop and maintain GenMAPP-CS as a cross platform application tool that will provide the biological research community and the genomic databases in describing all of the pathways that make up a cell and how they interact as a system in the overall physiology of an organism.
 
 ===WEBSITES===
+
 [http://pinscher.ucsf.edu/~nsalomonis/informatics/nsalomonis.html]
+
 [http://milosalomonis.org]
+
 [http://www.linkedin.com/pub/nathan-salomonis/4/577/20a]
