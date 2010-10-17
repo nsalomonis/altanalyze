@@ -1,6 +1,6 @@
 #summary Bio-Nathan Salomonis
 
-==Professional Biosketch - Nathan Salomonis==
+=Professional Biosketch - Nathan Salomonis=
 [http://genmapp.org/graphics/nathan_salomonis.jpg]
 
 ===Current Position===
@@ -12,7 +12,6 @@ Gladstone: Postdoctoral Fellow
 ||University of California, San Francisco, CA||Ph.D||2002–2008||Pharmacogenomics||
 ||Gladstone Institute of Cardiovascular Disease	Postdoctoral|| ||2008–||Bioinformatics||
  
-
 ===PERSONAL STATEMENT===
 The emergence of high-throughput genomic methods has sparked a revolution in the development of innovative bioinformatics approaches. While some of these approaches focus on improved algorithms, others focus on combining seemingly disparate data sources in meaningful ways. My career has focused primarily on the latter—developing new workflows for novel biological discovery. In the late 90s and early 2000s, this work focused on the development of new visualization methods for gene expression data along biological pathways (GenMAPP) and applying these techniques to large disease and developmental datasets for target discovery. In recent years, I have focused on the discovery of novel functional differences between alternative isoforms, using existing protein and binding site annotation databases. I believe these and expanded methods will prove to be critical in understanding the biological implications of second and third generation sequencing experiments, as they have from exon-tiling array experiments. 
 
@@ -56,7 +55,7 @@ Principle Investigator: Jeffery Twiss, MD	1997–1998
  • Neurobiology: examined the role of pro-inflammatory cytokine production on CNS glial cells, using immunohistochemistry, cell culture and cell survival assays.
 
 ===SELECTED PUBLICATIONS===
-Salomonis N*, Emig D*, Baumbach J, Lengauer T, Conklin BR, Albrecht M. (2010) AltAnalyze and DomainGraph: analyzing and visualizing exon expression data. Nucleic Acids Res. 1;38. *co-first authors.
+*Salomonis N*, *Emig D*, Baumbach J, Lengauer T, Conklin BR, Albrecht M. (2010) AltAnalyze and DomainGraph: analyzing and visualizing exon expression data. Nucleic Acids Res. 1;38. *co-first authors*.
 
 Salomonis N, Schlieve CR, Pereira L, Wahlquist C, Colas A, Zambon AC, Vranizan K, Spindler MJ, Pico AR, Cline MS, Clark TA, Williams A, Blume JE, Samal E, Mercola M, Merrill BJ, Conklin BR. (2010) Alternative splicing regulates mouse embryonic stem cell pluripotency and differentiation. Proc Natl Acad Sci U S A. 107(23):10514-9.
 
@@ -78,7 +77,7 @@ Doniger SW, Salomonis N, Dahlquist KD, Vranizan K, Lawlor SC, Conklin BR. (2003)
 
 Dahlquist KD, Salomonis N, Vranizan K, Lawlor SC, and Conklin BR. (2002) GenMAPP: A new tool for viewing and analyzing microarray data on biological pathways. Nat. Genet. 31:19–20.
 
-D.	RESEARCH SUPPORT
+===RESEARCH SUPPORT===
 Active
 ARRA Suppl. GM080223-06S1 (Conklin)
  Developing dynamic resources for GenMAPP-CS	08/01/09–07/31/11
@@ -87,7 +86,9 @@ OVERLAP – None
 
 R01 GM080223 (Conklin) GenMAPP-CS, a dynamic resource of pathway analysis	08/01/07–07/31/11
 
-The major goal of this project is to develop and maintain GenMAPP-CS as a cross platform application
-tool that will provide the biological research community and the genomic databases in describing all of the
-pathways that make up a cell and how they interact as a system in the overall physiology of an organism.
-OVERLAP – None
+The major goal of this project is to develop and maintain GenMAPP-CS as a cross platform application tool that will provide the biological research community and the genomic databases in describing all of the pathways that make up a cell and how they interact as a system in the overall physiology of an organism.
+
+===WEBSITES===
+[http://pinscher.ucsf.edu/~nsalomonis/informatics/nsalomonis.html]
+[http://milosalomonis.org]
+[http://www.linkedin.com/pub/nathan-salomonis/4/577/20a]
