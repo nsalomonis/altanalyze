@@ -9,7 +9,7 @@ Gladstone: Postdoctoral Fellow
 
 ===EDUCATION/TRAINING===
 
-||INSTITUTION AND LOCATION||DEGREE||YEARS||MAJOR||
+||*INSTITUTION AND LOCATION*||*DEGREE*||*YEARS*||*MAJOR*||
 ||University of California, Los Angeles, CA||B.S.||1994–1998||Neuroscience||
 ||University of California, San Francisco, CA||Ph.D||2002–2008||Pharmacogenomics||
 ||Gladstone Institute of Cardiovascular Disease	Postdoctoral|| ||2008–||Bioinformatics||
