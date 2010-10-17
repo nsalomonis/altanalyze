@@ -4,15 +4,18 @@
 [http://genmapp.org/graphics/nathan_salomonis.jpg]
 
 ===Current Position===
+
 Gladstone: Postdoctoral Fellow
 
 ===EDUCATION/TRAINING===
+
 ||INSTITUTION AND LOCATION||DEGREE||YEARS||MAJOR||
 ||University of California, Los Angeles, CA||B.S.||1994–1998||Neuroscience||
 ||University of California, San Francisco, CA||Ph.D||2002–2008||Pharmacogenomics||
 ||Gladstone Institute of Cardiovascular Disease	Postdoctoral|| ||2008–||Bioinformatics||
  
 ===PERSONAL STATEMENT===
+
 The emergence of high-throughput genomic methods has sparked a revolution in the development of innovative bioinformatics approaches. While some of these approaches focus on improved algorithms, others focus on combining seemingly disparate data sources in meaningful ways. My career has focused primarily on the latter—developing new workflows for novel biological discovery. In the late 90s and early 2000s, this work focused on the development of new visualization methods for gene expression data along biological pathways (GenMAPP) and applying these techniques to large disease and developmental datasets for target discovery. In recent years, I have focused on the discovery of novel functional differences between alternative isoforms, using existing protein and binding site annotation databases. I believe these and expanded methods will prove to be critical in understanding the biological implications of second and third generation sequencing experiments, as they have from exon-tiling array experiments. 
 
 ===POSITIONS AND HONORS===
@@ -82,7 +85,6 @@ Active
 ARRA Suppl. GM080223-06S1 (Conklin)
  Developing dynamic resources for GenMAPP-CS	08/01/09–07/31/11
 As a supplement to the parent R01, this grant aims to add an overrepresentation analysis module (GO-Elite) and visualization module for alternative splicing data (AltAnalyze-CS) within the plugin architecture of Cytoscape and GenMAPP-CS.
-OVERLAP – None
 
 R01 GM080223 (Conklin) GenMAPP-CS, a dynamic resource of pathway analysis	08/01/07–07/31/11
 
