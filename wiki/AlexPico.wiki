@@ -14,8 +14,8 @@ Alitora: Consultant
 ||_*INSTITUTION AND LOCATION*_||_*DEGREE*_||_*YEARS*_||_*MAJOR*_||
 ||University of Oregon, Eugene, OR||B.S.||1994–1998||Biochemistry||
 ||Rockefeller University, New York, NY||	Ph.D.||1998–2003||	Molecular Neurobiology and Biophysics||
-||Gladstone Institute of Cardiovascular Disease||Postdoctoral2004–2008||Bioinformatics||
-||Gladstone Institute of Cardiovascular Disease||2008–present ||Bioinformatics||
+||Gladstone Institute of Cardiovascular Disease||Postdoctoral||2004–2008||Bioinformatics||
+||Gladstone Institute of Cardiovascular Disease|| ||2008–present||Bioinformatics||
 
 
 ===PERSONAL STATEMENT===
