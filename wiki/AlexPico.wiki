@@ -1,0 +1,110 @@
+#summary Bio-Alexander R. Pico
+
+=Professional Biosketch - Alexander R. Pico=
+
+[http://genmapp.org/graphics/Pico2009_small2.jpg]
+
+===CURRENT POSITIONS===
+Gladstone: Bioinformatics Software Engineer III
+Alitora: Consultant
+	
+
+===EDUCATION/TRAINING===
+
+||_*INSTITUTION AND LOCATION*_||_*DEGREE*_||_*YEARS*_||_*MAJOR*_||
+||University of Oregon, Eugene, OR||B.S.||1994–1998||Biochemistry||
+||Rockefeller University, New York, NY||	Ph.D.||1998–2003||	Molecular Neurobiology and Biophysics||
+||Gladstone Institute of Cardiovascular Disease||Postdoctoral2004–2008||Bioinformatics||
+||Gladstone Institute of Cardiovascular Disease||2008–present ||Bioinformatics||
+
+
+===PERSONAL STATEMENT===
+
+The proposed work involves developing a new application for RNA-seq analysis within the Cytoscape framework, focused on functional prediction, visualization and ultimately integration of multiple biological types. This work allows us to expand visualization and analysis methods designed for the tool GenMAPP-CS, which we have been developing for the last 3 years. In addition to visualization of alternative exon differences (gene-level) upon biological pathways, these efforts include sub-gene visualization of exons and exon-junctions from associated pathways (Subgene viewer plugin). As the lead developer of GenMAPP-CS and an official core developer of Cytoscape, I have considerable experience with software development within Cytoscape with an emphasis on the analysis of high-throughput biological data. As a contributor to Transcriptome Innovations, I will continue to develop visualization methods for sub-gene visualization that focus on RNA-seq data, including single read and paired-end data and visualization of sequence motifs along mRNA transcripts and proteins. In addition to these new methods, we will facilitate connections to existing Cytoscape plugins to provide additional analysis features, such as clustering of alternative exons, cellular feature-based network layout and pathway over-representation. 
+
+===POSITIONS AND HONORS===
+Alitora Systems, Inc.										 Consultant
+CEO: Peter Berger											      2009 – 
+ * Transitional consultant: consulting on the transition and translation of current academic open source projects to a software-as-a-service business model; advising on funding mechanisms; identifying key collaborations, partnerships and potential customers.
+
+Gladstone Institute of Cardiovascular Disease, UCSF                  Software Engineer, Postdoctoral Fellow
+Principle Investigator: Bruce Conklin, MD	2004 –
+ * Lead developer on GenMAPP project: development planning; database design and implementation; grant writing; project management; team coordinator; setting up bug tracking, code repositories, wikis and google groups; presentations; fostering collaborations; NIH RO1 awarded.
+ * Core developer of Cytoscape: identified key collaboration; development planning; plugin development; core enhancements; 2006 retreat organizer; web master; Agilent grants awarded.
+ * Pathway-based SNP microarray design and analysis: identified collaboration; introduced pathway-based approach to SNP data analysis and microarray design; contributed to design and implementation of SNPLogic.
+ * WikiPathways: conceived and identified key collaboration; contributed to design, implementation and maintenance.
+ * Wet lab informatics tools: developed web-based tools for customized primer design, microarray dataset meta-analysis, and lab wiki; also worked on integrating public data with internal datasets to enhance interpretation and hypothesis generation.
+ * Google Summer of Code administrator: primary administrator for GenMAPP’s participation in the 2007, 2008 and 2009 Google Summer of Code, where >1000 students from >90 countries were sponsored by Google to write code for 150 selected open source organizations; prepared application and Ideas Page; managed mentor-student pairings and mentored student projects.
+ * UCSF Library ID mapping service: In collaboration with the Center for Knowledge Management, designed and implemented backend ETL using Ensembl’s Perl API to create a local database for an ID mapping service. 
+
+Grants and Fellowships Awarded:
+ * NIH ARRA Supplement, 2009 – 2011 
+ * NIH Research Project Grant (R01), NIGMS, 2007 – 2011
+ * Agilent Technologies Foundation Grant, 2006 – 2007 and 2007 – 2008 
+ * David and Mary Phillips Distinguished Postdoctoral Fellowship, Gladstone Institutes, 2005 – 2006
+
+Rockefeller University, New York, NY	Graduate Student
+Principle Investigator: Roderick MacKinnon, MD, 2003 Nobel Laureate in Chemistry	2003 – 1998
+ * Bioinformatics:  5 years exp. performing an exhaustive comparative analysis of ion channel sequences and structure-based sequence analysis of a particular regulatory domain, which I correlated with function and named ‘RCK’ for its role in Regulating the Conductance of Potassium.  These efforts resulted in a robust homology model for a subfamily of the domain exclusively found in eukaryotes, including human, where it is associated with an important class of potassium ion channels known as ‘BK’.
+ * Structural Biology:  5+ years exp. with expression, purification and characterization of various constructs of the RCK domain and its associated channel in an effort to solve its atomic structure through crystallography.  My experience on a number of structure projects has provided me with an in-depth perspective on the relationship between sequence and structure, as well as a sober appreciation of the challenges facing Structural Genomics efforts.
+ * Electrophysiology:  4 years exp. studying the biophysical properties of the human BK potassium ion channel.  I gained extensive patch-clamp experience on Xenopus laevis oocytes expressing heterologous genes injected as mRNA.  I designed, constructed and studied rationally mutagenized and chimeric forms of the channel. 
+
+Honors and Awards:
+ * David Rockefeller Fellowship 2001
+ * HHMI Predoctoral Fellowship 1999 – 2003
+
+University of Oregon, Eugene	Student Researcher
+Principle Investigator: Brian Matthews, PhD	1997 – 1998
+ * Structural Biology:  Studied the effects of water-filled cavities and artificial metal-binding sites on the energetic stability of T4 Lysozyme using protein crystallography techniques and structure analyses. Experience with protein structure refinement and modeling.
+
+Honors and Awards:
+ * Graduated summa cum laude 1998
+ * Phi Beta Kappa “Oregon Six" 1998
+
+ 
+===SELECTED RECENT PUBLICATIONS===
+
+Salomonis N, Schlieve CR, Pereira L, Wahlquist C, Colas A, Zambon AC, Vranizan K, Spindler MJ, Pico AR, Cline MS, Clark TA, Williams A, Blume JE, Samal E, Mercola M, Merrill BJ, Conklin BR. (2010) Alternative Splicing Regulates Mouse Embryonic Stem Cell Pluripotency and Differentiation. Proc Natl Acad Sci May.
+
+van Iersel MP, Pico AR, Kelder T, Gao J, Ho I, Hanspers K, Conklin BR, Evelo C. (2010)  The BridgeDb framework : standardized access to gene, protein and metabolite identifier mapping services   BMC Bioinformatics 11:1.  PMC2824678
+
+Yuan P, Leonetti MD, Pico AR, Hsiung Y, MacKinnon R. (2010) Structure of the Human BK Channel Ca2+-Activation Apparatus at 3.0 A Resolution. Science 329:5988, 182-186.
+
+Kelder T, Pico AR, Hanspers K, van Iersel MP, Evelo C, Conklin BR. (2009)  Mining Biological Pathways Using WikiPathways Web Services. PLoS ONE 4:7.07. PMC2714472
+
+Pico AR, Smirnov I, Chang JS, Yeh RF, Wiemels JL, Wiencke JK, Tihan T, Conklin BR, Wrensch M. (2009) SNPLogic: an interactive single nucleotide polymorphism selection, annotation, and prioritization system. Nucleic Acids Res 37: Database issue. D803-D809 Jan.  PMC2686434
+ 
+Salomonis N, Nelson B, Vranizan K, Pico AR, Hanspers K, Kuchinsky A, Ta L, Mercola M, Conklin BR. (2009)  Alternative splicing in the differentiation of human embryonic stem cells into cardiac precursors.   PLoS Comput Biol 5:11 Nov. PMC2764345
+
+Wrensch M, Jenkins RB, Chang JS, Yeh RF, Xiao Y, Decker PA, Ballman KV, Berger M, Buckner JC, Chang S, Giannini C, Halder C, Kollmeyer TM, Kosel ML, LaChance DH, McCoy L, O'Neill BP, Patoka J, Pico AR, Prados M, Quesenberry C, Rice T, Rynearson AL, Smirnov I, Tihan T, Wiemels J, Yang P, Wiencke JK. (2009)  Variants in the CDKN2B and RTEL1 regions are associated with high-grade glioma susceptibility. Nat Genet 41: 8. 905-908 Aug. PMID: 19578366
+  
+Pico AR, Kelder T, van Iersel MP, Hanspers K, Conklin BR, Evelo C. (2008) WikiPathways: pathway editing for the people. PLoS Biol 6(7):e184. PMC2475545
+
+van Iersel MP, Kelder T, Pico AR, Hanspers K, Coort S, Conklin BR, Evelo C.  (2008)  Presenting and exploring biological pathways with PathVisio.   BMC Bioinformatics  9:1.09. PMC2569944
+
+Adriaens ME, Jaillard M, Waagmeester A, Coort S, Pico AR, Evelo C. (2008)  The public road to high-quality curated biological pathways.   Drug Discov Today 13:19-20. 856-862. PMID: 18652912
+
+Hu JC, Aramayo R, Bolsern D, Conway T, Elsik CG, Gribskov M, Kelder T, Kihara, Daisuke, Knight, Pico AR, Siegele DA, Wanner BL, Welch RD. (2008) The Emerging World of Wikis. Science, 320(5881):1289b-1290. PMID: 18535227
+
+Chang JS, Yeh RF, Wiencke JK, Wiemels JL, Smirnov I, Pico AR, Tihan T, Patoka J, Miike R, Sison J, Rice T, Wrensch M. (2008) Pathway analysis of single nucleotide polymorphisms potentially associated with glioblastoma multiforme susceptibility using random forests. CEBP, 17(6):1368. PMID: 18559551
+
+Salomonis N, Hanspers K, Zambon AC, Vranizan K, Lawlor SC, Dahlquist KD, Doniger SW, Stuart JM, Conklin BR, Pico AR. (2007) GenMAPP 2: New Features and Resources for Pathway Analysis. BMC Bioinformatics. 8:217. PMC1924866
+
+Cline MS, Smoot M, Cerami E, Kuchinsky A, Landys N, Workman C, Christmas R, Avila-Campilo I, Creech M, Gross B, Hanspers K, Isserlin R, Kelley R, Killcoyne S, Lotia S, Maere S, Morris J, Ono K, Pavlovic V, Pico AR, Vailaya A, Wang PL, Adler A, Conklin BR, Hood L, Kuiper M, Sander C, Schmulevich I, Schwikowski B, Warner GJ, Ideker T, and Bader GD. (2007) Integration of biological networks and gene expression data using Cytoscape. Nature Protocols. 2(10):2366-2382. PMID: 17947979
+ 
+===RESEARCH SUPPORT===
+
+ARRA Suppl. CA052689-19S1 (Wrensch) 	
+GENETIC AND MOLECULAR EPIDEMIOLOGY OF ADULT GLIOMA	10/01/09–09/31/11
+
+To genotype constitutive DNA from 900 existing astrocytic cases and 700 controls for about 10,000 single nucleotide polymorphisms (SNPs) and confirm important SNPs in a new group of subjects. 
+
+ARRA Suppl. GM080223-06S1 (Conklin) 	
+Developing dynamic resources for GenMAPP-CS	08/01/09–07/31/11
+
+As a supplement to the parent R01, this grant aims to add an overrepresentation analysis module and visualization module for alternative splicing data. 
+
+R01 GM080223 (Conklin) 			
+GenMAPP-CS, a dynamic resource of pathway analysis	08/01/07–07/31/11
+
+The major goal of this project is to develop and maintain GenMAPP-CS as a cross platform application tool that will provide the biological research community and the genomic databases in describing all of the pathways that make up a cell and how they interact as a system in the overall physiology of an organism. 
