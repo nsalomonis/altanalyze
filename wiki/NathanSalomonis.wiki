@@ -3,18 +3,16 @@
 =Professional Biosketch - Nathan Salomonis=
 [http://genmapp.org/graphics/nathan_salomonis.jpg]
 
-===Current Position===
-
-Gladstone: Postdoctoral Fellow
-
 ===EDUCATION/TRAINING===
-
-See below
 
 ||*INSTITUTION AND LOCATION*||*DEGREE*||*YEARS*||*MAJOR*||
 ||University of California, Los Angeles, CA||B.S.||1994–1998||Neuroscience||
 ||University of California, San Francisco, CA||Ph.D||2002–2008||Pharmacogenomics||
-||Gladstone Institute of Cardiovascular Disease	Postdoctoral|| ||2008–||Bioinformatics||
+||Gladstone Institute of Cardiovascular Disease    Postdoctoral|| ||2008–||Bioinformatics||
+
+===Current Position===
+
+Gladstone: Postdoctoral Fellow
  
 ===PERSONAL STATEMENT===
 
