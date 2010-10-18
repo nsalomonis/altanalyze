@@ -17,11 +17,6 @@ Alitora: Consultant
 ||Gladstone Institute of Cardiovascular Disease||Postdoctoral||2004–2008||Bioinformatics||
 ||Gladstone Institute of Cardiovascular Disease|| ||2008–present||Bioinformatics||
 
-
-===PERSONAL STATEMENT===
-
-The proposed work involves developing a new application for RNA-seq analysis within the Cytoscape framework, focused on functional prediction, visualization and ultimately integration of multiple biological types. This work allows us to expand visualization and analysis methods designed for the tool GenMAPP-CS, which we have been developing for the last 3 years. In addition to visualization of alternative exon differences (gene-level) upon biological pathways, these efforts include sub-gene visualization of exons and exon-junctions from associated pathways (Subgene viewer plugin). As the lead developer of GenMAPP-CS and an official core developer of Cytoscape, I have considerable experience with software development within Cytoscape with an emphasis on the analysis of high-throughput biological data. As a contributor to Transcriptome Innovations, I will continue to develop visualization methods for sub-gene visualization that focus on RNA-seq data, including single read and paired-end data and visualization of sequence motifs along mRNA transcripts and proteins. In addition to these new methods, we will facilitate connections to existing Cytoscape plugins to provide additional analysis features, such as clustering of alternative exons, cellular feature-based network layout and pathway over-representation. 
-
 ===POSITIONS AND HONORS===
 Alitora Systems, Inc.										 Consultant
 CEO: Peter Berger											      2009 – 
