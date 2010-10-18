@@ -1,5 +1,3 @@
-#summary Bio-Alexander R. Pico
-
 =Professional Biosketch - Alexander R. Pico=
 
 [http://genmapp.org/graphics/Pico2009_small2.jpg]
@@ -28,7 +26,7 @@ Alitora Systems, Inc.
 
 Gladstone Institute of Cardiovascular Disease, UCSF
 <br>Software Engineer, Postdoctoral Fellow, 2004 –
- * Lead developer on GenMAPP project: development planning; database design and implementation; grant writing; project management; team coordinator; setting up bug tracking, code repositories, wikis and google groups; presentations; fostering collaborations; NIH RO1 awarded.
+ * Lead developer on GenMAPP project: development planning; database design and implementation; grant writing; project management; team coordinator; setting up bug tracking, code repositories, wikis and google groups; presentations; fostering collaborations; NIH R01 awarded.
  * Core developer of Cytoscape: identified key collaboration; development planning; plugin development; core enhancements; 2006 retreat organizer; web master; Agilent grants awarded.
  * Pathway-based SNP microarray design and analysis: identified collaboration; introduced pathway-based approach to SNP data analysis and microarray design; contributed to design and implementation of SNPLogic.
  * WikiPathways: conceived and identified key collaboration; contributed to design, implementation and maintenance.
