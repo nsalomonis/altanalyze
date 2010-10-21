@@ -64,8 +64,10 @@ python AltAnalyze.py --species Mm --update Official --version EnsMart55
 
 _*Operating System Example Folder Locations*_
 
-PC: "C:/CELFiles"
-Mac OSX: "/root/user/admin/CELFiles
-Linux: "/hd3/home/admin/CELFiles
+ * *PC*: "C:/CELFiles"
+
+ * *Mac OSX*: "/root/user/admin/CELFiles
+
+ * *Linux*: "/hd3/home/admin/CELFiles
 
 When the analysis is finished, the results will be stored just as with the GUI (e.g., alternative exon results in AltResults and gene expression results in ExpressionOutput).
