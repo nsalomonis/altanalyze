@@ -17,7 +17,7 @@ python AltAnalyze.py --species Mm --update Official --version EnsMart55
 _*Analyzing CEL files – Affymetrix 3’ array using default options and GO-Elite*_
 
 {{{
-python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment"
+python AltAnalyze.py --species Mm --arraytype "3'array" --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment"
 }}}
 
 _*Analyzing  CEL files – Exon 1.0 array using default options*_
