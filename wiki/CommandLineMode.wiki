@@ -53,7 +53,7 @@ python AltAnalyze.py --species Rn --arraytype exon --annotatedir "C:/JETTA_Resul
 _*Return All AltAnalyze results with NO FILTERING – Exon 1.0 array using default options*_
 
 {{{
-python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment --returnAll yes
+python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment" --returnAll yes
 }}}
 
 _*Updating the database for a species*_
