@@ -23,7 +23,7 @@ python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --grou
 _*Analyzing  CEL files – Exon 1.0 array using default options*_
 
 {{{
-python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment"
+python AltAnalyze.py --species Mm --arraytype exon --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment"
 }}}
 
 _*Analyzing  CEL files – Exon 1.0 array using custom options*_
