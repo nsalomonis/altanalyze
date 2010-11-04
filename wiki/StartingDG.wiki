@@ -4,10 +4,10 @@
 
 _*Answer*_: DomainGraph can be started independently of AltAnalyze or through AltAnalyze. To start DomainGraph outside of AltAnalyze, open the folder AltAnalyze_v1release/Cytoscape_v2.6.1 and select the Cytoscape executable for your operating system. Within AltAnalyze, once you have completed an alternative exon analysis, the AltAnalyze results menu will appear:
 
-http://altanalyze.org/images/R1.jpg
+http://altanalyze.org/image/R1.jpg
 
 From this menu, choose "Start DomainGraph in Cytoscape":
 
-http://altanalyze.org/images/R2.jpg
+http://altanalyze.org/image/R2.jpg
 
 Once open, follow these [http://domaingraph.bioinf.mpi-inf.mpg.de/workflow/altanalyze.php directions], starting with Installing the DomainGraph database.
