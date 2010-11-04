@@ -13,7 +13,7 @@ The user can select which method they want AltAnalyze to use, however, in some c
 
 ==AltAnalyze Constitutive Probesets==
 
-http://altanalyze.org/images/exon-types.jpg
+http://altanalyze.org/image/exon-types.jpg
 
 Constitutive exons are those exons which are common to all or nearly all mRNA transcripts for a given gene. This is illustrated in the below figure, where the black filled boxes are exons or exon regions common to all mRNA transcripts for the same gene gene. 
 
@@ -25,7 +25,7 @@ Currently, constitutive exon regions are defined by counting the number of uniqu
 
 Gene expression values for all genes are saved to the folder ExpressionOutput for the file with the prefix "DATASET". This file can have any number of arrays and biological groups, however, comparison statistics between user defined pairwise groups are reported. In this file, gene expression values are reported for each array and array group for each Ensembl gene. These are the averaged log2 RMA intensities from one or more probesets deemed useful for determining gene expression. The user can choose yes or no for "Use all probesets to derive gene expression versus constitutive only", under the "Expression Analysis Parameters" menu.
 
-http://altanalyze.org/images/ExpAnalysisParamet.jpg
+http://altanalyze.org/image/ExpAnalysisParamet.jpg
 
 If the default *no* is selected, AltAnalyze will use only constitutive annotated probesets when possible. If yes
 
