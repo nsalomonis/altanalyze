@@ -19,7 +19,7 @@ These files are tab-delimited text files that can be opened in a spreadsheet pro
 
 Results from *files #2-5* are produced from all probe sets that may suggest alternative splicing, alterative promoter regulation, or any other variation relative to the constitutive gene expression for that gene (derived from comparisons file). Each set of results correspond to a single pair-wise comparison (e.g., cancer vs. normal) and will be named with the group names you assigned (groups file).
 
-*File #2* reports probe sets that are alternatively regulated, based on the user defined splicing-index score and p-value. For each probe set several statistics, gene annotations and functional predictions are provided. A detailed description of all of the columns in this file is provided [http://altanalyze.org/images/AltAnalyze_column_annotations.xls here].
+*File #2* reports probe sets that are alternatively regulated, based on the user defined splicing-index score and p-value. For each probe set several statistics, gene annotations and functional predictions are provided. A detailed description of all of the columns in this file is provided [http://altanalyze.org/image/AltAnalyze_column_annotations.xls here].
 
 *File #3* is a summarization of probeset data at the gene level from file #2. In addition to this summary, Gene Ontology terms for that gene are reported.
 
