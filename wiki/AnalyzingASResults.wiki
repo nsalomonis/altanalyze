@@ -7,11 +7,11 @@ Below are some suggestions.
 ==Interpreting the Results==
 When AltAnalyze was running it produced a number of output files, most to the folder AltResults/AlternativeOutput in the user output directory. These include:
 
-  * 1. ExpressionOutput/DATASET-YourExperiment.txt
-  * 2. AltResults/AlternativeOutput/YourComparison-splicing-index-exon-inclusion-results.txt
-  * 3. AltResults/AlternativeOutput/YourComparison-splicing-index-exon-inclusion-GENE-results.txt
-  * 4. AltResults/AlternativeOutput/YourComparison-splicing-index-ft-domain-zscores.txt
-  * 5. AltResults/AlternativeOutput/YourComparison-splicing-index-miRNA-zscores
+  # ExpressionOutput/DATASET-YourExperiment.txt
+  # AltResults/AlternativeOutput/YourComparison-splicing-index-exon-inclusion-results.txt
+  # AltResults/AlternativeOutput/YourComparison-splicing-index-exon-inclusion-GENE-results.txt
+  # AltResults/AlternativeOutput/YourComparison-splicing-index-ft-domain-zscores.txt
+  # AltResults/AlternativeOutput/YourComparison-splicing-index-miRNA-zscores
 
 These files are tab-delimited text files that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents.
 
