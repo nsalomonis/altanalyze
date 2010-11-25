@@ -8,8 +8,7 @@ The primary use of AltAnalyze is the calculate statistics to assess alternative 
 ==Downloading Sample Data==
 Before you run AltAnalyze, you should have either CEL files or two text files (expression and detection p-values for all probe sets). AltAnalyze can process the CEL files you have in order to produce these two files using built-in calls to the program Affymetrix Power Tools. To download sample CEL files, [ftp://ftp.ncbi.nih.gov/pub/geo/DATA/supplementary/series/GSE13297/GSE13297_RAW.tar click here]. Otherwise, you can download already processed AltAnalyze expression files from [http://www.genmapp.org/AltAnalyze/normalized_hESC_differentiation.zip here]. These files have data for all 1.4 million probesets on the human Exon 1.0 array.
 
-==Installing AltAnalyze
- and Saving Your Data==
+==Installing AltAnalyze and Saving Your Data==
 AltAnalyze can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account). In addition to AltAnalyze, DomainGraph is now also included in the same download. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
 
 ==Creating a Comparison and Groups File (OPTIONAL)==
