@@ -2,6 +2,9 @@
 #labels Featured
 
 =AltAnalyze Frequently Asked Questions=
+===Installing AltAnalyze===
+    * [DBaseInstallationError Why Does AltAnalyze crash when trying to download the database when first run?]
+
 ===Data Analysis and Import===
     * [CompatibleArrays What microarrays can AltAnalyze work with?]
     * [CompatibleOS What operating systems is AltAnalyze compatible with?]
