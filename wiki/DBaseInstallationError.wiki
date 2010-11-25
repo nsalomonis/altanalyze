@@ -6,7 +6,7 @@
 
 _*Answer:*_: The first time AltAnalyze is opened, the user will be prompted to allow AltAnalyze to establish an internet connection to download a species database. Since some locations have restricted proxy settings, an error may appear here, preventing an internet connection (note: this error is properly reported in version 1.16 of AltAnalyze, but still prevents proper download).
 
-Although to properly fix this issue, http://www.altanalyze.org will need to be allowed proxy access to the AltAnalyze website, the species databases can also be downloaded manually using the following steps:
+Although to properly fix this issue, http://www.altanalyze.org will need to be allowed proxy access, the species databases can also be downloaded manually using the following steps:
 
 _Note: the following steps are for human exon array analysis. If this is not the case, see the "Alternative Species/Array Instruction" first._
 
