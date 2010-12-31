@@ -3,6 +3,9 @@
 
 =News and Updates=
 
+==12-28-10==
+The Ensembl version 60 database is now available. In this version, comparison between thousands of new mRNA and protein isoforms have been added relative to the previous release, providing new functional predictions. Such annotations result in reassignment of previous extended or full probeset annotations to core. Probeset-to-miRNA binding site ssociations from the microRNA databases miRanda and TargetScan have also been updated in this release. Corresponding GO-Elite database updates for Ensembl version 60 are included.
+
 ==10-6-10==
 The AltAnalyze website has been updated to include links to a new support site hosted at http://code.google.com/p/altanalyze. This site includes wiki documentation, an SVN repository, downloads and a bug tracking system.
 
