@@ -3,7 +3,7 @@
 
 =News and Updates=
 
-==1-9-11==
+==1-09-11==
 Posted an update to AltAnalyze version 1.15 (version 1.155). Provides solutions to reported bugs that effected program usability and performance. Issues addressed include: 1) Improved performance of FIRMA algorithm, 2) prevents crash due to conflicting parameters, 3) fixes missing junction array protein/domain annotations, 4) incorrect constitutive fold reported for multigroup FIRMA and SI analysis, 5) better handling of downloading errors, 6) corrected t-test method for splicing-index. None of these issues adversely effect previous AltAnalyze results but do enhance performance and annotation. Also posted a beta version (available under downloads) of version 1.16 which analyzed mouse and human junction (JAY) arrays.
 
 ==12-28-10==
