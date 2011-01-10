@@ -23,6 +23,7 @@ Proc Natl Acad Sci U S A. 2010 Jun 8;107(23):10514-9. Epub 2010 May 24.
 
 === Other Articles ===
 [http://gchelpdesk.ualberta.ca/news/15sep10/cbhd_news_15sep10.php#spotlight Canadian Bioinformatics News letter feature]
+
 [CitingArticles Articles Citing AltAnalyze]
 
 == Development Team ==
