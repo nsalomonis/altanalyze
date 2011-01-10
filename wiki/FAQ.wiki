@@ -19,6 +19,7 @@
     * [AnnotateExternal How can I annotate my splicing results from another program in AltAnalyze?]
     * [GOEliteDefault Why doesn't AltAnalyze run GO-Elite by default?]
     * [GeneArrayCSVForExon Why does AltAnalyze download the Gene 1.0 transcript annotation file for Exon 1.0 array analyses?]
+    * [CrossHybProbesets How can I remove probesets with sequence that aligns to multiple genomic loci from my analysis?]
 
 ===Probeset Alignments and DomainGraph===
 
