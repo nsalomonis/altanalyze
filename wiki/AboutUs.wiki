@@ -21,6 +21,10 @@ Proc Natl Acad Sci U S A. 2010 Jun 8;107(23):10514-9. Epub 2010 May 24.
 
 [http://www.ncbi.nlm.nih.gov/pubmed/19893621 Alternative splicing in the differentiation of human embryonic stem cells into cardiac precursors]. Salomonis N, Nelson B, Vranizan K, Pico AR, Hanspers K, Kuchinsky A, Ta L, Mercola M, Conklin BR. PLoS Comput Biol. 2009 Nov;5(11):e1000553. Epub 2009 Nov 6. 
 
+=== Other Articles ===
+[http://gchelpdesk.ualberta.ca/news/15sep10/cbhd_news_15sep10.php#spotlight Canadian Bioinformatics News letter feature]
+[CitingArticles Articles Citing AltAnalyze]
+
 == Development Team ==
 ||_*Name*_||_*Role*_||_*Affiliation*_||
 ||[NathanSalomonis Nathan Salomonis]||Lead Developer||Gladstone Institutes||
