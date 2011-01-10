@@ -1,0 +1,11 @@
+#summary One-sentence summary of this page.
+
+Whether you are using the graphical user interface or [CommandLineMode command-line mode], you can choose to remove genomic cross-hybridizing probesets. 
+
+If you are working in the graphical user interface, you can eliminate these by selecting "Remove probesets with a large cross-hybridization score" option when selecting CEL files to analyze:
+
+[http://www.genmapp.org/AltAnalyze/image/SelectCELfiles.jpg]
+
+You can also do this in the [CommandLineMode command-line] by adding the flag "--noxhyb yes" which instructs AltAnalyze to exclude cross-hybridizing probesets. These annotations are obtained from annotation files produced for the [MADS software http://biogibbs.stanford.edu/~yxing/MADS/Annotation.html].
+
+You can also do this yourself by downloading the Affymetrix probeset annotation file for your exon array (e.g., HuEx-1_0-st-v1.na31.mm9.probeset.csv) and identifying probesets with several probes that cross-hybridize according to the column "number_cross_hyb_probes".
