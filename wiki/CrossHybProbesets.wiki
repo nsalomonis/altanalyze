@@ -1,6 +1,9 @@
-#summary One-sentence summary of this page.
+#summary FAQ-Removing cross-hybridization probesets
 
-Whether you are using the graphical user interface or [CommandLineMode command-line mode], you can choose to remove genomic cross-hybridizing probesets. 
+===_How can I remove probesets with sequence that aligns to multiple genomic loci from my analysis?_===
+
+
+_*Answer*_: Whether you are using the graphical user interface or [CommandLineMode command-line mode], you can choose to remove genomic cross-hybridizing probesets. 
 
 If you are working in the graphical user interface, you can eliminate these by selecting "Remove probesets with a large cross-hybridization score" option when selecting CEL files to analyze:
 
