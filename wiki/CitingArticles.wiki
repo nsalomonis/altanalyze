@@ -1,0 +1,4 @@
+#summary Articles Citing AltAnalyze
+
+=== Citing Articles ===
+[http://www.plosgenetics.org/article/info%3Adoi%2F10.1371%2Fjournal.pgen.1001269]
