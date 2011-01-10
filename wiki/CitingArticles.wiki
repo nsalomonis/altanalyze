@@ -1,4 +1,8 @@
 #summary Articles Citing AltAnalyze
 
 === Citing Articles ===
-[http://www.plosgenetics.org/article/info%3Adoi%2F10.1371%2Fjournal.pgen.1001269]
+[http://www.plosgenetics.org/article/info%3Adoi%2F10.1371%2Fjournal.pgen.1001269 Quaking Regulates Hnrnpa1 Expression through Its 3′ UTR in Oligodendrocyte Precursor Cells.] N Ruth Zearfoss, Carina C Clingman, Brian M Farley, Lisa M McCoig, Sean P Ryder. PLoS Genetics: Research Article, published 06 Jan 2011 10.1371/journal.pgen.1001269.
+http://code.google.com/p/altanalyze/w/edit/CitingArticles
+[http://onlinelibrary.wiley.com/doi/10.1002/ajmg.b.31062/abstract Analysis of whole genome biomarker expression in blood and brain.] Rollins B, Martin MV, Morgan L, Vawter MP. Am J Med Genet B Neuropsychiatr Genet. 2010 Jun 5;153B(4):919-36.
+
+[http://www.landesbioscience.com/journals/cc/SalomonisCC9-16.pdfStem cell pluripotency: alternative modes of transcription regulation.] Salomonis N, Conklin BR. Cell Cycle. 2010 Aug 15;9(16):3133-4. Epub 2010 Aug 2.
