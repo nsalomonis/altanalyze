@@ -1,0 +1,9 @@
+#summary NetAffx description
+
+=== Introduction ===
+
+The NetAffx™ Analysis Center enables researchers to correlate their GeneChip® array results with array design and annotation information.
+
+=== Details ===
+
+[http://www.affymetrix.com/estore/analysis/index.affx?category=34005&categoryIdClicked=34005&rootCategoryId=34005&navMode=34005&aId=netAffxNav NetAffx website]
