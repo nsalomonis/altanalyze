@@ -2,7 +2,7 @@
 #labels Featured
 
 ==Introduction==
-Before using AltAnalyze, the user must have CEL files from their experiment or have processed their Affymetrix microarray CEL files to produce a normalized and background corrected expression value file. In addition to this file, it is recommended that the user produce a detection p-value file for alternative splicing analyses. It is recommended that you use AltAnalyze to perform RMA on your CEL files, but other options the has are also provided in this tutorial.
+Before using AltAnalyze, the user must have CEL files from their experiment or have processed their Affymetrix microarray CEL files to produce a normalized and background corrected expression value file. In addition to this file, it is recommended that the user produce a detection p-value file for alternative splicing analyses. It is recommended that you use AltAnalyze to perform RMA and obtain detection p-values on your CEL files, but other external options the has are also provided in this tutorial.
 
 ==Using Your Own Data==
 Save all of the Affymetrix .CEL files from your study to a new folder on your computer. Proceed to one of the below options.
