@@ -15,6 +15,12 @@ The AltAnalyze website has been updated to include links to a new support site h
 ==10-1-10==
 Posted an updated version of 1.15 that had a bug resulting in problems with the [http://code.google.com/p/altanalyze/wiki/AnnotateExternal "Annotate External Results"] option on 9-27-10, however, a subsequent update was performed on 10-1-10, since an important line of code was missing from the 9-27-10 version. Thus, AltAnalyze 1.15 PC and Linux installations downloaded during that period are faulty.
 
+==9-10-10==
+AltAnalyze was the featured application for the September issue of the [http://gchelpdesk.ualberta.ca/news/15sep10/cbhd_news_15sep10.php#spotlight Canadian Bioinformatics Help Desk Newsletter]. This monthly newsletter is intended to keep Genome Canada researchers and other Help Desk users informed about new software, events, job postings, conferences, training opportunities, interviews, publications, awards, and other newsworthy items concerning bioinformatics, computational biology, genomics, proteomics, metabolomics, transcriptomics, systems biology, and synthetic biology.
+
+==6-05-10==
+AltAnalyze is featured in the list of Science's [http://stke.sciencemag.org/cgi/ul/sigtransUl%3BCAT_2 ST NetWatch: Bioinformatics Resources].
+
 ==4-12-10==
 Introducing AltAnalyze version 1.15 with expanded features for alternative exon array analysis. New to AltAnalyze; 1) Alternative exon analysis of Affymetrix Gene 1.0 ST arrays, 2) FIRMA analysis, 3) Bundled version of Cytoscape and DomainGraph included, 4) AltAnalyze DomainGraph start option, 5) Import and filtering based on 3rd party alternative exon analysis results and 6) Linux exectuable version. Please contact us with any questions.
 
