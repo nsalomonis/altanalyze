@@ -4,11 +4,11 @@
 
 In order to run AltAnalyze on a Windows operating system, you will need to set the Python PATH following installation. This will allow you to type "python" in the "Command Prompt" (under "All Programs" > "Accessories") in order to call python programs. Perform the following after installing Python (e.g., Python 2.6).
 
- 1. Open "Control Panel" > "System" > "Advanced System Settings" > "Environmental Variables"
- 2. Under "System Variables" open "PATH"
- 3. Append the path of python to the paths (e.g., ";C:\Python26")
- 4. Select the "OK" button.
- 5. Open a new Command Prompt window and type "python". The following should be displayed:
+ # Open "Control Panel" > "System" > "Advanced System Settings" > "Environmental Variables"
+ # Under "System Variables" open "PATH"
+ # Append the path of python to the paths (e.g., ";C:\Python26")
+ # Select the "OK" button.
+ # Open a new Command Prompt window and type "python". The following should be displayed:
 
 Python 2.6.1 (#1, Nov 27 2010, 12:52:40) [MSC v.1500 64 bit (AMD64)] on Win32
 Type "help", "copyright", "credits" or "license" for more information.
