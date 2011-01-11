@@ -11,4 +11,5 @@ In order to run AltAnalyze on a Windows operating system, you will need to set t
  # Open a new Command Prompt window and type "python". The following should be displayed:
 
 Python 2.6.1 (#1, Nov 27 2010, 12:52:40) [MSC v.1500 64 bit (AMD64)] on Win32
+
 Type "help", "copyright", "credits" or "license" for more information.
