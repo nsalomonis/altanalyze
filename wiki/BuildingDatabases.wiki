@@ -10,7 +10,7 @@ New AltAnalyze databases can be built in a semi-automated fashion using builtin 
  # Probeset annotation file
  # Probeset sequence file (Affymetrix Exon arrays only)
 
-These files will need to be saved to the appropriate species and array type destination directory for that species. For example, if downloading the human exon array annotations for build 61 of Ensembl, save these to the folder AltDatabase/EnsMart61/Hs/exon. 
+An example probeset annotation file is the "MoEx-1_0-st-v1.na31.mm9.probeset.csv.zip". These files will need to be saved to the appropriate species and array type destination directory for that species and extracted to that directory. For example, if downloading the human exon array annotations for build 61 of Ensembl, save these to the folder AltDatabase/EnsMart61/Hs/exon. 
 
 Once installation is complete, additional files will have to be added to the final database installation package, however, these can be found with existing database installations (probes_to_remove and probeset-probes association - e.g., AltDatabase/EnsMart55/Hs).
 
