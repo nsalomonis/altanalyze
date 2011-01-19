@@ -1,0 +1,13 @@
+#summary Instructions for Manual Database Creation
+
+== Creating an AltAnalyze Database From Scratch ==
+
+Although most users will wish to wait for the official AltAnalyze database release, users and developers can also build and customize these databases themselves.
+
+=== Adding Support for a New Ensembl Build ===
+
+New AltAnalyze databases can be built in a semi-automated fashion using builtin [CommandLineMode command-line] arguments. For microarray specific databases (e.g., Affymetrix Exon 1.0, Gene 1.0 and Junction JAY arrays), users will need to download two files for each array type and species before running the update.
+ # Probeset annotation file
+ # Probeset sequence file
+
+Once installation is complete, additional files will have to be added to the final database installation package, however, these can be found with existing database installations (probes_to_remove and probeset-probes association - e.g., AltDatabase/EnsMart60/Hs).
