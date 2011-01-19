@@ -23,7 +23,7 @@ Currently, constitutive exon regions are defined by counting the number of uniqu
 
 ==Calculating Gene Expression for the ExpressionOutput File==
 
-Gene expression values for all genes are saved to the folder ExpressionOutput for the file with the prefix "DATASET". This file can have any number of arrays and biological groups, however, comparison statistics between user defined pairwise groups are reported. In this file, gene expression values are reported for each array and array group for each Ensembl gene. These are the averaged log2 RMA intensities from one or more probesets deemed useful for determining gene expression. The user can choose constitutive or core for "Determine gene expression levels using", under the "Expression Analysis Parameters" menu. Core is all AltAnalyze defined core probesets (which are Affymetrix core plus those found in Ensembl and UCSC mRNAs).
+Gene expression values for all genes are saved to the folder ExpressionOutput for the file with the prefix "DATASET". This file can have any number of arrays and biological groups, however, comparison statistics between user defined pairwise groups are reported. In this file, gene expression values are reported for each array and array group for each Ensembl gene. These are the averaged log2 RMA intensities from one or more probesets deemed useful for determining gene expression. The user can choose constitutive or core probesets for "Determine gene expression levels using", under the "Expression Analysis Parameters" menu. Core is all AltAnalyze defined core probesets (which are Affymetrix core plus those found in Ensembl and UCSC mRNAs).
 
 http://altanalyze.org/image/ExpAnalysisParamet.jpg
 
