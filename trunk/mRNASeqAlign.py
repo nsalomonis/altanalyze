@@ -157,7 +157,7 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
     end_time = time.time(); time_diff = int(end_time-start_time)
     gene_not_found = unique.unique(gene_not_found)
     print len(genes_found), 'genes associated with Ensembl transcripts'
-    print len(gene_not_found), "gene's not found in the Ensembl-probeset database (should be there unless conflict present)"
+    print len(gene_not_found), "genes not found in the reciprocol junction database (should be there unless conflict present - or few alternative genes predicted during junction array design)"
     print gene_not_found[0:10],'not found examples'
     print "Ensembl transcript sequences analyzed in %d seconds" % time_diff
     
@@ -341,17 +341,19 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     """This function imports AffyGene-Ensembl relationships, junction probeset sequences, and recipricol junction comparisons.
     with data stored from this function, we can match probeset sequence to mRNAs and determine which combinations of probesets
     can be used as match-match or match-nulls."""
-    
-    ### Import AffyGene to Ensembl associations (e.g., AltMouse array)    
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
-    fn=filepath(filename); array_ens_db={}; x = 0
-    for line in open(fn,'rU').xreadlines():
-        data, newline = string.split(line,'\n'); t = string.split(data,'\t')
-        if x==0: x=1
-        else: 
-            array_gene,ens_gene = t
-            try: array_ens_db[array_gene].append(ens_gene)
-            except KeyError: array_ens_db[array_gene]=[ens_gene]
+
+    array_ens_db={}
+    if array_type == 'AltMouse':
+        ### Import AffyGene to Ensembl associations (e.g., AltMouse array)    
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
+        fn=filepath(filename); x = 0
+        for line in open(fn,'rU').xreadlines():
+            data, newline = string.split(line,'\n'); t = string.split(data,'\t')
+            if x==0: x=1
+            else: 
+                array_gene,ens_gene = t
+                try: array_ens_db[array_gene].append(ens_gene)
+                except KeyError: array_ens_db[array_gene]=[ens_gene]
 
     filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'  
     try: probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
@@ -362,13 +364,19 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     
     ###Import reciprocol junctions, so we can compare these directly instead of hits to nulls and combine with sequence data
     ###This short-cuts what we did in two function in ExonModule with exon level data
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
+    if array_type == 'AltMouse': filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
+    elif array_type == 'junction': filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps_updated.txt'
+    elif array_type == 'RNASeq': filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps.txt'
     fn=filepath(filename); probeset_gene_seq_db={}; added_probesets={}; pairwise_probesets={}; x = 0
     for line in open(fn,'rU').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
         if x==0: x=1
-        else: 
-            array_gene,probeset1,probeset2,critical_exons = t #; critical_exons = string.split(critical_exons,'|')
+        else:
+            if (array_type == 'junction' or array_type == 'RNASeq'):
+                array_gene, critical_exons,excl_junction,incl_junction, probeset2, probeset1, data_source = t
+                array_ens_db[array_gene]=[array_gene]
+            elif array_type == 'AltMouse':
+                array_gene,probeset1,probeset2,critical_exons = t #; critical_exons = string.split(critical_exons,'|')
             probesets = [probeset1,probeset2]
             pairwise_probesets[probeset1,probeset2] = []
             if array_gene in array_ens_db:
@@ -396,8 +404,13 @@ def importCriticalJunctionSeq(filename,species,array_type):
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
         if x==0: x=1
         else: 
-            probeset,probeset_seq,junction_seq = t; junction_seq=string.replace(junction_seq,'|','')
+            try: probeset,probeset_seq,junction_seq = t
+            except Exception: probeset,probeset_seq,junction_seq, null = t
+            probeset_seq=string.replace(probeset_seq,'|','')
             probeset_seq_db[probeset] = probeset_seq,junction_seq
+            x+=1
+            
+    print len(probeset_seq_db),'probesets with associated sequence'
     return probeset_seq_db
 
 def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset_combinations):
@@ -443,7 +456,9 @@ def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset
                 probeset_matching_pairs[probeset2] = [match,null_match]
                 match_and_null+=1
             elif probeset1 in matching or probeset2 in matching: no_nulls+=1
-            else: no_matches+=1
+            else:
+                no_matches+=1
+                #if no_matches<10: print probeset1,probeset2
 
     print matching_in_both, "probeset pairs with matching isoforms for both recipricol probesets."
     print match_and_null, "probeset pairs with a match for one and null for that one."
@@ -460,7 +475,7 @@ def alignProbesetsToTranscripts(species,array_type,Force):
     global force; force = Force
     """Match exon or junction probeset sequences to Ensembl and USCS mRNA transcripts"""
       
-    if array_type == 'AltMouse':
+    if array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
         data_type = 'junctions'; probeset_seq_file=''
         if data_type == 'junctions':
             start_time = time.time(); biotype = 'gene' ### Indicates whether to store information at the level of genes or probesets

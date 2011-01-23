@@ -34,7 +34,7 @@ def read_directory(sub_dir):
             dir_list2.append(entry)
     return dir_list2
            
-def importSplicingAnnotationDatabase(filename):
+def importSplicingAnnotationDatabase(filename,array_type):
     global exon_db; fn=filepath(filename)
     print 'importing', filename
     exon_db={}; count = 0; x = 0
@@ -45,6 +45,10 @@ def importSplicingAnnotationDatabase(filename):
             try: probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, ens_exon_ids, ens_const_exons, exon_region, exon_region_start, exon_region_stop, splicing_event, splice_junctions = string.split(probeset_data,'\t')
             except Exception: t = string.split(probeset_data,'\t'); print len(t), t;kill
             #probe_data = AffyExonSTData(probeset_id,ensembl_gene_id,exon_id,ens_exon_ids,transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, exon_region, splicing_event, splice_junctions)
+            if ':' in probeset_id:
+                id1,id2 = string.split(probeset_id,':')
+                if id2[0]=='E' or id2[0]=='I': probeset_id = probeset_id ### This import method applies to 
+                else: probeset_id = id2
             probe_data = AffyExonSTDataSimple(probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop)
             exon_db[probeset_id] = probe_data
     print len(exon_db), 'probesets imported'
@@ -119,7 +123,9 @@ class AffyExonSTData(SplicingAnnotationData):
 class AffyExonSTDataSimple(SplicingAnnotationData):
     def __init__(self,probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop):
         self._geneid = ensembl_gene_id; self._external_gene = ensembl_gene_id; self._exon_region = exon_region
-        self._external_exonids = ens_exon_ids; self._probeset=probeset_id; self._start=int(probeset_start); self._stop = int(probeset_stop)
+        self._external_exonids = ens_exon_ids; self._probeset=probeset_id
+        try: self._start=int(probeset_start); self._stop = int(probeset_stop)
+        except Exception: self._start=probeset_start; self._stop = probeset_stop
     
 class JunctionDataSimple(SplicingAnnotationData):
     def __init__(self,probeset_id,ensembl_gene_id,array_geneid,junction_probesets,critical_exons):
@@ -193,12 +199,12 @@ def exportAssociations(probeset_seq_db,species):
 def getParametersAndExecute(probeset_seq_file,array_type,species):
     probeset_annotations_file = 'AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt'
     ###Import probe-level associations
-    exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
+    exon_db = importSplicingAnnotationDatabase(probeset_annotations_file,array_type)
     start_time = time.time(); chromosome = 1
     probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,array_type,exon_db,chromosome,species)
     if array_type == 'gene':
         probeset_annotations_file = string.replace(probeset_annotations_file,'exon','gene')
-        gene_exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
+        gene_exon_db = importSplicingAnnotationDatabase(probeset_annotations_file,array_type)
         translation_db = exportAllExonToGeneArrayAssociations(exon_db,gene_exon_db)
         probeset_seq_db = convertExonProbesetSequencesToGene(probeset_seq_db,gene_exon_db,translation_db)
     end_time = time.time(); time_diff = int(end_time-start_time)
@@ -286,7 +292,7 @@ def exportAllExonToGeneArrayAssociations(exon_db,gene_exon_db):
 
 def getExonAnnotationsAndSequence(probeset_seq_file,array_type,species):
     probeset_annotations_file = 'AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt'
-    exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
+    exon_db = importSplicingAnnotationDatabase(probeset_annotations_file,array_type)
     chromosome = 1
     ###By running this next function, we can update exon_db to include probeset sequence data
     array_type=''
@@ -405,13 +411,16 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
                     probeset = ed.Probeset()
                     probeset_seq = ed.ExonSeq()
                     #exonid = ed.ExonID()
-                    proceed = 'no'
+                    proceed = 'no'; hit = 'no'
                     if len(miRNA_seq)>0 and len(probeset_seq)>0:
-                        if miRNA_seq in probeset_seq:
-                            if stringency == 'strict':
-                                if '|' in sources:  proceed='yes'
-                            else: proceed='yes'
-                        if proceed == 'yes':
+                        miRNA_seqs = string.split(miRNA_seq,'|') ### Can be multiples
+                        for miRNA_seq in miRNA_seqs:
+                            if miRNA_seq in probeset_seq:
+                                hit = 'yes'
+                                if stringency == 'strict':
+                                    if '|' in sources:  proceed='yes'
+                                else: proceed='yes'
+                        if proceed == 'yes' and hit == 'yes':
                             try: probeset_miRNA_db[probeset].append(y)
                             except KeyError: probeset_miRNA_db[probeset] = [y]
     if mir_source == 'pictar': data.close()

@@ -84,7 +84,8 @@ def getProbesetAssociations(filename,ensembl_exon_db,ens_transcript_db,source_bi
         elif data[0] != '#' and 'probeset_id' not in data:
             try:
               entries+=1
-              probeset_id=int(t[pi]);transcript_cluster_id=int(t[tc]); chr=t[sn];strand=t[sd]
+              try: probeset_id=int(t[pi]);transcript_cluster_id=int(t[tc]); chr=t[sn];strand=t[sd]
+              except Exception: print affy_headers; print index; sys.exit()
               start=int(t[st]);stop=int(t[sp]); exon_type=t[lv]; #fl=int(t[fn]); mRNA=int(t[mr]); est=int(t[es]); ensembl=int(t[eg])
               continue_analysis = 'no'
 
@@ -179,7 +180,7 @@ def getProbesetAssociations(filename,ensembl_exon_db,ens_transcript_db,source_bi
     print "Assigning exon-level Ensembl annotations to probesets (e.g. exon number)..."
     ensembl_probeset_db = annotateExons(ensembl_probeset_db,exon_clusters,ensembl_exon_db,exon_region_db,intron_retention_db,intron_clusters,ucsc_splicing_annot_db)
     print "Exporting Ensembl-merged probeset database to text file"
-    exportEnsemblLinkedProbesets(ensembl_probeset_db,species)
+    exportEnsemblLinkedProbesets(arraytype, ensembl_probeset_db,species)
     return ensembl_probeset_db
 
 ################# Identify overlap between Ensembl and transcript_clusters
@@ -327,7 +328,7 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
             if gene in ucsc_splicing_annot_db:
                 ucsc_events = ucsc_splicing_annot_db[gene]
                 for (r_start,r_stop,splice_event) in ucsc_events:
-                        if ((start >= r_start) and (start <= r_stop)) or ((stop >= r_start) and (stop <= r_stop)): splice_events.append(splice_event)
+                        if ((start >= r_start) and (start < r_stop)) or ((stop > r_start) and (stop <= r_stop)): splice_events.append(splice_event)
 
             for exon_values in exon_clusters[key]: ###Ensembl location database
                 ref_start = exon_values[1][0]; ref_stop = exon_values[1][1]; ens_exon_ida = exon_values[2][0]
@@ -336,15 +337,15 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
                     if ((start >= ref_start) and (stop <= ref_stop)) or ((start >= ref_start) and (start <= ref_stop)) or ((stop >= ref_start) and (stop <= ref_stop)): print 'good'
                     else: print 'bad'
                     kill"""
-                if ((start >= ref_start) and (stop <= ref_stop)) or ((start >= ref_start) and (start <= ref_stop)) or ((stop >= ref_start) and (stop <= ref_stop)):
+                if ((start >= ref_start) and (stop <= ref_stop)) or ((start >= ref_start) and (start < ref_stop)) or ((stop > ref_start) and (stop <= ref_stop)):
                     new_index = exon_values[0]
                     #probeset_exon_list.append((new_index,key,start,stop,ref_start,ref_stop))
                     ###Grab individual exon annotations
                     #temp_probeset_exon_id=[]; temp_probeset_annot=[]; region_ids=[]; splice_events=[]; splice_junctions=[]
                     for exon_data in ensembl_exon_db[new_key]:
                         t_start = exon_data[1][0]; t_stop = exon_data[1][1]; ed = exon_data[1][2]
-                        if ((start >= t_start) and (start <= t_stop)) or ((stop >= t_start) and (stop <= t_stop)):
-                            if ((start >= t_start) and (start <= t_stop)) and ((stop >= t_start) and (stop <= t_stop)):
+                        if ((start >= t_start) and (start < t_stop)) or ((stop > t_start) and (stop <= t_stop)):
+                            if ((start >= t_start) and (start < t_stop)) and ((stop > t_start) and (stop <= t_stop)):
                                 ### Thus the probeset is completely in this exon
                                 try: probeset_aligments[probeset].append([t_start,t_stop])
                                 except KeyError: probeset_aligments[probeset]=[[t_start,t_stop]]
@@ -356,7 +357,7 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
                             for rd in block_db[new_index]:
                                 if strand == '-': r_stop = rd.ExonStart(); r_start = rd.ExonStop()
                                 else: r_start = rd.ExonStart(); r_stop = rd.ExonStop()
-                                if ((start >= r_start) and (start <= r_stop)) or ((stop >= r_start) and (stop <= r_stop)):
+                                if ((start >= r_start) and (start < r_stop)) or ((stop > r_start) and (stop <= r_stop)):
                                     reg_start.append(r_start); reg_stop.append(r_stop)
                                     region_ids.append(rd.ExonRegionID()) ###only one region per probeset unless overlapping with two
                                     try: splice_events.append(rd.AssociatedSplicingEvent());splice_junctions.append(rd.AssociatedSplicingJunctions())
@@ -718,13 +719,13 @@ def exportProbesetAlignments(probeset_aligments):
             data.write(values)
     data.close()
     
-def exportEnsemblLinkedProbesets(ensembl_probeset_db,species):
+def exportEnsemblLinkedProbesets(arraytype, ensembl_probeset_db,species):
     exon_annotation_export = 'AltDatabase/'+species+'/'+arraytype+'/'+species + '_Ensembl_probesets.txt'
     subgeneviewer_export = 'AltDatabase/ensembl/'+species+'/'+species+'_SubGeneViewer_feature-data.txt'
     fn=filepath(exon_annotation_export); data = open(fn,'w')
     fn2=filepath(subgeneviewer_export); data2 = open(fn2,'w')
     title = ['probeset_id','exon_id','ensembl_gene_id','transcript_cluster_id','chromosome','strand','probeset_start','probeset_stop']
-    title +=['affy_class','constitutitive_probeset','ens_exon_ids','ens_constitutive_status','exon_region','exon-region-start(s)','exon-region-stop(s)','splice_events','splice_junctions']
+    title +=['affy_class','constitutive_probeset','ens_exon_ids','ens_constitutive_status','exon_region','exon-region-start(s)','exon-region-stop(s)','splice_events','splice_junctions']
     title2 =['probeset','gene-id','feature-id','region-id']
     title = string.join(title,'\t') + '\n'; title2 = string.join(title2,'\t') + '\n'
     data.write(title); data2.write(title2); y=0
@@ -745,7 +746,7 @@ def exportEnsemblLinkedProbesets(ensembl_probeset_db,species):
             try: values = string.join(values,'\t')+'\n';
             except TypeError:
                 print exon_id
-                print [probeset_id,exon_id,geneid,transcript_clust,chr,strand,start,stop,exon_class,constitutitive,ens_exon_list,ens_annot_list]
+                print [probeset_id,exon_id,geneid,transcript_clust,chr,strand,start,stop,exon_class,constitutive,ens_exon_list,ens_annot_list]
                 print [ed.RegionNumber(),ed.AssociatedSplicingEvent(),ed.AssociatedSplicingJunctions()];kill
             data.write(values)
             exon_regions = string.split(region_num,'|')
@@ -780,13 +781,13 @@ def makeUnique(item):
     return list1
 
 def getDirectoryFiles(dir):
-    import_dir = '/AltDatabase/'+species+'/'+arraytype
-    dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    dir_list = read_directory(dir)  #send a sub_directory to a function to identify all files in a directory
     for data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = dir[1:]+'/'+data
         if '.transcript.' in affy_data_dir: transcript_annotation_file = affy_data_dir
         elif '.annoS' in affy_data_dir: probeset_transcript_file = affy_data_dir
-        elif '.probeset' in affy_data_dir: probeset_annotation_file = affy_data_dir ###This file lets you grab the same info as in probeset_transcript_file, but along with mRNA associations
+        elif '.probeset' in affy_data_dir and '.csv' in affy_data_dir:
+            if '.zip' not in affy_data_dir: probeset_annotation_file = affy_data_dir ###This file lets you grab the same info as in probeset_transcript_file, but along with mRNA associations
     return probeset_annotation_file
 
 def reimportEnsemblProbesets(filename):
@@ -799,21 +800,21 @@ def reimportEnsemblProbesets(filename):
         else:
             #t = string.split(line,'\t')
             #probeset_id=t[0];ensembl_gene_id=t[1];chr=t[2];strand=t[3];start=t[4];stop=t[5];exon_class=t[6]
-            probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, ens_exon_ids, exon_annotations,regionid,r_start,r_stop,splice_event,splice_junctions = string.split(line,'\t')
-            probe_data = ensembl_gene_id,transcript_cluster_id,exon_id,ens_exon_ids,affy_class#,exon_annotations,constitutitive_probeset
+            probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutive_probeset, ens_exon_ids, exon_annotations,regionid,r_start,r_stop,splice_event,splice_junctions = string.split(line,'\t')
+            probe_data = ensembl_gene_id,transcript_cluster_id,exon_id,ens_exon_ids,affy_class#,exon_annotations,constitutive_probeset
             probe_association_db[probeset_id] = probe_data
-            if constitutitive_probeset == 'yes':
+            if constitutive_probeset == 'yes':
                 try: constitutive_db[ensembl_gene_id].append(probeset_id)
                 except KeyError: constitutive_db[ensembl_gene_id] = [probeset_id]
-            elif constitutitive_probeset == 'yes':
+            else: ### There was a bug here that resulted in no entries added (AltAnalyze version 1.15) --- because constitutive selection options have changed, should not have been an issue
                 try: constitutive_original_db[ensembl_gene_id].append(probeset_id)
                 except KeyError: constitutive_original_db[ensembl_gene_id] = [probeset_id]
-                
+            x+=1  
      ###If no constitutive probesets for a gene as a result of additional filtering (removing all probesets associated with a splice event), add these back
     for gene in constitutive_original_db:
         if gene not in constitutive_db: constitutive_db[gene] = constitutive_original_db[gene]
     constitutive_original_db={}
-    print len(constitutive_db), "constitutive genes"
+    print len(constitutive_db), "constitutive genes and", len(probe_association_db), "probesets imported out of", x,"lines."
     return probe_association_db, constitutive_db
 
 def reimportEnsemblProbesetsForSeqExtraction(filename,filter_type,filter_db):
@@ -822,25 +823,40 @@ def reimportEnsemblProbesetsForSeqExtraction(filename,filter_type,filter_db):
         data = cleanUpLine(line)
         if x == 0: x=1;continue
         else:
-            try: probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chr, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, ens_exon_ids, exon_annotations,regionid,r_start,r_stop,splice_event,splice_junctions = string.split(data,'\t')
+            try: probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chr, strand, probeset_start, probeset_stop, affy_class, constitutive_probeset, ens_exon_ids, exon_annotations,regionid,r_start,r_stop,splice_event,splice_junctions = string.split(data,'\t')
             except ValueError: t = string.split(data,'\t'); print t;kill
             ens_exon_ids = string.split(ens_exon_ids,'|')
-            ed = EnsemblImport.ExonStructureData(ensembl_gene_id, chr, strand, r_start, r_stop, constitutitive_probeset, ens_exon_ids, [])
+            ed = EnsemblImport.ExonStructureData(ensembl_gene_id, chr, strand, r_start, r_stop, constitutive_probeset, ens_exon_ids, [])
             ed.setAssociatedSplicingEvent(splice_event) ###Integrate splicing annotations to look for alternative promoters
+            #ed.setAssociatedSplicingJunctions(splice_junctions)
             probe_data  = exon_id,((probeset_start,probeset_stop,probeset_id,affy_class,transcript_cluster_id),ed)
             if filter_type == 'null': proceed = 'yes'
+            elif filter_type == 'junctions':
+                ed = EnsemblImport.ProbesetAnnotation(exon_id, constitutive_probeset, regionid, splice_event, splice_junctions,r_start,r_stop)
+                probe_data = probeset_id, strand, probeset_start, probeset_stop
+                probe_data = probe_data,ed
+                proceed = 'yes'
             elif filter_type == 'gene':
                 if ensembl_gene_id in filter_db: proceed = 'yes'
                 else: proceed = 'no'
             elif filter_type == 'probeset':
                 if probeset_id in filter_db: proceed = 'yes'
                 else: proceed = 'no'
-            if proceed == 'yes':
+            if filter_type == 'probesets':
+                if ':' in probeset_id: probeset_id = string.split(probeset_id,':')[1]
+                if len(regionid)<1: regionid = exon_id
+                ensembl_exon_db[probeset_id]=string.replace(regionid,'-','.')
+            elif filter_type == 'junction-regions':
+                if '.' in regionid and '-' in regionid: ### Indicates a junction probeset
+                    try: ensembl_exon_db[ensembl_gene_id].append((probeset_id,regionid))
+                    except KeyError: ensembl_exon_db[ensembl_gene_id]=[(probeset_id,regionid)]
+            elif proceed == 'yes':
                 if filter_type == 'gene':
                     if ensembl_gene_id not in ensembl_exon_db: ensembl_exon_db[ensembl_gene_id] = [probe_data]
                 else:
                     try: ensembl_exon_db[ensembl_gene_id].append(probe_data)
-                    except KeyError: ensembl_exon_db[ensembl_gene_id] = [probe_data]
+                    except KeyError: ensembl_exon_db[ensembl_gene_id] = [probe_data]                
+                
     print len(ensembl_exon_db), "critical genes parsed with annotated exon data..."
     return ensembl_exon_db
 
@@ -870,18 +886,19 @@ def getSplicingAnalysisProbesets(probeset_db,constitutive_db,annotate_db):
 def getAnnotations(process_from_scratch,x,source_biotype,Species):
     """Annotate Affymetrix exon array data using files Ensembl data (sync'ed to genome release)."""
     ###     probeset_db[probeset] = gene,exon_number,ensembl_exon_annotation,ensembl_exon_id
-    #NEW    probeset_db[probeset] = gene,transcluster,exon_id,ens_exon_ids,exon_annotations,constitutitive
+    #NEW    probeset_db[probeset] = gene,transcluster,exon_id,ens_exon_ids,exon_annotations,constitutive
     ### NA  constitutive_db[gene] = [probeset]
     ###     annotate_db[gene] = definition, symbol,rna_processing
     global species; species = Species; global export_probeset_mRNA_associationsg
     global test; global test_cluster; global filter_sgv_output; global arraytype
     export_probeset_mRNA_associations = 'no'
-    if source_biotype == 'gene': arraytype = 'gene'; source_biotype = 'mRNA'
+    if source_biotype == 'junction': arraytype = 'junction'; source_biotype = 'mRNA'
+    elif source_biotype == 'gene': arraytype = 'gene'; source_biotype = 'mRNA'
     else: arraytype = 'exon'
     filter_sgv_output = 'no'
     test = 'no'
     test_cluster = [3811670, 3811714, 3811716, 3811718]
-    test_cluster = [3431483, 7958644]
+    test_cluster = [7896761, 7958644]
     partial_process = 'no'; status = 'null'
     if process_from_scratch == 'yes':
         if partial_process == 'no':
@@ -904,7 +921,8 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
                     if probeset not in probeset_db_mRNA: probeset_db[probeset] = probeset_db_ncRNA[probeset]
                 probeset_db_mRNA={}; probeset_db_ncRNA={}
             else:
-                probeset_db,constitutive_db = reimportEnsemblProbesets('AltDatabase/'+species+'/'+arraytype+'/'+species+'_Ensembl_probesets.txt')
+                filename = 'AltDatabase/'+species+'/'+arraytype+'/'+species+'_Ensembl_probesets.txt'
+                probeset_db,constitutive_db = reimportEnsemblProbesets(filename)
             annotate_db = EnsemblImport.reimportEnsemblAnnotations(species)
             splicing_analysis_db = getSplicingAnalysisProbesets(probeset_db,constitutive_db,annotate_db)
             #print "Probeset database and Annotation database reimported"
@@ -920,16 +938,18 @@ if __name__ == '__main__':
     h = 'Hs'
     r = 'Rn'
     source_biotype = 'gene'
-    Species = h
+    Species = m
     process_from_scratch = 'yes'
     export_probeset_mRNA_associations = 'no'
     constitutive_source = z ###If 'Ensembl', program won't look at any evidence except for Ensembl. Thus, not ideal
+    array_type='junction'
+    getJunctionComparisonsFromExport(Species,array_type); sys.exit()
     probeset_db,annotate_db,constitutive_db,splicing_analysis_db = getAnnotations(process_from_scratch,constitutive_source,source_biotype,Species)
     sys.exit()
     
     """Annotate Affymetrix exon array data using files Ensembl data (sync'ed to genome release)."""
     ###     probeset_db[probeset] = gene,exon_number,ensembl_exon_annotation,ensembl_exon_id
-    #NEW    probeset_db[probeset] = gene,transcluster,exon_id,ens_exon_ids,exon_annotations,constitutitive
+    #NEW    probeset_db[probeset] = gene,transcluster,exon_id,ens_exon_ids,exon_annotations,constitutive
     ### NA  constitutive_db[gene] = [probeset]
     ###     annotate_db[gene] = definition, symbol,rna_processing
     global species; species = Species
@@ -937,7 +957,7 @@ if __name__ == '__main__':
     global filter_sgv_output
     export_probeset_mRNA_associations = 'no'
     filter_sgv_output = 'yes'
-    test = 'yes';kill
+    test = 'yes'
     test_cluster = ['7958644']
     meta_test_cluster = ["3061319","3061268"]#,"3455632","3258444","3965936","2611056","3864519","3018509","3707352","3404496","3251490"]
     #test_cluster = meta_test_cluster

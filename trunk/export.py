@@ -23,6 +23,7 @@ import os
 import sys
 import string
 import unique
+import shutil
 import UI
 
 def filepath(filename):
@@ -170,6 +171,35 @@ def createExportFolder(dir):
                 continue
     else: print "Parent directory not found locally for", dir_ls; sys.exit()    
 
+def cleanUpLine(line):
+    line = string.replace(line,'\n','')
+    line = string.replace(line,'\c','')
+    data = string.replace(line,'\r','')
+    data = string.replace(data,'"','')
+    return data
+
+def cleanFile(source_file):
+    ### Some files have extra odd encoding that results in blank new lines in the extracted file
+    ### For succeptible directories copy all files line by line, removing existing end of lines
+    file = findFilename(source_file); temp_file = 'tempdir/'+file
+    data = ExportFile(temp_file)
+    fn=filepath(source_file)
+    for line in open(fn,'rU').xreadlines():
+        line = cleanUpLine(line)
+        if len(line)>0: data.write(line+'\n')
+    data.close()
+    ### Replace old file with new file
+    copyFile(temp_file,source_file)
+    os.remove(temp_file)
+    print 'copied',file
+    
+def copyFile(source_file,destination_file):
+    dir = findParentDir(destination_file)
+    try: createExportFolder(dir)
+    except Exception: null=[] ### already exists
+    shutil.copyfile(source_file,destination_file)
+    print '\nFile copied to:',destination_file
+    
 def deleteFolder(dir):
     try:
         dir = filepath(dir); dir_list = read_directory(dir) ### Get all files in directory

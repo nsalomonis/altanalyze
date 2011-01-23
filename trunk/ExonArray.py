@@ -54,6 +54,7 @@ def exportMetaProbesets(array_type,species):
     import AltAnalyze; reload(AltAnalyze)
     import export
     probeset_types = ['core','extended','full']
+    if array_type == 'junction': probeset_types = ['all']
     for probeset_type in probeset_types:
         exon_db = AltAnalyze.importSplicingAnnotations(array_type,species,probeset_type)
         gene_db={}
@@ -169,6 +170,7 @@ def exportGroupedComparisonProbesetData(filename,probeset_db,data_type,array_nam
 
         ###Export the header info and store the export write data for reorder_arrays
         global comparision_export_db; comparision_export_db={}; array_type_name = 'Exon'
+        if array_type == 'junction': array_type_name = 'Junction'
         if data_type != 'residuals': AltAnalzye_input_dir = root_dir+"AltExpression/pre-filtered/"+data_type+'/'
         else: AltAnalzye_input_dir = root_dir+"AltExpression/FIRMA/residuals/"+array_type+'/'+species+'/' ### These files does not need to be filtered until AltAnalyze.py
 
@@ -428,21 +430,21 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
     global avg_all_probes_for_steady_state; avg_all_probes_for_steady_state = avg_all_for_ss; global filter_by_dabg; filter_by_dabg = filter_by_DABG
     global dabg_p_threshold; dabg_p_threshold = float(p_threshold); global root_dir
     global expression_threshold; expression_threshold = math.log(float(e_threshold),2)
-    process_from_scratch = 'no'; constitutive_analyzed = 'no'; ###internal variables used while testing
+    process_from_scratch = 'no' ###internal variables used while testing
     global dabg_summary; global expression_summary; dabg_summary={};expression_summary={}
     global fulldataset_export_object; global array_type; array_type = Array_type
     global exp_analysis_type; exp_analysis_type = 'expression'
     
     source_biotype = 'mRNA'
     if array_type == 'gene': source_biotype = 'gene'
+    elif array_type == 'junction': source_biotype = 'junction'
     ###Get annotations using Affymetrix as a trusted source or via links to Ensembl
-    if data_source == 'Affymetrix':
-        annotation_dbases = ExonArrayAffyRules.getAnnotations(exons_to_grab,constitutive_source,process_from_scratch)
-        probe_association_db,constitutive_gene_db,exon_location_db, trans_annotation_db, trans_annot_extended = annotation_dbases
-    else:
-        if manufacturer == 'Affymetrix': probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,source_biotype,species)
-        if constitutive_analyzed == 'yes':
-            return probeset_gene_db,annotate_db
+
+    if array_type == 'AltMouse':
+        probeset_db,constitutive_gene_db = ExpressionBuilder.importAltMerge('full'); annotate_db={}
+        source_biotype = 'AltMouse'
+    elif manufacturer == 'Affymetrix':
+        probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,source_biotype,species)
 
     ### Get all file locations and get array headers
     #print len(splicing_analysis_db),"genes included in the splicing annotation database (constitutive only containing)"
@@ -452,6 +454,8 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
     input_dir_split = string.split(expr_input_dir,'/')
     full_dataset_export_dir = root_dir+'AltExpression/FullDatasets/ExonArray/'+species+'/'+string.replace(input_dir_split[-1],'exp.','')
     if array_type == 'gene': full_dataset_export_dir = string.replace(full_dataset_export_dir,'ExonArray','GeneArray')
+    if array_type == 'junction': full_dataset_export_dir = string.replace(full_dataset_export_dir,'ExonArray','JunctionArray')
+    if array_type == 'AltMouse': full_dataset_export_dir = string.replace(full_dataset_export_dir,'ExonArray','AltMouse')
     fulldataset_export_object = export.ExportFile(full_dataset_export_dir)
     ### Organize arrays according to groups and export all probeset data and any pairwise comparisons
     data_type = 'expression'
@@ -482,7 +486,7 @@ def processResiduals(fl,Array_type,Species,perform_alt_analysis):
     expr_input_dir = string.replace(expr_input_dir,'exp.','residuals.') ### Wait to change this untile the above processes are finished
     
     fulldataset_export_object = export.ExportFile(full_dataset_export_dir)
-    print full_dataset_export_dir
+    #print full_dataset_export_dir
     ### Organize arrays according to groups and export all probeset data and any pairwise comparisons
     comparison_filename_list = exportGroupedComparisonProbesetData(expr_input_dir,{},'residuals',array_names,array_linker_db,perform_alt_analysis)
 
@@ -636,8 +640,8 @@ if __name__ == '__main__':
     m = 'Mm'
     h = 'Hs'
     r = 'Rn'
-    Species = r
-    Array_type = 'gene'
+    Species = m
+    Array_type = 'junction'
     exportMetaProbesets(Array_type,Species);sys.exit()
     Data_type = 'probeset'
     Output_types = 'promoter'
@@ -667,11 +671,7 @@ if __name__ == '__main__':
         probe_association_db,constitutive_gene_db,exon_location_db, trans_annotation_db, trans_annot_extended = annotation_dbases
     else:
         probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,species,avg_all_for_ss)
-    filtered_exon_db = {}
-    filtered_exon_db = getFilteredExons(filename,p)
-    filtered_exon_db = filterFilteredData(splicing_analysis_db,filtered_exon_db)
-    #filtered_exon_db = filterFilteredData(splicing_analysis_db,filtered_exon_db)
-    #"""
+
     filterExpressionData(filename,filtered_exon_db,constitutive_gene_db,probeset_db,data_type)
     #filtered_gene_db = permformFtests(filtered_exp_db,group_count,probeset_db)
     

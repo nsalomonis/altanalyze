@@ -70,34 +70,6 @@ def reorderArrayHeaders(data_headers,array_order,comp_group_list,array_linker_db
     #return expbuilder_value_db,group_count_list2,ranked_array_headers,raw_data_comps,raw_data_comp_headers
     return group_count_list2,raw_data_comp_headers
    
-def reorderArraysOnly(data,array_order,comp_group_list):
-    ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
-    expbuilder_value_db = {}
-    for row_id in data:
-        grouped_ordered_array_list = {}
-        data_headers2 = {} #reset each time
-        for x in array_order:
-            y = x[1]  ### this is the new first index
-            group = x[2]   
-            ### for example y = 5, therefore the data[row_id][5] entry is now the first
-            try: new_item = data[row_id][y]
-            except TypeError: print y,x,array_order; kill
-            try: expbuilder_value_db[row_id].append(new_item)
-            except KeyError: expbuilder_value_db[row_id] = [new_item]
-            ###Used for comparision analysis
-            try: grouped_ordered_array_list[group].append(new_item)
-            except KeyError: grouped_ordered_array_list[group] = [new_item]
-        ###*******Include a database with the raw values saved for permuteAltAnalyze*******
-        for info in comp_group_list:
-            group1 = int(info[0]); group2 = int(info[1]); comp = str(info[0]),str(info[1])
-            g1_data = grouped_ordered_array_list[group1]
-            g2_data = grouped_ordered_array_list[group2]
-            #print g1_data
-            data = comparision_export_db[comp]
-            values = [row_id]+g1_data+g2_data; values = string.join(values,'\t')+'\n'
-            #raw_data_comps[row_id,comp] = temp_raw
-            data.write(values)
-
 class GroupStats:
     def __init__(self,log_fold,fold,p):
         self.log_fold = log_fold; self.fold = fold; self.p = p
@@ -116,7 +88,7 @@ class GroupStats:
 
 def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data):
     ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
-    expbuilder_value_db = {}; group_name_db = {}; summary_filtering_stats = {}; raw_data_comps = {}; pval_summary_db= {}
+    expbuilder_value_db = {}; group_name_db = {}; summary_filtering_stats = {}; pval_summary_db= {}
     
     stat_result_names = ['avg-','log_fold-','fold-','rawp-','adjp-']
     group_summary_result_names = ['avg-']
@@ -217,15 +189,6 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                     expbuilder_value_db[row_id].append('') 
                     gs.SetAdjPIndex(len(expbuilder_value_db[row_id])-1)
                     pval_summary_db[(row_id,comp)] = gs
-        ###*******Include a database with the raw values saved for permuteAltAnalyze*******
-        for info in comp_group_list:
-            temp_raw = []
-            group1 = int(info[0]); group2 = int(info[1]); comp = str(info[0]),str(info[1])
-            g1_data = grouped_ordered_array_list[group1]
-            g2_data = grouped_ordered_array_list[group2]
-            for value in g2_data: temp_raw.append(value)
-            for value in g1_data: temp_raw.append(value)
-            raw_data_comps[row_id,comp] = temp_raw
 
     ###do the same for the headers, but at the dataset level (redundant processes)
     array_fold_headers = []; data_headers3 = []
@@ -291,7 +254,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             expbuilder_value_db[rowid][gs.Index()] = gs.AdjP() ### set the place holder to the calculated value
             
     ###Finished re-ordering lists and adding statistics to expbuilder_value_db
-    return expbuilder_value_db, array_fold_headers, summary_filtering_stats, raw_data_comp_headers, raw_data_comps
+    return expbuilder_value_db, array_fold_headers, summary_filtering_stats, raw_data_comp_headers
 
 if __name__ == '__main__':
     print array_cluster_final

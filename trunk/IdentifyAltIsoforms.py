@@ -1,3 +1,5 @@
+#!/usr/local/bin/python2.6
+
 ###IdentifyAltIsoforms
 #Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
@@ -50,6 +52,7 @@ class GrabFiles:
 def getDirectoryFiles(import_dir, search_term):
     exact_file = ''; exact_file_dirs=[]
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    dir_list.sort() ### Get the latest files
     for data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = import_dir[1:]+'/'+data
         if search_term in affy_data_dir: exact_file_dirs.append(affy_data_dir)
@@ -65,25 +68,27 @@ def cleanUpLine(line):
     return data
 
 def importSplicingAnnotationDatabase(array_type,species,import_coordinates):
-    filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
-    
+
+    if array_type == 'exon' or array_type == 'gene': filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
+    elif array_type == 'junction': filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
+    elif array_type == 'RNASeq': filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_exons.txt"
+        
     fn=filepath(filename); x=0; probeset_gene_db={}; probeset_coordinate_db={}
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
         if x == 0: x = 1
         else:
-            try: t=string.split(probeset_data,'\t'); probeset=t[0]; exon_id=t[1]; ens_gene=t[2]; start=int(t[6]); stop=int(t[7])
-            except IndexError: print t;kill
+            t=string.split(probeset_data,'\t'); probeset=t[0]; exon_id=t[1]; ens_gene=t[2]; start=int(t[6]); stop=int(t[7])
+            if array_type != 'RNASeq': 
+                if ':' in probeset: probeset = string.split(probeset,':')[1]
             start_stop = [start,stop]; start_stop.sort(); start,stop = start_stop
-            #if probeset == '3431530':
-            #if ens_gene == 'ENSG00000174437':
             probeset_gene_db[probeset]=ens_gene,exon_id
             if import_coordinates == 'yes': probeset_coordinate_db[probeset] = start,stop
     print 'Probeset to Ensembl gene data imported'
     if import_coordinates == 'yes': return probeset_gene_db,probeset_coordinate_db
     else: return probeset_gene_db
 
-def importJunctionDatabase(species,array_type):
+def importAltMouseJunctionDatabase(species,array_type):
     ### Import AffyGene to Ensembl associations (e.g., AltMouse array)    
     filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl.txt'
     fn=filepath(filename); array_ens_db={}; x = 0
@@ -111,6 +116,20 @@ def importJunctionDatabase(species,array_type):
             probeset_gene_db[probeset2] = array_gene,critical_exons
     return probeset_gene_db
 
+def importJunctionDatabase(species,array_type):
+    if array_type == 'junction': filename = 'AltDatabase/' + species + '/'+array_type+'/'+ species + '_junction_comps_updated.txt'
+    else: filename = 'AltDatabase/' + species + '/'+array_type+'/'+ species + '_junction_comps.txt'
+    fn=filepath(filename); probeset_gene_db={}; x=0
+    for line in open(fn,'rU').xreadlines():
+        if x==0: x=1
+        else:
+            data = cleanUpLine(line)
+            gene,critical_exons,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source = string.split(data,'\t')
+            probeset_gene_db[incl_junction_probeset+'|'+excl_junction_probeset] = gene,critical_exons
+            probeset_gene_db[excl_junction_probeset] = gene,critical_exons
+            probeset_gene_db[incl_junction_probeset] = gene,critical_exons
+    return probeset_gene_db
+            
 def importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db):
     fn=filepath(filename); x=0
     for line in open(fn,'rU').xreadlines():
@@ -171,7 +190,8 @@ def compareExonComposition(species,array_type):
     ### Derive probeset to exon associations De Novo
     probeset_exon_coor_db = getProbesetExonCoordinates(probeset_coordinate_db,probeset_gene_db,ens_gene_exon_db)
 
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'                
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_all-transcript-matches.txt'  
+    else: export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'                
     data = export.ExportFile(export_file)
     
     ### Identifying isforms containing and not containing the probeset
@@ -275,7 +295,10 @@ def compareExonComposition(species,array_type):
     print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
     data.close()
 
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'                
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
+    else:
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'                
     export_data = export.ExportFile(export_file)    
 
     for probeset in valid_transcript_pairs:
@@ -300,7 +323,7 @@ def compareExonCompositionJunctionArray(species,array_type):
     probeset_transcript_db,unique_ens_transcripts,unique_transcripts = importProbesetTranscriptMatches(species,array_type,'yes')
 
     print len(probeset_transcript_db), "probesets with multiple pairs of matching-matching or matching-null transcripts."
-    ### Identifying isforms containing and not containing the probeset
+    ### Identifying isoforms containing and not containing the probeset
     global transcripts_not_found
     match_pairs_missing=0; ok_transcript_pairs={}; transcripts_not_found={}
     for probesets in probeset_transcript_db:
@@ -343,7 +366,9 @@ def compareExonCompositionJunctionArray(species,array_type):
     print len(transcripts_not_found),'transcripts not found'
     print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
 
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'                
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'  
+    else: export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'                
     export_data = export.ExportFile(export_file)    
 
     for probeset in ok_transcript_pairs:
@@ -356,7 +381,7 @@ def compareExonCompositionJunctionArray(species,array_type):
 def compareProteinComposition(species,array_type,translate,compare_all_features):
     probeset_transcript_db,unique_ens_transcripts,unique_transcripts = importProbesetTranscriptMatches(species,array_type,compare_all_features)
 
-    if translate == 'yes': ### Used if we want to re-derive all transcript-protein sequences
+    if translate == 'yes1': ### Used if we want to re-derive all transcript-protein sequences
         transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch')
     else: transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch_new')
         
@@ -364,11 +389,12 @@ def compareProteinComposition(species,array_type,translate,compare_all_features)
     transcript_protein_seq_db=[]
 
     global protein_ft_db
-    if array_type != 'AltMouse':
+    if array_type == 'exon' or array_type == 'gene' or data_type == 'exon':
         probeset_gene_db = importSplicingAnnotationDatabase(array_type,species,'no')
-    else:
-        print [array_type]
+    elif (array_type == 'junction' or array_type == 'RNASeq'):
         probeset_gene_db = importJunctionDatabase(species,array_type)
+    elif array_type == 'AltMouse':
+        probeset_gene_db = importAltMouseJunctionDatabase(species,array_type)
 
     genes_being_analyzed={} ### Need to tell 'grab_exon_level_feature_calls' what genes to analyze
     for probeset in probeset_gene_db:
@@ -379,7 +405,7 @@ def compareProteinComposition(species,array_type,translate,compare_all_features)
     if compare_all_features == 'yes': ### Used when comparing all possible PROTEIN pairs      
         compareProteinFeaturesForPairwiseComps(probeset_protein_db,protein_seq_db,probeset_gene_db,species,array_type)
 
-    ExonAnalyze_module.identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_ft_db,compare_all_features)
+    ExonAnalyze_module.identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_ft_db,compare_all_features,data_type)
 
 def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
     if analysis_type == 'local':
@@ -457,9 +483,13 @@ def convertTranscriptToProteinAssociations(probeset_transcript_db,transcript_pro
 
     if compare_all_features == 'no': ### If yes, all pairwise comps need to still be examined
         title_row = 'Probeset\tAligned protein_id\tNon-aligned protein_id'
-        export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_exoncomp.txt'     
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+            export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-protein-dbase_exoncomp.txt'
+        else: export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_exoncomp.txt'
         exportSimple(probeset_protein_db,export_file,title_row)
-        export_file = 'AltDatabase/'+species+'/'+array_type+'/SEQUENCE-protein-dbase_exoncomp.txt'     
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+            export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/SEQUENCE-protein-dbase_exoncomp.txt' 
+        else: export_file = 'AltDatabase/'+species+'/'+array_type+'/SEQUENCE-protein-dbase_exoncomp.txt'     
         exportSimple(protein_seq_db,export_file,'')
     
     return probeset_protein_db,protein_seq_db
@@ -480,9 +510,13 @@ def importProteinSequences(species,just_get_ids):
 
 def importProbesetTranscriptMatches(species,array_type,compare_all_features):
     if compare_all_features == 'yes': ### Used when comparing all possible PROTEIN pairs    
-        filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'
-    else: ### Used after comparing all possible TRANSCRIPT STRUCTURE pairs  
-        filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+            filename = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_all-transcript-matches.txt'
+        else: filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'
+    else: ### Used after comparing all possible TRANSCRIPT STRUCTURE pairs
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+            filename = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
+        else: filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'
     fn=filepath(filename); probeset_transcript_db={}; unique_transcripts={}; unique_ens_transcripts={}
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
@@ -841,7 +875,9 @@ def convertListsToTuple(list_of_lists):
 
 def compareProteinFeaturesForPairwiseComps(probeset_protein_db,protein_seq_db,probeset_gene_db,species,array_type):
 
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_seqcomp.txt'   
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-protein-dbase_seqcomp.txt'
+    else: export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_seqcomp.txt'  
     fn=filepath(export_file); export_data1 = open(fn,'w')
     title_row = 'Probeset\tAligned protein_id\tNon-aligned protein_id\n'; export_data1.write(title_row)
     
@@ -884,8 +920,10 @@ def compareProteinFeaturesForPairwiseComps(probeset_protein_db,protein_seq_db,pr
     title_row = 'Probeset\tAligned protein_id\tNon-aligned protein_id'
     export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_seqcomp.txt'     
     exportSimple(minimal_effect_db,export_file,title_row)"""
-    
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/SEQUENCE-protein-dbase_seqcomp.txt'     
+
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/SEQUENCE-protein-dbase_seqcomp.txt' 
+    else: export_file = 'AltDatabase/'+species+'/'+array_type+'/SEQUENCE-protein-dbase_seqcomp.txt'     
     exportSimple(accession_seq_db,export_file,'')
 
 def exportSimple(db,output_file,title_row):
@@ -1044,17 +1082,17 @@ def importUCSCSequences(missing_protein_ACs):
 
 ############# END Code currently not used (LOCAL PROTEIN SEQUENCE ANALYSIS) ##############
 
-def runProgram(Species,Array_type,translate_seq,run_seqcomp):
-    global species; global array_type; global translate
-    species = Species; array_type = Array_type; translate = translate_seq
-    if array_type != 'AltMouse':
+def runProgram(Species,Array_type,Data_type,translate_seq,run_seqcomp):
+    global species; global array_type; global translate; global data_type 
+    species = Species; array_type = Array_type; translate = translate_seq; data_type = Data_type
+    if array_type == 'gene' or array_type == 'exon' or data_type == 'exon':
         compareExonComposition(species,array_type)
         compare_all_features = 'no'
         compareProteinComposition(species,array_type,translate,compare_all_features)
         if run_seqcomp == 'yes':
             compare_all_features = 'yes'; translate = 'no'
             compareProteinComposition(species,array_type,translate,compare_all_features)
-    else:
+    elif array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
         compareExonCompositionJunctionArray(species,array_type)
         compare_all_features = 'no'
         compareProteinComposition(species,array_type,translate,compare_all_features)
@@ -1062,8 +1100,24 @@ def runProgram(Species,Array_type,translate_seq,run_seqcomp):
             compare_all_features = 'yes'; translate = 'no'
             compareProteinComposition(species,array_type,translate,compare_all_features)
     
+def runProgramTest(Species,Array_type,Data_type,translate_seq,run_seqcomp):
+    global species; global array_type; global translate; global data_type 
+    species = Species; array_type = Array_type; translate = translate_seq; data_type = Data_type
+    if array_type == 'gene' or array_type == 'exon' or data_type == 'exon':
+        compare_all_features = 'no'
+        compareProteinComposition(species,array_type,translate,compare_all_features)
+        if run_seqcomp == 'yes':
+            compare_all_features = 'yes'; translate = 'no'
+            compareProteinComposition(species,array_type,translate,compare_all_features)
+    elif array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
+        compare_all_features = 'no'
+        compareProteinComposition(species,array_type,translate,compare_all_features)
+        if run_seqcomp == 'yes':
+            compare_all_features = 'yes'; translate = 'no'
+            compareProteinComposition(species,array_type,translate,compare_all_features)
+            
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'
-    species = 'Hs'; array_type = 'exon'; translate='no'
-    species = 'Rn'; array_type = 'exon'; translate='yes'
-    runProgram(species,array_type,translate,run_seqcomp)
+    #species = 'Hs'; array_type = 'exon'; translate='no'
+    #species = 'Rn'; array_type = 'exon'; translate='yes'
+    runProgramTest(species,array_type,translate,run_seqcomp)
