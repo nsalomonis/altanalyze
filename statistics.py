@@ -68,7 +68,9 @@ def adjustPermuteStats(pval_db):
     global spval; spval=[]
     for element in pval_db:
         zsd = pval_db[element]
-        try: p = float(zsd.PermuteP())
+        try:
+            try: p = float(zsd.PermuteP())
+            except AttributeError: p = float(zsd[0]) ### When values are indeces rather than objects
         except Exception: p = 1
         spval.append([p,element])
 
@@ -80,7 +82,8 @@ def adjustPermuteStats(pval_db):
         
     for (adjp,element) in tmp:
         zsd = pval_db[element]
-        zsd.SetAdjP(adjp)
+        try: zsd.SetAdjP(adjp)
+        except AttributeError: zsd[1] = adjp ### When values are indeces rather than objects
     return pval_db
         
 def zscore(associated_in_group,in_static_interval,total,in_flexible_interval):               
@@ -223,17 +226,16 @@ def aspire_stringent(b1,e1,b2,e2):
     Rex = baseline_ratio2/experimental_ratio2 # Rin=B/D
     I1=baseline_ratio1/(baseline_ratio1+baseline_ratio2)
     I2=experimental_ratio1/(experimental_ratio1+experimental_ratio2)
-    if (Rin>1 and Rex<1) or (Rin<1 and Rex>1):
-        in1=((Rex-1.0)*Rin)/(Rex-Rin)
-        in2=(Rex-1.0)/(Rex-Rin)
-        ### dI = ((in1-in2)+(I1-I2))/2.0  #original equation
-        dI = ((in2-in1)+(I2-I1))/2.0 #modified to give propper exon inclusion
-        #dI_str = str(abs(dI))                 #remove small decimal changes that would effect removal of duplicates
-        #numerator,decimal = string.split(dI_str,".")
-        #dI_str = numerator + '.' + decimal[0:5]
-        return abs(dI)
-    else:
-        return 'null'
+    #if (Rin>1 and Rex<1) or (Rin<1 and Rex>1):
+    in1=((Rex-1.0)*Rin)/(Rex-Rin)
+    in2=(Rex-1.0)/(Rex-Rin)
+    ### dI = ((in1-in2)+(I1-I2))/2.0  #original equation
+    dI = ((in2-in1)+(I2-I1))/2.0 #modified to give propper exon inclusion
+    #dI_str = str(abs(dI))                 #remove small decimal changes that would effect removal of duplicates
+    #numerator,decimal = string.split(dI_str,".")
+    #dI_str = numerator + '.' + decimal[0:5]
+    return dI
+    #else:return 'null'
 
 def permute_p(null_list,true_value,n):
     y = 0; z = 0
@@ -271,22 +273,14 @@ def log_fold_conversion(array):
     try:
         new_array = []
         for log_fold in array:
-            try:
-                log_fold = float(log_fold)
-            except ValueError:
-                print log_fold, dog
+            log_fold = float(log_fold)
             if log_fold > 0 or log_fold == 0:
-                real_fold = math.pow(2,log_fold)
-                new_array.append(real_fold)
-            else:
-                real_fold = -1/(math.pow(2,log_fold))
-                new_array.append(real_fold)
+                real_fold = math.pow(2,log_fold); new_array.append(real_fold)
+            else: real_fold = -1/(math.pow(2,log_fold)); new_array.append(real_fold)
     except TypeError:
         log_fold = float(array)
-        if log_fold > 0 or log_fold == 0:
-            new_array = math.pow(2,log_fold)
-        else:
-            new_array = -1/(math.pow(2,log_fold))
+        if log_fold > 0 or log_fold == 0: new_array = math.pow(2,log_fold)
+        else: new_array = -1/(math.pow(2,log_fold))
     return new_array
 
 def convert_to_log_fold(array):
@@ -368,12 +362,11 @@ def iqr(array):
     int_qrt_range = upper75th - lower25th
     return lower25th,median_val,upper75th,int_qrt_range
 
-def ttest(list1,list2,tails,variance): 
-    try:
+def ttest(list1,list2,tails,variance):
         val_list1=[]
         val_list2=[]
-        n1 = len(list1)
-        n2 = len(list2)
+        n1 = float(len(list1))
+        n2 = float(len(list2))
         #make sure values are not strings
         for entry in list1:
             entry = float(entry)
@@ -382,38 +375,49 @@ def ttest(list1,list2,tails,variance):
             entry = float(entry)
             val_list2.append(entry)
             
-        if variance == 3:
+        if variance == 3: ### Unequal variance
             var1 = math.pow(stdev(val_list1),2)/n1
             var2 = math.pow(stdev(val_list2),2)/n2
-            a1 = 1.00/(n1 - 1)
-            a2 = 1.00/(n2 - 1)
-            
-            try: t = (avg(val_list1) - avg(val_list2))/math.sqrt(var1+var2)
-            except ZeroDivisionError: return 1,1,2
+            try:
+                t = (avg(val_list1) - avg(val_list2))/math.sqrt(var1+var2)
+                df = math.pow((var1+var2),2)/((math.pow(var1,2)/(n1-1)) + (math.pow(var2,2)/(n2-1)))
+            except Exception: t=1; df=1; tails=2
             #calculate the degree's of freedom
-            df = math.pow((var1+var2),2)/((math.pow(var1,2)/(n1-1)) + (math.pow(var2,2)/(n2-1)))
 
         if variance == 2:
-            var1 = math.pow(stdev(val_list1),2)*(n1-1)
-            var2 = math.pow(stdev(val_list2),2)*(n2-1)
-            a1 = 1/n1
-            a2 = 1/n2
-            sp2 = (var1 + var2)/(n1+n2-2)
-            sx = math.sqrt(sp2*(a1-a2))
-            t = (avg(val_list1) - avg(val_list2))/sx
-            
-            df = (n1 + n2 - 2)
+            if n1 == n2: ### assuming equal size
+                var1 = math.pow(stdev(val_list1),2)
+                var2 = math.pow(stdev(val_list2),2)
+                sx = math.sqrt((var1+var2)/2)
+                #print sx, (avg(val_list1) - avg(val_list2));kill
+                try:
+                    t = (avg(val_list1) - avg(val_list2))/(sx*math.sqrt(2/n1))
+                    df = 2*n1-2
+                except Exception: t=1; df=1; tails=2
+            else:
+                var1 = math.pow(stdev(val_list1),2)
+                var2 = math.pow(stdev(val_list2),2)
+                a1 = 1.00/n1
+                a2 = 1.00/n2
+                sx = math.sqrt(((n1-1)*var1+(n2-1)*var2)/(n1+n2-2))
+                try:
+                    t = (avg(val_list1) - avg(val_list2))/(sx*math.sqrt(a1+a2))
+                    df = (n1 + n2 - 2)
+                except Exception: t=1; df=1; tails=2
+                
+                
         return t,df,tails
-    except ZeroDivisionError: return 1,1,2
 
 def t_probability(t,df):
     """P(abs(T)<t) is equivalent to the probability between -t and +t.  So the two-sided p value for t is
     1-P(abs(T)<t)."""
     
     t = abs(t)
-    df = round(df)
-    if df >100:
-        df = 100
+    original_df = df
+    if df <0: df = df*-1
+    df=int(string.split(str(df),'.')[0])
+    if original_df <0: df = df*-1
+    if df >100: df = 100
     pi = 3.141592653589793238    
     if int(df)/2 == float(int(df))/2.0:
         a = 'even'
@@ -454,7 +458,7 @@ def t_probability(t,df):
                 continue
         p = (2.0/pi)*(theta + math.sin(theta)*(math.cos(theta)+store_var))
         #P(abs(T)<t) = (2/pi) * (theta + sin(theta) * (cos(theta)+ (2/3)*cos(theta)^3 + ... + ((2*4*...*(nu-3))/(1*3*...*(nu-2))) * cos(theta)^(nu-2) ))
-    #print w,y #3,8
+
     if df>1 and a =='even':
         store_var = 0
         while sdf1 > 0:
@@ -535,7 +539,8 @@ def OneWayANOVA(arrays):
 def Ftest(arrays):
     k = len(arrays); swsq_num=0; swsq_den=(-1)*k; sbsq_num=0; sbsq_den=(k-1); xg,ng = GrandMean(arrays)
     for array in arrays:
-        n=len(array); x=avg(array); s=stdev(array); var1=(n-1)*(s**2); var2=n*((x-xg)**2)
+        n=len(array); x=avg(array); s=stdev(array)
+        var1=(n-1)*(s**2); var2=n*((x-xg)**2)
         swsq_num += var1; swsq_den += n; sbsq_num += var2
     swsq = swsq_num/swsq_den; sbsq = sbsq_num/sbsq_den
     try: f = sbsq/swsq
@@ -599,6 +604,7 @@ def gammln(xx):
         x = x + 1
         ser = ser + coeff[j]/x
     return -tmp + math.log(2.50662827465*ser)
+
 ###########END Distribution functions and probabilities module
 
 def simpleLinRegress(x,y):
@@ -606,7 +612,8 @@ def simpleLinRegress(x,y):
     ### This is the standard the least squares formula or m = Sum( x_i * y_i ) / Sum( x_i * x_i )
     i = 0; sum_val_num=0; sum_val_denom=0
     for v in x:
-        sum_val_num+=(y[i]*x[i])
+        try: sum_val_num+=(y[i]*x[i])
+        except Exception: print y[i],x[i], y, x;kill
         sum_val_denom+=math.pow(x[i],2)
         i+=1
     slope = sum_val_num/sum_val_denom
@@ -616,13 +623,29 @@ if __name__ == '__main__':
     dirfile = unique    
     #r = pearson([0.0, -0.58999999999999997], [0.0, 0.000000])
     #print rdf=7
-    a = median([1,2,3.212,4]); print a; kill
+    #a = median([1,2,3.212,4]); print a; kill
+
+    a = [[-2.5157100000000003],[-2.3405800000000001, -1.6614700000000004], [-1.5, -1.7, -1.8]]
+    b = [[1, 2],[3, 4, 5]]
+    #f=OneWayANOVA(a)
+    f2=OneWayANOVA(b)
+    print f2;sys.exit()
+    gamma = [[0,1,2,3],[4,5,6,7]]
+    delta = [[0.2,0.1,0.5,0.2],[1.2,1.4,1.3,1.0],[8,9,10,11],[12,13,14,15]]
+    f=OneWayANOVA(delta[:2])
+    #print f
+    t,df,tails = ttest(delta[0],delta[1],2,2); p1 = t_probability(t,df); print [t,df]
+    t,df,tails = ttest(delta[0],delta[1],2,3); p2 = t_probability(t,df); print [t,df]
+    
+    print f, p1, p2
+    sys.exit()
+    
     r=1749
     n=2536
     R=9858
     N=16595
     z = zscore(r,n,N,R)
-    print z;kill
+    #print z;kill
     x = choose(4,4)
     #print x;kill
     t=2.365
@@ -633,6 +656,18 @@ if __name__ == '__main__':
     x = [1,2,3,4,5]
     y = [2,3,4,5,6]
 
+    b1 = 1.32773390271
+    e1= 1.05145574703
+    b2= 0.325021196935
+    e2= 0.267354914733
+    
+    score1 = aspire_stringent(b1,e1,b2,e2)
+ 
+    e1= 1.051486632393623; e2= 0.2678618770638278
+    score2 = aspire_stringent(b1,e1,b2,e2)
+    print score1, score2
+    kill
+    
     """p = OneWayANOVA([x,y])
     print p
     t,df,tails = ttest(x,y,2,3)
@@ -664,13 +699,7 @@ if __name__ == '__main__':
     """
     #x= t_probability(9,9000)
     #print x
-    gamma = [[0,1,2,3],[4,5,6,7]]
-    delta = [[0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15]]
-    """f,df1,df2=Ftest(delta)
-    print f
-    t,df,tails = ttest(delta[0],delta[1],2,3)
-    p = t_probability(t,df)
-    print p"""
+
     #beta = permute_arrays(delta)
     #print len(beta)
    

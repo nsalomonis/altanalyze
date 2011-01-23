@@ -46,14 +46,21 @@ def cleanUpLine(line):
     return data
 
 def grabJunctionData(species,array_type,key_type):
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
+    if array_type == 'AltMouse': filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
+    else: filename = 'AltDatabase/' + species + '/'+array_type+'/'+ species + '_junction_comps_updated.txt'
     fn=filepath(filename); critical_exon_junction_db = {}; x=0
     for line in open(fn,'rU').xreadlines():
         if x==0: x=1
         else:
             data = cleanUpLine(line)
-            geneid,probeset1,probeset2,critical_exons = string.split(data,'\t')
-            probesets = [probeset1, probeset2]; critical_exons = string.split(critical_exons,'|')
+            t = string.split(data,'\t')
+            if array_type == 'AltMouse':
+                geneid,probeset1,probeset2,critical_exons = t
+                probesets = [probeset1, probeset2]; critical_exons = string.split(critical_exons,'|')
+            else:
+                geneid,critical_exon,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source = t
+                probeset1 = incl_junction_probeset; probeset2 = excl_junction_probeset
+                probesets = [incl_junction_probeset, excl_junction_probeset]; critical_exons = [critical_exon]
             for exon in critical_exons:
                 if key_type == 'gene-exon':
                     key = geneid+':'+exon
@@ -87,13 +94,13 @@ class GeneAnnotationData:
     
 def import_annotations(filename,array_type):
     fn=filepath(filename); annotate_db = {}; x = 0
-    if array_type != 'exon' and array_type != 'gene':
+    if array_type == 'AltMouse':
         for line in open(fn,'rU').xreadlines():
             data = cleanUpLine(line)
             if x == 0: x = 1
             else:
                 try: affygene, description, ll_id, symbol, rna_processing_annot = string.split(data,'\t')
-                except ValueError: affygene, description, ll_id, symbol = string.split(data,'\t'); splicing_annotation = ''
+                except ValueError: affygene, description, ll_id, symbol = string.split(data,'\t'); rna_processing_annot = ''
                 if '"' in description: null,description,null = string.split(description,'"')
                 y = GeneAnnotationData(affygene, description, symbol, ll_id, rna_processing_annot)
                 annotate_db[affygene] = y
@@ -107,13 +114,16 @@ def import_annotations(filename,array_type):
             annotate_db[ensembl] = y
     return annotate_db
 
-def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method):
+def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method,explicit_data_type):
     filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_probeset_microRNAs_"+microRNA_prediction_method+".txt"
+    if (array_type == 'junction' or array_type == 'RNASeq'): filename = string.replace(filename,'.txt','-filtered.txt')
+
     fn=filepath(filename); microRNA_full_exon_db={}; microRNA_count_db={}; gene_microRNA_denom={}
-    if array_type != 'exon' and array_type != 'gene':
+    if array_type == 'AltMouse' or ((array_type == 'junction' or array_type == 'RNASeq') and explicit_data_type == 'null'):
         critical_exon_junction_db = grabJunctionData(species,array_type,'gene-exon')
-        gene_annotation_file = "AltDatabase/"+species+"/"+array_type+"/"+array_type+"_gene_annotations.txt"
-        annotate_db = import_annotations(gene_annotation_file,array_type)
+        if array_type == 'AltMouse':
+            gene_annotation_file = "AltDatabase/"+species+"/"+array_type+"/"+array_type+"_gene_annotations.txt"
+            annotate_db = import_annotations(gene_annotation_file,array_type)
 
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -122,15 +132,19 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
         try: mir_seq=t[2];mir_sources=t[3]
         except IndexError: mir_seq='';mir_sources=''
         try:
-            if array_type == 'exon' or array_type == 'gene':
+            if array_type == 'exon' or array_type == 'gene' or ((array_type == 'junction' or array_type == 'RNASeq') and explicit_data_type == 'exon'):
                 ed = exon_db[probeset]; probeset_list = [probeset]; exonid = ed.ExonID(); symbol = ed.Symbol(); geneid = ed.GeneID()
             else:
                 probeset_list = []; uid = probeset ###This is the gene with the critical exon it's mapped to
                 for junctions in critical_exon_junction_db[uid]:
                     if junctions in exon_db:
                         geneid = exon_db[junctions].GeneID()
-                        if geneid in annotate_db: symbol = annotate_db[geneid].Symbol()
-                        else: symbol = geneid
+                        if array_type == 'AltMouse':
+                            if geneid in annotate_db: symbol = annotate_db[geneid].Symbol()
+                            else: symbol = geneid
+                        else:
+                            try: symbol = exon_db[junctions].Symbol()
+                            except Exception: symbol=''
                     else: geneid = ''
                     #if junctions in exon_db:
                     probeset_list.append(junctions)
@@ -423,7 +437,7 @@ def compareProteinFeatures(protein_ft,neg_coding_seq,pos_coding_seq):
     neg_ft_missing2 = unique.unique(neg_ft_missing2)  
     return neg_ft_missing2,pos_ft_missing2
 
-def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_domain_db,compare_all_features):
+def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_domain_db,compare_all_features,data_type):
     """ This function is used by the module IdentifyAltIsoforms to run 'characterizeProteinLevelExonChanges'"""
     global protein_ft_db; protein_ft_db = protein_domain_db; protein_domain_db=[]
     exon_db={} ### Create a simplified version of the exon_db dictionary with probesets that map to a match and null protein
@@ -433,7 +447,10 @@ def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_d
     global protein_sequence_db
     if compare_all_features == 'yes': type = 'seqcomp'
     else: type = 'exoncomp'
-    exon_protein_sequence_file = 'AltDatabase/'+species+'/'+array_type+'/'+'SEQUENCE-protein-dbase_'+type+'.txt'
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        exon_protein_sequence_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+'SEQUENCE-protein-dbase_'+type+'.txt'
+    else:
+        exon_protein_sequence_file = 'AltDatabase/'+species+'/'+array_type+'/'+'SEQUENCE-protein-dbase_'+type+'.txt'
     probeset_protein_db,protein_sequence_db = importExonSequenceBuild(exon_protein_sequence_file,exon_db)
     
     exon_hits={}
@@ -444,10 +461,16 @@ def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_d
     include_sequences = 'no' ### Sequences for comparisons are unnecessary to store. List array-type as exon since AltMouse data has been re-organized, later get rid of AltMouse specific functionality in this function
     functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,'exon',include_sequences)
 
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-domain-annotations-'+type+'.txt' 
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-domain-annotations-'+type+'.txt' 
+    else:
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-domain-annotations-'+type+'.txt' 
     formatAttributeForExport(protein_features,export_file)
-    
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-annotations-'+type+'.txt' 
+
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-protein-annotations-'+type+'.txt' 
+    else:
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-annotations-'+type+'.txt' 
     formatAttributeForExport(functional_attribute_db,export_file)
 
 def formatAttributeForExport(attribute_db,filename):

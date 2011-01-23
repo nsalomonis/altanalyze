@@ -43,14 +43,8 @@ py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2a
 py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
-    filename = string.replace(filename,'//','/'); filename = string.replace(filename,'\\','/')
-    folders = string.split(filename,'/'); top_dir = folders[0]
-    try: top_dirs = returnDirectories(dir) ### useful for Linux
-    except Exception: top_dirs = [] ### Error arrises with PC compiled version
-    if len(filename)==0: fn = dir+'/'
-    elif top_dir in top_dirs: fn=os.path.join(dir,filename)
-    elif (':' in filename) or ('/Users/' == filename[:7]) or ('/Volumes/' in filename) or ('Linux' in platform.system()): fn = filename #':' is for Windows dirs and '/Users/' for Mac
+    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
+    if (':' in filename) or ('/Users/' == filename[:7]) or ('/Volumes/' in filename) or ('Linux' in platform.system()): fn = filename #':' is for Windows dirs and '/Users/' for Mac
     else: fn=os.path.join(dir,filename)
     if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
@@ -93,7 +87,9 @@ def returnDirectoriesNoReplace(sub_dir):
     for py2app_dir in py2app_dirs:
         dir = string.replace(dir,py2app_dir,'')
     try: dir_list = os.listdir(dir + sub_dir)
-    except Exception: dir_list = os.listdir(sub_dir) ### For linux
+    except Exception:
+        try: dir_list = os.listdir(sub_dir) ### For linux
+        except Exception: dir_list = os.listdir(sub_dir[1:]) ### For linux
     return dir_list
 
 def refDir():

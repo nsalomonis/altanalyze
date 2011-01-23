@@ -115,8 +115,12 @@ def outputSummaryResults(summary_results_db,name,analysis_method,root_dir):
     summary_output = root_dir+'AltResults/AlternativeOutput/'+analysis_method+'-summary-results'+name+'.txt'
     fn=filepath(summary_output)
     data = export.createExportFile(summary_output,'AltResults/AlternativeOutput')
-    title = 'Dataset-name' +'\t'+ 'inclusion-events'+'\t'+'exclusion-events' +'\t'+ 'mutually-exlusive-events' +'\t'+ 'udI-genes' +'\t'+ 'ddI-genes' +'\t'+ 'total-ASPIRE-genes'
-    title = title +'\t'+ 'upregulated_genes' +'\t'+ 'downregulated_genes' +'\t'+ 'ASPIRE-genes-differentially-exp'+'\t'+ 'RNA_processing/binding-factors-upregulated' +'\t'+ 'RNA_processing/binding-factors-downregulated' +'\t'+ 'ASPIRE_RNA_processing/binding-factors'
+    if analysis_method == 'splicing-index' or analysis_method == 'FIRMA':
+        event_type1 = 'inclusion-events'; event_type2 = 'exclusion-events'; event_type3 = 'alternative-exons'
+    else:
+        event_type1 = 'inclusion-events'; event_type2 = 'exclusion-events'; event_type3 = 'mutually-exlusive-events'
+    title = 'Dataset-name' +'\t'+ event_type2+'\t'+event_type2 +'\t'+ event_type3 +'\t'+ 'up-deltaI-genes' +'\t'+ 'down-deltaI-genes' +'\t'+ 'total-'+analysis_method+'-genes'
+    title = title +'\t' + 'upregulated_genes' +'\t'+ 'downregulated_genes' +'\t'+ analysis_method+'-genes-differentially-exp'+'\t'+ 'RNA_processing/binding-factors-upregulated' +'\t'+ 'RNA_processing/binding-factors-downregulated' +'\t'+ analysis_method+'_RNA_processing/binding-factors'
     title = title +'\t'+ 'avg-downregulated-peptide-length' +'\t'+ 'std-downregulated-peptide-length' +'\t'+ 'avg-upregulated-peptide-length' +'\t'+ 'std-upregulated-peptide-length' +'\t'+ 'ttest-peptide-length' +'\t'+ 'median-peptide-length-fold-change'
 
     for entry in annotation_ls: title = title +'\t'+ entry
@@ -430,7 +434,10 @@ def getAPTDir(apt_fp):
 
 def runMiDAS(apt_dir,array_type,dataset_name,array_group_list,array_group_db):
     if '/bin' in apt_dir: apt_file = apt_dir +'/apt-midas' ### if the user selects an APT directory
-    elif os.name == 'nt': apt_file = apt_dir + '/PC/apt-midas'
+    elif os.name == 'nt':
+        import platform
+        if '32bit' in platform.architecture(): apt_file = apt_dir + '/PC/32bit/apt-midas'
+        elif '64bit' in platform.architecture(): apt_file = apt_dir + '/PC/64bit/apt-midas' 
     elif 'darwin' in sys.platform: apt_file = apt_dir + '/Mac/apt-midas'
     elif 'linux' in sys.platform:
         import platform

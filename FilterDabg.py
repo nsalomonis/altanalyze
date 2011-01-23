@@ -109,6 +109,7 @@ def parse_input_data(filename,data_type):
           if data_type == 'export':
               if array_type == 'exon': folder = 'ExonArray'+'/'+species + '/'
               elif array_type == 'gene': folder = 'GeneArray'+'/'+species + '/'
+              elif array_type == 'junction': folder = 'JunctionArray'+'/'+species + '/'
               else: folder = array_type + '/'
               output_file = root_dir+'AltExpression/'+folder + altanalzye_input[0:-4] + '.p' + str(int(100*p)) +'_'+ filter_method+'.txt'
               print "...Exporting",output_file

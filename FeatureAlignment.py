@@ -47,6 +47,7 @@ class GrabFiles:
 def getDirectoryFiles(import_dir, search_term):
     exact_file = ''; exact_file_dir=''
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    dir_list.sort() ### Get the latest files
     for data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = import_dir[1:]+'/'+data
         if search_term in affy_data_dir: exact_file_dir = affy_data_dir; exact_file = data
@@ -104,8 +105,9 @@ def import_arrayid_ensembl(filename):
         try: ensembl_arrayid_db[ensembl_gene_id].append(gene_id)
         except KeyError: ensembl_arrayid_db[ensembl_gene_id] = [gene_id]
 
-def findDomainsByGenomeCoordinates(species,array_type):
+def findDomainsByGenomeCoordinates(species,array_type,Data_type):
     ### Grab Ensembl relationships from a custom Ensembl Perl script or BioMart
+    global data_type; data_type = Data_type
     protein_relationship_file,protein_feature_file,protein_seq_fasta = getEnsemblRelationshipDirs(species)
     ens_transcript_protein_db = importEnsemblRelationships(protein_relationship_file,'transcript') ### From Perl script to Ensembl API
     ens_protein_gene_db = importEnsemblRelationships(protein_relationship_file,'gene') ### From Perl script to Ensembl API
@@ -118,7 +120,9 @@ def findDomainsByGenomeCoordinates(species,array_type):
     first_last_exon_coord_db = importEnsExonStructureDataCustom(filename,species,first_last_exon_coord_db)
  
     if array_type == 'exon' or array_type == 'gene': ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
-    else: ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
+    elif array_type == 'junction': ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
+    elif array_type == 'RNASeq': ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_exons.txt"
+    
     protein_probeset_db,gene_probeset_db = importSplicingAnnotationDatabase(ens_probeset_file,exon_protein_db) ### Derived from ExonArrayEnsemblRules
     matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db,ens_protein_gene_db,gene_probeset_db,first_last_exon_coord_db)
     
@@ -221,7 +225,10 @@ def importEnsExonStructureDataCustom(filename,species,first_last_exon_coord_db):
 
 def exportProbesetDomainMappings(species,array_type,indirect_mapping,probeset_domain_match):            
     import export
-    export_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+indirect_mapping+"domain_aligning_probesets.txt"                       
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        export_file = "AltDatabase/"+species+"/"+array_type+"/"+data_type+"/"+species+"_Ensembl_"+indirect_mapping+"domain_aligning_probesets.txt" 
+    else:
+        export_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+indirect_mapping+"domain_aligning_probesets.txt"                       
     data = export.createExportFile(export_file,"AltDatabase/"+species+"/"+array_type)
     data.write('Probeset\tInterPro-Description\n')
     for probeset in probeset_domain_match:
@@ -334,6 +341,7 @@ def importEnsemblRelationships(filename,type):
     return ensembl_protein_gene_db
 
 def importEnsemblFTdata(filename,ensembl_arrayid_db,array_type,ensembl_protein_seq_db,ensembl_protein_gene_db):
+    print "Importing:",filename
     global arrayid_ensembl_protein_db; arrayid_ensembl_protein_db={}; x=0
     fn=filepath(filename); ensembl_ft_db = {}; ensembl_ft_summary_db = {}# Use the last database for summary statistics
     for line in open(fn,'rU').xreadlines():
@@ -351,6 +359,7 @@ def importEnsemblFTdata(filename,ensembl_arrayid_db,array_type,ensembl_protein_s
                 for gene_id in id_list: 
                     try: arrayid_ensembl_protein_db[gene_id].append(ensembl_prot)
                     except KeyError: arrayid_ensembl_protein_db[gene_id] = [ensembl_prot]
+
             #for entry in ft_info_list:
             """try: peptide_start_end, gene_start_end, feature_source, interpro_id, description = string.split(entry,' ')
             except ValueError: continue
@@ -371,7 +380,7 @@ def importEnsemblFTdata(filename,ensembl_arrayid_db,array_type,ensembl_protein_s
                     for arrayid in arrayids: ###This file differs in structure to the UniProt data 
                         try: ensembl_ft_db[arrayid].append(ft_info)
                         except KeyError: ensembl_ft_db[arrayid] = [ft_info]
-                        
+
     ensembl_ft_db2 = {}                        
     ensembl_ft_db = eliminateRedundant(ensembl_ft_db) ###duplicate interprot information is typically present
     for arrayid in ensembl_ft_db:
@@ -577,13 +586,13 @@ def makeUnique(item):
 
 def grab_exon_level_feature_calls(species,array_type,genes_analyzed):
     arrayid_uniprot_file = 'AltDatabase/uniprot/'+species+'/'+'arrayid-uniprot.txt'    
-    arrayid_ensembl_file = 'AltDatabase/ensembl/'+species+'/'+array_type+'/'+array_type+'-Ensembl.txt'
+    arrayid_ensembl_file = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
     ensembl_ft_file = 'AltDatabase/ensembl/'+species+'/'+'DomainFile_All.txt'
     uniprot_feature_file = 'AltDatabase/uniprot/'+species+'/'+'uniprot_feature_file.txt'
 
     global uniprot_arrayid_db; uniprot_arrayid_db = {}; global arrayid_uniprot_db; arrayid_uniprot_db = {}
     global ensembl_arrayid_db; ensembl_arrayid_db={}
-    if array_type != 'exon' and array_type != 'gene':
+    if array_type == 'AltMouse':
         import_arrayid_uniprot(arrayid_uniprot_file)
         import_arrayid_ensembl(arrayid_ensembl_file)
         ###Otherwise, these databases can be built on-the-fly in downstream methods, since Ensembl will be used as the array gene id
@@ -607,7 +616,8 @@ def clearall():
     for var in all: del globals()[var]
 
 if __name__ == '__main__':
-    species = 'Mm'; array_type = 'AltMouse'
+    species = 'Rn'; array_type = 'AltMouse'
+    getEnsemblRelationshipDirs(species);sys.exit()
     findDomainsByGenomeCoordinates(species,array_type); sys.exit()
     
     matchEnsemblDomainCoordinates(protein_feature_file,species,array_type,protein_probeset_db,ens_protein_gene_db,gene_probeset_db)

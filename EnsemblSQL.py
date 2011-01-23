@@ -48,39 +48,47 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,force):
+def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,ensembl_version,force):
     import UI; import update; global external_xref_key_db; global species; species = Species
     global system_synonym_db; system_synonym_db={} ### Currently only used by GO-Elite
-    global rewrite_existing; rewrite_existing = 'yes'
-    file_location_defaults = UI.importDefaultFileLocations()
-    """Identify the appropriate download location for the Ensembl SQL databases for the selected species"""
-    fld = file_location_defaults['EnsemblSQL']
-    fldd = file_location_defaults['EnsemblSQLDescriptions']
+    global rewrite_existing; rewrite_existing = 'yes'; global all_external_ids; all_external_ids={}; global added_systems; added_systems={}
+    print 'Downloading Ensembl flat files for parsing from Ensembl SQL FTP server...'
+    ### Get version directories for Ensembl
+    try:
+        check = int(ensembl_version)    
+        import UI; UI.exportDBversion('EnsMart'+ensembl_version)
+        ensembl_version = 'release-'+ensembl_version
+    except Exception: print 'EnsMart version name is incorrect (e.g., should be "60")'; sys.exit()
     
-    for fl in fld:
-        if species in fl.Species(): ensembl_sql_dir = fl.Location()
+    import UI; species_names = UI.getSpeciesInfo()
+    species_full = species_names[species]
+    ens_species = string.replace(string.lower(species_full),' ','_')
         
-    fl = fldd[0]; ensembl_sql_description_dir = fl.Location() ### Since the name for the description file varies for species, automatically use human
-
+    try: child_dirs, ensembl_species, ensembl_versions = getCurrentEnsemblSpecies(ensembl_version)
+    except Exception: print "\nPlease try a different version. This one does not appear to be valid."; sys.exit()
+    ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
     global ensembl_build
-    if 'core' in ensembl_sql_dir: ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
-    elif 'funcgen' in ensembl_sql_dir: ensembl_build = string.split(ensembl_sql_dir,'funcgen')[-1][:-1]
-        
+    ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
+               
     sql_file_db,sql_group_db = importEnsemblSQLInfo(configType) ###Import the Config file with the files and fields to parse from the donwloaded SQL files
+    sql_group_db['Description'] = [ensembl_sql_description_dir]
+    sq = EnsemblSQLInfo(ensembl_sql_description_dir, 'EnsemblSQLDescriptions', 'Description', '', '', '')
+    sql_file_db['Primary',ensembl_sql_description_dir] = sq
+    
     output_dir = 'AltDatabase/ensembl/'+species+'/EnsemblSQL/'
-    importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
+    importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
 
     if analysisType != 'ExternalOnly':
         ### Build and export the basic Ensembl gene annotation table
-        xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
+        xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
         buildEnsemblGeneAnnotationTable(species,xref_db)
 
     if analysisType == 'ExternalOnly':
         ###Export data for Ensembl-External gene system
         buildFilterDBForExternalDB(externalDBName)
-        xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
+        xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
         external_xref_key_db = xref_db; #resetExternalFilterDB()
-        object_xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_db,sql_file_db,output_dir,'Object-Xref',force)
+        object_xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Object-Xref',force)
         export_status='yes';output_id_type='Gene'
         buildEnsemblExternalDBRelationshipTable(externalDBName,xref_db,object_xref_db,output_id_type,species)
 
@@ -90,16 +98,14 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
         
         ###Get Interpro AC display name
         buildFilterDBForExternalDB('Interpro')
-        xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
+        xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
         getDomainGenomicCoordinates(species,xref_db)
 
         ### Download Seqeunce data
-        fldp = file_location_defaults['EnsemblProtSeq']
-        fldc = file_location_defaults['EnsemblCDNASeq']
-        for fl in fldp:
-            if species in fl.Species(): ensembl_protseq_dir = fl.Location()
-        for fl in fldc:
-            if species in fl.Species(): ensembl_cdnaseq_dir = fl.Location()
+        dirtype = 'fasta/'+ens_species+'/pep'
+        ensembl_protseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
+        dirtype = 'fasta/'+ens_species+'/cdna'
+        ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
 
         if force == 'yes':            
             output_dir = 'AltDatabase/ensembl/'+species + '/'
@@ -113,7 +119,97 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
             if status == 'not-removed':
                 try: os.remove(gz_filepath) ### Not sure why this works now and not before
                 except OSError: status = status                
-            
+    
+def getFullGeneSequences(ensembl_version,species):
+    import UI; species_names = UI.getSpeciesInfo()
+    species_full = species_names[species]
+    ens_species = string.replace(string.lower(species_full),' ','_')
+    
+    if 'release-' not in ensembl_version:
+        ensembl_version = 'release-'+ensembl_version
+        
+    dirtype = 'fasta/'+ens_species+'/dna'
+    ensembl_dnaseq_dirs = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
+         
+    output_dir = 'AltDatabase/'+species + '/SequenceData/chr/'
+    global dna
+    dna = export.ExportFile(output_dir+species+'_gene-seq-2000_flank.fa')
+        
+    import EnsemblImport
+    chr_gene_db,location_gene_db = EnsemblImport.getEnsemblGeneLocations(species)
+    for (chr_file,chr_url) in ensembl_dnaseq_dirs:
+        #if 'MT' in chr_file:
+        chr=string.split(chr_file,'.')[-3]
+        if chr in chr_gene_db:
+            gz_filepath, status = update.download(chr_url,output_dir,'')
+            parseChrFASTA(output_dir+chr_file[:-3],chr,chr_gene_db[chr],location_gene_db)
+            try: os.remove(gz_filepath) ### Not sure why this works now and not before
+            except Exception: null=[]
+            #os.remove(gz_filepath[:-3]) ### Delete the chromosome sequence file
+    dna.close()
+    
+def parseChrFASTA(filename,chr,chr_gene_locations,location_gene_db):
+    """ This function parses FASTA formatted chromosomal sequence, storing only sequence needed to get the next gene plus any buffer seqence, in memory.
+    Note: not straight forward to follow initially, as some tricks are needed to get the gene plus buffer sequence at the ends of the chromosome"""
+    genes_to_be_examined={}
+    for (ch,cs,ce) in location_gene_db:
+        gene,strand = location_gene_db[ch,cs,ce]
+        if ch==chr:
+            genes_to_be_examined[gene]=[ch,cs,ce]
+        
+    import EnsemblImport
+    print "Parsing chromosome %s sequence..." % chr
+    chr_gene_locations.sort()
+    cs=chr_gene_locations[0][0]; ce=chr_gene_locations[0][1]; buffer=2000; failed=0; gene_count=0; terminate_chr_analysis='no'
+    max_ce = chr_gene_locations[-1][1]; genes_analyzed={}
+    gene,strand = location_gene_db[chr,cs,ce]
+    fn=filepath(filename); x=0; sequence=''; running_seq_length=0; tr=0 ### tr is the total number of nucleotides removed (only store sequence following the last gene)
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if x==0:
+            #>MT dna:chromosome chromosome:GRCh37:MT:1:16569:1
+            max_chr_length = int(string.split(data,':')[-2])-70
+            x=1
+        else:
+            iterate = 'yes' ### Since the buffer region can itself contain multiple genes, we may need to iterature through the last stored sequence set for multiple genes
+            sequence += data; running_seq_length+=len(data)
+            if (ce+buffer)>=max_chr_length: target_seq_length = max_chr_length
+            else: target_seq_length = ce+buffer
+            if running_seq_length>=target_seq_length:
+                while iterate == 'yes':
+                    internal_buffer = buffer
+                    adj_start = cs-tr-buffer-1; adj_end = ce-tr+buffer; original_adj_start=adj_start
+                    if adj_start<0: original_adj_start = abs(adj_start); internal_buffer=buffer-(adj_start*-1); adj_start=0
+                    try:
+                        gene_seq = sequence[adj_start:adj_end]
+                        ### Add "N" to the sequence, before and after, if the gene starts to close the chromosome end for the buffer
+                        if adj_start==0: gene_seq=original_adj_start*'N'+gene_seq
+                        elif len(gene_seq) != (adj_end-adj_start): gene_seq+=((adj_end-adj_start)-len(gene_seq))*'N'
+                        start=str(cs-buffer); end=str(ce+buffer)
+                        ### write this out
+                        if strand=='-': gene_seq=EnsemblImport.reverse_orientation(gene_seq)
+                        header = string.join(['>'+gene,chr,str(cs),str(ce)],'|') #['>'+gene,chr,start,end]
+                        #print header, cs, ce, strand,adj_start,adj_end,len(sequence),len(gene_seq)
+                        #print x,[gene_seq]
+                        if gene not in genes_analyzed: ### Indicates something is iterating where it shouldn't be, but doesn't seem to create a signficant data handling issue
+                            dna.write(header+'\n'); dna.write(gene_seq+'\n'); x+=1
+                            genes_analyzed[gene]=[]
+                    except KeyError: failed+=1; kill ### gene is too close to chromosome end to add buffer
+                    seq_start = adj_start; tr = cs-internal_buffer-1; sequence=sequence[seq_start:]; gene_count+=1
+                    try:
+                        cs=chr_gene_locations[gene_count][0]; ce=chr_gene_locations[gene_count][1]
+                        gene,strand = location_gene_db[chr,cs,ce]
+                    except IndexError: terminate_chr_analysis = 'yes'; iterate='no'; break ### no more genes to examine on this chromosome
+                    if len(data)<60: iterate='yes' ### Forces re-iteration through the last stored sequence set
+                    else: iterate='no'
+                if terminate_chr_analysis == 'yes': break
+    print "Sequence for",len(genes_analyzed),"out of",len(genes_to_be_examined),"genes exported..." 
+
+    for gene in genes_to_be_examined:
+        if gene not in genes_analyzed:
+            print gene, genes_to_be_examined[gene]
+            sys.exit()
+    
 def buildTranscriptStructureTable():
     ### Function for building Ensembl transcription annotation file
     temp_values_list = []; output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
@@ -333,8 +429,7 @@ def buildEnsemblExternalDBRelationshipTable(external_system,xref_db,object_xref_
         else:
             output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-'+external_system+'.txt'
         version_info = species+' Ensembl relationships downloaded from EnsemblSQL server, build '+ensembl_build
-
-    exportVersionInfo(output_dir,version_info)
+        exportVersionInfo(output_dir,version_info)
     
     headers = ['Ensembl ID',external_system + ' ID']; id_type_db={}; index=0
     id_type_db={}; gene_relationship_db={}; transcript_relationship_db={}; translation_relationship_db={}
@@ -617,7 +712,10 @@ def importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_
 
     ###Generic function for importing all EnsemblSQL tables based on the SQLDescription table        
     for filename in sql_group_db['Description']: ### Gets the SQL description table
-        sql_filepaths = updateFiles(ensembl_sql_description_dir,output_dir,filename,force)
+        try: sql_filepaths = updateFiles(ensembl_sql_description_dir,output_dir,filename,force)
+        except Exception: ### Try again... can be a server problem
+            sql_filepaths = updateFiles(ensembl_sql_description_dir,output_dir,filename,force)
+            #print ensembl_sql_description_dir,output_dir,filename; print e; sys.exit()
         for sql_filepath in sql_filepaths:
             sql_file_db = importSQLDescriptions(import_group,sql_filepath,sql_file_db)
     for filename in sql_group_db[import_group]:
@@ -784,11 +882,13 @@ def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
                 try: key_value_db[key].append(ese)
                 except KeyError: key_value_db[key] = [ese]
         elif 'object_xref' in filename:
+          try:
             if key in probe_set_db:
                 if (manufacturer == 'AFFY' and ese.EnsemblObjectType() == 'ProbeSet') or (manufacturer != 'AFFY' and ese.EnsemblObjectType() == 'Probe'):
                     try: key_value_db[key].append(ese)
                     except KeyError: key_value_db[key] = [ese]
                     data_types[ese.EnsemblObjectType()]=[]
+          except Exception: print external_xref_key_filter, key_filter, filename;kill
         elif key in key_filter_db: key_value_db[key] = ese
         elif external_filter == 'yes': ### For example, if UniGene's dbase ID is in the external_filter_db (when parsing xref)
             #if 'xref' in filename: print filename,[header_name], index,value_type,[value],ese.ExternalDbId(),external_filter_db;kill
@@ -796,6 +896,7 @@ def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
                 #print key, [ese.ExternalDbId()], [ese.DbprimaryAcc()], [ese.DisplayLabel()];kill
                 #if key == 1214287: print [ese.ExternalDbId()], [ese.DbprimaryAcc()], [ese.DisplayLabel()]
                 if ese.ExternalDbId() in external_filter_db: key_value_db[key] = ese
+                all_external_ids[ese.ExternalDbId()]=[]
             except AttributeError:
                 print len(external_filter_db),len(key_filter_db)
                 print 'index_db',index_db,'\n'
@@ -806,6 +907,7 @@ def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
     #key_filter_db={}; external_filter_db={}; external_xref_key_db={}
                 
     if 'object_xref' in filename:
+        print external_xref_key_filter, key_filter, filename
         print "Extracted",len(key_value_db),"out of",entries,"entries for",filename
         print 'Data types linked to probes:',
         for data_type in data_types: print data_type,
@@ -844,7 +946,7 @@ def storeFTPDirs(ftp_server,subdir,dirtype):
     ftp = FTP(ftp_server); ftp.login()
     try: ftp.cwd(subdir)
     except Exception:
-        subdir = string.replace(subdir,'/mysql','') ### Older version don't have this subdir
+        subdir = string.replace(subdir,'/mysql','') ### Older version don't have this subdir 
         ftp.cwd(subdir)
     data = []; child_dirs={};species_list=[]
     ftp.dir(data.append); ftp.quit()
@@ -893,6 +995,30 @@ def getCurrentEnsemblSpecies(version):
     child_dirs, species_list = storeFTPDirs(ftp_server,subdir,dirtype)
     return child_dirs, species_list, ensembl_versions
 
+def getCurrentEnsemblSequences(version,dirtype,species):
+    ftp_server = 'ftp.ensembl.org'
+    if version == 'current': subdir = '/pub/current_'+dirtype
+    else: subdir = '/pub/'+version+'/'+dirtype
+    seq_dir = storeSeqFTPDirs(ftp_server,species,subdir,dirtype)
+    return seq_dir
+
+def storeSeqFTPDirs(ftp_server,species,subdir,dirtype):
+    from ftplib import FTP
+    ftp = FTP(ftp_server); ftp.login()
+    try: ftp.cwd(subdir)
+    except Exception:
+        subdir = string.replace(subdir,'/'+dirtype,'') ### Older version don't have this subdir 
+        ftp.cwd(subdir)
+    data = []; ftp.dir(data.append); ftp.quit()
+    for line in data:
+        line = string.split(line,' '); file_dir = line[-1]
+        if species[1:] in file_dir:
+            if '.fa' in file_dir and '.all' in file_dir: seq_dir = 'ftp://'+ftp_server+subdir+'/'+file_dir
+            elif '.fa' in file_dir and 'dna.chromosome' in file_dir:
+                try: seq_dir.append((file_dir,'ftp://'+ftp_server+subdir+'/'+file_dir))
+                except Exception: seq_dir=[]; seq_dir.append((file_dir,'ftp://'+ftp_server+subdir+'/'+file_dir))
+    return seq_dir
+    
 """
 def getExternalDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir):
     global species; species = Species;
@@ -912,7 +1038,7 @@ def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,External
     global external_xref_key_db; global species; species = Species; global overwrite_previous; overwrite_previous = Overwrite_previous
     global rewrite_existing; rewrite_existing = Rewrite_existing; global ensembl_build; global externalDBName; externalDBName = ExternalDBName
     global ensembl_build; ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
-    global manufacturer; global system_synonym_db; global added_systems; added_systems={}
+    global manufacturer; global system_synonym_db; global added_systems; added_systems={}; global all_external_ids; all_external_ids={}
 
     ### Get System Code info and create DBs for automatically formatting system output names
     ### This is necessary to ensure similiar systems with different names are saved and referenced
@@ -988,6 +1114,7 @@ def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,External
         object_xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Object-XrefFunc',force)
 
         buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,externalDBName,species)
+    return all_external_ids
 
 def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,externalDBName,species):
     ### Get xref annotations (e.g., external geneID) for a set of Ensembl IDs (e.g. gene IDs)
@@ -1002,7 +1129,7 @@ def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,e
     elif 'Agilent' in external_system:
         output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-Agilent.txt'
     elif 'Illumina' in external_system:
-        output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-Illumnia.txt'
+        output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-Illumina.txt'
     else: output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-MiscArray.txt'
         
     version_info = species+' Ensembl relationships downloaded from EnsemblSQL server, build '+ensembl_build
@@ -1073,11 +1200,10 @@ def verifyFile(filename):
     return file_found
             
 if __name__ == '__main__':
-    kill
     analysisType = 'GeneAndExternal'; externalDBName_list = ['AFFY_Zebrafish']
     force = 'no'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
     
-    child_dirs, species_list, ensembl_versions = getCurrentEnsemblSpecies('current')
+    getFullGeneSequences('60','Hs'); sys.exit()
     #for i in child_dirs: print child_dirs[i]
     #"""
     ### WON'T WORK FOR MORE THAN ONE EXTERNAL DATABASE -- WHEN RUN WITHIN THIS MOD

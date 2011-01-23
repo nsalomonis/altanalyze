@@ -9,18 +9,14 @@ import ExonSeqModule
 dirfile = unique
 
 def read_directory(sub_dir):
-    dir=os.path.dirname(dirfile.__file__)
-    dir_list = os.listdir(dir + sub_dir)
-    #add in code to prevent folder names from being included
-    dir_list2 = [] 
+    dir_list = unique.read_directory(sub_dir); dir_list2 = []
     for entry in dir_list:
         if entry[-4:] == ".txt" or entry[-4:] == ".TXT" or entry[-3:] == ".fa":
             dir_list2.append(entry)
     return dir_list2
 
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    fn=os.path.join(dir,filename)
+    fn = unique.filepath(filename)
     return fn
 
 def eliminate_redundant_dict_values(database):
@@ -50,15 +46,17 @@ def importProbesetSeqeunces(filename,exon_db,species):
     return probeset_seq_db
         
 def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
-    fn=filepath(filename); array_ens_db={}; x = 0
-    for line in open(fn,'r').xreadlines():
-        data, newline = string.split(line,'\n'); t = string.split(data,'\t')
-        if x==0: x=1
-        else: 
-            array_gene,ens_gene = t
-            try: array_ens_db[array_gene].append(ens_gene)
-            except KeyError: array_ens_db[array_gene]=[ens_gene]
+    array_ens_db={}
+    if array_type == 'AltMouse':
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
+        fn=filepath(filename); x = 0
+        for line in open(fn,'r').xreadlines():
+            data, newline = string.split(line,'\n'); t = string.split(data,'\t')
+            if x==0: x=1
+            else: 
+                array_gene,ens_gene = t
+                try: array_ens_db[array_gene].append(ens_gene)
+                except KeyError: array_ens_db[array_gene]=[ens_gene]
 
     filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'         
     fn=filepath(filename); probeset_seq_db={}; x = 0
@@ -79,6 +77,7 @@ def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
         else: 
             array_gene,probeset1,probeset2,critical_exons = t #; critical_exons = string.split(critical_exons,'|')
             probesets = [probeset1,probeset2]
+            if array_type == 'junction' or array_type == 'RNASeq': array_ens_db[array_gene]=[array_gene]
             if array_gene in array_ens_db:
                 ensembl_gene_ids = array_ens_db[array_gene]
                 for probeset_id in probesets:
@@ -101,9 +100,10 @@ def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
 
 def getParametersAndExecute(probeset_seq_file,array_type,species,data_type):
     if data_type == 'critical-exons':
-        probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_'+array_type+'_probesets.txt'
+        if array_type == 'RNASeq': probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_exons.txt'
+        else: probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_'+array_type+'_probesets.txt'
         ###Import probe-level associations
-        exon_db = ExonSeqModule.importSplicingAnnotationDatabase(probeset_annotations_file)
+        exon_db = ExonSeqModule.importSplicingAnnotationDatabase(probeset_annotations_file,array_type)
         start_time = time.time()
         probeset_seq_db = importProbesetSeqeunces(probeset_seq_file,exon_db,species)  ###Do this locally with a function that works on tab-delimited as opposed to fasta sequences (exon array)
         end_time = time.time(); time_diff = int(end_time-start_time)
@@ -123,13 +123,16 @@ def runProgram(Species,Array_type,mir_source,stringency,Force):
     import_dir = '/AltDatabase/'+species+'/'+array_type
     filedir = import_dir[1:]+'/'
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    probeset_seq_file=''
     for input_file in dir_list:    #loop through each file in the directory to  results
-        if 'critical-exon-seq' in input_file: probeset_seq_file = filedir+input_file
+        if 'critical-exon-seq_updated' in input_file: probeset_seq_file = filedir+input_file
+        elif 'critical-exon-seq' in input_file: probeset_seq_file2 = filedir+input_file
+    if len(probeset_seq_file)==0: probeset_seq_file=probeset_seq_file2
         
     data_type = 'critical-exons'
     try: splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
     except UnboundLocalError:
-        probeset_seq_file = 'AltDatabase/'+species+'/'+array_type+'/AltMouse_critical-exon-seq_updated.txt'
+        probeset_seq_file = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-exon-seq_updated.txt'
         import update; reload(update)
         update.downloadCurrentVersion(probeset_seq_file,array_type,'txt')
         splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
@@ -140,16 +143,10 @@ def runProgram(Species,Array_type,mir_source,stringency,Force):
         ExonSeqModule.alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
         
 if __name__ == '__main__':
-    species = 'Mm'; array_type = 'exon'
+    species = 'Mm'; array_type = 'junction'
     process_microRNA_predictions = 'yes'
     mir_source = 'multiple'
-    array_type = 'AltMouse'
+    force = 'yes'
     
-    print "******Analysis Stringency*******"
-    print "1) Include probeset-miR overlaps with evidence from multiple predictive alogrithms (PicTar, miranda, sanger, TargetScan)"
-    print "2) Include all probeset-miR overlaps"
-    inp = sys.stdin.readline(); inp = inp.strip()
-    if inp == '1': stringency = 'strict'
-    if inp == '2': stringency = 'lax'
-    
-    runProgram(species,array_type,mir_source,stringency,force)
+    runProgram(species,array_type,mir_source,'lax',force)
+    runProgram(species,array_type,mir_source,'strict',force)

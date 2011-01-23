@@ -1,4 +1,4 @@
-#!/usr/local/bin/python2.5 
+#!/usr/local/bin/python2.6
 
 ###update
 #Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
@@ -82,6 +82,37 @@ def unzipFiles(filename,dir):
     return status
 
 ############## Update Databases ##############
+def buildJunctionExonAnnotations(species,array_type,force,genomic_build):
+    ### Get UCSC associations (download databases if necessary)
+    import UCSCImport
+    mRNA_Type = 'mrna'; run_from_scratch = 'yes'; force='no'
+    export_all_associations = 'no' ### YES only for protein prediction analysis
+    UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+
+    ### Get genomic locations and initial annotations for exon sequences (exon pobesets and junctions)    
+    import JunctionArray
+    import JunctionArrayEnsemblRules
+    """ The following functions:
+    1) Extract transcript cluster-to-gene annotations
+    2) Extract exon sequences for junctions and exon probesets from the Affymetrix annotation file (version 2.0),
+    3) Map these sequences to Ensembl gene sequences (build specific) plus and minus 2KB, upstream and downstream
+    4) Obtain AltAnalyze exon region annotations and obtain full-length exon sequences for each exon probeset
+    5) Consoladate these into an Ensembl_probeset.txt file (rather than Ensembl_junction_probeset.txt) with junctions
+       having a single probeset identifier.
+    6) Determine which junctions and junction-exons represent recipricol junctions using:
+       a) AltAnalyze identified recipricol junctions from Ensembl and UCSC and
+       b) Affymetrix suggested recipricol junctions based on common exon cluster annotations, creating
+          Mm_junction_comps_updated.txt.
+       c) De novo comparison of all exon-junction region IDs for all junctions using the EnsemblImport method compareJunctions().
+    """
+    ### Steps 1-3
+    JunctionArray.getJunctionExonLocations(species,array_type)
+    ### Step 4
+    JunctionArrayEnsemblRules.getAnnotations(species,array_type,'yes',force)
+    ### Step 5-6
+    JunctionArray.identifyJunctionComps(species,array_type)
+    
+    
 def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
     """Code required to:
     1) Extract out Affymetrix provided exon sequence (probeset sequence extracted from "probeset_sequence_reversed.txt", derived
@@ -121,12 +152,15 @@ def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'
     export_all_associations = 'no' ### YES only for protein prediction analysis
     UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
-    
+
+    reannotate_exon_seq = 'yes'
+    print 'genomic_build', genomic_build
     if genomic_build == 'new':
         ### Need to run with every new genomic build (match up new coordinates
         print "Begining to derive exon sequence from new genomic build"
         JunctionArray.identifyCriticalExonLocations(species,array_type)
-    JunctionArrayEnsemblRules.getAnnotations(species,array_type,force)
+        reannotate_exon_seq = 'yes'
+    JunctionArrayEnsemblRules.getAnnotations(species,array_type,reannotate_exon_seq,force)
 
 def buildExonArrayExonAnnotations(species, array_type, force):
 
@@ -201,12 +235,14 @@ class download_protocol:
         output_filepath = filepath(dir+filename); self.output_filepath = output_filepath
         
         print "Downloading the following file:",filename,' ',
+        #print "outputpath:",output_filepath
+        #print url
         self.original_increment = 5
         self.increment = 0
         from urllib import urlretrieve
         webfile, msg = urlretrieve(url, output_filepath,reporthook=self.reporthookFunction)
-        
         print ''; self.testFile()
+        print self.status
         if 'Internet' not in self.status:
             if '.zip' in filename:
                 print "Extracting zip file...",
@@ -297,7 +333,7 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
         except Exception:
             print url
             print 'cannot be downloaded';die
-    elif status == 'remove':
+    elif status == 'remove' and ('.zip' in file or '.tar' in file or '.gz' in file):
         try: os.remove(file) ### Not sure why this works now and not before
         except Exception: status = status
     return continue_analysis
@@ -420,7 +456,7 @@ def updateDBs(species,array_type):
                 print "Analyzing", specific_species, specific_array_type
                 executeParameters(specific_species,specific_array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all)
     
-def executeParameters(species,array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all):    
+def executeParameters(species,array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version):    
     if update_all == 'yes':
         update_uniprot='yes'; update_ensembl='yes'; update_probeset_to_ensembl='yes'; update_domain='yes'; update_miRs = 'yes'
         
@@ -429,12 +465,16 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
 
         """ Used to grab all essential Ensembl annotations previously obtained via BioMart"""        
         configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''
-        EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
+        EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,ensembl_version,force)
         
         """ Used to grab Ensembl-to-External gene associations"""
         configType = 'Basic'; analysisType = 'ExternalOnly'; externalDBName = 'Uniprot/SWISSPROT'
-        EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
-
+        EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,ensembl_version,force)
+        
+        """ Used to grab Ensembl full gene sequence plus promoter and 3'UTRs """
+        if array_type == 'AltMouse' or array_type == 'junction':
+            EnsemblSQL.getFullGeneSequences(ensembl_version,species)
+            
     if update_uniprot == 'yes':            
         ###Might need to delete the existing versions of downloaded databases or force download
         buildUniProtFunctAnnotations(species,force)
@@ -442,33 +482,43 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
     if update_probeset_to_ensembl == 'yes':
         if species == 'Mm' and array_type == 'AltMouse':
             buildAltMouseExonAnnotations(species,array_type,force,genomic_build)
+        elif array_type == 'junction':
+            buildJunctionExonAnnotations(species,array_type,force,genomic_build)
+        elif array_type == 'RNASeq':
+            import RNASeq; test_status = 'no'; data_type = 'mRNA'
+            RNASeq.getEnsemblAssociations(species,data_type,test_status,force)
         else: buildExonArrayExonAnnotations(species,array_type,force)
 
     if update_domain == 'yes':
 
-        ### Get UCSC associations for all Ensembl linked genes (download databases if necessary)
+        ### Get UCSC associations for all Ensembl linked genes (download databases if necessary)        if species == 'Mm' and array_type == 'AltMouse':
         import UCSCImport
         mRNA_Type = 'mrna'; run_from_scratch = 'yes'
         export_all_associations = 'yes' ### YES only for protein prediction analysis
         UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)        
 
-        if species == 'Mm' and array_type == 'AltMouse':
+        if (species == 'Mm' and array_type == 'AltMouse'):
             """Imports and re-exports array-Ensembl annotations"""
             import JunctionArray
             null = JunctionArray.importArrayAnnotations(species,array_type); null={}
+        if (species == 'Mm' and array_type == 'AltMouse') or array_type == 'junction' or array_type == 'RNASeq':
             """Performs probeset sequence aligment to Ensembl and UCSC transcripts. To do: Need to setup download if files missing"""
             import mRNASeqAlign
             mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,force)
        
         import IdentifyAltIsoforms; run_seqcomp = 'no'
-        IdentifyAltIsoforms.runProgram(species,array_type,force,run_seqcomp)
-
+        IdentifyAltIsoforms.runProgram(species,array_type,'null',force,run_seqcomp)
         import FeatureAlignment
-        FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type)
+        FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'null')
+        
+        if array_type == 'junction' or array_type == 'RNASeq':
+            IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
+            ### FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
             
     if update_miRs == 'yes':
-        import MatchMiRTargetPredictions; only_add_sequence_to_previous_results = 'no'
-        #MatchMiRTargetPredictions.runProgram(species,force,only_add_sequence_to_previous_results)
+        if update_miR_seq == 'yes':
+            import MatchMiRTargetPredictions; only_add_sequence_to_previous_results = 'no'
+            MatchMiRTargetPredictions.runProgram(species,force,only_add_sequence_to_previous_results)
 
         if array_type == 'exon' or array_type == 'gene':        
             import ExonSeqModule
@@ -476,8 +526,8 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             stringency = 'lax'
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
-            filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-target-sequences.txt'; ef=filepath(filename)
-            er = string.replace(ef,species+'/SequenceData/miRBS-combined_gene-target-sequences.txt','ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt')
+            filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-targets.txt'; ef=filepath(filename)
+            er = string.replace(ef,species+'/SequenceData/miRBS-combined_gene-targets.txt','ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt')
             import shutil; shutil.copyfile(ef,er)
             import ExonArray
             ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
@@ -487,7 +537,12 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             JunctionSeqModule.runProgram(species,array_type,mir_source,stringency,force)
             stringency = 'lax'
             JunctionSeqModule.runProgram(species,array_type,mir_source,stringency,force)
-            
+
+    if array_type == 'junction':
+        import JunctionArray; import JunctionArrayEnsemblRules
+        JunctionArray.filterForCriticalExons(species,array_type)
+        JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
+        
 if __name__ == '__main__':
     #zipDirectory('Rn/EnsMart49');kill
     #unzipFiles('Rn.zip', 'AltDatabaseNoVersion/');kill    
@@ -514,20 +569,20 @@ if __name__ == '__main__':
     file_type = ''
     download(url,dir,file_type)"""
     
-    species='Mm'; array_type = 'gene'
+    species='Hs'; array_type = 'junction'
     #updateDBs(species,array_type); sys.exit()
     #"""
-    array_type = ['gene']; species = ['Rn']; force = 'yes'
-    update_uniprot='no'; update_ensembl='no'; update_probeset_to_ensembl='no'; update_domain='no'; update_all='no'; update_miRs='yes'
-    proceed = 'no'; genomic_build = 'old'
+    array_type = ['RNASeq']; species = ['Mm']; force = 'yes'; ensembl_version = '60'
+    update_uniprot='no'; update_ensembl='no'; update_probeset_to_ensembl='yes'; update_domain='yes'; update_all='no'; update_miRs='yes'
+    proceed = 'yes'; genomic_build = 'old'; update_miR_seq = 'yes'
 
     for specific_species in species:
         for specific_array_type in array_type:
             if specific_array_type == 'AltMouse' and specific_species == 'Mm': proceed = 'yes'
-            elif specific_array_type == 'exon' or specific_array_type == 'gene': proceed = 'yes'
+            elif specific_array_type == 'exon' or specific_array_type == 'gene' or specific_array_type == 'junction': proceed = 'yes'
             else: proceed = 'no'
             if proceed == 'yes':
                 print "Analyzing", specific_species, specific_array_type
-                executeParameters(specific_species,specific_array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all)
+                executeParameters(specific_species,specific_array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version)
 
     #"""    
