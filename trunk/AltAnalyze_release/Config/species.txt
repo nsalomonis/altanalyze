@@ -1,0 +1,6 @@
+species_code	species_name	compatible_algorithms
+Hs	Homo sapiens	
+Bt	Bos taurus	
+Mm	Mus musculus	
+Rn	Rattus norvegicus	splicing_index|MiDAS
+Dm	Drosophila melanogaster	

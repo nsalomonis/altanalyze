@@ -1,0 +1,1 @@
+array_type	analyze_functional_attributes	microRNA_prediction_methodexon	inferred comparison	oneAltMouse	inferred comparison	onegene	inferred comparison	one3'array	NA	NAjunction	inferred comparison	one

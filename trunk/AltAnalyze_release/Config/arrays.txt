@@ -1,0 +1,10 @@
+array_type	array_name	manufacturer	constitutive_source	compatible_species
+gene	Gene ST array	Affymetrix	Affymetrix	Mm|Hs|Rn
+junction	Junction JAY array	Affymetrix	Affymetrix	MmX|HsX
+3'array	Affymetrix expression array	Affymetrix	Affymetrix	Mm|Hs|Rn|Dm|Bt
+3'array	Codelink expression array	Codelink	Codelink	|Hs|Mm
+3'array	Illumina expression array	Illumina	Illumina	|Hs|Mm
+3'array	Agilent expression array	Agilent	Agilent	|Hs|Mm
+3'array	Misc. expression array	Misc	Misc	
+AltMouse	Junction AltMouse array	Affymetrix	Affymetrix	Mm
+exon	Exon ST array	Affymetrix	Affymetrix	Mm|Hs|Rn
