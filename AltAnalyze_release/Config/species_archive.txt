@@ -1,0 +1,4 @@
+species_code	species_name	compatible_algorithms
+Hs	Homo sapiens	splicing_index|MiDAS
+Mm	Mus musculus	ASPIRE|linearregres|splicing_index|MiDAS
+Rn	Rattus norvegicus	splicing_index|MiDAS

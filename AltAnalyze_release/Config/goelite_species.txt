@@ -1,0 +1,10 @@
+species_code	species_name	tax_id	compatible_algorithms
+Hs	Homo sapiens	9606	En|L
+Mm	Mus musculus	10090	En|L
+Rn	Rattus norvegicus	10116	En|L
+Gg	Gallus gallus	9031	En|L
+Hn	Homo neanderthalensis	63221	
+At	Arabidopsis thaliana	3702	En|L
+Dm	Drosophila melanogaster		En|L
+Zm	Zea mays	4577	En|L
+Dr	Danio rerio	7955	En|L
