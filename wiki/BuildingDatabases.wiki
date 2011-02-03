@@ -16,21 +16,28 @@ Once installation is complete, additional files will have to be added to the fin
 
 *Updating Configuration File*
 
-Default files to download are specified for UniProt, Ensembl, miRbase, TargetScan and the UCSC Genome Browser. For the custom AltMouse array, additional files are downloaded during the build process from our server if not locally found. For UniProt and Ensembl databases, the user will not need to update the download path specified in the configuration file. When a genome build is updated at Ensembl (e.g., from human hg18 to hg19), the path to the latest genome version will need to be changed in this config file. To do this for UCSC, open the file Config/default-files.csv and change the genome name path (e.g., hg18 to hg19). For the microRNA databases (miRanda and TargetScan), change the path to the most recent version indicated on their websites (see the listed target URL).
+Default files to download are specified for UniProt, Ensembl, miRbase, TargetScan and the UCSC Genome Browser. For the custom AltMouse array, additional files are downloaded during the build process from our server if not locally found. For UniProt, UCSC, Ensembl databases, the user will not need to update the download path specified in the configuration file. When miRanda and TargetScan predictions are updated, you can change the path to the most recent version indicated on their websites (see the listed target URL) by opening the file Config/default-files.csv and changing the paths. Otherwise, no changes need to be made by the user.
 
 *Build Commands*
 
-_Build all databases for all arrays and all species_
+_Build all databases for all platforms (RNASeq and arrays) and all species_
 {{{
-python AltAnalyze.py --species all --arraytype all --update all --version 61
+python AltAnalyze.py --species all --platform all --update all --version 61
 }}}
-
 
 _Build specific databases for select arrays and species_
 
 {{{
 AltAnalyze.py --update Ensembl --update UniProt --update Probeset --update Domain --update miRBs --species Mm --arraytype exon --arraytype gene --arraytype junction --version 61
 }}}
+
+_Build specific databases for RNASeq and species_
+
+{{{
+AltAnalyze.py --update Ensembl --update UniProt --update ExonAnnotations --update Domain --update miRBs --species Mm --platform RNASeq --version 61
+}}}
+
+_Note_: --arraytype and --platform are interchangeable as is Probeset and ExonAnnotations.
 
 The machine these arguments are run on must have Python installed (recommended is version 2.7.1) and BioPython. To ensure BioPython is installed correctly, [setBioPython follow these steps]. These build commands, when run on a server will produce a complete AltAnalyze database with additional build files. To create a downloadable distribution archive for users, you can enter the below command to write species database zip files to the folder 'ArchiveDBs' in the AltAnalyze program directory. 
 
