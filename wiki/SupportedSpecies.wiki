@@ -6,30 +6,30 @@ AltAnalyze supports RNASeq and array analysis for a growing number of species. T
 
 *Affymetrix Exon 1.0 and Gene 1.0 Arrays*
 
-Homo sapiens
-Mus musculus
-Rattus norvegicus
+ * Homo sapiens
+ * Mus musculus
+ * Rattus norvegicus
 
 *Affymetrix Junction Arrays*
 
-Homo sapiens
-Mus musculus
+ * Homo sapiens
+ * Mus musculus
 
 *RNASeq
 
 _(As of Ensembl version 60)_
 
-Anolis carolinensis
-Bos taurus
-Caenorhabditis elegans
-Callithrix jacchus
-Canis familiaris
-Cavia porcellus
-Choloepus hoffmanni
-Ciona intestinalis
-Ciona savignyi
-Danio rerio
-Dasypus novemcinctus
+ * Anolis carolinensis
+ * Bos taurus
+ * Caenorhabditis elegans
+ * Callithrix jacchus
+ * Canis familiaris
+ * Cavia porcellus
+ * Choloepus hoffmanni
+ * Ciona intestinalis
+ * Ciona savignyi
+ * Danio rerio
+ * Dasypus novemcinctus
 Dipodomys ordii
 Drosophila melanogaster
 Echinops telfairi
