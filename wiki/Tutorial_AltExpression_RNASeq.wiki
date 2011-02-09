@@ -1,4 +1,4 @@
-#summary Tutorial 2 - Analyzing Splicing Data
+#summary Tutorial 3 - Analyzing RNASeq Splicing Data
 
 = Tutorial 3 - Analyzing RNASeq Alternative Junctions =
 
@@ -7,6 +7,7 @@ The primary use of AltAnalyze is to evaluate alternative splicing, alternative p
 
 ==Downloading Sample Data==
 
+Proceed [RNASeq_sample_data here].
 
 ==Installing AltAnalyze and Saving Your Data==
 AltAnalyze can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account). In addition to AltAnalyze, DomainGraph is now also included in the same download. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
