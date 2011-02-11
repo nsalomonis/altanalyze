@@ -3,7 +3,7 @@
 
 ==AltAnalyze Contact Information==
 
-AltAnalyze is a component of the [http://altanalyze.org/ti/ Transcriptome Innovations]  project out of the Conklin lab at the Gladstone Institutes and the University of California at San Francisco.
+AltAnalyze is developed at the [http://www.gladstone.ucsf.edu/gladstone/site/gweb1/ Gladstone Institutes] and the University of California at San Francisco.
 	 
 We greatly appreciate your input. If you have questions, comments, or suggestions regarding AltAnalyze, our online materials, or affiliated projects, please feel free to contact us at:
 e-mail: [mailto:alt_predictions@googlegroups.com alt_predictions@googlegroups.com] or [mailto:nsalomonis@gmail.com nsalomonis@gmail.com]
