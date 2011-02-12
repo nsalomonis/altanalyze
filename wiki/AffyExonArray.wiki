@@ -2,7 +2,7 @@
 
 === Introduction ===
 
-The Affymetrix Exon 1.0 array provides one or more probesets that probe the each exon (and sometimes introns and UTRs) of mammalian genes, with 1 to four probes per probeset. This array type is currently available for human, mouse and rat genomes. Probesets are divided by Affymetrix into three classes; core, extended and full. Relative to previous generation 3' biased arrays, the method of cDNA preparation and amplification is relatively unbiased.
+The Affymetrix Exon 1.0 array provides one or more probesets that probe the each exon (and sometimes introns and UTRs) of mammalian genes, with 1 to four probes per probeset. In addition to known genes and exons, potential genes and exons predicted by various algorithms are also probed. This array type is currently available for human, mouse and rat genomes. Probesets are divided by Affymetrix into three classes; core, extended and full. Relative to previous generation 3' biased arrays, the method of cDNA preparation and amplification is relatively unbiased.
 
 === AltAnalyze Supported Analyses ===
 
