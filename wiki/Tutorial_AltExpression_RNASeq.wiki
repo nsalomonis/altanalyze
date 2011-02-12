@@ -3,20 +3,20 @@
 = Tutorial 3 - Analyzing RNASeq Alternative Junctions =
 
 ==Introduction==
-The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze filters the users raw expression data to remove probe sets considered to be "not-expressed",  calculates a splicing score (splicing index fold and t-test p-value), assigns exon/intron/splicing annotations to the high scoring results and further assess protein, protein domain and microRNA binding site changes based on these results.  AltAnalyze makes this process relatively easy, with the user only required to provide three very basic files and in a simple format. In the following tutorial we will walk through these steps using a sample dataset and the results that are subsequently produced.
+The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze imports pre-aligned exon-junctions coordinates and read counts,  calculates a reciprocal junction alternative exon-score (ASPIRE and LinearRegression), assigns exon/intron/splicing annotations to these results and further assesses protein, protein domain and microRNA binding site changes for associated isoforms.  AltAnalyze makes this process relatively easy, with the user only required to provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset and the results that are subsequently produced.
 
 ==Downloading Sample Data==
 
 Proceed [RNASeq_sample_data here].
 
 ==Installing AltAnalyze and Saving Your Data==
-AltAnalyze can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account). In addition to AltAnalyze, DomainGraph is now also included in the same download. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
+AltAnalyze can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archives to your computer, extract these to an accessible folder on hard-drive (e.g., your user account). In addition to AltAnalyze, Cytoscape and DomainGraph are automatically downloaded when a species database is first installed. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
 
 ==Creating a Comparison and Groups File (OPTIONAL)==
 If your dataset has over 30 BED files or dozens of groups, it may save you time to make the groups and comps files in advance. Although not recommended when working with this sample dataset, go [ManualGroupsCompsCreation here] if this applies to your own dataset.
 
 ==Running AltAnalyze==
-Now you are ready to process your raw input files and obtain alternative probe sets with splicing and functional annotations. To proceed:
+Now you are ready to process your input files and obtain alternative exons with splicing and functional annotations. To proceed:
 
     * Open the AltAnalyze_v2release program folder and select the binary file “AltAnalyze”. In Windows, this file has the extension “.exe”. If you are having problems starting AltAnalyze, you can also start the program directly from the source code.
     * ([http://altanalyze.org/image2/introduction.jpg AltAnalyze: Introduction]) In the resulting introduction window, select “Begin Analysis”.
@@ -36,20 +36,20 @@ Now you are ready to process your raw input files and obtain alternative probe s
 When AltAnalyze was running it produced a number of output files, most to the folder AltResults/AlternativeOutput in the user output directory. These include:
 
   # ExpressionOutput/DATASET-YourExperiment.txt
-  # AltResults/AlternativeOutput/YourComparison-splicing-index-exon-inclusion-results.txt
-  # AltResults/AlternativeOutput/YourComparison-splicing-index-exon-inclusion-GENE-results.txt
-  # AltResults/AlternativeOutput/YourComparison-splicing-index-ft-domain-zscores.txt
-  # AltResults/AlternativeOutput/YourComparison-splicing-index-miRNA-zscores
+  # AltResults/AlternativeOutput/YourComparison-ASPIRE-exon-inclusion-results.txt
+  # AltResults/AlternativeOutput/YourComparison-ASPIRE-exon-inclusion-GENE-results.txt
+  # AltResults/AlternativeOutput/YourComparison-ASPIRE-ft-domain-zscores.txt
+  # AltResults/AlternativeOutput/YourComparison-ASPIRE-miRNA-zscores
 
 These files are tab-delimited text files that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents.
 
-*File #1* reports gene expression values for each sample and group in your probeset input expression file. The values are derived from probe sets that align to regions of a gene that are common to all transcripts and thus are informative for transcription (unless all probe sets are selected – see “Select expression analysis parameters”, above) and expressed above specified background levels.  Along with the raw gene expression values, statistics for each indicated comparison (mean expression, folds, t-test p-values) will be included along with gene annotations for that platform, including putative microRNA binding sites.  This file is analogous to the results file you would have with a typical microarray experiment and is saved to the folder “ExpressionOutput”.
+*File #1* reports gene expression values for each sample and group based on junctions present in your input BED files. The values are derived from junctions that align to regions of a gene that are common to all transcripts and thus are informative for transcription (unless the option "known junctions" is selected – see “Select expression analysis parameters”, above) and expressed above specified background levels (minimum group average read count).  Along with the raw gene expression values (mean read counts), statistics for each indicated comparison (mean expression, folds, t-test p-values) will be included along with gene annotations from Ensembl, including putative microRNA binding sites.  This file is analogous to the results file you would have with a typical microarray experiment and is saved to the folder “ExpressionOutput”.
 
-Results from *files #2-5* are produced from all probe sets that may suggest alternative splicing, alternative promoter regulation, or any other variation relative to the constitutive gene expression for that gene (derived from comparisons file). Each set of results correspond to a single pair-wise comparison (e.g., cancer vs. normal) and will be named with the group names you assigned (groups file).
+Results from *files #2-5* are produced from all junctions that may suggest alternative splicing, alternative promoter regulation, or any other variation indicated by a reciprocal junction analysis for that gene. Each set of results correspond to a single pair-wise comparison (e.g., cancer vs. normal) and will be named with the group names you assigned (groups file). If analyzing a multiple groups, the two groups with the largest difference in reciprocal junction scores will be reported along with the conditions these occur in.
 
-*File #2* reports probe sets that are alternatively regulated, based on the user defined splicing-index score and p-value. For each probe set several statistics, gene annotations and functional predictions are provided. A detailed description of all of the columns in this file is provided [http://altanalyze.org/image/AltAnalyze_column_annotations.xls here].
+*File #2* reports reciprocal junctions that are alternatively expressed, based on the user defined ASPIRE or LinearRegression scores  and p-values. For each reciprocal junction has several statistics, gene annotations and functional predictions provided. A detailed description of all of the columns in this file is provided [http://altanalyze.org/image/AltAnalyze_column_annotations.xls here].
 
-*File #3* is a summarization of probeset data at the gene level from file #2. In addition to this summary, Gene Ontology terms for that gene are reported.
+*File #3* is a summarization of reciprocal-junction results at the gene level from file #2. In addition to this summary, Gene Ontology terms and WikiPathways for that gene are reported.
 
 *Files #4 and #5* report over-representation results for protein domains (or other protein features) and microRNA-binding sites, predicted to be regulated by AltAnalyze.  These files include over-representation statistics and genes associated with the different domains or features¸ predicted to be regulated.
 
@@ -80,7 +80,7 @@ After you run AltAnalyze, the following directory tree and set of files will be 
          * ...
       * RawSpliceData/
          * species/
-            * splicing-index/
+            * ASPIRE/
                * A_vs_B.txt
                * B_vs_C.txt
    * ExpressionInput/
