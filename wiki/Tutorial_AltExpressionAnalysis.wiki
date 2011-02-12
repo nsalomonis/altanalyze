@@ -2,6 +2,9 @@
 #labels Featured
 
 = Tutorial 2 - Analyzing Splicing Data =
+
+The below tutorial applies to the analysis of Affymetrix Exon and Gene arrays. A separate tutorial for the analysis of RNA sequencing data and junction arrays can be found [Tutorial_AltExpression_RNASeq here].
+
 ==Introduction==
 The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze filters the users raw expression data to remove probe sets considered to be "not-expressed",  calculates a splicing score (splicing index or FIRMA fold and t-test p-value), assigns exon/intron/splicing annotations to these results and further evaluates associated protein, protein domain and microRNA binding site composition.  AltAnalyze makes this process relatively easy, with the user only required to provide input array files. In the following tutorial we will walk through these steps using a sample dataset and the results that are subsequently produced.
 
