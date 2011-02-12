@@ -3,7 +3,7 @@
 = Tutorial 3 - Analyzing RNASeq Alternative Junctions =
 
 ==Introduction==
-The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze imports pre-aligned exon-junctions coordinates and read counts,  calculates a reciprocal junction alternative exon-score (ASPIRE and LinearRegression), assigns exon/intron/splicing annotations to these results and further assesses protein, protein domain and microRNA binding site changes for associated isoforms.  AltAnalyze makes this process relatively easy, with the user only required to provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset and the results that are subsequently produced.
+The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze imports pre-aligned exon-junctions coordinates and read counts,  calculates a reciprocal junction alternative exon-score (ASPIRE and LinearRegression), assigns exon/intron/splicing annotations to these results and further assesses protein, protein domain and microRNA binding site changes for associated isoforms.  AltAnalyze makes this process relatively easy, with the user only required to provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset and the results that are subsequently produced. Note: If analyzing [JAY junction arrays] as opposed to RNASeq data, the analysis options and result files are nearly identical.
 
 ==Downloading Sample Data==
 
@@ -41,7 +41,7 @@ When AltAnalyze was running it produced a number of output files, most to the fo
   # AltResults/AlternativeOutput/YourComparison-ASPIRE-ft-domain-zscores.txt
   # AltResults/AlternativeOutput/YourComparison-ASPIRE-miRNA-zscores
 
-These files are tab-delimited text files that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents.
+These files are tab-delimited text files that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents. In addition to these files, similar files will be produced with the algorithm "splicing-index" (replaces the filename ASPIRE above with splicing-index). These are similar format files with single junction results (as opposed to reciprocal-junction pairs). These results allow users to examine the independent regulation of exon junctions.
 
 *File #1* reports gene expression values for each sample and group based on junctions present in your input BED files. The values are derived from junctions that align to regions of a gene that are common to all transcripts and thus are informative for transcription (unless the option "known junctions" is selected – see “Select expression analysis parameters”, above) and expressed above specified background levels (minimum group average read count).  Along with the raw gene expression values (mean read counts), statistics for each indicated comparison (mean expression, folds, t-test p-values) will be included along with gene annotations from Ensembl, including putative microRNA binding sites.  This file is analogous to the results file you would have with a typical microarray experiment and is saved to the folder “ExpressionOutput”.
 
