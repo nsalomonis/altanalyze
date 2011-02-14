@@ -1,4 +1,4 @@
-# Summary - Linear Regression Algorithm
+#summary Linear Regression Algorithm
 
 ==Linear Regression Isoform Reciprocity Algorithm==
 
