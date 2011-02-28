@@ -10,4 +10,4 @@ Sample data was obtained from NCBI's now discontinued Sequence Read Archive ([ht
 
 These files are available in a zip compressed archive [http://altanalyze.org/hESC-NP_BED_files.zip here].
 
-To load in AltAnalyze, download [http://code.google.com/p/altanalyze/downloads/list?can=2&q=version+2.01 version 2.0], extract and start the software, select the species database for "Homo sapiens" and proceed to "Process Junction Files".
+To load in AltAnalyze, download [http://code.google.com/p/altanalyze/downloads/list?can=2&q=version+2.02 version 2.0], extract and start the software, select the species database for "Homo sapiens" and proceed to "Process Junction Files".
