@@ -1,0 +1,14 @@
+#summary TopHat Description
+
+== Introduction ==
+
+View TopHat description [http://tophat.cbcb.umd.edu/ here].
+
+
+===Example Commands===
+
+*Analyze a single non-paired end sample FASTQ file*
+
+{{{
+tophat --GTF /work/Common/Data/Reference_RNASeq_Assembly_GTF/Homo_sapiens.GRCh37.56.chr.gtf --keep-tmp --output-dir /home/user/tophat_data/NP902 hg19 /home/user/hESC-NP/SRS011902-NP.fq
+}}}
