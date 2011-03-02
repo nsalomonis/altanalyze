@@ -11,13 +11,13 @@ The primary use of AltAnalyze is to evaluate alternative splicing, alternative p
 Proceed [RNASeq_sample_data here].
 
 ==Installing AltAnalyze and Saving Your Data==
-AltAnalyze version 2.0 can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archive to your computer, extract it to an accessible folder on hard-drive (e.g., your user account). In addition to AltAnalyze, Cytoscape and DomainGraph are automatically downloaded when a species database is first installed. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
+AltAnalyze version 2.0 can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archive to your computer, extract it to an accessible folder on your hard-drive (e.g., your user account). In addition to AltAnalyze, Cytoscape and DomainGraph are automatically downloaded when a species database is first installed. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
 
 ==Creating a Comparison and Groups File (OPTIONAL)==
 If your dataset has over 30 BED files or dozens of groups, it may save you time to make the groups and comps files in advance. Although not recommended when working with this sample dataset, go [ManualGroupsCompsCreation here] if this applies to your own dataset.
 
 ==Running AltAnalyze==
-Now you are ready to process your input files and obtain alternative exons with alternative splicing and functional annotations. To proceed:
+Now you are ready to process your input files and obtain alternative exons with alternative splicing and functional annotations. If running through the graphical user interface follow the below directions, otherwise follow the [commandline options for RNASeq] analysis. To proceed:
 
     * Open the AltAnalyze_v2release program folder and select the binary file “AltAnalyze”. In Windows, this file has the extension “.exe”. If you are having problems starting AltAnalyze, you can also start the program directly from the [RunningSourceCode source code].
     * ([http://altanalyze.org/image2/introduction.jpg AltAnalyze: Introduction]) In the resulting introduction window, select “Begin Analysis”.
