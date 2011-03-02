@@ -1,4 +1,4 @@
-#summary One-sentence summary of this page.
+#summary Pair-wise versus multiple comparisons
 
 ===_How does a pair-wise alternative exon analysis differ from multiple group comparisons?_===
 
