@@ -1,4 +1,5 @@
 #summary Tutorial 3 - Analyzing RNASeq Splicing Data
+#labels Featured
 
 = Tutorial 3 - Analyzing RNASeq Alternative Junctions =
 
