@@ -2,7 +2,7 @@
 
 ===Sample Junction BED files===
  
-Junction.bed files produced from RNA-seq alignment of Illumina sequence reads for four biological samples are provided below. These samples correspond to:
+Junction.bed files produced from RNA-seq alignment of Illumina sequence reads for four biological samples are provided below using TopHat with known and novel discovery allowed (version 1.2.0). These samples correspond to:
  # Human embryonic stem cells
  # Derived neural precursors
 
