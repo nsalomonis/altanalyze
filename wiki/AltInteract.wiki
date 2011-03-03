@@ -8,5 +8,4 @@ Future development is planned in association with AltAnalyze development and thr
 
 [http://www.altanalyze.org/image/ERbB-example.jpg]
 
-Mockup of AltInteract visualization upon the WikiPathway [http://www.wikipathways.org/index.php/Pathway:WP673 ErbB signaling].
-
+Mockup of AltInteract visualization upon the WikiPathways [http://www.wikipathways.org/index.php/Pathway:WP673 ErbB signaling].
