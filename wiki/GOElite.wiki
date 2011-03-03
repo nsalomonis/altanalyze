@@ -2,7 +2,7 @@
 
 = Introduction =
 
-GO-Elite is a software tool designed to identify a minimal non-redundant set of Gene Ontology (GO) biological terms or pathways to describe a particular set of genes. This tool calculates over-representation statistics similar to the PC program MAPPFinder and subsequently produces filtered GO and pathway results along with corresponding gene annotations and summarized expression data. GO-Elite version 1 Beta is currently provided as a stand-alone application which is run using a Windows executable file (GO-Elite.exe) or as cross-platform source code in python. GO-Elite is also available as a [http://webservices.rbvi.ucsf.edu/opal/CreateSubmissionForm.do?serviceURL=http%3A%2F%2Flocalhost%3A8080%2Fopal%2Fservices%2FGOEliteService web service] and as a [http://www.cytoscape.org Cytoscape plugin].
+GO-Elite is a software tool designed to identify a minimal non-redundant set of Gene Ontology (GO) biological terms or pathways to describe a particular set of genes. This tool calculates over-representation statistics similar to the PC program MAPPFinder and subsequently produces filtered GO and pathway results along with corresponding gene annotations and summarized expression data. GO-Elite version 1 Beta is currently provided as a stand-alone application which is run using a Windows executable file (GO-Elite.exe), mac application or as cross-platform source code in python. GO-Elite is also available as a [http://webservices.rbvi.ucsf.edu/opal/CreateSubmissionForm.do?serviceURL=http%3A%2F%2Flocalhost%3A8080%2Fopal%2Fservices%2FGOEliteService web service] and as a [http://www.cytoscape.org Cytoscape plugin].
 
 = Details =
 
