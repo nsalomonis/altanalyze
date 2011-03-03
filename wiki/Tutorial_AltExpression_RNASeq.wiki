@@ -4,7 +4,7 @@
 = Tutorial 3 - Analyzing RNASeq Alternative Junctions =
 
 ==Introduction==
-The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze imports pre-aligned exon-junctions coordinates and read counts,  calculates a reciprocal junction alternative exon-score (ASPIRE and LinearRegression), assigns exon/intron/splicing annotations to these results and further assesses protein, protein domain and microRNA binding site changes for associated isoforms.  AltAnalyze makes this process relatively easy, with the user only required to download and extract the program and provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset. Note: If analyzing [RNASeqCommandLine JAY junction arrays] as opposed to RNASeq data, the analysis options and result files are nearly identical.
+The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze imports pre-aligned exon-junctions coordinates and read counts,  calculates a reciprocal junction alternative exon-score (ASPIRE and LinearRegression), assigns exon/intron/splicing annotations to these results and further assesses protein, protein domain and microRNA binding site changes for associated isoforms.  AltAnalyze makes this process relatively easy, with the user only required to download and extract the program and provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset. Note: If analyzing [JAYArray JAY junction arrays] as opposed to RNASeq data, the analysis options and result files are nearly identical.
 
 ==Downloading Sample Data==
 
@@ -17,7 +17,7 @@ AltAnalyze versiown 2.0 can be downloaded for multiple operating systems from [h
 If your dataset has over 30 BED files or dozens of groups, it may save you time to make the groups and comps files in advance. Although not recommended when working with this sample dataset, go [ManualGroupsCompsCreation here] if this applies to your own dataset.
 
 ==Running AltAnalyze==
-Now you are ready to process your input files and obtain alternative exons with alternative splicing and functional annotations. If running through the graphical user interface follow the below directions, otherwise follow the [commandline options for RNASeq] analysis. To proceed:
+Now you are ready to process your input files and obtain alternative exons with alternative splicing and functional annotations. If running through the graphical user interface follow the below directions, otherwise follow the [RNASeqCommandLine commandline options for RNASeq] analysis. To proceed:
 
     * Open the AltAnalyze_v2release program folder and select the binary file “AltAnalyze”. In Windows, this file has the extension “.exe”. If you are having problems starting AltAnalyze, you can also start the program directly from the [RunningSourceCode source code].
     * ([http://altanalyze.org/image2/introduction.jpg AltAnalyze: Introduction]) In the resulting introduction window, select “Begin Analysis”.
