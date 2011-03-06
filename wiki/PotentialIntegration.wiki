@@ -4,3 +4,4 @@
 
  * Network visualization: http://code.google.com/p/python-graph/w/list
  * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
+ * Vector graphics support (requires numpy): http://matplotlib.sourceforge.net/
