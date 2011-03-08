@@ -8,6 +8,6 @@ Junction.bed files produced from RNA-seq alignment of Illumina sequence reads fo
 
 Sample data was obtained from NCBI's now discontinued Sequence Read Archive ([http://www.ncbi.nlm.nih.gov/sra]) for the entries [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011896 SRS011896], [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011898 SRS011898], [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011900 SRS011900] and [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011902 SRS011902]. For each of these samples, multiple sequence read files were downloaded and concatenated in FASTQ format.
 
-These files are available in a zip compressed archive [http://altanalyze.org/hESC-NP_BED_files.zip here].
+These files are available in a zip compressed archive [http://code.google.com/p/altanalyze/downloads/hESC-NP_BED_files.zip here].
 
 To load in AltAnalyze, download [http://code.google.com/p/altanalyze/downloads/list?can=2&q=version+2.02 version 2.0], extract and start the software, select the species database for "Homo sapiens" and proceed to "Process Junction Files".
