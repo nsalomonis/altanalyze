@@ -3,6 +3,9 @@
 
 =News and Updates=
 
+==3-5-11==
+Posted AltAnalyze version 2.0 beta, with improved data import, increased efficiency for datasets with many novel junction predictions (100k plus) and options for removing junctions with both ends mapping to introns. To improve performance and prediction success, reciprocal junctions where both both junctions align only to introns or UTRs and no exons are no longer considered.
+
 ==2-10-11==
 Introducing AltAnalyze version 2.0 alpha! AltAnalyze 2.0 is compatible with the analysis of high-throughput RNA sequencing (RNASeq) experimental data. AltAnalyze will import and analyze BED format junction files containing genomic alignment coordinates and read counts from two or more biological groups. These files can be produced from multiple software tools ([http://tophat.cbcb.umd.edu/ TopHat], [http://derisilab.ucsf.edu/index.php?software=105 HMMSplicer], [http://www.stanford.edu/group/wonglab/SpliceMap SpliceMap] to identify reciprocal exon-junctions that display evidence of alternative exon inclusion in two or more experimental conditions. In addition to known splice junctions (Ensembl and UCSC), novel reciprocal junctions and trans-splicing events are also analyzed and annotated (e.g., alternative cassette-exon). For more information see the associated [http://altanalyze.org/AltAnalyze_Manual.pdf ReadMe] or the online analysis [Tutorial_AltExpression_RNASeq tutorial].
 
