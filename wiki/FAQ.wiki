@@ -9,7 +9,7 @@
     * [CompatibleArrays What microarrays can AltAnalyze work with?]
     * [CompatibleOS What operating systems is AltAnalyze compatible with?]
     * [RequiredFiles What files do I need when analyzing Affymetrix arrays?]
-    * [ManualGroupsCompsCreation I have dozens of samples in my study. How can I more easily assign the samples to groups than one by one?]
+    * [ManualGroupsCompsCreation When I have dozens of samples in my study, how can I more easily assign the samples to groups than one by one?]
     * [SpliceVisualization How can I visualize splicing and domain level changes from AltAnalyze?]
     * [FilteringData Why does AltAnalyze need to filter my data?]
     * [Constitutive_vs_all Should I calculate gene expression using constitutive or all mRNA aligning probests?]
@@ -29,7 +29,7 @@
     * [StartingDG How do I start DomainGraph and what can I do in DomainGraph?]
 
 ===Interpreting Alternative Exon Results===
-    * [RNASeqFoldsAndExpression The folds and expression values from my RNA-seq experiment don't seem to match correctly. Why is this?]
+    * [RNASeqFoldsAndExpression Why don't the folds and expression values from my RNA-seq experiment don't seem to match correctly?]
     * [GeneExpCalculation What is a constitutive probeset?]
     * [OppositeMappings If two probesets align to one exon and have opposite splicing changes, what does this mean?]
     * [ProteinDirectionIndicator What does the (+) and (-) mean proceeding a protein domain, miRNA binding site or protein identifier?]
