@@ -1,0 +1,13 @@
+#summary FAQ-RNASeq folds and expression values
+
+===_Why don't the folds and expression values from my RNA-seq experiment don't seem to match correctly?_===
+
+_*Answer*_: RNASeq data is typically imported as non-log expression values, corresponding to single or paired-end read counts. However, analyses are performed in log space and then reported back as non-log values. This can sometimes result in values that appear to look incorrect but are accurate when considered in log2 space.
+
+=== Details ===
+
+All principle statistics in AltAnalyze are calculated from log2 expression values, which provide a more accurate estimate of gene variation (approximate a normal distribution) and are provide a continuous range of values to plot. As a result, AltAnalyze converts RNASeq expression values to log2 upon processing exon and junction data. In cases where an exon junction is not detected in one condition and is detected in another (let's say 0 to 50 reads), it becomes important to add a global unit to all values to calculate fold change. For simplicity, AltAnalyze adds 1 to all read counts to allow for fold calculations. Once all read counts are incremented by 1, the read counts are converted to log2 values. 
+
+In the alternative exon result files, non-log fold and expression values are reported. Just prior to export of these results, AltAnalyze converts these from log2 values back to non-log. This is where confusion can arrise. First, the reported baseline expression values may not appear to accurately reflect the mean counts for that junction, for example, if only two replicates are present for a group with counts of 4 and 49, the reported average expression for that group will be 14.65, rather than 26. This occurs because the values are incremented by one, converted to log2 values, averaged, converted back to non-log space and then subtracted by 1. For this same junction, if there were no detected reads in the second analyzed condition, a fold change of 15.65 (not 14.65) will be reported, since we need to consider the incremented values for the fold calculation.
+
+To obtain the uncorrected non-log values, see the file: AltExpression/pre-filtered/expression comparison file in your selected output directory.
