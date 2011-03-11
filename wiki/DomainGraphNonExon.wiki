@@ -2,6 +2,6 @@
 
 ===_When viewing AltAnalyze results in DomainGraph, why don't the identifiers match to my array/RNA-seq platform?_===
 
-_*Answer*_: DomainGraph currently only supports mapping of Affymetrix Exon 1.0 identifiers to its provided exon/protein models. Currently, AltAnlayze must convert any non-exon array identifiers to these identifiers in order to visualize this data. For the Affymetrix Gene 1.0 array, this is performed by identifying exon and gene array probesets that overlap based on genomic position. As such, some probeset in DomainGraph will be absent (white) colored that are not present on the Gene 1.0 array. 
+_*Answer*_: DomainGraph currently only supports mapping of Affymetrix Exon 1.0 identifiers to its provided exon/protein models. Currently, AltAnalyze must convert any non-exon array identifiers to these identifiers in order to visualize this data. For the Affymetrix Gene 1.0 array, this is performed by identifying exon and gene array probesets that overlap based on genomic position. As such, some probeset in DomainGraph will be absent (white) colored that are not present on the Gene 1.0 array. 
 
 For RNASeq and junction array analyses, a similar inferred mapping occurs to the identified alternative exon associated with a pair of reciprocal junctions. In the future, we will support multiple platform identifiers, including unbiased exon and junction identifiers.
