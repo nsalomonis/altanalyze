@@ -1,0 +1,7 @@
+#summary Result validation selection
+
+= Introduction =
+
+In the case of my exon array analysis, I was comparing two different datasets (cardiac and neural differentiation), but the fact that I was getting some interesting similarities and differences that appeared biologically significant gave me some confidence that the results were reflecting valid biology. To prioritize validation, I focused on exons that had (A) known evidence of alternative splicing and/or (B) predicted microRNA binding sites regulated, (C) effected protein domains or motifs that indicated interesting putative functional differences between regulated isoforms, (D) did NOT co-occur with several other alternative exon predictions across that gene and (E) could be readily verified by RT-PCR using simple strategies (e.g., amplification of both isoforms from a single PCR primer pair).
+
+I haven't performed more extensive analyses of all regulated probesets, however, I am in the process of collaborating to examine exon array, junction array and RNA-seq data in AltAnalyze for the sample biological samples which should provide some reasonable sensitivity and specificity measures.
