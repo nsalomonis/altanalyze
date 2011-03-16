@@ -30,7 +30,8 @@
 
 ===Interpreting Alternative Exon Results===
     * [RNASeqFoldsAndExpression Why don't the folds and expression values from my RNA-seq experiment don't seem to match correctly?]
-    * [GeneExpCalculation What is a constitutive probeset?]
+    * [GeneExpCalculation What is a constitutive exon/junction?]
+    * [ResultsVerification Which results should I validate?]
     * [OppositeMappings If two probesets align to one exon and have opposite splicing changes, what does this mean?]
     * [ProteinDirectionIndicator What does the (+) and (-) mean proceeding a protein domain, miRNA binding site or protein identifier?]
     * [ExonRegionIDs What does the identifier E2-3 indicate and where does this annotation come from?]
