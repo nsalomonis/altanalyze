@@ -3,6 +3,9 @@
 
 =News and Updates=
 
+==3-17-11==
+New Windows 32 bit and 64 bit AltAnalyze version 2.0 beta were posted. These replace archives which had an outdated Affymetrix Power Tools directory structure (version 1.4) that will result in a program error when analyzing Affymetrix CEL files on Windows. See the following thread for [http://groups.google.com/group/alt_predictions/browse_thread/thread/31ab010a489ac4d9 details].
+
 ==3-5-11==
 Posted AltAnalyze version 2.0 beta, with improved data import, increased efficiency for datasets with many novel junction predictions (100k plus) and options for removing junctions with both ends mapping to introns. To improve performance and prediction success, reciprocal junctions where both junctions align only to introns or UTRs and no exons are no longer considered.
 
