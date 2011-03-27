@@ -2,16 +2,16 @@
 
 = Introduction =
 
-AltAnalyze is an analysis tool designed to analyze your Affymetrix CEL files to produce annotated gene expression files with group statistics and alternative exon analysis results. AltAnalyze can be used for conventional microarrays (gene expression only) as well as splicing sensitive arrays (exon and [http://bioinformatics.oxfordjournals.org/content/26/2/268.abstract junction]). This software performs identical analyses on both [http://www.affymetrix.com/support/technical/byproduct.affx?product=hugene-1_0-st-v1 Affymetrix Gene 1.0] and [http://www.affymetrix.com/support/technical/byproduct.affx?product=huexon-st Exon 1.0 arrays]. In addition to Affymetrix CEL file analyses, AltAnalyze can perform gene expression analyses on post-normalized expression files for array manufacturers with annotations at [Ensembl] (e.g., [http://www.illumina.com/ Illumina], [http://agilent.com Agilent], [http://www.appliedmicroarrays.com/index.php?option=com_content&view=article&id=15&Itemid=23 CodeLink]).
+AltAnalyze is an analysis tool designed to analyze your Affymetrix CEL files to produce annotated gene expression files with group statistics and alternative exon analysis results. AltAnalyze can be used for conventional microarrays (gene expression only), [RNASeq] data, as well as splicing sensitive arrays (exon and [http://bioinformatics.oxfordjournals.org/content/26/2/268.abstract junction]). This software performs identical analyses on both [http://www.affymetrix.com/support/technical/byproduct.affx?product=hugene-1_0-st-v1 Affymetrix Gene 1.0] and [http://www.affymetrix.com/support/technical/byproduct.affx?product=huexon-st Exon 1.0 arrays]. In addition to Affymetrix CEL file analyses, AltAnalyze can perform gene expression analyses on post-normalized expression files for array manufacturers with annotations at [Ensembl] (e.g., [http://www.illumina.com/ Illumina], [http://agilent.com Agilent], [http://www.appliedmicroarrays.com/index.php?option=com_content&view=article&id=15&Itemid=23 CodeLink]).
 
 A comprehensive documentation page is available at:
 [http://www.altanalyze.org/help_main.htm http://www.altanalyze.org/help_main.htm]
 = Alternative Exon Analyses=
 
 With AltAnalyze and the integrated software DomainGraph (Cytoscape), users have access to a wide spectrum of predictions on the impact of alternative exon inclusion on protein sequence, domain sequence and microRNA binding site inclusion. Specific features include:
-  * *_Identification and visualization of associated protein isoforms_*
-  * *_Identification and visualization of affected protein domains/motifs_*
-  * *_Pathway over-representation and visualization_*
-  * *_Domain/motif over-representation_*
+  * _Identification and visualization of associated protein isoforms_
+  * _Identification and visualization of affected protein domains/motifs_
+  * _Pathway over-representation and visualization_
+  * _Domain/motif over-representation_
 
 For more information, see our [AboutUs AboutUs] page.
