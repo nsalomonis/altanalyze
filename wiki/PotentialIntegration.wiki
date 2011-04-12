@@ -2,8 +2,13 @@
 
 == Useful Extensions to Consider ==
 
+===Visualization===
  * Network visualization: http://code.google.com/p/python-graph/w/list
  * Sophisticated network analysis: http://igraph.sourceforge.net/
- * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
  * Vector graphics support (requires numpy): http://matplotlib.sourceforge.net/
+
+===Data Analysis===
  * Exon expression extraction: http://code.google.com/p/bedtools/
+
+===Other===
+ * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
