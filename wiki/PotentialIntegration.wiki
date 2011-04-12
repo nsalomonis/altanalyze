@@ -6,6 +6,7 @@
  * Network visualization: http://code.google.com/p/python-graph/w/list
  * Sophisticated network analysis: http://igraph.sourceforge.net/
  * Vector graphics support (requires numpy): http://matplotlib.sourceforge.net/
+ * Other: http://vermeulen.ca/python-graphics.html
 
 ===Data Analysis===
  * Exon expression extraction: http://code.google.com/p/bedtools/
