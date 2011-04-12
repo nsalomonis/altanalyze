@@ -1,6 +1,6 @@
 #summary Potential Integration Projects
 
-== Useful Extensions to Consider ==
+= Useful Extensions to Consider =
 
 ===Visualization===
  * Network visualization: http://code.google.com/p/python-graph/w/list
