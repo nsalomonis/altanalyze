@@ -2,7 +2,7 @@
 
 ==AltAnalyze Software Update History==
 
-_note:_ For further details and explanation, see the associated sections in the [http://www.altanalyze.org/help_main.htm online AltAnalyze documentation].
+_note:_ For further details and explanation, see the associated sections in the full [http://www.altanalyze.org/help_main.htm online AltAnalyze documentation].
 
 ===Version 2.01 Updates===
 New to version 2.01 AltAnalyze is support for junction aligned RNASeq data:
