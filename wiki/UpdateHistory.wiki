@@ -1,0 +1,43 @@
+#summary AltAnalyze update history
+
+==AltAnalyze Software Update History==
+
+_note:_ For further details and explanation, see the associated sections in the [http://www.altanalyze.org/help_main.htm online AltAnalyze documentation].
+
+===Version 2.01 Updates===
+New to version 2.01 AltAnalyze is support for junction aligned RNASeq data:
+ # Support of Junction .BED file analysis (Sections 1.5, 2.4, 3.2 and 6.2)
+ # Reciprocal junction analysis of RNASeq data (Section 2.4)
+ # Over 50 species now supported for RNASeq reciprocal junction analysis (http://code.google.com/p/altanalyze/wiki/SupportedSpecies)
+ # New miRNA target annotation databases added (Section 6.5)
+ # Allows analysis of genes without constitutive evidence (Section 3.4) 
+ # Automatic analysis of up- and down-regulated genes by GO-Elite.
+ # New automated tools for developers to create & update databases (Section 6.7)
+ # New online RNASeq documentation (http://code.google.com/p/altanalyze)
+
+===Version 1.16 Updates===
+New to version 1.16 AltAnalyze is support for alternative splicing array types and decreased memory requirements:
+ # Support of Affymetrix HJAY and MJAY arrays (Section 6.2)
+ # Combined reciprocal junction and exon analysis for junction arrays  (Section 2.3)
+ # Better memory handling for FIRMA and protein domain analysis
+ # Improved online support (http://code.google.com/p/altanalyze)
+
+===Version 1.15 Updates===
+New to version 1.15 AltAnalyze are new splicing algorithm options, new array support and improved DomainGraph connectivity. The main new features are:
+ # Addition of FIRMA alternative exon analysis (Section 3.2)
+ # Alternative exon analysis support for the Affymetrix Gene 1.0 array  (Section 2.3)
+ # Universal import of 3rd party alternative exon results for analysis (Section 3.2) 
+ # Restricted analysis of a pre-determined set of probe sets (Section 3.2)
+ # Bundled integration of Cytoscape and DomainGraph (Sections 2.2 and 8)
+ # Improved command-line options (Section 2.3)
+
+===Version 1.14 Updates===
+Several features have been added to AltAnalyze version 1.14. Please review these if you have used previous versions of AltAnalyze, since the method in which gene expression is evaluated for both gene expression and alternative exon analyses has been updated and will affect your results. The main new features are:
+ # Updated Ensembl version 54 exon array annotations for constitutive gene probe sets (Section 3.4 and Section 6.2).
+ # Support for core probe set only gene expression calculation (Section 3.4) 
+ # Improved filtering methods for gene expression data (Section 3.4).
+ # Addition of advanced gene expression analysis statistics (Section 3.2).
+ # Support for multi-group (>2) alternative exon analyses (Section 2.5).
+ # GO-Elite support for adjusted p-value filtering optional settings (Section 3.2).
+ # Improved automatic array type identification.
+ # More streamlined graphical user interface options.
