@@ -5,6 +5,9 @@
 
 Proceed [UpdateHistory here] for detailed historical update information.
 
+==4-18-11==
+A [CitingArticles new study] uses AltAnalyze to understand the role of alternative splicing in distinct neuroblastoma stages. 
+
 ==3-17-11==
 New Windows 32 bit and 64 bit AltAnalyze version 2.0 beta were posted. These replace archives which had an outdated Affymetrix Power Tools directory structure (version 1.4) that will result in a program error when analyzing Affymetrix CEL files on Windows. See the following thread for [http://groups.google.com/group/alt_predictions/browse_thread/thread/31ab010a489ac4d9 details].
 
