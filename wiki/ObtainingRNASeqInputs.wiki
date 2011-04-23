@@ -2,6 +2,10 @@
 
 = Instructions for Obtaining RNASeq Input Files =
 
+===Downloading Sample FASTQ Data===
+
+[http://www.ncbi.nlm.nih.gov/sra] ERP000570 SRX021619 
+
 *_Please Note:_* We are actively working on ways to better integrate existing RNA-seq alignment strategies into AltAnalyze. Recommendations to our [ContactUs support desk] are always welcome.
 
 ===Using TopHat and Bowtie===
