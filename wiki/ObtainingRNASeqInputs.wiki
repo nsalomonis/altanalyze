@@ -1,13 +1,7 @@
-#summary Instructions for Getting RNASeq Input Files
+#summary Instructions for Obtaining RNASeq Input Files
 
-== Methods for Obtaining RNASeq Input Files ==
+= Instructions for Obtaining RNASeq Input Files =
 
-Add your content here.
+Using TopHat and Bowtie
 
-
-= Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+Using BioScope
