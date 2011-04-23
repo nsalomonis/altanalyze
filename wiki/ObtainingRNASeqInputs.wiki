@@ -2,6 +2,12 @@
 
 = Instructions for Obtaining RNASeq Input Files =
 
-Using TopHat and Bowtie
+*_Please Note:_* We are actively working on ways to better integrate existing RNA-seq alignment strategies into AltAnalyze. Recommendations to our [ContactUs support desk] are always welcome.
 
-Using BioScope
+===Using TopHat and Bowtie===
+
+Example Instructions for obtaining exon and junction expression files (BED format). Under Construction.
+
+===Using BioScope===
+
+Example Instructions for obtaining exon and junction expression files (TAB format). Under Construction.
