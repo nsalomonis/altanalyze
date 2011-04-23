@@ -8,6 +8,10 @@
 
 Example Instructions for obtaining exon and junction expression files (BED format). Under Construction.
 
+{{{
+bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/user/BAMtoBED/hESC_differentiation_exons.bed > /home/user/RNASeqStudy/Sample1/day0_s1__exons.bed
+}}}
+
 ===Using BioScope===
 
 Example Instructions for obtaining exon and junction expression files (TAB format). Under Construction.
