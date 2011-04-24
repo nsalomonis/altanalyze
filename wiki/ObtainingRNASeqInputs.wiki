@@ -6,7 +6,7 @@
 
 ===Downloading Sample FASTQ Data===
 
-[http://www.ncbi.nlm.nih.gov/sra] ERP000570 SRX021619 
+[http://www.ncbi.nlm.nih.gov/sra] ERP000570 SRX021619 GSE27218 (Mus musculus) GSE24447 (Homo sapiens)
 
 ===Using TopHat and Bowtie===
 
