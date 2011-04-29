@@ -19,6 +19,7 @@ These studies contain multiple replicates for multiple in vivo/in vitro conditio
  # Repeat for each sample (often 1-7GB files) and rename after download.
 
 These files will need to be moved to a suitable machine for (ideally multiple processors with 8GB plus RAM) for sequence alignment. For paired-end data, both paired ends are stored sequentially in a file, for example:
+
 @SRR037165.2.1 FC30B11:1:1:256:1595.1 length=35
 @SRR037165.2.2 FC30B11:1:1:256:1595.2 length=35
 
