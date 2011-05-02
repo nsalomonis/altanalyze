@@ -4,6 +4,7 @@
 
 View TopHat description [http://tophat.cbcb.umd.edu/ here].
 
+== Details ==
 
 ===Example Commands===
 
