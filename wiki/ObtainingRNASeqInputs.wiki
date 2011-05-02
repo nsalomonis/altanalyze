@@ -19,8 +19,13 @@ For TopHat, junction BED files can be easily obtained using simple command-line 
 Details on BioScope usage can be found [http://www3.appliedbiosystems.com/cms/groups/global_marketing_group/documents/generaldocuments/cms_074971.pdf here]. Once result files are produced, AltAnalyze will accept the junction and exon reads files produced from this pipeline as input. Prior to import, the extension of these two files must be changed to .tab in order for AltAnalyze to recognize these from other text files. To ensure the exon and junction files for each sample are properly matched, make sure that the exon and junction file have the same name, followed by a double underscore, followed by a distinguishing annotation. For example:
 
  _Cancer_s1__canonical-junction.tab_ 
+
  _Cancer_s1__noncanonical-junction.tab_
+
  _Cancer_s1__exon.tab_
+
  _Wt_s1__canonical-junction.tab_
+
  _Wt_s1__noncanonical-junction.tab_
+
  _Wt_s1__exon.tab_
