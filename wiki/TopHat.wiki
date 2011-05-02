@@ -2,11 +2,15 @@
 
 == Introduction ==
 
-View TopHat description [http://tophat.cbcb.umd.edu/ here].
+TopHat is a component of the Tuxedo suite of tools developed for the analysis of short sequence reads from various high-throughput sequencing platforms. TopHat works in conjunction with the short read mapper Bowtie to align sequence reads to the genome, identify and quantify junction expression (known and novel).
 
 == Details ==
 
-===Example Commands===
+Current version details on TopHat can be found [http://tophat.cbcb.umd.edu/ here].
+
+===Usage with AltAnalyze===
+
+AltAnalyze can import junction alignment data from TopHat junction BED files and exon alignment data from the associated accepted_hit.bam file. See TopHat documentation for the latest details on usage with the sequencing technology you using. Below is an example for Illumina single read data.
 
 *Analyze a single non-paired end sample FASTQ file*
 
