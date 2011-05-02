@@ -10,11 +10,9 @@ You are welcome to try with your own FASTQ data, but if none is available, which
 
 ===Using TopHat and Bowtie===
 
-Example Instructions for obtaining exon and junction expression files (BED format). Under Construction.
-
-{{{
-bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/user/BAMtoBED/hESC_differentiation_exons.bed > /home/user/RNASeqStudy/Sample1/day0_s1__exons.bed
-}}}
+Currently, we recommend two pipelines for producing input data for AltAnalyze: 1) TopHat and 2) BioScope. TopHat should work with most all RNA-seq datasets, while BioScope is compatible with ABI SOLiD data. As TopHat is open-source and runs on typical hardware configurations, this solution will be more appropriate for most users.
+ 
+For TopHat, junction BED files can be easily obtained using simple command-line arguments to TopHat, once Bowtie and indexed genome files have been downloaded. In addition to aligning junctions, exon read counts can be obtained from the resulting accepted_hits.bam file written to the same folder as the junction BED results, using [BEDTools]. For example Instructions on obtaining exon and junction expression files (BED format), click [TopHat here].
 
 ===Using BioScope===
 
