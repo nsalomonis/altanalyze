@@ -9,7 +9,7 @@ BEDTools is a suite of open-source utilities for analyzing genomic sequence and 
 
 See the [http://code.google.com/p/bedtools/ BEDTools website] for more information.
 
-== Use with AltAnalyze ==
+=== Use with AltAnalyze ===
 
 After installation of BEDTools, AltAnalyze users will need to call and call the utility bamToBed (recognized on Unix systems once BEDTools has been added to the local or global .bashrc file). The file accepted_hits.bam is produced with each TopHat run in the same output directory as the junction BED file. 
 
