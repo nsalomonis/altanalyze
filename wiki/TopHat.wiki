@@ -34,11 +34,11 @@ bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/user/BAMtoBE
 
 If one or multiple junction and exon alignment files are produced, specific naming conventions are needed to ensure that different files for the the same biological samples are properly matched up. Below is an example of multiple junction and exon files in a single directory for import into AltAnalyze.
 
-_Cancer_s1__canonical-junction.bed_
-_Cancer_s1__noncanonical-junction.bed_
-_Cancer_s1__exon.bed_
-_Wt_s1__canonical-junction.bed_
-_Wt_s1__noncanonical-junction.bed_
-_Wt_s1__exon.bed_
+||_Cancer_s1__canonical-junction.bed_||
+||_Cancer_s1__noncanonical-junction.bed_||
+||_Cancer_s1__exon.bed_||
+||_Wt_s1__canonical-junction.bed_||
+||_Wt_s1__noncanonical-junction.bed_||
+||_Wt_s1__exon.bed_||
 
 When imported into AltAnalyze, any file name proceeding a double underscore (__) will be recognized as the same sample and merged with the other files. Exon and junction BED files are differentiated based on the number of columns present in the two files (12 for junction, 10 for exon).
