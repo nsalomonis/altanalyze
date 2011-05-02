@@ -1,0 +1,21 @@
+#summary BEDTools
+
+== Introduction ==
+
+BEDTools is a suite of open-source utilities for analyzing genomic sequence and coverage from various file types, including BED, SAM and BAM files. BEDTools can be easily compiled on Unix, Linux and Mac OS X operating systems. Directions for installation on Windows can be found [http://bcc.bx.psu.edu/course/install-bedtools.html here].
+
+
+== Details ==
+
+See the [http://code.google.com/p/bedtools/ BEDTools website] for more information.
+
+== Use with AltAnalyze ==
+
+After installation of BEDTools, AltAnalyze users will need to call and call the utility bamToBed (recognized on Unix systems once BEDTools has been added to the local or global .bashrc file). The file accepted_hits.bam is produced with each TopHat run in the same output directory as the junction BED file. 
+
+In the below example, "hESC_differentiation_exons.bed" is produced by AltAnalyze prior to running BEDTools ([BAMtoBED see instructions here]), containing all known mRNA exon region coordinates from Ensembl/UCSC and all novel exon coordinates indicated from the TopHat junction BED results. These methods should work equivalently for non-TopHat produced BAM files, however, additional sorting of the BAM file may be required (e.g., SAMTools). 
+
+_Build Exon BED file from BAM_
+{{{
+bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/user/BAMtoBED/hESC_differentiation_exons.bed > /home/user/RNASeqStudy/Sample1/day0_s1__exons.bed
+}}}
