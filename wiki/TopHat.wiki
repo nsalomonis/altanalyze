@@ -19,15 +19,15 @@ _Illumina single read_
 tophat --GTF /work/Common/Data/Reference_RNASeq_Assembly_GTF/Homo_sapiens.GRCh37.56.chr.gtf --keep-tmp --output-dir /home/user/tophat_data/NP902 hg19 /home/user/hESC-NP/SRS011902-NP.fq
 }}}
 
-_Additional options_
-
-Paired-end data
+_Additional options: Paired-end data_
 
 {{{mate-inner-dist 104 --mate-std-dev 17 --solexa1.3-quals --segment-length 18}}}
 
-*Obtaining exon expression estimates from TopHat BAM files*
+_Additional options: Exclude novel junctions_
 
 {{{no-novel-juncs}}}
+
+*Obtaining exon expression estimates from TopHat BAM files
 
 Install [BEDTools] and call the utility bamToBed (recognized on Unix systems once BEDTools has been added to the local or global .bashrc file). The file accepted_hits.bam is produced with each TopHat run in the same output directory as the junction BED file. 
 
