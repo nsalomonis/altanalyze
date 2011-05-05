@@ -14,11 +14,20 @@ AltAnalyze can import junction alignment data from TopHat junction BED files and
 
 *Analyze a single non-paired end sample FASTQ file*
 
+_Illumina single read_
 {{{
 tophat --GTF /work/Common/Data/Reference_RNASeq_Assembly_GTF/Homo_sapiens.GRCh37.56.chr.gtf --keep-tmp --output-dir /home/user/tophat_data/NP902 hg19 /home/user/hESC-NP/SRS011902-NP.fq
 }}}
 
+_Additional options_
+
+Paired-end data
+
+{{{mate-inner-dist 104 --mate-std-dev 17 --solexa1.3-quals --segment-length 18}}}
+
 *Obtaining exon expression estimates from TopHat BAM files*
+
+{{{no-novel-juncs}}}
 
 Install [BEDTools] and call the utility bamToBed (recognized on Unix systems once BEDTools has been added to the local or global .bashrc file). The file accepted_hits.bam is produced with each TopHat run in the same output directory as the junction BED file. 
 
@@ -28,6 +37,7 @@ _Build Exon BED file from BAM_
 {{{
 bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/user/BAMtoBED/hESC_differentiation_exons.bed > /home/user/RNASeqStudy/Sample1/day0_s1__exons.bed
 }}}
+
 
 
 *File naming*
