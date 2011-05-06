@@ -21,11 +21,11 @@ tophat --GTF /work/Common/Data/Reference_RNASeq_Assembly_GTF/Homo_sapiens.GRCh37
 
 _Additional options: Paired-end data_
 
-{{{mate-inner-dist 104 --mate-std-dev 17 --solexa1.3-quals --segment-length 18}}}
+{{{--mate-inner-dist 104 --mate-std-dev 17 --solexa1.3-quals --segment-length 18}}}
 
 _Additional options: Exclude novel junctions_
 
-{{{no-novel-juncs}}}
+{{{--no-novel-juncs}}}
 
 *Obtaining exon expression estimates from TopHat BAM files
 
