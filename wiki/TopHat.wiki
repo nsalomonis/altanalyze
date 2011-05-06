@@ -56,4 +56,4 @@ If one or multiple junction and exon alignment files are produced, specific nami
 
 {{{Wt_s1__exon.bed}}}
 
-When imported into AltAnalyze, any file name proceeding a double underscore (__) will be recognized as the same sample and merged with the other files. Exon and junction BED files are differentiated based on the number of columns present in the two files (12 for junction, 10 for exon).
+When imported into AltAnalyze, any file name proceeding a double underscore will be recognized as the same sample and merged with the other files. Exon and junction BED files are differentiated based on the number of columns present in the two files (12 for junction, 10 for exon).
