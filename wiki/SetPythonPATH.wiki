@@ -10,6 +10,6 @@ In order to run AltAnalyze source code on a Windows operating system, you will n
  # Select the "OK" button.
  # Open a new Command Prompt window and type "python". Something like the following should be displayed:
 
-Python 2.7.1 (#1, Nov 27 2010, 12:52:40) [MSC v.1500 64 bit (AMD64)] on Win32
+{{{Python 2.7.1 (#1, Nov 27 2010, 12:52:40) [MSC v.1500 64 bit (AMD64)] on Win32}}}
 
-Type "help", "copyright", "credits" or "license" for more information.
+{{{Type "help", "copyright", "credits" or "license" for more information.}}}
