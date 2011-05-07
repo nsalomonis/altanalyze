@@ -4,6 +4,26 @@
 
 _note:_ For further details and explanation, see the associated sections in the full [http://www.altanalyze.org/help_main.htm online AltAnalyze documentation].
 
+===Version 2.03 Updates===
+New to version 2.03 AltAnalyze is support for both exon and junction RNASeq analysis, new functional annotations and normalization methods:
+ # Support for RNASeq exon expression import from TopHat & BioScope (Section 1.5)
+ # Support for platform independent exon/junction data in BED format (Section 1.5)
+ # New independently confirmed exon and junction event report file (Section 2.5)
+ # Updated species database support for RNASeq exon analyses (EnsMart 61)
+ # Optional quantile or RPKM normalization for exons and junctions (Section 3.2)
+ # Addition of adjusted p-values for exon analyses (Section 3.2)
+ # Addition of non-coding and nonsense mediated decay annotations (Section 3.6)
+ # Identification of alternative poly-adenylation predictions (Section 3.5)
+ # Addition of UniProt domain/motif exon-overlap annotations (Section 3.6)
+ # Improved Ensembl gene function annotations (Section 3.7)
+ # Fixed Cytoscape installation and extraction problems for Windows.
+ # Automatic array recognition for version 4 format Affymetrix CEL files.
+
+===Version 2.02 Updates===
+ # Improved data import
+ # Increased efficiency for datasets with many novel junction predictions (100k plus)
+ # Options for removing junctions with both ends mapping to introns. 
+
 ===Version 2.01 Updates===
 New to version 2.01 AltAnalyze is support for junction aligned RNASeq data:
  # Support of Junction .BED file analysis (Sections 1.5, 2.4, 3.2 and 6.2)
