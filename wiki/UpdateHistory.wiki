@@ -18,6 +18,7 @@ New to version 2.03 AltAnalyze is support for both exon and junction RNASeq anal
  # Improved Ensembl gene function annotations (Section 3.7)
  # Fixed Cytoscape installation and extraction problems for Windows.
  # Automatic array recognition for version 4 format Affymetrix CEL files.
+ # Memory optimization for import and analysis.
 
 ===Version 2.02 Updates===
  # Improved data import
