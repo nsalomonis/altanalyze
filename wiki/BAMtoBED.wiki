@@ -8,7 +8,7 @@ While junction-level input files can be directly produced by several junction fi
  # Produce exon-level bed read counts with BEDTools
  # Name the exon and junction BED files so that AltAnalyze appropriately
 
-===Instructions===
+==Instructions==
 
 We will illustrate this pipeline for use with TopHat.
  * Install and run TopHat using the appropriate parameters as described [TopHat here].
@@ -17,7 +17,7 @@ We will illustrate this pipeline for use with TopHat.
  * Download and install BEDTools as described [BEDTools here].
  * At this point you can choose to use AltAnalyze via the graphical user interface or command-line.
 
-*Graphical User Interface Instructions*
+===AltAnalyze Graphical User Interface Instructions===
 
  * When prompted, choose to connect to the internet and choose your species database of interest.
  * When finished installing, ensure the correct species and RNA-seq dataset option are chosen and select "Continue".
@@ -29,17 +29,17 @@ We will illustrate this pipeline for use with TopHat.
  * A status window will appear indicating the progress of the junction.bed file import and annotation. Once finished, a final indicator window will appear with the path of the exon database (BED file) indicated.
  * A new file will be found in your output directory under the folder BAMtoBED (e.g., Hs_hESC_differentiation_EnsMart62_exons.bed). 
 
-*Command-line Instructions*
+===AltAnalyze Command-line Instructions===
 
  * Download the latest species database as demonstrated [RNASeqCommandLine here] under "Downloading and installing a species specific database".
  * Once installed, construct a new set of command-line arguments to select the folder containing your junction.bed files and output the BAMtoBED output as described [RNASeqCommandLine here] under "Build a BAMtoBED exon database".
  * A new file will be found in your output directory under the folder BAMtoBED (e.g., Hs_hESC_differentiation_EnsMart62_exons.bed). 
 
-*Run BEDTools*
+===Run BEDTools===
 
 Once BEDTools is installed, the "bamToBed" utility should be callable from the command-line. If not, you may need to edit your .bashrc file. With this utility, you will instruct BEDTools to extract read counts for exon coordinates in your BAMtoBED exon database from AltAnalyze. Example instructions are shown [BEDTools here].
 
-*Re-run AltAnalyze*
+===Re-run AltAnalyze===
 
  * Once the exon-level BED files have been produced, save these to the same folder as your junction.bed files. The junction and exon files will need to have the same beginning name, separated from a unique name by a double underscore. For example:
 
