@@ -6,7 +6,7 @@ While junction-level input files can be directly produced by several junction fi
  # Obtain a BAM alignment file (e.g., TopHat)
  # Output known and novel exons from junction.bed files with AltAnalyze
  # Produce exon-level bed read counts with BEDTools
- # Name the exon and junction BED files so that AltAnalyze appropriately
+ # Name the exon and junction BED files so that AltAnalyze matches them up
 
 ==Instructions==
 
