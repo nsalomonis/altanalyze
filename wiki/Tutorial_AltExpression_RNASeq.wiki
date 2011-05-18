@@ -1,16 +1,20 @@
 #summary Tutorial 3 - Analyzing RNASeq Splicing Data
 #labels Featured
 
-= Tutorial 3 - Analyzing RNASeq Alternative Junctions =
+= Tutorial 3 - Analyzing RNASeq Alternative Exons and Junctions =
 
 The below tutorial applies to the analysis of RNA sequencing data and junction arrays. A separate tutorial for the analysis of *Affymetrix Exon and Gene arrays* can be found [Tutorial_AltExpressionAnalysis here]. 
 
 ==Introduction==
-The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze imports pre-aligned exon-junctions coordinates and read counts,  calculates a reciprocal junction alternative exon-score (ASPIRE and LinearRegression), assigns exon/intron/splicing annotations to these results and further assesses protein, protein domain and microRNA binding site changes for associated isoforms.  AltAnalyze makes this process relatively easy, with the user only required to download and extract the program and provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset. Note: If analyzing [JAY junction arrays] as opposed to RNASeq data, the analysis options and result files are nearly identical.
+The primary use of AltAnalyze is to evaluate alternative splicing, alternative promoters or other forms of alternative gene regulation. To do this, AltAnalyze imports pre-aligned exon-junctions and/or exon coordinates and read counts,  calculates a reciprocal junction alternative exon-score (ASPIRE and LinearRegression), assigns exon/intron/splicing annotations to these results and further assesses protein, protein domain and microRNA binding site changes for associated isoforms.  AltAnalyze makes this process relatively easy, with the user only required to download and extract the program and provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset. Note: If analyzing [JAY junction arrays] as opposed to RNASeq data, the analysis options and result files are nearly identical.
 
 ==Downloading Sample Data==
 
-Proceed [RNASeq_sample_data here].
+Sample data can be downloaded [RNASeq_sample_data here]. 
+
+==Building Junction and Exon Alignments==
+
+AltAnalyze can be run with junction and/or exon read counts from BED format or BioScope result files. Instructions for obtaining junction and exon-level input files from your sequencing experiments can be found [ObtainingRNASeqInputs here]. If you already have junction.bed files, instructions for building exon.bed files can be found [BAMtoBED here].
 
 ==Installing AltAnalyze and Saving Your Data==
 AltAnalyze versiown 2.0 can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archive to your computer, extract it to an accessible folder on your hard-drive (e.g., your user account). In addition to AltAnalyze, Cytoscape and DomainGraph are automatically downloaded when a species database is first installed. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
@@ -42,9 +46,10 @@ When AltAnalyze was running it produced a number of output files, most to the fo
   # AltResults/AlternativeOutput/YourComparison-ASPIRE-exon-inclusion-results.txt
   # AltResults/AlternativeOutput/YourComparison-ASPIRE-exon-inclusion-GENE-results.txt
   # AltResults/AlternativeOutput/YourComparison-ASPIRE-ft-domain-zscores.txt
-  # AltResults/AlternativeOutput/YourComparison-ASPIRE-miRNA-zscores
+  # AltResults/AlternativeOutput/YourComparison-ASPIRE-miRNA-zscores.txt
+  # AltResults/AlternativeOutput/YourComparison-comparison-evidence.txt
 
-These files are tab-delimited text files that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents. In addition to these files, similar files will be produced with the algorithm "splicing-index" (replaces the filename ASPIRE above with splicing-index). These are similar format files with single junction results (as opposed to reciprocal-junction pairs). These results allow users to examine the independent regulation of exon junctions.
+These files are tab-delimited text files that can be opened in a spreadsheet program like Microsoft Excel, OpenOffice or Google Documents. In addition to these files, similar files will be produced with the algorithm "splicing-index" (replaces the filename ASPIRE above with splicing-index). These are similar format files with single junction and exon results (as opposed to reciprocal-junction pairs). These results allow users to examine the independent regulation of e exon junctions.
 
 *File #1* reports gene expression values for each sample and group based on junctions present in your input BED files. The values are derived from junctions that align to regions of a gene that are common to all transcripts and thus are informative for transcription (unless the option "known junctions" is selected – see “Select expression analysis parameters”, above) and expressed above specified background levels (minimum group average read count).  Along with the raw gene expression values (mean read counts), statistics for each indicated comparison (mean expression, folds, t-test p-values) will be included along with gene annotations from Ensembl, including putative microRNA binding sites.  This file is analogous to the results file you would have with a typical microarray experiment and is saved to the folder “ExpressionOutput”.
 
@@ -55,6 +60,8 @@ Results from *files #2-5* are produced from all junctions that may suggest alter
 *File #3* is a summarization of reciprocal-junction results at the gene level from file #2. In addition to this summary, Gene Ontology terms and WikiPathways for that gene are reported.
 
 *Files #4 and #5* report over-representation results for protein domains (or other protein features) and microRNA-binding sites, predicted to be regulated by AltAnalyze.  These files include over-representation statistics and genes associated with the different domains or features¸ predicted to be regulated.
+
+*File #6* compares the reciprocal-junction (e.g., ASPIRE) and exon-level results (splicing-index) to determine which splicing-events are indicated by multiple and independent lines of evidence. The direction of the fold change and algorithm detected by are indicated for each row.
 
 More information about these files can be found in the [http://www.altanalyze.org/help_main.htm AltAnalyze ReadMe] (section 2.3).
 
@@ -111,7 +118,9 @@ After you run AltAnalyze, the following directory tree and set of files will be 
          * ...
 
 ==Visualizing AltAnalyze Results in DomainGraph==
-The text file results produced by AltAnalyze can be directly used as input in the protein domain and microRNA binding site visualization program, DomainGraph. DomainGraph is a plugin for the Java program Cytoscape which can be immediately opened from AltAnalyze. Rather than visualizing junctions, however, DomainGraph currently only supports exon visualization. RNASeq highlighted exons (identified by reciprocal exon-junctions) are associated with Affymetrix Exon 1.0 identifiers to be loaded in DomainGraph.
+The text file results produced by AltAnalyze can be directly used as input in the protein domain and microRNA binding site visualization program, DomainGraph. DomainGraph is a plugin for the Java program Cytoscape which can be immediately opened from AltAnalyze. Rather than visualizing junctions, however, DomainGraph currently only supports exon visualization. RNASeq highlighted exons (identified directly from exons or by reciprocal exon-junctions) are associated with Affymetrix Exon 1.0 identifiers to be loaded in DomainGraph.
 
 ==Visualizing Over-Represented GO terms and Pathways==
-Once over-represented pathways have been found or before doing this analysis, you can see which genes on which pathways are alternatively regulated in the program PathVisio or GenMAPP 2.1. PathVisio is a cross-platform analysis program, while GenMAPP is restricted to Windows. Both tools are easy use and have access to a large archive of curated pathways. An input file for either PathVisio or GenMAPP is found in the directory "ExpressionOutput" with the prefix "GenMAPP-". For making pathways, PathVisio or WikiPathways is recommended, since these resources produce superior pathway content (valid interactions between genes and metabolite IDs) in the same format (gpml). PathVisio can also export pathways to the GenMAPP format. A PathVisio tutorial can be [http://www.pathvisio.org/wiki/PathVisioTutorials found here], while a GenMAPP tutorial can be [http://www.genmapp.org/tutorial_v2.html found here].
+Once over-represented pathways have been found or before doing this analysis, you can see which genes on which pathways are alternatively regulated in the program PathVisio or GenMAPP 2.1. PathVisio is a cross-platform analysis program, while GenMAPP is restricted to Windows. Both tools are easy use and have access to a large archive of curated pathways. An input file for either PathVisio or GenMAPP is found in the directory "ExpressionOutput" with the prefix "GenMAPP-". This text file will need to be imported into either program prior to building criterion for analysis. 
+
+For making pathways, PathVisio or WikiPathways is recommended, since these resources produce superior pathway content (valid interactions between genes and metabolite IDs) in the same format (gpml). PathVisio can also export pathways to the GenMAPP format. A PathVisio tutorial can be [http://www.pathvisio.org/wiki/PathVisioTutorials found here], while a GenMAPP tutorial can be [http://www.genmapp.org/tutorial_v2.html found here].
