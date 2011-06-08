@@ -5,6 +5,9 @@
 
 Proceed [UpdateHistory here] for detailed historical update information.
 
+==6-7-11==
+A [CitingArticles new study] uses AltAnalyze to assess the effect of alternative splicing on protein domains and miRNA binding sites in Kaposi's sarcoma-associated herpesvirus-infected lymphatic endothelial cells. 
+
 ==4-18-11==
 A [CitingArticles new study] uses AltAnalyze to understand the role of alternative splicing in distinct neuroblastoma stages. 
 
