@@ -1,4 +1,5 @@
 #summary Instructions for Obtaining RNASeq Input Files
+#labels Featured
 
 = Instructions for Obtaining RNASeq Input Files =
 
