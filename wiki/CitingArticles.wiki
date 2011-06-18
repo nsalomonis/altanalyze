@@ -13,3 +13,11 @@
 [http://www.landesbioscience.com/journals/cc/SalomonisCC9-16.pdf Stem cell pluripotency: alternative modes of transcription regulation]. Salomonis N, Conklin BR. Cell Cycle. 2010 Aug 15;9(16):3133-4. Epub 2010 Aug 2.
 
 [http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0007780 Gi-Coupled GPCR Signaling Controls the Formation and Organization of Human Pluripotent Colonies]. K Nakamura, N Salomonis, K Tomoda, S Yamanaka, and BR Conklin. PLoS One. 2009; 4(11): e7780. Published online 2009 November 10. doi: 10.1371/journal.pone.0007780.
+
+[http://www.ncbi.nlm.nih.gov/pubmed/20513647 AltAnalyze and DomainGraph: analyzing and visualizing exon expression data]. Emig D, Salomonis N, Baumbach J, Lengauer T, Conklin BR, Albrecht M.
+Nucleic Acids Res. 2010 Jul 1;38 Suppl:W755-62. Epub 2010 May 31.
+
+[http://www.ncbi.nlm.nih.gov/pubmed/20498046 Alternative splicing regulates mouse embryonic stem cell pluripotency and differentiation]. Salomonis N, Schlieve CR, Pereira L, Wahlquist C, Colas A, Zambon AC, Vranizan K, Spindler MJ, Pico AR, Cline MS, Clark TA, Williams A, Blume JE, Samal E, Mercola M, Merrill BJ, Conklin BR.
+Proc Natl Acad Sci U S A. 2010 Jun 8;107(23):10514-9. Epub 2010 May 24.
+
+[http://www.ncbi.nlm.nih.gov/pubmed/19893621 Alternative splicing in the differentiation of human embryonic stem cells into cardiac precursors]. Salomonis N, Nelson B, Vranizan K, Pico AR, Hanspers K, Kuchinsky A, Ta L, Mercola M, Conklin BR. PLoS Comput Biol. 2009 Nov;5(11):e1000553. Epub 2009 Nov 6. 
