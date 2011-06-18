@@ -5,6 +5,9 @@
 
 Proceed [UpdateHistory here] for detailed software version update information.
 
+==6-17-11==
+Posted AltAnalyze version 2.0.3. This version is compatible with high-throughput RNA sequencing (RNASeq) exon alignment results in addition to junction results. Several new database and annotation features have been added (e.g., alternative polyadenylation, nonsense mediated decay) along with new analysis methods, program defaults, bug fixes and memory optimization. For more information see the program [http://www.altanalyze.org/help_main.htm documentation] and [UpdateHistory update history].
+
 ==6-7-11==
 A [CitingArticles new study] uses AltAnalyze to assess the effect of alternative splicing on protein domains and miRNA binding sites in Kaposi's sarcoma-associated herpesvirus-infected lymphatic endothelial cells. 
 
