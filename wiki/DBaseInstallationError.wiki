@@ -10,9 +10,10 @@ Although to properly fix this issue, http://www.altanalyze.org will need to be a
 
 _Note: the following steps are for human exon array analysis. If this is not the case, see the "Alternative Species/Array Instruction" first._
 
-====Download and extract following zip files to "AltAnalyze_v1release/AltDatabase":====
-1) Download the alternative exon database for your species [http://altanalyze.org/archiveDBs/AltDatabase/updated here] (e.g., EnsMart55/Hs.zip for the latest human Exon 1.0 and Gene 1.0 database). 
-2) Download the GO-Elite database for your species [http://altanalyze.org/archiveDBs/Databases/ here] (e.g., EnsMart55/Hs.zip for the latest human annotations).
+====Download and extract following zip files: ====
+1) Download the alternative exon database for your species [http://altanalyze.org/archiveDBs/AltDatabase/updated here] (e.g., EnsMart55/Hs.zip for the latest human Exon 1.0 and Gene 1.0 database) to "AltAnalyze_v2release/AltDatabase". 
+2) Download the GO-Elite database for your species [http://altanalyze.org/archiveDBs/Databases/ here] (e.g., EnsMart55/Hs.zip for the latest human annotations) to the folder "AltAnalyze_v1release/AltDatabase/EnsMart55/goelite" (EnsMart55 is used as an example).
+3) Download the GO-Elite OBO.zip file from [http://altanalyze.org/archiveDBs/Databases/] to the same goelite folder as in #2 and extract.
 
 ====_OPTIONAL_====
 
