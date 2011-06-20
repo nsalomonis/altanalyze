@@ -9,7 +9,7 @@ New to version 2.03 AltAnalyze is support for both exon and junction RNASeq anal
  # Support for RNASeq exon expression import from TopHat & BioScope (Section 1.5)
  # Support for platform independent exon/junction data in BED format (Section 1.5)
  # New independently confirmed exon and junction event report file (Section 2.5)
- # Updated species database support for RNASeq exon analyses (EnsMart 61)
+ # Updated species database support for RNASeq exon analyses (EnsMart62)
  # Optional quantile or RPKM normalization for exons and junctions (Section 3.2)
  # Addition of adjusted p-values for exon analyses (Section 3.2)
  # Addition of non-coding and nonsense mediated decay annotations (Section 3.6)
