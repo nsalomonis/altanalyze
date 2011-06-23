@@ -16,11 +16,11 @@ python AltAnalyze.py --species Hs --update Official --version EnsMart55
 _*Analyzing  BED files – RNASeq Junction Bed files using default options*_
 
 {{{
-python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups."hESC_differentiation.txt" --compdir "C:/BEDFiles/comps."hESC_differentiation.txt" --output "C:/BEDFiles" --expname "hESC_differentiation"
+python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups.hESC_differentiation.txt" --compdir "C:/BEDFiles/comps.hESC_differentiation.txt" --output "C:/BEDFiles" --expname "hESC_differentiation"
 }}}
 
 _*Analyzing  BED files – RNASeq Junction Bed files using custom options*_
 
 {{{
-python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups."hESC_differentiation.txt" --compdir "C:/BEDFiles/comps."hESC_differentiation.txt" --output "C:/BEDFiles" --expname "hESC_differentiation" --altmethod linearregres --altscore 2 --removeIntronOnlyJunctions yes
+python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups.hESC_differentiation.txt" --compdir "C:/BEDFiles/comps.hESC_differentiation.txt" --output "C:/BEDFiles" --expname "hESC_differentiation" --altmethod linearregres --altscore 2 --removeIntronOnlyJunctions yes
 }}}
