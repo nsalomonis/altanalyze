@@ -21,6 +21,10 @@ python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --gro
 
 _*Analyzing  BED files – RNASeq Junction Bed files using custom options*_
 
+_Note: before running the below command, you will need to have created and saved the groups and comps files to the ExpressionInput directory. See [ManualGroupsCompsCreation here] for instructions._
+
 {{{
-python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups.hESC_differentiation.txt" --compdir "C:/BEDFiles/comps.hESC_differentiation.txt" --output "C:/BEDFiles" --expname "hESC_differentiation" --altmethod linearregres --altscore 2 --removeIntronOnlyJunctions yes
+python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/ExpressionInput/groups.hESC_differentiation.txt" --compdir "C:/BEDFiles/ExpressionInput/comps.hESC_differentiation.txt" --output "C:/BEDFiles" --expname "hESC_differentiation"
 }}}
+
+For details on how to format generate and format the input text files, go [ObtainingRNASeqInputs here].
