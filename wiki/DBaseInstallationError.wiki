@@ -1,7 +1,5 @@
 #summary FAQ-Error Installing AltAnalyze Databases
 
-= Introduction =
-
 ===_Why Does AltAnalyze crash when trying to download the database when first run?_===
 
 _*Answer:*_: The first time AltAnalyze is opened, the user will be prompted to allow AltAnalyze to establish an internet connection to download a species database. Since some locations have restricted proxy settings, an error may appear here, preventing an internet connection (note: this error is properly reported in version 1.16 of AltAnalyze, but still prevents proper download).
