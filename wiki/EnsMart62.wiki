@@ -1,0 +1,10 @@
+#summary EnsMart62 Database
+
+This database is based on Ensembl version 62 and is available for over 50 species. The available species can be found from the AltAnalyze database download graphical user interface or from [http://www.altanalyze.org/archiveDBs/Config/species_all.txt this file].
+
+Compared to previous versions of the AltAnalyze database, EnsMart62 features:
+ # Exon annotations for RNASeq data (e.g., isoform, domain, microRNA binding site, splicing annotation, genomic data).
+ # Nonsense mediated decay and alternative polyadenlyation annotations
+ # Protein coding capacity notations for all genes in the ExpressionOutput result files.
+
+More information can be found in [http://www.altanalyze.org/help.htm#algorithms Section 3] and [http://www.altanalyze.org/help.htm#building_annotation Section 6] of the AltAnalyze ReadMe. 
