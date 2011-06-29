@@ -1,5 +1,0 @@
-#summary FAQ-Different Number of Exon Only Results
-
-===_Why are there more RNA-Seq alternative exon results when I run exon only data versus exon and junction?_===
-
-_*Answer:*_: If you run AltAnalyze on RNA-Seq exon.bed files only compared to exon.bed and junction.bed combined, the splicing-index results will often have a small number of greater rows for the exon-only analysis. The rest of the data should be identical (when excluding the junction IDs). The reason this occurs is that AltAnalyze can include novel exon predictions from the junction.bed file to include in the BAMtoBED exon annotation file. If multiple junctions are predicted within a few bases of each other... under construction
