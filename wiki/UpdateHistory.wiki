@@ -10,6 +10,7 @@ Critical fixes to bugs, resulting in program errors, introduced in version 2.03:
  # Independent analysis of exon only files (no junctions) now working
  # All species RNA-Seq databases will now load properly
  # More consistent results between exon only and exon with junction results (some novel exons missing or duplicated).
+ # RNA-Seq and junction array splicing-index results for GO-Elite analysis will be properly written (no resulting GO-Elite error).
 
 ===Version 2.03 Updates===
 New to version 2.03 AltAnalyze is support for both exon and junction RNASeq analysis, new functional annotations and normalization methods:
