@@ -9,7 +9,7 @@ Junction.bed and exon.bed files produced from RNA-seq alignment of Illumina sequ
 These files are available in a zip compressed archive [http://altanalyze.org/hESC_differentiation_RNASeq.zip here].
 
 ===Details===
-Sample data was obtained from NCBI's now discontinued Sequence Read Archive ([http://www.ncbi.nlm.nih.gov/sra]) for the entries [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011896 SRS011896], [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011898 SRS011898], [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011900 SRS011900] and [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011902 SRS011902]. 
+Sample data was obtained from NCBI's now discontinued Sequence Read Archive ([http://www.ncbi.nlm.nih.gov/sra]) for the entries [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011896 SRS011896], [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011898 SRS011898], [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011900 SRS011900] and [http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?sample=SRS011902 SRS011902]. _*Note: SRA is in the process of being discontinued, hence, FASTQ files may be unavailable.*_
 
 For each of these samples, multiple sequence read files were downloaded and concatenated in FASTQ format. TopHat was run allowing for novel junction discovery and default settings as described [TopHat here]. Junction results were obtained directly from TopHat, while exon read counts were obtained using BEDTools as described [BEDTools here]. An overview of how to build AltAnalyze RNA-seq input files can be found [ObtainingRNASeqInputs here].
 
