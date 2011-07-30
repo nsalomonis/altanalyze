@@ -7,6 +7,8 @@ As input to AltAnalyze, you can currently upload exon and/or junction coordinate
  * ERP000570 GSE21860 GSE27218 (Mus musculus) 
  * GSE24447 (Homo sapiens)
 
+_*Note: SRA is in the process of being discontinued, hence, FASTQ files may be unavailable.*_
+
 These studies contain multiple replicates for multiple in vivo/in vitro conditions. To obtain FASTQ sequence:
  # Search for the above accession numbers at SRA.
  # For each sample, select the experiment accession number on the right side of the page (under Total:).
