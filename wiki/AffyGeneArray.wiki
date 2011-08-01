@@ -2,7 +2,7 @@
 
 === Introduction ===
 
-The Affymetrix Gene 1.0 array contains probes each exon of mammalian genes, with 1 to four probes per probeset. This array type is currently available for human, mouse and rat genomes (in addition to custom arrays). Relative to the Affymetrix Exon 1.0 array, this array examines a more conservative set of known exons, which includes known alternative exons. Relative to previous generation 3' biased arrays, the method of cDNA preparation and amplification is relatively unbiased.
+The Affymetrix Gene 1.0 array contains probes each exon of mammalian genes, with one or more probes per probeset. This array type is currently available for human, mouse and rat genomes (in addition to custom arrays). Relative to the Affymetrix Exon 1.0 array, this array examines a more conservative set of known exons, which includes known alternative exons. Relative to previous generation 3' biased arrays, the method of cDNA preparation and amplification is relatively unbiased.
 
 === AltAnalyze Supported Analyses ===
 
