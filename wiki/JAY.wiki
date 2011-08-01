@@ -8,5 +8,4 @@ Both exon and exon-junction analyses are executed in series on these arrays, pro
 
 == Details ==
 
-Publications describing AltAnalyze use with the MJAY and HJAY are arrays are anticipated in the near future, however, analyses with these arrays are also possible with other published methods (
-[http://bioinformatics.oxfordjournals.org/content/26/2/268.abstract])
+Publications describing AltAnalyze use with the MJAY and HJAY are arrays are anticipated in the near future, however, analyses with these arrays are also possible with other published methods (e.g., [http://bioinformatics.oxfordjournals.org/content/26/2/268.abstract])
