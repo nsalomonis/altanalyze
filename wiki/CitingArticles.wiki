@@ -4,7 +4,7 @@
 === Articles Citing AltAnalyze ===
 [http://www.sciencedirect.com/science/article/pii/S1097276511004217 Integrative Regulatory Mapping Indicates that the RNA-Binding Protein HuR Couples Pre-mRNA Processing and mRNA Stability]. Neelanjan Mukherjee, David L. Corcoran, Jeffrey D. Nusbaum, David W. Reid, Stoyan Georgiev, Markus Hafner, Manuel Ascano Jr., Thomas Tuschl, Uwe Ohler,  and Jack D. Keene. Mol Cell. 2011 Jun 29.
 
-[http://nar.oxfordjournals.org/content/early/2011/06/06/nar.gkr405.full Differentially regulated splice variants and systems biology analysis of Kaposi's sarcoma-associated herpesvirus-infected lymphatic endothelial cells].Ting-Yu Chang1, Yu-Hsuan Wu1,Cheng-Chung Cheng2 and Hsei-Wei Wang. Nucl. Acids Res. (2011) doi: 10.1093/nar/gkr405.
+[http://nar.oxfordjournals.org/content/early/2011/06/06/nar.gkr405.full Differentially regulated splice variants and systems biology analysis of Kaposi's sarcoma-associated herpesvirus-infected lymphatic endothelial cells].Ting-Yu Chang, Yu-Hsuan Wu, Cheng-Chung Cheng and Hsei-Wei Wang. Nucl. Acids Res. (2011) doi: 10.1093/nar/gkr405.
 
 [http://www.biomedcentral.com/1755-8794/4/35/abstract Exon array analysis reveals neuroblastoma tumors have distinct alternative splicing patterns according to stage and MYCN amplification status]. Xiang Guo, Qing-Rong Chen, Young K Song, Jun S Wei and Javed Khan. BMC Medical Genomics 2011, 4:35doi:10.1186/1755-8794-4-35.
 
