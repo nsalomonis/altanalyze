@@ -2,7 +2,7 @@
 
 ===Prevent Filtering of Probesets===
 
-If a user wishes to either export all interim normalized intensities, without filtering based on expression or get all alternative exons without filtering, they can change the default filtering options or use the "returnAll" option when running AltAnalyze by [CommandLineMode  command-line].
+If a user wishes to either export all interim normalized intensities, without filtering based on expression or get all alternative exons without filtering, they can change the default filtering options or use the "returnAll" option when running AltAnalyze by [CommandLineMode  command-line]. To mimic these options in the user interface, set the corresponding below variables equal to the shown values.
 
 Both options apply the following parameters:
 --dabgp 1 --rawexp 1 --altp 1 --probetype full --altscore 1 --GEcutoff 10000
