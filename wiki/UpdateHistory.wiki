@@ -13,6 +13,7 @@ New program features, improved methods and critical fixes to RNA-seq exon bed bu
  # Support of Affymetrix microRNA array annotation files added
  # Protein coding potential and microRNA binding site annotations support added for conventional array data
  # GO-Elite update, optimization and updated Ontology support
+ # Fixed import error on Windows machines for exon BED import from BEDTools
 
 ===Version 2.0.4 Updates===
 Critical fixes to bugs, resulting in program errors, introduced in version 2.03:
