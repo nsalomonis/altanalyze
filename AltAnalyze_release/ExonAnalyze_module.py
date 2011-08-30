@@ -45,9 +45,11 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-def grabJunctionData(species,array_type,key_type):
+def grabJunctionData(species,array_type,key_type,root_dir):
     if array_type == 'AltMouse': filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
-    else: filename = 'AltDatabase/' + species + '/'+array_type+'/'+ species + '_junction_comps_updated.txt'
+    else:
+        filename = 'AltDatabase/' + species + '/'+array_type+'/'+ species + '_junction_comps_updated.txt'
+        if array_type == 'RNASeq': filename = root_dir+filename ### This is a dataset specific file
     fn=filepath(filename); critical_exon_junction_db = {}; x=0
     for line in open(fn,'rU').xreadlines():
         if x==0: x=1
@@ -114,13 +116,13 @@ def import_annotations(filename,array_type):
             annotate_db[ensembl] = y
     return annotate_db
 
-def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method,explicit_data_type):
+def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method,explicit_data_type,root_dir):
     filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_probeset_microRNAs_"+microRNA_prediction_method+".txt"
-    if (array_type == 'junction' or array_type == 'RNASeq'): filename = string.replace(filename,'.txt','-filtered.txt')
+    if array_type == 'junction': filename = string.replace(filename,'.txt','-filtered.txt')
 
     fn=filepath(filename); microRNA_full_exon_db={}; microRNA_count_db={}; gene_microRNA_denom={}
     if array_type == 'AltMouse' or ((array_type == 'junction' or array_type == 'RNASeq') and explicit_data_type == 'null'):
-        critical_exon_junction_db = grabJunctionData(species,array_type,'gene-exon')
+        critical_exon_junction_db = grabJunctionData(species,array_type,'gene-exon',root_dir)
         if array_type == 'AltMouse':
             gene_annotation_file = "AltDatabase/"+species+"/"+array_type+"/"+array_type+"_gene_annotations.txt"
             annotate_db = import_annotations(gene_annotation_file,array_type)
@@ -132,7 +134,7 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
         try: mir_seq=t[2];mir_sources=t[3]
         except IndexError: mir_seq='';mir_sources=''
         try:
-            if array_type == 'exon' or array_type == 'gene' or ((array_type == 'junction' or array_type == 'RNASeq') and explicit_data_type == 'exon'):
+            if array_type == 'exon' or array_type == 'gene' or ((array_type == 'junction' or array_type == 'RNASeq') and explicit_data_type != 'null'):
                 ed = exon_db[probeset]; probeset_list = [probeset]; exonid = ed.ExonID(); symbol = ed.Symbol(); geneid = ed.GeneID()
             else:
                 probeset_list = []; uid = probeset ###This is the gene with the critical exon it's mapped to
@@ -162,7 +164,9 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
 
     ###Replace the actual genes with the unique gene count per microRNA
     for microRNA in microRNA_count_db: microRNA_count_db[microRNA] = len(microRNA_count_db[microRNA])
-    print len(gene_microRNA_denom),"genes with a predicted microRNA binding site alinging to a probeset"
+    if array_type == 'RNASeq': id_name = 'junction IDs'
+    else: id_name = 'array IDs'
+    print len(gene_microRNA_denom),"genes with a predicted microRNA binding site aligning to a",id_name
     return microRNA_full_exon_db,microRNA_count_db,gene_microRNA_denom
         
 def filterMicroRNAProbesetAssociations(microRNA_full_exon_db,exon_hits):
@@ -447,7 +451,7 @@ def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_d
     global protein_sequence_db
     if compare_all_features == 'yes': type = 'seqcomp'
     else: type = 'exoncomp'
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null':
         exon_protein_sequence_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+'SEQUENCE-protein-dbase_'+type+'.txt'
     else:
         exon_protein_sequence_file = 'AltDatabase/'+species+'/'+array_type+'/'+'SEQUENCE-protein-dbase_'+type+'.txt'
@@ -459,15 +463,15 @@ def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_d
         exon_hits[gene,probeset]=[]
 
     include_sequences = 'no' ### Sequences for comparisons are unnecessary to store. List array-type as exon since AltMouse data has been re-organized, later get rid of AltMouse specific functionality in this function
-    functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,'exon',include_sequences)
+    functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(species,exon_hits,probeset_protein_db,'exon',include_sequences)
 
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null':
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-domain-annotations-'+type+'.txt' 
     else:
         export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-domain-annotations-'+type+'.txt' 
     formatAttributeForExport(protein_features,export_file)
 
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null':
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-protein-annotations-'+type+'.txt' 
     else:
         export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-annotations-'+type+'.txt' 
@@ -482,7 +486,23 @@ def formatAttributeForExport(attribute_db,filename):
         export_db[probeset]=attribute_list2
     IdentifyAltIsoforms.exportSimple(export_db,filename,'')
         
-def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type,include_sequences):    
+def importTranscriptBiotypeAnnotations(species):
+    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-biotypes.txt'
+    accepted_biotypes = ['nonsense_mediated_decay','non_coding','retained_intron','retrotransposed']
+    fn=filepath(filename); biotype_db = {}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        gene,transcript,biotype = string.split(data,'\t')
+        if biotype in accepted_biotypes:
+            biotype_db[transcript] = biotype
+    return biotype_db
+
+def characterizeProteinLevelExonChanges(species,exon_hits,probeset_protein_db,array_type,include_sequences):
+    """Examines the the two reciprocal isoforms for overal changes in protein sequence and general sequence composition"""
+    
+    try: biotype_db = importTranscriptBiotypeAnnotations(species)
+    except Exception: biotype_db={}
+    
     functional_attribute_db={}; protein_features={}
     for (array_geneid,uid) in exon_hits: ###uid is probeset or (probeset1,probeset2) value, depending on array_type
             if array_type != 'exon' and array_type != 'gene': probeset,probeset2 = uid
@@ -505,6 +525,11 @@ def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type
             if hv!=0:
                 neg_coding_seq = protein_sequence_db[neg_ref_AC]
                 pos_coding_seq = protein_sequence_db[pos_ref_AC]
+                
+                pos_biotype=None; neg_biotype=None
+                if pos_ref_AC in biotype_db: pos_biotype = biotype_db[pos_ref_AC]
+                if neg_ref_AC in biotype_db: neg_biotype = biotype_db[neg_ref_AC]
+                
                 neg_length = len(neg_coding_seq)
                 pos_length = len(pos_coding_seq)
                 pos_length = float(pos_length);  neg_length = float(neg_length)
@@ -529,6 +554,19 @@ def characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type
                             try: protein_features[array_geneid,uid].append(data_tuple)
                             except KeyError: protein_features[array_geneid,uid] = [data_tuple]
                 call=''
+                if pos_biotype != None or neg_biotype !=None:
+                    ### For example, if one or both transcript(s) are annotated as nonsense_mediated_decay
+                    if (neg_length - pos_length)>0: call = '-'
+                    elif (pos_length - neg_length)>0: call = '+'
+                    else: call = '~'
+                    if pos_biotype != None:
+                        data_tuple = pos_biotype,call
+                        try: functional_attribute_db[array_geneid,uid].append(data_tuple)
+                        except KeyError: functional_attribute_db[array_geneid,uid]= [data_tuple]
+                    if neg_biotype != None:
+                        data_tuple = neg_biotype,call
+                        try: functional_attribute_db[array_geneid,uid].append(data_tuple)
+                        except KeyError: functional_attribute_db[array_geneid,uid]= [data_tuple]
                 if pos_coding_seq[:5] != neg_coding_seq[:5]:
                     function_var = 'alt-N-terminus'
                     if (neg_length - pos_length)>0: call = '-'
@@ -594,23 +632,6 @@ def combine_databases(db1,db2):
         if key not in db1:
             db1[key] = db2[key]
     return db1
-
-def function_exon_analysis_main(array_type,exon_hits,dataset_name_original,microRNA_full_exon_db,protein_sequence_dbase,probeset_protein_db,protein_ft_dbase):
-    ###This function was created so other modules could import ExonAnalyze code and run specific functions
-    global dataset_name; global new_results_dir; global refseq_start_stop_seq_db
-    global uniprot_ft_db; global protein_ft_db
-    dataset_name = dataset_name_original
-    new_results_dir = "Exon-Analyze/Additional_results"
-    
-    protein_ft_db = protein_ft_dbase
-    
-    global protein_sequence_db
-    protein_sequence_db = protein_sequence_dbase
-    include_sequences = 'yes'
-    functional_attribute_db,protein_features = characterizeProteinLevelExonChanges(exon_hits,probeset_protein_db,array_type,include_sequences)
-    filtered_microRNA_exon_db = filterMicroRNAProbesetAssociations(microRNA_full_exon_db,exon_hits)
-        
-    return filtered_microRNA_exon_db, functional_attribute_db, protein_features
 
 if __name__ == '__main__':
     species = 'Mm'; array_type='AltMouse'

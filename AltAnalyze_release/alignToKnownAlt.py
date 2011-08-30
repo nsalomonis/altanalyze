@@ -22,6 +22,7 @@ import unique
 import GO_parsing
 import copy
 import time
+import update
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -57,19 +58,35 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-################### Import exon coordinate/transcript data from BIOMART
+################### Import exon coordinate/transcript data from Ensembl
 def importEnsExonStructureData(species,ensembl_gene_coordinates,ensembl_annotations,exon_annotation_db):
+    ensembl_ucsc_splicing_annotations={}
+    try: ensembl_ucsc_splicing_annotations = importUCSCAnnotationData(species,ensembl_gene_coordinates,ensembl_annotations,exon_annotation_db,{},'polyA')
+    except Exception: ensembl_ucsc_splicing_annotations={}
+    try: ensembl_ucsc_splicing_annotations = importUCSCAnnotationData(species,ensembl_gene_coordinates,ensembl_annotations,exon_annotation_db,ensembl_ucsc_splicing_annotations,'splicing')
+    except Exception: null=[]
+    return ensembl_ucsc_splicing_annotations
+
+def importUCSCAnnotationData(species,ensembl_gene_coordinates,ensembl_annotations,exon_annotation_db,ensembl_ucsc_splicing_annotations,data_type):
     ucsc_gene_coordinates={}
-    filename = 'AltDatabase/ucsc/'+species+'/knownAlt.txt'
+    if data_type == 'splicing': filename = 'AltDatabase/ucsc/'+species+'/knownAlt.txt'
+    if data_type == 'polyA': filename = 'AltDatabase/ucsc/'+species+'/polyaDb.txt'
     start_time = time.time()
     fn=filepath(filename); x=0
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        regionid,chr,start,stop,splice_event_call,null,strand = string.split(data,'\t')
-        start = int(start)+1; stop = int(stop); chr = chr[3:] ###checked it out and all UCSC starts are -1 from the correspond Ensembl start
-        try: ucsc_gene_coordinates[chr,start,stop,strand].append(splice_event_call)
-        except KeyError: ucsc_gene_coordinates[chr,start,stop,strand] = [splice_event_call]
-
+        if data_type == 'splicing':
+            regionid,chr,start,stop,event_call,null,strand = string.split(data,'\t')
+        if data_type == 'polyA':
+            event_call = 'alternative_polyA'
+            try: regionid,chr,start,stop,null,null,strand,start,stop = string.split(data,'\t')
+            except Exception: chr,start,stop,annotation,null,strand = string.split(data,'\t')
+        start = int(start)+1; stop = int(stop); chr = string.replace(chr,'chr','') ###checked it out and all UCSC starts are -1 from the correspond Ensembl start
+        try: ucsc_gene_coordinates[chr,start,stop,strand].append(event_call)
+        except KeyError: ucsc_gene_coordinates[chr,start,stop,strand] = [event_call]
+        
+    print len(ucsc_gene_coordinates),'UCSC annotations imported.'
+    
     ensembl_chr_coordinate_db={}
     for gene in ensembl_gene_coordinates:
         a = ensembl_gene_coordinates[gene]; a.sort()
@@ -103,8 +120,6 @@ def importEnsExonStructureData(species,ensembl_gene_coordinates,ensembl_annotati
             try: ensembl_ucsc_splicing_event_db[ens_geneid].append((clusterid,annotations))
             except KeyError: ensembl_ucsc_splicing_event_db[ens_geneid] = [(clusterid,annotations)]
 
-
-    ensembl_ucsc_splicing_annotations={}
     for ensembl in ensembl_ucsc_splicing_event_db:
         chr,strand = ensembl_annotations[ensembl]
         key = ensembl,chr,strand
@@ -131,6 +146,16 @@ def importEnsExonStructureData(species,ensembl_gene_coordinates,ensembl_annotati
             start = clusterid[1]; stop = clusterid[2]
             try: ensembl_ucsc_splicing_annotations[ensembl].append((start,stop,annotation_str))
             except KeyError: ensembl_ucsc_splicing_annotations[ensembl] = [(start,stop,annotation_str)]
+            
+    if data_type == 'polyA':
+        ### Only keep entries for which there are mulitple polyAs per gene
+        ensembl_ucsc_splicing_annotations_multiple={}
+        for ensembl in ensembl_ucsc_splicing_annotations:
+            if len(ensembl_ucsc_splicing_annotations[ensembl])>1:
+                ensembl_ucsc_splicing_annotations_multiple[ensembl] = ensembl_ucsc_splicing_annotations[ensembl]
+        ensembl_ucsc_splicing_annotations = ensembl_ucsc_splicing_annotations_multiple
+    
+    print len(ensembl_ucsc_splicing_annotations),'genes with events added from UCSC annotations.'
     return ensembl_ucsc_splicing_annotations
 
 def getChromosomalOveralap(ucsc_chr_db,ensembl_chr_db):
@@ -175,8 +200,76 @@ def getChromosomalOveralap(ucsc_chr_db,ensembl_chr_db):
     print "With NO overlapp",len(no_match_list)
     return ensembl_transcript_clusters,no_match_list
 
+def reformatPolyAdenylationCoordinates(species,force):
+    """ PolyA annotations are currently only available from UCSC for human, but flat file
+    annotations from 2003-2006 are available for multiple species. Convert these to BED format"""
+    version={}
+    version['Rn'] = '2003(rn3)'
+    version['Dr'] = '2003(zv4)'
+    version['Gg'] = '2004(galGal2)'
+    version['Hs'] = '2006(hg8)'
+    version['Mm'] = '2004(mm5)'
+
+    print 'Exporting polyADB_2 coordinates as BED for',species
+    ### Obtain the necessary database files
+    url = 'http://altanalyze.org/archiveDBs/all/polyAsite.txt'
+    output_dir = 'AltDatabase/ucsc/'+species + '/'
+    if force == 'yes':
+        filename, status = update.download(url,output_dir,'')
+    else: filename = output_dir+'polyAsite.txt'
+
+    ### Import the refseq to Ensembl information
+    import gene_associations; import OBO_import; import EnsemblImport; import export
+    try:
+        ens_unigene = gene_associations.getGeneToUid(species,'Ensembl-UniGene')
+        print len(ens_unigene),'Ensembl-UniGene entries imported'
+        external_ensembl = OBO_import.swapKeyValues(ens_unigene); use_entrez='no'
+    except Exception:
+        ens_entrez = gene_associations.getGeneToUid(species,'Ensembl-EntrezGene')
+        print len(ens_entrez),'Ensembl-EntrezGene entries imported'
+        external_ensembl = OBO_import.swapKeyValues(ens_entrez); use_entrez='yes'
+    gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,'RNASeq','key_by_array')
+    
+    export_bedfile = output_dir+species+'_polyADB_2_predictions.bed'
+    print 'exporting',export_bedfile
+    export_data = export.ExportFile(export_bedfile)
+    header = '#'+species+'\t'+'polyADB_2'+'\t'+version[species]+'\n'
+    export_data.write(header)
+    
+    fn=filepath(filename); x=0; not_found={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if x==0: x=1
+        else:
+            siteid,llid,chr,sitenum,position,supporting_EST,cleavage = string.split(data,'\t')
+            if species in siteid:
+                if 'NA' not in chr: chr = 'chr'+chr
+                strand = '+'; geneid = siteid
+                pos_start = str(int(position)-1); pos_end = position
+                if use_entrez=='no':
+                    external_geneid = string.join(string.split(siteid,'.')[:2],'.')
+                else: external_geneid=llid
+                if external_geneid in external_ensembl:
+                    ens_geneid = external_ensembl[external_geneid][0]
+                    geneid += '-'+ens_geneid
+                    chr,strand,start,end = gene_location_db[ens_geneid]
+                else:
+                    not_found[external_geneid]=[]
+                    bed_format = string.join([chr,pos_start,pos_end,geneid,'0','-'],'\t')+'\n' ### We don't know the strand, so write out both strands
+                    export_data.write(bed_format)
+                bed_format = string.join([chr,pos_start,pos_end,geneid,'0',strand],'\t')+'\n'
+                export_data.write(bed_format)
+    export_data.close()   
+    
 if __name__ == '__main__':
-    species = 'Hs'
+    species = 'Mm'; #species_full = 'Drosophila_melanogaster'
+    importEnsExonStructureData(species,[],[],[]);sys.exit()
+    reformatPolyAdenylationCoordinates(species,'no');sys.exit()
     #test = 'yes'
     #test_gene = ['ENSG00000140153','ENSG00000075413']
+    import UCSCImport; import update
+    knownAlt_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','knownAlt.txt.gz')
+    polyA_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','polyaDb.txt.gz')
+    output_dir = 'AltDatabase/ucsc/'+species + '/'
+    UCSCImport.downloadFiles(knownAlt_dir,output_dir); UCSCImport.downloadFiles(polyA_dir,output_dir);sys.exit()
     ensembl_ucsc_splicing_annotations = importEnsExonStructureData(species,ensembl_gene_coordinates,ensembl_annotations,exon_annotation_db)

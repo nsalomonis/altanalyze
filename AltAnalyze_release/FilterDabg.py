@@ -23,6 +23,7 @@ import export
 import os.path
 import unique
 import time
+import AltAnalyze
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -51,6 +52,11 @@ def cleanUpLine(line):
     return data
 
 ########### Begin Analyses ###########
+def importSplicingAnnotations(species,array_type,avg_all_for_ss):
+    if array_type == 'exon' or array_type == 'gene': probeset_type = 'full'
+    else: probeset_type = 'all'
+    exon_db,constitutive_probeset_db = AltAnalyze.importSplicingAnnotations(array_type,species,probeset_type,avg_all_for_ss,root_dir)
+    return exon_db,constitutive_probeset_db
 
 def import_altmerge(filename,array_type):
     global exon_db
@@ -95,14 +101,16 @@ def import_altmerge(filename,array_type):
             if gene not in constituitive_gene:
                 original_probesets_add +=1
                 for probeset in constitutive_original[gene]: altmerge_constituitive[probeset] = gene
-    print original_probesets_add, 'genes not viewed as constitutive as a result of filtering probesets based on splicing evidence, added back'
-    return altmerge_constituitive,exon_db
+    if array_type == 'RNASeq': id_name = 'junction IDs'
+    else: id_name = 'array IDs'
+    print original_probesets_add, 'genes not viewed as constitutive as a result of filtering ',id_name,' based on splicing evidence, added back'
+    return exon_db, altmerge_constituitive
 
 def parse_input_data(filename,data_type):
     fn=filepath(filename); first_line = 1; array_group_name_db = {}; z=0; array_group_db = {}
     #print "Reading",filename
     for line in open(fn,'rU').xreadlines():
-      data = cleanUpLine(line); data2 = string.split(data,'\t'); probeset = data2[0]; z+=1
+      data = cleanUpLine(line); t = string.split(data,'\t'); probeset = t[0]; z+=1
       if first_line == 1:
           first_line = 0 #makes this value null for the next loop of actual array data
           ###Below ocucrs if the data is raw opposed to precomputed
@@ -110,15 +118,19 @@ def parse_input_data(filename,data_type):
               if array_type == 'exon': folder = 'ExonArray'+'/'+species + '/'
               elif array_type == 'gene': folder = 'GeneArray'+'/'+species + '/'
               elif array_type == 'junction': folder = 'JunctionArray'+'/'+species + '/'
+              elif array_type == 'RNASeq': folder = 'RNASeq'+'/'+species + '/'
               else: folder = array_type + '/'
-              output_file = root_dir+'AltExpression/'+folder + altanalzye_input[0:-4] + '.p' + str(int(100*p)) +'_'+ filter_method+'.txt'
+              if array_type == 'RNASeq':
+                  output_file = root_dir+'AltExpression/'+folder + altanalzye_input[0:-4] + '.ExpCutoff-' + str(original_exp_threshold) +'_'+ filter_method+'.txt'
+              else:
+                  output_file = root_dir+'AltExpression/'+folder + altanalzye_input[0:-4] + '.p' + str(int(100*p)) +'_'+ filter_method+'.txt'
               print "...Exporting",output_file
               export_data = export.createExportFile(output_file,root_dir+'AltExpression/'+folder)
               fn=filepath(output_file); export_data = open(fn,'w');
               export_data.write(line)
-          if ':' in data2[1]:
+          if ':' in t[1]:
               array_group_list = []; x=0 ###gives us an original index value for each entry in the group
-              for entry in data2[1:]:
+              for entry in t[1:]:
                   array_group,array_name = string.split(entry,':')
                   try:
                       array_group_db[array_group].append(x)
@@ -137,26 +149,36 @@ def parse_input_data(filename,data_type):
               #array_index_list.append(array_group_db[group])
               group_values = []
               for array_index in array_group_db[group]:
-                  try: exp_val = float(data2[array_index+1])
-                  except IndexError: print data2, z,'\n',array_index,'\n',group, probeset;kill
-                  ###If non-log array data
-                  if exp_data_format == 'non-log': exp_val = math.log(exp_val+1,2) #add 1 since probeset is the first column
+                  try: exp_val = float(t[array_index+1])
+                  except IndexError: print t, z,'\n',array_index,'\n',group, probeset;kill
                   group_values.append(exp_val)
               avg_stat = statistics.avg(group_values)
 
               if data_type == 'expression':
-                  if avg_stat>log_expression_threshold: k=1
+                  ###If non-log array data
+                  if exp_data_format == 'non-log':
+                      ### This works better for RNASeq as opposed to log transforming and then filtering which is more stringent and different than the filtering in ExonArray().
+                      if avg_stat>=nonlog_exp_threshold: k=1
+                      else: k=0
+                  elif avg_stat>=log_expression_threshold: k=1
                   else: k=0
                   try: expression_status_db[probeset].append(k)
                   except KeyError: expression_status_db[probeset] = [k]
                   #if probeset == '3209315': print [group],k,len(group_values),array_group_list
               if data_type == 'p-value':
-                  if avg_stat<p: k=1
+                  if avg_stat<=p: k=1
                   else: k=0
                   #if 'G7216513_a_at' in probeset: print k, avg_stat
                   try: pvalue_status_db[probeset].append(k)
                   except KeyError: pvalue_status_db[probeset] = [k]
       elif data_type == 'export':
+          if exp_data_format == 'non-log':
+              ### This code was added in version 1.16 in conjunction with a switch from logstatus to
+              ### non-log in AltAnalyze to prevent "Process AltAnalyze Filtered" associated errors
+              exp_values = t[1:]; exp_values_log2=[]
+              for exp_val in exp_values:
+                  exp_values_log2.append(str(math.log(float(exp_val)+1,2)))
+              line = string.join([probeset]+exp_values_log2,'\t')+'\n'
           try: null = export_db[probeset]; export_data.write(line)
           except KeyError: null = [] ### occurs if not a probeset to include in the filtered results export file
     if data_type == 'export': export_data.close()
@@ -190,7 +212,8 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
                 
             if analyze_dabg == 'yes': p_stats = pvalue_status_db[probeset]; p_stat1,p_stat2 = p_stats[:2]
             else: p_stat1=1; p_stat2=1 ### Automatically assigned an "expressed" call.
-            affygene = exon_db[probeset]
+            try: ed = exon_db[probeset]; affygene = ed.GeneID()
+            except Exception: affygene = exon_db[probeset]
             if exp_stat1 == 1 and p_stat1 == 1: k = 1 ### Thus it is "expressed"
             else: k = 0
             if exp_stat2 == 1 and p_stat2 == 1: b = 1 ### Thus it is "expressed"
@@ -205,7 +228,7 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
                     if b==1 and k==1: constitutive_keep[affygene] = [] ### This will only keep a gene in the analysis if at least one probeset is 'expressed' in both conditions
             else:
                 if b == 0 and k == 0: null =  ''
-                else:    
+                else:
                     keep_probesets[probeset] = []
                     try: keep_genes[affygene].append(probeset)
                     except KeyError: keep_genes[affygene] = [probeset]
@@ -242,9 +265,10 @@ def eliminate_redundant_dict_values(database):
         db1[key] = list
     return db1
 
-def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,express_data_format,altanalyze_file_list,Root_dir):
+def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,express_data_format,altanalyze_file_list,avg_all_for_ss,Root_dir):
   start_time = time.time()
-  global p; global filter_method; global exp_data_format; global array_type; global species; global root_dir
+  global p; global filter_method; global exp_data_format; global array_type; global species; global root_dir; global original_exp_threshold
+  original_exp_threshold = expression_threshold
   aspire_output_list=[]; aspire_output_gene_list=[]
   filter_method = filter_method_type
   altanalyze_files = altanalyze_file_list
@@ -254,9 +278,9 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
 
   if 'exon' in array_type: array_type = 'exon' ###In AnalayzeExpressionDataset module, this is named 'exon-array'
   
-  global log_expression_threshold
+  global log_expression_threshold; global nonlog_exp_threshold; nonlog_exp_threshold = expression_threshold
   try: log_expression_threshold = math.log(expression_threshold,2)
-  except OverflowError: log_expression_threshold = 0 ###Occurs if expression_threshold == 0
+  except Exception: log_expression_threshold = 0 ###Occurs if expression_threshold == 0
   
   import_dir = root_dir+'AltExpression/pre-filtered/expression/'; import_dir_dabg = root_dir+'AltExpression/pre-filtered/dabg/'
   try: dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
@@ -266,10 +290,15 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
 
   if len(altanalyze_files) == 0: altanalyze_files = dir_list  ###if no filenames input
 
-  if array_type != 'AltMouse': altmerge_db = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"
+  if array_type == 'RNASeq':
+      altmerge_db = root_dir+'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_junctions.txt'
+  elif array_type != 'AltMouse': altmerge_db = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_probesets.txt'
   else: altmerge_db = "AltDatabase/"+species+"/"+array_type+"/MASTER-probeset-transcript.txt"
   ###Import probe-level associations
-  altmerge_constituitive,exon_db = import_altmerge(altmerge_db,array_type)
+  if array_type != 'AltMouse':
+      exon_db,altmerge_constituitive = importSplicingAnnotations(species,array_type,avg_all_for_ss)
+  else:
+      exon_db,altmerge_constituitive = import_altmerge(altmerge_db,array_type) ### Prior to version 2.0, this function was distinct from that in AltAnalyze(), so replaced it for consistency
             
   global altanalzye_input
   if len(dir_list)>0:
@@ -283,7 +312,7 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
             #array_db = array_db[1:] #not sure why, but the '\' needs to be there while reading initally but not while accessing the file late
             #dabg_db = dabg_db[1:]
             dataset_name = altanalzye_input[0:-4] + '-'
-            print "Begining to process",dataset_name[0:-1]
+            print "Begining to filter",dataset_name[0:-1]
             #print "Array type is:",array_type
             #print "Species is:", species
             #print "Expression format is:",exp_data_format
@@ -297,7 +326,9 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
             #print dataset_name,"filtering finished in %d seconds" % time_diff
       end_time = time.time(); time_diff = int(end_time-start_time)
       #print "Filtering complete for all files in %d seconds" % time_diff
-      exon_db={}; altmerge_constituitive={}
+
+      AltAnalyze.clearObjectsFromMemory(exon_db)
+      exon_db={}; altmerge_constituitive={}; constitutive_probeset_db={}
   else: print "No expression files to filter found..."
 
 if __name__ == '__main__':

@@ -1,6 +1,9 @@
 species_code	species_name	compatible_algorithms
 Hs	Homo sapiens	
+Ce	Caenorhabditis elegans	
 Bt	Bos taurus	
 Mm	Mus musculus	
 Rn	Rattus norvegicus	splicing_index|MiDAS
+Dr	Danio rerio	
 Dm	Drosophila melanogaster	
+Sc	Saccharomyces cerevisiae	

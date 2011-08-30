@@ -87,7 +87,8 @@ def buildJunctionExonAnnotations(species,array_type,force,genomic_build):
     import UCSCImport
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'; force='no'
     export_all_associations = 'no' ### YES only for protein prediction analysis
-    UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+    try: UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+    except Exception: UCSCImport.exportNullDatabases(species) ### used for species not supported by UCSC
 
     ### Get genomic locations and initial annotations for exon sequences (exon pobesets and junctions)    
     import JunctionArray
@@ -178,17 +179,37 @@ def buildExonArrayExonAnnotations(species, array_type, force):
     if array_type == 'gene': source_biotype = 'gene'
     probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,source_biotype,species)
 
+def getFTPData(ftp_server,subdir,filename_search):
+    ### This is a more generic function for downloading FTP files based on input directories and a search term
+    
+    from ftplib import FTP
+    print 'Connecting to',ftp_server
+    ftp = FTP(ftp_server); ftp.login()
+    ftp.cwd(subdir)
+
+    ftpfilenames = []; ftp.dir(ftpfilenames.append); ftp.quit()
+    matching=[]
+    for line in ftpfilenames:
+        line = string.split(line,' '); file_dir = line[-1]
+        dir = 'ftp://'+ftp_server+subdir+'/'+file_dir
+        if filename_search in dir and '.md5' not in dir: matching.append(dir)
+    if len(matching)==1:
+        return matching[0]
+    elif len(matching)==0:
+        print filename_search, 'not found at',ftp_server+subdir
+        return string.replace(filename_search,'.gz','')
+    else:
+        return matching
+    
 def buildUniProtFunctAnnotations(species,force):
     import UI
     file_location_defaults = UI.importDefaultFileLocations()
     """Identify the appropriate download location for the UniProt database for the selected species"""
     uis = file_location_defaults['UniProt']
-    tis = file_location_defaults['TrEMBL']
+    trembl_filename_url=''
     
     for ui in uis:
         if species in ui.Species(): uniprot_filename_url = ui.Location()
-    for ti in tis:
-        if species in ti.Species(): trembl_filename_url = ti.Location()
     species_codes = importSpeciesInfo(); species_full = species_codes[species].SpeciesName()
     
     import ExtractUniProtFunctAnnot; reload(ExtractUniProtFunctAnnot)
@@ -202,11 +223,11 @@ class SpeciesData:
     def __repr__(self): return self.Report()
     
 def importSpeciesInfo():
-    filename = 'Config/species.txt'; x=0
+    filename = 'Config/species_all.txt'; x=0
     fn=filepath(filename); species_codes={}
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
-        abrev,species,algorithms = string.split(data,'\t')
+        abrev,species = string.split(data,'\t')
         if x==0: x=1
         else:
             sd = SpeciesData(abrev,species)
@@ -223,6 +244,10 @@ def download(url,dir,file_type):
         #print "\nRemoving zip file:",fp
         try: os.remove(fp); status = 'removed'
         except Exception: null=[] ### Not sure why this error occurs since the file is not open
+        #print "\nRemoving zip file:",string.replace(fp,'.gz','')
+        if '.tar' in fp:
+            try: os.remove(string.replace(fp,'.gz',''))
+            except Exception: null=[]
     return output_filepath, status
 
 class download_protocol:
@@ -235,14 +260,14 @@ class download_protocol:
         output_filepath = filepath(dir+filename); self.output_filepath = output_filepath
         
         print "Downloading the following file:",filename,' ',
-        #print "outputpath:",output_filepath
-        #print url
+        
         self.original_increment = 5
         self.increment = 0
         from urllib import urlretrieve
         webfile, msg = urlretrieve(url, output_filepath,reporthook=self.reporthookFunction)
         print ''; self.testFile()
         print self.status
+
         if 'Internet' not in self.status:
             if '.zip' in filename:
                 print "Extracting zip file...",
@@ -265,6 +290,14 @@ class download_protocol:
                 data = open(decompressed_filepath,'wb')
                 #print "\nExtracting downloaded file:",self.gz_filepath
                 import shutil; shutil.copyfileobj(content,data)
+                # http://pythonicprose.blogspot.com/2009/10/python-extract-or-unzip-tar-file.html
+                os.chdir(filepath(dir))
+                if '.tar' in decompressed_filepath:
+                    import tarfile
+                    tfile = tarfile.open(decompressed_filepath)
+                    tfile.extractall()
+                    tfile.close()
+                    tar_dir = string.replace(decompressed_filepath,'.tar','')
                 self.status = 'remove'
             else: self.gz_filepath = ''; self.status = 'remove'
     def testFile(self):
@@ -323,16 +356,16 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
     dir = export.findParentDir(filename)  
     filename = export.findFilename(filename)
     url = url_dir+secondary_dir+'/'+filename
-
     file,status = download(url,dir,file_type); continue_analysis = 'yes'
     if 'Internet' in status:
         print_out = "File:\n"+url+"\ncould not be found on server or internet connection is unavailable."
-        try:
-            UI.WarningWindow(print_out,'WARNING!!!')
-            continue_analysis = 'no'
-        except Exception:
-            print url
-            print 'cannot be downloaded';die
+        if len(sys.argv)<2:
+            try:
+                UI.WarningWindow(print_out,'WARNING!!!')
+                continue_analysis = 'no'
+            except Exception:
+                print 'cannot be downloaded';force_error
+        else: print 'cannot be downloaded';force_error
     elif status == 'remove' and ('.zip' in file or '.tar' in file or '.gz' in file):
         try: os.remove(file) ### Not sure why this works now and not before
         except Exception: status = status
@@ -365,97 +398,6 @@ def decompressZipStackOverflow(zip_file,dir):
     zf.close()
     src.close()
     
-def updateDBs(species,array_type):
-    update_uniprot='no'; update_ensembl='no'; update_probeset_to_ensembl='no'; update_domain='no'; update_all='no'; update_miRs='no'
-    proceed = 'no'; genomic_build = 'old'
-
-    while proceed == 'no':
-        print "\n*****Select Species*****"
-        print "1) Human"
-        print "2) Mouse"
-        print "3) Rat"
-        print "4) all"
-        print "5) Quit"
-        inp = sys.stdin.readline(); inp = inp.strip()
-        if inp  == '1': species = ['Hs']; proceed = 'yes'
-        elif inp == '2': species = ['Mm']; proceed = 'yes'
-        elif inp == '3': species = ['Rn']; proceed = 'yes'
-        elif inp == '4': species = ['Mm','Hs','Rn']; proceed = 'yes'
-        elif inp == '5': sys.exit()
-        else: print "Sorry... that command is not an option\n"  
-
-    proceed = 'no'
-    while proceed == 'no':
-        print "\n*****Select Array Type*****"
-        print "1) Exon"
-        print "2) Gene"
-        print "3) AltMouse"
-        print "4) all"
-        print "5) Quit"
-        inp = sys.stdin.readline(); inp = inp.strip()
-        if inp  == '1': array_type = ['exon']; proceed = 'yes'
-        elif inp == '2': array_type = ['gene']; proceed = 'yes'
-        elif inp == '3': array_type = ['AltMouse']; proceed = 'yes'
-        elif inp == '4': array_type = ['AltMouse','gene','exon']; proceed = 'yes'
-        elif inp == '5': sys.exit()
-        else: print "Sorry... that command is not an option\n"
-
-    proceed = 'no'        
-    while proceed == 'no':
-        print "\n*****Update AltAnalyze Database Options***** \n"
-        print "Program Options: Updates for species",species,"and array type",array_type
-        print "NOTE: some files will needed be manually updated before continuing (e.g., Affymetrix and Ensembl files). See ReadMe for more info."
-        print "1) Update UniProt"
-        print "2) Update Ensembl"
-        print "3) Update Probeset-Ensembl associations"
-        print "4) Update Protein/Domain associations"
-        print "5) Update miRNA aligments"
-        print "6) Update All"
-        print "7) Quit"
-        inp = sys.stdin.readline(); inp = inp.strip()
-        if inp  == '1': update_uniprot = 'yes'; proceed = 'yes'
-        elif inp == '2': update_ensembl = 'yes'; proceed = 'yes'
-        elif inp == '3': update_probeset_to_ensembl = 'yes'; proceed = 'yes'
-        elif inp == '4': update_domain = 'yes'; proceed = 'yes'
-        elif inp == '5': update_miRs = 'yes'; proceed = 'yes'
-        elif inp == '6': update_all = 'yes'; proceed = 'yes'
-        elif inp == '7': sys.exit()
-        else: print "Sorry... that command is not an option\n"
-
-    proceed = 'no'
-    while proceed == 'no':
-        print "\n*****Update AltAnalyze Database Options*****"
-        print "1) Force download of all files (whether present locally or not) "
-        print "2) Use local or download if necessary"
-        print "3) Quit"
-        inp = sys.stdin.readline(); inp = inp.strip()
-        if inp  == '1': force = 'yes'; proceed = 'yes'
-        elif inp == '2': force = 'no'; proceed = 'yes'
-        elif inp == '3': sys.exit()
-        else: print "Sorry... that command is not an option\n"        
-
-    if 'AltMouse' in array_type:
-        proceed = 'no'
-        while proceed == 'no':
-            print "\n*****Update AltAnalyze Database Options*****"
-            print "1) New genomic build."
-            print "2) Genomic build is identical to prior database build."
-            print "3) Quit"
-            inp = sys.stdin.readline(); inp = inp.strip()
-            if inp  == '1': genomic_build = 'new'; proceed = 'yes'
-            elif inp == '2': genomic_build = 'old'; proceed = 'yes'
-            elif inp == '3': sys.exit()
-            else: print "Sorry... that command is not an option\n"
-            
-    for specific_species in species:
-        for specific_array_type in array_type:
-            if specific_array_type == 'AltMouse' and specific_species == 'Mm': proceed = 'yes'
-            elif specific_array_type == 'exon' or specific_array_type == 'gene': proceed = 'yes'
-            else: proceed = 'no'
-            if proceed == 'yes':
-                print "Analyzing", specific_species, specific_array_type
-                executeParameters(specific_species,specific_array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all)
-    
 def executeParameters(species,array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version):    
     if update_all == 'yes':
         update_uniprot='yes'; update_ensembl='yes'; update_probeset_to_ensembl='yes'; update_domain='yes'; update_miRs = 'yes'
@@ -472,7 +414,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
         EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,ensembl_version,force)
         
         """ Used to grab Ensembl full gene sequence plus promoter and 3'UTRs """
-        if array_type == 'AltMouse' or array_type == 'junction':
+        if array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
             EnsemblSQL.getFullGeneSequences(ensembl_version,species)
             
     if update_uniprot == 'yes':            
@@ -495,7 +437,8 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
         import UCSCImport
         mRNA_Type = 'mrna'; run_from_scratch = 'yes'
         export_all_associations = 'yes' ### YES only for protein prediction analysis
-        UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)        
+        try: UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+        except Exception: UCSCImport.exportNullDatabases(species) ### used for species not supported by UCSC
 
         if (species == 'Mm' and array_type == 'AltMouse'):
             """Imports and re-exports array-Ensembl annotations"""
@@ -503,8 +446,8 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             null = JunctionArray.importArrayAnnotations(species,array_type); null={}
         if (species == 'Mm' and array_type == 'AltMouse') or array_type == 'junction' or array_type == 'RNASeq':
             """Performs probeset sequence aligment to Ensembl and UCSC transcripts. To do: Need to setup download if files missing"""
-            import mRNASeqAlign
-            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,force)
+            import mRNASeqAlign; analysis_type = 'reciprocal'
+            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,analysis_type,force)
        
         import IdentifyAltIsoforms; run_seqcomp = 'no'
         IdentifyAltIsoforms.runProgram(species,array_type,'null',force,run_seqcomp)
@@ -512,9 +455,18 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
         FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'null')
         
         if array_type == 'junction' or array_type == 'RNASeq':
-            IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
-            ### FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
-            
+            ### For junction probeset sequences from mRNASeqAlign(), find and assess alternative proteins - export to the folder 'junction'
+            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,'single',force)
+            IdentifyAltIsoforms.runProgram(species,array_type,'junction',force,run_seqcomp)
+            FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'junction')
+            if array_type == 'junction' or array_type == 'RNASeq':
+                ### For exon probesets (and junction exons) align and assess alternative proteins - export to the folder 'exon'
+                IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
+                # FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
+                if array_type == 'RNASeq':
+                    import JunctionArray
+                    JunctionArray.combineExonJunctionAnnotations(species,array_type)
+
     if update_miRs == 'yes':
         if update_miR_seq == 'yes':
             import MatchMiRTargetPredictions; only_add_sequence_to_previous_results = 'no'
@@ -526,9 +478,6 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             stringency = 'lax'
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
-            filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-targets.txt'; ef=filepath(filename)
-            er = string.replace(ef,species+'/SequenceData/miRBS-combined_gene-targets.txt','ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt')
-            import shutil; shutil.copyfile(ef,er)
             import ExonArray
             ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
         else:
@@ -541,36 +490,53 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
     if array_type == 'junction':
         import JunctionArray; import JunctionArrayEnsemblRules
         JunctionArray.filterForCriticalExons(species,array_type)
+        JunctionArray.overRideExonEntriesWithJunctions(species,array_type)
         JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
-        
+    if array_type == 'RNASeq' and (species == 'Hs' or species == 'Mm' or species == 'Rn'):
+        import JunctionArray; import JunctionArrayEnsemblRules
+        JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
+    
+    try:
+        filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-targets.txt'; ef=filepath(filename)
+        er = string.replace(ef,species+'/SequenceData/miRBS-combined_gene-targets.txt','ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt')
+        import shutil; shutil.copyfile(ef,er)
+    except Exception: null=[]
+    
 if __name__ == '__main__':
     #zipDirectory('Rn/EnsMart49');kill
     #unzipFiles('Rn.zip', 'AltDatabaseNoVersion/');kill    
     #filename = 'http://altanalyze.org/archiveDBs/LibraryFiles/Mouse430_2.zip'
     #filename = 'AltDatabase/affymetrix/LibraryFiles/Mouse430_2.zip'
     #downloadCurrentVersionUI(filename,'LibraryFiles','','')
-    #dp = download_protocol('http://genmapp.org/go_elite/Databases/EnsMart56/Dr.zip','Databases','')
+    #dp = download_protocol('ftp://mirnamap.mbc.nctu.edu.tw/miRNAMap2/miRNA_Targets/Anopheles_gambiae/miRNA_targets_aga.txt.tar.gz','temp/','');sys.exit()
     #kill
     #target_folder = 'Databases/Ci'; zipDirectory(target_folder)
     #unzipFiles('Cs.zip', 'Databases/');kill
     #buildUniProtFunctAnnotations('Hs',force='no')
-    """import UI
-    date = UI.TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
+
+    species = 'Mm'; array_type = 'RNASeq'; force = 'yes'; run_seqcomp = 'no'; import IdentifyAltIsoforms
+    IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp); sys.exit()
+    
+    import UI
+    #date = UI.TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
     url  ='http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab'
     output = 'BuildDBs/wikipathways/'
     file_type = ''
     url = 'http://www.genmapp.org/go_elite/Databases/EnsMart56/Cs.zip'
     output = 'Databases/'
+    url = 'http://www.altanalyze.org/archiveDBs/Cytoscape/cytoscape.tar.gz'
+    output = ''
+    #dp = download_protocol(url,output,file_type);sys.exit()
     fln,status = download(url,output,file_type)
-    print status;kill
+    print status;sys.exit()
         
     url='http://altanalyze.org/archiveDBs/LibraryFiles/MoEx-1_0-st-v1.r2.antigenomic.bgp.gz'
     dir='AltDatabase/affymetrix/LibraryFiles/'
     file_type = ''
-    download(url,dir,file_type)"""
+    download(url,dir,file_type)
     
     species='Hs'; array_type = 'junction'
-    #updateDBs(species,array_type); sys.exit()
+    
     #"""
     array_type = ['RNASeq']; species = ['Mm']; force = 'yes'; ensembl_version = '60'
     update_uniprot='no'; update_ensembl='no'; update_probeset_to_ensembl='yes'; update_domain='yes'; update_all='no'; update_miRs='yes'

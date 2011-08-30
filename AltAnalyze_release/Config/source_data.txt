@@ -5,30 +5,29 @@ MIM	Mi
 sharesCDS	Sc	
 Illumina	Il	
 miRBase	Mb	
-RFAM	Rf	
 Kyotograil	Ky	
 Vega_transcript	Vr	
 XenTro	Xen	
-MEROPS	Merops	
+MiscArray	Ma	
 wormpep_id	Wp	
 CCDS	Cc	
-RefSeq	Q	
 Cint	Cj	
+RefSeq	Q	
 ENST	Enst	
-TakRub	Tak	
+TetNig	Tet	
 Wormbase	Wb	
 WikiGene	Wg	
 Agilent	Ag	
 Genoscope_pred_gene	Gen	
-TetNig	Tet	
+TakRub	Tak	
 GPCR	Gpcr	
+EntrezGene	L	MOD
 CioInt	Cio	
 UniProt	S	
 ProteinID	Pi	
 Osford_FGU	Of	
 FlyBase	F	
 SGD	D	
-PUBMED	Pu	
 Fantom	Fa	
 FlyGrid	Fg	
 EMBL	Em	
@@ -38,7 +37,7 @@ Vega_translation	Vt
 GadFly	Gf	
 BDGP_insitu_expr	Bd	
 Platypus_olfactory_receptor	Pr	
-Vega	Vg	
+PUBMED	Pu	
 Ensembl	En	MOD
 Zfin	Z	
 HPA	Hpa	
@@ -51,11 +50,12 @@ Codelink	Co
 EPD	Epd	
 MGI	M	
 IPI	Ip	
-MiscArray	Ma	
+MEROPS	Merops	
 UCSC	Ucsc	
-EntrezGene	L	MOD
+Vega	Vg	
 TransFac	Transfac	
 Sanger	Sh	
+RFAM	Rf	
 DEDb	De	
 OTT	Ot	
 HGNC	Hg	

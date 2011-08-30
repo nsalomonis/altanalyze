@@ -29,19 +29,142 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir); dir_list2 = []
     ###Code to prevent folder names from being included
     for entry in dir_list:
-        if entry[-4:] == ".txt" or entry[-4:] == ".csv": dir_list2.append(entry)
+        if entry[-4:] == ".txt" or entry[-4:] == ".dat": dir_list2.append(entry)
     return dir_list2
 
 def importEnsemblUniprot(filename):
-    fn=filepath(filename)
+    fn=filepath(filename); x = 0
     for line in open(fn,'r').xreadlines():
         data, newline= string.split(line,'\n')
         t = string.split(data,'\t')
-        ensembl=t[0];uniprot=t[1]
-        try: uniprot_ensembl_db[uniprot].append(ensembl)
-        except KeyError: uniprot_ensembl_db[uniprot] = [ensembl]
+        if x==0: x=1
+        else:
+            try:
+                ensembl=t[0];uniprot=t[1]
+                try: uniprot_ensembl_db[uniprot].append(ensembl)
+                except KeyError: uniprot_ensembl_db[uniprot] = [ensembl]
+            except Exception: null=[] ### Occurs when no file is located on the AltAnalyze server
     print len(uniprot_ensembl_db),"UniProt entries with Ensembl annotations"
 
+def exportEnsemblUniprot(filename):
+    import export
+    export_data = export.ExportFile(filename)
+    export_data.write(string.join(['ensembl','uniprot'],'\t')+'\n')
+    for uniprot in uniprot_ensembl_db:
+        for ensembl in uniprot_ensembl_db[uniprot]:
+            export_data.write(string.join([ensembl,uniprot],'\t')+'\n')
+    export_data.close()
+    
+def cleanUpLine(line):
+    line = string.replace(line,'\n','')
+    line = string.replace(line,'\c','')
+    data = string.replace(line,'\r','')
+    data = string.replace(data,'"','')
+    return data
+
+def findSpeciesInUniProtFiles(force):
+    ### Download all UniProt annotation files and grab all species names, TaxIDs and corresponding URLs
+    
+    import AltAnalyze
+    ###Get species annotations from the GO-Elite config
+    species_annot_db=AltAnalyze.importGOEliteSpeciesInfo(); tax_db={}
+    for species_full in species_annot_db:
+        taxid=species_annot_db[species_full].TaxID()
+        tax_db[taxid]=species_full
+
+    if force == 'yes':
+        ### Should only need to be run if UniProt changes it's species to file associations or new species supported by Ensembl
+        import export; import update
+        filesearch = '_sprot_'
+        all_swissprot = update.getFTPData('ftp.expasy.org','/databases/uniprot/current_release/knowledgebase/taxonomic_divisions',filesearch)
+        for file in all_swissprot:
+            gz_filepath, status = update.download(file,'uniprot_temp/','')        
+            if status == 'not-removed':
+                try: os.remove(gz_filepath) ### Not sure why this works now and not before
+                except OSError: status = status
+            
+    species_uniprot_db={}; altanalyze_species_uniprot_db={}
+    dir=read_directory('/uniprot_temp')
+    for filename in dir:    
+        fn=filepath('uniprot_temp/'+filename)
+        for line in open(fn,'r').xreadlines():
+            data = cleanUpLine(line)
+            if data[0:2] == 'OX':
+                taxid = string.split(data,'=')[1][:-1]
+                if taxid in tax_db:
+                    species_full = tax_db[taxid]
+            elif data[0:2] == 'OS':
+                species = data[5:]
+                species = string.split(species,' ')[:2]
+                species_full = string.join(species,' ')
+            elif data[0] == '/':
+                url = 'ftp.expasy.org/databases/uniprot/current_release/knowledgebase/taxonomic_divisions/'+filename
+                ss = string.split(species_full,' ')
+                if len(ss)==2: ### Species name is in the format Homo sapiens - and '(' not in species_full and ')' not in species_full and '/' not in species_full
+                    try: species_uniprot_db[species_full].append((taxid,'ftp://'+url+'.gz'))
+                    except KeyError: species_uniprot_db[species_full] = [(taxid,'ftp://'+url+'.gz')]
+                taxid = ''; species_full = ''
+    import EnsemblImport
+    species_uniprot_db = EnsemblImport.eliminate_redundant_dict_values(species_uniprot_db)
+    ### Export all species to UniProt file relationships so this function needs to only be run once
+    import export         
+    up = export.ExportFile('Config/uniprot-species-file.txt')
+    for species_full in species_uniprot_db:
+        values = species_uniprot_db[species_full]
+        if len(values)>1:
+            found = 'no'
+            for (taxid,url) in values:
+                if taxid in tax_db:
+                    if species_full == tax_db[taxid]: found='yes'; print 'ambiguity resolved:',species_full; break
+                if found == 'yes': break
+        else: (taxid,url) = values[0]
+        up.write(string.join([species_full,taxid,url],'\t')+'\n')
+    up.close()
+    
+def getUniProtURLsForAllSupportedSpecies():
+    ### Import all UniProt supproted species and URLs
+    species_uniprot_db={}
+    fn=filepath('Config/uniprot-species-file.txt')
+    for line in open(fn,'r').xreadlines():
+        data = cleanUpLine(line)
+        species_full,taxid,url = string.split(data,'\t')
+        if 'Homo sapiens' not in species_full: ### There's a separate file for us humans (so egotistical!!!)
+            species_uniprot_db[species_full] = taxid,url
+        
+    import AltAnalyze
+    ###Get species annotations from the GO-Elite config
+    species_annot_db=AltAnalyze.importGOEliteSpeciesInfo()
+        
+    ### Export all urls for currently supported species
+    import UI
+    file_location_defaults = UI.importDefaultFileLocations()
+    
+    location_db={}; species_added=[]
+    for species_full in species_annot_db:
+        if species_full in species_uniprot_db:
+            taxid,url = species_uniprot_db[species_full]
+            species_code = species_annot_db[species_full].SpeciesCode()
+            try: location_db[url].append(species_code)
+            except Exception: location_db[url] = [species_code]
+            species_added.append(species_full)
+            
+    for species_full in species_annot_db:
+        taxid = species_annot_db[species_full].TaxID()
+        species_code = species_annot_db[species_full].SpeciesCode()
+        if species_full not in species_added:
+            for species_name in species_uniprot_db:
+                tax,url = species_uniprot_db[species_name]
+                if tax == taxid:
+                    location_db[url].append(species_code)
+                    print species_code
+                
+    for url in location_db:
+        species = string.join(location_db[url],'|')
+        fl = UI.FileLocationData('ftp', url, species)
+        try: file_location_defaults['UniProt'].append(fl)
+        except KeyError: file_location_defaults['UniProt'] = [fl]
+    UI.exportDefaultFileLocations(file_location_defaults)
+    
 def import_uniprot_db(filename):
     fn=filepath(filename); global species_not_imported; species_not_imported=[]
     ac = '';sm='';id = '';sq = '';osd = ''; gn = '';dr = '';de = '';ft_string = '';ft = []; ensembl = []; mgi = []; unigene = []; embl = []
@@ -118,6 +241,15 @@ def import_uniprot_db(filename):
                   if secondary_ac in uniprot_ensembl_db:
                       for alt_ens in uniprot_ensembl_db[secondary_ac]: alternate_ensembls.append(alt_ens)
                   secondary_to_primary_db[secondary_ac] = id
+
+              ### Update this database with new annotations from the file
+              for ens in ensembl:
+                for secondary_ac in ac:
+                    try:
+                        if ens not in uniprot_ensembl_db[secondary_ac]:
+                            uniprot_ensembl_db[secondary_ac].append(ens)
+                    except KeyError: uniprot_ensembl_db[secondary_ac]=[ens]
+
               ensembl += alternate_ensembls
               y = UniProtAnnotations(id,ac,sq,ft_list2,ensembl,gn,file_type,de,embl,unigene,mgi,ft_call,class_def,cellular_components)
               uniprot_db[id] = y
@@ -309,6 +441,11 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
     global secondary_to_primary_db; secondary_to_primary_db={}
     
     species_name = species_full
+    
+    import UI; species_names = UI.getSpeciesInfo()
+    species_full = species_names[species]
+    species_full = string.replace(species_full,' ','_')
+
     uniprot_file = string.split(uniprot_filename_url,'/')[-1]; uniprot_file = string.replace(uniprot_file,'.gz','')
     trembl_file = string.split(trembl_filename_url,'/')[-1]; trembl_file = string.replace(trembl_file,'.gz','')
     uniprot_fildir = 'AltDatabase/uniprot/'+species+'/'
@@ -326,9 +463,9 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
             importEnsemblUniprot(uniprot_ens_location)
         except Exception: null=[]
     try:
-        uniprot_ens_location = string.replace(uniprot_ens_location,'UniProt','Uniprot-SWISSPROT')
-        uniprot_ens_location = string.replace(uniprot_ens_location,'uniprot','Uniprot-SWISSPROT')
-        importEnsemblUniprot(uniprot_ens_location)
+        uniprot_ens_location_built = string.replace(uniprot_ens_location,'UniProt','Uniprot-SWISSPROT')
+        uniprot_ens_location_built = string.replace(uniprot_ens_location_built,'uniprot','Uniprot-SWISSPROT')
+        importEnsemblUniprot(uniprot_ens_location_built)
     except Exception: null=[]
     ### Import UniProt annotations
     if force == 'no': import_uniprot_db(uniprot_location)
@@ -353,6 +490,9 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
             update.download(trembl_filename_url,uniprot_fildir,'')
             import_uniprot_db(trembl_location)        
     export()
+    exportEnsemblUniprot(uniprot_ens_location)
     
 if __name__ == '__main__':
+    #findSpeciesInUniProtFiles('no'); sys.exit()
+    getUniProtURLsForAllSupportedSpecies()
     sys.exit()

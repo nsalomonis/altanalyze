@@ -59,11 +59,12 @@ def importEnsemblUCSCAltJunctions(species,type):
         data = cleanUpLine(line)
         if x == 0: x=1
         else:
-            try: gene,critical_exon,junction1,junction2,splice_event = string.split(data,'\t')
-            except Exception: print data;kill
+            gene,critical_exon,junction1,junction2,splice_event = string.split(data,'\t')
             if critical_exon in junction1: incl_junction = junction1; excl_junction = junction2 
             else: incl_junction = junction2; excl_junction = junction1
             gene_junction_db[gene,critical_exon,incl_junction,excl_junction]=[]
+            #try: gene_junction_db[gene,incl_junction,excl_junction].append(critical_exon)
+            #except KeyError: gene_junction_db[gene,incl_junction,excl_junction] = [critical_exon]
 
     print len(gene_junction_db), 'alternative junction-pairs identified from Ensembl and UCSC'
     return gene_junction_db
@@ -185,14 +186,24 @@ class JunctionInformation:
     def setCriticalExonSets(self,critical_exon_sets): self.critical_exon_sets = critical_exon_sets
     def CriticalExonSets(self): return self.critical_exon_sets ### list of critical exons (can select any or all for functional analysis)
     def setInclusionJunction(self,incl_junction): self.incl_junction = incl_junction
-    def InclusionJunction(self): return str(self.incl_junction)
-    def ExclusionJunction(self): return str(self.excl_junction)
+    def InclusionJunction(self): return self.FormatJunction(self.incl_junction,self.InclusionProbeset())
+    def ExclusionJunction(self): return self.FormatJunction(self.excl_junction,self.ExclusionProbeset())
+    def FormatJunction(self,junction,probeset):
+        ### Used for RNASeq when trans-splicing occurs
+        probeset_split = string.split(probeset,':') ### Indicates trans-splicing - two gene IDs listed
+        if len(probeset_split)>2:
+            junction = probeset
+        elif 'E0.1' in junction:
+            junction = 'U'+junction[1:]
+        return str(junction)
     def setInclusionProbeset(self,incl_probeset): self.incl_probeset = incl_probeset
     def InclusionProbeset(self): return self.FormatProbeset(self.incl_probeset)
     def ExclusionProbeset(self): return self.FormatProbeset(self.excl_probeset)
     def FormatProbeset(self,probeset):
         if ':' in probeset:
             probeset = string.split(probeset,':')[1]
+        elif '@' in probeset:
+            probeset = reformatID(probeset)
         return str(probeset)
     def DataSource(self): return str(self.source)
     def OutputLine(self):
@@ -200,22 +211,57 @@ class JunctionInformation:
         return value
     def __repr__(self): return self.GeneID()
     
+def formatID(id):
+    ### JunctionArray methods handle IDs with ":" different than those that lack this
+    return string.replace(id,':','@')
+
+def reformatID(id):
+    ### JunctionArray methods handle IDs with ":" different than those that lack this
+    return string.replace(id,'@',':')
+
 def reimportJunctionComps(species,array_type,file_type):
+    if len(species[0])>1:
+        species, root_dir = species
+    else: species = species
+    if len(file_type) == 2:
+        file_type, filter_db = file_type; filter='yes'
+    else: filter_db={}; filter='no'
+        
+    
     filename = 'AltDatabase/' + species + '/'+array_type+'/'+ species + '_junction_comps.txt'
     if file_type == 'updated':
         filename = string.replace(filename,'.txt','_updated.txt')
+        if array_type == 'RNASeq': filename = root_dir+filename
     fn=filepath(filename); junction_inclusion_db={}; x=0
     for line in open(fn,'rU').xreadlines():
         if x==0: x=1
         else:
             data = cleanUpLine(line)
-            gene,critical_exon,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source = string.split(data,'\t')
-            ji=JunctionInformation(gene,critical_exon,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source)
-            if ':' in excl_junction_probeset:
-                tc,excl_junction_probeset=string.split(excl_junction_probeset,':')
-                tc,incl_junction_probeset=string.split(incl_junction_probeset,':')
-            try: junction_inclusion_db[excl_junction_probeset,incl_junction_probeset].append(ji)
-            except Exception: junction_inclusion_db[excl_junction_probeset,incl_junction_probeset] = [ji]
+            try: gene,critical_exon,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source = string.split(data,'\t')
+            except Exception: print data;kill
+            proceed = 'yes'
+            if filter == 'yes':
+                if gene not in filter_db: proceed = 'no'
+            if proceed == 'yes':
+                if array_type == 'RNASeq':
+                    ### Reformat IDs, as junction arrays interpret ':' as a separator to remove the gene ID
+                    excl_junction_probeset = formatID(excl_junction_probeset)
+                    incl_junction_probeset = formatID(incl_junction_probeset)
+                    if file_type == 'updated':
+                        ### Add exclusion-junction versus inclusion-exon
+                        critical_exons = string.split(critical_exon,'|')
+                        for ce in critical_exons:
+                            critical_exon_probeset = formatID(gene+':'+ce)
+                            ji=JunctionInformation(gene,critical_exon,excl_junction,ce,excl_junction_probeset,critical_exon_probeset,source)
+                            junction_inclusion_db[excl_junction_probeset,critical_exon_probeset] = [ji]
+                ji=JunctionInformation(gene,critical_exon,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source)
+                if ':' in excl_junction_probeset:
+                    tc,excl_junction_probeset=string.split(excl_junction_probeset,':')
+                    tc,incl_junction_probeset=string.split(incl_junction_probeset,':')
+                try: junction_inclusion_db[excl_junction_probeset,incl_junction_probeset].append(ji)
+                except Exception: junction_inclusion_db[excl_junction_probeset,incl_junction_probeset] = [ji]
+    if array_type != 'RNASeq':
+        print len(junction_inclusion_db),'reciprocol junctions imported'
     return junction_inclusion_db
 
 def importAndReformatEnsemblJunctionAnnotations(species,array_type,nonconstitutive_junctions):
@@ -277,6 +323,12 @@ def importAndReformatEnsemblJunctionAnnotations(species,array_type,nonconstituti
                 ens_exon_ids=string.join(unique.unique(ens_exon_idsl+ens_exon_idsr),'|')
                 pl[10] = ens_exon_ids; pl[12] = regionid; pl[1] = exon_id; pl[-1] = splice_junctionsl
                 pl[13] = l.ExonStart()+'|'+l.ExonStop(); pl[14] = r.ExonStart()+'|'+r.ExonStop()
+                strand = pl[5]
+                if strand == '+':
+                    pl[6] = l.ExonStop(); pl[7] = r.ExonStart() ### juncstion splice-sites
+                else:
+                    pl[6] = l.ExonStart(); pl[7] = r.ExonStop() ### juncstion splice-sites
+
                 pl[0] = probeset; pl[9] = l.Constitutive()
             
                 pl = string.join(pl,'\t')+'\n'
@@ -379,7 +431,9 @@ def getAnnotations(Species,array_type,reannotate_exon_seq,force):
     
 def annotateJunctionIDsAsExon(species,array_type):
     import ExonSeqModule
-    probeset_annotations_file = 'AltDatabase/'+species+'/junction/'+species+'_Ensembl_junction_probesets-filtered.txt'
+    probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_junction_probesets-filtered.txt'
+    if array_type == 'RNASeq':
+        probeset_annotations_file = string.replace(probeset_annotations_file,'junction_probesets-filtered','exons')
     junction_exon_db = ExonSeqModule.importSplicingAnnotationDatabase(probeset_annotations_file,array_type)
     probeset_annotations_file = 'AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt'
     exon_db = ExonSeqModule.importSplicingAnnotationDatabase(probeset_annotations_file,array_type)
@@ -397,6 +451,7 @@ def annotateJunctionIDsAsExon(species,array_type):
     ### Add missing exons to unique
     for uid in multiple_exon_regions:
         if uid not in unique_exon_regions: unique_exon_regions[uid]=multiple_exon_regions[uid]
+
     """
         for i in unique_exon_regions:
             if 'ENSMUSG00000066842' in i:
@@ -419,14 +474,14 @@ def annotateJunctionIDsAsExon(species,array_type):
                     if probeset == 'ENSMUSG00000066842:E60.1': print [y.Probeset()]
                     junction_to_exonids[probeset] = y.Probeset()
         else:
-            if (geneid,y.ExonRegionID()) in unique_exon_regions:
+            if (geneid,string.replace(y.ExonRegionID(),'.','-')) in unique_exon_regions:
                 #if ':' in probeset: print [probeset,y.ExonRegionID()];kill
-                y = unique_exon_regions[geneid,y.ExonRegionID()]
+                y = unique_exon_regions[geneid,string.replace(y.ExonRegionID(),'.','-')]
                 junction_to_exonids[probeset] = y.Probeset()
                 
-    output_file = 'AltDatabase/'+species+'/junction/'+species+'_junction-exon_probesets.txt'
+    output_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_'+array_type+'-exon_probesets.txt'
     fn=filepath(output_file); data = open(fn,'w')
-    data.write('gene_probeset\texon_probeset\n')
+    data.write(array_type+'_probeset\texon_probeset\n')
     
     for probeset in junction_to_exonids:
         exon_probeset = junction_to_exonids[probeset]
@@ -435,8 +490,8 @@ def annotateJunctionIDsAsExon(species,array_type):
     
 if __name__ == '__main__':
     m = 'Mm'; h = 'Hs'
-    Species = h
-    array_type = 'junction' ###In theory, could be another type of junciton or combination array
+    Species = m
+    array_type = 'RNASeq' ###In theory, could be another type of junciton or combination array
 
     annotateJunctionIDsAsExon(Species,array_type); sys.exit()
     

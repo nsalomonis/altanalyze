@@ -96,6 +96,9 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
         ###Export data for Ensembl-External gene system
         buildTranscriptStructureTable()
         
+        ###Export transcript biotype annotations (e.g., NMD)
+        exportTranscriptBioType()
+        
         ###Get Interpro AC display name
         buildFilterDBForExternalDB('Interpro')
         xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
@@ -130,24 +133,72 @@ def getFullGeneSequences(ensembl_version,species):
         
     dirtype = 'fasta/'+ens_species+'/dna'
     ensembl_dnaseq_dirs = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
-         
+
     output_dir = 'AltDatabase/'+species + '/SequenceData/chr/'
     global dna
     dna = export.ExportFile(output_dir+species+'_gene-seq-2000_flank.fa')
+    print 'Writing gene sequence file plus 2000 flanking base-pairs'
         
     import EnsemblImport
-    chr_gene_db,location_gene_db = EnsemblImport.getEnsemblGeneLocations(species)
+    chr_gene_db,location_gene_db = EnsemblImport.getEnsemblGeneLocations(species,'','key_by_chromosome')
+    
     for (chr_file,chr_url) in ensembl_dnaseq_dirs:
         #if 'MT' in chr_file:
-        chr=string.split(chr_file,'.')[-3]
-        if chr in chr_gene_db:
+        if 'toplevel' in chr_file:
             gz_filepath, status = update.download(chr_url,output_dir,'')
-            parseChrFASTA(output_dir+chr_file[:-3],chr,chr_gene_db[chr],location_gene_db)
+            dna_db = divideUpTopLevelChrFASTA(output_dir+chr_file[:-3],output_dir,'store') ### Would work nice, but too file intensive
+            print len(dna_db), 'scaffolds read into memory'
+            for chr in chr_gene_db:
+                if chr in dna_db:
+                    #print chr,'found'
+                    parseChrFASTA(dna_db[chr],chr,chr_gene_db[chr],location_gene_db)
+                else: print chr,'not found'
             try: os.remove(gz_filepath) ### Not sure why this works now and not before
             except Exception: null=[]
-            #os.remove(gz_filepath[:-3]) ### Delete the chromosome sequence file
+            try: os.remove(gz_filepath[:-3]) ### Delete the chromosome sequence file
+            except Exception: null=[]
+        else:   
+            chr=string.split(chr_file,'.')[-3]
+            if chr in chr_gene_db:
+                gz_filepath, status = update.download(chr_url,output_dir,'')
+                parseChrFASTA(output_dir+chr_file[:-3],chr,chr_gene_db[chr],location_gene_db)
+                try: os.remove(gz_filepath) ### Not sure why this works now and not before
+                except Exception: null=[]
+                try: os.remove(gz_filepath[:-3]) ### Delete the chromosome sequence file
+                except Exception: null=[]
     dna.close()
-    
+
+def divideUpTopLevelChrFASTA(filename,output_dir,action):
+    """ When individual chromosome files are not present, parse the TopLevel file which contains segments divided by scaffold rather
+    than individual chromosomes. Since the Scaffolds are reported rather than the chromosomes for genes in the other Ensembl annotation
+    files, the scaffolds can serve as a surrogate for individual chromosome files when parsed out."""
+    fn=filepath(filename); fasta=[]; sdna=None
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if '>' == data[0]:
+            ### Save values from previous scaffold
+            if sdna != None:
+                if action == 'write':
+                    for ln in fasta: sdna.write(ln)
+                    sdna.close()
+                else: sdna[scaffold_id] = [scaffold_line]+fasta
+                #if scaffold_id == 'scaffold_753': print scaffold_id, scaffold_line, fasta;kill
+                fasta=[]
+            else: sdna = {} ### performed once
+            ### Create new export object
+            scaffold_id=string.split(data[1:],' ')[0]; scaffold_line = line
+            if action == 'write':
+                export_dir = string.replace(filename,'toplevel','chromosome.'+scaffold_id)
+                sdna = export.ExportFile(export_dir)
+                sdna.write(line)
+        else: fasta.append(line)
+
+    if action == 'write':
+        for ln in fasta: sdna.write(ln)
+        sdna.close()
+    else: sdna[scaffold_id] = [scaffold_line]+fasta
+    return sdna
+
 def parseChrFASTA(filename,chr,chr_gene_locations,location_gene_db):
     """ This function parses FASTA formatted chromosomal sequence, storing only sequence needed to get the next gene plus any buffer seqence, in memory.
     Note: not straight forward to follow initially, as some tricks are needed to get the gene plus buffer sequence at the ends of the chromosome"""
@@ -158,13 +209,30 @@ def parseChrFASTA(filename,chr,chr_gene_locations,location_gene_db):
             genes_to_be_examined[gene]=[ch,cs,ce]
         
     import EnsemblImport
-    print "Parsing chromosome %s sequence..." % chr
+
+    if ('/' in filename) or ('\\' in filename): ### Occurs when parsing a toplevel chromosome sequence file
+        print "Parsing chromosome %s sequence..." % chr
+        fn=filepath(filename)
+        sequence_data = open(fn,'rU').xreadlines()
+        readtype = 'file'
+    else:
+        """The scaffold architecture of some species sequence files creates a challenge to integrate non-chromosomal sequence,
+        however, we still want to analyze it in the same way as chromosomal sequence. One alternative is to write out each scaffold
+        it's own fasta file. The problem with this is that it creates dozens of thousands of files which is time consuming and messy
+        - see divideUpTopLevelChrFASTA(). To resolve this, we instead store the sequence in a dictionary as sequence lines, but read
+        in the sequence lines just like they are directly read from the fasta sequence, allowing both pipelines to work the same
+        (rather than maintain two complex functions that do the same thing)."""
+        scaffold_line_db = filename 
+        sequence_data = scaffold_line_db
+        #print len(scaffold_line_db)
+        readtype = 'dictionary'
+        
     chr_gene_locations.sort()
     cs=chr_gene_locations[0][0]; ce=chr_gene_locations[0][1]; buffer=2000; failed=0; gene_count=0; terminate_chr_analysis='no'
     max_ce = chr_gene_locations[-1][1]; genes_analyzed={}
     gene,strand = location_gene_db[chr,cs,ce]
-    fn=filepath(filename); x=0; sequence=''; running_seq_length=0; tr=0 ### tr is the total number of nucleotides removed (only store sequence following the last gene)
-    for line in open(fn,'rU').xreadlines():
+    x=0; sequence=''; running_seq_length=0; tr=0 ### tr is the total number of nucleotides removed (only store sequence following the last gene)
+    for line in sequence_data:
         data = cleanUpLine(line)
         if x==0:
             #>MT dna:chromosome chromosome:GRCh37:MT:1:16569:1
@@ -203,12 +271,15 @@ def parseChrFASTA(filename,chr,chr_gene_locations,location_gene_db):
                     if len(data)<60: iterate='yes' ### Forces re-iteration through the last stored sequence set
                     else: iterate='no'
                 if terminate_chr_analysis == 'yes': break
-    print "Sequence for",len(genes_analyzed),"out of",len(genes_to_be_examined),"genes exported..." 
+    if ('/' in filename) or ('\\' in filename):
+        print "Sequence for",len(genes_analyzed),"out of",len(genes_to_be_examined),"genes exported..." 
 
-    for gene in genes_to_be_examined:
-        if gene not in genes_analyzed:
-            print gene, genes_to_be_examined[gene]
-            sys.exit()
+        for gene in genes_to_be_examined:
+            if gene not in genes_analyzed:
+                print gene, genes_to_be_examined[gene]
+                sys.exit()
+    elif len(genes_analyzed) != len(genes_to_be_examined):
+        print len(genes_to_be_examined)-len(genes_analyzed), 'not found for',chr
     
 def buildTranscriptStructureTable():
     ### Function for building Ensembl transcription annotation file
@@ -230,8 +301,34 @@ def buildTranscriptStructureTable():
     temp_values_list=[]
     exportEnsemblTable(values_list,headers,output_dir)
 
+def exportTranscriptBioType():
+    ### Function for extracting biotype annotations for transcripts
+    transcript_protein_id={}
+    for protein_id in translation_db:
+        ti = translation_db[protein_id]; transcript_id = ti.TranscriptId()
+        transcript_protein_id[transcript_id] = protein_id
+        
+    values_list = []; output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-biotypes.txt'
+    headers = ['Ensembl Gene ID','Ensembl Translation ID', 'Biotype']
+    for transcript_id in transcript_db:
+        ti = transcript_db[transcript_id]
+        ens_transcript = transcript_stable_id_db[transcript_id].StableId()
+        try: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_stable_id_db[protein_id].StableId()
+        except Exception: ens_protein = ens_transcript+'-PEP'
+        geneid = ti.GeneId(); geneid = ti.GeneId()
+        ens_gene = gene_stable_id_db[geneid].StableId()   
+        values = [ens_gene,ens_protein,ti.Biotype()]
+        values_list.append(values)
+    exportEnsemblTable(values_list,headers,output_dir)
+    
+def aaselect(nt_length):
+    ### Convert to protein length
+    if (float(nt_length)/3) == (int(nt_length)/3):
+        return nt_length/3
+    else:
+        return int(string.split(str(float(nt_length)/3),'.')[0])+1
+    
 def getDomainGenomicCoordinates(species,xref_db):
-
     ### Get all transcripts relative to genes to export gene, transcript and protein ID relationships
     transcript_protein_id={}            
     for protein_id in translation_db:
@@ -250,10 +347,7 @@ def getDomainGenomicCoordinates(species,xref_db):
     exportEnsemblTable(values_list,headers,output_dir)
     
     ### Function for building Ensembl transcription annotation file
-    output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_ProteinFeatures_build'+ensembl_build+'.tab'
-    headers = ['ID', 'AA_Start', 'AA_Stop', 'Start', 'Stop', 'Name', 'Interpro', 'Description']
     exon_transcript_db2={} ### exon_transcript_db has data stored as a list, so store as a ranked db
-    values_list=[]
     for eti in exon_transcript_db:
         transcript_id = eti.TranscriptId(); rank = eti.Rank()
         try: exon_transcript_db2[transcript_id].append((rank,eti))
@@ -263,27 +357,59 @@ def getDomainGenomicCoordinates(species,xref_db):
     for xref_id in xref_db:
         interprot_id = xref_db[xref_id].DbprimaryAcc(); display_label = xref_db[xref_id].DisplayLabel()
         interpro_annotation_db[interprot_id] = display_label
-        
-    protein_coding_exon_db={}            
+
+    ### Get the protein coding positions for each exon, to later determine the genomic position of non-InterPro features (way downstream)
+    ### This code was adapted from the following paragraph to get InterPro locations (this is simpiler)
+    output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_ProteinCoordinates_build'+ensembl_build+'.tab'
+    headers = ['protienID', 'exonID', 'AA_NT_Start', 'AA_NT_Stop', 'Genomic_Start', 'Genomic_Stop']; values_list=[]
+    protein_coding_exon_db={}; protein_length_db={}
+    ### Get the bp position (relative to the exon not genomic) for each transcript, where protein translation begins and ends. Store with the exon data.
     for protein_id in translation_db:
         ti = translation_db[protein_id]; transcript_id = ti.TranscriptId()
         seq_start = ti.SeqStart(); start_exon_id = ti.StartExonId(); seq_end = ti.SeqEnd(); end_exon_id = ti.EndExonId()
         eti_list = exon_transcript_db2[transcript_id]; eti_list.sort()
+        ### Get info for exporting exon protein coordinate data
+        ens_protein = translation_stable_id_db[protein_id].StableId()
+        #if ens_protein == 'ENSDARP00000087122':
+        cummulative_coding_length = 0
+        tis = transcript_db[transcript_id]; geneid = tis.GeneId(); gi = gene_db[geneid]; strand = gi.SeqRegionStrand() #Get strand
+        if strand == '-1': start_correction = -3; end_correction = 2
+        else: start_correction = 0; end_correction = 0
+        translation_pos1=0; translation_pos2=0 ### Indicate amino acid positions in nt space, begining and ending in the exon
         coding_exons = []; ce=0
         for (rank,eti) in eti_list:
             exonid = eti.ExonId()
+            ens_exon = exon_stable_id_db[exonid].StableId()  
             #print exonid,start_exon_id,end_exon_id
             if exonid == start_exon_id: ### Thus we are in the start exon for this transcript
                 ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
                 exon_length = abs(genomic_exon_end-genomic_exon_start)+1
-                coding_bp_in_exon = exon_length - seq_start+1; eti.setCodingBpInExon(coding_bp_in_exon) ### -1 since coding can't start at 0, but rather 1 at a minimum
+                coding_bp_in_exon = exon_length - seq_start; eti.setCodingBpInExon(coding_bp_in_exon) ### -1 since coding can't start at 0, but rather 1 at a minimum
                 #print 'start',genomic_exon_start,genomic_exon_end,exon_length,seq_start;kill
-                coding_exons.append(eti); ce+=1
+                coding_exons.append(eti); ce+=1; translation_pos2=coding_bp_in_exon+1
+                if strand == -1:
+                    genomic_translation_start = ei.SeqRegionStart()+coding_bp_in_exon+start_correction
+                    genomic_exon_end = ei.SeqRegionStart()+end_correction
+                else:               
+                    genomic_translation_start = ei.SeqRegionEnd()-coding_bp_in_exon
+                    genomic_exon_end = ei.SeqRegionEnd()
+                #print 'trans1:',float(translation_pos1)/3, float(translation_pos2)/3
+                values_list.append([ens_protein,ens_exon,1,aaselect(translation_pos2),genomic_translation_start,genomic_exon_end])
             elif exonid == end_exon_id: ### Thus we are in the end exon for this transcript        
                 ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
                 exon_length = abs(genomic_exon_end-genomic_exon_start)+1
                 coding_bp_in_exon = seq_end; eti.setCodingBpInExon(coding_bp_in_exon)
                 coding_exons.append(eti); ce = 0
+                translation_pos1=translation_pos2+1
+                translation_pos2=translation_pos1+coding_bp_in_exon-4
+                if strand == -1:
+                    genomic_translation_start = ei.SeqRegionEnd()+end_correction+start_correction
+                    genomic_exon_end = ei.SeqRegionEnd()-coding_bp_in_exon+end_correction
+                else:               
+                    genomic_translation_start = ei.SeqRegionStart()
+                    genomic_exon_end = ei.SeqRegionStart()+coding_bp_in_exon
+                #print 'trans1:',float(translation_pos1)/3, float(translation_pos2)/3
+                values_list.append([ens_protein,ens_exon,aaselect(translation_pos1),aaselect(translation_pos2),genomic_translation_start,genomic_exon_end])
                 #ens_exon = exon_stable_id_db[exonid].StableId()  
                 #if ens_exon == 'ENSE00001484483':
                     #print 'stop',genomic_exon_start,genomic_exon_end,exon_length,seq_start,coding_bp_in_exon,seq_end;kill
@@ -292,17 +418,30 @@ def getDomainGenomicCoordinates(species,xref_db):
                 exon_length = abs(genomic_exon_end-genomic_exon_start)+1
                 eti.setCodingBpInExon(exon_length)
                 coding_exons.append(eti)
-            
+                translation_pos1=translation_pos2+1 ### 1 nucleotide difference from the last exon position
+                translation_pos2=translation_pos1+exon_length-1
+                if strand == -1:
+                    genomic_translation_start = ei.SeqRegionEnd()+start_correction
+                    genomic_exon_end = ei.SeqRegionStart()+end_correction
+                else:               
+                    genomic_translation_start = ei.SeqRegionStart()
+                    genomic_exon_end = ei.SeqRegionEnd()
+                #print 'trans1:',float(translation_pos1)/3,float(translation_pos2)/3
+                values_list.append([ens_protein,ens_exon,aaselect(translation_pos1),aaselect(translation_pos2),genomic_translation_start,genomic_exon_end])
             #ti = transcript_db[transcript_id]; geneid = ti.GeneId(); ens_gene = gene_stable_id_db[geneid].StableId()
             #ens_exon = exon_stable_id_db[exonid].StableId()
             #if ens_gene == 'ENSG00000106785':
             #if ens_exon == 'ENSE00001381077':
                 #print exon_length, seq_start, coding_bp_in_exon;kill
                 #print 'start',ens_gene,rank,len(eti_list),exonid,ens_exon,start_exon_id,end_exon_id,genomic_exon_start,genomic_exon_end,exon_length,seq_start,coding_bp_in_exon,seq_end
-
         protein_coding_exon_db[protein_id] = coding_exons
+    print 'Exporting protein-to-exon genomic position translations',len(values_list)
+    exportEnsemblTable(values_list,headers,output_dir)
 
-    interprot_match=0
+    ### Using the exon coding positions, determine InterPro coding genomic locations
+    output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_ProteinFeatures_build'+ensembl_build+'.tab'
+    headers = ['ID', 'AA_Start', 'AA_Stop', 'Start', 'Stop', 'Name', 'Interpro', 'Description']
+    interprot_match=0; values_list=[]
     for protein_feature_id in protein_feature_db:
         pfi = protein_feature_db[protein_feature_id]; protein_id = pfi.TranslationId(); evalue = pfi.Evalue()
         ens_protein = translation_stable_id_db[protein_id].StableId()
@@ -625,7 +764,9 @@ class EnsemblSQLEntryData:
         elif header == "exon_id": self.exon_id = value
         elif header == "interpro_ac": self.interpro_ac = value
         elif header == "xref_id": self.xref_id = value
-        elif header == "evalue": self.evalue = float(value)
+        elif header == "evalue":
+            try: self.evalue = float(value)
+            except Exception: self.evalue = 0 ### For yeast, can be NA (likely a problem with Ensembl)
         elif header == "vendor": self.vendor = value
         elif header == "array_id": self.array_id = value
         elif header == "array_chip_id": self.array_chip_id = value
@@ -1009,7 +1150,7 @@ def storeSeqFTPDirs(ftp_server,species,subdir,dirtype):
     except Exception:
         subdir = string.replace(subdir,'/'+dirtype,'') ### Older version don't have this subdir 
         ftp.cwd(subdir)
-    data = []; ftp.dir(data.append); ftp.quit()
+    data = []; seq_dir=[]; ftp.dir(data.append); ftp.quit()
     for line in data:
         line = string.split(line,' '); file_dir = line[-1]
         if species[1:] in file_dir:
@@ -1017,6 +1158,11 @@ def storeSeqFTPDirs(ftp_server,species,subdir,dirtype):
             elif '.fa' in file_dir and 'dna.chromosome' in file_dir:
                 try: seq_dir.append((file_dir,'ftp://'+ftp_server+subdir+'/'+file_dir))
                 except Exception: seq_dir=[]; seq_dir.append((file_dir,'ftp://'+ftp_server+subdir+'/'+file_dir))
+            elif '.fa' in file_dir and 'dna.' in file_dir and 'nonchromosomal' not in file_dir:
+                ### This is needed when there are numbered chromosomes (e.g., ftp://ftp.ensembl.org/pub/release-60/fasta/anolis_carolinensis/dna/)
+                try: seq_dir2.append((file_dir,'ftp://'+ftp_server+subdir+'/'+file_dir))
+                except Exception: seq_dir2=[]; seq_dir2.append((file_dir,'ftp://'+ftp_server+subdir+'/'+file_dir))
+    if len(seq_dir)==0: seq_dir = seq_dir2
     return seq_dir
     
 """
@@ -1202,8 +1348,8 @@ def verifyFile(filename):
 if __name__ == '__main__':
     analysisType = 'GeneAndExternal'; externalDBName_list = ['AFFY_Zebrafish']
     force = 'no'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
-    
-    getFullGeneSequences('60','Hs'); sys.exit()
+    print 'proceeding'
+    getFullGeneSequences('60','Ts'); sys.exit()
     #for i in child_dirs: print child_dirs[i]
     #"""
     ### WON'T WORK FOR MORE THAN ONE EXTERNAL DATABASE -- WHEN RUN WITHIN THIS MOD

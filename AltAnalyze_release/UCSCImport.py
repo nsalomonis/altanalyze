@@ -23,6 +23,8 @@ import EnsemblImport
 import copy
 import time
 import alignToKnownAlt
+import update
+import export
 
 dirfile = unique
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
@@ -83,7 +85,7 @@ def importEnsExonStructureData(species):
             else: strand = '+'
             if '_' in chr: c = string.split(chr,'_'); chr = c[0]
             exon_end = int(exon_end); exon_start = int(exon_start)
-            ens_exonid_data = string.split(ens_exonid,'.'); ens_exonid = ens_exonid_data[0]
+            if 'ENS' in gene: ens_exonid_data = string.split(ens_exonid,'.'); ens_exonid = ens_exonid_data[0]
             if test == 'yes':
                 if gene in test_gene: proceed = 'yes'
                 else: proceed = 'no'
@@ -581,6 +583,16 @@ def matchUCSCExonsToEnsembl(ensembl_gene_accession_structures):
     
     return ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon
 
+def exportNullDatabases(species):
+    input_gene_file = 'AltDatabase/ucsc/'+species+'/all_mrna.txt'
+    export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure')
+    data = export.ExportFile(export_file)
+    data.close()
+
+    export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure_filtered')
+    data = export.ExportFile(export_file)
+    data.close()
+    
 def exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon,species):
     export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure'); accessions_exlcuded=[]; accessions_included=0
     #if export_all_associations == 'yes': export_file = string.replace(export_file,'mrna','complete-mrna')
@@ -737,6 +749,14 @@ def getUCSCAssociations(Species):
     ensembl_gene_accession_structures,constitutive_gene_db = identifyNewExonsForAnalysis(ensembl_transcript_clusters,transcript_structure_db,ucsc_interim_gene_transcript_db,ucsc_transcript_coordinates)
     exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,species)
 
+def downloadFiles(ucsc_file_dir,output_dir):
+    try:
+        gz_filepath, status = update.download(ucsc_file_dir,output_dir,'')        
+        if status == 'not-removed':
+            try: os.remove(gz_filepath) ### Not sure why this works now and not before
+            except OSError: status = status        
+    except Exception: print ucsc_file_dir,'file not found at http://genome.ucsc.edu.'
+    
 def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations, run_from_scratch,force):
     global species; species = Species; global mRNA_type; mRNA_type = mRNA_Type
     global test; global bp_offset; global gap_length; global test_gene
@@ -748,25 +768,14 @@ def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations, run_fr
 
     if force == 'yes':
         ### Download mRNA structure file from website
-        import UI; import update
-        file_location_defaults = UI.importDefaultFileLocations()
-        fld = file_location_defaults['UCSC']
-        for fl in fld:
-            if species in fl.Species(): ucsc_default_dir = fl.Location()
-        ucsc_mRNA_dir = ucsc_default_dir+'all_mrna.txt.gz'
+        import UI; species_names = UI.getSpeciesInfo()
+        species_full = species_names[species]
+        species_full = string.replace(species_full,' ','_')
+        ucsc_mRNA_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','all_mrna.txt.gz')
+        knownAlt_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','knownAlt.txt.gz')
         output_dir = 'AltDatabase/ucsc/'+species + '/'
-        gz_filepath, status = update.download(ucsc_mRNA_dir,output_dir,'')
-        if status == 'not-removed':
-            try: os.remove(gz_filepath) ### Not sure why this works now and not before
-            except OSError: status = status
-        ucsc_mRNA_dir = ucsc_default_dir+'knownAlt.txt.gz'
-        try:
-            gz_filepath, status = update.download(ucsc_mRNA_dir,output_dir,'')        
-            if status == 'not-removed':
-                try: os.remove(gz_filepath) ### Not sure why this works now and not before
-                except OSError: status = status        
-        except Exception: print '"knownAlt.txt" file not found at http://genome.ucsc.edu.'
-
+        downloadFiles(ucsc_mRNA_dir,output_dir); downloadFiles(knownAlt_dir,output_dir)
+   
     if run_from_scratch == 'yes':
         global ensembl_chr_coordinate_db
         export_all_associations = export_All_associations

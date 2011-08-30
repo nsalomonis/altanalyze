@@ -103,7 +103,8 @@ def processEnsemblAnnotations():
     
     ###This is done for archived gene annotations from Ensembl         
     filename = 'AltDatabase/miRBS/'+species+'/'+species+'_Ensembl-annotations_simple.txt'
-    symbol_ensembl = getEnsemblAnnotations(filename,symbol_ensembl)
+    try: symbol_ensembl = getEnsemblAnnotations(filename,symbol_ensembl)
+    except Exception: symbol_ensembl={}
     
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl-annotations_simple.txt'
     symbol_ensembl_current = getCurrentEnsembls(symbol_ensembl)
@@ -203,13 +204,21 @@ def pictarImport(parse_sequences,type,added):
     using the ExonModule of LinkEST, for human."""
     mir_sequences=[]
     if species == 'Mm': filename = 'AltDatabase/miRBS/'+species+'/'+'pictar-target-annotated.txt'; tax = '10090'
-    if species == 'Rn': filename = 'AltDatabase/miRBS/'+'Mm'+'/'+'pictar-target-annotated.txt'; tax = '10116'
+    else: filename = 'AltDatabase/miRBS/'+'Mm'+'/'+'pictar-target-annotated.txt'; tax = '10116'
+        
     #if species == 'Hs': filename = 'AltDatabase/miRBS/'+species+'/'+'pictar-conserved-targets-2005.txt'; tax = '9606'
     if type == 'pre-computed':
         if species == 'Hs': filename = 'AltDatabase/miRBS/'+species+'/'+'pictar-conserved-targets-2005.txt'; tax = '9606'
     else:
         if species == 'Hs': filename = 'AltDatabase/miRBS/'+'Mm'+'/'+'pictar-target-annotated.txt'; tax = '9606'
- 
+
+    import AltAnalyze
+    ###Get taxid annotations from the GO-Elite config
+    species_annot_db=AltAnalyze.importGOEliteSpeciesInfo(); tax_db={}
+    for species_full in species_annot_db:
+        if species==species_annot_db[species_full].SpeciesCode():
+            tax = species_annot_db[species_full].TaxID()
+            
     print 'parsing', filename; count=0
     print 'len(symbol_ensembl)', len(symbol_ensembl)
     verifyFile(filename,species) ### Makes sure file is local and if not downloads.
@@ -226,14 +235,18 @@ def pictarImport(parse_sequences,type,added):
                     symbol=string.upper(t[2]);mir=t[6];mir_sequences=t[11]
                     if symbol in symbol_ensembl and len(symbol)>0: ensembl_geneids=symbol_ensembl[symbol]
                     else: ensembl_geneids=['']                    
-            if species == 'Mm':
+            elif species == 'Mm':
                 mm_symbol=string.upper(t[3]);mir=t[6];mir_sequences=t[11]; mir = string.replace(mir,'hsa','mmu')
                 if mm_symbol in symbol_ensembl and len(mm_symbol)>0: ensembl_geneids=symbol_ensembl[mm_symbol]
                 else: ensembl_geneids=['']
-            if species == 'Rn':
+            elif species == 'Rn':
                 mm_symbol=string.upper(t[3]);mir=t[6];mir_sequences=t[11]; mir = string.replace(mir,'hsa','rno')
                 if mm_symbol in symbol_ensembl and len(mm_symbol)>0: ensembl_geneids=symbol_ensembl[mm_symbol]
                 else: ensembl_geneids=['']
+            else:
+                mm_symbol=string.upper(t[3]);mir=t[6];mir_sequences=t[11]
+                if mm_symbol in symbol_ensembl and len(mm_symbol)>0: ensembl_geneids=symbol_ensembl[mm_symbol]
+                else: ensembl_geneids=['']                
             for ensembl_geneid in ensembl_geneids:
                 if len(ensembl_geneid)>1 and (ensembl_geneid,mir) not in added:
                     if parse_sequences == 'yes':
@@ -328,14 +341,23 @@ def TargetScanImport(parse_sequences,force):
     """The TargetScan data is currently extracted from a cross-species conserved family file. This file only contains
     gene symbol, microRNA name and 3'UTR seed locations."""
     if species == 'Mm': tax = '10090'; prefix = 'mmu-'
-    if species == 'Hs': tax = '9606'; prefix = 'hsa-'
-    if species == 'Rn': tax = '10116'; prefix = 'rno-'
+    elif species == 'Hs': tax = '9606'; prefix = 'hsa-'
+    elif species == 'Rn': tax = '10116'; prefix = 'rno-'
+    else: prefix = 'hsa-'
 
+    import AltAnalyze
+    ###Get taxid annotations from the GO-Elite config
+    species_annot_db=AltAnalyze.importGOEliteSpeciesInfo(); tax_db={}
+    for species_full in species_annot_db:
+        if species==species_annot_db[species_full].SpeciesCode():
+            tax = species_annot_db[species_full].TaxID()
+            
     global l
-    if force == 'yes':    
-        ### Then download the latest annotations and sequences
-        target_scan_target_file = downloadFile('TargetScanGenes')
-        target_scan_sequence_file = downloadFile('TargetScanSequences')
+    if force == 'yes':
+        if parse_sequences == 'no':
+            ### Then download the latest annotations and sequences
+            target_scan_target_file = downloadFile('TargetScanGenes')
+            target_scan_sequence_file = downloadFile('TargetScanSequences')
 
         ### Cross-species TargetScan file with UTR seqeunces for all genes with reported targets in the conserved family file
         ### Although this file includes valid sequence data that appears to match up to the target file, the target file
@@ -444,7 +466,7 @@ def mirandaImport(parse_sequences,force):
                             if (mir,ensembl_geneid) in combined_results:
                                 combined_results[(mir,ensembl_geneid)].append(string.upper(mir_sequences)); count+=1
                         else:
-                            y = MicroRNATargetData(ensembl_geneid,'',mir,mir_sequences,'miranda'); count+=1
+                            y = MicroRNATargetData(ensembl_geneid,'',mir,mir_sequences,'miRanda'); count+=1
                             try: microRNA_target_db[mir].append(y)
                             except KeyError: microRNA_target_db[mir] = [y]
         print count, 'miRNA-target relationships added for miRanda'
@@ -527,7 +549,7 @@ def mirandaImport(parse_sequences,force):
                     for ensembl_geneid in geneid_ls:
                         if parse_sequences == 'yes':
                             if (ensembl_geneid,mir,mir_sequence) not in added2:
-                                combined_results[(mir,ensembl_geneid)].append(string.upper(string.upper(mir_sequence))); count2+=1
+                                combined_results[(mir,ensembl_geneid)].append(string.upper(mir_sequence)); count2+=1
                                 added2[(ensembl_geneid,mir,mir_sequence)]=[]
                         else:
                             if (ensembl_geneid,mir) not in added:
@@ -665,8 +687,12 @@ def exportCombinedMirResultSequences():
         combined_results[mir,gene] = []
         combined_results2[mir,gene] = sources
     microRNA_target_db = {}; mir_hit_db = {}
-    mirandaImport(parse_sequences,'yes')
-    TargetScanImport(parse_sequences,'yes')
+    try: importmiRNAMap(parse_sequences)
+    except Exception: null=[] ### occurs when species is not supported
+    try: mirandaImport(parse_sequences,'yes')
+    except Exception: null=[]
+    try: TargetScanImport(parse_sequences,'yes')
+    except Exception: null=[]
     try: sangerImport(parse_sequences)
     except Exception: null=[]
     added = pictarImport(parse_sequences,'pre-computed',{})
@@ -681,6 +707,44 @@ def exportCombinedMirResultSequences():
         data.write(mir+'\t'+gene+'\t'+sequences+'\t'+sources+'\n')
     data.close()
 
+def importmiRNAMap(parse_sequences):
+    """ Added in AltAnalyze version 2.0, this database provides target sequences for several species and different databases, 
+    including miRanda, RNAhybrid and TargetScan. For more information see: http://mirnamap.mbc.nctu.edu.tw/html/about.html"""
+    import UI; import update; species_names = UI.getSpeciesInfo()
+    species_full = species_names[species]
+    species_full = string.replace(species_full,' ','_')
+    miRNAMap_dir = update.getFTPData('mirnamap.mbc.nctu.edu.tw','/miRNAMap2/miRNA_Targets/'+species_full,'.txt.tar.gz')
+    output_dir = 'AltDatabase/miRBS/'+species+'/'
+    gz_filepath, status = update.download(miRNAMap_dir,output_dir,'')
+    if status == 'not-removed':
+        try: os.remove(gz_filepath) ### Not sure why this works now and not before
+        except OSError: status = status
+
+    fn=filepath(string.replace(gz_filepath,'.tar.gz','')); x=0; count=0
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: x=1
+        else:
+            try:
+                miRNA, ensembl_transcript_id, target_start, target_end, miRNA_seq, alignment, target_seq, algorithm, c1, c2, c3 = t
+                if ensembl_transcript_id in ens_gene_to_transcript:
+                    geneids = ens_gene_to_transcript[ensembl_transcript_id]     
+                    target_seq = string.upper(string.replace(target_seq,'-',''))
+                    target_seq = string.replace(target_seq,'U','T')
+                    for ensembl_geneid in geneids:
+                        if parse_sequences == 'yes':
+                            if (miRNA,ensembl_geneid) in combined_results:
+                                combined_results[(miRNA,ensembl_geneid)].append(target_seq)
+                        else:
+                            y = MicroRNATargetData(ensembl_geneid,'',miRNA,target_seq,algorithm); count+=1
+                            try: microRNA_target_db[miRNA].append(y)
+                            except KeyError: microRNA_target_db[miRNA] = [y]
+            except Exception: x=1 ### Bad formatting
+                       
+    print count, 'miRNA-target relationships added for mirnamap'
+    return count
+
 def runProgram(Species,Force,Only_add_sequence_to_previous_results):
     global species; global only_add_sequence_to_previous_results; global symbol_ensembl; global force
     global ens_gene_to_transcript; global microRNA_target_db; global mir_hit_db; global parse_sequences
@@ -688,7 +752,8 @@ def runProgram(Species,Force,Only_add_sequence_to_previous_results):
     species = Species; compare_to_user_data = 'no'; force = Force
     only_add_sequence_to_previous_results = Only_add_sequence_to_previous_results
     
-    ens_gene_to_transcript = importEnsTranscriptAssociations({},'archive')
+    try: ens_gene_to_transcript = importEnsTranscriptAssociations({},'archive')
+    except Exception: ens_gene_to_transcript={} ### Archived file not on server for this species
     ens_gene_to_transcript = importEnsTranscriptAssociations(ens_gene_to_transcript,'current')
     symbol_ensembl,symbol_ensembl_current = processEnsemblAnnotations()
 
@@ -698,14 +763,18 @@ def runProgram(Species,Force,Only_add_sequence_to_previous_results):
         try: del symbol_ensembl['']
         except KeyError: null=[]
         
+        try: importmiRNAMap('no')
+        except Exception: null=[] ### occurs when species is not supported
         try: sangerImport(parse_sequences)
         except Exception: null=[]        
-        TargetScanImport(parse_sequences,'yes')
-        mirandaImport(parse_sequences,'yes')
+        try: TargetScanImport(parse_sequences,'yes')
+        except Exception: null=[]
+        try: mirandaImport(parse_sequences,'yes')
+        except Exception: null=[]
 
         added = pictarImport(parse_sequences,'pre-computed',{})
         added = pictarImport(parse_sequences,'symbol-based',added)
-        if compare_to_user_data == 'yes': importExpressionData();mirHitImport()
+        if compare_to_user_data == 'yes': importExpressionData(); mirHitImport()
         findMirTargetOverlaps(); exportCombinedMirResultSequences()
     else: exportCombinedMirResultSequences()
 
@@ -715,11 +784,13 @@ def verifyFile(filename,species):
         for line in open(fn,'rU').xreadlines():break
     except Exception:
         if species in filename: server_folder = species ### Folder equals species unless it is a universal file
+        elif 'Mm' in filename: server_folder = 'Mm' ### For PicTar
         else: server_folder = 'all'
         import update; reload(update)
+        print 'Downloading:',server_folder,filename
         update.downloadCurrentVersion(filename,server_folder,'txt')
     
 if __name__ == '__main__':
-    a = 'Mm'; b = 'Hs'; c = 'Rn'
+    a = 'Ag'; b = 'Hs'; c = 'Rn'
     species = b; force = 'no'
     runProgram(species,force,'no'); sys.exit()
