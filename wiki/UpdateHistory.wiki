@@ -4,7 +4,16 @@
 
 _note:_ For further details and explanation, see the associated sections in the full [http://www.altanalyze.org/help_main.htm online AltAnalyze documentation].
 
-===Version 2.04 Updates===
+===Version 2.0.5 Updates===
+New program features, critical fixes to RNA-seq exon bed building bug for Windows:
+ # User selection of statistical p-value methods added (e.g., paired t-test, Mann Whitney) for all analyses
+ # Updated RNA-Seq gene-level and exon-level RPKM calculations to provide more accurate gene and exon expression estimates (Section 3.2)
+ # Gene expression estimates for RNA-Seq are now derived only from exon and not junction and exon expression (when applicable)
+ # Support of Affymetrix microRNA array annotation files
+ # Protein coding potential and microRNA binding site annotations support added for conventional array data
+ # GO-Elite optimization and updated Ontology support
+
+===Version 2.0.4 Updates===
 Critical fixes to bugs, resulting in program errors, introduced in version 2.03:
  # Running source-code on a remote machine now working
  # Independent analysis of exon only files (no junctions) now working
@@ -12,7 +21,7 @@ Critical fixes to bugs, resulting in program errors, introduced in version 2.03:
  # More consistent results between exon only and exon with junction results (some novel exons missing or duplicated).
  # RNA-Seq and junction array splicing-index results for GO-Elite analysis will be properly written (no resulting GO-Elite error).
 
-===Version 2.03 Updates===
+===Version 2.0.3 Updates===
 New to version 2.03 AltAnalyze is support for both exon and junction RNASeq analysis, new functional annotations and normalization methods:
  # Support for RNASeq exon expression import from TopHat & BioScope (Section 1.5)
  # Support for platform independent exon/junction data in BED format (Section 1.5)
@@ -44,14 +53,14 @@ New to version 2.01 AltAnalyze is support for junction aligned RNASeq data:
  # New automated tools for developers to create & update databases (Section 6.7)
  # New online RNASeq documentation (http://code.google.com/p/altanalyze)
 
-===Version 1.16 Updates===
+===Version 1.1.6 Updates===
 New to version 1.16 AltAnalyze is support for alternative splicing array types and decreased memory requirements:
  # Support of Affymetrix HJAY and MJAY arrays (Section 6.2)
  # Combined reciprocal junction and exon analysis for junction arrays  (Section 2.3)
  # Better memory handling for FIRMA and protein domain analysis
  # Improved online support (http://code.google.com/p/altanalyze)
 
-===Version 1.15 Updates===
+===Version 1.1.5 Updates===
 New to version 1.15 AltAnalyze are new splicing algorithm options, new array support and improved DomainGraph connectivity. The main new features are:
  # Addition of FIRMA alternative exon analysis (Section 3.2)
  # Alternative exon analysis support for the Affymetrix Gene 1.0 array  (Section 2.3)
@@ -60,7 +69,7 @@ New to version 1.15 AltAnalyze are new splicing algorithm options, new array sup
  # Bundled integration of Cytoscape and DomainGraph (Sections 2.2 and 8)
  # Improved command-line options (Section 2.3)
 
-===Version 1.14 Updates===
+===Version 1.1.4 Updates===
 Several features have been added to AltAnalyze version 1.14. Please review these if you have used previous versions of AltAnalyze, since the method in which gene expression is evaluated for both gene expression and alternative exon analyses has been updated and will affect your results. The main new features are:
  # Updated Ensembl version 54 exon array annotations for constitutive gene probe sets (Section 3.4 and Section 6.2).
  # Support for core probe set only gene expression calculation (Section 3.4) 
