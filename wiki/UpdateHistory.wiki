@@ -6,7 +6,7 @@ _note:_ For further details and explanation, see the associated sections in the 
 
 ===Version 2.0.5 Updates===
 New program features, improved methods and critical fixes to RNA-seq exon bed building bug for Windows:
- # Selection of statistical p-value methods added (e.g., paired t-test, Mann Whitney) for all analyses
+ # Selection of multiple statistical p-value methods added (e.g., paired t-test, Mann Whitney) for all analyses
  # New summary gene expression statistics file included
  # Updated RNA-Seq gene-level and exon-level RPKM calculations to provide more accurate gene and exon expression estimates
  # Gene expression estimates for RNA-Seq are now derived only from exon and not junction and exon expression (when applicable)
