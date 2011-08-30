@@ -101,15 +101,16 @@ def simpleSeqMatchProtocol(probeset_seq_data,mRNA_seq):
             print exon_seq
             print mRNA_seq;kill"""
         if probeset not in probesets_analyzed:
-            if exon_seq in mRNA_seq: call=1
-            elif array_type == 'exon':
-                if exon_seq[:25] in mRNA_seq: call=1
-                elif exon_seq[-25:] in mRNA_seq: call=1
+            if len(exon_seq)>10:
+                if exon_seq in mRNA_seq: call=1
+                elif array_type == 'exon':
+                    if exon_seq[:25] in mRNA_seq: call=1
+                    elif exon_seq[-25:] in mRNA_seq: call=1
+                    else: call = 0
                 else: call = 0
-            else: call = 0
-            #else: junction_seq = y.JunctionSeq()
-            results.append((call,probeset))
-            probesets_analyzed[probeset]=[]
+                #else: junction_seq = y.JunctionSeq()
+                results.append((call,probeset))
+                probesets_analyzed[probeset]=[]
     return results
 
 def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
@@ -166,17 +167,17 @@ def importUCSCTranscriptSequences(species,array_type,probeset_seq_db):
 
     if force == 'yes':
         ### Download mRNA sequence file from website
-        import UI; import update
-        file_location_defaults = UI.importDefaultFileLocations()
-        fld = file_location_defaults['UCSCseq']
-        for fl in fld:
-            if species in fl.Species(): ucsc_default_dir = fl.Location()
-        ucsc_mRNA_dir = ucsc_default_dir+'mrna.fa.gz'
+        import UI; import update; species_names = UI.getSpeciesInfo()
+        species_full = species_names[species]
+        species_full = string.replace(species_full,' ','_')
+        ucsc_mRNA_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/bigZips','mrna.fa.gz')
         output_dir = 'AltDatabase/'+species+'/SequenceData/'
-        gz_filepath, status = update.download(ucsc_mRNA_dir,output_dir,'')        
-        if status == 'not-removed':
-            try: os.remove(gz_filepath) ### Not sure why this works now and not before
-            except OSError: status = status
+        try:
+            gz_filepath, status = update.download(ucsc_mRNA_dir,output_dir,'')        
+            if status == 'not-removed':
+                try: os.remove(gz_filepath) ### Not sure why this works now and not before
+                except OSError: status = status
+        except Exception: null=[] ### Occurs when file is not available for this species
             
     filename = 'AltDatabase/'+species+'/SequenceData/mrna.fa'
     output_file = 'AltDatabase/'+species+'/SequenceData/output/'+array_type+'_UCSC-mRNA_alignments.txt'
@@ -263,10 +264,9 @@ class SplicingAnnotationData:
         return output
     def __repr__(self): return self.Report()
 
-class AffyExonSTDataSimple(SplicingAnnotationData):
-    def __init__(self,probeset_id,ensembl_gene_id,exon_id,ens_exon_ids):
-        self._geneid = ensembl_gene_id; self._external_gene = ensembl_gene_id; self._exonid = exon_id
-        self._external_exonids = ens_exon_ids; self._probeset=probeset_id
+class ExonDataSimple(SplicingAnnotationData):
+    def __init__(self,probeset_id,ensembl_gene_id):
+        self._geneid = ensembl_gene_id; self._probeset=probeset_id
 
 class JunctionDataSimple(SplicingAnnotationData):
     def __init__(self,probeset_id,array_geneid):
@@ -277,65 +277,36 @@ def importSplicingAnnotationDatabase(filename):
     print 'importing', filename
     exon_db={}; count = 0; x = 0
     for line in open(fn,'rU').readlines():             
-        probeset_data,null = string.split(line,'\n')  #remove endline
+        data = cleanUpLine(line)
         if x == 0: x = 1
         else:
-            t = string.split(probeset_data,'\t'); probeset_id = t[0]; probeset_id = t[2]
-            probe_data = AffyExonSTDataSimple(probeset_id,ensembl_gene_id)
+            t = string.split(data,'\t'); probeset_id = t[0]; ensembl_gene_id = t[2]
+            probe_data = ExonDataSimple(probeset_id,ensembl_gene_id)
             exon_db[probeset_id] = probe_data
     return exon_db
 
-def importProbesetSequences(exon_db,species):
-    ### First import the probeset sequence file
-    import_dir = '/AltDatabase'+'/'+species+'/SequenceData'
-    try: dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-    except Exception:
-        ### create directory for file to download
-        export.createExportFolder(import_dir[1:])
-        ### Download the data from the AltAnalyze website
-        import update
-        probeset_seq_file = 'DEFINEME'
-        update.downloadCurrentVersion(probeset_seq_file,species,'')
-        dir_list = read_directory(import_dir)
-    for input_file in dir_list:    #loop through each file in the directory to output results
-        if '.probeset.fa' in input_file: filename = import_dir[1:]+'/'+input_file
-        else: print 'probeset sequence file not found';kill
-        
-    print 'importing', filename; probeset_seq_db={}; probesets_parsed=0; probesets_added=0
-    chromosome = 'chr'+str(chromosome)
-    print "Begining generic fasta import of",filename
-    fn=filepath(filename); sequence = ''; x = 0;count = 0
-    for line in open(fn,'rU').xreadlines():
-        try: data, newline= string.split(line,'\n')
-        except ValueError: continue
-        try:
-            if data[0] == '>':
-                    try: 
-                        try:
-                            y = exon_db[probeset]; sequence = string.upper(sequence)
-                            gene = y.GeneID(); y.SetExonSeq(sequence)
-                            try: probeset_seq_db[gene].append(y)
-                            except KeyError: probeset_seq_db[gene] = [y]
-                            sequence = ''; t= string.split(data,';'); probesets_added+=1
-                            probeset=t[0]; probeset_data = string.split(probeset,':'); probeset = probeset_data[-1]
-                            chr = t[2]; chr = string.split(chr,'='); chr = chr[-1]; probesets_parsed +=1
-                        except KeyError:
-                            sequence = ''; t= string.split(data,';')
-                            probeset=t[0]; probeset_data = string.split(probeset,':'); probeset = probeset_data[-1]
-                            chr = t[2]; chr = string.split(chr,'='); chr = chr[-1]; probesets_parsed +=1
-                    except UnboundLocalError: ###Occurs for the first entry
-                        t= string.split(data,';'); probeset=t[0]; probeset_data = string.split(probeset,':'); probeset = probeset_data[-1]
-                        chr = t[2]; chr = string.split(chr,'='); chr = chr[-1]; probesets_parsed +=1
-            else: sequence = sequence + data
-        except IndexError: continue
-        
-    y = exon_db[probeset]; sequence = string.upper(sequence)
-    gene = y.GeneID(); y.SetExonSeq(sequence)
-    try: probeset_seq_db[gene].append(y)
-    except KeyError: probeset_seq_db[gene] = [y]
+def importAllJunctionSequences(species,array_type):
+    probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+'/'+species+"_Ensembl_probesets.txt"
+    if array_type == 'RNASeq':
+        probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+'/'+species+"_Ensembl_junctions.txt"
+    junction_db = importSplicingAnnotationDatabase(probeset_annotations_file)
 
-    print len(probeset_seq_db), probesets_added, probesets_parsed, len(exon_db)
-    return probeset_seq_db
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'  
+    probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
+
+    pairwise_probeset_combinations={}; probeset_gene_seq_db={}
+    for probeset in junction_db:
+        if probeset in probeset_seq_db:
+            probeset_seq,junction_seq = probeset_seq_db[probeset]
+            pd = junction_db[probeset]
+            pd.SetExonSeq(probeset_seq)
+            pd.SetJunctionSeq(junction_seq)
+            try: probeset_gene_seq_db[pd.GeneID()].append(pd)
+            except KeyError: probeset_gene_seq_db[pd.GeneID()] = [pd]
+            pairwise_probeset_combinations[probeset,' ']=[]
+                       
+    print len(probeset_gene_seq_db),"genes with probeset sequence associated"
+    return probeset_gene_seq_db,pairwise_probeset_combinations
 
 def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     """This function imports AffyGene-Ensembl relationships, junction probeset sequences, and recipricol junction comparisons.
@@ -406,6 +377,12 @@ def importCriticalJunctionSeq(filename,species,array_type):
         else: 
             try: probeset,probeset_seq,junction_seq = t
             except Exception: probeset,probeset_seq,junction_seq, null = t
+            if array_type == 'RNASeq':
+                ### Ensure the junction sequence is sufficient for searching
+                left,right = string.split(probeset_seq,'|')
+                if len(left)>2 and len(right)>2: null=[]
+                else: probeset_seq = ''
+                if len(probeset_seq) < 8: probeset_seq = ''
             probeset_seq=string.replace(probeset_seq,'|','')
             probeset_seq_db[probeset] = probeset_seq,junction_seq
             x+=1
@@ -436,7 +413,7 @@ def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset
                 except KeyError: not_matching[probeset] = [accession]
 
     probeset_matching_pairs={}; matching_in_both=0; match_and_null=0; no_matches=0; no_nulls=0
-    for (probeset1,probeset2) in pairwise_probeset_combinations:                
+    for (probeset1,probeset2) in pairwise_probeset_combinations:
         if probeset1 in matching and probeset2 in matching:
             matching[probeset1].sort(); matching[probeset2].sort()
             match1 = string.join(matching[probeset1],'|')
@@ -447,12 +424,12 @@ def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset
         else:
             if probeset1 in matching and probeset1 in not_matching:
                 match = string.join(matching[probeset1],'|')
-                null_match = string.join(not_matching[probeset1],'|')
+                null_match = string.join(filterNullMatch(not_matching[probeset1],matching[probeset1]),'|')
                 probeset_matching_pairs[probeset1] = [match,null_match]
                 match_and_null+=1
             elif probeset2 in matching and probeset2 in not_matching:
                 match = string.join(matching[probeset2],'|')
-                null_match = string.join(not_matching[probeset2],'|')
+                null_match = string.join(filterNullMatch(not_matching[probeset2],matching[probeset2]),'|')
                 probeset_matching_pairs[probeset2] = [match,null_match]
                 match_and_null+=1
             elif probeset1 in matching or probeset2 in matching: no_nulls+=1
@@ -466,28 +443,43 @@ def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset
     print no_matches, "probeset pairs with no matches."
     
     import IdentifyAltIsoforms
-    export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'     
+    export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'
+    if analysis_type == 'single':
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/junction/'+species+'_all-transcript-matches.txt'
     IdentifyAltIsoforms.exportSimple(probeset_matching_pairs,export_file,'')
 
 ################# Main Run Options #################
-    
-def alignProbesetsToTranscripts(species,array_type,Force):
-    global force; force = Force
+
+def filterNullMatch(null_match,match):
+    ### The null matching transcripts can be many and cause processing issues. Thus, first remove all non-Ensembls
+    slim_null_match=[]
+    if len(null_match)>20:
+        for transcript in null_match:
+            if transcript not in match: slim_null_match.append(transcript)
+        if len(slim_null_match)<20 and len(slim_null_match)>0:
+            null_match = slim_null_match
+        elif len(slim_null_match)>0:
+            null_match = slim_null_match; slim_null_match=[]
+            for transcript in null_match:
+                if 'ENS' in transcript:slim_null_match.append(transcript)
+            if len(slim_null_match)>0: null_match = slim_null_match
+            else: null_match = null_match[:19]
+        else: null_match = null_match[:19] ### Not ideal, but necessary to produce bloating
+    return null_match
+
+def alignProbesetsToTranscripts(species,array_type,Analysis_type,Force):
+    global force; force = Force; global analysis_type; analysis_type = Analysis_type
     """Match exon or junction probeset sequences to Ensembl and USCS mRNA transcripts"""
       
     if array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
-        data_type = 'junctions'; probeset_seq_file=''
-        if data_type == 'junctions':
-            start_time = time.time(); biotype = 'gene' ### Indicates whether to store information at the level of genes or probesets
+        data_type = 'junctions'; probeset_seq_file=''; biotype = 'gene'
+        if data_type == 'junctions' and analysis_type == 'reciprocal':
+            start_time = time.time() ### Indicates whether to store information at the level of genes or probesets
             probeset_seq_db,pairwise_probeset_combinations = importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype)
             end_time = time.time(); time_diff = int(end_time-start_time)
-        elif data_type == 'critical-exons':
-            ### NOTE: Below code not tested
-            probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+'/'+species+"_Ensembl_"+array_type+"_probesets.txt"
-            ###Import probe-level associations
-            exon_db = importSplicingAnnotationDatabase(probeset_annotations_file)
+        elif analysis_type == 'single':
             start_time = time.time()
-            probeset_seq_db = importProbesetSequences(exon_db,species)  ###Do this locally with a function that works on tab-delimited as opposed to fasta sequences (exon array)
+            probeset_seq_db,pairwise_probeset_combinations = importAllJunctionSequences(species,array_type)
             end_time = time.time(); time_diff = int(end_time-start_time)
         print "Analyses finished in %d seconds" % time_diff
     elif array_type == 'exon':
@@ -502,7 +494,8 @@ def alignProbesetsToTranscripts(species,array_type,Force):
 
     ### Match probesets to mRNAs
     importEnsemblTranscriptSequence(species,array_type,probeset_seq_db)
-    importUCSCTranscriptSequences(species,array_type,probeset_seq_db)
+    try: importUCSCTranscriptSequences(species,array_type,probeset_seq_db)
+    except Exception: null=[] ### If the species not supported by UCSC - the UCSC file is not written, but the other mRNA_alignments files should be available
 
     probeset_seq_db={} ### Re-set db
 
@@ -516,5 +509,5 @@ def alignProbesetsToTranscripts(species,array_type,Force):
 
 if __name__ == '__main__':
     a = 'AltMouse'; b = 'exon'; array_type = a; force = 'no'
-    h = 'Hs'; m = 'Mm'; species = m
-    alignProbesetsToTranscripts(species,array_type,force)
+    h = 'Hs'; m = 'Mm'; species = m; analysis_type = 'single'
+    alignProbesetsToTranscripts(species,array_type,analysis_type,force)

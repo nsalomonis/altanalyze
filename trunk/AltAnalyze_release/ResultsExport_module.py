@@ -154,7 +154,7 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
             if x == 0: x=1
             else:
                 if analyzing_genes == 'no':
-                    if (analysis_method == 'splicing-index') and array_type == 'exon':
+                    if (array_type == 'exon' or array_type == 'gene') and analysis_method in filename:
                         lowest_pvalue = float(data[8]);
                         try: si_p = float(data[-10])
                         except Exception: si_p = 1
@@ -169,7 +169,7 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
                         event_call = data[-4]; functional_attribute = data[-18]
                         uniprot_attribute = data[-17]; gene_expression_change = data[-8]
                         dI = dI*(-1)
-                    else:
+                    elif analysis_method in filename:
                         y = 1
                         affygene = data[0]; dI = float(data[1])
                         symbol = data[2]; description = data[3]
@@ -178,7 +178,7 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
                         uniprot_attribute = data[-17]; gene_expression_change = data[-8]
                         #print exon_set1, exon_set2, data[:5];kill
                 else:
-                    if (analysis_method == 'splicing-index') and array_type == 'exon':
+                    if (array_type == 'exon' or array_type == 'gene') and analysis_method in filename:
                         y = 1
                         affygene = data[0]; dI = float(data[1])
                         symbol = data[3]; description = data[5]
@@ -187,7 +187,7 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
                         event_call = data[-4]; functional_attribute = data[-9]
                         uniprot_attribute = data[-8]; gene_expression_change = data[-5]
                         if dI_direction == 'upregulated': dI = dI*(-1)
-                    else:
+                    elif analysis_method in filename:
                         y = 1
                         affygene = data[0]; dI = float(data[1])
                         symbol = data[3]; description = data[5]

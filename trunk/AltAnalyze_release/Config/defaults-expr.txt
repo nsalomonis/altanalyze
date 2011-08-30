@@ -1,1 +1,7 @@
-array_type	dabg_p	expression_threshold	perform_alt_analysis	analyze_as_groups	expression_data_format	avg_all_for_ss	include_raw_data	run_goeliteexon	0.05	70	yes	yes	log	constitutive probesets	yes	decide laterAltMouse	0.75	1	yes	NA	log	NA	yes	decide latergene	0.05	70	yes	yes	log	constitutive probesets	yes	decide later3'array	NA	NA	NA	NA	log	NA	yes	decide laterjunction	0.05	70	yes	yes	log	constitutive probesets	yes	decide later
+array_type	dabg_p	expression_threshold	perform_alt_analysis	analyze_as_groups	expression_data_format	normalize_feature_exp	avg_all_for_ss	include_raw_data	run_goelite
+exon	0.05	1	yes	yes	log	NA	constitutive probesets	yes	decide later
+AltMouse	0.75	1	yes	NA	log	NA	NA	yes	decide later
+gene	0.05	1	yes	yes	log	NA	constitutive probesets	yes	decide later
+3'array	NA	NA	NA	NA	log	NA	NA	yes	decide later
+junction	0.05	1	yes	yes	log	NA	constitutive probesets	yes	decide later
+RNASeq	NA	2	yes	yes	non-log	quantile	known exons	yes	decide later

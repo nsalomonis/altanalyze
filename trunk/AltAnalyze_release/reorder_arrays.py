@@ -86,7 +86,7 @@ class GroupStats:
         return output
     def __repr__(self): return self.Report()
 
-def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data):
+def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type):
     ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
     expbuilder_value_db = {}; group_name_db = {}; summary_filtering_stats = {}; pval_summary_db= {}
     
@@ -94,8 +94,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     group_summary_result_names = ['avg-']
     
     for row_id in data:
-        try: affygene = probeset_db[row_id][0]
-        except TypeError: affygene = '' #not needed if not altsplice data
+        try: gene = probeset_db[row_id][0]
+        except TypeError: gene = '' #not needed if not altsplice data
         data_headers2 = {} #reset each time
         grouped_ordered_array_list = {}
         for x in array_order:
@@ -138,6 +138,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                 gs = GroupStats(log_fold,fold,p)
                 stat_results[comp] = groups_name,gs,group2_name
             except TypeError: print comp, len(stat_results); kill_program
+            if array_type == 'RNASeq':
+                avg1 = math.pow(2,avg1)-1; avg2 = math.pow(2,avg2)-1
             group_summary_results[group1] = group1_name,[avg1]
             group_summary_results[group2] = group2_name,[avg2]
 
@@ -172,6 +174,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             original_data_values = entry[1]
             if include_raw_data == 'yes': ###optionally exclude the raw values
                 for value in original_data_values:
+                    if array_type == 'RNASeq':
+                        value = math.pow(2,value)-1
                     try: expbuilder_value_db[row_id].append(value)
                     except KeyError: expbuilder_value_db[row_id] = [value]
             if group_number in group_summary_results:
@@ -253,6 +257,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             gs = pval_db[rowid]
             expbuilder_value_db[rowid][gs.Index()] = gs.AdjP() ### set the place holder to the calculated value
             
+    pval_summary_db=[]            
     ###Finished re-ordering lists and adding statistics to expbuilder_value_db
     return expbuilder_value_db, array_fold_headers, summary_filtering_stats, raw_data_comp_headers
 

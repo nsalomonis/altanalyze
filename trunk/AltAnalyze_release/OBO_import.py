@@ -115,7 +115,7 @@ class GOTreeDetailed(GOTree):
         output = self.GOID()+'|'+self.GOName()
         return output
     def __repr__(self): return self.Report()
-
+            
 ###### Begin Gene-Relationship Parsing ######
 def importGOTree(filedir,path,rank):
     """Use the code designed to import OBO gene ontology DAG tree data for the GO-Elite mappfinder analysis to build

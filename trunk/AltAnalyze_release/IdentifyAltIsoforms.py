@@ -23,9 +23,11 @@ import os.path
 import unique
 import export
 import time
+import copy
 import FeatureAlignment; reload(FeatureAlignment)
 from Bio import Entrez
 import ExonAnalyze_module
+import mRNASeqAlign
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -81,9 +83,13 @@ def importSplicingAnnotationDatabase(array_type,species,import_coordinates):
             t=string.split(probeset_data,'\t'); probeset=t[0]; exon_id=t[1]; ens_gene=t[2]; start=int(t[6]); stop=int(t[7])
             if array_type != 'RNASeq': 
                 if ':' in probeset: probeset = string.split(probeset,':')[1]
-            start_stop = [start,stop]; start_stop.sort(); start,stop = start_stop
-            probeset_gene_db[probeset]=ens_gene,exon_id
-            if import_coordinates == 'yes': probeset_coordinate_db[probeset] = start,stop
+            start_stop = [start,stop]; start_stop.sort(); start,stop = start_stop; proceed = 'yes'
+            #if probeset[-2] != '|': ### These are the 5' and 3' exons for a splice-junction (don't need to analyze)
+            if test == 'yes':
+                if ens_gene not in test_genes: proceed = 'no'
+            if proceed == 'yes':
+                probeset_gene_db[probeset]=ens_gene,exon_id
+                if import_coordinates == 'yes': probeset_coordinate_db[probeset] = start,stop
     print 'Probeset to Ensembl gene data imported'
     if import_coordinates == 'yes': return probeset_gene_db,probeset_coordinate_db
     else: return probeset_gene_db
@@ -130,24 +136,43 @@ def importJunctionDatabase(species,array_type):
             probeset_gene_db[incl_junction_probeset] = gene,critical_exons
     return probeset_gene_db
             
-def importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db):
+def importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,filter_transcripts):
     fn=filepath(filename); x=0
+    """
+    if 'Ensembl' not in filename:
+        original_ensembl_transcripts={} ### Keep track of the original ensembl transcripts
+        for i in ens_transcript_exon_db: original_ensembl_transcripts[i]=[]"""
+        
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if x==0: x=1
         else:
             gene, chr, strand, exon_start, exon_end, ens_exonid, constitutive_exon, ens_transcriptid = t
-            exon_start = int(exon_start); exon_end = int(exon_end)
-            try: ens_transcript_exon_db[ens_transcriptid].append([exon_start,exon_end])
-            except KeyError: ens_transcript_exon_db[ens_transcriptid] = [[exon_start,exon_end]]
-            try: ens_gene_transcript_db[gene].append(ens_transcriptid)
-            except KeyError: ens_gene_transcript_db[gene] = [ens_transcriptid]
-            try: ens_gene_exon_db[gene].append([exon_start,exon_end])
-            except KeyError: ens_gene_exon_db[gene] = [[exon_start,exon_end]]
-            
-    ens_gene_transcript_db = eliminateRedundant(ens_gene_transcript_db)
-    ens_gene_exon_db = eliminateRedundant(ens_gene_exon_db)
+            exon_start = int(exon_start); exon_end = int(exon_end); proceed = 'yes'
+            if test == 'yes':
+                if gene not in test_genes: proceed = 'no'
+            if (ens_transcriptid in filter_transcripts or len(filter_transcripts)==0) and proceed == 'yes':
+                ### Only import transcripts that are in the set to analyze
+                try: ens_transcript_exon_db[ens_transcriptid][exon_start,exon_end]=[]
+                except KeyError: ens_transcript_exon_db[ens_transcriptid] = db = {(exon_start,exon_end):[]}
+                try: ens_gene_transcript_db[gene][ens_transcriptid]=[]
+                except KeyError: ens_gene_transcript_db[gene] = db = {ens_transcriptid:[]}
+                try: ens_gene_exon_db[gene][exon_start,exon_end]=[]
+                except KeyError: ens_gene_exon_db[gene] = db = {(exon_start,exon_end):[]}
+    """
+    ### Some transcripts will have the same coordinates - get rid of these (not implemented yet)
+    if 'Ensembl' not in filename:
+        for gene in ens_gene_transcript_db:
+            exon_structure_db={}
+            for transcript in ens_gene_transcript_db[gene]:
+                ls=[]
+                for coord in ens_transcript_exon_db[transcript]: ls.append(coord)
+                ls.sort()
+                try: exon_structure_db[tuple(ls)].append(transcript)
+                except Exception: exon_structure_db[tuple(ls)] = [transcript]"""
+    #ens_gene_transcript_db = eliminateRedundant(ens_gene_transcript_db)
+    #ens_gene_exon_db = eliminateRedundant(ens_gene_exon_db)
     print 'Exon/transcript data imported for %s transcripts' % len(ens_transcript_exon_db)
     return ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db
 
@@ -173,20 +198,26 @@ def getProbesetExonCoordinates(probeset_coordinate_db,probeset_gene_db,ens_gene_
         gene = probeset_gene_db[probeset][0]
         start,stop = probeset_coordinate_db[probeset]
         coor_list = ens_gene_exon_db[gene]
-        for (t_start,t_stop) in coor_list:
-            if ((start >= t_start) and (start <= t_stop)) and ((stop >= t_start) and (stop <= t_stop)):
-                ### Thus the probeset is completely in this exon
-                try: probeset_exon_coor_db[probeset].append([t_start,t_stop])
-                except KeyError: probeset_exon_coor_db[probeset]=[[t_start,t_stop]]
+        proceed = 'yes'
+        if test == 'yes':
+            if gene not in test_genes: proceed = 'no'
+        if proceed == 'yes':
+            for (t_start,t_stop) in coor_list:
+                if ((start >= t_start) and (start <= t_stop)) and ((stop >= t_start) and (stop <= t_stop)):
+                    ### Thus the probeset is completely in this exon
+                    try: probeset_exon_coor_db[probeset].append((t_start,t_stop))
+                    except KeyError: probeset_exon_coor_db[probeset]=[(t_start,t_stop)]
+                    #if '20.8' in probeset: print (t_start,t_stop),start,stop
+    #sys.exit()
     return probeset_exon_coor_db
 
 def compareExonComposition(species,array_type):
     probeset_gene_db,probeset_coordinate_db = importSplicingAnnotationDatabase(array_type, species,'yes')
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
-    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{})
+    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},{})
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
     filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
-    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db)
+    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,{})
     ### Derive probeset to exon associations De Novo
     probeset_exon_coor_db = getProbesetExonCoordinates(probeset_coordinate_db,probeset_gene_db,ens_gene_exon_db)
 
@@ -197,105 +228,114 @@ def compareExonComposition(species,array_type):
     ### Identifying isforms containing and not containing the probeset
     probeset_transcript_db={}; match_pairs_missing=0; valid_transcript_pairs={}; ok_transcript_pairs={}; probesets_not_found=0
     for probeset in probeset_exon_coor_db:
-            geneid = probeset_gene_db[probeset][0]
-            transcripts = ens_gene_transcript_db[geneid]
-            matching_transcripts=[]; not_matching_transcripts=[]; matching={}; not_matching={}
-            for coordinates in probeset_exon_coor_db[probeset]: ### Multiple exons may align
-                #print coordinates
-                for transcript in transcripts:
-                    #print ens_transcript_exon_db[transcript];kill
-                    if coordinates in ens_transcript_exon_db[transcript]:
-                        #print 'match', transcript
-                        other_coordinate_list=[]
-                        for other_coordinates in ens_transcript_exon_db[transcript]:
-                            if coordinates != other_coordinates: ### Add exon coordinates for all exons that DO NOT aligning to the probeset
-                                other_coordinate_list.append(other_coordinates)
-                        if len(other_coordinate_list)>1:
-                            other_coordinate_list.sort()
-                            ### Instead of replacing the values in place, we need to do this (otherwise the original object will be modified)
-                            other_coordinate_list = [[0,other_coordinate_list[0][1]]]+other_coordinate_list[1:-1]+[[other_coordinate_list[-1][0],0]]
-                        #other_coordinate_list[0][0] = 0; other_coordinate_list[-1][-1] = 0
-                        other_coordinate_list = convertListsToTuple(other_coordinate_list)
-                        matching[tuple(other_coordinate_list)]=transcript
-                        matching_transcripts.append(transcript)
-                    else:
-                        #print 'not matched', transcript
-                        other_coordinate_list=[]
-                        for other_coordinates in ens_transcript_exon_db[transcript]:
-                            if coordinates != other_coordinates: ### Add exon coordinates for all exons that DO NOT aligning to the probeset
-                                other_coordinate_list.append(other_coordinates)
-                        if len(other_coordinate_list)>1:
-                            other_coordinate_list.sort()
-                            other_coordinate_list = [[0,other_coordinate_list[0][1]]]+other_coordinate_list[1:-1]+[[other_coordinate_list[-1][0],0]]
-                        other_coordinate_list = convertListsToTuple(other_coordinate_list)
-                        not_matching[tuple(other_coordinate_list)]=transcript
-                        not_matching_transcripts.append(transcript)
-                        
-            #print '\n',matching_transcripts, not_matching_transcripts;kill
-            ### Can't have transcripts in matching and not matching
-            not_matching_transcripts2=[]; not_matching2={} 
-            for transcript in not_matching_transcripts:
-                if transcript not in matching_transcripts: not_matching_transcripts2.append(transcript)
-            for coord in not_matching:
-                transcript = not_matching[coord]
-                if transcript  in not_matching_transcripts2: not_matching2[coord] = not_matching[coord]
-            not_matching = not_matching2; not_matching_transcripts = not_matching_transcripts2
-            
-            #if probeset == '3431530': print '3431530a', matching_transcripts,not_matching_transcripts
-            if len(matching)>0 and len(not_matching)>0:
-                perfect_match_found='no'; exon_match_data=[] ### List is only used if more than a single cassette exon difference between transcripts
+        geneid = probeset_gene_db[probeset][0]
+        transcripts = ens_gene_transcript_db[geneid]
+        matching_transcripts=[]; not_matching_transcripts=[]; matching={}; not_matching={}
+        for coordinates in probeset_exon_coor_db[probeset]: ### Multiple exons may align
+            for transcript in transcripts:
+                ### Build a cursory list of matching and non-matching transcripts
+                if coordinates in ens_transcript_exon_db[transcript]:
+                    matching_transcripts.append(transcript)
+                else:
+                    not_matching_transcripts.append(transcript)
+                    
+        ### Filter large non-matching transcript sets to facilate processing
+        not_matching_transcripts = mRNASeqAlign.filterNullMatch(not_matching_transcripts,matching_transcripts)
 
-                for exon_list in matching:
-                    matching_transcript = matching[exon_list]
-                    if exon_list in not_matching:
+        ### Re-analyze the filtered list for exon content
+        transcripts = unique.unique(not_matching_transcripts+matching_transcripts)
+        matching_transcripts=[]; not_matching_transcripts=[]
+        for coordinates in probeset_exon_coor_db[probeset]: ### Multiple exons may align
+            for transcript in transcripts:
+                if coordinates in ens_transcript_exon_db[transcript]:
+                    matching_transcripts.append(transcript)
+                    other_coordinate_list=[]
+                    for other_coordinates in ens_transcript_exon_db[transcript]:
+                        if coordinates != other_coordinates: ### Add exon coordinates for all exons that DO NOT aligning to the probeset
+                            other_coordinate_list.append(other_coordinates)
+                    if len(other_coordinate_list)>1:
+                        other_coordinate_list.sort()
+                        ### Instead of replacing the values in place, we need to do this (otherwise the original object will be modified)
+                        other_coordinate_list = [[0,other_coordinate_list[0][1]]]+other_coordinate_list[1:-1]+[[other_coordinate_list[-1][0],0]]
+                    #other_coordinate_list[0][0] = 0; other_coordinate_list[-1][-1] = 0
+                    other_coordinate_list = convertListsToTuple(other_coordinate_list)
+                    matching[tuple(other_coordinate_list)]=transcript
+                else:
+                    not_matching_transcripts.append(transcript)
+                    other_coordinate_list=[]
+                    for other_coordinates in ens_transcript_exon_db[transcript]:
+                        if coordinates != other_coordinates: ### Add exon coordinates for all exons that DO NOT aligning to the probeset
+                            other_coordinate_list.append(other_coordinates)
+                    if len(other_coordinate_list)>1:
+                        other_coordinate_list.sort()
+                        other_coordinate_list = [[0,other_coordinate_list[0][1]]]+other_coordinate_list[1:-1]+[[other_coordinate_list[-1][0],0]]
+                    other_coordinate_list = convertListsToTuple(other_coordinate_list)
+                    not_matching[tuple(other_coordinate_list)]=transcript
+                        
+        #print '\n',matching_transcripts, not_matching_transcripts;kill
+        ### Can't have transcripts in matching and not matching
+        not_matching_transcripts2=[]; not_matching2={} 
+        for transcript in not_matching_transcripts:
+            if transcript not in matching_transcripts: not_matching_transcripts2.append(transcript)
+        for coord in not_matching:
+            transcript = not_matching[coord]
+            if transcript  in not_matching_transcripts2: not_matching2[coord] = not_matching[coord]
+        not_matching = not_matching2; not_matching_transcripts = not_matching_transcripts2
+            
+        #if probeset == '3431530': print '3431530a', matching_transcripts,not_matching_transcripts
+        if len(matching)>0 and len(not_matching)>0:
+            perfect_match_found='no'; exon_match_data=[] ### List is only used if more than a single cassette exon difference between transcripts
+            for exon_list in matching:
+                matching_transcript = matching[exon_list]
+                if exon_list in not_matching:
+                    not_matching_transcript = not_matching[exon_list]
+                    valid_transcript_pairs[probeset] = matching_transcript, not_matching_transcript
+                    perfect_match_found = 'yes'
+                    #print probeset,matching_transcript, not_matching_transcript
+                    #print ens_transcript_exon_db[matching_transcript],'\n'
+                    #print ens_transcript_exon_db[not_matching_transcript]; kill
+                else:
+                    unique_exon_count_db={} ### Determine how many exons are common and which are transcript distinct for a pair-wise comp
+                    for exon_coor in exon_list:
+                        try: unique_exon_count_db[exon_coor] +=1
+                        except KeyError: unique_exon_count_db[exon_coor] =1
+                    for exon_list in not_matching:
                         not_matching_transcript = not_matching[exon_list]
-                        valid_transcript_pairs[probeset] = matching_transcript, not_matching_transcript
-                        perfect_match_found = 'yes'
-                        #print probeset,matching_transcript, not_matching_transcript
-                        #print ens_transcript_exon_db[matching_transcript],'\n'
-                        #print ens_transcript_exon_db[not_matching_transcript]; kill
-                    else:
-                        unique_exon_count_db={} ### Determine how many exons are common and which are transcript distinct for a pair-wise comp
                         for exon_coor in exon_list:
                             try: unique_exon_count_db[exon_coor] +=1
                             except KeyError: unique_exon_count_db[exon_coor] =1
-                        for exon_list in not_matching:
-                            not_matching_transcript = not_matching[exon_list]
-                            for exon_coor in exon_list:
-                                try: unique_exon_count_db[exon_coor] +=1
-                                except KeyError: unique_exon_count_db[exon_coor] =1
-                            exon_count_db={}
-                            for exon_coor in unique_exon_count_db:
-                                num_trans_present = unique_exon_count_db[exon_coor]
-                                try: exon_count_db[num_trans_present]+=1
-                                except KeyError: exon_count_db[num_trans_present]=1
-                            try:
-                                exon_count_results = [exon_count_db[1],-1*(exon_count_db[2]),matching_transcript,not_matching_transcript]
-                                exon_match_data.append(exon_count_results)
-                            except KeyError:
-                                null =[] ###Occurs if no exons are found in common (2)
-                            #if probeset == '3431530': print '3431530b', exon_count_results
-                if perfect_match_found == 'no' and len(exon_match_data)>0:
-                    exon_match_data.sort()
-                    matching_transcript = exon_match_data[0][-2]
-                    not_matching_transcript = exon_match_data[0][-1]
-                    ok_transcript_pairs[probeset] = matching_transcript, not_matching_transcript
-                    #if probeset == '3431530': print '3431530', matching_transcript, not_matching_transcript
-                else: match_pairs_missing+=1
+                        exon_count_db={}
+                        for exon_coor in unique_exon_count_db:
+                            num_trans_present = unique_exon_count_db[exon_coor]
+                            try: exon_count_db[num_trans_present]+=1
+                            except KeyError: exon_count_db[num_trans_present]=1
+                        try:
+                            exon_count_results = [exon_count_db[1],-1*(exon_count_db[2]),matching_transcript,not_matching_transcript]
+                            exon_match_data.append(exon_count_results)
+                        except KeyError:
+                            null =[] ###Occurs if no exons are found in common (2)
+                        #if probeset == '3431530': print '3431530b', exon_count_results
+            if perfect_match_found == 'no' and len(exon_match_data)>0:
+                exon_match_data.sort()
+                matching_transcript = exon_match_data[0][-2]
+                not_matching_transcript = exon_match_data[0][-1]
+                ok_transcript_pairs[probeset] = matching_transcript, not_matching_transcript
+                #if probeset == '3431530': print '3431530', matching_transcript, not_matching_transcript
+            else: match_pairs_missing+=1
                 
-                ###Export transcript comparison sets to an external file for different analyses
-                matching_transcripts = unique.unique(matching_transcripts)
-                not_matching_transcripts = unique.unique(not_matching_transcripts)
-                matching_transcripts=string.join(matching_transcripts,'|')
-                not_matching_transcripts=string.join(not_matching_transcripts,'|')
-                values = string.join([probeset,matching_transcripts,not_matching_transcripts],'\t')+'\n'
-                data.write(values)
+            ###Export transcript comparison sets to an external file for different analyses
+            matching_transcripts = unique.unique(matching_transcripts)
+            not_matching_transcripts = unique.unique(not_matching_transcripts)
+            matching_transcripts=string.join(matching_transcripts,'|')
+            not_matching_transcripts=string.join(not_matching_transcripts,'|')
+            values = string.join([probeset,matching_transcripts,not_matching_transcripts],'\t')+'\n'
+            data.write(values)
     print match_pairs_missing,'probesets missing either an alinging or non-alinging transcript'
     print len(valid_transcript_pairs),'probesets with a single exon difference aligning to two isoforms'
     print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
     data.close()
 
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
     else:
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'                
@@ -314,20 +354,21 @@ def compareExonComposition(species,array_type):
     export_data.close()
 
 def compareExonCompositionJunctionArray(species,array_type):
+    ###Import sequence aligned transcript associations for individual or probeset-pairs. Pairs provided for match-match
+    probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts = importProbesetTranscriptMatches(species,array_type,'yes')
+    
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
-    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{})
+    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},all_transcripts)
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
     filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
-    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db)
-    ###Import sequence aligned transcript associations for individual or probeset-pairs. Pairs provided for match-match
-    probeset_transcript_db,unique_ens_transcripts,unique_transcripts = importProbesetTranscriptMatches(species,array_type,'yes')
+    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,all_transcripts)
 
     print len(probeset_transcript_db), "probesets with multiple pairs of matching-matching or matching-null transcripts."
     ### Identifying isoforms containing and not containing the probeset
-    global transcripts_not_found
+    global transcripts_not_found; marker = 5000; increment = 5000
     match_pairs_missing=0; ok_transcript_pairs={}; transcripts_not_found={}
     for probesets in probeset_transcript_db:
-        exon_match_data=[]
+        exon_match_data=[]; start_time = time.time()
         match_transcripts,not_match_transcripts = probeset_transcript_db[probesets]
         for matching_transcript in match_transcripts:
             if matching_transcript in ens_transcript_exon_db:
@@ -358,15 +399,18 @@ def compareExonCompositionJunctionArray(species,array_type):
             exon_match_data.sort()
             matching_transcript = exon_match_data[0][-2]
             not_matching_transcript = exon_match_data[0][-1]
+            end_time = time.time()
+            #if end_time - start_time>2: print len(ok_transcript_pairs),probesets,match_transcripts,not_match_transcripts;kill
             ok_transcript_pairs[probesets] = matching_transcript, not_matching_transcript
             #if probeset == '3431530': print '3431530', matching_transcript, not_matching_transcript
+            if len(ok_transcript_pairs) == marker: marker+= increment; print '*',
         else: match_pairs_missing+=1
                 
     print match_pairs_missing,'probesets missing either an alinging or non-alinging transcript'
     print len(transcripts_not_found),'transcripts not found'
     print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
 
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'  
     else: export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'                
     export_data = export.ExportFile(export_file)    
@@ -379,7 +423,8 @@ def compareExonCompositionJunctionArray(species,array_type):
     export_data.close()
         
 def compareProteinComposition(species,array_type,translate,compare_all_features):
-    probeset_transcript_db,unique_ens_transcripts,unique_transcripts = importProbesetTranscriptMatches(species,array_type,compare_all_features)
+    probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts = importProbesetTranscriptMatches(species,array_type,compare_all_features)
+    all_transcripts=[]
 
     if translate == 'yes1': ### Used if we want to re-derive all transcript-protein sequences
         transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch')
@@ -452,7 +497,12 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
 
     ###Search NCBI using the esearch not efetch function to get valid GIs (some ACs make efetch crash)    
     try: missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
-    except IOError: missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
+    except Exception,e:
+        print 'Exception encountered:',e
+        try: missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
+        except Exception:
+            print 'Exception encountered:',e
+            missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
 
     fetchSeq(missing_gi_list,'nucleotide',len(seq_files)-2)
     seq_files, transcript_protein_seq_db = importProteinSequences(species,'no')
@@ -483,11 +533,11 @@ def convertTranscriptToProteinAssociations(probeset_transcript_db,transcript_pro
 
     if compare_all_features == 'no': ### If yes, all pairwise comps need to still be examined
         title_row = 'Probeset\tAligned protein_id\tNon-aligned protein_id'
-        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null':
             export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-protein-dbase_exoncomp.txt'
         else: export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_exoncomp.txt'
         exportSimple(probeset_protein_db,export_file,title_row)
-        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null':
             export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/SEQUENCE-protein-dbase_exoncomp.txt' 
         else: export_file = 'AltDatabase/'+species+'/'+array_type+'/SEQUENCE-protein-dbase_exoncomp.txt'     
         exportSimple(protein_seq_db,export_file,'')
@@ -510,14 +560,14 @@ def importProteinSequences(species,just_get_ids):
 
 def importProbesetTranscriptMatches(species,array_type,compare_all_features):
     if compare_all_features == 'yes': ### Used when comparing all possible PROTEIN pairs    
-        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null':
             filename = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_all-transcript-matches.txt'
         else: filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'
     else: ### Used after comparing all possible TRANSCRIPT STRUCTURE pairs
-        if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+        if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
             filename = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
         else: filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'
-    fn=filepath(filename); probeset_transcript_db={}; unique_transcripts={}; unique_ens_transcripts={}
+    fn=filepath(filename); probeset_transcript_db={}; unique_transcripts={}; unique_ens_transcripts={}; all_transcripts={}
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
         try: probeset,match_transcripts,not_match_transcripts = string.split(probeset_data,'\t')
@@ -528,16 +578,23 @@ def importProbesetTranscriptMatches(species,array_type,compare_all_features):
         ### Multiple transcript comparison sets can exist, depending on how many unique exon coordiantes the probeset aligns to
         probeset_transcript_db[probeset] = match_transcripts,not_match_transcripts
 
+        consider_all_ensembl = 'no'
+        if array_type == 'RNASeq': ### Needed for Ensembl gene IDs that don't have 'ENS' in them.
+            if 'ENS' not in probeset: consider_all_ensembl = 'yes'
         ###Store unique transcripts        
         for transcript in match_transcripts:
-            if 'ENS' in transcript: unique_ens_transcripts[transcript]=[]
+            if 'ENS' in transcript or consider_all_ensembl == 'yes': unique_ens_transcripts[transcript]=[]
             else: unique_transcripts[transcript]=[]
+            if consider_all_ensembl == 'yes': unique_transcripts[transcript]=[] ### This redundant, but is the most unbiased way to examine all non-Ensembls as well
+            all_transcripts[transcript]=[]
         for transcript in not_match_transcripts:
-            if 'ENS' in transcript: unique_ens_transcripts[transcript]=[]
+            if 'ENS' in transcript or consider_all_ensembl == 'yes': unique_ens_transcripts[transcript]=[]
             else: unique_transcripts[transcript]=[]
+            if consider_all_ensembl == 'yes': unique_transcripts[transcript]=[] ### This redundant, but is the most unbiased way to examine all non-Ensembls as well
+            all_transcripts[transcript]=[]
     print 'len(unique_ens_transcripts)',len(unique_ens_transcripts)
     print 'len(unique_transcripts)',len(unique_transcripts)
-    return probeset_transcript_db,unique_ens_transcripts,unique_transcripts
+    return probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts
 
 def searchEntrez(accession_list,bio_type):
     start_time = time.time()
@@ -673,7 +730,7 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
 
 def importEnsemblProteinSeqData(species,unique_ens_transcripts):
     import FeatureAlignment
-    protein_relationship_file,protein_feature_file,protein_seq_fasta = FeatureAlignment.getEnsemblRelationshipDirs(species)
+    protein_relationship_file,protein_feature_file,protein_seq_fasta,null = FeatureAlignment.getEnsemblRelationshipDirs(species)
     ens_transcript_protein_db = FeatureAlignment.importEnsemblRelationships(protein_relationship_file,'transcript')
 
     unique_ens_proteins = {}
@@ -875,7 +932,7 @@ def convertListsToTuple(list_of_lists):
 
 def compareProteinFeaturesForPairwiseComps(probeset_protein_db,protein_seq_db,probeset_gene_db,species,array_type):
 
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': 
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/probeset-protein-dbase_seqcomp.txt'
     else: export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_seqcomp.txt'  
     fn=filepath(export_file); export_data1 = open(fn,'w')
@@ -921,7 +978,7 @@ def compareProteinFeaturesForPairwiseComps(probeset_protein_db,protein_seq_db,pr
     export_file = 'AltDatabase/'+species+'/'+array_type+'/probeset-protein-dbase_seqcomp.txt'     
     exportSimple(minimal_effect_db,export_file,title_row)"""
 
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null':
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/SEQUENCE-protein-dbase_seqcomp.txt' 
     else: export_file = 'AltDatabase/'+species+'/'+array_type+'/SEQUENCE-protein-dbase_seqcomp.txt'     
     exportSimple(accession_seq_db,export_file,'')
@@ -1083,8 +1140,9 @@ def importUCSCSequences(missing_protein_ACs):
 ############# END Code currently not used (LOCAL PROTEIN SEQUENCE ANALYSIS) ##############
 
 def runProgram(Species,Array_type,Data_type,translate_seq,run_seqcomp):
-    global species; global array_type; global translate; global data_type 
+    global species; global array_type; global translate; global data_type; global test; global test_genes
     species = Species; array_type = Array_type; translate = translate_seq; data_type = Data_type
+    test = 'no'; test_genes = ['ENSMUSG00000029467']
     if array_type == 'gene' or array_type == 'exon' or data_type == 'exon':
         compareExonComposition(species,array_type)
         compare_all_features = 'no'
@@ -1117,7 +1175,8 @@ def runProgramTest(Species,Array_type,Data_type,translate_seq,run_seqcomp):
             compareProteinComposition(species,array_type,translate,compare_all_features)
             
 if __name__ == '__main__':
-    species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'
-    #species = 'Hs'; array_type = 'exon'; translate='no'
-    #species = 'Rn'; array_type = 'exon'; translate='yes'
-    runProgramTest(species,array_type,translate,run_seqcomp)
+    species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'; data_type = 'exon'
+    species = 'Hs'; array_type = 'RNASeq'; translate='yes'
+    species = 'Mm'; array_type = 'RNASeq'; translate='yes'
+    #runProgramTest(species,array_type,data_type,translate,run_seqcomp)
+    runProgram(species,array_type,data_type,translate,run_seqcomp)

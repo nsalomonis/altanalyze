@@ -387,7 +387,7 @@ def parse_affymetrix_annotations(filename,species):
 def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use_go):
     import gene_associations; import time
     start_time = time.time()
-    ### Get Gene Ontology gene associations    
+    ### Get Gene Ontology gene associations
     try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl')
     except Exception: gene_to_mapp_ens = {}
     try: gene_to_mapp_eg = gene_associations.importGeneMAPPData(species_code,'EntrezGene')
@@ -487,6 +487,77 @@ def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use
     end_time = time.time(); time_diff = int(end_time-start_time)
     print 'ArrayID annotations imported in',time_diff, 'seconds'
     return conventional_array_db
+
+class PathwayInformation:
+    def __init__(self,component_list,function_list,process_list,pathway_list):
+        self.component_list = component_list; self.function_list = function_list
+        self.process_list = process_list; self.pathway_list = pathway_list
+    def Component(self): return self.Format(self.component_list)
+    def Process(self): return self.Format(self.process_list)
+    def Function(self): return self.Format(self.function_list)
+    def Pathway(self): return self.Format(self.pathway_list)
+    def Combined(self): return self.Format(self.pathway_list+self.process_list+self.function_list+self.component_list)
+    def Format(self,terms):
+        return string.join(terms,' // ')
+    
+def getHousekeepingGenes(species_code):
+    vendor = 'Affymetrix'
+    exclude = ['ENSG00000256901'] ### Incorrect homology with housekeeping
+    import gene_associations
+    try: ens_to_array = gene_associations.getGeneToUidNoExon(species_code,'Ensembl-'+vendor); print 'Ensembl-'+vendor,'relationships imported'
+    except Exception: ens_to_array={}
+    housekeeping_genes={}
+    for gene in ens_to_array:
+        for uid in ens_to_array[gene]:
+            if 'AFFX' in uid:
+                if gene not in exclude: housekeeping_genes[gene]=[]
+    return housekeeping_genes
+
+def getEnsemblAnnotationsFromGOElite(species_code):
+    import gene_associations; import time
+    start_time = time.time()
+    ### Get Gene Ontology gene associations
+    try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl')
+    except Exception: gene_to_mapp_ens = {}
+
+    import OBO_import
+    go_annotations = OBO_import.importPreviousGOAnnotations()
+
+    try: gene_to_go_ens = gene_associations.importGeneGOData(species_code,'Ensembl','null')
+    except Exception: gene_to_go_ens = {}
+
+    component_db={}; process_db={}; function_db={}; all_genes={}
+    for gene in gene_to_go_ens:
+        all_genes[gene]=[]
+        for goid in gene_to_go_ens[gene]:
+            if goid in go_annotations:
+                s = go_annotations[goid]
+                go_name = string.replace(s.GOName(),'\\','')
+                gotype = s.GOType()
+                if gotype == 'C':
+                    try: component_db[gene].append(go_name)
+                    except KeyError: component_db[gene] = [go_name]
+                if gotype == 'P':
+                    try: process_db[gene].append(go_name)
+                    except KeyError: process_db[gene] = [go_name]
+                if gotype == 'F':
+                    try: function_db[gene].append(go_name)
+                    except KeyError: function_db[gene] = [go_name]
+                    
+    for gene in gene_to_mapp_ens: all_genes[gene]=[]
+
+    for gene in all_genes:
+        component_go=[]; process_go=[]; function_go=[]; pathways=[]
+        if gene in component_db: component_go = component_db[gene]
+        if gene in function_db: function_go = function_db[gene]
+        if gene in process_db: process_go = process_db[gene]
+        if gene in gene_to_mapp_ens: pathways = gene_to_mapp_ens[gene]
+        pi=PathwayInformation(component_go,function_go,process_go,pathways)
+        all_genes[gene]=pi
+        
+    end_time = time.time(); time_diff = int(end_time-start_time)
+    print len(all_genes),'Ensembl GO/pathway annotations imported in',time_diff, 'seconds'
+    return all_genes
 
 def getArrayIDAnnotations(gene_to_uid,gene_annotations):
     for gene in gene_annotations:
@@ -1003,6 +1074,7 @@ def TimeStamp():
     return year+month+day
 
 if __name__ == '__main__':
+    getEnsemblAnnotationsFromGOElite('Hs');sys.exit()
     Species_full = 'Rattus norvegicus'; Species_code = 'Rn'; tax_id = '10090'; overwrite_affycsv = 'yes'
     System_codes = importSystemInfo(); process_go = 'yes'; incorporate_previous_associations = 'yes'
     import update; overwrite = 'over-write previous'

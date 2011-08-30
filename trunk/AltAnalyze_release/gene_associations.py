@@ -49,7 +49,7 @@ class GrabFiles:
     def searchdirectory(self,search_term):
         #self is an instance while self.data is the value of the instance
         file_dir,file = getDirectoryFiles(self.data,str(search_term))
-        if len(file)<1: print search_term,'not found'
+        if len(file)<1: print search_term,'not found',self.data
         return file_dir,file
     
 def getDirectoryFiles(import_dir, search_term):

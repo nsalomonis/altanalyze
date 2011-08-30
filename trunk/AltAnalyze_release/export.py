@@ -44,6 +44,8 @@ def findParentDir(filename):
     return filename[:x]
 
 def findFilename(filename):
+    filename = string.replace(filename,'//','/')
+    filename = string.replace(filename,'\\','/')
     x = string.find(filename[::-1],'\\')*-1 ### get just the parent directory
     if x == 1:
         x = string.find(filename[::-1],'//')*-1 ### get just the parent directory
@@ -62,6 +64,8 @@ def ExportFile(filename):
     return file_var
 
 def customFileMove(old_fn,new_fn):
+    old_fn = filepath(old_fn)
+    new_fn = filepath(new_fn)
     raw = ExportFile(new_fn)
     for line in open(old_fn,'rU').xreadlines():
         raw.write(line)
@@ -203,12 +207,13 @@ def copyFile(source_file,destination_file):
 def deleteFolder(dir):
     try:
         dir = filepath(dir); dir_list = read_directory(dir) ### Get all files in directory
+        print 'deleting dir:',dir
         for file in dir_list:
             fn = filepath(dir+'/'+file)
             if '.' in fn: os.remove(fn)
             else: deleteFolder(fn) ### Remove subdirectories
         os.removedirs(dir)
-        print dir
+        #print dir
         return 'success'
     except OSError: return 'failed'
 

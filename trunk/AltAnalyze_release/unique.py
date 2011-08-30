@@ -44,7 +44,7 @@ py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
 def filepath(filename):
     dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    if (':' in filename) or ('/Users/' == filename[:7]) or ('/Volumes/' in filename) or ('Linux' in platform.system()): fn = filename #':' is for Windows dirs and '/Users/' for Mac
+    if (':' in filename) or ('/Users/' == filename[:7]) or ('/Volumes/' in filename) or ('Linux' in platform.system() and len(filename)>0): fn = filename #':' is for Windows dirs and '/Users/' for Mac
     else: fn=os.path.join(dir,filename)
     if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
@@ -79,7 +79,9 @@ def returnDirectories(sub_dir):
     for py2app_dir in py2app_dirs:
         dir = string.replace(dir,py2app_dir,'')
         try: dir_list = os.listdir(dir + sub_dir)
-        except Exception: dir_list = os.listdir(sub_dir) ### For linux
+        except Exception:
+            try: dir_list = os.listdir(sub_dir) ### For linux
+            except Exception: print dir, sub_dir; bad_exit
     return dir_list
 
 def returnDirectoriesNoReplace(sub_dir):
@@ -107,10 +109,17 @@ def whatProgramIsThis():
 
 def correctGeneDatabaseDir(fn):
     try:
-        if gene_database_dir not in fn and 'EnsMart' not in fn:
+        proceed = 'no'
+        alt_version = 'AltDatabase/'+gene_database_dir
+        elite_version = 'Databases/'+gene_database_dir
+        fn=string.replace(fn,'//','/'); fn=string.replace(fn,'\\','/')
+        if alt_version not in fn and elite_version not in fn and 'EnsMart' in fn: proceed = 'yes' ### If the user creates that contains EnsMart
+        if gene_database_dir not in fn and 'EnsMart' not in fn: proceed = 'yes'
+        if proceed == 'yes':
             fn = string.replace(fn,'Databases','Databases/'+gene_database_dir)
             if 'AltDatabase/affymetrix' not in fn and 'NoVersion' not in fn:
-                fn = string.replace(fn,'AltDatabase','AltDatabase/'+gene_database_dir)
+                if 'AltDatabase' in fn:
+                    fn = string.replace(fn,'AltDatabase','AltDatabase/'+gene_database_dir)
         fn = string.replace(fn,'NoVersion','') ### When the text 'NoVersion' is in a filepath, is tells the program to ignore it for adding the database version
     except Exception: null = ''
     return fn
