@@ -1,7 +1,7 @@
 #summary Tutorial 3 - Analyzing RNASeq Splicing Data
 #labels Featured
 
-= Tutorial 3 - Analyzing RNASeq Alternative Exons and Junctions =
+= Tutorial 3 - Analyzing RNASeq Alternative Exons & Junctions =
 
 The below tutorial applies to the analysis of RNA sequencing data and junction arrays. A separate tutorial for the analysis of *Affymetrix Exon and Gene arrays* can be found [Tutorial_AltExpressionAnalysis here]. 
 
