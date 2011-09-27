@@ -1,0 +1,7 @@
+#summary FAQ-Recommended Gene Expression Cutoff
+
+===_What is the recommended cutoff for expressed genes with RNA-Seq?_===
+
+_*Answer*_: In addition to cutoffs applied to the regulation of genes (e.g., fold change and p-values), absolute expression cutoffs for genes, exons and junctions can be useful in removing likely non-expressed features (e.g., artifacts) or low expressing features, whose expression is not accurate. For RNA-seq data, in particular, such features may not have reproducible expression and can introduce artificial variance that results in differential expression or splicing calls. 
+
+While any quantitative expression cutoff is somewhat arbitrary (since the biological activity of a resultant gene can vary based on it's activity, translation efficiency and half-life), we recommend the following conservative cutoffs: RPKM >= 0.5 and gene-level read counts >= 10, for differential gene expression analysis. For alternative-exon analyses, lower read counts are recommended for exon and junction features (>=5 and >=3, respectively), since these features are typically much smaller (dozens versus thousands of base pairs). AltAnalyze provides the option of only a single cutoff, for both exon and junction-level features (default >= 2 read counts), however, the user is encouraged to apply various thresholds, especially with small replicate number datasets. As in any expression analysis, experiments containing few or no replicates will be more subject to more type I and type II errors, hence, more stringent thresholds are recommended.
