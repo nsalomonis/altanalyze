@@ -2,23 +2,29 @@
 #labels Featured
 
 =AltAnalyze Frequently Asked Questions=
+
+===Main Analysis Options===
+
+    * [CompatibleOS What operating systems is AltAnalyze compatible with?]
+    * [CommandLineMode Can I run AltAnalyze on a remote machine without using the graphical user interface?]
+    * [SpliceVisualization How can I visualize splicing and domain level changes from AltAnalyze?]
+    * [CompatibleArrays What microarrays can AltAnalyze work with?]
+    * [SplicingForAnyPlatform Can AltAnalyze work with exon/junction data for an unsupported platform (e.g., custom array)?]
+    * [ScoringMethod What is the difference between the splicing-index, FIRMA, MiDAS, Linear Regression and ASPIRE methods?]
+    * [AnnotateExternal How can I annotate my splicing results from another program in AltAnalyze?]
+
 ===Installing AltAnalyze===
+
     * [DBaseInstallationError Why Does AltAnalyze crash when trying to download the database when first run?]
 
 ===Data Analysis and Import===
-    * [CompatibleArrays What microarrays can AltAnalyze work with?]
-    * [SplicingForAnyPlatform Can AltAnalyze work with exon/junction data for an unsupported platform (e.g., custom array)?]
-    * [CompatibleOS What operating systems is AltAnalyze compatible with?]
     * [RequiredFiles What files do I need when analyzing Affymetrix arrays?]
     * [ManualGroupsCompsCreation When I have dozens of samples in my study, how can I more easily assign the samples to groups than one by one?]
-    * [SpliceVisualization How can I visualize splicing and domain level changes from AltAnalyze?]
+    * [RNASeqExpressionCutoffs What is the recommended cutoff for expressed genes with RNA-Seq?]
     * [FilteringData Why does AltAnalyze need to filter my data?]
     * [Constitutive_vs_all Should I calculate gene expression using constitutive or all mRNA aligning probests?]
-    * [ScoringMethod What is the difference between the splicing-index, FIRMA, MiDAS, Linear Regression and ASPIRE methods?]
     * [MultipleComparisons How does a pair-wise alternative exon analysis differ from multiple group comparisons?]
-    * [CommandLineMode Can I run AltAnalyze on a remote machine without using the graphical user interface?]
     * [GroupsAndComps Why do I need to define groups and comparisons?]
-    * [AnnotateExternal How can I annotate my splicing results from another program in AltAnalyze?]
     * [GOEliteDefault Why doesn't AltAnalyze run GO-Elite by default?]
     * [GeneArrayCSVForExon Why does AltAnalyze download the Gene 1.0 transcript annotation file for Exon 1.0 array analyses?]
     * [CrossHybProbesets How can I remove probesets with sequence that aligns to multiple genomic loci from my analysis?]
