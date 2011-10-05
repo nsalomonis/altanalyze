@@ -3,6 +3,7 @@
 = Useful Extensions to Consider =
 
 ===Visualization===
+ * RNA-Seq isoform visualization: http://splicegrapher.sourceforge.net/ (requires Matplotlib and PyML)
  * Network visualization: http://code.google.com/p/python-graph/w/list
  * Sophisticated network analysis: http://igraph.sourceforge.net/
  * Vector graphics support (requires numpy): http://matplotlib.sourceforge.net/
