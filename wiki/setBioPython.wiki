@@ -14,7 +14,7 @@ Numpy and a C compiler are required for BioPython installation and not for other
 === Installation on Mac OS X ===
  # Install Python: Although python is installed by default on the Mac, this version has certain compatibility issues that will require you to install a new version from Python. We recommend Python 2.7.1 (32 bit or 64 bit) [http://www.python.org/download/releases/2.7.1/]
  # Install setuptools for your OS and processor architecture from: [http://pypi.python.org/pypi/setuptools]. Follow the instructions to install by Terminal. This will allow you to run easy_install by command line.
- # Install Numpy: Select the appropriate download from Source Forge [http://sourceforge.net/projects/numpy/files/NumPy/] or as [unofficial windows binaries http://www.lfd.uci.edu/~gohlke/pythonlibs/]
+ # Install Numpy: Select the appropriate download from Source Forge [http://sourceforge.net/projects/numpy/files/NumPy/] or as unofficial windows binaries from [http://www.lfd.uci.edu/~gohlke/pythonlibs/]
  # Install C compiler: It is recommended to install xCode from Apple. xCode is a large installation (3.6GB download - 10GB installed).
  # Install BioPython: In a terminal window type "easy_install biopython". If you receive a warning, repeat the command, as intermittent issues can cause transient errors.
 
