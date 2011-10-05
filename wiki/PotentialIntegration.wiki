@@ -15,3 +15,5 @@
 
 ===Other===
  * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
+
+note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
