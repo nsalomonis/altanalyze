@@ -28,7 +28,7 @@
     * [GOEliteDefault Why doesn't AltAnalyze run GO-Elite by default?]
     * [GeneArrayCSVForExon Why does AltAnalyze download the Gene 1.0 transcript annotation file for Exon 1.0 array analyses?]
     * [CrossHybProbesets How can I remove probesets with sequence that aligns to multiple genomic loci from my analysis?]
-
+    * [TranscriptClusterCenteredResults Can AltAnalyze return transcript cluster results instead of Ensembl for the Gene 1.0 array?]
 ===Probeset Alignments and DomainGraph===
 
     * [ExonMappings How do AltAnalyze probeset-to-gene and probeset-to-exon mappings differ from those in the Affymetrix annotation files?]
