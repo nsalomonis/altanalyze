@@ -18,7 +18,7 @@ The Affymetrix Gene 1.0 array contains multiple probesets per transcript cluster
  # Next, you will be prompted to “Use Original Selected” or “Use AltAnalyze Recommended” for your array type. Selecting “Use Original Selected” will allow you to use your own CDF to obtain transcript cluster probeset expression as opposed to exon-level expression.
  # Select the folder you extracted in step 2 and the CDF file within it. There is no need to select an annotation file as AltAnalyze now has all the annotations you need built in.
  # Select proceed on the menu with additional parameters to accept the defaults
- # When prompted to enter group name for each sample.
+ # Enter your sample group names when prompted.
  # Assign group comparisons as your experimental on the left and control on the right from the pull-down.
  # Once finished open the file with the prefix “DATASET” in the folder ExpressionOutput in the output directory you designated.
  # This is your initial results re-annotated with AltAnalyze gene annotations.
@@ -28,14 +28,14 @@ The Affymetrix Gene 1.0 array contains multiple probesets per transcript cluster
  # Save your Excel spreadsheet as a tab-delimited text (.txt) file with the following fields:
    * Transcript cluster probeset ID
    * Expression values
-   * Fold changes (log and non-long)
-   * P-values
+   * Fold changes (log and non-long) (OPTIONAL)
+   * P-values (OPTIONAL)
  # Start AltAnalyze
  # Select Affymetrix from platform, your species and array type as Affymetrix expression array (not Gene Array)
  # Select “Process Expression files” rather than “Process CEL files”
  # Select this text file as input and the same directory as the output location
  # Select proceed on the menu with additional parameters to accept the defaults
- # When prompted to enter group name for each sample, just enter a or b at random into for the different samples. You will ignore these resulting groups and statistics later.
- # Assign group a versus b and continue
+ # Enter your sample group names when prompted
+ # ssign group comparisons as your experimental on the left and control on the right from the pull-down
  # Once finished open the file with the prefix “DATASET” in the folder ExpressionOutput in the output directory you designated.
- # This is your initial results re-annotated with AltAnalyze gene annotations. You can delete the columns added by AltAnalyze by this point.
+ # This is your initial results re-annotated with AltAnalyze gene annotations. You can delete the columns added by AltAnalyze by this point if you want to use your own provided alternative statistics.
