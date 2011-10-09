@@ -28,8 +28,8 @@ The Affymetrix Gene 1.0 array contains multiple probesets per transcript cluster
  # Save your Excel spreadsheet as a tab-delimited text (.txt) file with the following fields:
    * Transcript cluster probeset ID
    * Expression values
-   * Fold changes (log and non-long) (OPTIONAL)
-   * P-values (OPTIONAL)
+   * Fold changes (log and non-long) *_(OPTIONAL)_*
+   * P-values *_(OPTIONAL)_*
  # Start AltAnalyze
  # Select Affymetrix from platform, your species and array type as Affymetrix expression array (not Gene Array)
  # Select “Process Expression files” rather than “Process CEL files”
