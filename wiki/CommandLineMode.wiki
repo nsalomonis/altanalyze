@@ -11,7 +11,7 @@ Examples:
 _*Downloading and installing a species specific database (mouse)*_
 
 {{{
-python AltAnalyze.py --species Mm --update Official --version EnsMart55
+python AltAnalyze.py --species Mm --update Official --version EnsMart62
 }}}
 
 _*Analyzing CEL files – Affymetrix 3’ array using default options and GO-Elite*_
