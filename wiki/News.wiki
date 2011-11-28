@@ -5,6 +5,12 @@
 
 Proceed [UpdateHistory here] for detailed software version update information.
 
+==11-27-11==
+Posted AltAnalyze version 2.0.5. This version includes improvements to RNA-Seq gene-level RPKM calculations to provide more accurate gene expression estimates, additional annotations for conventional array analyses and miRNA array, selection of multiple statistical p-value methods added and critical bug fixes. For more information see the program [http://www.altanalyze.org/help_main.htm documentation] and [UpdateHistory update history].
+
+==7/9/11==
+Posted AltAnalyze version 2.0.4 with critical bug fixes to version 2.0.3. For more information see the program [http://www.altanalyze.org/help_main.htm documentation] and [UpdateHistory update history].
+
 ==6-17-11==
 Posted AltAnalyze version 2.0.3. This version is compatible with high-throughput RNA sequencing (RNASeq) exon alignment results in addition to junction results. Several new database and annotation features have been added (e.g., alternative polyadenylation, nonsense mediated decay) along with new analysis methods, program defaults, bug fixes and memory optimization. For more information see the program [http://www.altanalyze.org/help_main.htm documentation] and [UpdateHistory update history].
 
