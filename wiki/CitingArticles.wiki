@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://nar.oxfordjournals.org/content/early/2011/11/27/nar.gkr1110.full Gene Array Analyzer: alternative usage of gene arrays to study alternative splicing events]. Pascal Gellert, Mizue Teranishi, Katharina Jenniches, Piera De Gaspari, David John, Karsten grosse Kreymborg, Thomas Braun and Shizuka Uchida. Nucl. Acids Res. (2011) doi: 10.1093/nar/gkr1110
+
 [http://www.nature.com/neuro/journal/vaop/ncurrent/full/nn.2959.html 5-hmC–mediated epigenetic dynamics during postnatal neurodevelopment and aging]. Keith E Szulwach, Xuekun Li, Yujing Li, Chun-Xiao Song, Hao Wu, Qing Dai, Hasan Irier, Anup K Upadhyay, Marla Gearing, Allan I Levey, Aparna Vasanthakumar, Lucy A Godley, Qiang Chang, Xiaodong Cheng, Chuan He & Peng Jin. Nature Neuroscience(2011) doi:10.1038/nn.2959 
 
 [http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3186740/ Measuring and analyzing tissue specificity of human genes and protein complexes]. Dorothea Emig, Tim Kacprowski and Mario Albrecht. EURASIP J Bioinform Syst Biol. 2011(1): 5. 10.1186/1687-4153-2011-5
