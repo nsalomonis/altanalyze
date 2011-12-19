@@ -3,7 +3,8 @@ Hs	Homo sapiens
 Ce	Caenorhabditis elegans	
 Bt	Bos taurus	
 Mm	Mus musculus	
-Rn	Rattus norvegicus	splicing_index|MiDAS
+Rn	Rattus norvegicus	
+Gg	Gallus gallus	
 Dr	Danio rerio	
 Dm	Drosophila melanogaster	
 Sc	Saccharomyces cerevisiae	

@@ -33,6 +33,7 @@ import statistics
 import random
 import UI
 import export; reload(export)
+import re
 
 ################# Parse directory files
 def filepath(filename):
@@ -140,7 +141,8 @@ def checkDenominatorMatchesInput(input_gene_list,denominator_gene_list,gene_file
     for id in input_gene_list:
         try: null = denominator_gene_list[id] ###this object was changed from a list to a dictionary for efficiency
         except KeyError: ###Only occurs if an input ID is NOT found in the denominator
-            print 'Identifier:',id, 'not found in Denominator set'
+            all_alphanumeric = re.findall(r"\w",id)
+            print 'Identifier:','"'+id+'"', 'not found in Denominator set',len(id),all_alphanumeric,len(input_gene_list),len(denominator_gene_list)
             print_out = 'WARNING!!! Job stopped... Denominator gene list\ndoes not match the input gene list for\n%s' % gene_file
             try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
             except Exception:
@@ -149,11 +151,11 @@ def checkDenominatorMatchesInput(input_gene_list,denominator_gene_list,gene_file
 
 def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes,permute,resources_to_analyze,file_dirs,parent_root):
     global mappfinder_output_dir; global root; root = parent_root; resource_type = ''
-    criterion_input_folder, criterion_denom_folder, output_dir = file_dirs
+    criterion_input_folder, criterion_denom_folder, output_dir, custom_sets_folder = file_dirs
     go_to_mod_genes={}; mapp_to_mod_genes={}
     if len(output_dir) == 0: mappfinder_output_dir = 'input/MAPPFinder'
     else: mappfinder_output_dir = output_dir + '/GO-Elite_results/CompleteResults/ORA'
-    
+
     global source_data; source_data = source; global mod; mod = mod_db
     global species_code; species_code = species_id
     global species_name; species_name = species_title; global gene_to_mapp
@@ -164,27 +166,8 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
     
     start_time = time.time()   
     go_annotations = OBO_import.importPreviousGOAnnotations()
-
-    ### Import Gene-to-Nested-GO and Gene-to-MAPP Associations
-    try:
-        if resources_to_analyze != 'Pathways':
-            gene_to_go = gene_associations.importGeneGOData(species_code,mod,'nested')
-            go_to_gene = OBO_import.swapKeyValues(gene_to_go)
-            resource_type += 'Gene Ontology'
-    except Exception:
-        program_type,database_dir = unique.whatProgramIsThis()
-        print_out = "Warning!!! The MOD you have selected: "+mod+"\nis missing the appropriate relationship\nfiles necessary to run GO-Elite.  Either\nreplace the missing MOD files in\n"+database_dir+'/'+species_code+' sub-directories or\nselect a different MOD at run-time.'
-        try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
-        except Exception: print print_out
-        sys.exit()        
-    ### Since MAPP tables can be provided by the user, allow the file to be missing
-    if resources_to_analyze != 'Gene Ontology':
-        try: gene_to_mapp = gene_associations.importGeneMAPPData(species_code,mod)
-        except Exception: gene_to_mapp = {}
-        mapp_to_gene = OBO_import.swapKeyValues(gene_to_mapp)
-        if len(resource_type)==0: resource_type += 'Pathways'
-        else: resource_type += '/Pathways'
-
+    gene_annotations = gene_associations.importGeneData(species_code,mod)
+    
     OBO_date = importVersionData('OBO/')
     if len(criterion_input_folder) == 0: import_dir = '/input/GenesToQuery/'+species_code; import_dir_alt = import_dir[1:]
     else: import_dir = criterion_input_folder; import_dir_alt = criterion_input_folder
@@ -199,6 +182,8 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
         error_message = 'No files with the extension ".txt" found in the denominator directory.'
         try: UI.WarningWindow(error_message,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
         except Exception: print error_message; sys.exit()
+        
+    inputs_analyzed=0
     for mappfinder_input in dir_list:    #loop through each file in the directory
         permuted_z_scores={}; original_go_z_score_data={}; original_mapp_z_score_data={}
         print 'Performing mappfinder analysis on',mappfinder_input
@@ -210,13 +195,9 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
             except Exception: print error_message; sys.exit()
         if len(criterion_denom_folder)==0: denom_folder = '/input/GenesToQuery/'+species_code+'/DenominatorGenes'
         else: denom_folder = criterion_denom_folder
-        try:
-            error_warning = "The directory\n"+denom_folder+"\nis not found. Please create the directory\nand place an appropriate denominator file\nor files in it."
-            try: denominator_file_dir = identifyGeneFiles(denom_folder,gene_file) ###input is in input\Genes, denominator in
-            except WindowsError:
-                print_out = "WARNING: No denominator file included in\nthe Denominator directory.\nTo proceed, place all denominator\nIDs in a file in that directory."
-                try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
-                except Exception: print error_warning; sys.exit()                
+        error_warning = "\nThe directory\n"+'['+denom_folder+']'+"\nis not found. Please create the directory\nand place an appropriate denominator file\nor files in it."
+        denominator_file_dir = identifyGeneFiles(denom_folder,gene_file) ###input is in input\Genes, denominator in
+        try: denominator_file_dir = identifyGeneFiles(denom_folder,gene_file) ###input is in input\Genes, denominator in
         except Exception:
             print_out = "WARNING: No denominator file included in\nthe Denominator directory.\nTo proceed, place all denominator\nIDs in a file in that directory."
             try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
@@ -227,7 +208,7 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
             denominator_gene_list,source_data_denom,error_message = gene_associations.importUIDsForMAPPFinderQuery(denominator_file_dir,system_codes,'no'); denom_count = len(denominator_gene_list)
             if len(error_message)>0:
                 try: UI.WarningWindow(error_message,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
-                except Exception: print print_out; sys.exit()
+                except Exception: print error_message; sys.exit()
             if len(denominator_gene_list) == len(input_gene_list):
                 try: UI.WarningWindow('Input and Denominator lists have identical counts.\nPlease load a propper denominator set (containing\nthe input list with all assayed gene IDs) before proceeding.','Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
                 except Exception: print print_out; sys.exit()    
@@ -235,27 +216,65 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
             for id in denominator_gene_list: original_denominator_gene_list.append(id) ###need this to be a valid list not dictionary for permutation analysis
         if len(source_data_input)>0: source_data = source_data_input ###over-ride source_data if a source was identified from the input file
         if source_data != mod:
-            mod_source = mod+'-'+source_data
-            #checkDenominatorMatchesInput(input_gene_list,denominator_gene_list,gene_file) ###This is checked for the source IDs not associated MOD IDs
-            try: gene_to_source_id = gene_associations.getGeneToUid(species_code,mod_source)
-            except Exception:
-                print_out = "WARNING: The primary gene ID system '"+mod+"'\ndoes not support relationships with '"+ source_data +"'.\nRe-run using a supported primary ID system."
-                try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
-                except Exception: print print_out; sys.exit()
-            source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
+            if denom_file_status == 'new':
+                mod_source = mod+'-'+source_data
+                #checkDenominatorMatchesInput(input_gene_list,denominator_gene_list,gene_file) ###This is checked for the source IDs not associated MOD IDs
+                try: gene_to_source_id = gene_associations.getGeneToUid(species_code,mod_source)
+                except Exception:
+                    try:
+                        if mod=='EntrezGene': mod = 'Ensembl'
+                        else: mod = 'EntrezGene'
+                        print 'The primary system (MOD) has been switched from',mod_db,'to',mod,'('+mod_db,'not supported for the input ID system).'
+                        mod_source = mod+'-'+source_data
+                        gene_to_source_id = gene_associations.getGeneToUid(species_code,mod_source)
+                    except Exception:
+                        print_out = "WARNING: The primary gene ID system '"+mod+"'\ndoes not support relationships with '"+ source_data +"'.\nRe-run using a supported primary ID system."
+                        try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
+                        except Exception: print print_out; sys.exit()
+                source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
+                denominator_gene_list = associateInputSourceWithGene(source_to_gene,denominator_gene_list)
+                ### Introduced the below method in version 1.21 to improve permutation speed (no longer need to search all source IDs)
+                ### Only includes source ID to gene relationships represented in the denominator file (needed for Affymetrix)
+                source_to_gene = OBO_import.swapKeyValues(denominator_gene_list)
             ###Replace input lists with corresponding MOD IDs
             input_gene_list = associateInputSourceWithGene(source_to_gene,input_gene_list)
-            if denom_file_status == 'new':
-                #source_data = 'Ensembl'  ###This tends to better replicate MAPPFinder version 2.0 statistics
-                denominator_gene_list = associateInputSourceWithGene(source_to_gene,denominator_gene_list)
         checkDenominatorMatchesInput(input_gene_list,denominator_gene_list,gene_file) ###This is for only the associated MOD IDs
-        
+
+        if inputs_analyzed == 0:
+            ### Import Gene-to-Nested-GO and Gene-to-MAPP Associations
+            """Rather than perform these import steps at the begining of the function, we do this here
+            in case the mod needs to be changed. This occurs when the user designated mod does not link
+            to the source IDs determined by GO-Elite"""
+            try:
+                if resources_to_analyze != 'Pathways':
+                    gene_to_go = gene_associations.importGeneGOData(species_code,mod,'nested')
+                    go_to_gene = OBO_import.swapKeyValues(gene_to_go)
+                    resource_type += 'Gene Ontology'
+            except Exception:
+                program_type,database_dir = unique.whatProgramIsThis()
+                print_out = "Warning!!! The MOD you have selected: "+mod+"\nis missing the appropriate relationship\nfiles necessary to run GO-Elite.  Either\nreplace the missing MOD files in\n"+database_dir+'/'+species_code+' sub-directories or\nselect a different MOD at run-time.'
+                try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
+                except Exception: print print_out
+                sys.exit()        
+            ### Since MAPP tables can be provided by the user, allow the file to be missing
+            if resources_to_analyze != 'GeneOntology':
+                if len(custom_sets_folder)>0:
+                    gene_to_mapp = gene_associations.importGeneCustomData(species_code,system_codes,custom_sets_folder,mod)
+                else:
+                    try: gene_to_mapp = gene_associations.importGeneMAPPData(species_code,mod)
+                    except Exception: gene_to_mapp = {}
+                mapp_to_gene = OBO_import.swapKeyValues(gene_to_mapp)
+                if len(resource_type)==0: resource_type += 'Pathways'
+                else: resource_type += '/Pathways'
+                
+        inputs_analyzed+=1
         input_gene_count = len(input_gene_list) ###Count number of genes associated with source input IDs
         if len(input_gene_list)>0 and len(denominator_gene_list)>0:
             ###Calculate primary z-scores for GO terms
-
+            
+            ### The values below are for gene summary reporting (only the last file will be summarized)
             if resources_to_analyze != 'Pathways': go_to_mod_genes = getGenesInPathway(input_gene_list,gene_to_go)
-            if resources_to_analyze != 'Gene Ontology': mapp_to_mod_genes = getGenesInPathway(input_gene_list,gene_to_mapp)
+            if resources_to_analyze != 'GeneOntology': mapp_to_mod_genes = getGenesInPathway(input_gene_list,gene_to_mapp)
             
             if resources_to_analyze != 'Pathways':
                 go_input_gene_count,Rg,input_linked_go = countGenesInPathway(input_gene_list,gene_to_go,'yes')
@@ -263,7 +282,7 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
                     go_denominator_gene_count,Ng,denom_linked_go = countGenesInPathway(denominator_gene_list,gene_to_go,'yes')
                 #print Ng,"unique genes, linked to GO and in dataset and", Rg, "unique GO linked genes matching criterion."
                 calculateZScores(go_input_gene_count,go_denominator_gene_count,Ng,Rg,go_to_gene,'GO')
-            if resources_to_analyze != 'Gene Ontology':
+            if resources_to_analyze != 'GeneOntology':
                 ###Calculate primary z-scores for GenMAPP MAPPs
                 mapp_input_gene_count,Rm,input_linked_mapp = countGenesInPathway(input_gene_list,gene_to_mapp,'yes')
                 mapp_denominator_gene_count,Nm,denom_linked_mapp = countGenesInPathway(denominator_gene_list,gene_to_mapp,'yes')
@@ -303,7 +322,7 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
                 go_headers = formatHeaders(gene_file,input_count,input_linked_go,denom_count,denom_linked_go,Rg,Ng,'GO',OBO_date)
                 exportPathwayData(original_go_z_score_data,gene_file,go_headers,'GO')
 
-            if resources_to_analyze != 'Gene Ontology':
+            if resources_to_analyze != 'GeneOntology':
                 start_time = time.time(); #print 'Permuting the GenMAPP MAPP analysis %d times' % permutations
                 permute_mapp_inputs=[]
                 ###Begin GenMAPP MAPP Permute Analysis
@@ -330,19 +349,35 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_codes
                 go_input_gene_count=[]; mapp_input_gene_count=[]
         else:
             if len(input_gene_list)==0:
-                print_out = 'WARNING!!!! The length of the input file\n '+ mappfinder_input +' is zero.\nLength of input ID list is '+str(input_count)+'for system: '+str(source_data_input)+' '+str(source)+' '+str(mod)
-                if len(denom_dir_list) == 1:
-                    try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
-                    except Exception: print error_warning; sys.exit()
-                else: print print_out
+                print_out = 'WARNING!!!! The length of the input file\n '+ mappfinder_input +' is zero.\nLength of input ID list is '+str(input_count)+' for system: '+str(source_data_input)+' and mod: '+str(mod)
+                print_out += '. This warning is likely due to the selection of an incorrect species.\nCurrent species is '+ species_name
+                try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
+                except Exception: print print_out; sys.exit()   
             if len(denominator_gene_list)==0:
                 print_out = 'WARNING!!!! The length of the denominator file\n '+denominator_file_dir+' is zero.\nLength of denominator ID list is '+str(denom_count)+' for system: ' + str(source_data_denom)+' '+str(source)+' '+str(mod)
-                if len(denom_dir_list) == 1:
-                    try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
-                    except Exception: print error_warning; sys.exit()
-                else: print print_out
+                try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters('yes'); sys.exit()
+                except Exception: print print_out; sys.exit()
+      
+        ### Export all gene associations (added in version 1.21)          
+        exportPathwayToGeneAssociations(go_to_mod_genes,mod,gene_file,gene_annotations,'GO')
+        exportPathwayToGeneAssociations(mapp_to_mod_genes,mod,gene_file,gene_annotations,'local')
+    
     return go_to_mod_genes, mapp_to_mod_genes ###Return the MOD genes associated with each GO term and MAPP
 
+def exportPathwayToGeneAssociations(pathway_to_mod_genes,mod,gene_file,gene_annotations,pathway_type):
+    new_file = mappfinder_output_dir+'/'+gene_file[:-4]+'-'+pathway_type+'-associations.tab'
+    headers = string.join([mod,'symbol',pathway_type],'\t')+'\n'
+    data = export.ExportFile(new_file); data.write(headers)
+    
+    for pathway in pathway_to_mod_genes:
+        for gene in pathway_to_mod_genes[pathway]:
+            try: symbol = gene_annotations[gene].Symbol()
+            except Exception: symbol = ''
+            if pathway_type == 'GO' and ':' not in pathway: pathway = 'GO:'+ pathway
+            values = string.join([gene,symbol,pathway],'\t')+'\n'
+            data.write(values)
+    data.close()
+    
 def formatHeaders(gene_file,input_count,input_linked,denom_count,denom_linked,R,N,pathway_type,OBO_date):
     headers = []
     headers.append('GO-Elite MAPPFinder Results')
@@ -388,10 +423,10 @@ def exportPathwayData(original_pathway_z_score_data,gene_file,headers,pathway_ty
             else:
                 results = [pathway] + results
             results = string.join(results,'\t') + '\n'
-            sort_results.append([float(zsd.PermuteP()),-1/float(zsd.Measured()),results])
+            sort_results.append([float(zsd.ZScore()),-1/float(zsd.Measured()),results])
         except KeyError: null = []
     
-    sort_results.sort()
+    sort_results.sort(); sort_results.reverse()
     for values in sort_results:
         results = values[2]
         data.write(results)
@@ -492,18 +527,24 @@ def adjustPermuteStats(original_pathway_z_score_data):
     #8  repeat step 7 for m-3, m-4,... until i=1
     #9. sort tmp back to the original order of the input p values.
     
-    global spval; spval=[]
+    global spval; spval=[]; adj_p_list=[]
     for pathway in original_pathway_z_score_data:
         zsd = original_pathway_z_score_data[pathway]
         p = float(zsd.PermuteP())
         spval.append([p,pathway])
         
     spval.sort(); tmp = spval; m = len(spval); i=m-2; x=0 ###Step 1-4
+    l=0
     
     while i > -1:
-        tmp[i]=min(tmp[i+1][0], min((float(m)/(i+1))*spval[i][0],1)),tmp[i][1]; i -= 1
+        adjp = min(tmp[i+1][0], min((float(m)/(i+1))*spval[i][0],1))
+        tmp[i]=adjp,tmp[i][1]; i -= 1
+        if adjp !=0: adj_p_list.append(adjp) ### get the minimum adjp
         
     for (adjp,pathway) in tmp:
+        try:
+            if adjp == 0: adjp = min(adj_p_list)
+        except Exception: null=[]
         zsd = original_pathway_z_score_data[pathway]
         zsd.SetAdjP(adjp)
         
@@ -516,6 +557,7 @@ def permute_p(null_list,true_value):
 
 def getGenesInPathway(gene_list,gene_to_pathway):
     ###This function is similar to countGenesInPathway, but is used to return the genes associated with a pathway
+    ### Can be used to improve downstream annotation speed when this file is present rather than re-derive
     pathway_to_gene={}
     for gene in gene_list:
         if gene in gene_to_pathway:
@@ -573,7 +615,14 @@ if __name__ == '__main__':
     file_dirs = 'C:/Documents and Settings/Nathan/Desktop/GenMAPP/Mm_sample/input_list_small','C:/Documents and Settings/Nathan/Desktop/GenMAPP/Mm_sample/denominator','C:/Documents and Settings/Nathan/Desktop/GenMAPP/Mm_sample'
     generateMAPPFinderScores(species_name,species_code,source_data,mod,system_codes,0,file_dirs,'')
     
-#!/usr/bin/python############################Program:	GO-elite.py#Author:	Nathan Salomonis#Date:		12/12/06#Website:	http://www.genmapp.org#Email:	nsalomonis@gmail.com###########################
+#!/usr/bin/python
+###########################
+#Program:	GO-elite.py
+#Author:	Nathan Salomonis
+#Date:		12/12/06
+#Website:	http://www.genmapp.org
+#Email:	nsalomonis@gmail.com
+###########################
 
 
         

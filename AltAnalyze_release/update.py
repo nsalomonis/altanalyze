@@ -70,17 +70,27 @@ def unzipFiles(filename,dir):
         for name in zfile.namelist():
             if name.endswith('/'):null=[] ### Don't need to export
             else: 
-                try: outfile = export.ExportFile(dir+name)
-                except Exception: outfile = export.ExportFile(dir+name[1:])
+                try: outfile = export.ExportFile(filepath(dir+name))
+                except Exception: outfile = export.ExportFile(filepath(dir+name[1:]))
                 outfile.write(zfile.read(name)); outfile.close()
         #print 'Zip extracted to:',output_filepath
         status = 'completed'
     except Exception, e:
-        print e
-        print 'WARNING!!!! The zip file',output_filepath,'does not appear to be a valid zip archive file or is currupt.'
-        status = 'failed'
+        try:
+            ### Use the operating system's unzip if all else fails
+            subprocessUnzip(dir,output_filepath)
+            status = 'completed'
+        except IOError:
+            print e
+            print 'WARNING!!!! The zip file',output_filepath,'does not appear to be a valid zip archive file or is currupt.'
+            status = 'failed'
     return status
 
+def subprocessUnzip(dir,output_filepath):
+    import subprocess
+    dir = filepath(dir)
+    subprocess.Popen(["unzip", "-d", dir, output_filepath]).wait()
+    
 ############## Update Databases ##############
 def buildJunctionExonAnnotations(species,array_type,force,genomic_build):
     ### Get UCSC associations (download databases if necessary)
@@ -273,6 +283,7 @@ class download_protocol:
                 print "Extracting zip file...",
                 try: decompressZipStackOverflow(filename,dir); status = 'completed'
                 except Exception:
+                    #print 'Native unzip not present...trying python unzip methods...'
                     status = unzipFiles(filename,dir)
                     if status == 'failed': print 'zip extraction failed!'
                 self.gz_filepath = filepath(output_filepath); self.status = 'remove'
@@ -371,8 +382,9 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
         except Exception: status = status
     return continue_analysis
 
-def decompressZipStackOverflow(zip_file,dir):
-    zip_file = filepath(dir+zip_file)
+def decompressZipStackOverflow(original_zip_file,dir):
+    zip_file = filepath(dir+original_zip_file)
+    #print 'Using OS native unzip software to extract'
     ###http://stackoverflow.com/questions/339053/how-do-you-unzip-very-large-files-in-python
     import zipfile
     import zlib

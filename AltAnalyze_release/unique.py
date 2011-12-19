@@ -44,8 +44,8 @@ py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
 def filepath(filename):
     dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
-    if (':' in filename) or ('/Users/' == filename[:7]) or ('/Volumes/' in filename) or ('Linux' in platform.system() and len(filename)>0): fn = filename #':' is for Windows dirs and '/Users/' for Mac
-    else: fn=os.path.join(dir,filename)
+    try: dir_list = os.listdir(filename); fn = filename ### test to see if the path can be found (then it is the full path)
+    except Exception: fn=os.path.join(dir,filename)
     if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
     if 'Databases' in fn or 'AltDatabase' in fn:
@@ -59,16 +59,8 @@ def read_directory(sub_dir):
     if 'Databases' in sub_dir or 'AltDatabase' in sub_dir:
         getCurrentGeneDatabaseVersion()
         sub_dir = correctGeneDatabaseDir(sub_dir)
-    try:
-        if (':' in sub_dir) or ('/Users/' == sub_dir[:7]) or ('/Volumes/' in sub_dir) or ('Linux' in platform.system()): dir_list = os.listdir(dir+sub_dir) ### Thus, the whole path is provided already
-        else:
-            try: dir_list = os.listdir(dir + sub_dir)
-            except Exception: dir_list = os.listdir(sub_dir) ### For linux
-    except Exception:
-        if (':' in sub_dir) or ('/Users/' == sub_dir[:7]) or ('/Volumes/' in sub_dir) or ('Linux' in platform.system()): dir_list = os.listdir(sub_dir) ### Thus, the whole path is provided already
-        else:
-            try: dir_list = os.listdir(dir + sub_dir)
-            except Exception: dir_list = os.listdir(sub_dir) ### For linux
+    try: dir_list = os.listdir(dir+sub_dir)
+    except Exception: dir_list = os.listdir(sub_dir) ### For linux
     return dir_list
     
 def returnDirectories(sub_dir):
@@ -104,6 +96,7 @@ def whatProgramIsThis():
     reference_dir = refDir()
     if 'AltAnalyze' in reference_dir: type = 'AltAnalyze'; database_dir = 'AltDatabase/goelite'
     elif 'GO-Elite' in reference_dir: type = 'GO-Elite'; database_dir = 'Databases'
+    else: database_dir = 'AltDatabase/goelite'; type = 'AltAnalyze'
     if 'Linux' in platform.system(): database_dir += '/'
     return type,database_dir
 

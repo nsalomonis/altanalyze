@@ -29,15 +29,18 @@ import time
 import webbrowser
 from sys import argv
 
-try:
-    import Tkinter 
-    #import bwidget; from bwidget import *
-    from Tkinter import *
-    import PmwFreeze
-    from Tkconstants import LEFT
-    import tkMessageBox
-    import tkFileDialog
-except Exception: print "\nPmw or Tkinter not found... proceeding with manual input"
+command_args = string.join(sys.argv,' ')
+if len(sys.argv[1:])>1 and '-' in command_args: null=[]
+else:
+    try:
+        import Tkinter 
+        #import bwidget; from bwidget import *
+        from Tkinter import *
+        import PmwFreeze
+        from Tkconstants import LEFT
+        import tkMessageBox
+        import tkFileDialog
+    except Exception: print "\nPmw or Tkinter not found... proceeding with manual input"
     
 mac_print_mode = 'no' 
 if os.name == 'posix':  mac_print_mode = 'yes' #os.name is  'posix', 'nt', 'os2', 'mac', 'ce' or 'riscos'
@@ -79,6 +82,7 @@ def returnFilesNoReplace(dir):
 def identifyCELfiles(dir,array_type):
     dir_list = read_directory(dir); dir_list2=[]; full_dir_list=[]
     for file in dir_list:
+        original_file = file
         file_lower = string.lower(file); proceed = 'no'
         ### "._" indicates a mac alias
         if '.cel' in file_lower[-4:] and '.cel.' not in file_lower and file_lower[:2] != '._': proceed = 'yes'
@@ -87,6 +91,11 @@ def identifyCELfiles(dir,array_type):
             if '__' in file:
                 #print file,string.split(file,'__'),file[-4:]
                 file=string.split(file,'__')[0]+file[-4:]
+                if '.tab' in original_file: file = string.replace(file,'.txt','.tab')
+                elif '.bed' in original_file: file = string.replace(file,'.txt','.bed')
+                if '.TAB' in original_file: file = string.replace(file,'.txt','.TAB')
+                elif '.BED' in original_file: file = string.replace(file,'.txt','.BED')
+            
             dir_list2.append(file)
             file = dir+'/'+file
             full_dir_list.append(file)
@@ -242,7 +251,7 @@ class StatusWindow:
         try:
             root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.0.4 beta')
+            root.title('AltAnalyze version 2.0.5 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 270; width = 700
@@ -568,6 +577,7 @@ class GUI:
                     elif dropdown_index == 5: comp5 = self.comp
                     elif dropdown_index == 6: comp6 = self.comp
                     elif dropdown_index == 7: comp7 = self.comp
+                    elif dropdown_index == 8: comp8 = self.comp
                     try: self.comp.invoke(selected_default)
                     except Exception: print selected_default, option, option_list;kill
                     if option == 'selected_version':
@@ -774,6 +784,8 @@ class GUI:
                 try: comp6.pack(anchor = 'w', padx = 10, pady = pady_int)
                 except Exception: null=[]
                 try: comp7.pack(anchor = 'w', padx = 10, pady = pady_int)
+                except Exception: null=[]
+                try: comp8.pack(anchor = 'w', padx = 10, pady = pady_int)
                 except Exception: null=[]
                 enter_index=0; radio_index=0; dropdown_index=0
                 if 'ge_ptype' in option or 'expression_threshold' in option or 'gene_expression_cutoff' in option:
@@ -1608,7 +1620,17 @@ def reformatResidualFile(residual_exp_file,residual_destination_file):
             export_data.write(string.join([uid]+t[5:],'\t')+'\n')
     export_data.close()
     os.remove(residual_exp_file)
-    
+
+def verifyFileLength(filename):
+    count = 0
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines():
+            count+=1
+            if count>9: break
+    except Exception: null=[]
+    return count
+
 def probesetSummarize(exp_file_location_db,analyze_metaprobesets,probeset_type,species,root):
     for dataset in exp_file_location_db: ### Instance of the Class ExpressionFileLocationData
         fl = exp_file_location_db[dataset]
@@ -1629,7 +1651,9 @@ def probesetSummarize(exp_file_location_db,analyze_metaprobesets,probeset_type,s
         if analyze_metaprobesets == 'yes':
             export_features = 'true'
             metaprobeset_file = filepath('AltDatabase/'+species+'/'+array_type+'/'+species+'_'+array_type+'_'+probeset_type+'.mps')
-        
+            count = verifyFileLength(metaprobeset_file)
+            if count<2:
+                ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
         import subprocess; import platform
         print 'Processor architecture set =',architecture,platform.machine()
         if '/bin' in apt_dir: apt_file = apt_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
@@ -1736,9 +1760,9 @@ def importDefaultInfo(filename,array_type):
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
         if '-expr' in filename:
-            array_abrev, dabg_p, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, run_goelite = string.split(data,'\t')
+            array_abrev, dabg_p, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_algorithm, run_goelite = string.split(data,'\t')
             if array_type == array_abrev:
-                return dabg_p, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, run_goelite
+                return dabg_p, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_algorithm, run_goelite
             
         if '-alt' in filename:
             array_abrev, analysis_method, additional_algorithms, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, additional_score, permute_p_threshold, gene_expression_cutoff, remove_intronic_junctions, perform_permutation_analysis, export_splice_index_values, run_MiDAS, calculate_splicing_index_p, filter_for_AS = string.split(data,'\t')
@@ -1964,7 +1988,9 @@ class IndicatorChooseWindow:
 class WarningWindow:
     def __init__(self,warning,window_name):
         try: tkMessageBox.showerror(window_name, warning)
-        except Exception: print 'Warning encountered...exiting program';sys.exit()
+        except Exception:
+            print warning
+            print window_name; sys.exit()
 
 class InfoWindow:
     def __init__(self,dialogue,header):
@@ -2009,7 +2035,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze version 2.0.4 beta.\n'
+        about = 'AltAnalyze version 2.0.5 beta.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.altanalyze.org\n'
@@ -2030,7 +2056,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.0.4 beta.\n')
+        txt.insert(END, 'AltAnalyze version 2.0.5 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
@@ -2163,7 +2189,9 @@ class ExpressionFileLocationData:
     def setCLFFile(self,clf_file): self._clf_file = osfilepath(clf_file)
     def setBGPFile(self,bgp_file): self._bgp_file = osfilepath(bgp_file)
     def setCELFileDir(self,cel_file_dir): self._cel_file_dir = osfilepath(cel_file_dir)
-    def setFeatureNormalization(self,normalize_feature_exp): self.normalize_feature_exp = normalize_feature_exp   
+    def setFeatureNormalization(self,normalize_feature_exp): self.normalize_feature_exp = normalize_feature_exp
+    def setProbabilityStatistic(self,probability_statistic): self.probability_statistic = probability_statistic
+    def ProbabilityStatistic(self): return self.probability_statistic
     def setArrayType(self,array_type): self._array_type = array_type
     def setOutputDir(self,output_dir): self._output_dir = output_dir
     def setBiotypes(self,biotypes): self.biotypes = biotypes
@@ -2242,7 +2270,6 @@ def getUpdatedParameters(array_type,species,run_from_scratch,file_dirs):
                 if run_from_scratch != 'Process AltAnalyze filtered':
                     ge_fold_cutoffs = float(ge_fold_cutoffs)
                     ge_pvalue_cutoffs = float(ge_pvalue_cutoffs)
-                    ge_fold_cutoffs = math.log(float(ge_fold_cutoffs),2)
                 proceed = 'yes'
             except Exception:
                 print_out = "Invalid numerical entry. Try again."
@@ -2251,7 +2278,7 @@ def getUpdatedParameters(array_type,species,run_from_scratch,file_dirs):
         criterion_input_folder, criterion_denom_folder, main_output_folder = file_dirs
         import GO_Elite
         ###Export dataset criterion using user-defined filters
-        ExpressionBuilder.buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_folder)
+        ExpressionBuilder.buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_folder, 'goelite')
         #except Exception: null = []; # print 'No expression files to summarize'
         goelite_var = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,file_dirs,''
         GO_Elite.remoteAnalysis(goelite_var,'UI')
@@ -2421,7 +2448,7 @@ def getUserParameters(run_parameter):
     run_MiDAS=no; analyze_functional_attributes=no; microRNA_prediction_method=na
     gene_expression_cutoff=na; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
     remove_intronic_junctions=na; build_exon_bedfile=no
-    calculate_splicing_index_p=no; run_goelite=no; ge_ptype = 'rawp'
+    calculate_splicing_index_p=no; run_goelite=no; ge_ptype = 'rawp'; probability_algorithm = na
     ge_fold_cutoffs=2;ge_pvalue_cutoffs=0.05;filter_method=na;z_threshold=1.96;p_val_threshold=0.05
     change_threshold=2;pathway_permutations=na;mod=na; analyze_all_conditions=no; resources_to_analyze=na
     additional_algorithms = na
@@ -2886,6 +2913,7 @@ def getUserParameters(run_parameter):
                     except Exception: normalize_feature_exp = 'NA'
                     include_raw_data = gu.Results()['include_raw_data']
                     run_goelite = gu.Results()['run_goelite']
+                    probability_algorithm = gu.Results()['probability_algorithm']
                     if 'immediately' in run_goelite: run_goelite = 'yes'
                     else: run_goelite = 'no'
                     passed = 'yes'; print_out = 'Invalid threshold entered for '
@@ -2951,12 +2979,14 @@ def getUserParameters(run_parameter):
                     else: cs_name = 'constitutive probesets'
                     functional_analysis_defaults.append(cs_name); option_list['AltAnalyze'].append('avg_all_for_ss')
                     if run_goelite == 'no':
+                        functional_analysis_defaults.append('unpaired t-test'); option_list['AltAnalyze'].append('probability_algorithm')
                         functional_analysis_defaults.append('decide later'); option_list['AltAnalyze'].append('run_goelite')
+                        
 
                 if run_from_scratch == 'Annotate External Results':
                     ### Remove options relating to expression analysis when importing filtered probeset lists
                     options_to_exclude = ['analysis_method','p_threshold','gene_expression_cutoff','alt_exon_fold_cutoff','run_MiDAS']
-                    options_to_exclude+= ['export_splice_index_values','run_goelite','analyze_all_conditions','calculate_splicing_index_p']
+                    options_to_exclude+= ['export_splice_index_values','probability_algorithm','run_goelite','analyze_all_conditions','calculate_splicing_index_p']
                     for option in options_to_exclude: del option_db[option]
                     
                 proceed = 'no'
@@ -3006,6 +3036,8 @@ def getUserParameters(run_parameter):
                     except KeyError: analyze_all_conditions = analyze_all_conditions
                     try: run_goelite = gu.Results()['run_goelite']
                     except KeyError: run_goelite = run_goelite
+                    try: probability_algorithm = gu.Results()['probability_algorithm']
+                    except KeyError: probability_algorithm = probability_algorithm
                     try:
                         avg_all_for_ss = gu.Results()['avg_all_for_ss']
                         if 'all exon aligning' in avg_all_for_ss or 'known exons' in avg_all_for_ss: avg_all_for_ss = 'yes'
@@ -3063,7 +3095,7 @@ def getUserParameters(run_parameter):
                 resources_to_analyze = gu.Results()['resources_to_analyze']
                 pathway_permutations = gu.Results()['pathway_permutations']
                 mod = gu.Results()['mod']
-                ge_fold_cutoffs = math.log(float(ge_fold_cutoffs),2)
+                ge_fold_cutoffs = float(ge_fold_cutoffs)
     except OSError:
         null=[]; sys.exit()
     """In this next section, create a set of GUI windows NOT defined by the options.txt file.
@@ -3298,6 +3330,7 @@ def getUserParameters(run_parameter):
             fl.setCELFileDir(cel_file_dir); fl.setOutputDir(output_dir); fl.setExonBedBuildStatus(build_exon_bedfile)
         fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
         fl.setFeatureNormalization(normalize_feature_exp)
+        fl.setProbabilityStatistic(probability_algorithm)
 
     expr_var = species,array_type,vendor,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,remove_intronic_junctions,permute_p_threshold, perform_permutation_analysis, export_splice_index_values, analyze_all_conditions

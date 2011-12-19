@@ -1347,8 +1347,8 @@ def getEnsemblAssociations(Species,data_type,test_status):
     global species; species = Species
     global test; test = test_status
     global test_gene
-    meta_test = ["ENSG00000086015","ENSMUSG00000028906","ENSMUSG00000028180","ENSMUSG00000034312","ENSMUSG00000034312","ENSMUSG00000028468","ENSMUSG00000019370","ENSG00000105865","ENSG00000108523","ENSG00000150045","ENSG00000156026"]
-    test_gene = ['ENSBTAG00000006366'] #'ENSG00000215305',
+    meta_test = ["ENSG00000224972","ENSG00000107077"]
+    test_gene = ['ENSG00000163132'] #'ENSG00000215305',
     #test_gene = ['ENSMUSG00000059857'] ### for JunctionArrayEnsemblRules
     #test_gene = meta_test
     exon_annotation_db,transcript_gene_db,gene_transcript,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
@@ -1494,13 +1494,15 @@ def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_
 
                     ### Since we know which exon region each Ensembl/UCSC exon begins and ends, we can just count the number of transcripts
                     ### that contain each of the Ensembl/UCSC exon ID, which will give us our constitutive exon count for each gene
-                    transcripts = exon_transcripts[y.ExonID()]
+                    transcripts = exon_transcripts[y.ExonID()] ### ERROR WILL OCCUR HERE IF YOU DON'T REBUILD THE UCSC DATABASE!!! (different version still left over from Protein analysis methods)
                     #print ste.ExonRegionID(), spe.ExonRegionID(), y.ExonID(), transcripts
                     ### Since overlapping Ensembl/UCSC exons shouldn't align to the same transcripts, we can just add the counts
-                    try: constitutive_region_count_db[ste.ExonRegionID()]+=len(transcripts) #rd.ExonNumber() rd.ExonRegionID()
-                    except KeyError: constitutive_region_count_db[ste.ExonRegionID()]=len(transcripts)
-                    try: constitutive_region_count_db[spe.ExonRegionID()]+=len(transcripts)
-                    except KeyError: constitutive_region_count_db[spe.ExonRegionID()]=len(transcripts)
+                    try: constitutive_region_count_db[ste.ExonRegionID()]+=transcripts #rd.ExonNumber() rd.ExonRegionID()
+                    except KeyError: constitutive_region_count_db[ste.ExonRegionID()]=transcripts
+                    try: constitutive_region_count_db[spe.ExonRegionID()]+=transcripts
+                    except KeyError: constitutive_region_count_db[spe.ExonRegionID()]=transcripts
+                    #print ste.ExonRegionID(), transcripts
+                    #print spe.ExonRegionID(), transcripts
                 else:
                     ### Indicates this exon has been classified as a retained intron
                     ### Keep it so we know where this exon is and to prevent inclusion of faulty flanking junctions
@@ -1513,19 +1515,23 @@ def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_
             else: k.append(gene)
         ### Get the number of transcripts associated with each region
         for exon_region in constitutive_region_count_db:
-            transcript_count = constitutive_region_count_db[exon_region]
+            transcript_count = len(unique.unique(constitutive_region_count_db[exon_region]))
             constitutive_region_count_list.append(transcript_count)
             try: count_db[transcript_count].append(exon_region)
             except KeyError: count_db[transcript_count] = [exon_region]
         constitutive_region_count_list.sort()
         max_count = constitutive_region_count_list[-1]
         cs_exon_region_ids = count_db[max_count]
+        #print count_db
         ### If there is only one constitutive region and one set of strong runner ups, include these to improve the constitutive expression prediction
         if len(cs_exon_region_ids)==1 and len(constitutive_region_count_list)>2:
             second_highest_count = constitutive_region_count_list[-2]
-            cs_exon_region_ids += count_db[second_highest_count]
+            #print cs_exon_region_ids
+            #print second_highest_count
+            if second_highest_count != 1: ### Don't inlcude if there is only one transcript contributing
+                cs_exon_region_ids += count_db[second_highest_count]
         constitutive_region_gene_db[gene] = cs_exon_region_ids
-        #print gene, cs_exon_region_ids;kill
+        #print gene, cs_exon_region_ids;sys.exit()
 
     exon_transcripts=[]; del exon_transcripts
     ### Reset the constitutive exon, previously assigned by Ensembl - ours should be more informative since it uses more transcript data and specific region info
@@ -1535,7 +1541,8 @@ def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_
             for ed in exon_regions[gene]:
                 if ed.ExonRegionID() in constitutive_region_gene_db[gene]: ed.setConstitutive('1')
                 else: ed.setConstitutive('0')
-    #"""   
+                #print ed.ExonRegionID(), ed.Constitutive()
+    #"""
     null = unique.unique(null); #print len(null)
     print len(k), 'genes, not matched up to region database'
     print len(transcript_gene_db), 'transcripts from Ensembl being analyzed'
@@ -2043,8 +2050,8 @@ def customLSDeepCopy(ls):
 
 if __name__ == '__main__':
     ###KNOWN PROBLEMS: the junction analysis program calls exons as cassette-exons if there a new C-terminal exon occurs downstream of that exon in a different transcript (ENSG00000197991).
-    Species = 'Bt'
-    test = 'yes'
+    Species = 'Hs'
+    test = 'no'
     Data_type = 'ncRNA'
     Data_type = 'mRNA'
     getEnsemblAssociations(Species,Data_type,test); sys.exit()

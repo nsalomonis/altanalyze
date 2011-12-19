@@ -92,12 +92,17 @@ def exportMetaProbesets(array_type,species):
             #conversion_line = string.join([str(uid),ensembl_gene_id],'\t')+'\n'; data_conversion.write(conversion_line)
         data.close(); #data_conversion.close()
 
+def adjustCounts(exp_vals):
+    exp_vals2=[]
+    for i in exp_vals: exp_vals2.append(int(i)+1) ### Increment the rwcounts by 1
+    return exp_vals
+
 def importExonProbesetData(filename,import_these_probesets,import_type):
     """This is a powerfull function, that allows exon-array data import and processing on a line-by-line basis,
     allowing the program to immediately write out data or summarize it without storing large amounts of data."""
 
     fn=filepath(filename); start_time = time.time()
-    exp_dbase={}; filtered_exp_db={}; ftest_gene_db={}; filtered_gene_db={}; probeset_gene_db={}
+    exp_dbase={}; filtered_exp_db={}; ftest_gene_db={}; filtered_gene_db={}; probeset_gene_db={}; biotypes={}
     d = 0; x = 0
     
     if 'stats.' in filename: filetype = 'dabg'
@@ -108,13 +113,18 @@ def importExonProbesetData(filename,import_these_probesets,import_type):
             temp_data = export.ExportFile(output_file)       
                                          
     ###Import expression data (non-log space)
+    
+    if 'counts.' in filename: counts = 'yes'
+    else: counts = 'no'
+    
     try:
         for line in open(fn,'rU').xreadlines():             
-          data = cleanUpLine(line)
+          data = cleanUpLine(line);
           if len(data)==0: null=[]
           elif data[0] != '#' and x == 1:   ###Grab expression values
             tab_delimited_data = string.split(data,'\t')
             probeset = tab_delimited_data[0]
+            if '=' in probeset: probeset = string.split(probeset,'=')[0]
             if import_type == 'raw':
                 try:
                     null = import_these_probesets[probeset]; exp_vals = tab_delimited_data[1:]; exp_dbase[probeset] = exp_vals
@@ -124,12 +134,15 @@ def importExonProbesetData(filename,import_these_probesets,import_type):
                     null = import_these_probesets[probeset]; temp_data.write(line)
                 except KeyError: null = [] ###Don't import any probeset data                
             elif import_type == 'reorderFilterAndExportAll':
+                if '-' in probeset: biotypes['junction'] = []
+                else: biotypes['exon'] = []
                 try:
                     ###For filtering, don't remove re-organized entries but export filtered probesets to another file
                     if exp_analysis_type == 'expression': null = import_these_probesets[probeset]
                     exp_vals = tab_delimited_data[1:]
+                    #if counts == 'yes': exp_vals = adjustCounts(exp_vals)
                     filtered_exp_db={}; filtered_exp_db[probeset] = exp_vals
-                    reorderArraysOnly(filtered_exp_db,filetype) ###order and directly write data
+                    reorderArraysOnly(filtered_exp_db,filetype,counts) ###order and directly write data
                 except KeyError: null = [] ###Don't import any probeset data
           elif data[0] != '#' and x == 0:  ###Grab labels
               array_names = []; array_linker_db = {}; z = 0
@@ -159,6 +172,8 @@ def importExonProbesetData(filename,import_these_probesets,import_type):
     if import_type == 'raw':
         print len(exp_dbase),id_name,"imported with expression values"
         return exp_dbase
+    else:
+        return biotypes
 
 def exportGroupedComparisonProbesetData(filename,probeset_db,data_type,array_names,array_linker_db,perform_alt_analysis):
         """This function organizes the raw expression data into sorted groups, exports the organized data for all conditions and comparisons
@@ -174,9 +189,14 @@ def exportGroupedComparisonProbesetData(filename,probeset_db,data_type,array_nam
         elif data_type == 'expression':
             expr_group_dir = string.replace(filename,'exp.','groups.')
             comp_group_dir = string.replace(filename,'exp.','comps.')
-        else:
+            if 'counts.' in filename:
+                expr_group_dir = string.replace(expr_group_dir,'counts.','groups.')
+                comp_group_dir = string.replace(comp_group_dir,'counts.','comps.')
+                data_type = 'counts'
+        elif data_type == 'dabg':
             expr_group_dir = string.replace(filename,'stats.','groups.')
             comp_group_dir = string.replace(filename,'stats.','comps.')
+
         comp_group_list, comp_group_list2 = ExpressionBuilder.importComparisonGroups(comp_group_dir)
         expr_group_list,expr_group_db = ExpressionBuilder.importArrayGroups(expr_group_dir,array_linker_db)
 
@@ -203,16 +223,21 @@ def exportGroupedComparisonProbesetData(filename,probeset_db,data_type,array_nam
             except KeyError: print raw_data_comp_headers;kill
             title = ['ID']+array_names; title = string.join(title,'\t')+'\n'; data.write(title)
             comparision_export_db[comparison] = data ###store the export file write data so we can write after organizing
- 
-        importExonProbesetData(filename,probeset_db,'reorderFilterAndExportAll')
+
+        biotypes = importExonProbesetData(filename,probeset_db,'reorderFilterAndExportAll')
+        
+        if normalize_feature_exp == 'RPKM': ### Add the gene-level RPKM data (this is in addition to the counts. file)
+            exp_gene_db={}
+            for i in probeset_db: exp_gene_db[probeset_db[i][0]]=[]
+            filename = string.replace(filename,'.txt','-steady-state.txt') 
+            importExonProbesetData(filename,exp_gene_db,'reorderFilterAndExportAll')
             
         for comparison in comparision_export_db:
             data = comparision_export_db[comparison]; data.close()
         print "Pairwise comparisons for AltAnalyze exported..."
-        
         try: fulldataset_export_object.close()
         except Exception: null=[]
-        return comparison_filename_list
+        return comparison_filename_list, biotypes
 
 def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_db,data_type,array_names,perform_alt_analysis):
     """Probeset level data and gene level data are handled differently by this program for exon and tiling based arrays.
@@ -220,7 +245,7 @@ def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_
     that align to genes with multiple lines of evidence (e.g. ensembl) and show some evidence of regulation for any probesets in a
     gene (transcript_cluster). Gene level analyses are handled under the main module of the program, exactly like 3' arrays, while
     probe level data is reorganized, filtered and output from this module."""
-
+          
     ###First time we import, just grab the probesets associated
     if array_names != 'null': ### Then there is only an expr. file and not a stats file
         ###Identify constitutive probesets to import (sometimes not all probesets on the array are imported)
@@ -229,10 +254,14 @@ def filterExpressionData(filename,pre_filtered_db,constitutive_gene_db,probeset_
             try:
                 probe_data = probeset_db[probeset]
                 gene = probe_data[0]; affy_class = probe_data[-1]; external_exonid = probe_data[-2]
-                if affy_class == 'core' or len(external_exonid)>2:
-                    try: probeset_gene_db[gene].append(probeset)
-                    except KeyError: probeset_gene_db[gene] = [probeset]
-                    possible_constitutive_probeset[probeset] = []
+                if affy_class == 'core' or len(external_exonid)>2: ### These are known exon only (e.g., 'E' probesets)
+                    proceed = 'yes'
+                    if array_type == 'RNASeq' and 'exon' in biotypes: ### Restrict the analysis to exon RPKM or count data for constitutive calculation
+                        if '-' in probeset: proceed = 'no'
+                    if proceed == 'yes':
+                        try: probeset_gene_db[gene].append(probeset)
+                        except KeyError: probeset_gene_db[gene] = [probeset]
+                        possible_constitutive_probeset[probeset] = []
             except KeyError: null = []
 
         ### Only import probesets that can be used to calculate gene expression values OR link to gene annotations (which have at least one dabg p<0.05 for all samples normalized)
@@ -272,7 +301,7 @@ def reorderArraysHeader(filtered_exp_db):
         values = string.join([probeset]+combined_value_list,'\t')+'\n'
         fulldataset_export_object.write(values)
         
-def reorderArraysOnly(filtered_exp_db,filetype): 
+def reorderArraysOnly(filtered_exp_db,filetype,counts): 
     ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
     ###expr_group_list gives the final level order sorted, followed by the original index order as a tuple
     for probeset in filtered_exp_db:
@@ -305,7 +334,8 @@ def reorderArraysOnly(filtered_exp_db,filetype):
             g_data = grouped_ordered_array_list[group]
             if exp_analysis_type == 'expression': avg_gdata = statistics.avg(g_data); avg_values.append(avg_gdata)
             combined_value_list+=g_data
-        if exp_data_format == 'non-log':
+        
+        if exp_data_format == 'non-log' and counts == 'no':
             combined_value_list = logTransform(combined_value_list)
         values = string.join([probeset]+combined_value_list,'\t')+'\n'
         if filetype == 'expression': fulldataset_export_object.write(values) ### Don't need this for dabg data
@@ -322,15 +352,17 @@ def logTransform(exp_values):
     ### non-log in AltAnalyze to prevent "Process AltAnalyze Filtered" associated errors
     exp_values_log2=[]
     for exp_val in exp_values:
-        exp_values_log2.append(str(math.log(float(exp_val)+1,2)))
+        exp_values_log2.append(str(math.log(float(exp_val),2))) ### changed from - log_fold = math.log((float(exp_val)+1),2) - version 2.05
     return exp_values_log2
               
 def generateConstitutiveExpression(exp_dbase,constitutive_gene_db,probeset_gene_db,pre_filtered_db,array_names,filename):
     """Generate Steady-State expression values for each gene for analysis in the main module of this package"""
     steady_state_db={}; k=0; l=0
+    remove_nonexpressed_genes = 'yes' ### By default set to 'no'
+    
     ###1st Pass: Identify probesets for steady-state calculation
     for gene in probeset_gene_db:
-        if avg_all_probes_for_steady_state == 'yes': average_all_probesets[gene] = probeset_gene_db[gene]
+        if avg_all_probes_for_steady_state == 'yes': average_all_probesets[gene] = probeset_gene_db[gene] ### These are all exon aligning (not intron) probesets
         else:
             if gene not in constitutive_gene_db: average_all_probesets[gene] = probeset_gene_db[gene]
             else:
@@ -342,14 +374,19 @@ def generateConstitutiveExpression(exp_dbase,constitutive_gene_db,probeset_gene_
                 else: average_all_probesets[gene] = probeset_gene_db[gene]
 
     ###2nd Pass: Remove probesets that have no detected expression (keep all if none are expressed)
+    non_expressed_genes={} ### keep track of these for internal QC
     for gene in average_all_probesets:
         gene_probe_list=[]; x = 0
         for probeset in average_all_probesets[gene]:
             if probeset in pre_filtered_db: gene_probe_list.append(probeset); x += 1
         ###If no constitutive and there are probes with detected expression: replace entry
         if x >0: average_all_probesets[gene] = gene_probe_list
+        elif remove_nonexpressed_genes == 'yes': non_expressed_genes[gene]=[]
 
-    ###3rd Pass: Make sure the probesets are present in the input set
+    if remove_nonexpressed_genes == 'yes':
+        for gene in non_expressed_genes: del average_all_probesets[gene]
+            
+    ###3rd Pass: Make sure the probesets are present in the input set (this is not typical unless a user is loading a pre-filtered probeset expression dataset)
     for gene in average_all_probesets:
         v=0
         for probeset in average_all_probesets[gene]:
@@ -358,28 +395,47 @@ def generateConstitutiveExpression(exp_dbase,constitutive_gene_db,probeset_gene_
             if v==0: ###Therefore, no probesets were found that were previously predicted to be best constitutive
                 try: average_all_probesets[gene] = probeset_gene_db[gene] ###expand the average_all_probesets to include any exon linked to the gene
                 except KeyError: print gene, probeset, len(probeset_gene_db), len(average_all_probesets);kill
-
+    
     for probeset in exp_dbase: array_count = len(exp_dbase[probeset]); break
+
     ###Calculate avg expression for each array for each probeset (using constitutive values)
+    gene_count_db={}
     for gene in average_all_probesets:
         x = 0 ###For each array, average all probeset expression values
+        gene_sum=0
         probeset_list = average_all_probesets[gene]#; k+= len(average_all_probesets[gene])
-        while x < array_count:
-            exp_list=[] ### average all exp values for constituitive probesets for each array
-            for probeset in probeset_list:
-                try: exp_val = exp_dbase[probeset][x]; exp_list.append(exp_val)
-                except KeyError: null =[] ###occurs if the expression probeset list is missing some of these probesets
-            try:
-                avg_const_exp=statistics.avg(exp_list)
-                ### Add only one avg-expression value for each array, this loop
-                try: steady_state_db[gene].append(avg_const_exp)
-                except KeyError: steady_state_db[gene] = [avg_const_exp]
-            except ZeroDivisionError: null=[] ### Occurs when processing a truncated dataset (for testing usually) - no values for the gene should be included
-            x += 1
+        if array_type != 'RNASeq': ### Just retain the list of probesets for RNA-seq
+            while x < array_count:
+                exp_list=[] ### average all exp values for constituitive probesets for each array
+                for probeset in probeset_list:
+                    try:
+                        exp_val = exp_dbase[probeset][x]
+                        exp_list.append(exp_val)
+                    except KeyError: null =[] ###occurs if the expression probeset list is missing some of these probesets
+                try:
+                    if len(exp_list)==0:                
+                        for probeset in probeset_list:
+                            try:
+                                exp_val = exp_dbase[probeset][x]
+                                exp_list.append(exp_val)
+                            except KeyError: null =[] ###occurs if the expression probeset list is missing some of these probesets
+                    avg_const_exp=statistics.avg(exp_list)
+                    ### Add only one avg-expression value for each array, this loop
+                    try: steady_state_db[gene].append(avg_const_exp)
+                    except KeyError: steady_state_db[gene] = [avg_const_exp]
+                except ZeroDivisionError: null=[] ### Occurs when processing a truncated dataset (for testing usually) - no values for the gene should be included
+                x += 1
 
     l = len(probeset_gene_db) - len(steady_state_db)
     steady_state_export = filename[0:-4]+'-steady-state.txt'
+    steady_state_export = string.replace(steady_state_export,'counts.','exp.')
     fn=filepath(steady_state_export); data = open(fn,'w'); title = 'Gene_ID'
+
+    if array_type == 'RNASeq':
+        import RNASeq
+        steady_state_db = RNASeq.calculateGeneLevelStatistics(steady_state_export,average_all_probesets,normalize_feature_exp,array_names)
+        reload(RNASeq)
+
     for array in array_names: title = title +'\t'+ array
     data.write(title+'\n')
     for gene in steady_state_db:
@@ -469,7 +525,7 @@ def makeGeneLevelAnnotations(probeset_db):
 def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacturer,constitutive_source,Species,avg_all_for_ss,filter_by_DABG,perform_alt_analysis,expression_data_format):
     global species; species = Species; global average_all_probesets; average_all_probesets={}
     global avg_all_probes_for_steady_state; avg_all_probes_for_steady_state = avg_all_for_ss; global filter_by_dabg; filter_by_dabg = filter_by_DABG
-    global dabg_p_threshold; dabg_p_threshold = float(p_threshold); global root_dir; global biotypes
+    global dabg_p_threshold; dabg_p_threshold = float(p_threshold); global root_dir; global biotypes; global normalize_feature_exp
     global expression_threshold; global exp_data_format; exp_data_format = expression_data_format
 
     ### The input expression data can be log or non-log. If non-log, transform to log in FilterDABG prior to the alternative exon analysis - v.1.16    
@@ -483,7 +539,9 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
     global dabg_summary; global expression_summary; dabg_summary={};expression_summary={}
     global fulldataset_export_object; global array_type; array_type = Array_type
     global exp_analysis_type; exp_analysis_type = 'expression'
-    expr_input_dir = fl.ExpFile(); stats_input_dir = fl.StatsFile(); root_dir = fl.RootDir(); biotypes = fl.BioTypes()
+    expr_input_dir = fl.ExpFile(); stats_input_dir = fl.StatsFile(); root_dir = fl.RootDir()
+    try: normalize_feature_exp = fl.FeatureNormalization()
+    except Exception: normalize_feature_exp = 'NA'
     
     source_biotype = 'mRNA'
     if array_type == 'gene': source_biotype = 'gene'
@@ -494,7 +552,9 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
         probeset_db,constitutive_gene_db = ExpressionBuilder.importAltMerge('full'); annotate_db={}
         source_biotype = 'AltMouse'
     elif manufacturer == 'Affymetrix' or array_type == 'RNASeq':
-        if array_type == 'RNASeq': source_biotype = array_type, biotypes, root_dir
+        if array_type == 'RNASeq':
+            source_biotype = array_type, root_dir
+
         probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations(process_from_scratch,constitutive_source,source_biotype,species)
 
     ### Get all file locations and get array headers
@@ -513,16 +573,25 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
         print 'Report this issue to the AltAnalyze help desk or create this directory manually (Error Code X1).'; force_exception
     ### Organize arrays according to groups and export all probeset data and any pairwise comparisons
     data_type = 'expression'
-    comparison_filename_list = exportGroupedComparisonProbesetData(expr_input_dir,probeset_db,data_type,array_names,array_linker_db,perform_alt_analysis)
+    if array_type == 'RNASeq':
+        expr_input_dir = string.replace(expr_input_dir,'exp.','counts.') ### Filter based on the counts file and then replace values with the normalized as the last step
+    comparison_filename_list,biotypes = exportGroupedComparisonProbesetData(expr_input_dir,probeset_db,data_type,array_names,array_linker_db,perform_alt_analysis)
     if filter_by_dabg == 'yes' and stats_file_status == 'found':
         data_type = 'dabg'
         exportGroupedComparisonProbesetData(stats_input_dir,probeset_db,data_type,array_names,array_linker_db,perform_alt_analysis)
-
     ###Filter expression data based on DABG and annotation filtered probesets (will work without DABG filtering as well)
     filtered_exon_db = removeNonExpressedProbesets(probeset_db,full_dataset_export_dir)
     filterExpressionData(expr_input_dir,filtered_exon_db,constitutive_gene_db,probeset_db,'expression',array_names,perform_alt_analysis)
     constitutive_gene_db={}; probeset_gene_db = makeGeneLevelAnnotations(probeset_db)
 
+    if array_type == 'RNASeq':
+        fulldataset_export_object = export.ExportFile(full_dataset_export_dir)
+        data_type = 'expression' ### Repeat with counts and then with exp. to add gene-level estimates to both
+        exportGroupedComparisonProbesetData(expr_input_dir,probeset_db,data_type,array_names,array_linker_db,perform_alt_analysis)
+        fulldataset_export_object = export.ExportFile(full_dataset_export_dir)
+        expr_input_dir = string.replace(expr_input_dir,'counts.','exp.')
+        exportGroupedComparisonProbesetData(expr_input_dir,probeset_db,data_type,array_names,array_linker_db,perform_alt_analysis)
+        
     try: clearObjectsFromMemory(average_all_probesets); clearObjectsFromMemory(expression_summary); clearObjectsFromMemory(splicing_analysis_db)
     except Exception: null=[]
     filtered_exon_db=[]; probeset_db={}; average_all_probesets={}; expression_summary={}; splicing_analysis_db={}
@@ -540,7 +609,7 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
                 if len(locals()[var])>500: print var, len(locals()[var])
             except Exception: null=[]
     """
-    return probeset_gene_db,annotate_db, comparison_filename_list
+    return probeset_gene_db, annotate_db, comparison_filename_list
 
 def processResiduals(fl,Array_type,Species,perform_alt_analysis):
     global species; species = Species; global root_dir; global fulldataset_export_object
@@ -710,7 +779,7 @@ if __name__ == '__main__':
     m = 'Mm'
     h = 'Hs'
     r = 'Rn'
-    Species = m
+    Species = h
     Array_type = 'junction'
     exportMetaProbesets(Array_type,Species);sys.exit()
     Data_type = 'probeset'
