@@ -552,8 +552,9 @@ def combineRawSpliceResults(species,analysis_method):
     print "exported",len(combined_data),"to",export_file
 
 def import_annotations(filename,array_type):
+    import ExonAnalyze_module
     fn=filepath(filename); annotate_db = {}; x = 0
-    if array_type != 'exon':
+    if array_type == 'AltMouse':
         for line in open(fn,'rU').xreadlines():
             data = cleanUpLine(line) 
             if x == 0: x = 1
@@ -561,7 +562,8 @@ def import_annotations(filename,array_type):
                 try: affygene, description, ll_id, symbol, rna_processing_annot = string.split(data,'\t')
                 except ValueError: affygene, description, ll_id, symbol = string.split(data,'\t'); splicing_annotation = ''
                 if '"' in description: null,description,null = string.split(description,'"')
-                y = GeneAnnotationData(affygene, description, symbol, ll_id, rna_processing_annot)
+                rna_processing_annot =''
+                y = ExonAnalyze_module.GeneAnnotationData(affygene, description, symbol, ll_id, rna_processing_annot)
                 annotate_db[affygene] = y
     else:
         for line in open(fn,'rU').xreadlines():
@@ -571,25 +573,28 @@ def import_annotations(filename,array_type):
                 rna_processing_annot=''
                 try: ensembl, description, symbol, rna_processing_annot = string.split(data,'\t')
                 except ValueError: ensembl, description, symbol = string.split(data,'\t')
-                y = GeneAnnotationData(ensembl, description, symbol, ensembl, rna_processing_annot)
+                y = ExonAnalyze_module.GeneAnnotationData(ensembl, description, symbol, ensembl, rna_processing_annot)
                 annotate_db[ensembl] = y
     return annotate_db
 
 if __name__ == '__main__':
-    array_type = 'exon'; dataset_name = 'test.'; apt_dir = 'AltDatabase/affymetrix/APT'
-    runMiDAS(apt_dir,array_type,dataset_name,{},()); sys.exit()
-
+    array_type = 'exon'
     a = 'Mm'; b = 'Hs'
-    species = a
     e = 'ASPIRE'; f = 'linearregres'; g = 'ANOVA'; h = 'splicing-index'
-    analysis_method = f   
-    #combineRawSpliceResults(species,analysis_method)
-    
-    #if array_type == 'exon': gene_annotation_file = "AltDatabase/ensembl/"+species+"/"+species+"_Ensembl-annotations.txt"
-    #annotate_db = import_annotations(gene_annotation_file,array_type)
+    analysis_method = h
+    species = b ### edit this
+
+    if array_type != 'AltMouse': gene_annotation_file = "AltDatabase/ensembl/"+species+"/"+species+"_Ensembl-annotations.txt"
+    annotate_db = import_annotations(gene_annotation_file,array_type)
+    number_events_analyzed = 0
+    analyzing_genes = 'no'
+    root_dir = 'C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/Combined-GSE14588_RAW/junction/' ### edit this
+    a = root_dir+'AltResults/AlternativeOutput/Hs_Junction_d14_vs_d7.p5_average-ASPIRE-exon-inclusion-results.txt' ### edit this
+    b = root_dir+'AltResults/AlternativeOutput/Hs_Junction_d14_vs_d7.p5_average-splicing-index-exon-inclusion-results.txt' ### edit this
+    aspire_output_list = [a,b]
+    compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyzed,analyzing_genes,analysis_method,array_type,root_dir)
+
+    #dataset_name = 'test.'; apt_dir = 'AltDatabase/affymetrix/APT'
+    #aspire_output_gene_list = ['AltResults/AlternativeOutput/Hs_Exon_CS-d40_vs_hESC-d0.p5_average-splicng_index-exon-inclusion-GENE-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_Cyt-NP_vs_Cyt-ES.p5_average-splicing_index-exon-inclusion-GENE-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average-splicing_index-exon-inclusion-GENE-results.txt']
+    #runMiDAS(apt_dir,array_type,dataset_name,{},()); sys.exit()
     #midas_db = importMidasOutput(dataset_name)
-    #number_events_analyzed = 0
-    #aspire_output_gene_list = ['AltResults/AlternativeOutput/Hs_Exon_CS-d40_vs_hESC-d0.p5_average-splicing_index-exon-inclusion-GENE-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_Cyt-NP_vs_Cyt-ES.p5_average-splicing_index-exon-inclusion-GENE-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average-splicing_index-exon-inclusion-GENE-results.txt']
-    #aspire_output_list = ['AltResults/AlternativeOutput/Hs_Exon_CS-d40_vs_hESC-d0.p5_average-splicing_index-exon-inclusion-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_Cyt-NP_vs_Cyt-ES.p5_average-splicing_index-exon-inclusion-results.txt', 'AltResults/AlternativeOutput/Hs_Exon_HUES6-NP_vs_HUES6-ES.p5_average-splicing_index-exon-inclusion-results.txt']
-    compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyzed,'no',analysis_method,array_type)
-    #compareAltAnalyzeResults(aspire_output_gene_list,annotate_db,'','yes',analysis_method,array_type)  

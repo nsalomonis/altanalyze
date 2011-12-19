@@ -17,6 +17,7 @@
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sys, string
+import statistics
 import math
 import os.path
 import unique
@@ -71,8 +72,9 @@ def exportNovelExonToBedCoordinates(species,novel_exon_coordinates):
         if gene == None: gene = 'NA'
         if gene != 'NA': ### Including these has no benefit for AltAnalyze (just slows down alignment and piles up memory)
             if ji.Strand() == '-': stop,start=start,stop
-            bed_values = [chr,str(start),str(stop),gene,'0',ji.Strand()]
-            bed_values = string.join(bed_values,'\t')+'\n'; bed_data.write(bed_values)
+            bed_values = [chr,str(start),str(stop),gene,'0',str(ji.Strand())]
+            bed_values = cleanUpLine(string.join(bed_values,'\t'))+'\n'
+            bed_data.write(bed_values)
     bed_data.close()
     return bed_export_path
 
@@ -145,7 +147,7 @@ def importExonAnnotations(species,type,search_chr):
                     #if gene == 'ENSMUSG00000027340': print chr,int(exon1_stop),int(exon2_start)
                     exon_annotation_db[chr,int(exon1_stop),int(exon2_start)]=ea              
                 elif type == 'distal-exon':
-                    exon_annotation_db[gene] = exonid
+                    if 'I' not in exonid: exon_annotation_db[gene] = exonid
                 else:
                     try: exon_annotation_db[gene].append(ea)
                     except KeyError: exon_annotation_db[gene]=[ea]
@@ -368,7 +370,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
     condition_count_db={}; neg_count=0; pos_count=0; junction_db={}; biotypes={}; algorithms={}; exon_len_db={}; getBiotype=''
     if getReads == 'yes': getBiotype = search_chr
     
-    #print "Reading user RNA-seq input data files"
+    if testImport == 'yes': print "Reading user RNA-seq input data files"
     for filename in dir_list:
         count_db={}; x=0
         fn=filepath(bed_dir+filename)
@@ -376,9 +378,17 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
         if '__' in condition:
             ### Allow multiple junction files per sample to be combined (e.g. canonical and non-canonical junction alignments)
             condition=string.split(condition,'__')[0]+filename[-4:]
-        if ('.bed' in fn or '.BED' in fn or '.tab' in fn) and '._' not in condition:
-            #print "Reading the bed file", condition
-            for line in open(fn,'r').xreadlines():
+        if ('.bed' in fn or '.BED' in fn or '.tab' in fn or '.TAB' in fn) and '._' not in condition:
+            if ('.bed' in fn or '.BED' in fn): delim = 'r'
+            else: delim = 'rU'
+            ### The below code removes .txt if still in the filename along with .tab or .bed
+            if '.tab' in fn: condition = string.replace(condition,'.txt','.tab')
+            elif '.bed' in fn: condition = string.replace(condition,'.txt','.bed')
+            if '.TAB' in fn: condition = string.replace(condition,'.txt','.TAB')
+            elif '.BED' in fn: condition = string.replace(condition,'.txt','.BED')
+            
+            if testImport == 'yes': print "Reading the bed file", [fn], condition
+            for line in open(fn,delim).xreadlines(): ### changed rU to r to remove \r effectively, rather than read as end-lines
                 data = cleanUpLine(line)
                 t = string.split(data,'\t')
                 if x==0 or '#' == data[0]:
@@ -390,14 +400,21 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                     elif t[0] == 'E1': algorithm = 'BioScope-junction'
                     elif '# filterOrphanedMates=' in data or 'alignmentFilteringMode=' in data or '#number_of_mapped_reads=' in data:
                         algorithm = 'BioScope-exon'
+                    if testImport == 'yes': print condition, algorithm
                 else:
                     proceed = 'yes' ### restrict by chromosome with minimum line parsing (unless we want counts instead)
                     if getReads == 'no':
-                        if search_chr == t[0] or search_chr == t[1]: proceed = 'yes'
-                        else: proceed = 'no'
+                        try:
+                            if search_chr == t[0] or search_chr == t[1]: proceed = 'yes'
+                            else: proceed = 'no'
+                        except IndexError:
+                            print 'The input file:\n',filename
+                            print 'is not formated as expected (format='+algorithm+').'
+                            print 'search chromosome:',search_chr
+                            print t; force_bad_exit
                     if proceed == 'yes':
                         proceed = 'no'
-                        if '.tab' in fn:
+                        if '.tab' in fn or '.TAB' in fn:
                             ### Applies to non-BED format Junction and Exon inputs (BioScope)
                             if 'BioScope' in algorithm:
                                 if algorithm == 'BioScope-exon': ### Not BED format
@@ -407,17 +424,18 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                                         symbol = string.split(gene_info,' ')[-1]
                                         #refseq = string.split(transcript_info,' ')[-1]
                                         rpkm = string.split(rpkm_info,' ')[-1]
-                                        if normalize_feature_exp == 'RPKM': reads = rpkm
+                                        #if normalize_feature_exp == 'RPKM': reads = rpkm ### The RPKM should be adjusted +1 counts, so don't use this
                                         biotype = 'exon'; biotypes[biotype]=[]
                                         exon1_stop,exon2_start = int(start),int(end); junction_id=''
                                         ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
                                         exon1_stop+=1; exon2_start-=1
                                         if float(reads)>0: proceed = 'yes'
+                                        seq_length = abs(exon1_stop-exon2_start)
                                 if algorithm == 'BioScope-junction':
                                     chr = t[1]; strand = t[2]; exon1_stop = int(t[4]); exon2_start = int(t[8]); count_paired = t[17]; count_single = t[19]; score=t[21]
                                     try: exon1_start = int(t[3]); exon2_stop = int(t[9])
                                     except Exception: null=[] ### If missing, these are not assigned
-                                    reads = str(int(float(count_paired))+int(float(count_single)))
+                                    reads = str(int(float(count_paired))+int(float(count_single))) ### Users will either have paired or single read (this uses either)
                                     biotype = 'junction'; biotypes[biotype]=[]; junction_id=''
                                     if float(reads)>0: proceed = 'yes'
                         else:
@@ -445,7 +463,9 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                                 ### Applies to BED format exon input (BEDTools export)
                                 # bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/nsalomonis/databases/Mm_Ensembl_exons.bed > day0_8B__exons.bed
                                 try: chr, start, end, exon_id, null, strand, reads, bp_coverage, bp_total, percent_coverage = t
-                                except Exception: print 'The file',fn,'does not appear to be propperly formatted as input.'; force_exception
+                                except Exception:
+                                    print 'The file',fn,'does not appear to be propperly formatted as input.'
+                                    print t; force_exception
                                 algorithm = 'TopHat-exon'; biotype = 'exon'; biotypes[biotype]=[]
                                 exon1_stop,exon2_start = int(start),int(end); junction_id=exon_id; seq_length = float(bp_total)
                                 ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
@@ -486,45 +506,186 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                     except Exception: null=[] ### Occurs for other text files in the directory that are not used for the analysis
                 
     end_time = time.time()
-    #print 'Read coordinates imported in',int(end_time-begin_time),'seconds'
+    if testImport == 'yes': print 'Read coordinates imported in',int(end_time-begin_time),'seconds'
     if getReads == 'yes':
-        print len(exon_len_db), getBiotype, 'read counts present'
+        print len(exon_len_db), getBiotype, 'read counts present for',algorithm
         return condition_count_db,exon_len_db,biotypes,algorithms
     else:
-        """
-        if 'exon' not in biotypes and 'BioScope' not in algorithm:
-            print len(junction_db),'junctions present in',algorithm,'format BED files.' # ('+str(pos_count),str(neg_count)+' by strand).'
-        elif 'exon' in biotypes and 'BioScope' not in algorithm:
-            print len(junction_db),'sequence identifiers present in input files.' 
-        else: print len(junction_db),'sequence identifiers present in BioScope input files.'
-        """
+        if testImport == 'yes':
+            if 'exon' not in biotypes and 'BioScope' not in algorithm:
+                print len(junction_db),'junctions present in',algorithm,'format BED files.' # ('+str(pos_count),str(neg_count)+' by strand).'
+            elif 'exon' in biotypes and 'BioScope' not in algorithm:
+                print len(junction_db),'sequence identifiers present in input files.' 
+            else: print len(junction_db),'sequence identifiers present in BioScope input files.'
         return junction_db,biotypes,algorithms
-    
-def calculateJunctionRPKM(condition_count_db,exon_len_db,biotype_to_examine):
+
+def adjustCounts(condition_count_db,exon_len_db):
+    for key in exon_len_db:
+        try:
+            null=exon_len_db[key]
+            for condition in condition_count_db:
+                count_db = condition_count_db[condition]
+                try: read_count = float(count_db[key])+1 ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+                except KeyError: read_count = 1 ###Was zero, but needs to be one for more realistic log2 fold calculations
+                count_db[key] = str(read_count) ### Replace original counts with adjusted counts
+        except Exception: null=[]
+    return condition_count_db
+
+def calculateRPKM(condition_count_db,exon_len_db,biotype_to_examine):
     """Determines the total number of reads in a sample and then calculates RPMK relative to a pre-determined junction length (60).
     60 was choosen, based on Illumina single-end read lengths of 35 (5 nt allowed overhand on either side of the junction)"""
     ### Get the total number of mapped reads
     mapped_reads={}
     for condition in condition_count_db:
-        mapped_reads[condition]=0    
+        mapped_reads[condition]=0
         count_db = condition_count_db[condition]
         for key in count_db:
             read_count = count_db[key]
-            mapped_reads[condition]+=int(read_count)
-
-    for condition in condition_count_db:
-        total_mapped_reads = mapped_reads[condition]
-        count_db = condition_count_db[condition]
-        for key in count_db:
-            read_count = float(count_db[key])
-            if biotype_to_examine == 'junction': region_length = 60.0
-            else:
-                try: region_length = exon_len_db[key]
-                except Exception: continue ### This should only occur during testing (when restricting to one or few chromosomes)
-            try: rpkm = (math.pow(10.0,8.0))*(read_count/(float(total_mapped_reads)*region_length))
-            except Exception: print [read_count,total_mapped_reads,region_length]
-            count_db[key] = str(rpkm) ### Replace original counts with RPMK
+            mapped_reads[condition]+=float(read_count)
+            
+    ### Use the average_total_reads when no counts reported such that 0 counts are comparable            
+    average_total_reads = 0
+    for i in mapped_reads:
+        average_total_reads+=mapped_reads[i]
+        if testImport == 'yes':
+            print 'condition:',i,'total reads:',mapped_reads[i]
+    average_total_reads = average_total_reads/len(condition_count_db)
+    if testImport == 'yes':
+        print 'average_total_reads:',average_total_reads
+    k=0
+    for key in exon_len_db:
+        try:
+            for condition in condition_count_db:
+                total_mapped_reads = mapped_reads[condition]
+                try: read_count = float(condition_count_db[condition][key])+1 ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+                except KeyError: read_count = 1 ###Was zero, but needs to be one for more realistic log2 fold calculations
+                if biotype_to_examine == 'junction': region_length = 60.0
+                else:
+                    try: region_length = exon_len_db[key]
+                    except Exception: continue ### This should only occur during testing (when restricting to one or few chromosomes)
+                if read_count == 1: ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+                    rpkm = (math.pow(10.0,8.0))*(float(read_count)/(float(average_total_reads)*region_length)) 
+                try: rpkm = (math.pow(10.0,8.0))*(read_count/(float(total_mapped_reads)*region_length))
+                except Exception:
+                    print 'Error Encountered... Exon or Junction of zero length encoutered... RPKM failed... Exiting AltAnalyze.'
+                    print [read_count,total_mapped_reads,region_length];k=1; kill
+                condition_count_db[condition][key] = str(rpkm) ### Replace original counts with RPMK
+        except Exception:
+            if k == 1: kill
+            null=[]
     return condition_count_db
+
+def calculateGeneRPKM(gene_count_db):
+    """Determines the total number of reads in a sample and then calculates RPMK relative to a pre-determined junction length (60).
+    60 was choosen, based on Illumina single-end read lengths of 35 (5 nt allowed overhand on either side of the junction)"""
+    ### Get the total number of mapped reads (relative to all gene aligned rather than genome aligned exon reads)
+    mapped_reads={}
+    for gene in gene_count_db:
+        index=0
+        for (read_count,total_len) in gene_count_db[gene]:
+            try: mapped_reads[index]+=float(read_count)
+            except Exception: mapped_reads[index]=float(read_count)
+            index+=1
+            
+    ### Use the average_total_reads when no counts reported such that 0 counts are comparable            
+    average_total_reads = 0
+    for i in mapped_reads: average_total_reads+=mapped_reads[i]
+    average_total_reads = average_total_reads/(index+1)
+            
+    for gene in gene_count_db:
+        index=0; rpkms = []
+        for (read_count,region_length) in gene_count_db[gene]:
+            total_mapped_reads = mapped_reads[index]
+            #print [read_count],[region_length],[total_mapped_reads]
+            #if gene == 'ENSMUSG00000028186': print [read_count, index, total_mapped_reads,average_total_reads,region_length]
+            if read_count == 0: read_count=1; rpkm = (math.pow(10.0,8.0))*(float(read_count)/(float(average_total_reads)*region_length)) ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+            else:
+                try: rpkm = (math.pow(10.0,8.0))*(float(read_count+1)/(float(total_mapped_reads)*region_length)) ### read count is incremented +1 (see next line)
+                except Exception: read_count=1; rpkm = (math.pow(10.0,8.0))*(float(read_count)/(float(average_total_reads)*region_length)) ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+            #if gene == 'ENSMUSG00000028186': print rpkm,read_count,index,total_mapped_reads,average_total_reads,region_length
+            rpkms.append(rpkm)
+            index+=1
+        gene_count_db[gene] = rpkms ### Replace original counts with RPMK
+    return gene_count_db
+
+def calculateGeneLevelStatistics(steady_state_export,expressed_gene_exon_db,normalize_feature_exp,array_names):
+    exp_file = string.replace(steady_state_export,'-steady-state','')
+    if normalize_feature_exp == 'RPKM':
+        steady_state_db = importRawCountData(exp_file,expressed_gene_exon_db,normalize_feature_exp)
+        exportGeneCounts(steady_state_export,array_names,steady_state_db)
+        steady_state_db = calculateGeneRPKM(steady_state_db)
+    else:
+        steady_state_db = importNormalizedCountData(exp_file,expressed_gene_exon_db,normalize_feature_exp)
+        exportGeneCounts(steady_state_export,array_names,steady_state_db)
+    return steady_state_db
+    
+def exportGeneCounts(steady_state_export,headers,gene_count_db):
+    ### In addition to RPKM gene-level data, export gene level counts and lengths (should be able to calculate gene RPKMs from this file)
+    export_path = string.replace(steady_state_export,'exp.','counts.')
+    export_data = export.ExportFile(export_path)
+    
+    title = string.join(['Ensembl']+headers,'\t')+'\n'
+    export_data.write(title)
+        
+    for gene in gene_count_db:
+        sample_counts=[]
+        for count_data in gene_count_db[gene]:
+            try: read_count,region_length = count_data
+            except Exception: read_count = count_data
+            sample_counts.append(str(read_count))
+        sample_counts = string.join([gene]+sample_counts,'\t')+'\n'
+        export_data.write(sample_counts)
+    export_data.close()
+
+def importGeneCounts(filename):
+    ### Import non-normalized original counts and return the max value            
+    counts_filename = string.replace(filename,'exp.','counts.')
+    status = verifyFile(counts_filename)
+    if status == 'not found': ### Occurs for non-normalized counts
+        counts_filename = filename
+    fn=filepath(counts_filename); x=0; max_count_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: array_names = t[1:]; x=1
+        else:
+            gene = t[0]
+            max_count_db[gene] = str(statistics.maxval(t[1:]))
+    return max_count_db
+
+def calculateGeneRPKM(gene_count_db):
+    """Determines the total number of reads in a sample and then calculates RPMK relative to a pre-determined junction length (60).
+    60 was choosen, based on Illumina single-end read lengths of 35 (5 nt allowed overhand on either side of the junction)"""
+    ### Get the total number of mapped reads (relative to all gene aligned rather than genome aligned exon reads)
+    mapped_reads={}
+    for gene in gene_count_db:
+        index=0
+        for (read_count,total_len) in gene_count_db[gene]:
+            try: mapped_reads[index]+=float(read_count)
+            except Exception: mapped_reads[index]=float(read_count)
+            index+=1
+            
+    ### Use the average_total_reads when no counts reported such that 0 counts are comparable            
+    average_total_reads = 0
+    for i in mapped_reads: average_total_reads+=mapped_reads[i]
+    average_total_reads = average_total_reads/(index+1) ###
+    
+        
+    for gene in gene_count_db:
+        index=0; rpkms = []
+        for (read_count,region_length) in gene_count_db[gene]:
+            total_mapped_reads = mapped_reads[index]
+            #print [read_count],[region_length],[total_mapped_reads]
+            #if gene == 'ENSMUSG00000028186': print [read_count, index, total_mapped_reads,average_total_reads,region_length]
+            if read_count == 0: read_count=1; rpkm = (math.pow(10.0,8.0))*(float(read_count)/(float(average_total_reads)*region_length)) ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+            else:
+                try: rpkm = (math.pow(10.0,8.0))*(float(read_count+1)/(float(total_mapped_reads)*region_length)) ### read count is incremented +1 (see next line)
+                except Exception: read_count=1; rpkm = (math.pow(10.0,8.0))*(float(read_count)/(float(average_total_reads)*region_length)) ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+            #if gene == 'ENSMUSG00000028186': print rpkm,read_count,index,total_mapped_reads,average_total_reads,region_length
+            rpkms.append(rpkm)
+            index+=1
+        gene_count_db[gene] = rpkms ### Replace original counts with RPMK
+    return gene_count_db
 
 def deleteOldAnnotations(species,root_dir,dataset_name):
     db_dir = root_dir+'AltDatabase/'+species
@@ -539,9 +700,13 @@ def deleteOldAnnotations(species,root_dir,dataset_name):
     export_path = root_dir+'ExpressionInput/'+dataset_name
     try: os.remove(filepath(export_path))
     except Exception: null=[]
-    
+    try: os.remove(filepath(string.replace(export_path,'exp.','counts.')))
+    except Exception: null=[]
+       
 def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
-
+    global testImport
+    testImport = 'no'
+    
     rnaseq_begin_time = time.time()
     
     fl = exp_file_location_db[dataset_name]
@@ -566,14 +731,14 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
     
     ###Define variables to report once reads for all chromosomes have been aligned
     count=0; novel_junction_count=0; one_found=0; not_found=0; both_found=0; trans_splicing_reads=0; junctions_without_exon_gene_alignments=0
-    exons_without_gene_alignment_count=0; junction_simple_db={}
+    exons_without_gene_alignment_count=0; junction_simple_db={}; ps=0
     
     ###Begin Chromosome specific read to exon alignments
-    chr_strand_gene_db,location_gene_db,chromosomes = getChromosomeStrandCoordinates(species)
+    chr_strand_gene_db,location_gene_db,chromosomes,gene_location_db = getChromosomeStrandCoordinates(species)
     print "Processing exon/junction coordinates sequentially by chromosome..."
     for search_chr in chromosomes:
-      print "*",
-      #print [search_chr]
+      if 'linux' in sys.platform or testImport == 'yes': print 'parsing data for chromosome:',search_chr ### Unix platforms are not displaying the progress in real-time
+      else: print "*",
       junction_annotations={}
       junction_db,biotypes,algorithms = importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,'no')
       if len(biotypes)>0: biotypes_store = biotypes
@@ -585,7 +750,8 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
         if 'junction' in biotypes:
             ### Get all known junction splice-sites
             ens_junction_coord_db = importExonAnnotations(species,'junction_coordinates',search_chr)
-            #print len(ens_junction_coord_db),'Ensembl/UCSC junctions imported'
+            if testImport == 'yes':
+                print len(ens_junction_coord_db),'Ensembl/UCSC junctions imported'
             
         ### Identify known junctions sites found in the experimental dataset (perfect match)
         novel_junction_db={}; novel_exon_db={}
@@ -603,7 +769,8 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
         ens_exon_db = importExonAnnotations(species,'exon',search_chr)
         
         if 'junction' in biotypes:
-            #print count,  'junctions found in Ensembl/UCSC and',len(novel_junction_db),'are novel.'
+            if testImport == 'yes':
+                print count,  'junctions found in Ensembl/UCSC and',len(novel_junction_db),'are novel.'
             
             ### Separate each junction into a 5' and 3' splice site (exon1_coord_db and exon2_coord_db)
             exon1_coord_db={}; exon2_coord_db={}    
@@ -671,7 +838,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
             #print 'Novel junctions where one splice-site is known:',one_found
             #print 'Novel junctions where the splice-sites are not known:',not_found
             clearObjectsFromMemory(exon_region_db); exon_region_db=[] ### Clear memory of this object
-        
+
             read_aligned_to_gene=0
             for (chr,strand) in exons_not_identified:
                 if (chr,strand) in chr_strand_gene_db:
@@ -739,17 +906,18 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
             if fl.ExonBedBuildStatus() == 'yes':
                 ### Append to the exported BED format exon coordinate file
                 bedfile = exportNovelExonToBedCoordinates(species,novel_exon_coordinates)
-
+            
             ### Identify reciprocol junctions and retrieve splice-event annotations for exons and inclusion junctions
             junction_annotations,critical_exon_annotations = JunctionArray.inferJunctionComps(species,('RNASeq',junction_region_db,root_dir))
             clearObjectsFromMemory(junction_region_db); junction_region_db=[]   
-
+            
             ### Reformat these dictionaries to combine annotations from multiple reciprocol junctions
             junction_annotations = combineExonAnnotations(junction_annotations)
             critical_exon_annotations = combineExonAnnotations(critical_exon_annotations)
-        
+            
         if 'exon' in biotypes:
-            #print len(unmapped_exon_db),'exon genomic locations imported.'
+            if testImport == 'yes':
+                print len(unmapped_exon_db),'exon genomic locations imported.'
             ### Create a new dictionary keyed by chromosome and strand
             exons_not_aligned={}
             for (chr,exon1_stop,exon2_start) in unmapped_exon_db:
@@ -793,7 +961,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
                             try: align_exon_db[geneid].append(exon_data)
                             except KeyError: align_exon_db[geneid] = [exon_data]
                 else: exons_without_gene_alignments[key]=ji; exons_without_gene_alignment_count+=1
-    
+            
             ### Remove redundant exon entries and store objects (this step may be unnecessary)
             for key in align_exon_db:
                 exon_data_objects=[]
@@ -811,7 +979,8 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
             alignReadsToExons(align_exon_db,ens_exon_db)
             
             end_time = time.time()
-            #print 'Exon sequences aligned to exon regions in',int(end_time-begin_time),'seconds'
+            if testImport == 'yes':
+                print 'Exon sequences aligned to exon regions in',int(end_time-begin_time),'seconds'
             
             ### Combine the start and end region alignments into a single exon annotation entry
             combineDetectedExons(unmapped_exon_db,align_exon_db,novel_exon_db)
@@ -852,9 +1021,10 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
         #returnLargeGlobalVars()
         clearObjectsFromMemory(junction_db); clearObjectsFromMemory(junction_annotations)
         junction_db=[]; junction_annotations=[]; chr_reads=[]
-        
+
+    exportDatasetLinkedGenes(species,gene_location_db,root_dir) ### Include an entry for gene IDs to include constitutive expression for RPKM normalized data     
     chr_gene_locations=[]; location_gene_db=[]; chr_strand_gene_db=[] 
-        
+    
     ### END CHROMOSOME SPECIFIC ANALYSES
     if fl.ExonBedBuildStatus() == 'yes':
         bedfile = moveBAMtoBEDFile(species,dataset_name,root_dir)
@@ -870,27 +1040,36 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
     for biotype in biotypes:
         ### Import Read Counts (do this last to conserve memory, but do it for all)
         condition_count_db,exon_len_db,biotypes2,algorithms = importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,biotype,'yes')
+
+        ###First export original counts, rather than quantile normalized or RPKM
+        exportJunctionCounts(species,junction_simple_db,exon_len_db,condition_count_db,root_dir,dataset_name,biotype,'counts')
+    
         if normalize_feature_exp != 'none' and biotype == 'junction':
             if normalize_feature_exp == 'RPKM':
                 print 'Normalizing junction expression (RPKM analogue - 60nt length)...',
-                condition_count_db = calculateJunctionRPKM(condition_count_db,exon_len_db,'junction')
+                condition_count_db = calculateRPKM(condition_count_db,exon_len_db,'junction')
                 print 'finished'
             elif normalize_feature_exp == 'quantile':
                 print 'Normalizing junction expression (quantile)...',
-                quantileNormalizationSimple(species,exon_len_db,condition_count_db,'junction')
+                condition_count_db = quantileNormalizationSimple(species,condition_count_db,'junction')
                 print 'finished'
-        if 'TopHat-exon' in algorithms and normalize_feature_exp != 'none' and biotype == 'exon':
+        elif biotype == 'junction':
+            condition_count_db = adjustCounts(condition_count_db,exon_len_db)
+            
+        if normalize_feature_exp != 'none' and biotype == 'exon':
             if normalize_feature_exp == 'RPKM':
                 print 'Normalizing exon expression (RPKM)...',
-                condition_count_db = calculateJunctionRPKM(condition_count_db,exon_len_db,'exon')
+                condition_count_db = calculateRPKM(condition_count_db,exon_len_db,'exon')
                 print 'finished'
             elif normalize_feature_exp == 'quantile':
                 print 'Normalizing exon expression (quantile)...',
-                quantileNormalizationSimple(species,exon_len_db,condition_count_db,'exon')
+                condition_count_db = quantileNormalizationSimple(species,condition_count_db,'exon')
                 print 'finished'
-                
+        elif biotype == 'exon':
+            condition_count_db = adjustCounts(condition_count_db,exon_len_db)
+            
         ### export user results with junction names and counts
-        exportJunctionCounts(species,junction_simple_db,exon_len_db,condition_count_db,root_dir,dataset_name)
+        exportJunctionCounts(species,junction_simple_db,exon_len_db,condition_count_db,root_dir,dataset_name,biotype,'normalized')
         clearObjectsFromMemory(condition_count_db); clearObjectsFromMemory(exon_len_db); condition_count_db=[]; exon_len_db=[]
     
     ### Output summary statistics
@@ -919,6 +1098,99 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
         except Exception: null=[]
     """
     return biotypes
+
+def importRawCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
+    ### Get expression values for exon/junctions to analyze
+    seq_ids_to_import={}
+    for gene in expressed_gene_exon_db:
+        for exonid in expressed_gene_exon_db[gene]: seq_ids_to_import[exonid]=[]
+            
+    ### Import non-normalized original counts                
+    counts_filename = string.replace(filename,'exp.','counts.')
+    fn=filepath(counts_filename); x=0; exp_dbase={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: array_names = t[1:]; x=1
+        else:
+            exon_id,coordinates = string.split(t[0],'=')
+            try:
+                null = seq_ids_to_import[exon_id]
+                coordinates = string.split(coordinates,':')[1]
+                coordinates = string.split(coordinates,'-')
+                length=abs(int(coordinates[1])-int(coordinates[0]))
+                if '-' in exon_id: length = 60.0
+                exp_dbase[exon_id] = t[1:],length ### Include sequence length for normalization
+            except Exception: null=[]
+
+    for exon in exp_dbase: array_count = len(exp_dbase[exon][0]); break                
+    steady_state_db = obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp); exp_dbase=[]
+    return steady_state_db
+
+def importNormalizedCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
+    ### Get expression values for exon/junctions to analyze
+    seq_ids_to_import={}
+    for gene in expressed_gene_exon_db:
+        for exonid in expressed_gene_exon_db[gene]: seq_ids_to_import[exonid]=[]
+            
+    ### Import non-normalized original counts                
+    fn=filepath(filename); x=0; exp_dbase={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: array_names = t[1:]; x=1
+        else:
+            exon_id=t[0]
+            exp_dbase[exon_id] = t[1:],0  ### Add the zero just to comply with the raw count input format (indicates exon length)
+
+    for exon in exp_dbase: array_count = len(exp_dbase[exon][0]); break        
+    steady_state_db = obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp); exp_dbase=[]
+    return steady_state_db
+
+def obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp):
+    ###Calculate avg expression for each sample for each exon (using constitutive or all exon values)
+
+    steady_state_db={}
+    for gene in expressed_gene_exon_db:
+        x = 0; gene_sum=0
+        exon_list = expressed_gene_exon_db[gene]
+        while x < array_count:
+            exp_list=[]; len_list=[]
+            for exon in exon_list:
+                try:
+                    exp_val = exp_dbase[exon][0][x]
+                    if normalize_feature_exp == 'RPKM':
+                        if float(exp_val) != 0: ### Here, we use the original raw count data, whereas above is the adjusted quantile or raw count data
+                            exp_list.append(exp_val); len_list.append(exp_dbase[exon][1]) ### This is for RNASeq -> don't include undetected exons - made in v.204
+                    elif float(exp_val) != 1: exp_list.append(exp_val)
+                except KeyError: null =[] ###occurs if the expression exon list is missing some of these exons
+            try:
+                if len(exp_list)==0:
+                    for exon in exon_list:
+                        try:
+                            exp_list.append(exp_dbase[exon][0][x]); len_list.append(exp_dbase[exon][1])
+                            #kill
+                        except KeyError: null=[] ### Gene entries will cause this error, since they are in the database but not in the count file
+                if normalize_feature_exp == 'RPKM':
+                    sum_const_exp=sum(map(float,exp_list)); gene_sum+=sum_const_exp
+                    sum_length=sum(len_list) ### can have different lengths for each sample, since only expressed exons are considered
+                    ### Add only one avg-expression value for each array, this loop
+                    try: steady_state_db[gene].append((sum_const_exp,sum_length))
+                    except KeyError: steady_state_db[gene] = [(sum_const_exp,sum_length)]
+                else:
+                    avg_const_exp=statistics.avg(exp_list)
+                    if avg_const_exp != 1: gene_sum+=avg_const_exp
+                    ### Add only one avg-expression value for each array, this loop
+                    try: steady_state_db[gene].append(avg_const_exp)
+                    except KeyError: steady_state_db[gene] = [avg_const_exp]
+            except ZeroDivisionError: null=[] ### Occurs when processing a truncated dataset (for testing usually) - no values for the gene should be included
+            x += 1
+        if gene_sum==0:
+            try:
+                del steady_state_db[gene] ### Hence, no genes showed evidence of expression (most critical for RNA-Seq)
+            except Exception: null=[] ### Error occurs when a gene is added to the database from location_gene_db, but is not expressed
+            
+    return steady_state_db
 
 def returnLargeGlobalVars():
     ### Prints all large global variables retained in memory (taking up space)
@@ -949,12 +1221,14 @@ def getChromosomeStrandCoordinates(species):
         location_gene_db[chr,int(start),int(end)] = gene,strand
         try: chr_strand_gene_db[chr,strand].append((int(start),int(end)))
         except KeyError: chr_strand_gene_db[chr,strand] = [(int(start),int(end))]
-        #if chr=='chr2': chromosomes[chr]=[]
-        if len(chr)<7: chromosomes[chr]=[]
+        if testImport == 'yes':
+            if chr=='chr1': chromosomes[chr]=[]
+            if chr=='chr19': chromosomes[chr]=[] ### Gene rich chromosome
+        elif len(chr)<7: chromosomes[chr]=[]
         all_chromosomes[chr]=[]
     ### Some organisms aren't organized into classical chromosomes (why I don't know)
-    if len(chromosomes)<10 and len(all_chromosomes)>9: chromosomes = all_chromosomes
-    return chr_strand_gene_db,location_gene_db,chromosomes
+    if len(chromosomes)<10 and len(all_chromosomes)>9 and testImport=='no': chromosomes = all_chromosomes
+    return chr_strand_gene_db,location_gene_db,chromosomes,gene_location_db
     
 def verifyFile(filename):
     status = 'not found'
@@ -971,13 +1245,17 @@ def AppendOrWrite(export_path):
         export_data = export.ExportFile(export_path) ### Write this new file
     else:
         export_data = open(export_path,'a') ### Appends to existing file
+        
     return export_data, status
 
-def exportJunctionCounts(species,junction_simple_db,exon_len_db,condition_count_db,root_dir,dataset_name):
+def exportJunctionCounts(species,junction_simple_db,exon_len_db,condition_count_db,root_dir,dataset_name,biotype,count_type):
     if 'exp.' not in dataset_name: dataset_name = 'exp.'+dataset_name
     if '.txt' not in dataset_name: dataset_name+='.txt'
+    if count_type == 'counts': dataset_name = string.replace(dataset_name,'exp.','counts.') ### separately export counts
+    
     export_path = root_dir+'ExpressionInput/'+dataset_name
-    #print 'Writing',export_path
+    if testImport == 'yes':
+        print 'Writing',export_path
     export_data,status = AppendOrWrite(export_path)
     
     if status == 'not found':
@@ -986,9 +1264,15 @@ def exportJunctionCounts(species,junction_simple_db,exon_len_db,condition_count_
         export_data.write(string.join(title,'\t')+'\n')
     
     for key in junction_simple_db:
+        chr,exon1_stop,exon2_start = key
+        if biotype == 'junction':
+            coordinates = chr+':'+str(exon1_stop)+'-'+str(exon2_start)
+        elif biotype == 'exon':
+            coordinates = chr+':'+str(exon1_stop-1)+'-'+str(exon2_start+1)
         try:
             null=exon_len_db[key]
-            values = [junction_simple_db[key]]
+            if count_type == 'counts': values = [junction_simple_db[key]+'='+coordinates]
+            else: values = [junction_simple_db[key]]
             for condition in condition_count_db:
                 count_db = condition_count_db[condition]
                 try: read_count = count_db[key]
@@ -998,22 +1282,30 @@ def exportJunctionCounts(species,junction_simple_db,exon_len_db,condition_count_
         except Exception: null=[]
     export_data.close()
     
-def quantileNormalizationSimple(species,exon_len_db,condition_count_db,biotype):
+def quantileNormalizationSimple(species,condition_count_db,biotype):
     ### Basic quantile normalization method (average ranked expression values)
+
+    ### Get all junction or exon entries
+    key_db={}
+    for condition in condition_count_db:
+        count_db = condition_count_db[condition]
+        for key in count_db: key_db[key]=[]
+            
     import statistics
     condition_unnormalized_db={}
-    for key in exon_len_db:
+    for key in key_db:
         ### Only look at the specific biotype of interest for each normalization
         for condition in condition_count_db:
             count_db = condition_count_db[condition]
-            try: count = count_db[key]; count_db[key] = [] ### Set equal to null as a temporary measure to save memory
-            except KeyError: count = '0'
+            try:
+                count = float(count_db[key])+1 ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
+                count_db[key] = [] ### Set equal to null as a temporary measure to save memory
+            except KeyError: count = 1.00 ###Was zero, but needs to be one for more realistic log2 fold calculations                
             ### store the minimal information to recover the original count and ID data prior to quantile normalization
-            count = int(count)
             try: condition_unnormalized_db[condition].append([count,key])
             except Exception: condition_unnormalized_db[condition]=[[count,key]]
                     
-    quantile_normalize_db={}; exon_len_db=[]
+    quantile_normalize_db={}; key_db={}
     for condition in condition_unnormalized_db:
         condition_unnormalized_db[condition].sort() ### Sort lists by count number
         rank=0 ### thus, the ID is the rank order of counts
@@ -1054,7 +1346,7 @@ def formatID(id):
 
 def exportDatasetLinkedExons(species,exons_to_export,critical_exon_annotations,root_dir):
     export_path = root_dir+'AltDatabase/'+species+'/RNASeq/'+species + '_Ensembl_exons.txt'
-    #print 'Writing',export_path
+    if testImport == 'yes': print 'Writing',export_path
     export_data,status = AppendOrWrite(export_path)
     
     if status == 'not found': 
@@ -1130,10 +1422,20 @@ def exportNovelJunctions(species,novel_junction_db,condition_count_db,root_dir,d
             values.append(read_count)
         export_data.write(string.join(values,'\t')+'\n')
     export_data.close()
-        
+
+def exportDatasetLinkedGenes(species,gene_location_db,root_dir):
+    export_path = root_dir+'AltDatabase/'+species+'/RNASeq/'+species + '_Ensembl_junctions.txt'
+    export_data,status = AppendOrWrite(export_path)
+    for gene in gene_location_db:
+        chr,strand,start,end = gene_location_db[gene]
+        export_values = [gene, 'E0.1',gene, '', chr, strand, str(start), str(end), 'known', 'yes', gene, '1']
+        export_values+= ['E0.1', str(start), str(end), '', '']
+        export_values = string.join(export_values,'\t')+'\n'; export_data.write(export_values)
+    export_data.close()
+               
 def exportDatasetLinkedJunctions(species,junction_db,junction_annotations,root_dir):
     export_path = root_dir+'AltDatabase/'+species+'/RNASeq/'+species + '_Ensembl_junctions.txt'
-    #print 'Writing',export_path
+    if testImport == 'yes': print 'Writing',export_path
     export_data,status = AppendOrWrite(export_path)
     
     if status == 'not found': 
@@ -1398,7 +1700,7 @@ def alignReadsToExons(novel_exon_db,ens_exon_db):
                     ed.setExonRegionData(ud)
                     ed.setAlignmentRegion('UTR')
         except Exception: null=[]
-    #print aligned_exons, 'splice sites aligned to exon region out of', examined_exons
+    if testImport == 'yes': print aligned_exons, 'splice sites aligned to exon region out of', examined_exons
 
 def geneAlign(chr,chr_gene_locations,location_gene_db,chr_reads,switch_coord,read_aligned_to_gene):
     index = 0 ### Don't examine genes already looked at
@@ -1461,6 +1763,7 @@ def compareExonAndJunctionResults(species,array_type,summary_results_db,root_dir
                 except Exception: filtered_dir_db[comparison_file] = [results_file]
     for comparison_file in filtered_dir_db:
         alt_result_files = filtered_dir_db[comparison_file]
+        #print alt_result_files, comparison_file
         importAltAnalyzeExonResults(alt_result_files,results_dir)
         
 class SplicingData:
@@ -1500,6 +1803,15 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
     for filename in dir_list:
         x=0; regulated_critical_exon_temp={}
         fn=filepath(results_dir+filename)
+
+        new_filename = string.join(string.split(filename,'-')[:2],'-')
+        if '_vs_' in filename and '_vs_' in new_filename: export_filename = new_filename
+        else: export_filename = string.join(string.split(filename,'-')[:-5],'-')
+
+        export_path = results_dir+export_filename+'-comparison-evidence.txt'
+        try: os.remove(filepath(export_path)) ### If we don't do this, the old results get added to the new
+        except Exception: null=[]
+    
         if 'AltMouse' in filename:
             altmouse_ensembl_db = importAltMouseEnsembl()
         for line in open(fn,'rU').xreadlines():
@@ -1551,16 +1863,20 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
             ### Combine data from different analysis files
             try: regulated_critical_exons[uid]+=report
             except Exception: regulated_critical_exons[uid]=report
+            """if 'ENSG00000204120' in uid:
+                print uid,
+                for i in regulated_critical_exon_temp[uid]:
+                    print i.Probesets(),
+                print ''
+                """
             try: report[0].setEvidence(len(regulated_critical_exon_temp[uid])) ###set the number of exons demonstrating regulation of this exons
             except Exception: null=[]
 
     clearObjectsFromMemory(regulated_critical_exon_temp)
-    
-    filename = string.join(string.split(filename,'-')[:2],'-')
-    export_path = results_dir+filename+'-comparison-evidence.txt'
+
     export_data,status = AppendOrWrite(export_path)
     if status == 'not found': 
-        header = string.join(['uid','symbol','description','exonids','indepedent confirmation','score','regulation direction','alternative exon annotaitons','associated isoforms','inferred regulated domains','overlapping domains','method','supporting evidence score'],'\t')+'\n'
+        header = string.join(['uid','symbol','description','exonids','independent confirmation','score','regulation direction','alternative exon annotaitons','associated isoforms','inferred regulated domains','overlapping domains','method','supporting evidence score'],'\t')+'\n'
         export_data.write(header)
 
     print len(regulated_critical_exons), 'regulated exon IDs imported.\n'
@@ -1575,17 +1891,34 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
         ls = regulated_critical_exons_copy[uid]
         jd = ls[0]
         if jd.Method() != 'splicing-index':
-            try: gene,exons = string.split(jd.Probesets()[1],':') ### Exclusion probeset will have the exon not annotated as the critical exon (although it should be as well)
+            try:
+                gene,exonsEx = string.split(jd.Probesets()[1],':') ### Exclusion probeset will have the exon not annotated as the critical exon (although it should be as well)
+                gene,exonsIn = string.split(jd.Probesets()[0],':')
             except Exception: gene=None ### occurs for trans-splicing
             if gene !=None:
-                five_prime,three_prime = string.split(exons,'-')
                 critical_exon = None
-                if ('5' in jd.SplicingEvent()) or ('five' in jd.SplicingEvent()):
-                    critical_exon = gene+':'+five_prime
-                    exonid = five_prime
-                if ('3' in jd.SplicingEvent()) or ('three' in jd.SplicingEvent()):
+                five_prime,three_prime = string.split(exonsEx,'-')
+                five_primeIn,three_primeIn = string.split(exonsIn,'-')
+                if gene == 'ENSG00000133083': print five_prime,three_prime, five_primeIn,three_primeIn
+                if five_primeIn == five_prime: ### Hence, the exclusion 3' exon should be added
                     critical_exon = gene+':'+three_prime
                     exonid = three_prime
+                elif three_primeIn == three_prime: ### Hence, the exclusion 3' exon should be added
+                    critical_exon = gene+':'+five_prime
+                    exonid = five_prime
+                else:
+                    if ('5' in jd.SplicingEvent()) or ('five' in jd.SplicingEvent()):
+                        critical_exon = gene+':'+five_prime
+                        exonid = five_prime
+                    elif ('3' in jd.SplicingEvent()) or ('three' in jd.SplicingEvent()):
+                        critical_exon = gene+':'+three_prime
+                        exonid = three_prime
+                    elif ('alt-N-term' in jd.SplicingEvent()) or ('altPromoter' in jd.SplicingEvent()):
+                        critical_exon = gene+':'+five_prime
+                        exonid = five_prime
+                    elif ('alt-C-term' in jd.SplicingEvent()):
+                        critical_exon = gene+':'+three_prime
+                        exonid = three_prime
                 if critical_exon != None:
                     if critical_exon in regulated_critical_exons:
                         if len(regulated_critical_exons[critical_exon]) == 1:
@@ -1603,6 +1936,7 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
                                         ed.setScore(ed.Score()+'|'+ed2.Score())
                                         del regulated_critical_exons[critical_exon]
     for uid in regulated_critical_exons:
+        #if 'ENSG00000133083' in uid: print [uid]
         ls = regulated_critical_exons[uid]
         jd = regulated_critical_exons[uid][0]
         if len(ls)>1:
@@ -1634,19 +1968,18 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
     #returnLargeGlobalVars()
 
 if __name__ == '__main__':
+    import UI
     test_status = 'yes'
     data_type = 'ncRNA'
     data_type = 'mRNA'
-    array_type = 'RNASeq'
-    import UI
-    species = 'Hs'
-    loc = '/Users/nsalomonis/Desktop/LilachRNASeq_test'
-    summary_results_db = {'Hs_RNASeq_b_vs_a.ExpCutoff-2.0_average':''}
-    root_dir = '/Users/nsalomonis/Desktop/LilachRNASeq_test/'
-    species = 'Mm'
-    loc = '/Users/nsalomonis/Desktop/Bruneau-TopHat/day10-0'
-    summary_results_db = {'Mm_RNASeq_d10_vs_d0.ExpCutoff-3.0_average':''}
-    root_dir = '/Users/nsalomonis/Desktop/Bruneau-TopHat/day10-0/'
+    array_type = 'junction'
+    species = 'Hs' ### edit this
+    
+    summary_results_db = {}
+    summary_results_db['Hs_Junction_d14_vs_d7.p5_average-ASPIRE-exon-inclusion-results.txt'] = [] ### edit this
+    summary_results_db['Hs_Junction_d14_vs_d7.p5_average-splicing-index-exon-inclusion-results.txt'] = [] ### edit this
+    root_dir = 'C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/Combined-GSE14588_RAW/junction/' ### edit this
+    
     compareExonAndJunctionResults(species,array_type,summary_results_db,root_dir); sys.exit()
     
     fl = UI.ExpressionFileLocationData('','','',''); fl.setCELFileDir(loc); fl.setRootDir(loc)

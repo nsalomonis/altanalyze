@@ -21,6 +21,8 @@ import unique
 import math
 import random
 import copy
+try: import salstat_stats
+except Exception: null=[] #print 'WARNING! The library file "salstat_stats" is not installed'
 
 def LinearRegression_lm(ls1,ls2,return_rsqrd):
     intercept = 0 ### when forced through the origin
@@ -143,12 +145,12 @@ def pearson(array1,array2):
     except ZeroDivisionError:
         print "ZeroDivisionError encountered: likely due to all control and experimental folds equal to zero. Results from Excel and Access data truncation.",quit
     return r
-      
-def sum(array):
-    sum = 0
-    for value in array:
-        sum = sum + float(value)
-    return sum
+
+def maxval(array):
+    ### Same as _max_ but processes string values as floats
+    array2=[]
+    for i in array: array2.append(float(i))
+    return max(array2)
 
 def permute(list):
     if not list:                                        #shuffle any sequence
@@ -248,9 +250,8 @@ def permute_p(null_list,true_value,n):
     return float(y)/float(x), y,x,z
     
 def avg(array):
-    denominator = len(array)
-    total = float(sum(array))
-    average = total/denominator
+    total = sum(map(float, array))
+    average = total/len(array)
     return average
 
 def stdev(array):
@@ -268,6 +269,17 @@ def stdev(array):
     except ZeroDivisionError:
         s = 'null'
     return s
+
+def log_fold_conversion_fraction(array):
+    try:
+        new_array = []
+        for log_fold in array:
+            log_fold = float(log_fold)
+            real_fold = math.pow(2,log_fold); new_array.append(real_fold)
+    except TypeError:
+        log_fold = float(array)
+        new_array = math.pow(2,log_fold)
+    return new_array
 
 def log_fold_conversion(array):
     try:
@@ -362,6 +374,14 @@ def iqr(array):
     int_qrt_range = upper75th - lower25th
     return lower25th,median_val,upper75th,int_qrt_range
 
+def paired_ttest(list1,list2,tails,variance):
+    i=0; dx_list=[]
+    for x in list1:
+        dx = float(list2[i])-float(list1[i]); dx_list.append(dx)
+        i+=1
+    avg_x = avg(dx_list)
+    sx = stdev(dx_list)
+    
 def ttest(list1,list2,tails,variance):
         val_list1=[]
         val_list2=[]
@@ -539,15 +559,31 @@ def OneWayANOVA(arrays):
 def Ftest(arrays):
     k = len(arrays); swsq_num=0; swsq_den=(-1)*k; sbsq_num=0; sbsq_den=(k-1); xg,ng = GrandMean(arrays)
     for array in arrays:
-        n=len(array); x=avg(array); s=stdev(array)
-        var1=(n-1)*(s**2); var2=n*((x-xg)**2)
-        swsq_num += var1; swsq_den += n; sbsq_num += var2
+        try:
+            n=len(array); x=avg(array); s=stdev(array)
+            var1=(n-1)*(s**2); var2=n*((x-xg)**2)
+            swsq_num += var1; swsq_den += n; sbsq_num += var2
+        except Exception: null=[] ### Occurs when no variance - one sample for that group
     swsq = swsq_num/swsq_den; sbsq = sbsq_num/sbsq_den
     try: f = sbsq/swsq
     except ZeroDivisionError: f = 0
     df1=k-1; df2=ng-k
     return f,df1,df2
 
+def runComparisonStatistic(data_list1,data_list2,probability_statistic):
+    ### This function uses the salstat_stats module from the SalStat statistics package http://salstat.sourceforge.net/
+    ### This module is pure python and does not require other external libraries
+    tst = salstat_stats.TwoSampleTests(data_list1,data_list2)
+    # options = unpaired t-test|paired t-test|Kolmogorov Smirnov|Mann Whitney U|Rank Sums
+    if probability_statistic == 'paired t-test': p = tst.TTestPaired()
+    elif probability_statistic == 'Kolmogorov Smirnov': p = tst.KolmogorovSmirnov()
+    elif probability_statistic == 'Mann Whitney U': p = tst.MannWhitneyU()
+    elif probability_statistic == 'Rank Sums': p = tst.RankSums()
+    elif probability_statistic == 'unpaired t-test': p = tst.TTestUnpaired()
+    if float(p)<0: p = 1
+    elif float(p)>1: p = 1
+    return p
+    
 ###########Below Code Curtosey of Distribution functions and probabilities module
 """
 AUTHOR(S):  Sergio J. Rey sjrey@users.sourceforge.net

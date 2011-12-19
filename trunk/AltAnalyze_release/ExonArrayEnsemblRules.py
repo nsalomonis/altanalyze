@@ -517,6 +517,45 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
     probeset_gene_redundancy = eliminateRedundant(probeset_gene_redundancy)
     gene_transcript_redundancy = eliminateRedundant(gene_transcript_redundancy)
 
+    ### Added this new code to determine which transcript clusters uniquely detect a single gene (exon-level)
+    ### Note: this is a potentially lengthy step (added in version 2.0.5)
+    valid_gene_to_cluster_annotations={}; gene_transcript_redundancy2={}
+    for probeset_info in probeset_gene_redundancy:
+        probeset = probeset_info[0];start = int(probeset_info[1]); stop = int(probeset_info[2])
+        transcript_cluster_id = transcript_cluster_data[probeset][-1]
+        for ensembl_group in probeset_gene_redundancy[probeset_info]:
+            pos_ens,neg_ens = alignProbesetsToEnsembl([],[],start,stop,ensembl_group)
+            ens_gene = ensembl_group[0]
+            if len(pos_ens)>0:
+                try: valid_gene_to_cluster_annotations[transcript_cluster_id].append(ens_gene)
+                except Exception: valid_gene_to_cluster_annotations[transcript_cluster_id] = [ens_gene]
+    valid_gene_to_cluster_annotations = eliminateRedundant(valid_gene_to_cluster_annotations)
+    ### Remove probeset-gene and transcript_cluster-gene associations not supported by exon evidence
+    for tc in valid_gene_to_cluster_annotations:
+        for gene in valid_gene_to_cluster_annotations[tc]:
+            try: gene_transcript_redundancy2[gene].append(tc)
+            except Exception: gene_transcript_redundancy[gene] = [tc]
+    for probeset_info in probeset_gene_redundancy:
+        transcript_cluster_id = transcript_cluster_data[probeset][-1]
+        if transcript_cluster_id in valid_gene_to_cluster_annotations: ### If not, don't change the existing relationships
+            keep=[]
+            for ensembl_group in probeset_gene_redundancy[probeset_info]:
+                ens_gene = ensembl_group[0]
+                if ens_gene in valid_gene_to_cluster_annotations[transcript_cluster_id]: keep.append(ensembl_group)
+            probeset_gene_redundancy[probeset_info] = keep  ### Replace the existing with this filtered list    
+        else: 
+            del probeset_gene_redundancy[probeset_info]
+    trans_annotation_db = valid_gene_to_cluster_annotations
+    gene_transcript_redundancy = gene_transcript_redundancy2
+    ensembl_probeset_db2 = {}
+    for (geneid,chr,strand) in ensembl_probeset_db:
+        for probeset_data in ensembl_probeset_db[(geneid,chr,strand)]:
+            start,stop,probeset_id,exon_class,transcript_cluster_id = probeset_data
+            if (geneid,chr,strand) in probeset_gene_redundancy[probeset_id,start,stop]:
+                try: ensembl_probeset_db2[(geneid,chr,strand)].append(probeset_data)
+                except Exception: ensembl_probeset_db2[(geneid,chr,strand)] = [probeset_data]
+    ensembl_probeset_db = ensembl_probeset_db2
+    
     ###First check for many transcript IDs associating with one Ensembl
     remove_transcripts_clusters={}
     for geneid in gene_transcript_redundancy:
@@ -527,7 +566,9 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
                     ensembl_list = trans_annotation_db[transcript_cluster_id]
                     #[] ['3890870', '3890907', '3890909', '3890911'] ENSG00000124209
                     if transcript_cluster_id in test_cluster: print ensembl_list,transcript_cluster_id_list,geneid                   
-                    if geneid not in ensembl_list: remove_transcripts_clusters[transcript_cluster_id]=[]
+                    if geneid not in ensembl_list:
+                        try: remove_transcripts_clusters[transcript_cluster_id].append(geneid)
+                        except Exception: remove_transcripts_clusters[transcript_cluster_id]=[geneid]
  
     """
     ###Perform a multi-step more refined search and remove transcript_clusters identified from above, that have no annotated Ensembl gene               
@@ -589,17 +630,21 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
         ensembl_list1 = probeset_gene_redundancy[probeset_info]
         ###First check to see if any probeset in the transcript_cluster_id should be eliminated
         if transcript_cluster_id in remove_transcripts_clusters:
+            remove_genes = remove_transcripts_clusters[transcript_cluster_id]
             pos_ens=[]; neg_ens=[]
             for ensembl_group in ensembl_list1: ###Ensembl group cooresponds to the exon_cluster dictionary key
                 pos_ens,neg_ens = alignProbesetsToEnsembl(pos_ens,neg_ens,start,stop,ensembl_group)
             #if probeset == '3869901': print pos_ens,neg_ens, ensembl_list1,probeset;kill
             pos_ens = makeUnique(pos_ens); neg_ens = makeUnique(neg_ens)
+            #if probeset == 3161639: print pos_ens, transcript_cluster_id, neg_ens;sys.exit()
             if len(pos_ens)!=1:
                 ###if there are no probesets aligning to exons or probesets aligning to exons in multiple genes, remove these
                 for ensembl_group in pos_ens:
                     try: remove_probesets[ensembl_group].append(probeset)
                     except KeyError: remove_probesets[ensembl_group] = [probeset]
                 for ensembl_group in neg_ens:
+                    #ens_to_remove = ensembl_group[0]
+                    #if ens_to_remove in remove_genes:
                     try: remove_probesets[ensembl_group].append(probeset)
                     except KeyError: remove_probesets[ensembl_group] = [probeset]
             else:
@@ -630,6 +675,7 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
                     if exon_found == 0:
                         neg_ens.append(ensembl_group) 
             pos_ens = unique.unique(pos_ens); neg_ens = unique.unique(neg_ens)
+            #if probeset == 3161639: print 'b',pos_ens, transcript_cluster_id, neg_ens;sys.exit()
             if len(pos_ens) == 1:
                 l += 1
                 for ensembl_group in neg_ens:
@@ -646,7 +692,7 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
                     try: remove_probesets[ensembl_group].append(probeset)
                     except KeyError: remove_probesets[ensembl_group] = [probeset]    
                     #if probeset == '3890871': print ensembl_group,ensembl_list1, probeset;kill
-                    
+                 
     ensembl_probeset_db = removeRedundantProbesets(ensembl_probeset_db,remove_probesets)
     print "Number of Probesets linked to Ensembl entries:", y
     print "Number of Probesets occuring in multiple Ensembl genes:",x
@@ -802,19 +848,21 @@ def reimportEnsemblProbesets(filename):
             #probeset_id=t[0];ensembl_gene_id=t[1];chr=t[2];strand=t[3];start=t[4];stop=t[5];exon_class=t[6]
             probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chromosome, strand, probeset_start, probeset_stop, affy_class, constitutive_probeset, ens_exon_ids, exon_annotations,regionid,r_start,r_stop,splice_event,splice_junctions = string.split(line,'\t')
             probe_data = ensembl_gene_id,transcript_cluster_id,exon_id,ens_exon_ids,affy_class#,exon_annotations,constitutive_probeset
-            probe_association_db[probeset_id] = probe_data
-            if constitutive_probeset == 'yes':
-                proceed = 'yes'
-                if 'RNASeq' in filename:
-                    ### Restrict the analysis to exon RPKM or count data for constitutive calculation
-                    if 'exon' in biotypes:
-                        if '-' in probeset_id: proceed = 'no'
-                if proceed == 'yes':
+            proceed = 'yes'
+            """
+            if 'RNASeq' in filename:
+                ### Restrict the analysis to exon RPKM or count data for constitutive calculation
+                if 'exon' in biotypes:
+                    if '-' in probeset_id: proceed = 'no'
+            """
+            if proceed == 'yes':
+                probe_association_db[probeset_id] = probe_data
+                if constitutive_probeset == 'yes':
                     try: constitutive_db[ensembl_gene_id].append(probeset_id)
                     except KeyError: constitutive_db[ensembl_gene_id] = [probeset_id]
-            else: ### There was a bug here that resulted in no entries added (AltAnalyze version 1.15) --- because constitutive selection options have changed, should not have been an issue
-                try: constitutive_original_db[ensembl_gene_id].append(probeset_id)
-                except KeyError: constitutive_original_db[ensembl_gene_id] = [probeset_id]
+                else: ### There was a bug here that resulted in no entries added (AltAnalyze version 1.15) --- because constitutive selection options have changed, should not have been an issue
+                    try: constitutive_original_db[ensembl_gene_id].append(probeset_id)
+                    except KeyError: constitutive_original_db[ensembl_gene_id] = [probeset_id]
             x+=1  
      ###If no constitutive probesets for a gene as a result of additional filtering (removing all probesets associated with a splice event), add these back
     for gene in constitutive_original_db:
@@ -900,15 +948,15 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
     ###     annotate_db[gene] = definition, symbol,rna_processing
     global species; species = Species; global export_probeset_mRNA_associationsg; global biotypes
     global test; global test_cluster; global filter_sgv_output; global arraytype
-    export_probeset_mRNA_associations = 'no'
+    export_probeset_mRNA_associations = 'no'; biotypes = ''
     if source_biotype == 'junction': arraytype = 'junction'; source_biotype = 'mRNA'
     elif source_biotype == 'gene': arraytype = 'gene'; source_biotype = 'mRNA'
-    elif 'RNASeq' in source_biotype: arraytype,biotypes,database_root_dir = source_biotype; source_biotype = 'mRNA'
-    else: arraytype = 'exon'; biotypes = ''
+    elif 'RNASeq' in source_biotype: arraytype,database_root_dir = source_biotype; source_biotype = 'mRNA'
+    else: arraytype = 'exon'
     filter_sgv_output = 'no'
-    test = 'no'
-    test_cluster = [3811670, 3811714, 3811716, 3811718]
-    test_cluster = [2334476]
+    test = 'yes'
+    test_cluster = [3161519, 3161559, 3161561, 3161564, 3161566, 3161706, 3161710, 3161712]
+    #test_cluster = [2334476]
     partial_process = 'no'; status = 'null'
     if process_from_scratch == 'yes':
         if partial_process == 'no':

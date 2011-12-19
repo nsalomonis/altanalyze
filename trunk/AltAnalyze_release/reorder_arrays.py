@@ -81,12 +81,14 @@ class GroupStats:
     def Index(self): return self.index
     def SetAdjP(self,adjp): self.adj_p = adjp
     def AdjP(self): return str(self.adj_p)
+    def setMaxCount(self,max_count): self.max_count = max_count
+    def MaxCount(self): return self.max_count
     def Report(self):
         output = self.GroupName()+'|'+self.Pval()
         return output
     def __repr__(self): return self.Report()
 
-def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type):
+def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type,norm,probability_statistic):
     ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
     expbuilder_value_db = {}; group_name_db = {}; summary_filtering_stats = {}; pval_summary_db= {}
     
@@ -106,7 +108,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             #for example y = 5, therefore the data[row_id][5] entry is now the first
             try:
                 try: new_item = data[row_id][y]
-                except IndexError: print row_id, len(data[row_id]),y,len(array_order),array_order;kill
+                except IndexError: print row_id,data[row_id],len(data[row_id]),y,len(array_order),array_order;kill
             except TypeError: new_item = ''  #this is for a spacer added in the above function
             try: grouped_ordered_array_list[group].append(new_item)
             except KeyError: grouped_ordered_array_list[group] = [new_item]
@@ -131,7 +133,10 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             try:
                 #t,df,tails = statistics.ttest(data_list1,data_list2,2,3) #unpaired student ttest, calls p_value function
                 #t = abs(t); df = round(df); p = str(statistics.t_probability(t,df))
-                p  = statistics.OneWayANOVA([data_list1,data_list2])
+                if probability_statistic == 'unpaired t-test':
+                    p = statistics.OneWayANOVA([data_list1,data_list2])
+                else:
+                    p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
             except Exception: p = 1
             comp = group1,group2
             try:
@@ -139,7 +144,9 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                 stat_results[comp] = groups_name,gs,group2_name
             except TypeError: print comp, len(stat_results); kill_program
             if array_type == 'RNASeq':
-                avg1 = math.pow(2,avg1)-1; avg2 = math.pow(2,avg2)-1
+                if norm == 'RPKM': adj = 0
+                else: adj = 1
+                avg1 = math.pow(2,avg1)-adj; avg2 = math.pow(2,avg2)-adj
             group_summary_results[group1] = group1_name,[avg1]
             group_summary_results[group2] = group2_name,[avg2]
 
@@ -175,7 +182,9 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             if include_raw_data == 'yes': ###optionally exclude the raw values
                 for value in original_data_values:
                     if array_type == 'RNASeq':
-                        value = math.pow(2,value)-1
+                        if norm == 'RPKM': adj = 0
+                        else: adj = 1
+                        value = math.pow(2,value)-adj
                     try: expbuilder_value_db[row_id].append(value)
                     except KeyError: expbuilder_value_db[row_id] = [value]
             if group_number in group_summary_results:

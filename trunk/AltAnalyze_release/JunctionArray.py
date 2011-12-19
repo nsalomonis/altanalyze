@@ -311,7 +311,7 @@ def exportUpdatedJunctionComps(species,array_type):
         data,status = RNASeq.AppendOrWrite(probeset_junction_export) ### Creates a new file or appends if already existing (import is chromosome by chromosome)
     else:
         data = export.ExportFile(probeset_junction_export); status = 'not found'
-        
+    
     if array_type != 'RNASeq': print "Exporting",probeset_junction_export
     if status == 'not found':
         title = 'gene'+'\t'+'critical_exon'+'\t'+'exclusion_junction_region'+'\t'+'inclusion_junction_region'+'\t'+'exclusion_probeset'+'\t'+'inclusion_probeset'+'\t'+'data_source'+'\n'
@@ -1254,7 +1254,7 @@ def inferJunctionComps(species,array_type):
                         else: block = e1a3[0]; side = 'left'; critical_intron = exon_3prime_original
                         try: common_exon_blocks_intron[side,gene,block].append([regionid,probeset,critical_intron])
                         except KeyError: common_exon_blocks_intron[side,gene,block] = [[regionid,probeset,critical_intron]]
-    
+        
     if array_type != 'RNASeq':               
         print count, 'probed junctions being compared to identify putative reciprocal junction comparisons'
     critical_exon_db, critical_gene_junction_db = EnsemblImport.compareJunctions(species,putative_as_junction_db,{})
@@ -1298,9 +1298,10 @@ def inferJunctionComps(species,array_type):
                 
     if array_type != 'RNASeq':
         print count, 'Inferred junctions identified with',redundant, 'redundant.'
-        
+    
     ### Compare exon and intron blocks for intron alinging junctions
     junction_inclusion_db = annotateNovelIntronSplicingEvents(common_exon_blocks_intron,common_exon_blocks_exon,junction_inclusion_db)
+
     if len(root_dir)>0: exportUpdatedJunctionComps((species,root_dir),array_type)
     else: exportUpdatedJunctionComps(species,array_type)
     

@@ -789,8 +789,28 @@ def verifyFile(filename,species):
         import update; reload(update)
         print 'Downloading:',server_folder,filename
         update.downloadCurrentVersion(filename,server_folder,'txt')
-    
+
+def reformatGeneToMiR(species):
+    ### Import and re-format the miRNA-gene annotation file for use with GO-Elite (too big to do in Excel)
+    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt'
+    fn=filepath(filename); reformatted=[]
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        miR,ens,source = string.split(data,'\t')
+        reformatted.append([ens,'En',miR])
+        
+    filename = string.replace(filename,'.txt','-GOElite.txt')
+    data = export.ExportFile(filename)
+    ### Make title row
+    headers=['GeneID','SystemCode','Pathway']
+    headers = string.join(headers,'\t')+'\n'; data.write(headers)
+    for values in reformatted:
+        values = string.join(values,'\t')+'\n'; data.write(values)
+    data.close()
+    print filename,'exported...'
+            
 if __name__ == '__main__':
-    a = 'Ag'; b = 'Hs'; c = 'Rn'
-    species = b; force = 'no'
-    runProgram(species,force,'no'); sys.exit()
+    a = 'Ag'; b = 'Hs'; c = 'Rn'; d = 'Mm'
+    species = d; force = 'no'
+    reformatGeneToMiR(d)
+    #runProgram(species,force,'no'); sys.exit()

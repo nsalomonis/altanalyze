@@ -27,6 +27,8 @@ import unique
 import datetime
 import export
 import update
+import gene_associations
+import OBO_import
 ################# Parse directory files
 
 def filepath(filename):
@@ -129,6 +131,12 @@ class AffymetrixInformation:
         return pathway_str
     def resetEnsembl(self,ensembl): self._ensembl = ensembl
     def resetEntrez(self,entrez): self._entrez = entrez
+    def setSequence(self,seq): self.seq = seq
+    def setSpecies(self,species): self.species = species
+    def setCoordinates(self,coordinates): self.coordinates = coordinates
+    def Sequence(self): return self.seq
+    def Species(self): return self.species
+    def Coordinates(self): return self.coordinates
     def ArrayValues(self):
         output = self.Symbol()+'|'+self.ArrayID()
         return output
@@ -206,6 +214,13 @@ def parse_affymetrix_annotations(filename,species):
                     if 'RefSeq Protein' in affy_headers[y]: rp = y
                     if 'RefSeq Transcript' in affy_headers[y]: rt = y
                     if 'athway' in affy_headers[y]: gp = y
+                    ### miRNA array specific
+                    if 'Alignments' == affy_headers[y]: al = y
+                    if 'Transcript ID(Array Design)' in affy_headers[y]: ti = y
+                    if 'Sequence Type' in affy_headers[y]: st = y
+                    if 'Sequence' == affy_headers[y]: sq = y
+                    if 'Species Scientific Name' == affy_headers[y]: ss = y
+                    
                     if mod_name in affy_headers[y]: mn = y
                     y += 1
         elif x == 1:
@@ -218,13 +233,15 @@ def parse_affymetrix_annotations(filename,species):
                     probesets = [probeset,transcript_cluster]
                 else: probesets = [probeset]
                 ps = tc; version = 2 ### Used to define where the non-UID data exists
-            except UnboundLocalError: probesets = [affy_data[ps]]; version = 1
+            except UnboundLocalError:
+                try: probesets = [affy_data[ps]]; uniprot = affy_data[sp]; version = 1
+                except Exception: probesets = [affy_data[ps]]; version = 3 ### Specific to miRNA arrays
             
             try: uniprot = affy_data[sp]; unigene = affy_data[ug]; uniprot_list = string.split(uniprot,' /// ')
-            except IndexError: uniprot=''; unigene=''; uniprot_list=[] ### This occurs due to a random python error, typically once twice in the file
+            except Exception: uniprot=''; unigene=''; uniprot_list=[] ### This occurs due to miRNA array or a random python error, typically once twice in the file
             symbol = ''; description = ''
             try: pathway_data = affy_data[gp]
-            except IndexError: pathway_data='' ### This occurs due to a random python error, typically once twice in the file
+            except Exception: pathway_data='' ### This occurs due to miRNA array or a random python error, typically once twice in the file
             for probeset in probesets:
                 if version == 1: ###Applies to 3' biased arrays only (Conventional Format)
                     description = affy_data[gt]; symbol = affy_data[gs]; goa=''; entrez = affy_data[ll]
@@ -234,6 +251,7 @@ def parse_affymetrix_annotations(filename,species):
                     try: mod = affy_data[mn]; mod_list = string.split(mod,' /// ')
                     except UnboundLocalError: mod = ''; mod_list = []
                     if len(symbol)<1 and len(mod)>0: symbol = mod ### For example, for At, use Tair if no symbol present
+                    if len(mod_list)>3: mod_list=[]
                     ref_prot = affy_data[rp]; ref_prot_list = string.split(ref_prot,' /// ')
                     ref_tran = affy_data[rt]; ref_tran_list = string.split(ref_tran,' /// ')
                     ###Process GO information if desired
@@ -251,7 +269,7 @@ def parse_affymetrix_annotations(filename,species):
                     ai = AffymetrixInformation(probeset, symbol, ensembl_list, entrez_list, unigene_list, uniprot_list, description, goids, go_names, pathways)
                     if len(entrez_list)<5: affy_annotation_db[probeset] = ai
                     if parse_wikipathways == 'yes':
-                        if (len(entrez_list)<4 and len(entrez_list)>0) or (len(ensembl_list)<4 and len(ensembl_list)>0):
+                        if (len(entrez_list)<4 and len(entrez_list)>0) and (len(ensembl_list)<4 and len(ensembl_list)>0):
                             primary_list = entrez_list+ensembl_list
                             for primary in primary_list:
                                 if len(primary)>0:
@@ -286,7 +304,7 @@ def parse_affymetrix_annotations(filename,species):
                             z = InferredEntrezInformation(symbol,ensembl,description)
                             try: gene_annotation_db['ENS:'+ensembl] = z
                             except NameError: null=[]
-                else: ### Applies to Exon, Transcript, whole geneome Gene arrays.
+                elif version == 2: ### Applies to Exon, Transcript, whole geneome Gene arrays.
                     uniprot_list2 = []
                     for uniprot_id in uniprot_list:
                         if len(uniprot_id)>0:
@@ -344,7 +362,7 @@ def parse_affymetrix_annotations(filename,species):
                             except Exception: null = []
                     ###Only applies to optional GOID inclusion
                     if parse_wikipathways == 'yes':
-                        if (len(entrez_list)<4 and len(entrez_list)>0) or (len(ensembl_list)<4 and len(ensembl_list)>0):
+                        if (len(entrez_list)<4 and len(entrez_list)>0) and (len(ensembl_list)<4 and len(ensembl_list)>0):
                             primary_list = entrez_list+ensembl_list
                             for primary in primary_list:
                                 if len(primary)>0:
@@ -382,8 +400,16 @@ def parse_affymetrix_annotations(filename,species):
                         if description[0] == ' ': description = description[1:] ### some entries begin with a blank
                     ai = AffymetrixInformation(probeset,symbol,ensembl_list,entrez_list,unigene_list,uniprot_list,description,goids,go_names,pathways)
                     if len(entrez_list)<5 and len(ensembl_list)<5: affy_annotation_db[probeset] = ai
+                elif version == 3:
+                    description = affy_data[st]; symbol = affy_data[ti]
+                    ai = AffymetrixInformation(probeset, symbol, [], [], [], [], description, [], [], [])
+                    ai.setSequence(affy_data[sq])
+                    ai.setSpecies(affy_data[ss])
+                    ai.setCoordinates(affy_data[al])
+                    affy_annotation_db[probeset] = ai
     print 'Affymetrix CSV annotations imported..'
-    
+    return version
+
 def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use_go):
     import gene_associations; import time
     start_time = time.time()
@@ -419,9 +445,9 @@ def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use
         try: gene_to_go_eg = gene_associations.importGeneGOData(species_code,'EntrezGene','null')
         except Exception: gene_to_go_eg = {}
         print '* *',
-        component_db,process_db,function_db = annotateGOElitePathways('GO',go_annotations,gene_to_go_ens,ens_to_array)
+        component_db,process_db,function_db,selected_array_ens = annotateGOElitePathways('GO',go_annotations,gene_to_go_ens,ens_to_array)
         print '* *',
-        component_eg_db,process_eg_db,function_eg_db = annotateGOElitePathways('GO',go_annotations,gene_to_go_eg,eg_to_array)
+        component_eg_db,process_eg_db,function_eg_db,selected_array_eg = annotateGOElitePathways('GO',go_annotations,gene_to_go_eg,eg_to_array)
         print '* *',
         component_db = combineDBs(component_eg_db,component_db)
         print '* *',
@@ -435,17 +461,27 @@ def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use
         for uid in ens_to_array[gene]: unique_arrayids[uid]=[]
     for gene in eg_to_array:
         for uid in eg_to_array[gene]: unique_arrayids[uid]=[]
-    
+                
     array_ens_mapp_db = annotateGOElitePathways('MAPP','',gene_to_mapp_ens,ens_to_array)
     array_eg_mapp_db = annotateGOElitePathways('MAPP','',gene_to_mapp_eg,eg_to_array)
     array_mapp_db = combineDBs(array_ens_mapp_db,array_eg_mapp_db)
     print '* *',
     array_to_ens = swapKeyValues(ens_to_array)
     array_to_eg = swapKeyValues(eg_to_array)
-    
+
+    for uid in selected_array_ens:
+        gene = selected_array_ens[uid] ### Best candidate gene of several
+        array_to_ens[uid].remove(gene) ### Delete the first instance of this Ensembl
+        array_to_ens[uid].append(gene); array_to_ens[uid].reverse() ### Make the first ID 
+
+    for uid in selected_array_eg:
+        gene = selected_array_eg[uid]
+        array_to_eg[uid].remove(gene) ### Delete the first instance of this Ensembl
+        array_to_eg[uid].append(gene); array_to_eg[uid].reverse() ### Make the first ID
+        
     global array_symbols; global array_descriptions; array_symbols={}; array_descriptions={}
-    getArrayIDAnnotations(ens_to_array,ens_annotations)
-    getArrayIDAnnotations(eg_to_array,eg_annotations)
+    getArrayIDAnnotations(array_to_ens,ens_annotations,'Ensembl')
+    getArrayIDAnnotations(array_to_eg,eg_annotations,'Entrez')
     print '* *',
     for arrayid in unique_arrayids:
         try: component_names = component_db[arrayid]
@@ -525,7 +561,7 @@ def getEnsemblAnnotationsFromGOElite(species_code):
 
     try: gene_to_go_ens = gene_associations.importGeneGOData(species_code,'Ensembl','null')
     except Exception: gene_to_go_ens = {}
-
+    
     component_db={}; process_db={}; function_db={}; all_genes={}
     for gene in gene_to_go_ens:
         all_genes[gene]=[]
@@ -534,13 +570,13 @@ def getEnsemblAnnotationsFromGOElite(species_code):
                 s = go_annotations[goid]
                 go_name = string.replace(s.GOName(),'\\','')
                 gotype = s.GOType()
-                if gotype == 'C':
+                if gotype[0] == 'C' or gotype[0] == 'c':
                     try: component_db[gene].append(go_name)
                     except KeyError: component_db[gene] = [go_name]
-                if gotype == 'P':
+                elif gotype[0] == 'P' or gotype[0] == 'p':
                     try: process_db[gene].append(go_name)
                     except KeyError: process_db[gene] = [go_name]
-                if gotype == 'F':
+                elif gotype[0] == 'F' or gotype[0] == 'f':
                     try: function_db[gene].append(go_name)
                     except KeyError: function_db[gene] = [go_name]
                     
@@ -559,16 +595,15 @@ def getEnsemblAnnotationsFromGOElite(species_code):
     print len(all_genes),'Ensembl GO/pathway annotations imported in',time_diff, 'seconds'
     return all_genes
 
-def getArrayIDAnnotations(gene_to_uid,gene_annotations):
-    for gene in gene_annotations:
-        if gene in gene_to_uid:
-            uids = gene_to_uid[gene]
-            s = gene_annotations[gene]
-            if len(s.Symbol()) > 0:
-                for uid in uids:
+def getArrayIDAnnotations(uid_to_gene,gene_annotations,gene_type):
+    for uid in uid_to_gene:
+        gene = uid_to_gene[uid][0]
+        if gene in gene_annotations:
+                s = gene_annotations[gene]
+                if len(s.Symbol()) > 0:
                     array_symbols[uid] = s.Symbol()
                     array_descriptions[uid] = s.Description()
-                
+
 def combineDBs(db1,db2):
     for i in db1:
         try: db1[i]+=db2[i]
@@ -580,12 +615,15 @@ def combineDBs(db1,db2):
     return db1
 
 def annotateGOElitePathways(pathway_type,go_annotations,gene_to_pathway,gene_to_uid):
-    array_pathway_db={}
+    array_pathway_db={}; determine_best_geneID={}
     for gene in gene_to_uid:
-        try:
-            pathways = gene_to_pathway[gene]
+        #if gene == 'ENSG00000233911': print gene_to_uid[gene],len(gene_to_pathway[gene]),'b'
+        try: pathways = gene_to_pathway[gene]
+        except Exception: pathways=[]
+        for arrayid in gene_to_uid[gene]:
+            #if arrayid == '208286_x_at': print 'a',[gene]
             for pathway in pathways:
-                for arrayid in gene_to_uid[gene]:           
+                try:
                     if pathway_type == 'GO':
                         s = go_annotations[pathway]
                         go_name = string.replace(s.GOName(),'\\','')
@@ -594,16 +632,36 @@ def annotateGOElitePathways(pathway_type,go_annotations,gene_to_pathway,gene_to_
                     else:
                         try: array_pathway_db[arrayid].append(pathway + '(WikiPathways)')
                         except Exception: array_pathway_db[arrayid] = [pathway + '(WikiPathways)']
-        except Exception: null=[]
+                except Exception: null=[] ### if GOID not found in annotation database
+            if pathway_type == 'GO':
+                try: determine_best_geneID[arrayid].append([len(pathways),gene])
+                except Exception: determine_best_geneID[arrayid]=[[len(pathways),gene]]
                                     
     array_pathway_db = eliminate_redundant_dict_values(array_pathway_db)
     if pathway_type == 'GO':
-        component_db={}; process_db={}; function_db={}
+        ### First, see which gene has the best GO annotations for an arrayID
+        selected_array_gene={}
+        for arrayid in determine_best_geneID:
+            if len(determine_best_geneID[arrayid])>1:
+                determine_best_geneID[arrayid].sort()
+                count,gene = determine_best_geneID[arrayid][-1] ### gene with the most GO annotations associated
+                ### The below is code that appears to be necessary when non-chromosomal Ensembl genes with same name and annotation
+                ### are present. When this happens, the lowest sorted Ensembl tends to be the real chromosomal instance
+                determine_best_geneID[arrayid].reverse()
+                #if arrayid == '208286_x_at': print determine_best_geneID[arrayid]
+                for (count2,gene2) in determine_best_geneID[arrayid]:
+                    #if arrayid == '208286_x_at': print count2,gene2
+                    if count == count2: gene = gene2
+                    else: break
+                    
+                selected_array_gene[arrayid] = gene
+            
+        component_db={}; process_db={}; function_db={}; determine_best_geneID=[] 
         for (arrayid,gotype) in array_pathway_db:
-            if gotype == 'C': component_db[arrayid] = array_pathway_db[(arrayid,gotype)]
-            if gotype == 'P': process_db[arrayid] = array_pathway_db[(arrayid,gotype)]
-            if gotype == 'F': function_db[arrayid] = array_pathway_db[(arrayid,gotype)]
-        return component_db,process_db,function_db
+            if string.lower(gotype[0]) == 'c': component_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+            elif string.lower(gotype[0]) == 'p': process_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+            if string.lower(gotype[0]) == 'f': function_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+        return component_db,process_db,function_db,selected_array_gene
     else: return array_pathway_db
 
 def extractPathwayData(terms,type,version):
@@ -845,7 +903,23 @@ def parseGene2GO(tax_id,species,overwrite_prev,rewrite_existing):
     else: print 'No NCBI Gene Ontology support for this species'
     return 'run'
 
-def importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,integrate_affy_associations,overwrite_affycsv):
+
+def getMetaboliteIDTranslations(species_code):
+    mod = 'HMDB'; meta_metabolite_db={}
+    meta_metabolite_db = importMetaboliteIDs(species_code,mod,'CAS',meta_metabolite_db)
+    meta_metabolite_db = importMetaboliteIDs(species_code,mod,'ChEBI',meta_metabolite_db)
+    meta_metabolite_db = importMetaboliteIDs(species_code,mod,'PubChem',meta_metabolite_db)
+    return meta_metabolite_db
+
+def importMetaboliteIDs(species_code,mod,source,meta_metabolite_db):
+    mod_source = mod+'-'+source
+    gene_to_source_id = gene_associations.getGeneToUid(species_code,mod_source)
+    source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
+    print mod_source, 'relationships imported'
+    meta_metabolite_db[source] = source_to_gene
+    return meta_metabolite_db
+        
+def importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,integrate_affy_associations,relationship_type,overwrite_affycsv):
     global wikipathways_file; global overwrite_previous
     overwrite_previous = overwrite_affycsv
     program_type,database_dir = unique.whatProgramIsThis()
@@ -853,9 +927,12 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
     else: database_dir = '/BuildDBs'
     import_dir = database_dir+'/wikipathways'
     g = GrabFiles(); g.setdirectory(import_dir); wikipathway_gene_db={}; eg_wikipathway_db={}; ens_wikipathway_db={}
-    filename = g.searchdirectory('wikipathways') ###Identify gene files corresponding to a particular MOD
+    search_term = relationship_type+'_data_'+species_full
+    #search_term = 'wikipathways'
+    filename = g.searchdirectory(search_term) ###Identify gene files corresponding to a particular MOD
     print "Parsing",filename; wikipathways_file = string.split(filename,'/')[-1]
     print "Extracting data for species:",species_full,species
+
     if len(filename)>1:
         fn=filepath(filename); gene_go={}; x = 0
         for line in open(fn,'rU').readlines():             
@@ -869,83 +946,231 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                     if 'UniGene' in t[y]: ug = y
                     if 'Entrez' in t[y]: ll = y
                     if 'SwissProt' in t[y]: sp = y
+                    if 'Uniprot' in t[y]: sp = y
                     if 'RefSeq' in t[y]: rt = y
                     if 'MOD' in t[y]: md= y
                     if 'Pathway Name' in t[y]: pn = y
                     if 'Organism' in t[y]: og= y
                     if 'Url to WikiPathways' in t[y]: ur= y
+                    if 'PubChem' in t[y]: pc = y
+                    if 'CAS' in t[y]: cs = y
+                    if 'ChEBI' in t[y]: cb = y
                     y += 1
             else:
-                ensembl = t[ens]; unigene = t[ug]; uniprot = t[sp]; refseq = t[rt]; mod = t[md]; entrez = t[ll]
+                try: ensembl = t[ens]; unigene = t[ug]; uniprot = t[sp]; refseq = t[rt]; mod = t[md]; entrez = t[ll]
+                except Exception: print '\nWARNING...errors were encountered when processing the line',[line]; print 'Errors in the WP file are present!!!!\n'; print [last_line]; sys.exit(); continue
+                last_line = line
+                
                 ensembl = splitEntry(ensembl); unigene = splitEntry(unigene); uniprot = splitEntry(uniprot)
                 pathway_name = t[pn]; organism = t[og]; wikipathways_url = t[ur]; entrez = splitEntry(entrez);
-                refseq = splitEntry(refseq); mod = splitEntry(mod); mod2 = []
+                refseq = splitEntry(refseq); mod = splitOthers(mod); mod2 = []
+                try: pubchem = t[pc]; cas = t[cs]; chemEBI = t[cb]
+                except Exception:
+                    pubchem=''; cas=''; chemEBI=''
+                    if x==1: print 'WARNING!!! Metabolite Identifiers missing from WikiPathways file.'
+                x+=1
+                pubchem = splitEntry(pubchem); cas = splitEntry(cas); chemEBI = splitEntry(chemEBI)
+                htp,url,wpid = string.split(wikipathways_url,':')
+                pathway_name = pathway_name +':'+ wpid
                 for m in mod: mod2.append('mod:'+m); mod = mod2
+                #relationship_type
                 gene_ids = mod+ensembl+unigene+uniprot+refseq+entrez
                 if organism == species_full:
-                    for gene_id in gene_ids:
-                        if len(gene_id)>1:
-                            try: wikipathway_gene_db[gene_id].append(pathway_name)
-                            except KeyError: wikipathway_gene_db[gene_id] = [pathway_name]
-                    for gene_id in ensembl:
-                        if len(gene_id)>1:
-                            try: ens_wikipathway_db[pathway_name].append(gene_id)
-                            except KeyError: ens_wikipathway_db[pathway_name] = [gene_id]
-                    for gene_id in entrez:
-                        if len(gene_id)>1:
-                            try: eg_wikipathway_db[pathway_name].append(gene_id)
-                            except KeyError: eg_wikipathway_db[pathway_name] = [gene_id]
-                        
-        print "Number of unique gene IDs linked to Wikipathways for species:",len(wikipathway_gene_db)
-        parse_wikipathways = 'yes'
-        buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv)
-        """global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
-        global ens_to_uid; global entrez_to_uid; global entrez_annotations; global parse_wikipathways
+                    if relationship_type == 'mapped':
+                        for id in pubchem:
+                            try: wikipathway_gene_db[id].append(('PubChem',pathway_name))
+                            except Exception: wikipathway_gene_db[id] = [('PubChem',pathway_name)]
+                        for id in cas:
+                            try: wikipathway_gene_db[id].append(('CAS',pathway_name))
+                            except Exception: wikipathway_gene_db[id] = [('CAS',pathway_name)]
+                        for id in chemEBI:
+                            try: wikipathway_gene_db[id].append(('ChEBI',pathway_name))
+                            except Exception: wikipathway_gene_db[id] = [('ChEBI',pathway_name)]
+                    else:
+                        for gene_id in gene_ids:
+                            if len(gene_id)>1:
+                                try: wikipathway_gene_db[gene_id].append(pathway_name)
+                                except KeyError: wikipathway_gene_db[gene_id] = [pathway_name]
+                                
+                        for gene_id in ensembl:
+                            if len(gene_id)>1:
+                                try: ens_wikipathway_db[pathway_name].append(gene_id)
+                                except KeyError: ens_wikipathway_db[pathway_name] = [gene_id]
+                        for gene_id in entrez:
+                            if len(gene_id)>1:
+                                try: eg_wikipathway_db[pathway_name].append(gene_id)
+                                except KeyError: eg_wikipathway_db[pathway_name] = [gene_id]
 
-        parse_wikipathways = 'yes'        
-        import_dir = '/BuildDBs/Affymetrix/'+species
-        dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-        for affy_data in dir_list:    #loop through each file in the directory to output results
-            affy_data_dir = 'BuildDBs/Affymetrix/'+species+'/'+affy_data
-            parse_affymetrix_annotations(affy_data_dir,species)"""
-        #if len(affy_annotation_db)>0 or len(meta)>0:
-        try:
-            print len(meta), "gene relationships imported"
-            print len(wikipathway_gene_db), "gene IDs extracted from Wikipathway pathways"
-            """for (primary,gene_id) in meta:
-                if gene_id == 'NP_598767': print wikipathway_gene_db[gene_id];kill"""
-            ### Since relationships are inferred in new versions of the WikiPathways tables, we don't require meta
-            for (primary,gene_id) in meta:
-                try:
-                    pathway_names = wikipathway_gene_db[gene_id]
-                    for pathway in pathway_names:
-                        if 'ENS' in primary:
-                            try: ens_wikipathway_db[pathway].append(primary)
-                            except KeyError: ens_wikipathway_db[pathway] = [primary]
+        if incorporate_previous_associations == 'yes':
+            if relationship_type == 'mapped':
+                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'HMDB')
+                except Exception: gene_to_mapp = {}
+                for id in gene_to_mapp:
+                    for pathway_name in gene_to_mapp[id]:
+                        try: wikipathway_gene_db[id].append(('HMDB',pathway_name))
+                        except Exception: wikipathway_gene_db[id] = [('HMDB',pathway_name)]
+
+            """
+            else:
+                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'EntrezGene')
+                except Exception: gene_to_mapp = {}
+                for id in gene_to_mapp:
+                    for pathway_name in gene_to_mapp[id]:
+                        try: wikipathway_gene_db[id].append(('EntrezGene',pathway_name))
+                        except Exception: wikipathway_gene_db[id] = [('EntrezGene',pathway_name)]
+                        
+                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'Ensembl')
+                except Exception: gene_to_mapp = {}
+                for id in gene_to_mapp:
+                    for pathway_name in gene_to_mapp[id]:
+                        try: wikipathway_gene_db[id].append(('Ensembl',pathway_name))
+                        except Exception: wikipathway_gene_db[id] = [('Ensembl',pathway_name)]
+            """
+       
+        if relationship_type == 'mapped':
+            hmdb_wikipathway_db={}
+            try:
+                meta_metabolite_db = getMetaboliteIDTranslations(species)
+                for id in wikipathway_gene_db:
+                    for (system,pathway) in wikipathway_gene_db[id]:
+                        if system == 'HMDB':
+                            try: hmdb_wikipathway_db[pathway].append(id)
+                            except KeyError: hmdb_wikipathway_db[pathway] = [id]
                         else:
-                            try:
-                                check = int(primary) ### Ensure this is numeric - thus EntrezGene
-                                try: eg_wikipathway_db[pathway].append(primary)
-                                except KeyError: eg_wikipathway_db[pathway] = [primary]
-                            except Exception: null = []
-                except KeyError: null=[]
-            #print len(eg_wikipathway_db), len(ens_wikipathway_db)
-            #print system_codes
-            ad = system_codes['EntrezGene']
-            system_code = ad.SystemCode()
-            if len(eg_wikipathway_db)>0:
-                exportGeneToMAPPs(species,'EntrezGene',system_code,eg_wikipathway_db)
-            ad = system_codes['Ensembl']
-            system_code = ad.SystemCode()
-            if len(ens_wikipathway_db)>0:
-                exportGeneToMAPPs(species,'Ensembl',system_code,ens_wikipathway_db)
-            return len(meta)
-        except ValueError: return 'ValueError'
+                            id_to_mod = meta_metabolite_db[system]
+                            if len(id)>0 and id in id_to_mod:
+                                mod_ids = id_to_mod[id]
+                                for mod_id in mod_ids:
+                                    try: hmdb_wikipathway_db[pathway].append(mod_id)
+                                    except KeyError: hmdb_wikipathway_db[pathway] = [mod_id]
+                hmdb_wikipathway_db = eliminate_redundant_dict_values(hmdb_wikipathway_db)
+                ad = system_codes['HMDB']
+                system_code = ad.SystemCode()
+                if len(hmdb_wikipathway_db)>0: exportGeneToMAPPs(species,'HMDB',system_code,hmdb_wikipathway_db)
+            except ValueError: null=[] ### Occurs with older versions of GO-Elite     
+        else:
+            print "Number of unique gene IDs linked to Wikipathways for species:",len(wikipathway_gene_db)
+            parse_wikipathways = 'yes'
+            buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv)
+            grabEliteDbaseMeta(species) ### Similiar to buildAffymetrixCSVAnnotations, grabs many-to-one gene associations for various systems
+        
+            """global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
+            global ens_to_uid; global entrez_to_uid; global entrez_annotations; global parse_wikipathways
+    
+            parse_wikipathways = 'yes'        
+            import_dir = '/BuildDBs/Affymetrix/'+species
+            dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+            for affy_data in dir_list:    #loop through each file in the directory to output results
+                affy_data_dir = 'BuildDBs/Affymetrix/'+species+'/'+affy_data
+                parse_affymetrix_annotations(affy_data_dir,species)"""
+            #if len(affy_annotation_db)>0 or len(meta)>0:
+            
+            try:
+                ### This is a bit redundant with the before handling of meta, by addition gene-gene relationships are now included
+                entrez_relationships={}; ens_relationships={}; meta2={}
+                for (primary,gene) in meta:
+                    try:
+                        null = int(primary)
+                        if 'ENS' in gene:
+                            try: entrez_relationships[primary].append(gene)
+                            except Exception: entrez_relationships[primary] = [gene]
+                            try: ens_relationships[gene].append(primary)
+                            except Exception: ens_relationships[gene] = [primary]
+                    except Exception:
+                        try:
+                            null = int(gene)
+                            if 'ENS' in primary:
+                                try: entrez_relationships[gene].append(primary)
+                                except Exception: entrez_relationships[gene] = [primary]
+                                try: ens_relationships[primary].append(gene)
+                                except Exception: ens_relationships[primary] = [gene]
+                        except Exception: null=[]
+                
+                ens_relationships=eliminate_redundant_dict_values(ens_relationships)
+                entrez_relationships=eliminate_redundant_dict_values(entrez_relationships)
+                for id1 in entrez_relationships:
+                    if len(entrez_relationships[id1])<3:
+                        for id2 in entrez_relationships[id1]: meta2[id2,id1] = []
+                for id1 in ens_relationships:
+                    if len(ens_relationships[id1])<3:
+                        for id2 in ens_relationships[id1]: meta2[id2,id1] = []
+                
+                print len(meta), "gene relationships imported"
+                print len(wikipathway_gene_db), "gene IDs extracted from Wikipathway pathways"
+                """for (primary,gene_id) in meta:
+                    if gene_id == 'NP_598767': print wikipathway_gene_db[gene_id];kill"""
+                ### Since relationships are inferred in new versions of the WikiPathways tables, we don't require meta (no longer true - reverted to old method)
+
+                for (primary,gene_id) in meta2:
+                    try:
+                        pathway_names = wikipathway_gene_db[gene_id]
+                        for pathway in pathway_names:
+                            #if pathway == 'Mitochondrial tRNA Synthetases:WP62': print [gene_id], primary
+                            if 'ENS' in primary:
+                                try: ens_wikipathway_db[pathway].append(primary)
+                                except KeyError: ens_wikipathway_db[pathway] = [primary]
+                                if primary in ens_eg_db:
+                                    for entrez in ens_eg_db[primary]:
+                                        try: eg_wikipathway_db[pathway].append(entrez)
+                                        except KeyError: eg_wikipathway_db[pathway] = [entrez]                                    
+                            else:
+                                try:
+                                    check = int(primary) ### Ensure this is numeric - thus EntrezGene
+                                    try: eg_wikipathway_db[pathway].append(primary)
+                                    except KeyError: eg_wikipathway_db[pathway] = [primary]
+                                    if primary in ens_eg_db:
+                                        for ens in ens_eg_db[primary]:
+                                            try: ens_wikipathway_db[pathway].append(ens)
+                                            except KeyError: ens_wikipathway_db[pathway] = [ens]
+                                except Exception:
+                                    ### Occurs for Ensembl for species like Yeast which don't have "ENS" in the ID
+                                    try: ens_wikipathway_db[pathway].append(primary)
+                                    except KeyError: ens_wikipathway_db[pathway] = [primary]
+                                    if primary in ens_eg_db:
+                                        for entrez in ens_eg_db[primary]:
+                                            try: eg_wikipathway_db[pathway].append(entrez)
+                                            except KeyError: eg_wikipathway_db[pathway] = [entrez] 
+                    except KeyError: null=[]
+                """
+                for pathway in eg_wikipathway_db:
+                    if 'ytoplasmic' in pathway: print pathway, len(eg_wikipathway_db[pathway]),len(ens_wikipathway_db[pathway]),len(ens_eg_db);sys.exit()
+                """
+                #print len(eg_wikipathway_db), len(ens_wikipathway_db)
+                #print system_codes
+                ad = system_codes['EntrezGene']
+                system_code = ad.SystemCode()
+                if len(eg_wikipathway_db)>0:
+                    exportGeneToMAPPs(species,'EntrezGene',system_code,eg_wikipathway_db)
+                ad = system_codes['Ensembl']
+                system_code = ad.SystemCode()
+                if len(ens_wikipathway_db)>0:
+                    exportGeneToMAPPs(species,'Ensembl',system_code,ens_wikipathway_db)
+                return len(meta)
+            except ValueError: return 'ValueError'
     else: return 'not run'
 
+def addToMeta(db):
+    for i in db:
+        for k in db[i]: meta[i,k]=[]
+    
+def grabEliteDbaseMeta(species_code):
+    import gene_associations
+    db = gene_associations.getRelated(species_code,'Ensembl-'+'Uniprot'); addToMeta(db)
+    db = gene_associations.getRelated(species_code,'Ensembl-'+'RefSeq'); addToMeta(db)
+    db = gene_associations.getRelated(species_code,'Ensembl-'+'UniGene'); addToMeta(db)
+    db = gene_associations.getRelated(species_code,'Ensembl-'+'EntrezGene'); addToMeta(db)
+    
 def splitEntry(str_value):
     str_list = string.split(str_value,',')
     return str_list
+
+def splitOthers(str_value):
+    str_list = string.split(str_value,',')
+    str_list2=[]
+    for i in str_list:
+        i = string.split(i,'(')[0]
+        str_list2.append(i)
+    return str_list2
 
 def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
     program_type,database_dir = unique.whatProgramIsThis()
@@ -970,16 +1195,16 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
         #print gene_ids;kill
         for gene_id in gene_ids: data1.write(gene_id+'\t'+system_code+'\t'+pathway+'\n'); y+=1
     data1.close()
-    print 'Exported',y,'gene-MAPP relationships for species:',species
-    
+    print 'Exported',y,'gene-MAPP relationships for species:',species, 'for',len(wikipathway_db),'pathways.'
+   
 def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipathways):
     global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
-    global parse_wikipathways; global meta; meta = {}
+    global parse_wikipathways; global meta; meta = {}; global ens_eg_db; ens_eg_db={}
     parse_wikipathways = Parse_wikipathways
     if parse_wikipathways == 'yes':
-        try: importMetaGeneData(species) ### If meta gene relationships previously built (then don't need Affy files)
+        try: importEntrezEnsemblRelationships(species) ### If meta gene relationships previously built (then don't need Affy files)
         except Exception: null=[]
-    
+        
     program_type,database_dir = unique.whatProgramIsThis()
     if program_type == 'AltAnalyze': database_dir = '/AltDatabase/affymetrix'
     else: database_dir = '/BuildDBs/Affymetrix'
@@ -1000,9 +1225,10 @@ def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipa
             parse_affymetrix_annotations(affy_data_dir,species)
     if len(affy_annotation_db)>0 and integrate_affy_associations == 'yes': exportAffymetrixCSVAnnotations(species,dir_list)
     if parse_wikipathways == 'yes':
+        #print len(meta)
         try: exportMetaGeneData(species)
         except Exception: null=[]
-
+ 
 def exportAffymetrixCSVAnnotations(species,dir_list):
     import gene_associations; global entrez_annotations
     global ens_to_uid; global entrez_to_uid
@@ -1037,8 +1263,8 @@ def importAffymetrixAnnotations(dir,Species,Process_go,Extract_go_names,Extract_
     print 'Parsing Affymetrix Annotation files...'
     for affy_data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = dir+'/'+species+'/'+affy_data
-        if '.csv' in affy_data_dir: parse_affymetrix_annotations(affy_data_dir,species)
-    return affy_annotation_db
+        if '.csv' in affy_data_dir: version = parse_affymetrix_annotations(affy_data_dir,species)
+    return affy_annotation_db, version
 
 def buildAffymetrixCSVAnnotations(Species,Incorporate_previous_associations,Process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv):
     global incorporate_previous_associations; global process_go; global species; global extract_go_names

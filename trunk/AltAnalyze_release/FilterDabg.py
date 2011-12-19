@@ -107,7 +107,7 @@ def import_altmerge(filename,array_type):
     return exon_db, altmerge_constituitive
 
 def parse_input_data(filename,data_type):
-    fn=filepath(filename); first_line = 1; array_group_name_db = {}; z=0; array_group_db = {}
+    fn=filepath(filename); first_line = 1; array_group_name_db = {}; z=0; array_group_db = {}; output_file = []
     #print "Reading",filename
     for line in open(fn,'rU').xreadlines():
       data = cleanUpLine(line); t = string.split(data,'\t'); probeset = t[0]; z+=1
@@ -120,13 +120,15 @@ def parse_input_data(filename,data_type):
               elif array_type == 'junction': folder = 'JunctionArray'+'/'+species + '/'
               elif array_type == 'RNASeq': folder = 'RNASeq'+'/'+species + '/'
               else: folder = array_type + '/'
+              parent_path = root_dir+'AltExpression/'+folder
               if array_type == 'RNASeq':
-                  output_file = root_dir+'AltExpression/'+folder + altanalzye_input[0:-4] + '.ExpCutoff-' + str(original_exp_threshold) +'_'+ filter_method+'.txt'
+                  output_file =  altanalzye_input[0:-4] + '.ExpCutoff-' + str(original_exp_threshold) +'_'+ filter_method+'.txt'
               else:
-                  output_file = root_dir+'AltExpression/'+folder + altanalzye_input[0:-4] + '.p' + str(int(100*p)) +'_'+ filter_method+'.txt'
-              print "...Exporting",output_file
-              export_data = export.createExportFile(output_file,root_dir+'AltExpression/'+folder)
-              fn=filepath(output_file); export_data = open(fn,'w');
+                  output_file = altanalzye_input[0:-4] + '.p' + str(int(100*p)) +'_'+ filter_method+'.txt'
+              output_file_dir = parent_path+output_file
+              print "...Exporting",output_file_dir
+              export_data = export.createExportFile(output_file_dir,root_dir+'AltExpression/'+folder)
+              fn=filepath(output_file_dir); export_data = open(fn,'w');
               export_data.write(line)
           if ':' in t[1]:
               array_group_list = []; x=0 ###gives us an original index value for each entry in the group
@@ -177,12 +179,13 @@ def parse_input_data(filename,data_type):
               ### non-log in AltAnalyze to prevent "Process AltAnalyze Filtered" associated errors
               exp_values = t[1:]; exp_values_log2=[]
               for exp_val in exp_values:
-                  exp_values_log2.append(str(math.log(float(exp_val)+1,2)))
+                  exp_values_log2.append(str(math.log(float(exp_val),2))) ### exp_val+=1 was removed in 2.0.5
               line = string.join([probeset]+exp_values_log2,'\t')+'\n'
           try: null = export_db[probeset]; export_data.write(line)
           except KeyError: null = [] ### occurs if not a probeset to include in the filtered results export file
     if data_type == 'export': export_data.close()
-    
+    return output_file
+
 def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg):
     """import list of expression values for arrayids and calculates statistics"""
     constitutive_keep={}; keep_probesets={}; keep_genes={}
@@ -190,11 +193,19 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
     global expression_status_db; global pvalue_status_db; global export_db
     expression_status_db={}; pvalue_status_db={}; export_db={}
 
+    if normalization_method == 'RPKM':
+        expression_file = filename
+        expression_file = string.replace(expression_file,'\\','/')
+        filename = string.replace(expression_file,'/expression/','/counts/') ### Set this to the counts. file
+        
     parse_input_data(filename,'expression') ### Parse expression file
+    
     if analyze_dabg == 'yes':
         parse_input_data(filename2,'p-value') ### Parse DABG p-value file
+        
+    if normalization_method == 'RPKM': filename = expression_file ### Set this back to the exp. file
 
-    count=0
+    count=0; probesets_not_found=0
     for probeset in expression_status_db:
         proceed = 'no'; count+=1
         if probeset in pvalue_status_db: proceed = 'yes' ### Indicates there are both expression and dabg files with the same probe sets
@@ -212,31 +223,37 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
                 
             if analyze_dabg == 'yes': p_stats = pvalue_status_db[probeset]; p_stat1,p_stat2 = p_stats[:2]
             else: p_stat1=1; p_stat2=1 ### Automatically assigned an "expressed" call.
-            try: ed = exon_db[probeset]; affygene = ed.GeneID()
-            except Exception: affygene = exon_db[probeset]
-            if exp_stat1 == 1 and p_stat1 == 1: k = 1 ### Thus it is "expressed"
-            else: k = 0
-            if exp_stat2 == 1 and p_stat2 == 1: b = 1 ### Thus it is "expressed"
-            else: b = 0
-            #if 'G7216513_a_at' in probeset: print b,k,affygene,(probeset,exp_stat1,p_stat1, exp_stat2, p_stat2),pvalue_status_db[probeset];kill
-            if probeset in altmerge_constituitive:
-                if b == 1 or k == 1:
-                    keep_probesets[probeset] = [] ### If either have an "expressed" call, keep... but evaluate constitutive below
-                    try: keep_genes[affygene].append(probeset)
-                    except KeyError: keep_genes[affygene] = [probeset]
-                                
-                    if b==1 and k==1: constitutive_keep[affygene] = [] ### This will only keep a gene in the analysis if at least one probeset is 'expressed' in both conditions
-            else:
-                if b == 0 and k == 0: null =  ''
+            try:
+                ed = exon_db[probeset] ### This is where the exception is
+                try: affygene = ed.GeneID()
+                except Exception: affygene = exon_db[probeset]
+                if exp_stat1 == 1 and p_stat1 == 1: k = 1 ### Thus it is "expressed"
+                else: k = 0
+                if exp_stat2 == 1 and p_stat2 == 1: b = 1 ### Thus it is "expressed"
+                else: b = 0
+                #if 'G7216513_a_at' in probeset: print b,k,affygene,(probeset,exp_stat1,p_stat1, exp_stat2, p_stat2),pvalue_status_db[probeset];kill
+                if probeset in altmerge_constituitive:
+                    if b == 1 or k == 1:
+                        keep_probesets[probeset] = [] ### If either have an "expressed" call, keep... but evaluate constitutive below
+                        try: keep_genes[affygene].append(probeset)
+                        except KeyError: keep_genes[affygene] = [probeset]
+                                    
+                        if b==1 and k==1: constitutive_keep[affygene] = [] ### This will only keep a gene in the analysis if at least one probeset is 'expressed' in both conditions
                 else:
-                    keep_probesets[probeset] = []
-                    try: keep_genes[affygene].append(probeset)
-                    except KeyError: keep_genes[affygene] = [probeset]
+                    if b == 0 and k == 0: null =  ''
+                    else:
+                        keep_probesets[probeset] = []
+                        try: keep_genes[affygene].append(probeset)
+                        except KeyError: keep_genes[affygene] = [probeset]
+            except Exception: probesets_not_found+=0
+    if probesets_not_found!=0:
+        print probesets_not_found, 'AltAnalyze IDs missing from database! Possible version difference relative to inputs.'
     for gene in constitutive_keep:
         probeset_list = keep_genes[gene]
         for probeset in probeset_list: export_db[probeset]=[]
-    parse_input_data(filename,'export') ### Parse expression file
+    output_file = parse_input_data(filename,'export') ### Parse expression file
     expression_status_db={}; pvalue_status_db={}; export_db={}
+    return output_file
 
 def combine_profiles(profile_list):
     profile_group_sizes={}
@@ -265,16 +282,20 @@ def eliminate_redundant_dict_values(database):
         db1[key] = list
     return db1
 
-def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,express_data_format,altanalyze_file_list,avg_all_for_ss,Root_dir):
+def remoteRun(fl,Species,Array_type,expression_threshold,filter_method_type,p_val,express_data_format,altanalyze_file_list,avg_all_for_ss):
   start_time = time.time()
   global p; global filter_method; global exp_data_format; global array_type; global species; global root_dir; global original_exp_threshold
+  global normalization_method
   original_exp_threshold = expression_threshold
   aspire_output_list=[]; aspire_output_gene_list=[]
   filter_method = filter_method_type
   altanalyze_files = altanalyze_file_list
   p = p_val; species = Species; array_type = Array_type
   exp_data_format = express_data_format
-  root_dir = Root_dir
+
+  try: normalization_method = fl.FeatureNormalization()
+  except Exception: normalization_method = 'NA'
+  root_dir = fl.RootDir()
 
   if 'exon' in array_type: array_type = 'exon' ###In AnalayzeExpressionDataset module, this is named 'exon-array'
   
@@ -300,7 +321,7 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
   else:
       exon_db,altmerge_constituitive = import_altmerge(altmerge_db,array_type) ### Prior to version 2.0, this function was distinct from that in AltAnalyze(), so replaced it for consistency
             
-  global altanalzye_input
+  global altanalzye_input; altanalyze_output=[]
   if len(dir_list)>0:
       for altanalzye_input in dir_list:    #loop through each file in the directory to output results
         if altanalzye_input in altanalyze_files:
@@ -320,9 +341,12 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
             #print "Filter method is:",filter_method
             #print "Log2 expression cut-off is:",log_expression_threshold
             ###Import expression data and stats
-            try: expr_analysis(array_db,dabg_db,altmerge_constituitive,exon_db,analyze_dabg)    #filter the expression data based on fold and p-value OR expression threshold
+            try:
+                output_file = expr_analysis(array_db,dabg_db,altmerge_constituitive,exon_db,analyze_dabg)    #filter the expression data based on fold and p-value OR expression threshold
+                altanalyze_output.append(output_file)
             except KeyError: print "Impropper array type (",dataset_name[0:-1],") for",array_type,species,'. Skipping array.'
             ind_end_time = time.time(); time_diff = int(ind_end_time-ind_start_time)
+            
             #print dataset_name,"filtering finished in %d seconds" % time_diff
       end_time = time.time(); time_diff = int(end_time-start_time)
       #print "Filtering complete for all files in %d seconds" % time_diff
@@ -330,7 +354,8 @@ def remoteRun(Species,Array_type,expression_threshold,filter_method_type,p_val,e
       AltAnalyze.clearObjectsFromMemory(exon_db)
       exon_db={}; altmerge_constituitive={}; constitutive_probeset_db={}
   else: print "No expression files to filter found..."
-
+  return altanalyze_output
+  
 if __name__ == '__main__':
   m = 'Mm'; h = 'Hs'
   species = m

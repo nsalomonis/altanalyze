@@ -568,7 +568,8 @@ def buildEnsemblExternalDBRelationshipTable(external_system,xref_db,object_xref_
         else:
             output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-'+external_system+'.txt'
         version_info = species+' Ensembl relationships downloaded from EnsemblSQL server, build '+ensembl_build
-        exportVersionInfo(output_dir,version_info)
+
+    exportVersionInfo(output_dir,version_info)
     
     headers = ['Ensembl ID',external_system + ' ID']; id_type_db={}; index=0
     id_type_db={}; gene_relationship_db={}; transcript_relationship_db={}; translation_relationship_db={}
