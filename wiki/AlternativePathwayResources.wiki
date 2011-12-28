@@ -1,10 +1,11 @@
 #summary FAQ-Alternative Pathway Resources
 
-===_Can GO-Elite analyze other pathway archives, such as KEGG or Reactome?_===
+==_Can GO-Elite analyze other pathway archives, such as KEGG or Reactome?_==
 
 _*Answer*_: In addition to WikiPathways, GO-Elite can accept almost any other pathway resource for analysis in addition to or in place of WikiPathways. These pathways can be imported using the following formats: 1) GPML, 2) BioPax, 3) BroadInstitute GMT or 4) tab-delimited text file pathway relationships. All of these additional options are currently available in the Stand-Alone versions of GO-Elite (not the web service or Cytoscape plugin). 
 
-_*KEGG*_
+=== KEGG ===
+
 KEGG can be imported as KEGG GPML files provided by PathVisio [http://www.pathvisio.org] (go to Downloads and allow the Java installer to download the associated pathway archives). These pathways were imported from the KEGG XML data prior to that standard
 becoming closed source. These files will be saved to your user directory
 under "PathVisio-Data"). These gpml files can be loaded into GO-Elite along with the default loaded WikiPathways to get combined enrichment results ("Custom Gene Set directory" option). 
