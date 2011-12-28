@@ -1,0 +1,13 @@
+#summary FAQ-Alternative Pathway Resources
+
+===_Can GO-Elite analyze other pathway archives, such as KEGG or Reactome?_===
+
+_*Answer*_: In addition to WikiPathways, GO-Elite can accept almost any other pathway resource for analysis in addition to or in place of WikiPathways. These pathways can be imported using the following formats: 1) GPML, 2) BioPax, 3) BroadInstitute GMT or 4) tab-delimited text file pathway relationships. All of these additional options are currently available in the Stand-Alone versions of GO-Elite (not the web service or Cytoscape plugin). 
+
+_*KEGG*_
+KEGG can be imported as KEGG GPML files provided by PathVisio [http://www.pathvisio.org] (go to Downloads and allow the Java installer to download the associated pathway archives). These pathways were imported from the KEGG XML data prior to that standard
+becoming closed source. These files will be saved to your user directory
+under "PathVisio-Data"). These gpml files can be loaded into GO-Elite along with the default loaded WikiPathways to get combined enrichment results ("Custom Gene Set directory" option). 
+
+You can optionally replace WikiPathways with KEGG using the customizable database options. After downloading the KEGG gpml archive from PathVisio's website, to get the flat-file of relationships needed to
+replace WikiPathways, you will need to select the directory lowest sub-directory of the PathVisio-pathway folder using the "Custom Gene Set directory" option, run with any input and denominator data (not important which data) and then look in that sub-directory for a new folder containing the Ensembl or EntrezGene relationships to KEGG pathway. Inside will be the file custom_gene_set.txt file containing the KEGG relationships to either Ensembl or EntrezGene. You will then replace the WikiPathways relationship file. This is easiest to do manually by opening the GO-Elite program directory >Directory > EnsMart62 > Hs > gene-MAPP and replace the file Ensembl-MAPP.txt with the custom_gene_set.txt created.
