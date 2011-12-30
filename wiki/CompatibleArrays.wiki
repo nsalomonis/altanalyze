@@ -2,6 +2,32 @@
 
 ===_What microarrays can AltAnalyze work with?_===
 
-*_Answer_*: AltAnalyze can work with nearly any gene expression microarray (e.g., [http://www.affymetrix.com Affymetrix], [http://www.illumina.com/ Illumina], [http://agilent.com Agilent], [http://www.appliedmicroarrays.com/index.php?option=com_content&view=article&id=15&Itemid=23 CodeLink]). However, alternative exon analyses are currently only compatible with the Affymetrix [http://www.affymetrix.com/support/technical/byproduct.affx?product=huexon-st Exon 1.0], [http://www.affymetrix.com/support/technical/byproduct.affx?product=hugene-1_0-st-v1 Gene 1.0], [JAY] (junction array) and [AltMouse] custom arrays. AltAnalyze can summarize gene expression data from Affymetrix gene expression microarrays (e.g., 3' expression arrays, exon and junction), by calling the embedded package [APT] to perform [RMA]. For these arrays, AltAnalyze organizes the raw data, annotates probe set level data, and calculates statistics (fold and f-test p-values). For non-Affymetrix arrays (e.g., [http://www.illumina.com/ Illumina], [http://agilent.com Agilent], [http://www.appliedmicroarrays.com/index.php?option=com_content&view=article&id=15&Itemid=23 CodeLink]), AltAnalyze will organize input expression values, calculate statistics and annotate probe level data using built-in annotations from Ensembl and WikiPathways. For alternative splicing sensitive Affymetrix microrarrays, AltAnalyze will also determine transcriptional changes in addition to identifying probesets which deviate from transcriptional expression of a gene.
+*_Answer_*: AltAnalyze can work with nearly any gene expression microarray (e.g., [http://www.affymetrix.com Affymetrix], [http://www.illumina.com/ Illumina], [http://agilent.com Agilent], [http://www.appliedmicroarrays.com/index.php?option=com_content&view=article&id=15&Itemid=23 CodeLink]) as well as RNASeq data. For all array and [RNASeq] platforms analyzed, AltAnalyze will perform a series of statistical analyses to assess differential gene expression and annotate these results will gene, pathway, Ontology and miRNA binding site predictions (see below). In addition, pathway and ontology over-representation can be automatically performed for differentially expressed genes (user-defined). 
 
-While there are ways to customize AltAnalyze for conventional expression array analyses (gene expression only), alternative exon analyses *are not supported* "out-of-the-box" for non-supported array types. To inquire about support for these arrays, please contact our [ContactUs user groups].
+When analyzing expression data from splicing sensitive platforms (RNASeq, [http://www.affymetrix.com/support/technical/byproduct.affx?product=huexon-st Exon 1.0], [http://www.affymetrix.com/support/technical/byproduct.affx?product=hugene-1_0-st-v1 Gene 1.0], [JAY] (junction array) and [AltMouse] custom arrays), several sophisticated alternative exon analyses are also available (see below). These analyses are also possible for unsupported array platforms (e.g., Affymetrix U133 array), by provided a mapped expression file for each sample ([SplicingForAnyPlatform see here]). 
+
+===Supported Gene Expression Analyses ===
+
+Several useful methods are available for analysis of both conventional and splicing-sensitive platforms in AltAnalyze. These include:
+ # Expression normalization of CEL files using the RMA algorithm through [APT] (_Affymetrix Only_).
+ # Automated array type identification and download of associated library and annotation files (_Affymetrix Only_).
+ # Annotation of probeset-level results with gene annotations (symbol, description), Ensembl IDs, Gene Ontology, WikiPathways, genomic coordinates, microRNA binding site predictions and AltAnalyze custom cellular location (e.g., membrane/extracellular/nuclear) and function (e.g., GPCR subtype, transcript factor) annotations.
+ # Differential gene expresssion (fold, t-test p-value, f-test p-value, BH False Discovery Rate (FDR) p-values).
+ # Over-representation analysis using the [GOElite GO-Elite] analysis module.
+
+===Supported Alternative Exon Analyses===
+When analyzing several array and [RNASeq] platforms, alternative exon detection, annotation and over-representation methods are available. These include:
+ # Filtering of exon or junction features using either expression or detection p-values (DABG from [APT] AltAnalyze output). For RNASeq, this includes specific cut-offs for exons and junctions, based on number of read-counts and exon/junction/gene-level RPKMs.
+ # Alternative exon differential expression using several optional [ScoringMethod scoring methods].
+ # Splicing-event, alternative promoter and alternative polyadenylation predictions (available species only) and associated p-value calculation (t-test, f-test, permutation and FDR p-values). 
+ # Comparison of exon-level versus reciprocal-junction results for independent confirmation ([RNASeq] and JunctionArray).
+ # Associated alternative isoform prediction (protein-level) and overall sequence differences (e.g., truncation, non-sense mediated decay, alternative N-terminus, alternative coding). 
+ # Protein domain (InterPro) and protein feature (UniProt) composition differences (whole protein versus alternative exon overlapping). 
+ # microRNA binding sites predictions overlapping with alternative-exons.
+ # Over-representation of alternative exons for: A) pathways, B) alternative domains and C) alternative microRNA binding sites.
+ # Protein/exon/transcript/domain/pathway visualization in DomainGraph.
+
+For more information, see the full documentation at:
+[http://www.altanalyze.org/help_main.htm]
+or
+[http://code.google.com/p/altanalyze/w/list]
