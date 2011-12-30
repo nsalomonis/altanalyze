@@ -28,6 +28,9 @@ When analyzing several array and [RNASeq] platforms, alternative exon detection,
  # Protein/exon/transcript/domain/pathway visualization in DomainGraph.
 
 For more information, see the full documentation at:
+
 [http://www.altanalyze.org/help_main.htm]
+
 or
+
 [http://code.google.com/p/altanalyze/w/list]
