@@ -1,0 +1,5 @@
+#summary Junction Arrays
+
+== Affymetrix Junction Arrays ==
+
+AltAnalyze is capable of immediately analyzing Affymetrix files from several Affymetrix junction array platforms. These microarrays probe both known and predicted exon-exon junctions as well as known and predicted exon regions. Expression analysis is conducted similar to exon array analyses by processing the Affymetrix CEL files using RMA (via an automatic call to [APT]) and examining probeset-level versus gene-level differences for the different array features. Currently, three array platforms are supported, the [JAY] array, [hGlue] array and [AltMouse] array. Details on the analysis methods used for these platforms are available in the associated platform links. For users analyzing a different junction array, see the [SplicingForAnyPlatform following link].
