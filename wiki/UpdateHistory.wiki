@@ -8,7 +8,7 @@ _note:_ For further details and explanation, see the associated sections in the 
 In this version, we improve upon changes made in the previous release and supply several new methods and analysis support. Changes include:
  # Improved gene expression detection and filtering for RNA-Seq (separate RPKM and read-count filtering for exons and junctions).
  # Improved constitutive exon-detection methods (introduced in database version Ensembl 64). 
- # Support added for the Affymetrix hGlue junction array
+ # Support added for the Affymetrix [hGlue] junction array
  # New summary export result files (e.g., splicing-statistics for all analyzed features).
  # New fully automated methods for AltAnalyze database creation (automated download of all necessary files - command-line only).
  # Fixed several identified bugs from version 2.0.5 (e.g., problems with 3'array processing and Gene Ontology annotations).
