@@ -11,7 +11,9 @@ The GO-Elite source-code has been added to AltAnalyze to provide pathway over-re
 In addition to performing typical over-representation analysis (ORA) this tools allows the user to run permutation tests on these results (to assess the overall likelihood of over-representation), filter-out redundant GO-terms and pathways for publication ready tables, summarize all gene expression results at the pathway level and easily view gene annotations for each pathways. In addition, other types of Ontologies (e.g., Disease or Phenotype), pathways (e.g., KEGG, Reactome) or gene-sets (e.g., transcription targets, chromosomal bands) can be supplied as optional inputs. A tutorial for GO-Elite can be found [http://code.google.com/p/go-elite/wiki/Tutorials here].
 
 GO-Elite tutorials can be found here:
-http://code.google.com/p/go-elite/wiki/Tutorials here
+
+http://code.google.com/p/go-elite/wiki/Tutorials
 
 Additional technical details can be found here:
+
 [http://www.genmapp.org/go_elite http://www.genmapp.org/go_elite]
