@@ -4,7 +4,7 @@
 === Articles Citing AltAnalyze ===
 
 [http://jcs.biologists.org/content/early/2011/12/22/jcs.092239.short Son maintains accurate splicing for a subset of human pre-mRNAs].
-Alok Sharma, Michael Markey, Keshia Torres-Muñoz, Sapna Varia, Madhavi Kadakia, Athanasios Bubulya and Paula A. Bubulya. Advance Online Publication December 22, 2011 doi: 10.1242/​jcs.092239
+Alok Sharma, Michael Markey, Keshia Torres-Muñoz, Sapna Varia, Madhavi Kadakia, Athanasios Bubulya and Paula A. Bubulya. J Cell Sci. 2011 Dec 22 doi: 10.1242/​jcs.092239
 
 [http://nar.oxfordjournals.org/content/early/2011/11/27/nar.gkr1110.full Gene Array Analyzer: alternative usage of gene arrays to study alternative splicing events]. Pascal Gellert, Mizue Teranishi, Katharina Jenniches, Piera De Gaspari, David John, Karsten grosse Kreymborg, Thomas Braun and Shizuka Uchida. Nucl. Acids Res. (2011) doi: 10.1093/nar/gkr1110
 
