@@ -11,7 +11,7 @@ In this version, we improve upon changes made in the previous release and supply
  # Support added for the Affymetrix [hGlue] junction array
  # New summary export result files (e.g., splicing-statistics for all analyzed features).
  # New fully automated methods for AltAnalyze database creation (automated download of all necessary files - command-line only).
- # Fixed several identified bugs from version 2.0.5 (e.g., problems with 3'array processing and Gene Ontology annotations).
+ # Fixed several identified bugs from version 2.0.5 (e.g., problems with 3'array processing, Gene Ontology annotations, RNA-Seq import).
 
 ===Version 2.0.5 Updates===
 New program features, improved methods and critical fixes to RNA-seq exon bed building bug for Windows:
