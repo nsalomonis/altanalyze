@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://content.karger.com/produktedb/produkte.asp?doi=332598 Exon Arrays Reveal Alternative Splicing Aberrations in Parkinson’s Disease Leukocytes]. Lilach Soreq, Hagai Bergman, Zvi Israel, Hermona Soreq. Neurodegener Dis. 2011 Dec 9.
+
 [http://jcs.biologists.org/content/early/2011/12/22/jcs.092239.short Son maintains accurate splicing for a subset of human pre-mRNAs].
 Alok Sharma, Michael Markey, Keshia Torres-Muñoz, Sapna Varia, Madhavi Kadakia, Athanasios Bubulya and Paula A. Bubulya. J Cell Sci. 2011 Dec 22 doi: 10.1242/​jcs.092239
 
