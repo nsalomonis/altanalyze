@@ -5,6 +5,12 @@
 
 Proceed [UpdateHistory here] for detailed software version update information.
 
+==1-19-12==
+Posted AltAnalyze version 2.0.6. This version includes additional improvements to RNA-Seq gene-level RPKM calculations to provide more accurate gene expression estimates, new filtering options to differentiate between expressed and non-expressed genes, exons or junctions, support for the Affymetrix hGlue splicing platform, inclusion of all analyzed splicing scores, new fully automated methods for AltAnalyze database creation and fixes to several bugs introduced in version 2.0.5. For more information see the program [http://www.altanalyze.org/help_main.htm documentation] and [UpdateHistory update history].
+
+==1-18-12==
+New species databases posted for Ensembl release 65. Introduced in this version are improved methods for constitutive exon identification, inclusion of additional Affymetrix probesets and addition of splicing factor annotations. 
+
 ==11-27-11==
 Posted AltAnalyze version 2.0.5. This version includes improvements to RNA-Seq gene-level RPKM calculations to provide more accurate gene expression estimates, additional annotations for conventional array analyses and miRNA array, selection of multiple statistical p-value methods added and critical bug fixes. For more information see the program [http://www.altanalyze.org/help_main.htm documentation] and [UpdateHistory update history].
 
