@@ -11,7 +11,7 @@ Posted AltAnalyze version 2.0.6. This version includes additional improvements t
 ==1-18-12==
 New species databases posted for Ensembl release 65. Introduced in this version are improved methods for constitutive exon identification, inclusion of additional Affymetrix probesets and addition of splicing factor annotations. 
 
-==1-18-12==
+==12-19-11==
 A [CitingArticles new study] uses AltAnalyze to identify alternative mRNA isoform biomarkers unique to Parkinson's disease blood leukocytes. 
 
 ==11-27-11==
