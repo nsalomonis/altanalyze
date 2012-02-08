@@ -18,3 +18,38 @@
  * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
 
 note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
+
+= Visualization Software Installation Notes =
+
+=== python-graph (build Cytoscape like networks) ===
+<ol>
+ <li> easy_install python-graph-core </li>
+ <li> easy_install python-graph-dot (possible dependency) </li>
+ <li> install graphviz (dependency for dot and graphviz) </li>
+<ul>
+ <li> install MacPorts (easy install for mac apps – from dmg) </li>
+ <li> sudo install graphviz </li>
+</ul>
+ <li> ran example python-graph file and received a warning about trying to import the module gv. The module gv appears to be local to python graph and is called when graphviz is found in the indicated path (path is manually specified in the test code.) No graphviz folder containing a folder named python found. No solution on the Wiki for mac. </li>
+ <li> Tried to install pygraphviz (not sure if this is related) using easy_install, does not appear to be related. </li>
+ <li> stopped here… failed </li>
+</ol>
+
+=== pyGraphViz ===
+<ol>
+ <li> Saw at http://stackoverflow.com/questions/5639049/setting-graph-attributes-in-pygraph that pyGraphViz can run virtually the same example and work without using the above python-graph… this worked! Use this instead (only dependency is graphviz and possibly dot – not sure). Need to test on PC and Linux. </li>
+</ol>
+
+=== MatPlotLib (make charts) ===
+<ol>
+ <li> Depends on numpy (already installed) </li>
+ <li> easy_install matplotlib… encountered several errors, but installed. As an alternative can install from: http://matplotlib.sourceforge.net (installs numpy) </li>
+ <li> Tried - http://www.thetechrepo.com/main-articles/465-how-to-create-a-graph-in-python - worked great!
+ <li> Tried the animation examples on the website and encountered a common error: </li>
+<ul>
+ <li> File "/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/matplotlib-1.1.0-py2.7-macosx-10.6-intel.egg/matplotlib/animation.py", line 248, in _blit_clear </li>
+ <li> a.figure.canvas.restore_region(bg_cache[a]) </li>
+ <li> AttributeError: 'FigureCanvasMac' object has no attribute 'restore_region' </li>
+ <li> No function restore_region in the class FigureCanvasMac in the module “backend_macosx.py” (only one that contains FigureCanvasMac). </li>
+ <li> After contacting the MatPlotLib community, discovered that setting blit=False will fix this problem.</li>
+</ul>
