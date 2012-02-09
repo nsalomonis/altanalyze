@@ -13,6 +13,7 @@
 
 ===Data Analysis===
  * Exon expression extraction: http://code.google.com/p/bedtools/
+ * PCA and clustering: http://pyrorobotics.org/?page=PyroModuleAnalysis
 
 ===Other===
  * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
