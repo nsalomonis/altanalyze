@@ -10,7 +10,7 @@
  * RNA-Seq quality control and visualization (requires GCC): http://code.google.com/p/ever-seq/
  * Expression cluster visualization: http://www.bioinformatics.ubc.ca/matrix2png/
  * Graph, network and dendrogram output to SVG: http://igraph.sourceforge.net
- * Streamlined dendrograms (Scipy, matplotlib): http://code.google.com/p/scipy-cluster/
+ * Streamlined dendrograms (Numpy, matplotlib): http://code.google.com/p/scipy-cluster/
  * Other: http://vermeulen.ca/python-graphics.html
 
 ===Data Analysis===
