@@ -15,7 +15,7 @@
  * Exon expression extraction: http://code.google.com/p/bedtools/
  * Hierarchical and agglomerationexpressive clustering: http://docs.scipy.org/doc/scipy/reference/cluster.hierarchy.html
  * PCA and clustering: http://pyrorobotics.org/?page=PyroModuleAnalysis
-
+ * RNA-Seq QC and visualization: http://code.google.com/p/ever-seq/
 ===Other===
  * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
 
