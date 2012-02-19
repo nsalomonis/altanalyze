@@ -5,6 +5,9 @@
 
 Proceed [UpdateHistory here] for detailed software version update information.
 
+==2-19-12==
+Multiple Ensembl release 65 databases (human, mouse, rat and chicken) were modified and re-posted. Each was missing alternative polyadenylation annotations that were not properly included in the 1-18-12. To update we recommend deleting the folder EnsMart65 in the folder AltDatabase. We apologize for any inconvenience. 
+
 ==1-19-12==
 Posted AltAnalyze version 2.0.6. This version includes additional improvements to RNA-Seq gene-level RPKM calculations to provide more accurate gene expression estimates, new filtering options to differentiate between expressed and non-expressed genes, exons or junctions, support for the Affymetrix hGlue splicing platform, inclusion of all analyzed splicing scores, new fully automated methods for AltAnalyze database creation and fixes to several bugs introduced in version 2.0.5. For more information see the program [http://www.altanalyze.org/help_main.htm documentation] and [UpdateHistory update history].
 
