@@ -34,6 +34,11 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir)
     return dir_list
 
+def getParentDir(filename):
+    filename = string.replace(filename,'//','/')
+    filename = string.replace(filename,'\\','/')
+    return string.split(filename,'/')[-2]
+    
 def findParentDir(filename):
     ### :: reverses string
     x = string.find(filename[::-1],'\\')*-1 ### get just the parent directory
@@ -168,6 +173,23 @@ def createExportDir(new_file,dir):
             print "Parent directory not found locally for", [dir,new_file]; sys.exit()
     #else: print "Parent directory not found locally for", [dir,new_file]; sys.exit()
     
+def createDirPath(dir):
+    ### New method for creating a directory path that is not present
+    ### Works by going forward (check if a base path is present and then go up)
+    dir = string.replace(dir,'//','/')
+    dir = string.replace(dir,'\\','/')
+    dir = string.replace(dir,'\\','/')
+    dir = filepath(dir)
+    dir_ls = string.split(dir,'/')
+    i = 1; paths_added = 'no'
+    while i <= len(dir_ls):
+        new_dir = string.join(dir_ls[:i],'/')
+        status = verifyDirectory(new_dir)
+        if status == 'no':
+            try: os.mkdir(new_dir); paths_added = 'yes'
+            except Exception: paths_added = 'yes'
+        i+=1
+
 def verifyDirectory(dir):
     try: dir_list = read_directory(dir); verified = 'yes'
     except Exception: verified = 'no'

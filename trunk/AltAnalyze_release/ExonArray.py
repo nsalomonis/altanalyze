@@ -336,7 +336,10 @@ def reorderArraysOnly(filtered_exp_db,filetype,counts):
             combined_value_list+=g_data
         
         if exp_data_format == 'non-log' and counts == 'no':
-            combined_value_list = logTransform(combined_value_list)
+            try: combined_value_list = logTransform(combined_value_list)
+            except Exception:
+                print probeset, combined_value_list,comp_group_list,expr_group_list
+                print filtered_exp_db[probeset]; kill
         values = string.join([probeset]+combined_value_list,'\t')+'\n'
         if filetype == 'expression': fulldataset_export_object.write(values) ### Don't need this for dabg data
         if exp_analysis_type == 'expression':
@@ -358,7 +361,7 @@ def logTransform(exp_values):
 def generateConstitutiveExpression(exp_dbase,constitutive_gene_db,probeset_gene_db,pre_filtered_db,array_names,filename):
     """Generate Steady-State expression values for each gene for analysis in the main module of this package"""
     steady_state_db={}; k=0; l=0
-    remove_nonexpressed_genes = 'yes' ### By default set to 'no'
+    remove_nonexpressed_genes = 'no' ### By default set to 'no'
     
     ###1st Pass: Identify probesets for steady-state calculation
     for gene in probeset_gene_db:
@@ -433,7 +436,7 @@ def generateConstitutiveExpression(exp_dbase,constitutive_gene_db,probeset_gene_
 
     if array_type == 'RNASeq':
         import RNASeq
-        steady_state_db = RNASeq.calculateGeneLevelStatistics(steady_state_export,average_all_probesets,normalize_feature_exp,array_names)
+        steady_state_db = RNASeq.calculateGeneLevelStatistics(steady_state_export,average_all_probesets,normalize_feature_exp,array_names,UserOptions)
         reload(RNASeq)
 
     for array in array_names: title = title +'\t'+ array
@@ -526,8 +529,13 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
     global species; species = Species; global average_all_probesets; average_all_probesets={}
     global avg_all_probes_for_steady_state; avg_all_probes_for_steady_state = avg_all_for_ss; global filter_by_dabg; filter_by_dabg = filter_by_DABG
     global dabg_p_threshold; dabg_p_threshold = float(p_threshold); global root_dir; global biotypes; global normalize_feature_exp
-    global expression_threshold; global exp_data_format; exp_data_format = expression_data_format
+    global expression_threshold; global exp_data_format; exp_data_format = expression_data_format; global UserOptions; UserOptions = fl
 
+    try: exon_exp_threshold = fl.ExonExpThreshold()
+    except Exception: exon_exp_threshold = 0
+    try: rpkm_threshold = fl.RPKMThreshold()
+    except Exception: rpkm_threshold = 0
+    
     ### The input expression data can be log or non-log. If non-log, transform to log in FilterDABG prior to the alternative exon analysis - v.1.16    
     if expression_data_format == 'log':
         try: expression_threshold = math.log(float(e_threshold),2)

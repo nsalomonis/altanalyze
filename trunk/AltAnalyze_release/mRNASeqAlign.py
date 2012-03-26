@@ -23,6 +23,7 @@ import statistics
 import copy
 import time
 import export; reload(export)
+import update
 
 ################# General File Parsing Functions #################
 
@@ -127,7 +128,7 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
     
     output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/'+array_type+'_Ens_mRNA_seqmatches.txt'
     datar = export.ExportFile(output_file)
-    
+
     print "Begining generic fasta import of",filename
     fn=filepath(filename); sequence = ''; x = 0; count = 0; global gene_not_found; gene_not_found=[]; genes_found={}
     for line in open(fn,'rU').xreadlines():
@@ -137,7 +138,7 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
         try:
             if data[0] == '>':
                     if len(sequence) > 0:
-                        gene_found = 'no'
+                        gene_found = 'no'; count+=1
                         if ensembl_id in probeset_seq_db:
                             genes_found[ensembl_id]=[]; seq_type = 'full-length'
                             probeset_seq_data = probeset_seq_db[ensembl_id]; cDNA_seq = sequence[1:]; mRNA_length = len(cDNA_seq)
@@ -150,10 +151,14 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
                         else: gene_not_found.append(ensembl_id)
                     t= string.split(data[1:],':'); sequence=''
                     transid_data = string.split(t[0],' '); transid = transid_data[0]; ensembl_id = t[-1]
+                    if 'gene' not in t[-2]: ### After Ensembl version 64
+                        for entry in t:
+                            if 'gene_biotype' in entry: ensembl_id = string.split(entry,' ')[0]
         except IndexError: continue
         try:
             if data[0] != '>': sequence = sequence + data
         except IndexError:  continue
+        
     datar.close(); dataw.close()
     end_time = time.time(); time_diff = int(end_time-start_time)
     gene_not_found = unique.unique(gene_not_found)
@@ -167,7 +172,7 @@ def importUCSCTranscriptSequences(species,array_type,probeset_seq_db):
 
     if force == 'yes':
         ### Download mRNA sequence file from website
-        import UI; import update; species_names = UI.getSpeciesInfo()
+        import UI; species_names = UI.getSpeciesInfo()
         species_full = species_names[species]
         species_full = string.replace(species_full,' ','_')
         ucsc_mRNA_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/bigZips','mrna.fa.gz')
@@ -242,7 +247,6 @@ def importUCSCTranscriptAssociations(species):
         #if mRNA_ac not in accession_index: ###only add mRNAs not examined in UniGene
         ens_genes = string.split(ens_genes,'|')
         if mRNA_ac not in remove: ucsc_mrna_to_gene[mRNA_ac] = ens_genes
-
         
     return ucsc_mrna_to_gene
 
@@ -317,6 +321,7 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     if array_type == 'AltMouse':
         ### Import AffyGene to Ensembl associations (e.g., AltMouse array)    
         filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
+        update.verifyFile(filename,array_type) ### Will force download if missing
         fn=filepath(filename); x = 0
         for line in open(fn,'rU').xreadlines():
             data, newline = string.split(line,'\n'); t = string.split(data,'\t')
@@ -325,17 +330,16 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
                 array_gene,ens_gene = t
                 try: array_ens_db[array_gene].append(ens_gene)
                 except KeyError: array_ens_db[array_gene]=[ens_gene]
-
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'  
-    try: probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
-    except IOError:
-        import update
-        update.downloadCurrentVersion(filename,array_type,'txt')
-        probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
+        print len(array_ens_db), 'Ensembl-AltMouse relationships imported.'
+        
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'    
+    probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
     
     ###Import reciprocol junctions, so we can compare these directly instead of hits to nulls and combine with sequence data
     ###This short-cuts what we did in two function in ExonModule with exon level data
-    if array_type == 'AltMouse': filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
+    if array_type == 'AltMouse':
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
+        update.verifyFile(filename,array_type) ### Will force download if missing
     elif array_type == 'junction': filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps_updated.txt'
     elif array_type == 'RNASeq': filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps.txt'
     fn=filepath(filename); probeset_gene_seq_db={}; added_probesets={}; pairwise_probesets={}; x = 0
@@ -369,7 +373,8 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
 
 ################# Import Sequence Match Results and Re-Output #################
 
-def importCriticalJunctionSeq(filename,species,array_type):       
+def importCriticalJunctionSeq(filename,species,array_type):
+    update.verifyFile(filename,array_type) ### Will force download if missing
     fn=filepath(filename); probeset_seq_db={}; x = 0
     for line in open(fn,'rU').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')

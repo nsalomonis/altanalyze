@@ -20,6 +20,7 @@ import sys, string
 import os.path
 import unique
 import export
+import update
 
 ############ File Import Functions #############
 
@@ -316,7 +317,7 @@ def sangerImport(parse_sequences):
     print count, 'miRNA-target relationships added for mirbase'
 
 def downloadFile(file_type):
-    import UI; import update
+    import UI
     file_location_defaults = UI.importDefaultFileLocations()
     try:
         fld = file_location_defaults[file_type]
@@ -331,12 +332,36 @@ def downloadFile(file_type):
         try: os.remove(gz_filepath) ### Not sure why this works now and not before
         except Exception: status = status
     
-    filepath = string.replace(gz_filepath,'.zip','.txt')
-    filepath = string.replace(filepath,'.gz','.txt')
-    filepath = string.replace(filepath,'.txt.txt','.txt')
+    filename = string.replace(gz_filepath,'.zip','.txt')
+    filename = string.replace(filename,'.gz','.txt')
+    filename = string.replace(filename,'.txt.txt','.txt')
     
-    return filepath
-                        
+    return filename
+     
+def verifyExternalDownload(file_type):
+    ### Adapted from the download function - downloadFile()
+    import UI
+    file_location_defaults = UI.importDefaultFileLocations()
+    try:
+        fld = file_location_defaults[file_type]
+        url = fld.Location()
+    except Exception:
+        for fl in fld:
+            if species in fl.Species(): url = fl.Location()
+    if 'Target' in file_type: output_dir = 'AltDatabase/miRBS/'
+    else: output_dir = 'AltDatabase/miRBS/'+species + '/'
+
+    filename = url.split('/')[-1]
+    output_filepath = filepath(output_dir+filename)
+    
+    filename = string.replace(output_filepath,'.zip','.txt')
+    filename = string.replace(filename,'.gz','.txt')
+    filename = string.replace(filename,'.txt.txt','.txt')
+    counts = verifyFile(filename,'counts')
+    if counts < 9: validated = 'no'
+    else: validated = 'yes'
+    return validated, filename
+
 def TargetScanImport(parse_sequences,force):
     """The TargetScan data is currently extracted from a cross-species conserved family file. This file only contains
     gene symbol, microRNA name and 3'UTR seed locations."""
@@ -353,49 +378,48 @@ def TargetScanImport(parse_sequences,force):
             tax = species_annot_db[species_full].TaxID()
             
     global l
-    if force == 'yes':
+    
+    ### See if the files are already there
+    verifyTSG, target_scan_target_file = verifyExternalDownload('TargetScanGenes')
+    verifyTSS, target_scan_sequence_file = verifyExternalDownload('TargetScanSequences')
+
+    if verifyTSG == 'no' or verifyTSS == 'no': ### used to be - if force == 'yes'
         if parse_sequences == 'no':
             ### Then download the latest annotations and sequences
             target_scan_target_file = downloadFile('TargetScanGenes')
             target_scan_sequence_file = downloadFile('TargetScanSequences')
 
-        ### Cross-species TargetScan file with UTR seqeunces for all genes with reported targets in the conserved family file
-        ### Although this file includes valid sequence data that appears to match up to the target file, the target file
-        ### appears to only list the seed seqeunce location (UTR start and stop) and not the full binding sequence and thus
-        ### is not ammenable to probe set alignment.
-        print 'parsing', target_scan_sequence_file
-        fn=filepath(target_scan_sequence_file); x=0; target_scan_gene_utr_seq={}
-        for line in open(fn,'rU').xreadlines():         
-            data = cleanUpLine(line)
-            t = string.split(data,'\t')
-            if x==0: x=1
-            else:
-                symbol = string.upper(t[2]); tax_id = t[3]; utr_seq = t[4]
-                if tax_id == tax:
-                    utr_seq_no_gaps = string.replace(utr_seq,'-','')
-                    utr_seq_no_gaps = string.replace(utr_seq_no_gaps,'U','T')
-                    if symbol in symbol_ensembl_current and len(utr_seq_no_gaps)>0:
-                        target_scan_gene_utr_seq[symbol] = utr_seq_no_gaps
-        print 'UTR sequence for',len(target_scan_gene_utr_seq),'TargetScan genes stored in memory.'
-    else:    
-        ### Archival file
-        target_scan_target_file = 'AltDatabase/miRBS/target-scan-Conserved_Family_Conserved_Targets_Info.txt'
-        target_scan_gene_utr_seq={}
+    ### Cross-species TargetScan file with UTR seqeunces for all genes with reported targets in the conserved family file
+    ### Although this file includes valid sequence data that appears to match up to the target file, the target file
+    ### appears to only list the seed seqeunce location (UTR start and stop) and not the full binding sequence and thus
+    ### is not ammenable to probe set alignment.
+    print 'parsing', target_scan_sequence_file
+    fn=filepath(target_scan_sequence_file); x=0; target_scan_gene_utr_seq={}
+    for line in open(fn,'rU').xreadlines():         
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: x=1
+        else:
+            symbol = string.upper(t[2]); tax_id = t[3]; utr_seq = t[4]
+            if tax_id == tax:
+                utr_seq_no_gaps = string.replace(utr_seq,'-','')
+                utr_seq_no_gaps = string.replace(utr_seq_no_gaps,'U','T')
+                if symbol in symbol_ensembl_current and len(utr_seq_no_gaps)>0:
+                    target_scan_gene_utr_seq[symbol] = utr_seq_no_gaps
+    print 'UTR sequence for',len(target_scan_gene_utr_seq),'TargetScan genes stored in memory.'
         
     mir_sequences = []; count=0
     print 'parsing', target_scan_target_file
-    verifyFile(target_scan_target_file,species) ### Makes sure file is local and if not downloads.
+    #verifyFile(target_scan_target_file,species) ### Makes sure file is local and if not downloads.
     fn=filepath(target_scan_target_file); x=0; k=[]; l=[]
     for line in open(fn,'rU').xreadlines():         
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if x==0: x=1
         else:
-            if force == 'yes':
-                mir = t[0]; geneid = t[1]; gene_symbol = string.upper(t[2]); taxid = t[3]; utr_start = int(t[4]); utr_end  = int(t[5])
-            else:
-                ### Old format
-                mir = t[0]; gene_symbol = string.upper(t[1]); taxid = t[2]; utr_start = t[3]; utr_end = t[4]
+            mir = t[0]; geneid = t[1]; gene_symbol = string.upper(t[2]); taxid = t[3]; utr_start = int(t[4]); utr_end  = int(t[5])
+            ### Old format
+            #mir = t[0]; gene_symbol = string.upper(t[1]); taxid = t[2]; utr_start = t[3]; utr_end = t[4]
             if '/' in mir:
                 mir_list=[]
                 mirs = string.split(mir,'/')
@@ -440,127 +464,38 @@ def mirandaImport(parse_sequences,force):
     A larger set of associations was also pulled from species specific files (http://www.microrna.org/microrna/getDownloads.do),
     where gene symbol was related to Ensembl gene. Both files provided target microRNA sequence."""
     
-    if force == 'yes':
-        ### Then download the latest annotations and sequences
-        filename = downloadFile('miRanda')
+    ### Then download the latest annotations and sequences
+    
+    verify, filename = verifyExternalDownload('miRanda')
+    if verify == 'no': filename = downloadFile('miRanda')
+    print 'parsing', filename; count=0; null_count=[]
+    fn=filepath(filename); x=1; mir_sequences=[]
+    verifyFile(filename,species) ### Makes sure file is local and if not downloads.
+    for line in open(fn,'rU').xreadlines():         
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: x=1
+        else:
+            symbol = string.upper(t[3]); mir = t[1]; entrez_gene = t[2]; mir_sequences = string.upper(t[8])
+            mir_sequences = string.replace(mir_sequences,'-',''); mir_sequences = string.replace(mir_sequences,'=','')
+            mir_sequences = string.replace(mir_sequences,'U','T')
+            ensembl_gene_ids = []
+            if symbol in symbol_ensembl_current:
+                ensembl_gene_ids = symbol_ensembl_current[symbol]
+            else: ensembl_gene_ids=[]; null_count.append(symbol)
 
-        print 'parsing', filename; count=0; null_count=[]
-        fn=filepath(filename); x=1; mir_sequences=[]
-        verifyFile(filename,species) ### Makes sure file is local and if not downloads.
-        for line in open(fn,'rU').xreadlines():         
-            data = cleanUpLine(line)
-            t = string.split(data,'\t')
-            if x==0: x=1
-            else:
-                symbol = string.upper(t[3]); mir = t[1]; entrez_gene = t[2]; mir_sequences = string.upper(t[8])
-                mir_sequences = string.replace(mir_sequences,'-',''); mir_sequences = string.replace(mir_sequences,'=','')
-                mir_sequences = string.replace(mir_sequences,'U','T')
-                ensembl_gene_ids = []
-                if symbol in symbol_ensembl_current:
-                    ensembl_gene_ids = symbol_ensembl_current[symbol]
-                else: ensembl_gene_ids=[]; null_count.append(symbol)
-
-                if len(ensembl_gene_ids) > 0:
-                    for ensembl_geneid in ensembl_gene_ids:
-                        if parse_sequences == 'yes':
-                            if (mir,ensembl_geneid) in combined_results:
-                                combined_results[(mir,ensembl_geneid)].append(string.upper(mir_sequences)); count+=1
-                        else:
-                            y = MicroRNATargetData(ensembl_geneid,'',mir,mir_sequences,'miRanda'); count+=1
-                            try: microRNA_target_db[mir].append(y)
-                            except KeyError: microRNA_target_db[mir] = [y]
-        print count, 'miRNA-target relationships added for miRanda'
-        null_count = unique.unique(null_count)
-        print len(null_count), 'missing symbols',null_count[:10]
-    else:
-        filename = 'AltDatabase/miRBS/miranda-by_gene140.txt'
-        print 'len(ens_gene_to_transcript)',len(ens_gene_to_transcript)
-        print 'parsing', filename; count=0; bad_line=0
-        fn=filepath(filename); x=1 ###since the first line contains data
-        if species == 'Hs': mir_type = 'hsa'; ens_transcript_prefix = 'ENST'; trans_index = 0
-        if species == 'Mm': mir_type = 'mmu'; ens_transcript_prefix = 'ENSMUST'; trans_index = 2
-        if species == 'Rn': mir_type = 'rno'; ens_transcript_prefix = 'ENSRNOT'; trans_index = 3
-        verifyFile(filename,species) ### Makes sure file is local and if not downloads.
-        for line in open(fn,'rU').xreadlines():         
-            data = cleanUpLine(line)
-            t = string.split(data,'\t')
-            if x==0: x=1
-            else:
-                try:
-                    ens_transcript = t[trans_index]; mirs = t[8]; mir_seq_db = {}
+            if len(ensembl_gene_ids) > 0:
+                for ensembl_geneid in ensembl_gene_ids:
                     if parse_sequences == 'yes':
-                        mir_sequences = t[9:]
-                        for mir_seq_data in mir_sequences:
-                            mir_seq_data = string.split(mir_seq_data,"5'_")
-                            if mir_type in mir_seq_data[0]: ###require that the microRNA must be human
-                                mir_info = string.split(mir_seq_data[0],":"); microRNA = mir_info[1]; mir_info = string.split(microRNA," "); microRNA = mir_info[0]
-                                for info in mir_seq_data[1:]:
-                                    if ens_transcript_prefix in info: ###again, ensure that it's matched to a human sequence (human mirs can be matched to mouse sequence)
-                                        mir_seq = string.split(info,"_3':"); mir_seq = mir_seq[0]; mir_seq=string.replace(mir_seq,'-',''); mir_seq = string.upper(mir_seq)
-                                        try: mir_seq_db[microRNA].append(mir_seq)
-                                        except KeyError: mir_seq_db[microRNA] = [mir_seq]
-                        mir_seq_db = eliminateRedundant(mir_seq_db)
-                    multi_species_mir_list = string.split(mirs,' '); multi_species_mir_list2=[]
-                    for mir in multi_species_mir_list:
-                        if mir_type in mir:  multi_species_mir_list2.append(mir)
-                        else: null = ''
-                    ens_transcript = string.replace(ens_transcript,'_P','')
-                    try:
-                        geneid = ens_gene_to_transcript[ens_transcript][0]
-                        if len(geneid)<1: geneid = t[1]; geneid_data = string.split(geneid,' '); geneid = geneid_data[0]
-                    except KeyError: geneid = t[1]; geneid_data = string.split(geneid,' '); geneid = geneid_data[0]
-    
-                    if len(geneid)>0:
-                        if geneid in redundant_ensembl_by_build: ###Thus there are redundant geneids
-                            geneid_ls = redundant_ensembl_by_build[geneid]+[geneid]
-                        else: geneid_ls = [geneid]
-                        for geneid in geneid_ls:
-                            for mir in multi_species_mir_list2:
-                                if parse_sequences == 'yes':
-                                    if mir in mir_seq_db:
-                                        if (mir,geneid) in combined_results:
-                                            mir_sequences = mir_seq_db[mir]
-                                            for mir_sequence in mir_sequences:
-                                                combined_results[(mir,geneid)].append(string.upper(mir_sequence)); count+=1
-                                else:
-                                    mir_sequences = []
-                                    y = MicroRNATargetData(geneid,'',mir,mir_sequences,'miranda'); count+=1    
-                                    try: microRNA_target_db[mir].append(y)
-                                    except KeyError: microRNA_target_db[mir] = [y]
-                except IndexError: bad_line+=1
-    
-        if species == 'Mm':
-            filename = 'AltDatabase/miRBS/'+species+'/'+'mouse_predictions_4dwnload.txt'
-            print 'parsing', filename; count2=0; added={}; added2={}
-            fn=filepath(filename); x=1 ###since the first line contains data
-            if species == 'Hs': mir_type = 'hsa'; ens_transcript_prefix = 'ENST'; trans_index = 0
-            if species == 'Mm': mir_type = 'mmu'; ens_transcript_prefix = 'ENSMUST'; trans_index = 2
-            if species == 'Rn': mir_type = 'rno'; ens_transcript_prefix = 'ENSRNOT'; trans_index = 2
-            verifyFile(filename,species) ### Makes sure file is local and if not downloads.
-            for line in open(fn,'rU').xreadlines():         
-                data = cleanUpLine(line)
-                t = string.split(data,'\t')
-                if x==0: x=1
-                else:
-                    symbol = string.upper(t[2]); mir = t[4]; mir_sequence = t[7]; mir_sequence = string.replace(string.upper(mir_sequence),'U','T')
-                    if symbol in symbol_ensembl and len(symbol)>0: geneid_ls = symbol_ensembl[symbol]
-                    else: geneid_ls = []
-                    mir_sequence=string.replace(mir_sequence,'-',''); mir_sequence=string.replace(mir_sequence,'=','')
-                    for ensembl_geneid in geneid_ls:
-                        if parse_sequences == 'yes':
-                            if (ensembl_geneid,mir,mir_sequence) not in added2:
-                                combined_results[(mir,ensembl_geneid)].append(string.upper(mir_sequence)); count2+=1
-                                added2[(ensembl_geneid,mir,mir_sequence)]=[]
-                        else:
-                            if (ensembl_geneid,mir) not in added:
-                                y = MicroRNATargetData(ensembl_geneid,'',mir,[mir_sequence],'miranda'); count2+=1
-                                try: microRNA_target_db[mir].append(y)
-                                except KeyError: microRNA_target_db[mir] = [y]
-                                added[(ensembl_geneid,mir)]=[]
-            print count2, 'miRNA-target relationships added for miranda2'
-                                
-        print bad_line, "bad lines"
-        print count, 'miRNA-target relationships added for miranda'
+                        if (mir,ensembl_geneid) in combined_results:
+                            combined_results[(mir,ensembl_geneid)].append(string.upper(mir_sequences)); count+=1
+                    else:
+                        y = MicroRNATargetData(ensembl_geneid,'',mir,mir_sequences,'miRanda'); count+=1
+                        try: microRNA_target_db[mir].append(y)
+                        except KeyError: microRNA_target_db[mir] = [y]
+    print count, 'miRNA-target relationships added for miRanda'
+    null_count = unique.unique(null_count)
+    print len(null_count), 'missing symbols',null_count[:10]
     
 def importEnsTranscriptAssociations(ens_gene_to_transcript,type):
     ###This function is used to extract out EnsExon to EnsTranscript relationships to find out directly
@@ -710,7 +645,7 @@ def exportCombinedMirResultSequences():
 def importmiRNAMap(parse_sequences):
     """ Added in AltAnalyze version 2.0, this database provides target sequences for several species and different databases, 
     including miRanda, RNAhybrid and TargetScan. For more information see: http://mirnamap.mbc.nctu.edu.tw/html/about.html"""
-    import UI; import update; species_names = UI.getSpeciesInfo()
+    import UI; species_names = UI.getSpeciesInfo()
     species_full = species_names[species]
     species_full = string.replace(species_full,' ','_')
     miRNAMap_dir = update.getFTPData('mirnamap.mbc.nctu.edu.tw','/miRNAMap2/miRNA_Targets/'+species_full,'.txt.tar.gz')
@@ -762,15 +697,15 @@ def runProgram(Species,Force,Only_add_sequence_to_previous_results):
         parse_sequences = 'no'
         try: del symbol_ensembl['']
         except KeyError: null=[]
-        
+      
+        try: TargetScanImport(parse_sequences,'yes')
+        except Exception: null=[]  
         try: importmiRNAMap('no')
         except Exception: null=[] ### occurs when species is not supported
-        try: sangerImport(parse_sequences)
-        except Exception: null=[]        
-        try: TargetScanImport(parse_sequences,'yes')
-        except Exception: null=[]
         try: mirandaImport(parse_sequences,'yes')
         except Exception: null=[]
+        try: sangerImport(parse_sequences)
+        except Exception: null=[]        
 
         added = pictarImport(parse_sequences,'pre-computed',{})
         added = pictarImport(parse_sequences,'symbol-based',added)
@@ -778,39 +713,58 @@ def runProgram(Species,Force,Only_add_sequence_to_previous_results):
         findMirTargetOverlaps(); exportCombinedMirResultSequences()
     else: exportCombinedMirResultSequences()
 
-def verifyFile(filename,species):
-    fn=filepath(filename)
+def verifyFile(filename,species_name):
+    fn=filepath(filename); counts=0
     try:
-        for line in open(fn,'rU').xreadlines():break
+        for line in open(fn,'rU').xreadlines():
+            counts+=1
+            if counts>10: break
     except Exception:
-        if species in filename: server_folder = species ### Folder equals species unless it is a universal file
+        counts=0
+    if species_name == 'counts': ### Used if the file cannot be downloaded from http://www.altanalyze.org
+        return counts
+    elif counts == 0:
+        if species_name in filename: server_folder = species_name ### Folder equals species unless it is a universal file
         elif 'Mm' in filename: server_folder = 'Mm' ### For PicTar
         else: server_folder = 'all'
-        import update; reload(update)
         print 'Downloading:',server_folder,filename
         update.downloadCurrentVersion(filename,server_folder,'txt')
-
-def reformatGeneToMiR(species):
+    else:
+        return counts
+    
+def reformatGeneToMiR(species,type):
     ### Import and re-format the miRNA-gene annotation file for use with GO-Elite (too big to do in Excel)
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt'
     fn=filepath(filename); reformatted=[]
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         miR,ens,source = string.split(data,'\t')
-        reformatted.append([ens,'En',miR])
+        if type == 'strict' and '|' in source: ### Only include predictions with evidence from > 1 algorithm (miRanda, mirbase, TargetScan, pictar or RNAhybrid)
+            reformatted.append([ens,'En',miR])
+        elif type == 'lax':
+            reformatted.append([ens,'En',miR])
         
-    filename = string.replace(filename,'.txt','-GOElite.txt')
-    data = export.ExportFile(filename)
-    ### Make title row
-    headers=['GeneID','SystemCode','Pathway']
-    headers = string.join(headers,'\t')+'\n'; data.write(headers)
-    for values in reformatted:
-        values = string.join(values,'\t')+'\n'; data.write(values)
-    data.close()
-    print filename,'exported...'
+    if len(reformatted)>10: ### Ensure there are sufficient predictions for over-representation for that species
+        filename = string.replace(filename,'.txt','-GOElite_lax.txt')
+        if type == 'strict':
+            filename = string.replace(filename,'lax','strict')
+        data = export.ExportFile(filename)
+        ### Make title row
+        headers=['GeneID','SystemCode','Pathway']
+        headers = string.join(headers,'\t')+'\n'; data.write(headers)
+        for values in reformatted:
+            values = string.join(values,'\t')+'\n'; data.write(values)
+        data.close()
+        print filename,'exported...'
             
 if __name__ == '__main__':
     a = 'Ag'; b = 'Hs'; c = 'Rn'; d = 'Mm'
-    species = d; force = 'no'
-    reformatGeneToMiR(d)
+    species = d; force = 'no'; type = 'lax'
+    existing_species_dirs = unique.read_directory('/AltDatabase/ensembl')
+    for species in existing_species_dirs:
+        try:
+            reformatGeneToMiR(species,'lax')
+            reformatGeneToMiR(species,'strict')
+        except Exception: null=[] ### Occurs for non-species directories
+        
     #runProgram(species,force,'no'); sys.exit()

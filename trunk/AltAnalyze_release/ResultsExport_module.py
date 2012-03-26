@@ -156,7 +156,7 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
                 if analyzing_genes == 'no':
                     if (array_type == 'exon' or array_type == 'gene') and analysis_method in filename:
                         lowest_pvalue = float(data[8]);
-                        try: si_p = float(data[-10])
+                        try: si_p = float(data[20])
                         except Exception: si_p = 1
                         try: midas_p = float(data[9])
                         except ValueError: midas_p = 0
@@ -166,16 +166,16 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
                         affygene = data[0]; dI = float(data[1])
                         symbol = data[2]; description = data[3]
                         exon_set1 = data[4]; exon_set2 = ''
-                        event_call = data[-4]; functional_attribute = data[-18]
-                        uniprot_attribute = data[-17]; gene_expression_change = data[-8]
+                        event_call = data[27]; functional_attribute = data[14]
+                        uniprot_attribute = data[15]; gene_expression_change = data[22]
                         dI = dI*(-1)
                     elif analysis_method in filename:
                         y = 1
                         affygene = data[0]; dI = float(data[1])
                         symbol = data[2]; description = data[3]
                         exon_set1 = data[4]+'('+data[8]+')'; exon_set2 = data[5]+'('+data[10]+')'
-                        event_call = data[-4]; functional_attribute = data[-18]
-                        uniprot_attribute = data[-17]; gene_expression_change = data[-8]
+                        event_call = data[27]; functional_attribute = data[14]
+                        uniprot_attribute = data[15]; gene_expression_change = data[22]
                         #print exon_set1, exon_set2, data[:5];kill
                 else:
                     if (array_type == 'exon' or array_type == 'gene') and analysis_method in filename:

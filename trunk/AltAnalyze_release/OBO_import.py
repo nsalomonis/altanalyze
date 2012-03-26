@@ -690,6 +690,7 @@ def buildNestedGOAssociations(species,export_dbases,mod_types,genmapp_mod):
                     print 'exporting GenMAPP-GeneOntology tables for the gene ID system',mod,'for',species
                     exportAndFilterGenMAPPGOTables(species,go_to_mod,nested_go_mod,total_gene_count)
             except Exception:
+                print mod, 'associated files not present!'
                 null = 'null' ###No MOD relational files present
     return built_go_paths, path_goid_db, path_dictionary
 

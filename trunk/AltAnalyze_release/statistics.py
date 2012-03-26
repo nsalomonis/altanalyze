@@ -580,8 +580,6 @@ def runComparisonStatistic(data_list1,data_list2,probability_statistic):
     elif probability_statistic == 'Mann Whitney U': p = tst.MannWhitneyU()
     elif probability_statistic == 'Rank Sums': p = tst.RankSums()
     elif probability_statistic == 'unpaired t-test': p = tst.TTestUnpaired()
-    if float(p)<0: p = 1
-    elif float(p)>1: p = 1
     return p
     
 ###########Below Code Curtosey of Distribution functions and probabilities module

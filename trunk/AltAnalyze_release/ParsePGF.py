@@ -96,7 +96,9 @@ def importPGF(dir,species,filename):
     new_file = dir+'/'+species+'_probeset-probes.txt'
     new_file = string.replace(new_file,'library/','')
     headers = 'probeset\t' + 'probe\n'; n=0
-    data = export.ExportFile(new_file); data.write(headers)
+    try: data = export.ExportFile(filepath(new_file))
+    except Exception: data = export.ExportFile(filepath(new_file[1:]))
+    data.write(headers)
     for probeset in probe_db:
         for probe in probe_db[probeset]:
             data.write(probeset+'\t'+probe+'\n'); n+=1
@@ -108,8 +110,9 @@ if __name__ == '__main__':
     array_type = 'gene'
     #array_type = 'exon'
     array_type = 'junction'
-    species = 'Mm'
+    species = 'Hs'
     parent_dir = 'AltDatabase/'+species+'/'+array_type+'/library'
+    parent_dir = '/AltDatabase/affymetrix/LibraryFiles'
     e = GrabFiles(); e.setdirectory(parent_dir)
     pgf_dir,pgf_file = e.searchdirectory('.pgf')
     importPGF(parent_dir,species,pgf_dir)

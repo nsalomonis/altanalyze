@@ -109,6 +109,8 @@ def import_altmerge(filename,array_type):
 def parse_input_data(filename,data_type):
     fn=filepath(filename); first_line = 1; array_group_name_db = {}; z=0; array_group_db = {}; output_file = []
     #print "Reading",filename
+    secondary_data_type = export.getParentDir(filename) ### e.g., expression or counts
+    
     for line in open(fn,'rU').xreadlines():
       data = cleanUpLine(line); t = string.split(data,'\t'); probeset = t[0]; z+=1
       if first_line == 1:
@@ -160,12 +162,31 @@ def parse_input_data(filename,data_type):
                   ###If non-log array data
                   if exp_data_format == 'non-log':
                       ### This works better for RNASeq as opposed to log transforming and then filtering which is more stringent and different than the filtering in ExonArray().
-                      if avg_stat>=nonlog_exp_threshold: k=1
-                      else: k=0
+                      if array_type == 'RNASeq':
+                        if normalization_method == 'RPKM' and secondary_data_type == 'expression':
+                            if ':I' in probeset: k=1 ### Don't require an RPKM threshold for intron IDs (these will likely never meet this unless small or fully retained and highly expressed)
+                            elif avg_stat>=rpkm_threshold: k=1
+                            else: k=0
+                            #if 'ENSMUSG00000045991:E2.2' in probeset: print [probeset, normalization_method, secondary_data_type, rpkm_threshold, avg_stat, k]
+                        else:
+                            if '-' in probeset: ### junction meeting minimum read-count number
+                                if avg_stat>=junction_exp_threshold: k=1 ### junction_exp_threshold is the same as nonlog_exp_threshold
+                                else: k=0
+                            else: ### exon or intron meeting minimu read-count number
+                                if avg_stat>=exon_exp_threshold: k=1
+                                else: k=0
+                            #if 'ENSMUSG00000045991:E2.2' in probeset: print [probeset, normalization_method, secondary_data_type, exon_exp_threshold, junction_exp_threshold, avg_stat, k]
+                      else:
+                        if avg_stat>=nonlog_exp_threshold: k=1
+                        else: k=0
                   elif avg_stat>=log_expression_threshold: k=1
                   else: k=0
-                  try: expression_status_db[probeset].append(k)
-                  except KeyError: expression_status_db[probeset] = [k]
+                  if normalization_method == 'RPKM' and secondary_data_type == 'expression': ### Treat as dabp p-value
+                      try: pvalue_status_db[probeset].append(k)
+                      except KeyError: pvalue_status_db[probeset] = [k]
+                  else:
+                      try: expression_status_db[probeset].append(k)
+                      except KeyError: expression_status_db[probeset] = [k]
                   #if probeset == '3209315': print [group],k,len(group_values),array_group_list
               if data_type == 'p-value':
                   if avg_stat<=p: k=1
@@ -194,6 +215,7 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
     expression_status_db={}; pvalue_status_db={}; export_db={}
 
     if normalization_method == 'RPKM':
+        parse_input_data(filename,'expression') ### Parse as a DABG p-value file
         expression_file = filename
         expression_file = string.replace(expression_file,'\\','/')
         filename = string.replace(expression_file,'/expression/','/counts/') ### Set this to the counts. file
@@ -209,6 +231,7 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
     for probeset in expression_status_db:
         proceed = 'no'; count+=1
         if probeset in pvalue_status_db: proceed = 'yes' ### Indicates there are both expression and dabg files with the same probe sets
+        elif normalization_method == 'RPKM': proceed = 'no' ### Indicates the rpkm expression file exon/junction does not meet the required expression threshold
         elif analyze_dabg == 'no': proceed = 'yes' ### Indicates there is only an expression file and no dabg
         if proceed == 'yes':
             try: exp_stats = expression_status_db[probeset]; exp_stat1,exp_stat2 = exp_stats[:2]
@@ -221,7 +244,7 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
                 print "UNEXPECTED ERROR ENCOUNTERED - REPORT THIS ERROR TO THE ALTANALYZE HELP DESK"
                 forceBadExit
                 
-            if analyze_dabg == 'yes': p_stats = pvalue_status_db[probeset]; p_stat1,p_stat2 = p_stats[:2]
+            if analyze_dabg == 'yes' or normalization_method == 'RPKM': p_stats = pvalue_status_db[probeset]; p_stat1,p_stat2 = p_stats[:2]
             else: p_stat1=1; p_stat2=1 ### Automatically assigned an "expressed" call.
             try:
                 ed = exon_db[probeset] ### This is where the exception is
@@ -231,16 +254,18 @@ def expr_analysis(filename,filename2,altmerge_constituitive,exon_db,analyze_dabg
                 else: k = 0
                 if exp_stat2 == 1 and p_stat2 == 1: b = 1 ### Thus it is "expressed"
                 else: b = 0
-                #if 'G7216513_a_at' in probeset: print b,k,affygene,(probeset,exp_stat1,p_stat1, exp_stat2, p_stat2),pvalue_status_db[probeset];kill
+                #if 'ENSMUSG00000045991:E2.2' in probeset: print b,k,affygene,(probeset,exp_stat1,p_stat1, exp_stat2, p_stat2),pvalue_status_db[probeset]
                 if probeset in altmerge_constituitive:
                     if b == 1 or k == 1:
                         keep_probesets[probeset] = [] ### If either have an "expressed" call, keep... but evaluate constitutive below
                         try: keep_genes[affygene].append(probeset)
                         except KeyError: keep_genes[affygene] = [probeset]
-                                    
-                        if b==1 and k==1: constitutive_keep[affygene] = [] ### This will only keep a gene in the analysis if at least one probeset is 'expressed' in both conditions
+                        if b==1 and k==1:
+                            """ This will only keep a gene in the analysis if at least one probeset is 'expressed' in both conditions. Although this can
+                            result in "constitutive probesets with expression in only one group, it solves the problem of treating all core as "constitutive"."""
+                            constitutive_keep[affygene] = []
                 else:
-                    if b == 0 and k == 0: null =  ''
+                    if b == 0 and k == 0: null =  []
                     else:
                         keep_probesets[probeset] = []
                         try: keep_genes[affygene].append(probeset)
@@ -285,7 +310,8 @@ def eliminate_redundant_dict_values(database):
 def remoteRun(fl,Species,Array_type,expression_threshold,filter_method_type,p_val,express_data_format,altanalyze_file_list,avg_all_for_ss):
   start_time = time.time()
   global p; global filter_method; global exp_data_format; global array_type; global species; global root_dir; global original_exp_threshold
-  global normalization_method
+  global normalization_method; global exon_exp_threshold; global rpkm_threshold; global junction_exp_threshold
+  
   original_exp_threshold = expression_threshold
   aspire_output_list=[]; aspire_output_gene_list=[]
   filter_method = filter_method_type
@@ -293,10 +319,16 @@ def remoteRun(fl,Species,Array_type,expression_threshold,filter_method_type,p_va
   p = p_val; species = Species; array_type = Array_type
   exp_data_format = express_data_format
 
+  ### Define global variables from the object fl
   try: normalization_method = fl.FeatureNormalization()
   except Exception: normalization_method = 'NA'
+  try: exon_exp_threshold = fl.ExonExpThreshold()
+  except Exception: exon_exp_threshold = 0
+  try: rpkm_threshold = fl.RPKMThreshold()
+  except Exception: rpkm_threshold = 0
   root_dir = fl.RootDir()
-
+  junction_exp_threshold = expression_threshold
+  
   if 'exon' in array_type: array_type = 'exon' ###In AnalayzeExpressionDataset module, this is named 'exon-array'
   
   global log_expression_threshold; global nonlog_exp_threshold; nonlog_exp_threshold = expression_threshold

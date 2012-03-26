@@ -5,6 +5,7 @@ import statistics
 import copy
 import time
 import ExonSeqModule
+import update
 
 dirfile = unique
 
@@ -49,6 +50,7 @@ def importSplicingAnnotationDatabaseAndSequence(species,array_type,biotype):
     array_ens_db={}
     if array_type == 'AltMouse':
         filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'-Ensembl_relationships.txt'
+        update.verifyFile(filename,array_type) ### Will force download if missing
         fn=filepath(filename); x = 0
         for line in open(fn,'r').xreadlines():
             data, newline = string.split(line,'\n'); t = string.split(data,'\t')
@@ -133,7 +135,6 @@ def runProgram(Species,Array_type,mir_source,stringency,Force):
     try: splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
     except UnboundLocalError:
         probeset_seq_file = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-exon-seq_updated.txt'
-        import update; reload(update)
         update.downloadCurrentVersion(probeset_seq_file,array_type,'txt')
         splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
         

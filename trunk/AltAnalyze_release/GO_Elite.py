@@ -1123,6 +1123,12 @@ def checkGOEliteSpecies(species):
     else: return 'no'
 
 def speciesData():
+    importSpeciesData()
+    if len(species_names)==0:
+        UI.remoteSpeciesInfo('no') ### will get the missing data from a backup file
+        importSpeciesData()
+        
+def importSpeciesData():
     program_type,database_dir = unique.whatProgramIsThis()
     if program_type == 'GO-Elite': filename = 'Config/species.txt'
     else: filename = 'Config/goelite_species.txt'
@@ -1748,6 +1754,7 @@ def commandLineRun():
         elif opt == '--method':
             filter_method=arg
             if filter_method == 'gene_number': filter_method = 'gene number'
+            if filter_method == 'gene': filter_method = 'gene number'
         elif opt == '--zscore': z_threshold=arg
         elif opt == '--pval': p_val_threshold=arg
         elif opt == '--num': change_threshold=arg
@@ -1836,6 +1843,8 @@ def commandLineRun():
         import BuildAffymetrixAssociations; import update; import EnsemblSQL; import UI
         file_location_defaults = UI.importDefaultFileLocations()
         speciesData(); species_codes = UI.importSpeciesInfo(); species_code_list=[]
+        if len(species_codes) == 0:
+            UI.remoteSpeciesInfo('no'); species_codes = UI.importSpeciesInfo() ### Gets the information from the backup version
     
         if ensembl_version != 'current' and 'release-' not in ensembl_version and 'EnsMart' not in ensembl_version:
             try: version_int = int(ensembl_version); ensembl_version = 'release-'+ensembl_version
@@ -1856,6 +1865,9 @@ def commandLineRun():
         else: species_code_list = [species_code]
         if 'Official' in update_method:
             existing_species_codes = UI.importSpeciesInfo()
+            if len(existing_species_codes) == 0:
+                UI.remoteSpeciesInfo('no'); existing_species_codes = UI.importSpeciesInfo() ### Gets the information from the backup version
+                
             UI.getOnlineEliteConfig(file_location_defaults,'')
             if species_code != None:
                 ### Integrate the speciescode
@@ -1899,6 +1911,8 @@ def commandLineRun():
         
         species_iteration=0
         speciesData(); species_codes = UI.importSpeciesInfo() ### Re-import the species data updated above
+        if len(species_codes) == 0:
+            UI.remoteSpeciesInfo('no'); species_codes = UI.importSpeciesInfo() ### Gets the information from the backup version
         #print species_code_list, update_ensrel
         species_code_list.sort(); species_code_list.reverse()
         
@@ -1996,13 +2010,17 @@ def commandLineRun():
                 try: EnsemblSQL.updateFiles(string.replace(ensembl_sql_dir,'core','funcgen'),'Config/','array.txt','yes')
                 except Exception: raw = export.ExportFile('Config/array.txt'); raw.close()
                 external_dbs, external_system, array_db, external_ids = UI.importExternalDBs(species)
+                if len(update_ensrel) == 0:
+                    print "\nPlease indicate the system to update (e.g., --system all --system arrays --system Entrez)."; sys.exit()
                 for i in update_ensrel:
                     i = string.replace(i,'\x93',''); i = string.replace(i,'\x94','') ### Occurs when there is a forward slash in the system name
                     if i in external_system: externalDBName_list.append(i)
-                    elif i != 'all' and i != 'arrays': print 'Ensembl related system',i, 'not found.'
+                    elif i != 'all' and i != 'arrays':
+                        print '\nEnsembl related system',[i], 'not found!!! Check the file Config/external_db.txt for available valid system names before proceeding.'; sys.exit()
                 if 'all' in update_ensrel:
                     for i in external_system:  ### Build for all possible systems
                         if '\\N_' not in i: externalDBName_list.append(i)
+                        #print [i]
                 elif 'arrays' in update_ensrel:
                     externalDBName_list=[]
                     for array in array_db:
@@ -2017,12 +2035,18 @@ def commandLineRun():
                 configType = 'Basic'; iteration=0
                 import EnsemblSQL; reload(EnsemblSQL)
                 if 'arrays' not in update_ensrel:
-                    all_external_ids = EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,'GO',configType,'GeneAndExternal',overwrite_previous,replaceDB,external_system,force); iteration+=1
-                    externalDBName_list = UI.filterExternalDBs(all_external_ids,externalDBName_list,external_ids,array_db)      
+                    try: all_external_ids = EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,'GO',configType,'GeneAndExternal',overwrite_previous,replaceDB,external_system,force); iteration+=1
+                    except Exception, e: print e; print 'Critical Error!!!! Exiting GO-Elite...'; sys.exit()
+                    externalDBName_list = UI.filterExternalDBs(all_external_ids,externalDBName_list,external_ids,array_db)   
                 for externalDBName in externalDBName_list:
                     if externalDBName != ' ':
                         if force == 'yes' and iteration == 1: force = 'no'
                         import EnsemblSQL; reload(EnsemblSQL)
+                        
+                        output_dir = 'BuildDBs/EnsemblSQL/'+species_code+'/'
+                        if force == 'yes': ### Delete any existing data in the destination directory that can muck up tables from a new Ensembl build
+                            export.deleteFolder(output_dir)
+                            
                         if externalDBName in array_db:
                             analysisType = 'FuncGen'
                             print [externalDBName], analysisType
@@ -2035,7 +2059,7 @@ def commandLineRun():
                             #except Exception,e: print e;sys.exit()
                             
                 try: swapAndExportSystems(species_code,'Ensembl','EntrezGene') ### Allows for analysis of Ensembl IDs with EntrezGene based GO annotations (which can vary from Ensembl)
-                except Exception: null ### Occurs if EntrezGene not supported
+                except Exception: null=[] ### Occurs if EntrezGene not supported
                 
                 if remove_download_files == 'yes': export.deleteFolder('BuildDBs/EnsemblSQL/'+species_code)
                 
@@ -2091,7 +2115,6 @@ def commandLineRun():
                 elif species_full != None:
                     species1,species2 = string.split(species_full,' ')
                     species_code_ls = [species1[0]+species2[0]]
-                    
                 for species_code in species_code_ls:
                     current_species_dirs = unique.returnDirectories('/Databases')
                     if species_code in current_species_dirs:
@@ -2099,6 +2122,7 @@ def commandLineRun():
                         except Exception: null=[]
                         ### Creates a nested GO (and stores objects in memory, but not needed
                         export_databases = 'no'; genmapp_mod = 'Ensembl'; sourceData()
+                        print species_code,'Building Nested for mod types:',mod_types
                         full_path_db,path_id_to_goid,null = OBO_import.buildNestedGOAssociations(species_code,export_databases,mod_types,genmapp_mod)
             if 'GORelationships' in update_method:            
                 import gene_associations
@@ -2162,11 +2186,11 @@ def commandLineRun():
         change_threshold = change_threshold-1
         print ''
         root = parent; runGOElite(mod)
-    elif 'metabolites' in update_method:
-        import MetabolomicsParser
-        MetabolomicsParser.buildMetabolomicsDatabase(force) ### will update any installed species
     else:
         print '\nInsufficient flags entered (requires --species, --input, --denom and --output)'; sys.exit()
+    if 'metabolites' in update_method:
+        import MetabolomicsParser
+        MetabolomicsParser.buildMetabolomicsDatabase(force) ### will update any installed species
     sys.exit()
     
 ###### Determine Command Line versus GUI Control ######

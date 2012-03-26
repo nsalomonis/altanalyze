@@ -88,13 +88,22 @@ class GroupStats:
         return output
     def __repr__(self): return self.Report()
 
-def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type,norm,probability_statistic):
+def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type,norm,fl):
     ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
     expbuilder_value_db = {}; group_name_db = {}; summary_filtering_stats = {}; pval_summary_db= {}
     
     stat_result_names = ['avg-','log_fold-','fold-','rawp-','adjp-']
     group_summary_result_names = ['avg-']
     
+    ### Define expression variables
+    try: probability_statistic = fl.ProbabilityStatistic()
+    except Exception: probability_statistic = 'unpaired t-test'
+    try: gene_exp_threshold = fl.ExonExpThreshold()
+    except Exception: gene_exp_threshold = 0
+    try: rpkm_threshold = fl.RPKMThreshold()
+    except Exception: rpkm_threshold = 0
+    
+    ### Begin processing sample expression values according to the organized groups
     for row_id in data:
         try: gene = probeset_db[row_id][0]
         except TypeError: gene = '' #not needed if not altsplice data
@@ -139,14 +148,22 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                     p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
             except Exception: p = 1
             comp = group1,group2
-            try:
-                gs = GroupStats(log_fold,fold,p)
-                stat_results[comp] = groups_name,gs,group2_name
-            except TypeError: print comp, len(stat_results); kill_program
             if array_type == 'RNASeq':
                 if norm == 'RPKM': adj = 0
                 else: adj = 1
                 avg1 = math.pow(2,avg1)-adj; avg2 = math.pow(2,avg2)-adj
+                if norm == 'RPKM':
+                    if avg1 < rpkm_threshold and avg2 < rpkm_threshold:
+                        log_fold = 'Insufficient Expression'
+                        fold = 'Insufficient Expression'
+                else:
+                    if avg1 < gene_exp_threshold and avg2 < gene_exp_threshold:
+                        log_fold = 'Insufficient Expression'
+                        fold = 'Insufficient Expression'
+            try:
+                gs = GroupStats(log_fold,fold,p)
+                stat_results[comp] = groups_name,gs,group2_name
+            except TypeError: print comp, len(stat_results); kill_program
             group_summary_results[group1] = group1_name,[avg1]
             group_summary_results[group2] = group2_name,[avg2]
 

@@ -288,12 +288,18 @@ def buildTranscriptStructureTable():
     for eti in exon_transcript_db:
         exonid = eti.ExonId(); transcript_id = eti.TranscriptId(); rank = eti.Rank()
         ei = exon_db[exonid]; seq_region_start = ei.SeqRegionStart(); seq_region_end = ei.SeqRegionEnd()
-        ens_exon = exon_stable_id_db[exonid].StableId()  
-        ti = transcript_db[transcript_id]; geneid = ti.GeneId(); ens_transcript = transcript_stable_id_db[transcript_id].StableId()  
+        try: constitutive_call = str(ei.IsConstitutive())
+        except Exception: constitutive_call = '0'
+        try: ens_exon = exon_db[exonid].StableId()
+        except Exception: ens_exon = exon_stable_id_db[exonid].StableId()
+        ti = transcript_db[transcript_id]; geneid = ti.GeneId()
+        try: ens_transcript = transcript_db[transcript_id].StableId()
+        except Exception: ens_transcript = transcript_stable_id_db[transcript_id].StableId()
         gi = gene_db[geneid]; seq_region_id = gi.SeqRegionId(); strand = gi.SeqRegionStrand()
         chr = seq_region_db[seq_region_id].Name()
-        ens_gene = gene_stable_id_db[geneid].StableId()        
-        values = [geneid,transcript_id,rank,ens_gene,chr,str(strand),str(seq_region_start),str(seq_region_end),ens_exon,'0',ens_transcript]
+        try: ens_gene = gene_db[geneid].StableId()
+        except Exception: ens_gene = gene_stable_id_db[geneid].StableId()   
+        values = [geneid,transcript_id,rank,ens_gene,chr,str(strand),str(seq_region_start),str(seq_region_end),ens_exon,constitutive_call,ens_transcript]
         temp_values_list.append(values)
         
     values_list=[]; temp_values_list.sort() ###Make sure the gene, transcripts and exons are grouped and ranked appropriately
@@ -312,11 +318,16 @@ def exportTranscriptBioType():
     headers = ['Ensembl Gene ID','Ensembl Translation ID', 'Biotype']
     for transcript_id in transcript_db:
         ti = transcript_db[transcript_id]
-        ens_transcript = transcript_stable_id_db[transcript_id].StableId()
-        try: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_stable_id_db[protein_id].StableId()
+        
+        try: ens_transcript = transcript_db[transcript_id].StableId()
+        except Exception: ens_transcript = transcript_stable_id_db[transcript_id].StableId()
+        try:
+            try: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_db[protein_id].StableId()
+            except Exception: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_stable_id_db[protein_id].StableId()
         except Exception: ens_protein = ens_transcript+'-PEP'
         geneid = ti.GeneId(); geneid = ti.GeneId()
-        ens_gene = gene_stable_id_db[geneid].StableId()   
+        try: ens_gene = gene_db[geneid].StableId()
+        except Exception: ens_gene = gene_stable_id_db[geneid].StableId()
         values = [ens_gene,ens_protein,ti.Biotype()]
         values_list.append(values)
     exportEnsemblTable(values_list,headers,output_dir)
@@ -339,10 +350,14 @@ def getDomainGenomicCoordinates(species,xref_db):
     headers = ['Gene', 'Trans', 'Protein']; values_list=[]
     for transcript_id in transcript_db:
         geneid = transcript_db[transcript_id].GeneId()
-        ens_gene = gene_stable_id_db[geneid].StableId()
-        try: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_stable_id_db[protein_id].StableId()
+        try: ens_gene = gene_db[geneid].StableId()
+        except Exception: ens_gene = gene_stable_id_db[geneid].StableId()
+        try:
+            try: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_db[protein_id].StableId()
+            except Exception: protein_id = transcript_protein_id[transcript_id]; ens_protein = translation_stable_id_db[protein_id].StableId()
         except KeyError: ens_protein = ''
-        ens_transcript = transcript_stable_id_db[transcript_id].StableId()
+        try: ens_transcript = transcript_db[transcript_id].StableId()
+        except Exception: ens_transcript = transcript_stable_id_db[transcript_id].StableId()
         values_list.append([ens_gene,ens_transcript,ens_protein])
     exportEnsemblTable(values_list,headers,output_dir)
     
@@ -369,7 +384,8 @@ def getDomainGenomicCoordinates(species,xref_db):
         seq_start = ti.SeqStart(); start_exon_id = ti.StartExonId(); seq_end = ti.SeqEnd(); end_exon_id = ti.EndExonId()
         eti_list = exon_transcript_db2[transcript_id]; eti_list.sort()
         ### Get info for exporting exon protein coordinate data
-        ens_protein = translation_stable_id_db[protein_id].StableId()
+        try: ens_protein = translation_db[protein_id].StableId()
+        except Exception: ens_protein = translation_stable_id_db[protein_id].StableId()
         #if ens_protein == 'ENSDARP00000087122':
         cummulative_coding_length = 0
         tis = transcript_db[transcript_id]; geneid = tis.GeneId(); gi = gene_db[geneid]; strand = gi.SeqRegionStrand() #Get strand
@@ -379,7 +395,8 @@ def getDomainGenomicCoordinates(species,xref_db):
         coding_exons = []; ce=0
         for (rank,eti) in eti_list:
             exonid = eti.ExonId()
-            ens_exon = exon_stable_id_db[exonid].StableId()  
+            try: ens_exon = exon_db[exonid].StableId()
+            except Exception: ens_exon = exon_stable_id_db[exonid].StableId()  
             #print exonid,start_exon_id,end_exon_id
             if exonid == start_exon_id: ### Thus we are in the start exon for this transcript
                 ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
@@ -444,7 +461,8 @@ def getDomainGenomicCoordinates(species,xref_db):
     interprot_match=0; values_list=[]
     for protein_feature_id in protein_feature_db:
         pfi = protein_feature_db[protein_feature_id]; protein_id = pfi.TranslationId(); evalue = pfi.Evalue()
-        ens_protein = translation_stable_id_db[protein_id].StableId()
+        try: ens_protein = translation_db[protein_id].StableId()
+        except Exception: ens_protein = translation_stable_id_db[protein_id].StableId()
         seq_start = pfi.SeqStart(); seq_end = pfi.SeqEnd(); hit_id = pfi.HitId() ### hit_id is the domain accession which maps to 'id' in interpro
         seq_start = seq_start*3-2; seq_end = seq_end*3 ###convert to transcript basepair positions
         coding_exons = protein_coding_exon_db[protein_id]
@@ -540,7 +558,8 @@ def buildEnsemblGeneAnnotationTable(species,xref_db):
         if description == '\\N': description = ''
         try: symbol = xref_db[display_xref_id].DisplayLabel()
         except KeyError: symbol = ''
-        ens_gene = gene_stable_id_db[geneid].StableId()
+        try: ens_gene = gene_db[geneid].StableId()
+        except Exception: ens_gene = gene_stable_id_db[geneid].StableId()
         values = [ens_gene,description,symbol]
         values_list.append(values)
         ###Also, create a filter_db that allows for the creation of Ensembl-external gene db tables
@@ -569,7 +588,8 @@ def buildEnsemblExternalDBRelationshipTable(external_system,xref_db,object_xref_
             output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-'+external_system+'.txt'
         version_info = species+' Ensembl relationships downloaded from EnsemblSQL server, build '+ensembl_build
 
-    exportVersionInfo(output_dir,version_info)
+    try: exportVersionInfo(output_dir,version_info)
+    except Exception: null=[]
     
     headers = ['Ensembl ID',external_system + ' ID']; id_type_db={}; index=0
     id_type_db={}; gene_relationship_db={}; transcript_relationship_db={}; translation_relationship_db={}
@@ -634,11 +654,17 @@ def convertBetweenEnsemblIDTypes(output_id_type,transcript_relationship_db,trans
     for (ens_numeric_id,dbprimary_acc) in transcript_relationship_db:
         if output_id_type == 'Gene':
             geneid = transcript_db[ens_numeric_id].GeneId();
-            try: ens_id = gene_stable_id_db[geneid].StableId()
+            try:
+                try: ens_id = gene_db[geneid].StableId()
+                except Exception: ens_id = gene_stable_id_db[geneid].StableId()
             except KeyError: null = [] ### Again, this occurs in version 47
-        elif output_id_type == 'Transcription': ens_id = transcript_stable_id_db[ens_numeric_id].StableId()
+        elif output_id_type == 'Transcription':
+            try: ens_id = transcript_db[ens_numeric_id].StableId()
+            except Exception: ens_id = transcript_stable_id_db[ens_numeric_id].StableId()
         elif output_id_type == 'Translation':
-            try: protein_id = transcript_to_protein_db[ens_numeric_id]; ens_id = translation_stable_id_db[protein_id].StableId()
+            try:
+                try: protein_id = transcript_to_protein_db[ens_numeric_id]; ens_id = translation_db[protein_id].StableId()
+                except Exception: protein_id = transcript_to_protein_db[ens_numeric_id]; ens_id = translation_stable_id_db[protein_id].StableId()
             except KeyError: null = []
         try: values = [ens_id,dbprimary_acc]; values_list.append(values)
         except NameError: null = []
@@ -647,30 +673,36 @@ def convertBetweenEnsemblIDTypes(output_id_type,transcript_relationship_db,trans
         if output_id_type == 'Gene':
             transcript_id = translation_db[ens_numeric_id].TranscriptId()
             geneid = transcript_db[transcript_id].GeneId()
-            try: ens_id = gene_stable_id_db[geneid].StableId()
+            try:
+                try: ens_id = gene_db[geneid].StableId()
+                except Exception: ens_id = gene_stable_id_db[geneid].StableId()
             except KeyError: null = [] ### Again, this occurs in version 47
         elif output_id_type == 'Transcription':
             transcript_id = translation_db[ens_numeric_id].TranscriptId()
-            ens_id = transcript_stable_id_db[transcript_id].StableId()
+            try: ens_id = transcript_db[transcript_id].StableId()
+            except Exception: ens_id = transcript_stable_id_db[transcript_id].StableId()
         elif output_id_type == 'Translation': ens_id = translation_stable_id_db[ens_numeric_id].StableId()
         try: values = [ens_id,dbprimary_acc]; values_list.append(values)
         except NameError: null = []
         
     for (ens_numeric_id,dbprimary_acc) in gene_relationship_db:
         if output_id_type == 'Gene':
-            ens_id = gene_stable_id_db[ens_numeric_id].StableId()
+            try: ens_id = gene_db[ens_numeric_id].StableId()
+            except Exception: ens_id = gene_stable_id_db[ens_numeric_id].StableId()
             values = [ens_id,dbprimary_acc]; values_list.append(values)
         elif output_id_type == 'Transcription':
             transcript_ids = gene_to_transcript_db[ens_numeric_id]
             for transcript_id in transcript_ids:
-                ens_id = transcript_stable_id_db[transcript_id].StableId()
+                try: ens_id = transcript_db[transcript_id].StableId()
+                except Exception: ens_id = transcript_stable_id_db[transcript_id].StableId()
                 values = [ens_id,dbprimary_acc]; values_list.append(values)
         elif output_id_type == 'Translation':
             transcript_ids = gene_to_transcript_db[ens_numeric_id]
             for transcript_id in transcript_ids:
                 try: ### Translate between transcripts to protein IDs
                     protein_id = transcript_to_protein_db[ens_numeric_id]
-                    ens_id = translation_stable_id_db[protein_id].StableId()
+                    try: ens_id = translation_db[protein_id].StableId()
+                    except Exception: ens_id = translation_stable_id_db[protein_id].StableId()
                     values = [ens_id,dbprimary_acc]; values_list.append(values)
                 except KeyError: null = []
     values_list = unique.unique(values_list)    
@@ -763,6 +795,7 @@ class EnsemblSQLEntryData:
         elif header == "seq_region_id": self.seq_region_id = value
         elif header == "name": self.name = value
         elif header == "exon_id": self.exon_id = value
+        elif header == "is_constitutive": self.is_constitutive = value
         elif header == "interpro_ac": self.interpro_ac = value
         elif header == "xref_id": self.xref_id = value
         elif header == "evalue":
@@ -790,6 +823,7 @@ class EnsemblSQLEntryData:
     def ObjectXrefId(self): return self.object_xref_id
     def DbName(self): return self.db_name
     def ExonId(self): return self.exon_id
+    def IsConstitutive(self): return self.is_constitutive
     def SeqEnd(self): return self.seq_end
     def EndExonId(self): return self.end_exon_id
     def Description(self): return self.description
@@ -852,7 +886,7 @@ def importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_
         global probe_set_db; global probe_db
         key_filter_db={}; external_filter_db={}
 
-    ###Generic function for importing all EnsemblSQL tables based on the SQLDescription table        
+    ###Generic function for importing all EnsemblSQL tables based on the SQLDescription tabl
     for filename in sql_group_db['Description']: ### Gets the SQL description table
         try: sql_filepaths = updateFiles(ensembl_sql_description_dir,output_dir,filename,force)
         except Exception: ### Try again... can be a server problem
@@ -860,62 +894,73 @@ def importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_
             #print ensembl_sql_description_dir,output_dir,filename; print e; sys.exit()
         for sql_filepath in sql_filepaths:
             sql_file_db = importSQLDescriptions(import_group,sql_filepath,sql_file_db)
+
     for filename in sql_group_db[import_group]:
         sql_filepaths = updateFiles(ensembl_sql_dir,output_dir,filename,force)
-        #if 'object' in filename and 'Func' in output_dir: sql_filepaths = ['BuildDBs/EnsemblSQL/Dr/FuncGen/object_xref.001.txt','BuildDBs/EnsemblSQL/Dr/FuncGen/object_xref.002.txt']
-        for sql_filepath in sql_filepaths: ### If multiple files for a single table, run all files (retain orginal filename)
-            key_value_db = importPrimaryEnsemblSQLTables(sql_filepath,filename,sql_file_db[import_group,filename])
-            """except IOError:
-                sql_filepaths = updateFiles(ensembl_sql_dir,output_dir,filename,'yes')
-                key_value_db = importPrimaryEnsemblSQLTables(sql_filepath,filename,sql_file_db[import_group,filename])"""
-            if filename == "exon.txt": exon_db = key_value_db
-            elif filename == "exon_transcript.txt": exon_transcript_db = key_value_db
-            elif filename == "exon_stable_id.txt": exon_stable_id_db = key_value_db
-            elif filename == "transcript.txt": transcript_db = key_value_db
-            elif filename == "transcript_stable_id.txt": transcript_stable_id_db = key_value_db
-            elif filename == "translation.txt": translation_db = key_value_db
-            elif filename == "translation_stable_id.txt": translation_stable_id_db = key_value_db
-            elif filename == "gene.txt": gene_db = key_value_db
-            elif filename == "gene_stable_id.txt": gene_stable_id_db = key_value_db
-            elif filename == "protein_feature.txt": protein_feature_db = key_value_db
-            elif filename == "interpro.txt": interpro_db = key_value_db
-            elif filename == "external_synonym.txt": external_synonym_db = key_value_db
-            elif filename == "external_db.txt": external_db_db = key_value_db
-            elif filename == "seq_region.txt": seq_region_db = key_value_db
-            elif filename == "array.txt": array_db = key_value_db
-            elif filename == "array_chip.txt":
-                ### Add chip type and vendor to external_filter_db to filter probe.txt
-                array_chip_db = key_value_db; buildFilterDBForArrayDB(externalDBName)
-            elif filename == "xref.txt":
-                try: xref_db = combineDBs(xref_db,key_value_db,'string')
-                except Exception: xref_db = key_value_db
-                if '.0' in sql_filepath: print 'Entries in xref_db', len(xref_db)
-            elif filename == "object_xref.txt":
-                try: object_xref_db = combineDBs(object_xref_db,key_value_db,'list')
-                except Exception: object_xref_db = key_value_db
-                if '.0' in sql_filepath: print 'Entries in object_xref_db', len(object_xref_db)
-            elif filename == "probe.txt":
-                try: probe_db = combineDBs(probe_db,key_value_db,'list')
-                except Exception: probe_db = key_value_db
-                if '.0' in sql_filepath: print 'Entries in probe_db', len(probe_db)
-            elif filename == "probe_set.txt":
-                if 'AFFY' in manufacturer: probe_set_db = key_value_db
-                else: probe_set_db = probe_db
-                del probe_db
-            else: ###Shouldn't occur, unless we didn't account for a file type
-                print 'Warning!!! A file has been imported which does not exist in the program space'
-                print 'Filename =',filename;sys.exit()
-    if import_group == 'Primary':
-        key_filter_db={}
-        for geneid in gene_db:
-            gi = gene_db[geneid]; display_xref_id = gi.DisplayXrefId()
-            key_filter_db[display_xref_id]=[]
-    elif 'Object-Xref' in import_group:
-        return object_xref_db
-    elif 'Xref' in import_group:
-        return xref_db
-    elif 'PrimaryFunc' in import_group:
-        return xref_db
+        if sql_filepaths == 'stable-combined-version':
+            ### Hence, the file was not downloaded
+            print filename, 'not present in this version of Ensembl' ### Stable files are merged with the indexed files in Ensembl 65 and later
+        else:
+            #if 'object' in filename and 'Func' in output_dir: sql_filepaths = ['BuildDBs/EnsemblSQL/Dr/FuncGen/object_xref.001.txt','BuildDBs/EnsemblSQL/Dr/FuncGen/object_xref.002.txt']
+            for sql_filepath in sql_filepaths: ### If multiple files for a single table, run all files (retain orginal filename)
+                print 'Processing:',filename
+                try:
+                    key_value_db = importPrimaryEnsemblSQLTables(sql_filepath,filename,sql_file_db[import_group,filename])
+                    """except IOError:
+                        sql_filepaths = updateFiles(ensembl_sql_dir,output_dir,filename,'yes')
+                        key_value_db = importPrimaryEnsemblSQLTables(sql_filepath,filename,sql_file_db[import_group,filename])"""
+                    if filename == "exon.txt": exon_db = key_value_db
+                    elif filename == "exon_transcript.txt": exon_transcript_db = key_value_db
+                    elif filename == "exon_stable_id.txt": exon_stable_id_db = key_value_db
+                    elif filename == "transcript.txt": transcript_db = key_value_db
+                    elif filename == "transcript_stable_id.txt": transcript_stable_id_db = key_value_db
+                    elif filename == "translation.txt": translation_db = key_value_db
+                    elif filename == "translation_stable_id.txt": translation_stable_id_db = key_value_db
+                    elif filename == "gene.txt": gene_db = key_value_db
+                    elif filename == "gene_stable_id.txt": gene_stable_id_db = key_value_db
+                    elif filename == "protein_feature.txt": protein_feature_db = key_value_db
+                    elif filename == "interpro.txt": interpro_db = key_value_db
+                    elif filename == "external_synonym.txt": external_synonym_db = key_value_db
+                    elif filename == "external_db.txt": external_db_db = key_value_db
+                    elif filename == "seq_region.txt": seq_region_db = key_value_db
+                    elif filename == "array.txt": array_db = key_value_db
+                    elif filename == "array_chip.txt":
+                        ### Add chip type and vendor to external_filter_db to filter probe.txt
+                        array_chip_db = key_value_db; buildFilterDBForArrayDB(externalDBName)
+                    elif filename == "xref.txt":
+                        try: xref_db = combineDBs(xref_db,key_value_db,'string')
+                        except Exception: xref_db = key_value_db
+                        if '.0' in sql_filepath: print 'Entries in xref_db', len(xref_db)
+                    elif filename == "object_xref.txt":
+                        try: object_xref_db = combineDBs(object_xref_db,key_value_db,'list')
+                        except Exception: object_xref_db = key_value_db
+                        if '.0' in sql_filepath: print 'Entries in object_xref_db', len(object_xref_db)
+                    elif filename == "probe.txt":
+                        try: probe_db = combineDBs(probe_db,key_value_db,'list')
+                        except Exception: probe_db = key_value_db
+                        if '.0' in sql_filepath: print 'Entries in probe_db', len(probe_db)
+                    elif filename == "probe_set.txt":
+                        if 'AFFY' in manufacturer: probe_set_db = key_value_db
+                        else: probe_set_db = probe_db
+                        del probe_db
+                    else: ###Shouldn't occur, unless we didn't account for a file type
+                        print 'Warning!!! A file has been imported which does not exist in the program space'
+                        print 'Filename =',filename;sys.exit()
+                except Exception,e:
+                    print e
+                    print '...Likely due to present SQL tables from a prior Ensembl version run that are no longer supported for this version. Ignoring and proceeding..'
+    if sql_filepaths != 'stable-combined-version':
+        if import_group == 'Primary':
+            key_filter_db={}
+            for geneid in gene_db:
+                gi = gene_db[geneid]; display_xref_id = gi.DisplayXrefId()
+                key_filter_db[display_xref_id]=[]
+        elif 'Object-Xref' in import_group:
+            return object_xref_db
+        elif 'Xref' in import_group:
+            return xref_db
+        elif 'PrimaryFunc' in import_group:
+            return xref_db
 
 def combineDBs(db1,db2,type):
     if type == 'string':
@@ -964,7 +1009,10 @@ def updateFiles(ensembl_sql_dir,output_dir,filename,force):
                 except OSError: status = status
             sql_filepaths = [gz_filepath[:-3]]
     #print [sql_filepaths]
-    if len(sql_filepaths)==0: print '\nNo files found for:',filename; kill
+    if len(sql_filepaths)==0:
+        if 'stable' in filename: sql_filepaths = 'stable-combined-version' ### For Ensembl 65 and later (changed table organization from previous versions)
+        else:
+            print '\nThe file:',filename, 'is missing from Ensembl FTP directory for this version of Ensembl. Contact genmapp@gladstone.ucsf.edu to inform them of this change to the Ensembl database table structure or download the latest version of this software.'; force_exit
     return sql_filepaths
 
 def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
@@ -1129,6 +1177,10 @@ def clearvar(varname):
         if var == varname: del globals()[var]
     
 def getCurrentEnsemblSpecies(version):
+    if 'EnsMart' in version:
+        version = string.replace(version,'EnsMart','') ### User may enter EnsMart65, but we want 65 (release- is added before the number)
+        version = string.replace(version,'Plus','')
+    if 'release' not in version: version = 'release-'+version
     ftp_server = 'ftp.ensembl.org'
     if version == 'current': subdir = '/pub/current_mysql'
     else: subdir = '/pub/'+version+'/mysql'
@@ -1288,7 +1340,9 @@ def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,e
     ### Get Ensembl gene-transcript relationships from core files
     ens_transcript_db={}
     for transcript_id in transcript_db:
-        ti = transcript_db[transcript_id]; ens_transcript = transcript_stable_id_db[transcript_id].StableId()  
+        ti = transcript_db[transcript_id]
+        try: ens_transcript = transcript_db[transcript_id].StableId()
+        except Exception: ens_transcript = transcript_stable_id_db[transcript_id].StableId()
         ens_transcript_db[ens_transcript] = ti
 
     values_list=[]; nulls=0; type_errors=[]
@@ -1300,7 +1354,8 @@ def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,e
                         transcript_id = ox.XrefId()
                         ens_transcript = xref_db[transcript_id].DbprimaryAcc()
                         ti = ens_transcript_db[ens_transcript]; geneid = ti.GeneId()
-                        ens_gene = gene_stable_id_db[geneid].StableId()
+                        try: ens_gene = gene_db[geneid].StableId()
+                        except Exception: ens_gene = gene_stable_id_db[geneid].StableId()
                         for ps in probe_set_db[probe_set_id]:
                             probeset = ps.Name() ### The same probe ID shouldn't exist more than once, but for some arrays it does (associaed with multiple probe names)
                             values_list.append([ens_gene,probeset])
@@ -1332,7 +1387,8 @@ def buildEnsemblGeneGOEliteTable(species,xref_db,overwrite_previous):
         try: symbol = xref_db[display_xref_id].DisplayLabel()
         except KeyError: symbol = ''
         try:
-            ens_gene = gene_stable_id_db[geneid].StableId()
+            try: ens_gene = gene_db[geneid].StableId()
+            except Exception: ens_gene = gene_stable_id_db[geneid].StableId()
             values = [ens_gene,symbol,description]
             values_list.append(values)
         except KeyError: null=[] ### In version 47, discovered that some geneids are not in the gene_stable - inclear why this is

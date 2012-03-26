@@ -36,13 +36,16 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir)
     return dir_list
 
-def verifyFile(filename):
+def verifyFile(filename,server_folder):
     fn=filepath(filename)
     try:
         for line in open(fn,'rU').xreadlines():break
     except Exception:
-        import update; reload(update); server_folder = 'AltMouse'
-        update.downloadCurrentVersion(filename,server_folder,'txt')
+        import update; reload(update)
+        if server_folder == None: server_folder = 'AltMouse'
+        continue_analysis = update.downloadCurrentVersion(filename,server_folder,'')
+        if continue_analysis == 'no':
+            print 'The file:\n',filename, '\nis missing and cannot be found online. Please save to the designated directory or contact AltAnalyze support.';sys.exit()
 
 ########### Recent code for dealing with comprehensive Affymetrix Junction Arrays
 
@@ -62,6 +65,18 @@ class ExonAnnotationData:
                 geneid = unique.unique(ens)[-1]
         else: geneid=''
         return geneid
+    def EnsemblGeneIDs(self):
+        geneid = self._geneid
+        if 'ENS' in self._geneid:
+            if ',' in self._geneid:
+                ens=[]
+                ids = string.split(self._geneid,',')
+                for id in ids:
+                    if 'ENS' in id: ens.append(id)
+                geneids = unique.unique(ens)
+            else: geneids = [self._geneid]
+        else: geneids=[]
+        return geneids
     def Symbol(self):
         try: symbols = string.split(self._symbols,',')
         except Exception: print self._probeset,self._symbols;kill
@@ -117,16 +132,32 @@ class EnsemblInformation:
     def Symbol(self): return self._symbol
     def __repr__(self): return self.GeneID()
     
-def importJunctionArrayAnnotations(species,array_type):
+def importEnsemblLiftOverData(filename):
+    fn=filepath(filename); ens_translation_db={}
+    print 'importing:',filename
+    for line in open(fn,'rU').xreadlines():             
+        data = cleanUpLine(line)
+        tc, new_ens, new_coord = string.split(data,'\t')
+        ens_translation_db[tc]=new_ens
+    print len(ens_translation_db), 'Old versus new Ensembl IDs imported (from coordinate liftover and realignment)'
+    return ens_translation_db
+        
+def importJunctionArrayAnnotations(species,array_type,specific_array_type):
 
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_LiftOverEnsembl.txt'
+    try: verifyFile(filename,array_type+'/'+specific_array_type) ### Downloads server file if not local
+    except Exception: null=[]
+    try: ens_translation_db = importEnsemblLiftOverData(filename)
+    except Exception: ens_translation_db={}; print "No coordinate LiftOver file present (not supplied for HJAY or MJAY)!!!!"
+    
     import EnsemblImport
     ens_gene_chr_db = EnsemblImport.importEnsGeneData(species) ### retrieves chromosome and strand info for each gene
     ensembl_annotations = 'AltDatabase/ensembl/'+ species + '/'+species+ '_Ensembl-annotations_simple.txt'
     ensembl_annotation_db = importGeneric(ensembl_annotations)
     
     extraction_type = 'Ensembl'
-    tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,species,extraction_type)
-        
+    tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
+
     ensembl_symbol_db={}; ensembl_gene_db={}
     for ens_geneid in ensembl_annotation_db:
         description, symbol = ensembl_annotation_db[ens_geneid]
@@ -136,31 +167,62 @@ def importJunctionArrayAnnotations(species,array_type):
             if len(symbol)>0:
                 try: ensembl_symbol_db[symbol].append(ei)
                 except KeyError: ensembl_symbol_db[symbol] =[ei]
-                ensembl_gene_db[ens_geneid] = ei
+            ensembl_gene_db[ens_geneid] = ei
 
     primary_gene_annotation_export = 'AltDatabase/'+species +'/'+ array_type +'/'+ array_type+ '_gene_annotations.txt'    
-    ens_match=0; sym_match=0; ensembl_associations={}; gene_annotation_db={}         
+    ens_match=0; sym_match=0; ensembl_associations={}; gene_annotation_db={}; missing_count=0
+    ### We want to maximize accurate gene-transcript associations (given the poor state of annotations provided by Affymetrix in these files)
+
     for transcript_cluster_id in tc_ensembl_annotations:
         ti = tc_ensembl_annotations[transcript_cluster_id]
-        ti.Strand(); ti.Chromosome(); ti.Symbol(); ens_geneids=[]
-        if ti.EnsemblGeneID() in ensembl_gene_db: ens_geneids = [ti.EnsemblGeneID()]; ens_match+=1
-        else:
-            for symbol in ti.Symbol():
-                if symbol in ensembl_symbol_db:
-                    for ei in ensembl_symbol_db[symbol]:
-                        #print [ei.Chromosome(),ti.Chromosome(),ei.Strand(),ti.Strand()];kill
+        ti.Strand(); ti.Chromosome(); ti.Symbol(); ens_geneids={}; ens_geneid_ls=[]
+
+        for gene in ti.EnsemblGeneIDs():
+            if gene in ens_translation_db and gene not in ensembl_gene_db: ### This is the old lift over method where an old Ens in the annotation file is translated to a more recent ID
+                gene = ens_translation_db[gene] ### translate the old to new Ensembl
+            if gene in ensembl_gene_db:
+                try: ens_geneids[gene]+=1
+                except Exception: ens_geneids[gene]=1
+                ens_match+=1
+
+        if transcript_cluster_id in ens_translation_db:
+            gene = ens_translation_db[transcript_cluster_id] ### translate the TC to new Ensembl
+            if gene in ensembl_gene_db:
+                try: ens_geneids[gene]+=1
+                except Exception: ens_geneids[gene]=1
+                ens_match+=1
+
+        for symbol in ti.Symbol():
+            if symbol in ensembl_symbol_db:
+                for ei in ensembl_symbol_db[symbol]:
+                    #print [symbol, ei.GeneID(),ti.Chromosome()]; sys.exit()
+                    #print [ei.Chromosome(),ti.Chromosome(),ei.Strand(),ti.Strand()];kill
+                    if ti.Chromosome() != 'not-assinged': ### Valid for HJAY and MJAY arrays
                         if ei.Chromosome() == ti.Chromosome() and ei.Strand() == ti.Strand():
-                            ens_geneids.append(ei.GeneID()); sym_match+=1
-        if len(ens_geneids)>0:
-            for ens_geneid in ens_geneids:
-                try: ensembl_associations[transcript_cluster_id].append(ens_geneid)
-                except KeyError: ensembl_associations[transcript_cluster_id] = [ens_geneid]
-                ei = ensembl_gene_db[ens_geneid]
-                gene_annotation_db[transcript_cluster_id]=[ei.Description(),ens_geneid,ei.Symbol(),'']
+                            try: ens_geneids[ei.GeneID()]+=1
+                            except Exception: ens_geneids[ei.GeneID()]=1
+                            sym_match+=1
+                    else: ### Valid for GLU arrays (since Affymetrix decided to change the file formats and content!!!)
+                        try: ens_geneids[ei.GeneID()]+=1
+                        except Exception: ens_geneids[ei.GeneID()]=1
+                        sym_match+=1
+        for gene in ens_geneids: ens_geneid_ls.append([ens_geneids[gene],gene]) ### Rank these to get Ensembls that have symbol and ID evidence where possible
+        ens_geneid_ls.sort(); ens_geneid_ls.reverse()
+        if len(ens_geneid_ls)>0:
+            ens_geneid = ens_geneid_ls[0][1] ### Best evidence gene association
+            try: ensembl_associations[transcript_cluster_id].append(ens_geneid)
+            except KeyError: ensembl_associations[transcript_cluster_id] = [ens_geneid]
+            ei = ensembl_gene_db[ens_geneid]
+            gene_annotation_db[transcript_cluster_id]=[ei.Description(),ens_geneid,ei.Symbol(),'']
+        else:
+            missing_count+=1
+            if missing_count<20: print transcript_cluster_id,ti.EnsemblGeneIDs(),ti.Symbol()
     exportDB(primary_gene_annotation_export,gene_annotation_db)
     ensembl_associations = eliminate_redundant_dict_values(ensembl_associations)
     print ens_match, 'direct Ensembl-Ensembl gene mapping and', sym_match, 'indirect Symbol-chromosome mapping'
     print len(tc_ensembl_annotations)-len(ensembl_associations),'unmapped transcript clusters'
+    print len(gene_annotation_db), 'transcripts with associated valid Ensembl gene IDs'#; sys.exit()
+    
     """
     u=0 ### print transcript clusters without gene IDs
     for i in tc_ensembl_annotations:
@@ -174,7 +236,8 @@ def importJunctionArrayAnnotations(species,array_type):
 
 def pickShortestExonIDDiff(exon_to_exon):
     if '|' not in exon_to_exon:
-        five_exon,three_exon=string.split(exon_to_exon,'_to_')
+        try: five_exon,three_exon=string.split(exon_to_exon,'_to_')
+        except Exception: print [exon_to_exon];sys.exit()
         return five_exon,three_exon
     else:
         exon_comps = string.split(exon_to_exon,'|'); diff_list=[]
@@ -186,10 +249,13 @@ def pickShortestExonIDDiff(exon_to_exon):
         diff_list.sort()
         return diff_list[0][1]
     
-def importJunctionArrayAnnotationMappings(array_type,species,extraction_type):
+def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type):
     print 'Importing junction array sequence mapping'
     export_dir = 'AltDatabase/'+species+'/'+array_type+'/'
     filename = export_dir+string.lower(species[0])+'jay.r2.annotation_map'
+    if 'lue' in specific_array_type: ### Grab an hGlue specific annotation file
+        filename = export_dir+string.lower(species[0])+'Glue_3_0_v1.annotation_map_dt.v3.hg18.csv'
+    verifyFile(filename,array_type) ### Check's to see if it is installed and if not, downloads or throws an error
     fn=filepath(filename)
 
     if extraction_type == 'sequence':
@@ -200,13 +266,37 @@ def importJunctionArrayAnnotationMappings(array_type,species,extraction_type):
     global probeset_db; global junction_comp_db; junction_comp_db={}; global junction_alinging_probesets
     ps_db={}; jc_db={}; left_ec={}; right_ec={}; psr_ec={}; probeset_db={}; junction_alinging_probesets={}; nonconstitutive_junctions={}
     for line in open(fn,'r').xreadlines():             
-        data = cleanUpLine(line)
-        t = string.split(data,'\t')
-        if x<5: x+=1
+        #if 'PSR170003198' in line:
+        if '.csv' in filename:
+            data = altCleanUpLine(line)
+            if '"' in data :
+                t = string.split(data,'"')
+                new_string = t[0]
+                for i in t[1:-1]:
+                    if len(i)>1:
+                        if ',' in i[1:-1]: ### can have legitimate commas on the outsides
+                            i = string.replace(i,",",'|')
+                    new_string+=i
+                new_string+=t[-1]
+                t = string.split(new_string[:-1],',')
+            else: t = string.split(data,',')
+        else:
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+        
+        if x<5 or '#' == data[0]: x+=1
         elif x>2:
             if len(t)==15: ###Transcript Cluster ID Lines
                 probeset, probeset_name, ucsclink, transcript_cluster, genome_pos, strand, transcripts, geneids, symbols, descriptions, TR_count, JUC_count, PSR_count, EXs_count, ECs_count = t
                 type = 'TranscriptCluster'; seq=''; exon_cluster=''; constitutive=''
+                if '|' in geneids: geneids = string.replace(geneids,'|',',')
+                if '|' in symbols: symbols = string.replace(symbols,'|',',')
+                psri = PSRAnnotation(probeset_name,probeset,ucsclink,transcript_cluster,strand,geneids,symbols,exon_cluster,constitutive,seq,type)
+            elif 'TC' in t[0]: ###Transcript ID Lines - Glue array
+                probeset, probeset_name, ucsclink, transcript_cluster, genome_pos, strand, transcripts, geneids, symbols, descriptions, TR_count, JUC_count, PSR_count, EXs_count, ECs_count = t[:15]
+                type = 'TranscriptCluster'; seq=''; exon_cluster=''; constitutive=''; ucsclink = ''
+                if '|' in geneids: geneids = string.replace(geneids,'|',',')
+                if '|' in symbols: symbols = string.replace(symbols,'|',',')
                 psri = PSRAnnotation(probeset_name,probeset,ucsclink,transcript_cluster,strand,geneids,symbols,exon_cluster,constitutive,seq,type)
             elif len(t)==28:###Junction ID Lines
                 probeset, probeset_name, ucsclink, transcript_cluster, genome_pos, strand, transcripts, geneids, symbols, descriptions, TR_count, JUC_count, PSR_count, EXs_count, ECs_count, junction_number, original_seq, exon_to_exon, observed_speculative, strand, five_PSR, three_PSR, five_EC, three_EC, Rel_5EC, Rel_3EC, constitutive, blat_junction = t
@@ -215,14 +305,31 @@ def importJunctionArrayAnnotationMappings(array_type,species,extraction_type):
                 five_exon,three_exon = pickShortestExonIDDiff(exon_to_exon)
                 junction_alinging_probesets[probeset] = [five_PSR,five_exon], [three_PSR,three_exon]; seq = blat_junction
                 psri = PSRAnnotation(probeset_name,probeset,ucsclink,transcript_cluster,strand,geneids,symbols,exon_cluster,constitutive,seq,type)
+            elif len(t)==31 and len(t[29])>0: ###Junction ID Lines - Glue array
+                probeset, probeset_name, ucsclink, transcript_cluster, genome_pos, strand, transcripts, geneids, symbols, descriptions, TR_count, JUC_count, PSR_count, EXs_count, ECs_count, original_seq, genomic_position, exon_to_exon, observed_speculative, exon_cluster, constitutive, five_PSR, tr_hits, three_PSR, percent_tr_hits, five_EC, loc_5_3, three_EC, Rel_5EC, Rel_3EC, blat_junction = t
+                if '|' in geneids: geneids = string.replace(geneids,'|',',')
+                if '|' in symbols: symbols = string.replace(symbols,'|',',')
+                type = 'Junction'; exon_cluster = [five_EC,three_EC]; ucsclink = ''
+                if constitutive == 'alternative': nonconstitutive_junctions[probeset]=[]
+                five_exon,three_exon = pickShortestExonIDDiff(exon_to_exon)
+                junction_alinging_probesets[probeset] = [five_PSR,five_exon], [three_PSR,three_exon]; seq = blat_junction
+                psri = PSRAnnotation(probeset_name,probeset,ucsclink,transcript_cluster,strand,geneids,symbols,exon_cluster,constitutive,seq,type)
             elif len(t)==24: ###Probeset ID Lines
                 probeset, probeset_name, ucsclink, transcript_cluster, genome_pos, strand, transcripts, geneids, symbols, descriptions, TR_count, JUC_count, PSR_count, EXs_count, ECs_count, PSR_region, genome_pos2, strand, exon_cluster, constitutive, TR_hits, percent_TR_hits, location_5to3_percent,seq = t
                 type = 'Exon'
                 psri = PSRAnnotation(probeset_name,probeset,ucsclink,transcript_cluster,strand,geneids,symbols,exon_cluster,constitutive,seq,type)
+            elif len(t)==31 and len(t[29])== 0:##Probeset ID Lines - Glue array
+                probeset, probeset_name, ucsclink, transcript_cluster, genome_pos, strand, transcripts, geneids, symbols, descriptions, TR_count, JUC_count, PSR_count, EXs_count, ECs_count, original_seq, genomic_position, exon_to_exon, observed_speculative, exon_cluster, constitutive, five_PSR, tr_hits, three_PSR, percent_tr_hits, five_EC, loc_5_3, three_EC, Rel_5EC, Rel_3EC, seq = t
+                if '|' in geneids: geneids = string.replace(geneids,'|',',')
+                if '|' in symbols: symbols = string.replace(symbols,'|',',')
+                type = 'Exon'; ucsclink = ''
+                psri = PSRAnnotation(probeset_name,probeset,ucsclink,transcript_cluster,strand,geneids,symbols,exon_cluster,constitutive,seq,type)
             else:
                 #if k<40 and len(t)>5: print len(t),t; k+=1
                 type = 'null'
+                #print len(t),data;sys.exit()
             ### Exon clusters are equivalent to exon blocks in this schema and can be matched between junctions and exons
+            #if x < 20: print len(t),t[0],type
             store = 'yes'
             if extraction_type == 'Ensembl':
                 if type != 'TranscriptCluster': store = 'no'
@@ -253,6 +360,7 @@ def importJunctionArrayAnnotationMappings(array_type,species,extraction_type):
                             except Exception: probeset_db[ens_geneid] = [seq_data]
                             transcript_cluster_count2[psri.TranscriptCluster()]=[]
             if store == 'yes':
+                #if probeset in probeset_db: print probeset; sys.exit()
                 try: probeset_db[probeset] = psri
                 except Exception: null=[]
             if type == 'TranscriptCluster':
@@ -275,7 +383,7 @@ def importJunctionArrayAnnotationMappings(array_type,species,extraction_type):
             print 'transcript_cluster',transcript_cluster; print 'transcripts',transcripts
             print 'geneids',geneids; print 'symbols',symbols; print 'seq',seq; kill"""
             x+=1
-    print 'TCs:',tc, 'Junctions:',j, 'Exons:',p, 'Total:',x
+    print 'TCs:',tc, 'Junctions:',j, 'Exons:',p, 'Total:',x; #sys.exit()
 
     #print 'JUC0900017373',probeset_db['JUC0900017373'].Sequence()
     #print 'JUC0900017385',probeset_db['JUC0900017385'].Sequence();kill
@@ -357,7 +465,13 @@ def identifyCompetitiveJunctions(exon_cluster_db,junction_type):
                 elif junction1 in ensembl_exon_db and junction2 in ensembl_exon_db: ### Thus, these are mapped to the genome
                     ed1 = ensembl_exon_db[junction1]; ed2 = ensembl_exon_db[junction2]
                     ensembl_gene_id = ed1.GeneID()
-                    diff1 = ed1.JunctionDistance(); diff2 = ed2.JunctionDistance()
+                    try: diff1 = ed1.JunctionDistance(); diff2 = ed2.JunctionDistance()
+                    except Exception:
+                        print junction1,junction2
+                        psri1 = probeset_db[junction1]
+                        psri2 = probeset_db[junction2]
+                        print psri1.Probeset(), psri2.Probeset()
+                        kill
                     ### Using the ranked exon-cluster IDs
                     psri1 = probeset_db[junction1]; exon1a = psri1.ExternalExonClusterIDs()[0]; exon1b = psri1.ExternalExonClusterIDs()[-1]
                     psri2 = probeset_db[junction2]; exon2a = psri2.ExternalExonClusterIDs()[0]; exon2b = psri2.ExternalExonClusterIDs()[-1]
@@ -399,11 +513,14 @@ def identifyCompetitiveJunctions(exon_cluster_db,junction_type):
 
     print 'already_added:',already_added,'passed:',passed,'failed:',failed
 
-def identifyJunctionComps(species,array_type):
+def identifyJunctionComps(species,array_type,specific_array_type):
+    ### At this point, probeset-to-exon-region associations are built for exon and junction probesets along with critical exons and reciprocol junctions
+    ### Now, associate the reciprocol junctions/critical exons (Ensembl/UCSC based) with junction array probesets and export to junction Hs_junction_comps.txt
     JunctionArrayEnsemblRules.getJunctionComparisonsFromExport(species,array_type)
     
+    ### Next, do this for reciprocal junctions predicted directly from Affymetrix's annotations
     extraction_type = 'comparisons'
-    tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,species,extraction_type)
+    tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
 
     inferJunctionComps(species,array_type)
     
@@ -1014,6 +1131,12 @@ def getAnnotations(filename,p,Species,Analysis_Method,constitutive_db):
     
     return filtered_exp_export_file
 
+def altCleanUpLine(line):
+    line = string.replace(line,'\n','')
+    line = string.replace(line,'\c','')
+    data = string.replace(line,'\r','')
+    return data
+
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
     line = string.replace(line,'\c','')
@@ -1022,7 +1145,7 @@ def cleanUpLine(line):
     return data
 
 def importGeneric(filename):
-    verifyFile(filename)
+    verifyFile(filename,None)
     fn=filepath(filename); key_db = {}; x = 0
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -1043,13 +1166,19 @@ def eliminate_redundant_dict_values(database):
 
 def importAnnotateCriticalExonSequences(species,array_type):
     ensembl_associations = importArrayAnnotations(species,array_type)
-    critical_exon_seq_db = importCriticalExonSeq('AltDatabase/'+species+'/'+array_type+'/'+ array_type+'_critical-exon-seq.txt',ensembl_associations)
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+ array_type+'_critical-exon-seq.txt'
+    critical_exon_seq_db = importCriticalExonSeq(filename,array_type,ensembl_associations)
     return critical_exon_seq_db
 
-def importArrayAnnotations(species,array_type):
+def importArrayAnnotations(species,array_type): 
     primary_gene_annotation_file = 'AltDatabase/'+species +'/'+ array_type +'/'+ array_type+ '_gene_annotations.txt'
     ensembl_array_gene_annotation_file = 'AltDatabase/'+species+'/'+ array_type + '/'+array_type+ '-Ensembl.txt'
     ensembl_annotations = 'AltDatabase/ensembl/'+ species + '/'+species+ '_Ensembl-annotations_simple.txt'
+    
+    verifyFile(primary_gene_annotation_file,array_type)
+    verifyFile(ensembl_array_gene_annotation_file,array_type)
+    verifyFile(ensembl_annotations,array_type)
+    
     array_gene_annotations = importGeneric(primary_gene_annotation_file)
     ensembl_associations = importGeneric(ensembl_array_gene_annotation_file)
     ensembl_annotation_db = importGeneric(ensembl_annotations)
@@ -1137,9 +1266,9 @@ class ExonSeqData:
     def GeneStart(self): return str(self._gene_start)
     def GeneStop(self): return str(self._gene_stop)
     
-def importCriticalExonSeq(filename,ensembl_associations):
+def importCriticalExonSeq(filename,array_type,ensembl_associations):
+    verifyFile(filename,array_type)
     fn=filepath(filename); key_db = {}; x = 0
-    verifyFile(filename)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         if x == 0: x = 1
@@ -1169,7 +1298,7 @@ def updateCriticalExonSequences(array_type, filename,ensembl_probeset_db):
     ensembl_probeset_db=[]; key_db = {}; x = 0
     if array_type == 'AltMouse':      
         fn1=filepath(filename)
-        verifyFile(filename)
+        verifyFile(filename,array_type)
         for line in open(fn1,'rU').xreadlines():
             line_data = cleanUpLine(line)
             if x == 0: x = 1; data.write(line)
@@ -1366,11 +1495,11 @@ def getJunctionPairs(junctions):
         if count==2: pairs_db[tuple(pairs)]=[]; count = 0; pairs=[]
     return pairs_db
 
-def getJunctionExonLocations(species,array_type):
+def getJunctionExonLocations(species,array_type,specific_array_type):
     global ensembl_associations
-    ensembl_associations = importJunctionArrayAnnotations(species,array_type)
+    ensembl_associations = importJunctionArrayAnnotations(species,array_type,specific_array_type)
     extraction_type = 'sequence'
-    exon_seq_db=importJunctionArrayAnnotationMappings(array_type,species,extraction_type)
+    exon_seq_db=importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
     getLocations(species,array_type,exon_seq_db)
     
 def identifyCriticalExonLocations(species,array_type):
@@ -1392,23 +1521,31 @@ def reAnnotateCriticalExonSequences(species,array_type):
     ensembl_probeset_db = EnsemblImport.import_sequence_data(gene_seq_filename,ensembl_probeset_db,species,analysis_type)
 
     critical_exon_file = 'AltDatabase/'+species+'/'+ array_type + '/' + array_type+'_critical-exon-seq.txt'
+    if array_type == 'AltMouse': verifyFile(critical_exon_file,array_type)
     updateCriticalExonSequences(array_type, critical_exon_file, ensembl_probeset_db)
     
 if __name__ == '__main__':
     """Module has methods for annotating Junction associated critical exon sequences with up-to-date genome coordinates and analysis options for
     junciton arrays from AnalyzeExpressionDatasets"""
-    m = 'Mm'; h = 'Hs'; species = h; array_type = 'RNASeq' ###In theory, could be another type of junction or combination array
+    m = 'Mm'; h = 'Hs'; species = h; array_type = 'junction' ###In theory, could be another type of junction or combination array
+    specific_array_type = 'hGlue'
+    
+    extraction_type = 'comparisons'
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_LiftOverEnsembl.txt'
+    verifyFile(filename,array_type+'/'+specific_array_type);sys.exit()
+    tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type); sys.exit()
+    
     combineExonJunctionAnnotations(species,array_type);sys.exit()
     filterForCriticalExons(species,array_type)
     overRideExonEntriesWithJunctions(species,array_type);sys.exit()
     
     #inferJunctionComps(species,array_type); sys.exit()
     
-    identifyJunctionComps(species,array_type);sys.exit()
+    identifyJunctionComps(species,array_type,specific_array_type);sys.exit()
     filterForCriticalExons(species,array_type);sys.exit()
     reAnnotateCriticalExonSequences(species,array_type)
 
-    #getJunctionExonLocations(species,array_type)
+    #getJunctionExonLocations(species,array_type,specific_array_type)
     sys.exit()
     
     import_dir = '/AltDatabase/exon/'+species; expr_file_dir = 'R_expression_raw_data\exp.altmouse_es-eb.dabg.rma.txt'

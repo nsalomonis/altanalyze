@@ -21,6 +21,7 @@ import sys, string
 import os.path
 import unique
 import statistics
+import update
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -292,6 +293,7 @@ def exportAltMouseExonSequence():
     species = 'Mm'; array_type = 'AltMouse'
 
     critical_exon_import_file = 'AltDatabase/Mm/AltMouse/AltMouse_junction-comparisons.txt'
+    update.verifyFile(critical_exon_import_file,array_type)
     critical_exon_db={}; critical_probesets={}
     fn=filepath(critical_exon_import_file)
     for line in open(fn,'rU').xreadlines():
@@ -304,6 +306,7 @@ def exportAltMouseExonSequence():
             critical_probesets[probeset1]=[]; critical_probesets[probeset2]=[]
             
     probeset_annotations_file = "AltDatabase/Mm/AltMouse/MASTER-probeset-transcript.txt"
+    update.verifyFile(probeset_annotations_file,array_type)
     fn=filepath(probeset_annotations_file)
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
@@ -317,9 +320,11 @@ def exportAltMouseExonSequence():
                 probeset_exon_db[probeset,affygene]=exons
 
     exon_protein_sequence_file = "AltDatabase/Mm/AltMouse/SEQUENCE-transcript-dbase.txt"
+    update.verifyFile(exon_protein_sequence_file,array_type)
     transcript_cdna_sequence_dbase,transcript_associations,exon_sequence_database = import_existing_sequence_build(exon_protein_sequence_file)
     
     critical_exon_seq_export = 'AltDatabase/Mm/AltMouse/AltMouse_critical-exon-seq.txt'
+    update.verifyFile(critical_exon_seq_export,array_type)
     fn=filepath(critical_exon_seq_export)
     data = open(fn,'w')
     title = ['Affygene:exon','critical_exon-num','critical-probeset-comps']; title = string.join(title,'\t')+'\n'; data.write(title)    
@@ -334,6 +339,7 @@ def exportAltMouseExonSequence():
     data.close()
 
     probeset_seq_file = 'AltDatabase/Mm/AltMouse/probeset_sequence_reversed.txt'
+    update.verifyFile(probeset_seq_file,array_type)
     probeset_seq_db={}; x=0
     fn=filepath(probeset_seq_file)
     for line in open(fn,'rU').xreadlines():
@@ -345,6 +351,7 @@ def exportAltMouseExonSequence():
             probeset_seq_db[probeset] = probeset_seq_list
             
     critical_junction_seq_export = 'AltDatabase/Mm/AltMouse/AltMouse_critical-junction-seq.txt'
+    update.verifyFile(critical_junction_seq_export,array_type)
     fn=filepath(critical_junction_seq_export)
     data = open(fn,'w'); x=0; k=0;l=0
     title = ['probeset','probeset-seq','junction-seq']; title = string.join(title,'\t')+'\n'; data.write(title)
