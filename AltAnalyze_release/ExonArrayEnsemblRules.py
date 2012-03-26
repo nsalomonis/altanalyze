@@ -19,6 +19,8 @@
 import sys, string
 import os.path
 import unique
+import update
+import export
 import math
 import EnsemblImport; reload(EnsemblImport)
 import ExonArrayAffyRules
@@ -177,9 +179,9 @@ def getProbesetAssociations(filename,ensembl_exon_db,ens_transcript_db,source_bi
 
     print "Begining to assembl constitutive annotations (Based on Ensembl/FL/EST evidence)..."
     transcript_cluster_data={}
-    print "Assigning exon-level Ensembl annotations to probesets (e.g. exon number)..."
+    print "Assigning exon-level Ensembl annotations to probesets (e.g. exon number) for", len(ensembl_probeset_db),'genes.'
     ensembl_probeset_db = annotateExons(ensembl_probeset_db,exon_clusters,ensembl_exon_db,exon_region_db,intron_retention_db,intron_clusters,ucsc_splicing_annot_db)
-    print "Exporting Ensembl-merged probeset database to text file"
+    print "Exporting Ensembl-merged probeset database to text file for", len(ensembl_probeset_db),'genes.'
     exportEnsemblLinkedProbesets(arraytype, ensembl_probeset_db,species)
     return ensembl_probeset_db
 
@@ -370,7 +372,10 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
                         #elif ((start >= t_start) and (start <= t_stop)): ###Thus only the start is inside an exon
                             #if strand == '+': print probeset,key, ed.ExonID(), start, stop, t_start,t_stop;kill
                     if len(temp_probeset_exon_id)>0:
-                        ens_exonid_values = convertListString(temp_probeset_exon_id,'|'); ens_constitutive = convertListString(temp_probeset_annot,'|')
+                        ens_exonid_values = convertListString(temp_probeset_exon_id,'|')
+                        if 'yes' in temp_probeset_annot: ens_constitutive = 'yes'
+                        elif '1' in temp_probeset_annot: ens_constitutive = '1'
+                        else: ens_constitutive = convertListString(temp_probeset_annot,'|')
                         region_value = convertListString(region_ids,'|'); splice_event_value = convertListString(splice_events,'|')
                         exon_start = convertListString(reg_start,'|'); exon_stop = convertListString(reg_stop,'|')
                         splice_junction_values = convertListString(splice_junctions,'|');u = 1
@@ -395,7 +400,11 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
                     """if len(exon)>7: ###Therefore, this probeset associated with distinct exon clusters (bad design)
                         index2 = (index2 - 1); x += 1"""
                     if u != 1: ###Therefore, there were specific exon associations available
-                        ens_exonid_values = convertListString(exon_values[2],'|'); ens_constitutive = convertListString(exon_values[3],'|')
+                        ens_exonid_values = convertListString(exon_values[2],'|');
+
+                        if 'yes' in exon_values[3]: ens_constitutive = 'yes'
+                        elif '1' in exon_values[3]: ens_constitutive = '1'
+                        else: ens_constitutive = convertListString(exon_values[3],'|')
                         ned = EnsemblImport.ProbesetAnnotation(ens_exonid_values, ens_constitutive, region_value, splice_event_value, splice_junction_values,exon_start,exon_stop)
                         new_exon_data = exon,ned
                         """if len(exon)>7: ###Therefore, this probeset associated with distinct exon clusters (bad design)
@@ -495,6 +504,7 @@ def annotateExons(exon_location,exon_clusters,ensembl_exon_db,exon_region_db,int
     return exon_location2
 
 def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster_data,trans_annotation_db):
+    print len(trans_annotation_db), 'entries in old trans_annotation_db'
     ensembl_probeset_db={}; probeset_gene_redundancy={}; gene_transcript_redundancy={}; y=0; x=0; n=0; l=0; k=0
     for key in ensembl_transcript_clusters:
         geneid = key[0]; chr = 'chr'+ key[1]; strand = key[2]
@@ -516,7 +526,9 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
     ###Correct incorrect Ensembl assignments based on trans-splicing etc.
     probeset_gene_redundancy = eliminateRedundant(probeset_gene_redundancy)
     gene_transcript_redundancy = eliminateRedundant(gene_transcript_redundancy)
-
+    
+    print len(ensembl_probeset_db), 'entries in old ensembl_probeset_db' 
+    print len(gene_transcript_redundancy), 'entries in old gene_transcript_redundancy' 
     ### Added this new code to determine which transcript clusters uniquely detect a single gene (exon-level)
     ### Note: this is a potentially lengthy step (added in version 2.0.5)
     valid_gene_to_cluster_annotations={}; gene_transcript_redundancy2={}
@@ -524,18 +536,23 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
         probeset = probeset_info[0];start = int(probeset_info[1]); stop = int(probeset_info[2])
         transcript_cluster_id = transcript_cluster_data[probeset][-1]
         for ensembl_group in probeset_gene_redundancy[probeset_info]:
-            pos_ens,neg_ens = alignProbesetsToEnsembl([],[],start,stop,ensembl_group)
-            ens_gene = ensembl_group[0]
+            pos_ens,neg_ens = alignProbesetsToEnsembl([],[],start,stop,ensembl_group) ### Indicates that at least one probeset in the TC aligns certain Ensembl genes
+            ens_gene = ensembl_group[0] 
             if len(pos_ens)>0:
                 try: valid_gene_to_cluster_annotations[transcript_cluster_id].append(ens_gene)
                 except Exception: valid_gene_to_cluster_annotations[transcript_cluster_id] = [ens_gene]
     valid_gene_to_cluster_annotations = eliminateRedundant(valid_gene_to_cluster_annotations)
+    print len(valid_gene_to_cluster_annotations), 'Valid gene-to-transcript cluser assignments based on genomic position'
+    
     ### Remove probeset-gene and transcript_cluster-gene associations not supported by exon evidence
     for tc in valid_gene_to_cluster_annotations:
         for gene in valid_gene_to_cluster_annotations[tc]:
             try: gene_transcript_redundancy2[gene].append(tc)
-            except Exception: gene_transcript_redundancy[gene] = [tc]
+            except Exception: gene_transcript_redundancy2[gene] = [tc]
+
+    del_probesets = {}
     for probeset_info in probeset_gene_redundancy:
+        probeset = probeset_info[0]
         transcript_cluster_id = transcript_cluster_data[probeset][-1]
         if transcript_cluster_id in valid_gene_to_cluster_annotations: ### If not, don't change the existing relationships
             keep=[]
@@ -543,19 +560,27 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
                 ens_gene = ensembl_group[0]
                 if ens_gene in valid_gene_to_cluster_annotations[transcript_cluster_id]: keep.append(ensembl_group)
             probeset_gene_redundancy[probeset_info] = keep  ### Replace the existing with this filtered list    
-        else: 
-            del probeset_gene_redundancy[probeset_info]
+        else: del_probesets[probeset_info] = []
+    for pi in del_probesets: del probeset_gene_redundancy[pi]
+    
     trans_annotation_db = valid_gene_to_cluster_annotations
     gene_transcript_redundancy = gene_transcript_redundancy2
+    print len(trans_annotation_db), 'entries in new trans_annotation_db'
+    print len(gene_transcript_redundancy), 'entries in new gene_transcript_redundancy'
+    print len(probeset_gene_redundancy), 'entries in probeset_gene_redundancy'
+
     ensembl_probeset_db2 = {}
     for (geneid,chr,strand) in ensembl_probeset_db:
         for probeset_data in ensembl_probeset_db[(geneid,chr,strand)]:
             start,stop,probeset_id,exon_class,transcript_cluster_id = probeset_data
-            if (geneid,chr,strand) in probeset_gene_redundancy[probeset_id,start,stop]:
-                try: ensembl_probeset_db2[(geneid,chr,strand)].append(probeset_data)
-                except Exception: ensembl_probeset_db2[(geneid,chr,strand)] = [probeset_data]
+            try:
+                if (geneid,chr,strand) in probeset_gene_redundancy[probeset_id,start,stop]:
+                    try: ensembl_probeset_db2[(geneid,chr,strand)].append(probeset_data)
+                    except Exception: ensembl_probeset_db2[(geneid,chr,strand)] = [probeset_data]
+            except KeyError: null=[]
     ensembl_probeset_db = ensembl_probeset_db2
-    
+
+    print len(ensembl_probeset_db), 'entries in new ensembl_probeset_db' 
     ###First check for many transcript IDs associating with one Ensembl
     remove_transcripts_clusters={}
     for geneid in gene_transcript_redundancy:
@@ -630,21 +655,17 @@ def reorderEnsemblLinkedProbesets(ensembl_transcript_clusters,transcript_cluster
         ensembl_list1 = probeset_gene_redundancy[probeset_info]
         ###First check to see if any probeset in the transcript_cluster_id should be eliminated
         if transcript_cluster_id in remove_transcripts_clusters:
-            remove_genes = remove_transcripts_clusters[transcript_cluster_id]
+            remove_genes = remove_transcripts_clusters[transcript_cluster_id] ### Why is this here
             pos_ens=[]; neg_ens=[]
             for ensembl_group in ensembl_list1: ###Ensembl group cooresponds to the exon_cluster dictionary key
                 pos_ens,neg_ens = alignProbesetsToEnsembl(pos_ens,neg_ens,start,stop,ensembl_group)
-            #if probeset == '3869901': print pos_ens,neg_ens, ensembl_list1,probeset;kill
             pos_ens = makeUnique(pos_ens); neg_ens = makeUnique(neg_ens)
-            #if probeset == 3161639: print pos_ens, transcript_cluster_id, neg_ens;sys.exit()
             if len(pos_ens)!=1:
                 ###if there are no probesets aligning to exons or probesets aligning to exons in multiple genes, remove these
                 for ensembl_group in pos_ens:
                     try: remove_probesets[ensembl_group].append(probeset)
                     except KeyError: remove_probesets[ensembl_group] = [probeset]
                 for ensembl_group in neg_ens:
-                    #ens_to_remove = ensembl_group[0]
-                    #if ens_to_remove in remove_genes:
                     try: remove_probesets[ensembl_group].append(probeset)
                     except KeyError: remove_probesets[ensembl_group] = [probeset]
             else:
@@ -775,6 +796,7 @@ def exportEnsemblLinkedProbesets(arraytype, ensembl_probeset_db,species):
     title2 =['probeset','gene-id','feature-id','region-id']
     title = string.join(title,'\t') + '\n'; title2 = string.join(title2,'\t') + '\n'
     data.write(title); data2.write(title2); y=0
+    print 'len(ensembl_probeset_db)',len(ensembl_probeset_db)
     for key in ensembl_probeset_db:
         geneid = key[0]; chr = key[1]; strand = key[2]
         for probeset_data in ensembl_probeset_db[key]:
@@ -784,6 +806,7 @@ def exportEnsemblLinkedProbesets(arraytype, ensembl_probeset_db,species):
             if len(constitutive) == 0: constitutive = 'no'
             start = str(start); stop = str(stop)
             y+=1; ens_exon_list = ed.ExonID(); ens_annot_list = ed.Constitutive()
+            if len(ed.AssociatedSplicingEvent())>0: constitutive = 'no'; ens_annot_list = '0' ### Re-set these if a splicing-event is associated
             values = [str(probeset_id),exon_id,geneid,str(transcript_clust),chr,strand,start,stop,exon_class,constitutive,ens_exon_list,ens_annot_list]
             values+= [str(ed.RegionNumber()),ed.ExonStart(),ed.ExonStop(),ed.AssociatedSplicingEvent(),ed.AssociatedSplicingJunctions()]
             region_num = ed.RegionNumber()
@@ -826,8 +849,29 @@ def makeUnique(item):
     list1.sort()
     return list1
 
+def testAffyAnnotationDownload(Species,array_type):
+    global species; species = Species; global arraytype; arraytype = array_type
+    checkDirectoryFiles()
+
+def checkDirectoryFiles():
+    """ Check to see if the probeset annotation file is present and otherwise download AltAnalyze hosted version"""
+    dir = '/AltDatabase/'+species+'/'+arraytype
+    probeset_annotation_file = getDirectoryFiles(dir)
+    if probeset_annotation_file == None:
+        filename = update.getFileLocations(species,arraytype)
+        filename = dir[1:]+'/'+ filename
+        update.downloadCurrentVersion(filename,arraytype,'csv')
+        probeset_annotation_file = getDirectoryFiles(dir)
+    if probeset_annotation_file == None: print 'No Affymetrix annotation file present for:', arraytype, species; sys.exit()
+    else: print "Affymetrix annotation file found for", arraytype, species
+    return filepath(probeset_annotation_file)
+    
 def getDirectoryFiles(dir):
-    dir_list = read_directory(dir)  #send a sub_directory to a function to identify all files in a directory
+    try: dir_list = read_directory(dir)  #send a sub_directory to a function to identify all files in a directory
+    except Exception:
+        export.createDirPath(filepath(dir[1:])) ### This directory needs to be created
+        dir_list = read_directory(dir)
+    probeset_annotation_file = None
     for data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = dir[1:]+'/'+data
         if '.transcript.' in affy_data_dir: transcript_annotation_file = affy_data_dir
@@ -954,8 +998,8 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
     elif 'RNASeq' in source_biotype: arraytype,database_root_dir = source_biotype; source_biotype = 'mRNA'
     else: arraytype = 'exon'
     filter_sgv_output = 'no'
-    test = 'yes'
-    test_cluster = [3161519, 3161559, 3161561, 3161564, 3161566, 3161706, 3161710, 3161712]
+    test = 'no'
+    test_cluster = [3161519, 3161559, 3161561, 3161564, 3161566, 3161706, 3161710, 3161712, 2716656, 2475411]
     #test_cluster = [2334476]
     partial_process = 'no'; status = 'null'
     if process_from_scratch == 'yes':
@@ -964,7 +1008,7 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
             global ensembl_exon_db; global ensembl_exon_db; global exon_clusters
             global exon_region_db; global intron_retention_db; global intron_clusters; global ucsc_splicing_annot_db
             global constitutive_source; constitutive_source = x
-            probeset_transcript_file = getDirectoryFiles('/AltDatabase/'+species+'/'+arraytype)
+            probeset_transcript_file = checkDirectoryFiles()
             ensembl_exon_db,ensembl_annot_db,exon_clusters,intron_clusters,exon_region_db,intron_retention_db,ucsc_splicing_annot_db,ens_transcript_db = EnsemblImport.getEnsemblAssociations(species,source_biotype,test)
             ensembl_probeset_db = getProbesetAssociations(probeset_transcript_file,ensembl_exon_db,ens_transcript_db,source_biotype)
             SubGeneViewerExport.reorganizeData(species) ### reads in the data from the external generated files
@@ -1002,8 +1046,9 @@ if __name__ == '__main__':
     process_from_scratch = 'yes'
     export_probeset_mRNA_associations = 'no'
     constitutive_source = z ###If 'Ensembl', program won't look at any evidence except for Ensembl. Thus, not ideal
-    array_type='junction'
+    array_type='exon'
     #getJunctionComparisonsFromExport(Species,array_type); sys.exit()
+    #testAffyAnnotationDownload(Species,array_type); sys.exit()
     probeset_db,annotate_db,constitutive_db,splicing_analysis_db = getAnnotations(process_from_scratch,constitutive_source,source_biotype,Species)
     sys.exit()
     
@@ -1027,7 +1072,7 @@ if __name__ == '__main__':
             #"""
             global ensembl_exon_db; global ensembl_exon_db; global exon_clusters
             global exon_region_db; global intron_retention_db; global ucsc_splicing_annot_db
-            probeset_transcript_file = getDirectoryFiles('/AltDatabase/'+species+'/'+arraytype)
+            probeset_transcript_file = checkDirectoryFiles()
             ensembl_exon_db,ensembl_annot_db,exon_clusters,intron_clusters,exon_region_db,intron_retention_db,ucsc_splicing_annot_db,ens_transcript_db = EnsemblImport.getEnsemblAssociations(species,source_biotype,test)
             #trans_annotation_db = ExonArrayAffyRules.getTranscriptAnnotation(transcript_annotation_file,species,test,test_cluster) ###used to associate transcript_cluster ensembl's
             #"""
@@ -1043,7 +1088,7 @@ if __name__ == '__main__':
             print "       annotation database:",len(annotate_db),"genes imported"
             
 
-            probeset_transcript_file = getDirectoryFiles('/AltDatabase/'+species+'/'+arraytype)
+            probeset_transcript_file = checkDirectoryFiles()
             ensembl_exon_db,ensembl_annot_db,exon_clusters,intron_clusters,exon_region_db,intron_retention_db,ucsc_splicing_annot_db,ens_transcript_db = EnsemblImport.getEnsemblAssociations(species,source_biotype,test)
             #trans_annotation_db = ExonArrayAffyRules.getTranscriptAnnotation(transcript_annotation_file,species,test,test_cluster) ###used to associate transcript_cluster ensembl's
             #"""

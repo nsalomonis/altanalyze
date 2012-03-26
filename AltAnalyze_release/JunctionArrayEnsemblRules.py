@@ -23,6 +23,7 @@ import ExonArrayEnsemblRules
 import EnsemblImport
 import shutil
 import JunctionArray
+import update
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -350,28 +351,17 @@ def importCriticalExonLocations(species,array_type,ensembl_exon_db,force):
     ###Get the most recent gene-symbol annotations (applicable with a new Ensembl build for the same genomic build)
     ensembl_symbol_db = getEnsemblAnnotations(species)
     primary_gene_annotation_file = 'AltDatabase/'+species +'/'+ array_type +'/'+ array_type+ '_gene_annotations.txt'
-            
-    try:
-        if force == 'no': array_gene_annotations = JunctionArray.importGeneric(primary_gene_annotation_file)
-        else: initiate_exception
-    except Exception:
-        import update; reload(update)
-        update.downloadCurrentVersion(primary_gene_annotation_file,array_type,'txt')
-        array_gene_annotations = JunctionArray.importGeneric(primary_gene_annotation_file)
+    update.verifyFile(primary_gene_annotation_file,array_type)
+    array_gene_annotations = JunctionArray.importGeneric(primary_gene_annotation_file)
             
     for array_geneid in array_gene_annotations:    
         t = array_gene_annotations[array_geneid]; description=t[0];entrez=t[1];symbol=t[2]
         if symbol in ensembl_symbol_db and len(symbol)>0 and len(array_geneid)>0:
             ens_geneid = ensembl_symbol_db[symbol]
             if len(ens_geneid)>0: array_ensembl[array_geneid]= ens_geneid
-            
-    try:
-        if force == 'no': ensembl_probeset_db = importJunctionLocationData(filename,array_ensembl,gene_info_db,test)
-        else: initiate_exception
-    except Exception:
-        import update; reload(update)
-        update.downloadCurrentVersion(filename,array_type,'txt')
-        ensembl_probeset_db = importJunctionLocationData(filename,array_ensembl,gene_info_db,test)
+          
+    update.verifyFile(filename,array_type)  
+    ensembl_probeset_db = importJunctionLocationData(filename,array_ensembl,gene_info_db,test)
        
     print len(ensembl_probeset_db), "Genes inlcuded in",array_type,"location database"
     return ensembl_probeset_db

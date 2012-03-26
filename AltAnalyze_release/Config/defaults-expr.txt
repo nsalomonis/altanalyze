@@ -1,7 +1,7 @@
-array_type	dabg_p	expression_threshold	perform_alt_analysis	analyze_as_groups	expression_data_format	normalize_feature_exp	avg_all_for_ss	include_raw_data	probability_algorithm	run_goelite
-exon	0.05	1	yes	yes	log	NA	constitutive probesets	yes	unpaired t-test	decide later
-AltMouse	0.75	1	yes	NA	log	NA	NA	yes	unpaired t-test	decide later
-gene	0.05	1	yes	yes	log	NA	constitutive probesets	yes	unpaired t-test	decide later
-3'array	NA	NA	NA	NA	log	NA	NA	yes	unpaired t-test	decide later
-junction	0.05	1	yes	yes	log	NA	constitutive probesets	yes	unpaired t-test	decide later
-RNASeq	NA	2	yes	yes	non-log	RPKM	known exons	yes	unpaired t-test	decide later
+array_type	dabg_p	rpkm_threshold	expression_threshold	exon_exp_threshold	perform_alt_analysis	analyze_as_groups	expression_data_format	normalize_feature_exp	avg_all_for_ss	include_raw_data	probability_algorithm	run_goelite
+exon	0.05	NA	1	NA	yes	yes	log	NA	constitutive probesets	yes	unpaired t-test	decide later
+AltMouse	0.75	NA	1	NA	yes	NA	log	NA	NA	yes	unpaired t-test	decide later
+gene	0.05	NA	1	NA	yes	yes	log	NA	constitutive probesets	yes	unpaired t-test	decide later
+3'array	NA	NA	NA	NA	NA	NA	log	NA	NA	yes	unpaired t-test	decide later
+junction	0.05	NA	1	NA	yes	yes	log	NA	constitutive probesets	yes	unpaired t-test	decide later
+RNASeq	NA	0.5	2	10	yes	yes	non-log	RPKM	known exons	yes	unpaired t-test	decide later

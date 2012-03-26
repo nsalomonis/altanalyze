@@ -174,13 +174,17 @@ def exportSubGeneViewerData(exon_regions,exon_annotation_db2,critical_gene_junct
                         elif exon_pos[0] == retained_pos[0] or exon_pos[1] == retained_pos[1]: splice_event = 'exon-region-exclusion'
                         elif exon_pos[0]>retained_pos[0] and exon_pos[0]<retained_pos[1] and exon_pos[1]>retained_pos[0] and exon_pos[1]<retained_pos[1]: splice_event = 'exon-region-exclusion'
                         if 'exon-region-exclusion' in splice_event: rd.setAssociatedSplicingEvent(splice_event); id = rd
-                values = [gene,rd.ExonRegionID2(),'e',str(index),str(rd.RegionNumber()),rd.ConstitutiveCallAbrev(),'n',splice_event]#,str(exon_pos[0]),str(exon_pos[1])]
+                if len(splice_event)>0: constitutive_call = 'no' ### If a splice-event is associated with a recommended constitutive region, over-ride it
+                else: constitutive_call = rd.ConstitutiveCallAbrev()
+                values = [gene,rd.ExonRegionID2(),'e',str(index),str(rd.RegionNumber()),constitutive_call[0],'n',splice_event]#,str(exon_pos[0]),str(exon_pos[1])]
                 values = string.join(values,'\t')+'\n'; sgvdata.write(values)
 
                 ens_exons = getMatchingEnsExons(rd.ExonStart(),rd.ExonStop(),exon_coordinate_db[gene])
                 start_stop = [rd.ExonStart(),rd.ExonStop()]; start_stop.sort(); start,stop = start_stop
                 splice_event = getUCSCSplicingAnnotations(ucsc_events,splice_event,start,stop)
-                values = [gene,rd.ExonRegionID2(),'chr'+rd.Chr(),rd.Strand(),str(start),str(stop),rd.ConstitutiveCall(),ens_exons,splice_event,rd.AssociatedSplicingJunctions()]
+                if len(splice_event)>0: constitutive_call = 'no' ### If a splice-event is associated with a recommended constitutive region, over-ride it
+                else: constitutive_call = rd.ConstitutiveCallAbrev()
+                values = [gene,rd.ExonRegionID2(),'chr'+rd.Chr(),rd.Strand(),str(start),str(stop),constitutive_call,ens_exons,splice_event,rd.AssociatedSplicingJunctions()]
                 values = string.join(values,'\t')+'\n'; exondata.write(values)
                 exon_region_annotations[gene,rd.ExonRegionID2()]=ens_exons
                 if len(previous_intronid)>0:
@@ -212,7 +216,9 @@ def exportSubGeneViewerData(exon_regions,exon_annotation_db2,critical_gene_junct
                                 elif intron_pos[0] == retained_pos[0] or intron_pos[1] == retained_pos[1]: splice_event = 'intron-retention'
                                 elif intron_pos[0]>retained_pos[0] and intron_pos[0]<retained_pos[1] and intron_pos[1]>retained_pos[0] and intron_pos[1]<retained_pos[1]: splice_event = 'intron-retention'
                                 if 'intron' in splice_event: rd.setAssociatedSplicingEvent(splice_event); id = rd
-                        values = [gene,intronid,'i',str(index),str(rd.RegionNumber()),rd.ConstitutiveCallAbrev(),'n',splice_event]#,str(intron_pos[0]),str(intron_pos[1])]
+                        if len(splice_event)>0: constitutive_call = 'no' ### If a splice-event is associated with a recommended constitutive region, over-ride it
+                        else: constitutive_call = rd.ConstitutiveCallAbrev()
+                        values = [gene,intronid,'i',str(index),str(rd.RegionNumber()),constitutive_call[0],'n',splice_event]#,str(intron_pos[0]),str(intron_pos[1])]
                         values = string.join(values,'\t')+'\n'; sgvdata.write(values); ens_exons=''
                         
                         if len(splice_event)>0:
@@ -221,7 +227,9 @@ def exportSubGeneViewerData(exon_regions,exon_annotation_db2,critical_gene_junct
                             previous_intronid=intronid
                         start_stop = [rd.ExonStart(),rd.ExonStop()]; start_stop.sort(); start,stop = start_stop
                         splice_event = getUCSCSplicingAnnotations(ucsc_events,splice_event,start,stop)
-                        values = [gene,intronid,'chr'+rd.Chr(),rd.Strand(),str(start),str(stop),rd.ConstitutiveCall(),ens_exons,splice_event,rd.AssociatedSplicingJunctions()]
+                        if len(splice_event)>0: constitutive_call = 'no' ### If a splice-event is associated with a recommended constitutive region, over-ride it
+                        else: constitutive_call = rd.ConstitutiveCallAbrev()
+                        values = [gene,intronid,'chr'+rd.Chr(),rd.Strand(),str(start),str(stop),constitutive_call,ens_exons,splice_event,rd.AssociatedSplicingJunctions()]
                         values = string.join(values,'\t')+'\n'; exondata.write(values)
                     index+=1
                 except KeyError: null=[]
@@ -327,6 +335,7 @@ def exportSubGeneViewerData(exon_regions,exon_annotation_db2,critical_gene_junct
                 re_start_stop = [re.ExonStart(),re.ExonStop()]; re_start_stop.sort(); re_start,re_stop = re_start_stop
                 splice_event = getUCSCSplicingAnnotations(ucsc_events,splice_event,le_start,le_stop)
                 splice_event = getUCSCSplicingAnnotations(ucsc_events,splice_event,re_start,re_stop)
+                if len(splice_event)>0: const_call = 'no'
                 values = [gene,exon1+'-'+exon2,'chr'+le.Chr(),le.Strand(),str(le_start)+'|'+str(le_stop),str(re_start)+'|'+str(re_stop),const_call,ens_exons,splice_event,splice_junctions]
                 values = string.join(values,'\t')+'\n'; junctiondata.write(values)
                 #print exon1+'-'+exon2, le_start_stop,re_start_stop
@@ -407,9 +416,9 @@ class EnsemblInformation:
         else: call = 'no'
         return call
     def ConstitutiveCallAbrev(self):
-        if self.Constitutive() == 'yes': call = 'y'
-        elif self.Constitutive() == '1': call = 'y'
-        else: call = 'n'
+        if self.Constitutive() == 'yes': call = 'yes'
+        elif self.Constitutive() == '1': call = 'yes'
+        else: call = 'no'
         return call
     def setSpliceData(self,splice_event,splice_junctions):
         self._splice_event = splice_event; self._splice_junctions = splice_junctions
@@ -1348,7 +1357,12 @@ def getEnsemblAssociations(Species,data_type,test_status):
     global test; test = test_status
     global test_gene
     meta_test = ["ENSG00000224972","ENSG00000107077"]
-    test_gene = ['ENSG00000163132'] #'ENSG00000215305',
+    test_gene = ['ENSG00000163132'] #'ENSG00000215305
+    #test_gene = ['ENSMUSG00000000037'] #'test Mouse - ENSMUSG00000000037
+    test_gene = ['ENSMUSG00000065005'] #'ENSG00000215305
+    test_gene = ['ENSRNOE00000194194']
+    test_gene = ['ENSG00000229611','ENSG00000107077','ENSG00000107077','ENSG00000107077','ENSG00000107077','ENSG00000107077','ENSG00000163132', 'ENSG00000115295']
+    test_gene = ['ENSRNOE00000194194']
     #test_gene = ['ENSMUSG00000059857'] ### for JunctionArrayEnsemblRules
     #test_gene = meta_test
     exon_annotation_db,transcript_gene_db,gene_transcript,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
@@ -1476,14 +1490,27 @@ def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_
         for exon_info in exon_annotation_db[(gene,chr,strand)]:
             if strand == '+': exon_start,exon_end,y = exon_info ###Link the original exon-start/stop data back to the region based data
             else: exon_end,exon_start,y = exon_info ###This shouldn't be necessary, but the coordinates get reversed in annotate_exons and copying the original via deepcopy takes way too much time
+            transcripts = exon_transcripts[y.ExonID()] ### ERROR WILL OCCUR HERE IF YOU DON'T REBUILD THE UCSC DATABASE!!! (different version still left over from Protein analysis methods)
             if gene in exon_regions:
                 ste=''; spe=''
                 #print exon_start, y.ExonID(); y.TranscriptID(); y.IntronDeletionStatus()
                 for ed in exon_regions[gene]:
+                    #print ed.ExonRegionID(),transcripts, [ed.ExonStart(), ed.ExonStop(), exon_start,exon_end]
+                    
+                    ### Since we know which exon region each Ensembl/UCSC exon begins and ends, we can just count the number of transcripts
+                    ### that contain each of the Ensembl/UCSC exon ID, which will give us our constitutive exon count for each gene
+                    proceed = 'no'
+                    if ((ed.ExonStart() >= exon_start) and (ed.ExonStart() <= exon_end)) and ((ed.ExonStop() >= exon_start) and (ed.ExonStop() <= exon_end)): proceed = 'yes'
+                    elif ((ed.ExonStart() <= exon_start) and (ed.ExonStart() >= exon_end)) and ((ed.ExonStop() <= exon_start) and (ed.ExonStop() >= exon_end)): proceed = 'yes'
+                    if proceed == 'yes': ### Ensures that each examined exon region lies directly within the examined exon (begining and end) -> version 2.0.6
+                        try: constitutive_region_count_db[ed.ExonRegionID()]+=list(transcripts) #rd.ExonNumber() rd.ExonRegionID()
+                        except KeyError: constitutive_region_count_db[ed.ExonRegionID()]=list(transcripts) ### If you don't convert to list, the existing list object will be updated non-specifically
+                    ### Identify the exon regions that associate with the begining and end-positions of each exon to later determine the junction in exon region space
                     if exon_start == ed.ExonStart(): ste = ed  ### Two exon regions can not have the same start position in this database
                     if exon_end == ed.ExonStop(): spe = ed ### Two exon regions can not have the same end position in this database
                     if spe!='' and ste!='': break 
                     #print ed.ExonStart(),ed.ExonStop()
+                    
                 if spe!='' and ste!='':
                     values = exon_start,ste,spe #,y
                     ste.reSetExonID(y.ExonID()); spe.reSetExonID(y.ExonID())  ###Need to represent the original source ExonID to eliminate UCSC transcripts without Ensembl exons
@@ -1491,18 +1518,6 @@ def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_
                         #print exon_start, ste.ExonID(), spe.ExonID(),y.TranscriptID()
                         try: transcript_exon_db[ens_transcriptid].append(values)
                         except KeyError: transcript_exon_db[ens_transcriptid] = [values]
-
-                    ### Since we know which exon region each Ensembl/UCSC exon begins and ends, we can just count the number of transcripts
-                    ### that contain each of the Ensembl/UCSC exon ID, which will give us our constitutive exon count for each gene
-                    transcripts = exon_transcripts[y.ExonID()] ### ERROR WILL OCCUR HERE IF YOU DON'T REBUILD THE UCSC DATABASE!!! (different version still left over from Protein analysis methods)
-                    #print ste.ExonRegionID(), spe.ExonRegionID(), y.ExonID(), transcripts
-                    ### Since overlapping Ensembl/UCSC exons shouldn't align to the same transcripts, we can just add the counts
-                    try: constitutive_region_count_db[ste.ExonRegionID()]+=transcripts #rd.ExonNumber() rd.ExonRegionID()
-                    except KeyError: constitutive_region_count_db[ste.ExonRegionID()]=transcripts
-                    try: constitutive_region_count_db[spe.ExonRegionID()]+=transcripts
-                    except KeyError: constitutive_region_count_db[spe.ExonRegionID()]=transcripts
-                    #print ste.ExonRegionID(), transcripts
-                    #print spe.ExonRegionID(), transcripts
                 else:
                     ### Indicates this exon has been classified as a retained intron
                     ### Keep it so we know where this exon is and to prevent inclusion of faulty flanking junctions
@@ -1510,26 +1525,30 @@ def processEnsExonStructureData(exon_annotation_db,exon_regions,transcript_gene_
                     values = y.ExonStart(),y,y
                     for ens_transcriptid in y.TranscriptID():
                         try: transcript_exon_db[ens_transcriptid].append(values)
-                        except KeyError: transcript_exon_db[ens_transcriptid] = [values]
-                        
+                        except KeyError: transcript_exon_db[ens_transcriptid] = [values]    
             else: k.append(gene)
         ### Get the number of transcripts associated with each region
         for exon_region in constitutive_region_count_db:
+            #print exon_region, unique.unique(constitutive_region_count_db[exon_region])
             transcript_count = len(unique.unique(constitutive_region_count_db[exon_region]))
             constitutive_region_count_list.append(transcript_count)
             try: count_db[transcript_count].append(exon_region)
             except KeyError: count_db[transcript_count] = [exon_region]
+        constitutive_region_count_list = unique.unique(constitutive_region_count_list)
         constitutive_region_count_list.sort()
-        max_count = constitutive_region_count_list[-1]
-        cs_exon_region_ids = count_db[max_count]
+        try: max_count = constitutive_region_count_list[-1]
+        except Exception:
+            print gene, constitutive_region_count_list, constitutive_region_count_db, count_db;kill
         #print count_db
+        cs_exon_region_ids = list(count_db[max_count])
         ### If there is only one constitutive region and one set of strong runner ups, include these to improve the constitutive expression prediction
-        if len(cs_exon_region_ids)==1 and len(constitutive_region_count_list)>2:
+        if (len(cs_exon_region_ids)==1 and len(constitutive_region_count_list)>2) or len(constitutive_region_count_list)>3: ### Decided to add another heuristic that will add the second highest scoring exons always (if at least 4 frequencies present)
             second_highest_count = constitutive_region_count_list[-2]
-            #print cs_exon_region_ids
-            #print second_highest_count
-            if second_highest_count != 1: ### Don't inlcude if there is only one transcript contributing
-                cs_exon_region_ids += count_db[second_highest_count]
+            if (max_count-second_highest_count)<3: ### Indicates that the highest and second highest common exons be similiar in terms of their frequency (different by two transcripts at most)
+                #print cs_exon_region_ids
+                #print second_highest_count
+                if second_highest_count != 1: ### Don't inlcude if there is only one transcript contributing
+                    cs_exon_region_ids += list(count_db[second_highest_count])
         constitutive_region_gene_db[gene] = cs_exon_region_ids
         #print gene, cs_exon_region_ids;sys.exit()
 
@@ -2051,7 +2070,7 @@ def customLSDeepCopy(ls):
 if __name__ == '__main__':
     ###KNOWN PROBLEMS: the junction analysis program calls exons as cassette-exons if there a new C-terminal exon occurs downstream of that exon in a different transcript (ENSG00000197991).
     Species = 'Hs'
-    test = 'no'
+    test = 'yes'
     Data_type = 'ncRNA'
     Data_type = 'mRNA'
     getEnsemblAssociations(Species,Data_type,test); sys.exit()

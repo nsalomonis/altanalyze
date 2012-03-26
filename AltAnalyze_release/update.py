@@ -27,6 +27,8 @@ import sys
 import unique
 import string
 import export
+try: import ExonArray
+except Exception: null=[]
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -69,7 +71,7 @@ def unzipFiles(filename,dir):
         zfile = zipfile.ZipFile(output_filepath)
         for name in zfile.namelist():
             if name.endswith('/'):null=[] ### Don't need to export
-            else: 
+            else:
                 try: outfile = export.ExportFile(filepath(dir+name))
                 except Exception: outfile = export.ExportFile(filepath(dir+name[1:]))
                 outfile.write(zfile.read(name)); outfile.close()
@@ -78,6 +80,9 @@ def unzipFiles(filename,dir):
     except Exception, e:
         try:
             ### Use the operating system's unzip if all else fails
+            extracted_path = string.replace(output_filepath,'.zip','')
+            try: os.remove(extracted_path) ### This is necessary, otherwise the empty file created above will require user authorization to delete
+            except Exception: null=[]
             subprocessUnzip(dir,output_filepath)
             status = 'completed'
         except IOError:
@@ -92,13 +97,11 @@ def subprocessUnzip(dir,output_filepath):
     subprocess.Popen(["unzip", "-d", dir, output_filepath]).wait()
     
 ############## Update Databases ##############
-def buildJunctionExonAnnotations(species,array_type,force,genomic_build):
+def buildJunctionExonAnnotations(species,array_type,specific_array_type,force,genomic_build):
     ### Get UCSC associations (download databases if necessary)
-    import UCSCImport
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'; force='no'
     export_all_associations = 'no' ### YES only for protein prediction analysis
-    try: UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
-    except Exception: UCSCImport.exportNullDatabases(species) ### used for species not supported by UCSC
+    buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
 
     ### Get genomic locations and initial annotations for exon sequences (exon pobesets and junctions)    
     import JunctionArray
@@ -117,11 +120,11 @@ def buildJunctionExonAnnotations(species,array_type,force,genomic_build):
        c) De novo comparison of all exon-junction region IDs for all junctions using the EnsemblImport method compareJunctions().
     """
     ### Steps 1-3
-    JunctionArray.getJunctionExonLocations(species,array_type)
+    JunctionArray.getJunctionExonLocations(species,array_type,specific_array_type)
     ### Step 4
     JunctionArrayEnsemblRules.getAnnotations(species,array_type,'yes',force)
     ### Step 5-6
-    JunctionArray.identifyJunctionComps(species,array_type)
+    JunctionArray.identifyJunctionComps(species,array_type,specific_array_type)
     
     
 def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
@@ -149,9 +152,10 @@ def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
         import ExonAnalyze_module
         agglomerate_inclusion_probesets = 'no'; onlyAnalyzeJunctions='no'
         probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+"MASTER-probeset-transcript.txt"
+        verifyFile(probeset_annotations_file,array_type) ### Will force download if missing
         exon_db={}; filtered_arrayids={};filter_status='no'
         constituitive_probeset_db,exon_db,genes_being_analyzed = AltAnalyze.importSplicingAnnotationDatabase(probeset_annotations_file,array_type,filtered_arrayids,filter_status)
-        alt_junction_db,critical_exon_db,exon_dbase,exon_inclusion_db,exon_db = ExonAnnotate_module.identify_putative_splice_events(exon_db,constituitive_probeset_db,{},agglomerate_inclusion_probesets,onlyAnalyzeJunctions)
+        alt_junction_db,critical_exon_db,exon_dbase,exon_inclusion_db,exon_db = ExonAnnotate_module.identifyPutativeSpliceEvents(exon_db,constituitive_probeset_db,{},agglomerate_inclusion_probesets,onlyAnalyzeJunctions)
         ExonAnnotate_module.exportJunctionComparisons(alt_junction_db,critical_exon_db,exon_dbase)
         print "Finished exporting junctions used in AltMouse array comparisons."
 
@@ -159,10 +163,9 @@ def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
         JunctionArray.reAnnotateCriticalExonSequences(species,array_type)
 
     ### Get UCSC associations (download databases if necessary)
-    import UCSCImport
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'
     export_all_associations = 'no' ### YES only for protein prediction analysis
-    UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+    buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
 
     reannotate_exon_seq = 'yes'
     print 'genomic_build', genomic_build
@@ -172,15 +175,20 @@ def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
         JunctionArray.identifyCriticalExonLocations(species,array_type)
         reannotate_exon_seq = 'yes'
     JunctionArrayEnsemblRules.getAnnotations(species,array_type,reannotate_exon_seq,force)
-
+    
+    ### Download files required during AltAnalyze analysis but not during the database build process
+    filename = "AltDatabase/"+species+"/"+array_type+"/"+"MASTER-probeset-transcript.txt"
+    verifyFile(filename,array_type) ### Will force download if missing
+    filename = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
+    verifyFile(filename,array_type) ### Will force download if missing
+    
 def buildExonArrayExonAnnotations(species, array_type, force):
 
     ### Get UCSC associations (download databases if necessary)
-    import UCSCImport
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'
     export_all_associations = 'no' ### YES only for protein prediction analysis
-    UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
-    
+    buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+
     import ExonArrayEnsemblRules; reload(ExonArrayEnsemblRules)
     process_from_scratch='yes'
     constitutive_source='default'
@@ -210,6 +218,34 @@ def getFTPData(ftp_server,subdir,filename_search):
         return string.replace(filename_search,'.gz','')
     else:
         return matching
+    
+def verifyFile(filename,server_folder):
+    fn=filepath(filename); counts=0
+    try:
+        for line in open(fn,'rU').xreadlines():
+            if len(line)>2: counts+=1  ### Needed for connection error files
+            if counts>10: break
+    except Exception:
+        counts=0
+    if server_folder == 'counts': ### Used if the file cannot be downloaded from http://www.altanalyze.org
+        return counts
+    elif counts == 0:
+        if server_folder == None: server_folder = 'AltMouse'
+        continue_analysis = downloadCurrentVersion(filename,server_folder,'')
+        if continue_analysis == 'no':
+            print 'The file:\n',filename, '\nis missing and cannot be found online. Please save to the designated directory or contact AltAnalyze support.'
+    else:
+        return counts
+
+def getFileLocations(species_code,search_term):
+    ### The three supplied variables determine the type of data to obtain from default-files.csv
+    import UI
+    file_location_defaults = UI.importDefaultFileLocations()
+    sfl = file_location_defaults[search_term]
+    
+    for sf in sfl:
+        if species_code in sf.Species(): filename = sf.Location()
+    return filename
     
 def buildUniProtFunctAnnotations(species,force):
     import UI
@@ -249,21 +285,22 @@ def download(url,dir,file_type):
     except Exception:
         output_filepath='failed'; status = "Internet connection not established. Re-establish and try again."
         fp = filepath(dir+url.split('/')[-1]) ### Remove this empty object if saved
-
-    if '.zip' in fp or '.gz' in fp or '.tar' in fp:
-        #print "\nRemoving zip file:",fp
-        try: os.remove(fp); status = 'removed'
-        except Exception: null=[] ### Not sure why this error occurs since the file is not open
-        #print "\nRemoving zip file:",string.replace(fp,'.gz','')
-        if '.tar' in fp:
-            try: os.remove(string.replace(fp,'.gz',''))
-            except Exception: null=[]
+    if 'Internet' not in status:
+        if '.zip' in fp or '.gz' in fp or '.tar' in fp:
+            #print "\nRemoving zip file:",fp
+            try: os.remove(fp); status = 'removed'
+            except Exception: null=[] ### Not sure why this error occurs since the file is not open
+            #print "\nRemoving zip file:",string.replace(fp,'.gz','')
+            if '.tar' in fp:
+                try: os.remove(string.replace(fp,'.gz',''))
+                except Exception: null=[]
     return output_filepath, status
 
 class download_protocol:
     def __init__(self,url,dir,file_type):
         """Copy the contents of a file from a given URL to a local file."""
         filename = url.split('/')[-1]; self.status = ''
+        #print [url, dir]
         if file_type == None: file_type =''
         if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
         output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
@@ -364,7 +401,8 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
     ud = file_location_defaults['url'] ### Get the location of the download site from Config/default-files.csv
     url_dir = ud.Location() ### Only one entry
     
-    dir = export.findParentDir(filename)  
+    dir = export.findParentDir(filename)
+    dir = string.replace(dir,'hGlue','')  ### Used since the hGlue data is in a sub-directory
     filename = export.findFilename(filename)
     url = url_dir+secondary_dir+'/'+filename
     file,status = download(url,dir,file_type); continue_analysis = 'yes'
@@ -410,7 +448,22 @@ def decompressZipStackOverflow(original_zip_file,dir):
     zf.close()
     src.close()
     
+def buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force):
+    ### Test whether files already exist and if not downloads/builds them
+    if export_all_associations == 'no': ### Applies to EnsemblImport.py analyses
+        filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_mrna.txt'
+    else: ### Applies to the file used for Domain-level analyses
+        filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt'
+    counts = verifyFile(filename,'counts')
+    if counts<9:
+        import UCSCImport
+        try: UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+        except Exception: UCSCImport.exportNullDatabases(species) ### used for species not supported by UCSC
+        
 def executeParameters(species,array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version):    
+    if '|' in array_type: array_type, specific_array_type = string.split(array_type,'|') ### To destinguish between array sub-types, like the HJAY and hGlue
+    else: specific_array_type = array_type
+    
     if update_all == 'yes':
         update_uniprot='yes'; update_ensembl='yes'; update_probeset_to_ensembl='yes'; update_domain='yes'; update_miRs = 'yes'
         
@@ -437,7 +490,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
         if species == 'Mm' and array_type == 'AltMouse':
             buildAltMouseExonAnnotations(species,array_type,force,genomic_build)
         elif array_type == 'junction':
-            buildJunctionExonAnnotations(species,array_type,force,genomic_build)
+            buildJunctionExonAnnotations(species,array_type,specific_array_type,force,genomic_build)
         elif array_type == 'RNASeq':
             import RNASeq; test_status = 'no'; data_type = 'mRNA'
             RNASeq.getEnsemblAssociations(species,data_type,test_status,force)
@@ -446,11 +499,9 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
     if update_domain == 'yes':
 
         ### Get UCSC associations for all Ensembl linked genes (download databases if necessary)        if species == 'Mm' and array_type == 'AltMouse':
-        import UCSCImport
         mRNA_Type = 'mrna'; run_from_scratch = 'yes'
         export_all_associations = 'yes' ### YES only for protein prediction analysis
-        try: UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
-        except Exception: UCSCImport.exportNullDatabases(species) ### used for species not supported by UCSC
+        buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
 
         if (species == 'Mm' and array_type == 'AltMouse'):
             """Imports and re-exports array-Ensembl annotations"""
@@ -490,7 +541,6 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             stringency = 'lax'
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
-            import ExonArray
             ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
         else:
             import JunctionSeqModule
@@ -500,21 +550,64 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             JunctionSeqModule.runProgram(species,array_type,mir_source,stringency,force)
 
     if array_type == 'junction':
-        import JunctionArray; import JunctionArrayEnsemblRules
-        JunctionArray.filterForCriticalExons(species,array_type)
-        JunctionArray.overRideExonEntriesWithJunctions(species,array_type)
-        JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
+        try:
+            import JunctionArray; import JunctionArrayEnsemblRules
+            JunctionArray.filterForCriticalExons(species,array_type)
+            JunctionArray.overRideExonEntriesWithJunctions(species,array_type)
+            JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
+            ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
+        except IOError: print 'No built junction files to analyze';sys.exit()
     if array_type == 'RNASeq' and (species == 'Hs' or species == 'Mm' or species == 'Rn'):
         import JunctionArray; import JunctionArrayEnsemblRules
-        JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
+        try: JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
+        except IOError: print 'No Ensembl_exons.txt file to analyze';sys.exit()
     
     try:
         filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-targets.txt'; ef=filepath(filename)
         er = string.replace(ef,species+'/SequenceData/miRBS-combined_gene-targets.txt','ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt')
         import shutil; shutil.copyfile(ef,er)
     except Exception: null=[]
+    if array_type != 'RNASeq':
+        ### Get the probeset-probe relationships from online - needed for FIRMA analysis
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset-probes.txt'
+        if array_type == 'junction' and 'lue' in specific_array_type:
+            server_folder = 'junction/hGlue'
+            verifyFile(filename,server_folder) ### Will force download if missing
+            verifyFile('AltDatabase/'+species+'/'+array_type+'/platform.txt',server_folder) ### Will force download if missing
+        elif array_type != 'AltMouse': verifyFile(filename,array_type) ### Will force download if missing
+        if (array_type == 'exon' or array_type == 'AltMouse') and species != 'Rn':
+            try:
+                ### Available for select exon-arrays and AltMouse
+                probeset_to_remove_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probes_to_remove.txt'
+                verifyFile(probeset_to_remove_file,array_type)
+            except Exception: null=[]
     
+def temp(array_type,species):
+    specific_array_type = 'hGlue'
+    ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
+    if array_type != 'RNASeq':
+        ### Get the probeset-probe relationships from online - needed for FIRMA analysis
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset-probes.txt'
+        if array_type == 'junction' and 'lue' in specific_array_type:
+            server_folder = 'junction/hGlue'
+            verifyFile(filename,server_folder) ### Will force download if missing
+            verifyFile('AltDatabase/'+species+'/'+array_type+'/platform.txt',server_folder) ### Will force download if missing
+        elif array_type != 'AltMouse': verifyFile(filename,array_type) ### Will force download if missing
+        if (array_type == 'exon' or array_type == 'AltMouse') and species != 'Rn':
+            try:
+                ### Available for select exon-arrays and AltMouse
+                probeset_to_remove_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probes_to_remove.txt'
+                verifyFile(probeset_to_remove_file,array_type)
+            except Exception: null=[]
+            
 if __name__ == '__main__':
+    
+    dir = '/home/nsalomonis/software/AltAnalyze_v.2.0.5-Py/AltDatabase/EnsMart65/miRBS/'; filename = 'UTR_Sequences.txt.zip'
+    array_type = 'junction'; species = 'Hs'
+    filename = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
+    temp(array_type,species); sys.exit()
+    
+    #unzipFiles(filename,dir); kill
     #zipDirectory('Rn/EnsMart49');kill
     #unzipFiles('Rn.zip', 'AltDatabaseNoVersion/');kill    
     #filename = 'http://altanalyze.org/archiveDBs/LibraryFiles/Mouse430_2.zip'
@@ -526,9 +619,15 @@ if __name__ == '__main__':
     #unzipFiles('Cs.zip', 'Databases/');kill
     #buildUniProtFunctAnnotations('Hs',force='no')
 
-    species = 'Mm'; array_type = 'RNASeq'; force = 'yes'; run_seqcomp = 'no'; import IdentifyAltIsoforms
-    IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp); sys.exit()
+    species = 'Hs'; array_type = 'junction'; force = 'yes'; run_seqcomp = 'no'
     
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset-probes.txt'
+    filename = string.replace(filename,'junction','junction/hGlue') ### Due this also for the hGlue array
+    #verifyFile(filename,'junction/hGlue')
+    #print filename; sys.exit()
+    #import IdentifyAltIsoforms
+    #IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp); sys.exit()
+            
     import UI
     #date = UI.TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
     url  ='http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab'
@@ -538,7 +637,7 @@ if __name__ == '__main__':
     output = 'Databases/'
     url = 'http://www.altanalyze.org/archiveDBs/Cytoscape/cytoscape.tar.gz'
     output = ''
-    #dp = download_protocol(url,output,file_type);sys.exit()
+    dp = download_protocol(url,output,file_type);sys.exit()
     fln,status = download(url,output,file_type)
     print status;sys.exit()
         
@@ -555,12 +654,12 @@ if __name__ == '__main__':
     proceed = 'yes'; genomic_build = 'old'; update_miR_seq = 'yes'
 
     for specific_species in species:
-        for specific_array_type in array_type:
-            if specific_array_type == 'AltMouse' and specific_species == 'Mm': proceed = 'yes'
-            elif specific_array_type == 'exon' or specific_array_type == 'gene' or specific_array_type == 'junction': proceed = 'yes'
+        for platform_name in array_type:
+            if platform_name == 'AltMouse' and specific_species == 'Mm': proceed = 'yes'
+            elif platform_name == 'exon' or platform_name == 'gene' or platform_name == 'junction': proceed = 'yes'
             else: proceed = 'no'
             if proceed == 'yes':
-                print "Analyzing", specific_species, specific_array_type
-                executeParameters(specific_species,specific_array_type,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version)
+                print "Analyzing", specific_species, platform_name
+                executeParameters(specific_species,platform_name,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version)
 
     #"""    

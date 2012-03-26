@@ -85,13 +85,16 @@ def getArrayHeaders(expr_input_dir):
 
 def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db):
     print "Processing the expression file:",expr_input_dir
+    
+    global array_fold_headers; global summary_filtering_stats; global raw_data_comp_headers; global array_folds
     fn1=filepath(expr_input_dir)
     x = 0; y = 0; d = 0
-    global array_folds; array_folds={}
+    array_folds={}
     for line in open(fn1,'rU').xreadlines():             
       data = cleanUpLine(line)
       if data[0] != '#':
         fold_data = string.split(data,'\t'); arrayid = fold_data[0]
+        #if 'counts.' in expr_input_dir: arrayid,coordinates = string.split(arrayid,'=') ### needed for exon-level analyses only
         ### differentiate data from column headers
         if x == 1:
             fold_data = fold_data[1:]; fold_data2=[]
@@ -133,30 +136,64 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     print len(array_folds),"IDs imported...beginning to calculate statistics for all group comparisons"
     expr_group_list,expr_group_db = importArrayGroups(expr_group_dir,array_linker_db)
     comp_group_list, comp_group_list2 = importComparisonGroups(comp_group_dir)
-
-    global array_fold_headers; global summary_filtering_stats; global raw_data_comp_headers  
+    
+    if 'RPKM' in norm and 'counts.' in expr_input_dir: normalization_method = 'RPKM-counts' ### process as counts if analyzing the counts file
+    else: normalization_method = norm
+    
     try:
-        array_folds, array_fold_headers, summary_filtering_stats,raw_data_comp_headers = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data,array_type,norm,probability_statistic)
+        array_folds, array_fold_headers, summary_filtering_stats,raw_data_comp_headers = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data,array_type,normalization_method,fl)
     except Exception: 
         print_out = 'AltAnalyze encountered an error with the format of the expression file.\nIf the data was designated as log intensities and it is not, then re-run as non-log.'
         try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); force_exit ### Forces the error log to pop-up
         except NameError: print print_out; sys.exit()
 
     ### Integrate maximum counts for each gene for the purpose of filtering (RNASeq data only)
-    if array_type == 'RNASeq': addMaxReadCounts(expr_input_dir)
+    if array_type == 'RNASeq' and 'counts.' not in expr_input_dir: addMaxReadCounts(expr_input_dir)
     
     ### Export these results to a DATASET statistics and annotation results file
-    exportAnalyzedData(comp_group_list2,expr_group_db)
+    if 'exp.' in expr_input_dir:
+        if array_type == 'RNASeq' and norm == 'RPKM': filterRNASeq(count_statistics_db)
+        exportAnalyzedData(comp_group_list2,expr_group_db)
     
-    ### Export formatted results for input as an expression dataset into GenMAPP or PathVisio
-    if data_type == 'expression':
-        if include_raw_data == 'yes': headers = removeRawData(array_fold_headers)
-        else: headers = array_fold_headers
-        exportDataForGenMAPP(headers)
+        ### Export formatted results for input as an expression dataset into GenMAPP or PathVisio
+        if data_type == 'expression':
+            if include_raw_data == 'yes': headers = removeRawData(array_fold_headers)
+            else: headers = array_fold_headers
+            exportDataForGenMAPP(headers)
+            
+        try: clearObjectsFromMemory(summary_filtering_stats); clearObjectsFromMemory(array_folds)
+        except Exception: null=[]
+        try: clearObjectsFromMemory(summary_filtering_stats); summary_filtering_stats=[]
+        except Exception: null=[]
+    
+    else:
+        ### When performing an RNASeq analysis on RPKM data, we first perform these analyses on the raw counts to remove fold changes for low expressing genes
+        """count_statistics_db={}; count_statistics_headers=[]
+        for key in array_folds:
+            count_statistics_db[key] = array_folds[key]
+        for name in array_fold_headers: count_statistics_headers.append(name)"""
+        
+        try: clearObjectsFromMemory(summary_filtering_stats)
+        except Exception: null=[]
+        try: clearObjectsFromMemory(summary_filtering_stats); summary_filtering_stats=[]
+        except Exception: null=[]
+    
+        return array_folds, array_fold_headers
 
-    try: clearObjectsFromMemory(summary_filtering_stats); clearObjectsFromMemory(array_folds)
-    except Exception: null=[]
-
+def filterRNASeq(counts_db):
+    ### Parse through the raw count data summary statistics and annotate any comparisons considered NOT EXPRESSED by read count filtering as not expressed (on top of RPKM filtering)
+    reassigned = 0; re = 0
+    for gene in counts_db:
+        i=0 ### keep track of the index (same as RPKM index)
+        for val in counts_db[gene]:
+            if val =='Insufficient Expression':
+                #print val, i, array_folds[gene][i];kill
+                if array_folds[gene][i] != 'Insufficient Expression': reassigned = gene, array_folds[gene][i]
+                array_folds[gene][i] = 'Insufficient Expression' ### Re-assign the fold changes to this non-numeric value
+                re+=1
+            i+=1
+    #print reassigned, re
+    
 def addMaxReadCounts(filename):
     import RNASeq
     max_count_db = RNASeq.importGeneCounts(filename)
@@ -209,6 +246,7 @@ def importArrayGroups(expr_group_dir,array_linker_db):
 def exportArrayHeaders(expr_group_dir,array_linker_db):
     new_file = string.replace(expr_group_dir,'groups.','arrays.')
     new_file = string.replace(new_file,'exp.','arrays.')
+    new_file = string.replace(new_file,'counts.','arrays.')
     fn=filepath(new_file); data = open(fn,'w')
     for array in array_linker_db: data.write(array+'\n')
     data.close()
@@ -328,8 +366,10 @@ def exportGOEliteInput(headers,system_code):
             denominator_geneids[probeset]=[]
             if index in ttest:
                 criterion_name = headers[index][5:]
-                log_fold = float(af[index-2])
-                p_value = float(value)
+                try: log_fold = float(af[index-2])
+                except Exception: log_fold = 0 ### Occurs when a fold change is annotated as 'Insufficient Expression'
+                try: p_value = float(value)
+                except Exception: p_value = 1 ### Occurs when a p-value is annotated as 'Insufficient Expression'
                 if abs(log_fold)>m_cutoff and (p_value<p_cutoff or p_value==1):
                     try: criterion_db[criterion_name].append((probeset,log_fold,p_value))
                     except KeyError: criterion_db[criterion_name] = [(probeset,log_fold,p_value)]
@@ -400,8 +440,10 @@ def exportGeneRegulationSummary(headers,system_code):
                         except KeyError: detected_exp_db[group_name,'ncRNA']=1
             if index in ttest:
                 criterion_name = headers[index][5:]
-                log_fold = float(af[index-2])
-                p_value = float(value)
+                try: log_fold = float(af[index-2])
+                except Exception: log_fold = 0 ### Occurs when a fold change is annotated as 'Insufficient Expression'
+                try: p_value = float(value)
+                except Exception: p_value = 1 ### Occurs when a p-value is annotated as 'Insufficient Expression'
                 try: protein_class = af[pc]
                 except Exception: protein_class = 'NULL'
                 if abs(log_fold)>m_cutoff and (p_value<p_cutoff or p_value==1):
@@ -492,7 +534,6 @@ def exportGeneRegulationSummary(headers,system_code):
                 values = string.join(values,'\t')+'\n'; export_data.write(values)
             export_data.write('\n')
         export_data.close()
-        
         
 def removeRawData(array_fold_headers):
     ### Prior to exporting data for GenMAPP, remove raw data columns
@@ -605,7 +646,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                     store=[]
                     for ens_gene in ca.Ensembl(): ### Add Custom Annotation layer
                         try: compartment,custom_class = custom_annotation_dbase[ens_gene]
-                        except KeyError: null
+                        except KeyError: null=[]
                         try: miRs = ensembl_microRNA_db[ens_gene]
                         except KeyError: null=[]
                         if 'protein_coding' in custom_class and len(store)==0: ### Use the first instance only
@@ -785,7 +826,7 @@ def performTissueProfiling(expr_input_dir):
         compendium_platform = 'gene'
         exp_output = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
         TissueProfiler.runTissueProfiler(species,array_type,expr_input_dir,exp_output,'protein_coding',compendium_platform)
-    except Exception: null=[] ### Analysis may not be supported for species or data is incompatible
+    except IOError: null=[] ### Analysis may not be supported for species or data is incompatible
     
 def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
                             avg_all_for_ss,Expression_data_format,Vendor,
@@ -800,7 +841,9 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
   global expression_data_format; global expression_dataset_output_dir; global root_dir; global data_type
   global conventional_array_db; global custom_array_db; global constitutive_db; global include_raw_data; global experiment_name
   global annotate_db; global probeset_db; global process_custom; global m_cutoff; global p_cutoff; global ptype_to_use; global norm
-  global arrayCode; arrayCode = 0; global probability_statistic
+  global arrayCode; arrayCode = 0; global probability_statistic; global fl
+
+  global count_statistics_db; global count_statistics_headers; count_statistics_db = {}
   include_raw_data = Include_raw_data; expression_data_format = Expression_data_format
   data_type = 'expression' ###Default, otherwise is 'dabg'
   d = "core"; e = "extendend"; f = "full"; exons_to_grab = d ### Currently, not used by the program... intended as an option for ExonArrayAffymetrixRules full annotation (deprecated)
@@ -857,7 +900,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
       probeset_db = []; annotate_db = []; constitutive_db = []; conventional_array_db = []
       ### The below function gathers GO annotations from the GO-Elite database (not Affymetrix as the module name implies)
       conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
-
+                
   altanalyze_files = []; datasets_with_all_necessary_files=0
   for dataset in exp_file_location_db:
       experiment_name = string.replace(dataset,'exp.',''); experiment_name = string.replace(experiment_name,'.txt','')
@@ -876,14 +919,21 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
       checkArrayHeaders(expr_input_dir,expr_group_dir)
       expression_dataset_output_dir = root_dir+"ExpressionOutput/"
       if array_type != "3'array": #array_type != 'AltMouse' and 
-          probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(fl,array_type,dabg_p,expression_threshold,data_source,vendor,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis,expression_data_format)
+          try: probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(fl,array_type,dabg_p,expression_threshold,data_source,vendor,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis,expression_data_format)
+          except Exception, e:
+              print_out = 'Error ecountered for the '+species+', '+array_type+' dataset. Check to ensure that:\n(1) the correct platform and species were selected and\n(2) some expression values are present in ExpressionInput/exp.YourDataset.txt'
+              try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
+              except Exception: print print_out; sys.exit()
           if array_type != 'AltMouse': expr_input_dir = expr_input_dir[:-4]+'-steady-state.txt'
           else: probeset_db = original_probeset_db; annotate_db = original_annotate_db
           for file in comparison_filename_list: altanalyze_files.append(file)
           residual_file_status = ExonArray.verifyFile(residuals_input_dir)
           ### Separate residual file into comparison files for AltAnalyze (if running FIRMA)
           if residual_file_status == 'found': ExonArray.processResiduals(fl,Array_type,Species,perform_alt_analysis)
-          
+      if norm == 'RPKM':
+        ### Separately analyze steady-state counts first, to replace fold changes
+        counts_expr_dir = string.replace(expr_input_dir,'exp.','counts.')
+        count_statistics_db, count_statistics_headers = calculate_expression_measures(counts_expr_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
       calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
       #performTissueProfiling(expr_input_dir) ### Correlate gene-level expression values with known cells and tissues
   annotate_db={}; probeset_db={}; constitutive_db={}; array_fold_db={}; raw_data_comps={}; conventional_array_db=[]
@@ -892,13 +942,14 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
   except Exception: null=[]
   try: clearObjectsFromMemory(array_folds); array_folds=[]
   except Exception: null=[]
+  try: clearObjectsFromMemory(count_statistics_db); count_statistics_db=[]
+  except Exception: null=[]
   
   #print 'after deleted'; returnLargeGlobalVars()
 
   ### Code in progress for version 2.1
   try: buildCriterion(GE_fold_cutoffs, p_cutoff, ptype_to_use, root_dir+'/ExpressionOutput/','summary') ###Outputs a summary of the dataset and all comparisons to ExpressionOutput/summary.txt
   except Exception: null=[]
-  
   
   if datasets_with_all_necessary_files == 0:
       ###Thus no files were found with valid inputs for all file types

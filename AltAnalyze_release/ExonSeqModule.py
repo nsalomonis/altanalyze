@@ -22,6 +22,7 @@ import unique
 import statistics
 import copy
 import time
+import update
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -439,18 +440,34 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
     data.close()
     print k, 'entries written to', output_file
 
-def runProgram(Species,Array_type,Process_microRNA_predictions,miR_source,Stringency):
-    global species; species = Species; global array_type; array_type = Array_type
-    global process_microRNA_predictions; process_microRNA_predictions = Process_microRNA_predictions
-    global mir_source; mir_source = miR_source 
-    global stringency; stringency = Stringency
+def checkProbesetSequenceFile(species):
+    """ Check to see if the probeset sequence file is present and otherwise download AltAnalyze hosted version"""
+    probeset_seq_file = getProbesetSequenceFile(species)
+    if probeset_seq_file == None:
+        dir = '/AltDatabase/'+species+'/'+array_type
+        filename = update.getFileLocations(species,'exon_seq')
+        filename = dir[1:]+'/'+ filename
+        update.downloadCurrentVersion(filename,'exon','.fa')
+        probeset_seq_file = getProbesetSequenceFile(species)
+    return probeset_seq_file
+
+def getProbesetSequenceFile(species):
+    probeset_seq_file = None
     import_dir = '/AltDatabase'+'/'+species+'/exon'
     filedir = import_dir[1:]+'/'
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
     for input_file in dir_list:    #loop through each file in the directory to output results
         ### No probeset sequence file currently for gene arrays, so use the same exon region probeset sequence from the exon array
         if '.probeset.fa' in input_file: probeset_seq_file = filedir+input_file
+    return probeset_seq_file
 
+def runProgram(Species,Array_type,Process_microRNA_predictions,miR_source,Stringency):
+    global species; species = Species; global array_type; array_type = Array_type
+    global process_microRNA_predictions; process_microRNA_predictions = Process_microRNA_predictions
+    global mir_source; mir_source = miR_source 
+    global stringency; stringency = Stringency
+    probeset_seq_file = checkProbesetSequenceFile(species)
+    
     probeset_annotations_file = 'AltDatabase/'+species+'/exon/'+species+'_Ensembl_probesets.txt'
     splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species)
 

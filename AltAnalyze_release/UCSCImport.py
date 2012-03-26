@@ -26,9 +26,6 @@ import alignToKnownAlt
 import update
 import export
 
-dirfile = unique
-py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
-
 def filepath(filename):
     fn = unique.filepath(filename)
     return fn
@@ -477,7 +474,7 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
 
     print removed, "accessions removed from analysis"
     ###Export all possible transcript to ensembl anntotations
-    """This is used for LinkESTSequenceToArrays, for figuring out which UCSC mRNAs can be specifically aligned to which Ensembl genes"""
+    """This is used by mRNASeqAlign.py for figuring out which UCSC mRNAs can be specifically aligned to which Ensembl genes, based on reciprocal-junctions"""
     export_file = string.replace(input_gene_file,'all',species+'_UCSC-accession-to-gene')
     fn=filepath(export_file); data = open(fn,'w')
     for accession in all_accession_gene_associations:
@@ -589,13 +586,19 @@ def exportNullDatabases(species):
     data = export.ExportFile(export_file)
     data.close()
 
-    export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure_filtered')
+    export_file2 = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure_filtered')
+    data = export.ExportFile(export_file2)
+    data.close()
+    
+    export_file = string.replace(export_file,'mrna','COMPLETE-mrna') 
     data = export.ExportFile(export_file)
     data.close()
     
 def exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,coordinate_to_ens_exon,species):
     export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure'); accessions_exlcuded=[]; accessions_included=0
-    #if export_all_associations == 'yes': export_file = string.replace(export_file,'mrna','complete-mrna')
+    if export_all_associations == 'yes': ### Ensures that the file created for EnsemblImport will not be over-written by that for Domain analyses
+        export_file = string.replace(export_file,'mrna','COMPLETE-mrna') 
+    
     fn=filepath(export_file); data = open(fn,'w')
     title = ['Ensembl Gene ID','Chromosome','Strand','Exon Start (bp)','Exon End (bp)','Custom Exon ID','Constitutive Exon','NCBI Accession']
     title = string.join(title,'\t')+'\n'
@@ -632,12 +635,14 @@ def exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,co
                     data.write(values)
             else: accessions_exlcuded.append(accession)
     data.close()
-    print len(accessions_exlcuded), "Accession numbers excluded (same as Ensembl transcript), out of",(accessions_included+len(accessions_exlcuded))
-    export_file2 = string.replace(input_gene_file,'all',species+'_UCSC-accession-eliminated')
-    fn=filepath(export_file2); data = open(fn,'w')
-    for ac in accessions_exlcuded: data.write(ac+'\n')
-    data.close()
-    print 'data written to:',export_file
+    
+    if export_all_associations == 'yes': ### Used in mRNASeqAlign.py
+        print len(accessions_exlcuded), "Accession numbers excluded (same as Ensembl transcript), out of",(accessions_included+len(accessions_exlcuded))
+        export_file2 = string.replace(input_gene_file,'all',species+'_UCSC-accession-eliminated')
+        fn=filepath(export_file2); data = open(fn,'w')
+        for ac in accessions_exlcuded: data.write(ac+'\n')
+        data.close()
+        print 'data written to:',export_file
 
 def exportSimple(filtered_data,title,input_gene_file):
     export_file = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure_filtered')
@@ -700,9 +705,13 @@ def filterBuiltAssociations(species):
         for (exonid,i,line) in raw_data[accession]: keep.append((i,line))
     keep = unique.unique(keep); keep.sort()
     #print k, "exon pairs that contained two ensembl exons not paired in an Ensembl transcript";kill
-    exportSimple(keep,title,input_gene_file)
+    
+    if export_all_associations == 'no': ### Only used by EnsemblImport.py
+        exportSimple(keep,title,input_gene_file)
 
 def returnConstitutive(species):
+    """ Note: This function is used only for internal analyses and is NOT utilized for the AltAnalyze build process"""
+    
     input_gene_file = 'AltDatabase/ucsc/'+species+'/all_mrna.txt'
     filename = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure')
 
@@ -757,7 +766,7 @@ def downloadFiles(ucsc_file_dir,output_dir):
             except OSError: status = status        
     except Exception: print ucsc_file_dir,'file not found at http://genome.ucsc.edu.'
     
-def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations, run_from_scratch,force):
+def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations,run_from_scratch,force):
     global species; species = Species; global mRNA_type; mRNA_type = mRNA_Type
     global test; global bp_offset; global gap_length; global test_gene
     global export_all_associations
@@ -766,7 +775,8 @@ def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations, run_fr
     test = 'no'
     test_gene = ['ENSMUSG00000022194']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']
 
-    if force == 'yes':
+    counts = update.verifyFile('AltDatabase/ucsc/'+species +'/all_mrna.txt','counts') ### See if the file is already downloaded
+    if force == 'yes' or counts <9:
         ### Download mRNA structure file from website
         import UI; species_names = UI.getSpeciesInfo()
         species_full = species_names[species]

@@ -191,6 +191,9 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
                 if array_type == 'exon' or array_type == 'junction': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
                 else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
                 filenames = [pgf_file+'.gz',clf_file+'.gz',bgp_file+'.gz']
+                if 'Glue' in pgf_file:
+                    kil_file = string.replace(pgf_file,'.pgf','.kil') ### Only applies to the Glue array
+                    filenames.append(kil_file+'.gz')
             else: filenames = [input_cdf_file]
             for filename in filenames:
                 var_list = filename,'LibraryFiles'
@@ -251,7 +254,7 @@ class StatusWindow:
         try:
             root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.0.5 beta')
+            root.title('AltAnalyze version 2.0.6 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 270; width = 700
@@ -671,7 +674,7 @@ class GUI:
                     self.entry_field = PmwFreeze.EntryField(parent_type,
                             labelpos = 'w', label_text = self.title, validate = custom_validate,
                             value = self.default_option, hull_borderwidth = 2, hull_relief = 'ridge')
-                if insert_into_group == 'no': self.entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 10)	
+                if insert_into_group == 'no': self.entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 5)	
                 elif enter_index == 1: self.entry_field1 = self.entry_field
                 elif enter_index == 2: self.entry_field2 = self.entry_field
                 elif enter_index == 3: self.entry_field3 = self.entry_field
@@ -1631,6 +1634,24 @@ def verifyFileLength(filename):
     except Exception: null=[]
     return count
 
+def determinePlatform(filename):
+    platform = ''
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines():
+            #print [line]
+            if len(line)>0: platform = line
+    except Exception: null=[]
+    return platform
+
+def APTDebugger(output_dir):
+    fatal_error = ''
+    fn = filepath(output_dir+'/apt-probeset-summarize.log')
+    for line in open(fn,'rU').xreadlines():
+        if 'FATAL ERROR:' in line:
+            fatal_error = line
+    return fatal_error
+
 def probesetSummarize(exp_file_location_db,analyze_metaprobesets,probeset_type,species,root):
     for dataset in exp_file_location_db: ### Instance of the Class ExpressionFileLocationData
         fl = exp_file_location_db[dataset]
@@ -1689,16 +1710,43 @@ def probesetSummarize(exp_file_location_db,analyze_metaprobesets,probeset_type,s
             if xhyb_remove == 'yes':
                 kill_list_dir = osfilepath('AltDatabase/'+species+'/exon/'+species+'_probes_to_remove.txt')
             else: kill_list_dir = osfilepath('AltDatabase/affymetrix/APT/probes_to_remove.txt')
+            if 'Glue' in pgf_file:
+                kill_list_dir = string.replace(pgf_file,'pgf','kil') ### Needed to run DABG without crashing
+                #psr_dir = string.replace(pgf_file,'pgf','PSR.ps') ### used with -s
             try:
                 algorithm = 'rma-sketch'; pval = 'dabg'
                 if analyze_metaprobesets != 'yes':
                     retcode = subprocess.call([
                     apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir,
                     "-a", algorithm, "-a", pval, "-o", output_dir, "--cel-files", cel_dir])
+                    if retcode:
+                        summary_exp_file = output_dir+'/'+pval+'.summary.txt'
+                        try: os.remove(summary_exp_file)
+                        except Exception: null=[] ### Occurs if dabg export failed
+                        fatal_error = APTDebugger(output_dir)
+                        if len(fatal_error)>0:
+                            print fatal_error
+                            print 'Skipping DABG p-value calculation to resolve (Bad library files -> contact Affymetrix support)'
+                            retcode = subprocess.call([
+                            apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir,
+                            "-a", algorithm, "-o", output_dir, "--cel-files", cel_dir]) ### Exclude DABG p-value - known issue for Glue junction array
+                        else: bad_exit
                 else:
                     retcode = subprocess.call([
                     apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir, "-m", metaprobeset_file,
                     "-a", algorithm, "-a", pval, "-o", output_dir, "--cel-files", cel_dir, "--feature-details", export_features])
+                    if retcode:
+                        summary_exp_file = output_dir+'/'+pval+'.summary.txt'
+                        try: os.remove(summary_exp_file)
+                        except Exception: null=[] ### Occurs if dabg export failed
+                        fatal_error = APTDebugger(output_dir)
+                        if len(fatal_error)>0:
+                            print fatal_error
+                            print 'Skipping DABG p-value calculation to resolve (Bad library files -> contact Affymetrix support)'
+                            retcode = subprocess.call([
+                            apt_file, "-p", pgf_file, "-c", clf_file, "-b", bgp_file, "--kill-list", kill_list_dir, "-m", metaprobeset_file,
+                            "-a", algorithm, "-o", output_dir, "--cel-files", cel_dir, "--feature-details", export_features]) ### Exclude DABG p-value - known issue for Glue junction array
+                        else: bad_exit
                 if retcode: status = 'failed'
                 else:
                     status = 'run'
@@ -1709,8 +1757,10 @@ def probesetSummarize(exp_file_location_db,analyze_metaprobesets,probeset_type,s
 
                     summary_exp_file = output_dir+'/'+pval+'.summary.txt'
                     #if analyze_metaprobesets == 'yes': annotateMetaProbesetGenes(summary_exp_file, stats_file, metaprobeset_file, species)
-                    shutil.copyfile(summary_exp_file, stats_file)
-                    os.remove(summary_exp_file)
+                    try:
+                        shutil.copyfile(summary_exp_file, stats_file)
+                        os.remove(summary_exp_file)
+                    except Exception: null=[] ### Occurs if dabg export failed
                     
                     if analyze_metaprobesets == 'yes':
                         residual_destination_file = string.replace(expression_file,'exp.','residuals.')
@@ -1760,9 +1810,9 @@ def importDefaultInfo(filename,array_type):
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
         if '-expr' in filename:
-            array_abrev, dabg_p, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_algorithm, run_goelite = string.split(data,'\t')
+            array_abrev, dabg_p, rpkm_threshold, expression_threshold, exon_exp_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_algorithm, run_goelite = string.split(data,'\t')
             if array_type == array_abrev:
-                return dabg_p, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_algorithm, run_goelite
+                return dabg_p, rpkm_threshold, expression_threshold, exon_exp_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_algorithm, run_goelite
             
         if '-alt' in filename:
             array_abrev, analysis_method, additional_algorithms, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, additional_score, permute_p_threshold, gene_expression_cutoff, remove_intronic_junctions, perform_permutation_analysis, export_splice_index_values, run_MiDAS, calculate_splicing_index_p, filter_for_AS = string.split(data,'\t')
@@ -1819,7 +1869,9 @@ def importUserOptions(array_type):
         elif 'linux' in sys.platform: displayed_title = linux_displayed_title
         else: displayed_title = linux_displayed_title
         if 'junction' in displayed_title: displayed_title+=' '
-        
+        """if array_type == 'RNASeq':
+            if option == 'dabg_p': ### substitute the text for the alternatitve text in notes
+                displayed_title = notes"""
         if x == 0:
             i = t.index(array_type) ### Index position of the name of the array_type selected by user (or arbitrary to begin with)
             x = 1
@@ -2035,7 +2087,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze version 2.0.5 beta.\n'
+        about = 'AltAnalyze version 2.0.6 beta.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.altanalyze.org\n'
@@ -2056,7 +2108,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.0.5 beta.\n')
+        txt.insert(END, 'AltAnalyze version 2.0.6 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
@@ -2191,6 +2243,21 @@ class ExpressionFileLocationData:
     def setCELFileDir(self,cel_file_dir): self._cel_file_dir = osfilepath(cel_file_dir)
     def setFeatureNormalization(self,normalize_feature_exp): self.normalize_feature_exp = normalize_feature_exp
     def setProbabilityStatistic(self,probability_statistic): self.probability_statistic = probability_statistic
+    def setExonExpThreshold(self,exon_exp_threshold):
+        try: exon_exp_threshold = float(exon_exp_threshold)
+        except Exception: exon_exp_threshold = exon_exp_threshold
+        self.exon_exp_threshold = exon_exp_threshold
+    def setJunctionExpThreshold(self,junction_exp_threshold):
+        try: junction_exp_threshold = float(junction_exp_threshold)
+        except Exception: junction_exp_threshold = junction_exp_threshold
+        self.junction_exp_threshold = junction_exp_threshold
+    def setRPKMThreshold(self,rpkm_threshold):
+        try: rpkm_threshold = float(rpkm_threshold)
+        except Exception: rpkm_threshold = rpkm_threshold
+        self.rpkm_threshold = rpkm_threshold
+    def ExonExpThreshold(self): return self.exon_exp_threshold
+    def JunctionExpThreshold(self): return self.junction_exp_threshold
+    def RPKMThreshold(self): return self.rpkm_threshold
     def ProbabilityStatistic(self): return self.probability_statistic
     def setArrayType(self,array_type): self._array_type = array_type
     def setOutputDir(self,output_dir): self._output_dir = output_dir
@@ -2392,7 +2459,9 @@ def getSpeciesForArray(array_type):
     current_species_names.sort()
     return current_species_names
 
-def checkForLocalArraySupport(species,array_type,run_mode):
+def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
+    specific_arraytype = string.lower(specific_arraytype) ### Full array name
+    
     if array_type == 'junction' or array_type == 'RNASeq':
         try: gene_database = unique.getCurrentGeneDatabaseVersion()
         except Exception: gene_database='00'
@@ -2401,11 +2470,15 @@ def checkForLocalArraySupport(species,array_type,run_mode):
             if run_mode == 'GUI': IndicatorWindow(print_out,'Continue')
             else: print print_out ### Occurs in command-line mode
             AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
-        downloaded_junction_db = 'no'; file_problem='no'
+        downloaded_junction_db = 'no'; file_problem='no'; wrong_junction_db = 'no'
         while downloaded_junction_db == 'no': ### Used as validation in case internet connection is unavailable
             try: dirs = read_directory('/AltDatabase/'+species)
             except Exception: dirs=[]
-            if array_type not in dirs or file_problem == 'yes':
+            if wrong_junction_db == 'yes':
+                print_out = 'Another junction database is installed. Select "Contine" to overwrite or manually change the name of this folder:\n'+filepath('AltDatabase/'+species+'/'+array_type)
+                if run_mode == 'GUI': IndicatorWindow(print_out,'Continue')
+                else: print print_out  ### Occurs in command-line mode
+            if array_type not in dirs or file_problem == 'yes' or wrong_junction_db == 'yes':
                 if file_problem == 'yes':
                     print_out = 'Unknown installation error occured.\nPlease try again.'
                 else:
@@ -2413,6 +2486,7 @@ def checkForLocalArraySupport(species,array_type,run_mode):
                 if run_mode == 'GUI': IndicatorWindow(print_out,'Download')
                 else: print print_out  ### Occurs in command-line mode
                 if array_type == 'RNASeq': filename = 'AltDatabase/'+species+'_'+array_type+'.zip'
+                elif 'glue' in specific_arraytype: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'_Glue.zip'
                 else: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'.zip'
                 dir = 'AltDatabase/updated/'+gene_database; var_list = filename,dir
                 if debug_mode == 'no' and run_mode == 'GUI': StatusWindow(var_list,'download')
@@ -2425,7 +2499,12 @@ def checkForLocalArraySupport(species,array_type,run_mode):
                 if file_length>0: downloaded_junction_db = 'yes'
                 elif species == 'Mm' or species == 'Hs' or species == 'Rn': file_problem = 'yes'
                 else: downloaded_junction_db = 'yes' ### Occurs when no alternative exons present for species
-
+                if array_type == 'junction':
+                    specific_platform = determinePlatform('AltDatabase/'+species+'/'+array_type+'/platform.txt')
+                    if 'glue' in specific_arraytype and 'Glue' not in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
+                    elif 'glue' not in specific_arraytype and 'Glue' in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
+                    #print [specific_arraytype], [specific_platform], wrong_junction_db, downloaded_junction_db
+                    
 def getUserParameters(run_parameter):
     global AltAnalyze; import AltAnalyze
     if run_parameter == 'yes':
@@ -2451,7 +2530,7 @@ def getUserParameters(run_parameter):
     calculate_splicing_index_p=no; run_goelite=no; ge_ptype = 'rawp'; probability_algorithm = na
     ge_fold_cutoffs=2;ge_pvalue_cutoffs=0.05;filter_method=na;z_threshold=1.96;p_val_threshold=0.05
     change_threshold=2;pathway_permutations=na;mod=na; analyze_all_conditions=no; resources_to_analyze=na
-    additional_algorithms = na
+    additional_algorithms = na; rpkm_threshold = na; exon_exp_threshold = na
                 
     option_list,option_db = importUserOptions('exon')  ##Initially used to just get the info for species and array_type
     importSpeciesInfo()
@@ -2598,6 +2677,7 @@ def getUserParameters(run_parameter):
         update_dbs = gu.Results()['update_dbs']
         array_full = gu.Results()['array_type']
         array_type = array_codes[array_full].ArrayCode()
+
         vendor = gu.Results()['manufacturer_selection']
         if update_dbs == 'yes':
             integrate_online_species = 'yes'
@@ -2613,7 +2693,7 @@ def getUserParameters(run_parameter):
                 IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
 
         ### Examine the AltDatabase folder for directories required for specific array analyses      
-        checkForLocalArraySupport(species,array_type,'GUI')
+        checkForLocalArraySupport(species,array_type,array_full,'GUI')
         
         if array_type == 'exon' or array_type == 'AltMouse' or array_type == 'gene' or array_type == 'junction':
             try: dirs = read_directory('/AltDatabase/'+species)
@@ -2737,9 +2817,11 @@ def getUserParameters(run_parameter):
                         if species == 'Mm': specific_array_type = 'MoGene-1_0-st-v1'
                         if species == 'Rn': specific_array_type = 'RaGene-1_0-st-v1'
                     elif array_type == 'AltMouse': specific_array_type = 'altMouseA'
+                    """ ### Comment this out to allow for different junction sub-types (likely do the above in the future)
                     elif array_type == 'junction':
                         if species == 'Hs': specific_array_type = 'HJAY_v2'
                         if species == 'Mm': specific_array_type = 'MJAY_v2'
+                    """
 
                 if specific_array_type in supproted_array_db:
                     input_cdf_file, annotation_dir, bgp_file, clf_file = getAffyFiles(specific_array_type,species)
@@ -2798,12 +2880,14 @@ def getUserParameters(run_parameter):
                                         ###Check to see if the clf and bgp files are present in this directory 
                                         icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); cdf_short = icf_list[-1]
                                         clf_short = string.replace(cdf_short,'.pgf','.clf')
+                                        kil_short = string.replace(cdf_short,'.pgf','.kil') ### Only applies to the Glue array
                                         if array_type == 'exon' or array_type == 'junction': bgp_short = string.replace(cdf_short,'.pgf','.antigenomic.bgp')
                                         else: bgp_short = string.replace(cdf_short,'.pgf','.bgp')
                                         dir_list = read_directory(parent_dir)
                                         if clf_short in dir_list and bgp_short in dir_list:
                                             pgf_file = input_cdf_file
                                             clf_file = string.replace(pgf_file,'.pgf','.clf')
+                                            kil_file = string.replace(pgf_file,'.pgf','.kil') ### Only applies to the Glue array
                                             if array_type == 'exon' or array_type == 'junction': bgp_file = string.replace(pgf_file,'.pgf','.antigenomic.bgp')
                                             else: bgp_file = string.replace(pgf_file,'.pgf','.bgp')
                                             assinged = 'yes'
@@ -2815,6 +2899,8 @@ def getUserParameters(run_parameter):
                                                 info_list = input_cdf_file,osfilepath(destination_parent+cdf_short); StatusWindow(info_list,'copy')
                                                 info_list = clf_file,osfilepath(destination_parent+clf_short); StatusWindow(info_list,'copy')
                                                 info_list = bgp_file,osfilepath(destination_parent+bgp_short); StatusWindow(info_list,'copy')
+                                                if 'Glue' in pgf_file:
+                                                    info_list = kil_file,osfilepath(destination_parent+kil_short); StatusWindow(info_list,'copy')
                                         else:
                                             print_out = "The directory;\n"+parent_dir+"\ndoes not contain either a .clf or antigenomic.bgp\nfile, required for probeset summarization."
                                             IndicatorWindow(print_out,'Continue')                                   
@@ -2894,6 +2980,14 @@ def getUserParameters(run_parameter):
                         except Exception:
                             if array_type == 'RNASeq': dabg_p = 1
                             else: dabg_p = 'NA'
+                        try: exon_exp_threshold = gu.Results()['exon_exp_threshold']
+                        except Exception:
+                            if array_type == 'RNASeq': exon_exp_threshold = 1
+                            else: exon_exp_threshold = 'NA'
+                        try: rpkm_threshold = gu.Results()['rpkm_threshold']
+                        except Exception:
+                            if array_type == 'RNASeq': rpkm_threshold = 1
+                            else: rpkm_threshold = 'NA'
                         run_from_scratch = gu.Results()['run_from_scratch']
                         try: expression_threshold = gu.Results()['expression_threshold']
                         except Exception:
@@ -2917,13 +3011,25 @@ def getUserParameters(run_parameter):
                     if 'immediately' in run_goelite: run_goelite = 'yes'
                     else: run_goelite = 'no'
                     passed = 'yes'; print_out = 'Invalid threshold entered for '
-                    if array_type != "3'array" and array_type !='RNASeq':    
-                        try: expression_threshold = float(expression_threshold)
-                        except Exception: passed = 'no'; print_out+= 'expression threshold'
-                        try: dabg_p = float(dabg_p)
-                        except Exception: passed = 'no'; print_out+= 'DABG p-value cutoff'
-                        if expression_threshold<1: passed = 'no'; print_out+= 'expression threshold'
-                        elif dabg_p<=0 or dabg_p>1: passed = 'no'; print_out+= 'DABG p-value cutoff'
+                    if array_type != "3'array" and array_type !='RNASeq':
+                        try:
+                            dabg_p = float(dabg_p)
+                            if dabg_p<=0 or dabg_p>1: passed = 'no'; print_out+= 'DABG p-value cutoff '
+                        except Exception: passed = 'no'; print_out+= 'DABG p-value cutoff '
+                    if array_type != "3'array":   
+                        try:
+                            expression_threshold = float(expression_threshold)
+                            if expression_threshold<1: passed = 'no'; print_out+= 'expression threshold '
+                        except Exception: passed = 'no'; print_out+= 'expression threshold '   
+                    if array_type == 'RNASeq':
+                        try:
+                            rpkm_threshold = float(rpkm_threshold)
+                            if rpkm_threshold<0: passed = 'no'; print_out+= 'RPKM threshold '
+                        except Exception: passed = 'no'; print_out+= 'RPKM threshold '
+                        try:
+                            exon_exp_threshold = float(exon_exp_threshold)
+                            if exon_exp_threshold<0: passed = 'no'; print_out+= 'Exon expression threshold '
+                        except Exception: passed = 'no'; print_out+= 'Exon expression threshold '
                     if passed == 'no': IndicatorWindow(print_out,'Continue')
                     else: proceed = 'yes'
                     
@@ -3040,7 +3146,7 @@ def getUserParameters(run_parameter):
                     except KeyError: probability_algorithm = probability_algorithm
                     try:
                         avg_all_for_ss = gu.Results()['avg_all_for_ss']
-                        if 'all exon aligning' in avg_all_for_ss or 'known exons' in avg_all_for_ss: avg_all_for_ss = 'yes'
+                        if 'all exon aligning' in avg_all_for_ss or 'known exons' in avg_all_for_ss or 'core' in avg_all_for_ss: avg_all_for_ss = 'yes'
                         else: avg_all_for_ss = 'no'
                     except Exception: avg_all_for_ss = 'no'
                         
@@ -3332,6 +3438,10 @@ def getUserParameters(run_parameter):
         fl.setFeatureNormalization(normalize_feature_exp)
         fl.setProbabilityStatistic(probability_algorithm)
 
+    if array_type == 'RNASeq': ### Post version 2.0, add variables in fl rather than below
+        fl.setRPKMThreshold(rpkm_threshold)
+        fl.setExonExpThreshold(exon_exp_threshold)
+        
     expr_var = species,array_type,vendor,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,remove_intronic_junctions,permute_p_threshold, perform_permutation_analysis, export_splice_index_values, analyze_all_conditions
     additional_var = calculate_splicing_index_p, run_MiDAS, analyze_functional_attributes, microRNA_prediction_method, filter_for_AS, additional_algorithms

@@ -22,6 +22,7 @@ import unique
 import ExonAnalyze_module
 import copy
 import export
+import update
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -31,7 +32,7 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir); dir_list2 = []
     ###Code to prevent folder names from being included
     for entry in dir_list:
-        if entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv" or '.fa' in entry: dir_list2.append(entry)
+        if (entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv" or '.fa' in entry) and '.gz' not in entry: dir_list2.append(entry)
     return dir_list2
 
 class GrabFiles:
@@ -117,7 +118,7 @@ def findDomainsByGenomeCoordinates(species,array_type,Data_type):
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     first_last_exon_coord_db = importEnsExonStructureDataCustom(filename,species,{})
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
-    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
+    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
     first_last_exon_coord_db = importEnsExonStructureDataCustom(filename,species,first_last_exon_coord_db)
  
     if array_type == 'exon' or array_type == 'gene' or data_type == 'junction':
@@ -695,6 +696,8 @@ def grab_exon_level_feature_calls(species,array_type,genes_analyzed):
     global uniprot_arrayid_db; uniprot_arrayid_db = {}; global arrayid_uniprot_db; arrayid_uniprot_db = {}
     global ensembl_arrayid_db; ensembl_arrayid_db={}
     if array_type == 'AltMouse':
+        update.verifyFile(arrayid_uniprot_file,array_type) ### Will force download if missing
+        update.verifyFile(arrayid_ensembl_file,array_type) ### Will force download if missing
         import_arrayid_uniprot(arrayid_uniprot_file)
         import_arrayid_ensembl(arrayid_ensembl_file)
         ###Otherwise, these databases can be built on-the-fly in downstream methods, since Ensembl will be used as the array gene id

@@ -37,7 +37,7 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir); dir_list2 = []
     ###Code to prevent folder names from being included
     for entry in dir_list:
-        if entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv" or '.fa' in entry: dir_list2.append(entry)
+        if (entry[-4:] == ".txt"or entry[-4:] == ".tab" or entry[-4:] == ".csv" or '.fa' in entry) and '.gz' not in entry and '.zip' not in entry: dir_list2.append(entry)
     return dir_list2
 
 class GrabFiles:
@@ -173,7 +173,8 @@ def importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens
                 except Exception: exon_structure_db[tuple(ls)] = [transcript]"""
     #ens_gene_transcript_db = eliminateRedundant(ens_gene_transcript_db)
     #ens_gene_exon_db = eliminateRedundant(ens_gene_exon_db)
-    print 'Exon/transcript data imported for %s transcripts' % len(ens_transcript_exon_db)
+    #if 'ENSG00000240173' in ens_gene_exon_db: print 'here'
+    print 'Exon/transcript data imported for %s transcripts' % len(ens_transcript_exon_db), len(ens_gene_exon_db)
     return ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db
 
 def eliminateRedundant(database):
@@ -216,7 +217,7 @@ def compareExonComposition(species,array_type):
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},{})
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
-    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
+    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,{})
     ### Derive probeset to exon associations De Novo
     probeset_exon_coor_db = getProbesetExonCoordinates(probeset_coordinate_db,probeset_gene_db,ens_gene_exon_db)
@@ -360,7 +361,7 @@ def compareExonCompositionJunctionArray(species,array_type):
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},all_transcripts)
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
-    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
+    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,all_transcripts)
 
     print len(probeset_transcript_db), "probesets with multiple pairs of matching-matching or matching-null transcripts."
@@ -757,18 +758,20 @@ def importEnsemblProtSeq(filename,unique_ens_proteins):
     export_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-EnsProt_sequences.txt'
     export_data = export.ExportFile(export_file)
     
-    fn=filepath(filename); ensembl_protein_seq_db={}; sequence = ''
+    fn=filepath(filename); ensembl_protein_seq_db={}; sequence = ''; y=0
     for line in open(fn,'r').xreadlines():
-        try: data, newline= string.split(line,'\n')
+        try: data, newline= string.split(line,'\n'); y+=1
         except ValueError: continue
         try:
             if data[0] == '>':
                 if len(sequence) > 0:
+                    try: ensembl_prot = ensembl_prot
+                    except Exception: print data,y,t;kill
                     if ensembl_prot in unique_ens_proteins:
                         mRNA_AC = unique_ens_proteins[ensembl_prot]
                         values = string.join([mRNA_AC,ensembl_prot,sequence],'\t')+'\n'
                         export_data.write(values); ensembl_protein_seq_db[ensembl_prot] =  []
-                ### Parse new line                      
+                ### Parse new line
                 t= string.split(data[1:],' '); sequence=''
                 ensembl_prot = t[0]
         except IndexError: continue
@@ -840,9 +843,16 @@ def BuildInSilicoTranslations(mRNA_db):
     211 MNGLEVAPPGLITNFSLATAEQCGQETPLENMLFASFYLLDFILALVGNTLALWLFIRDHKSGTPANVFLMHLAVADLSCVLVLPTRLVYHFSGNHWPFGEIACRLTGFLFYLNMYASIYFLTCISADRFLAIVHPVKSLKLRRPLYAHLACAFLWVVVAVAMAPLLVSPQTVQTNTRWVCLQLYREKAPTCLVSLGSGLHFPFITRSRVL
     """    
     translation_db={}
-    from Bio.Alphabet import IUPAC
+    
     from Bio.Seq import Seq
-    from Bio import Translate
+    
+    ### New Biopython methods - http://biopython.org/wiki/Seq
+    from Bio.Alphabet import generic_dna
+    
+    ### Deprecated
+    #from Bio.Alphabet import IUPAC
+    #from Bio import Translate ### deprecated
+    
     first_time = 1
     for mRNA_AC in mRNA_db:
         if mRNA_AC == 'AK025306': print '@@@@@@@@@@^^^^AK025306...attempting in silico translation'
@@ -854,12 +864,17 @@ def BuildInSilicoTranslations(mRNA_db):
             x = string.find(sequence,'ATG') #before doing this, need to find the start codon ourselves
             y += x  #maintain a running count of the sequence position
             sequence_met = sequence[x:]  #x gives us the position where the first Met* is.
-            seq_type = IUPAC.unambiguous_dna
-            #seq_type = IUPAC.ambiguous_dna       
-            dna_seq = Seq(sequence_met,seq_type)
-            standard_translator = Translate.unambiguous_dna_by_id[1]
-            prot_seq = standard_translator.translate_to_stop(dna_seq) #convert the dna to protein sequence
-            #prot_seq2 = standard_translator.translate(dna_seq)  #include stop codons
+            
+            ### New Biopython methods - http://biopython.org/wiki/Seq
+            dna_seq = Seq(sequence_met, generic_dna)
+            prot_seq = dna_seq.translate(to_stop=True)
+            
+            ### Deprecated code
+            #seq_type = IUPAC.unambiguous_dna
+            #dna_seq = Seq(sequence_met,seq_type)
+            #standard_translator = Translate.unambiguous_dna_by_id[1]
+            #prot_seq = standard_translator.translate_to_stop(dna_seq) #convert the dna to protein sequence
+            
             prot_seq_string = prot_seq.tostring()
             prot_seq_tuple = len(prot_seq_string),y,prot_seq_string,dna_seq  #added DNA sequence to determine which exon we're in later  
             temp_protein_list.append(prot_seq_tuple) #create a list of protein sequences to select the longest one

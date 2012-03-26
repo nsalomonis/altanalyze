@@ -21,6 +21,7 @@ import statistics
 import math
 import os.path
 import unique
+import update
 import copy
 import time
 import export
@@ -147,7 +148,7 @@ def importExonAnnotations(species,type,search_chr):
                     #if gene == 'ENSMUSG00000027340': print chr,int(exon1_stop),int(exon2_start)
                     exon_annotation_db[chr,int(exon1_stop),int(exon2_start)]=ea              
                 elif type == 'distal-exon':
-                    if 'I' not in exonid: exon_annotation_db[gene] = exonid
+                    exon_annotation_db[gene] = exonid
                 else:
                     try: exon_annotation_db[gene].append(ea)
                     except KeyError: exon_annotation_db[gene]=[ea]
@@ -263,8 +264,7 @@ def getEnsemblAssociations(species,data_type,test_status,force):
     import UCSCImport
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'
     export_all_associations = 'no' ### YES only for protein prediction analysis
-    try: UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
-    except Exception: UCSCImport.exportNullDatabases(species)
+    update.buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
     
     null = EnsemblImport.getEnsemblAssociations(species,data_type,test_status); null=[]
     reformatExonFile(species,'exon'); reformatExonFile(species,'junction')
@@ -388,6 +388,9 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
             elif '.BED' in fn: condition = string.replace(condition,'.txt','.BED')
             
             if testImport == 'yes': print "Reading the bed file", [fn], condition
+            ### If the BED was manually created on a Mac, will neeed 'rU' - test this
+            for line in open(fn,delim).xreadlines(): break
+            if len(line)>500: delim = 'rU'
             for line in open(fn,delim).xreadlines(): ### changed rU to r to remove \r effectively, rather than read as end-lines
                 data = cleanUpLine(line)
                 t = string.split(data,'\t')
@@ -438,6 +441,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                                     reads = str(int(float(count_paired))+int(float(count_single))) ### Users will either have paired or single read (this uses either)
                                     biotype = 'junction'; biotypes[biotype]=[]; junction_id=''
                                     if float(reads)>0: proceed = 'yes'
+                                    seq_length = abs(float(exon1_stop-exon2_start))
                         else:
                             try:
                                 ### Applies to BED format Junction input
@@ -459,6 +463,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                                 if algorithm == 'SpliceMap':
                                     if ')' in junction_id and len(junction_id)>1: reads = string.split(junction_id,')')[0][1:]
                                     else: proceed = 'no'
+                                seq_length = abs(float(exon1_stop-exon2_start))
                             except Exception:
                                 ### Applies to BED format exon input (BEDTools export)
                                 # bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/nsalomonis/databases/Mm_Ensembl_exons.bed > day0_8B__exons.bed
@@ -468,6 +473,8 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                                     print t; force_exception
                                 algorithm = 'TopHat-exon'; biotype = 'exon'; biotypes[biotype]=[]
                                 exon1_stop,exon2_start = int(start),int(end); junction_id=exon_id; seq_length = float(bp_total)
+                                if seq_length == 0:
+                                    seq_length = abs(float(exon1_stop-exon2_start))
                                 ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
                                 exon1_stop+=1; exon2_start-=1
                                 if float(reads)>0:
@@ -476,12 +483,12 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                         if proceed == 'yes':
                             if strand == '+': pos_count+=1
                             else: neg_count+=1
-                            if getReads == 'yes':
+                            if getReads == 'yes' and seq_length>0:
                                 if getBiotype == biotype:
                                     count_db[chr,exon1_stop,exon2_start] = reads
                                     try: exon_len_db[chr,exon1_stop,exon2_start] = seq_length
                                     except Exception: exon_len_db[chr,exon1_stop,exon2_start] = []
-                            else:
+                            elif seq_length>0:
                                 if (chr,exon1_stop,exon2_start) not in junction_db:
                                     ji = JunctionData(chr,strand,exon1_stop,exon2_start,junction_id,biotype)
                                     junction_db[chr,exon1_stop,exon2_start] = ji
@@ -565,8 +572,12 @@ def calculateRPKM(condition_count_db,exon_len_db,biotype_to_examine):
                     except Exception: continue ### This should only occur during testing (when restricting to one or few chromosomes)
                 if read_count == 1: ###This adjustment allows us to obtain more realist folds where 0 is compared and use log2
                     rpkm = (math.pow(10.0,8.0))*(float(read_count)/(float(average_total_reads)*region_length)) 
-                try: rpkm = (math.pow(10.0,8.0))*(read_count/(float(total_mapped_reads)*region_length))
+                try:
+                    if region_length == 0:
+                        region_length = abs(int(key[2]-key[1]))
+                    rpkm = (math.pow(10.0,8.0))*(read_count/(float(total_mapped_reads)*region_length))
                 except Exception:
+                    print condition, key, 'v.2.0.6 test'
                     print 'Error Encountered... Exon or Junction of zero length encoutered... RPKM failed... Exiting AltAnalyze.'
                     print [read_count,total_mapped_reads,region_length];k=1; kill
                 condition_count_db[condition][key] = str(rpkm) ### Replace original counts with RPMK
@@ -608,14 +619,17 @@ def calculateGeneRPKM(gene_count_db):
         gene_count_db[gene] = rpkms ### Replace original counts with RPMK
     return gene_count_db
 
-def calculateGeneLevelStatistics(steady_state_export,expressed_gene_exon_db,normalize_feature_exp,array_names):
+def calculateGeneLevelStatistics(steady_state_export,expressed_gene_exon_db,normalize_feature_exp,array_names,fl):
+    global UserOptions; UserOptions = fl
     exp_file = string.replace(steady_state_export,'-steady-state','')
     if normalize_feature_exp == 'RPKM':
-        steady_state_db = importRawCountData(exp_file,expressed_gene_exon_db,normalize_feature_exp)
+        exp_dbase, array_count = importRawCountData(exp_file,expressed_gene_exon_db,normalize_feature_exp)
+        steady_state_db = obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp); exp_dbase=[]
         exportGeneCounts(steady_state_export,array_names,steady_state_db)
         steady_state_db = calculateGeneRPKM(steady_state_db)
     else:
-        steady_state_db = importNormalizedCountData(exp_file,expressed_gene_exon_db,normalize_feature_exp)
+        exp_dbase, array_count = importNormalizedCountData(exp_file,expressed_gene_exon_db,normalize_feature_exp)
+        steady_state_db = obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp); exp_dbase=[]
         exportGeneCounts(steady_state_export,array_names,steady_state_db)
     return steady_state_db
     
@@ -1100,10 +1114,32 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
     return biotypes
 
 def importRawCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
+    """ Identifies exons or junctions to evaluate gene-level expression. This function, as it is currently written:
+    1) examines the RPKM and original read counts associated with all exons
+    2) removes exons/junctions that do not meet their respective RPKM AND read count cutoffs
+    3) returns ONLY those exons and genes deemed expressed, whether constitutive selected or all exons
+    """
+    
     ### Get expression values for exon/junctions to analyze
     seq_ids_to_import={}
     for gene in expressed_gene_exon_db:
         for exonid in expressed_gene_exon_db[gene]: seq_ids_to_import[exonid]=[]
+            
+    ### Define thresholds
+    exon_exp_threshold = UserOptions.ExonExpThreshold()
+    rpkm_threshold = UserOptions.RPKMThreshold()
+    junction_exp_threshold = UserOptions.ExonExpThreshold()
+    
+    ### Import RPKM normalized expression values               
+    fn=filepath(filename); x=0; rpkm_dbase={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0: array_names = t[1:]; x=1
+        else:
+            exon_id=t[0]
+            max_count=max(map(float,t[1:]))
+            if max_count>=rpkm_threshold: rpkm_dbase[exon_id]=[] ### Only retain exons/junctions meeting the RPKM threshold
             
     ### Import non-normalized original counts                
     counts_filename = string.replace(filename,'exp.','counts.')
@@ -1119,13 +1155,20 @@ def importRawCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
                 coordinates = string.split(coordinates,':')[1]
                 coordinates = string.split(coordinates,'-')
                 length=abs(int(coordinates[1])-int(coordinates[0]))
-                if '-' in exon_id: length = 60.0
-                exp_dbase[exon_id] = t[1:],length ### Include sequence length for normalization
+                max_count=max(map(float,t[1:])); proceed = 'no'
+                if '-' in exon_id:
+                    length = 60.0
+                    if max_count>=junction_exp_threshold: proceed = 'yes'
+                elif max_count>=exon_exp_threshold: proceed = 'yes'
+                if proceed == 'yes' and exon_id in rpkm_dbase: ### Ensures that the maximum sample (not group) user defined count threshold is achieved at the exon or junction-level
+                    exp_dbase[exon_id] = t[1:],length ### Include sequence length for normalization
             except Exception: null=[]
 
-    for exon in exp_dbase: array_count = len(exp_dbase[exon][0]); break                
-    steady_state_db = obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp); exp_dbase=[]
-    return steady_state_db
+    for exon in exp_dbase: array_count = len(exp_dbase[exon][0]); break
+    try:null=array_count
+    except Exception:
+        print 'No exons or junctions considered expressed (based user thresholds). Exiting analysis.'; force_exit
+    return exp_dbase, array_count
 
 def importNormalizedCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
     ### Get expression values for exon/junctions to analyze
@@ -1133,6 +1176,10 @@ def importNormalizedCountData(filename,expressed_gene_exon_db,normalize_feature_
     for gene in expressed_gene_exon_db:
         for exonid in expressed_gene_exon_db[gene]: seq_ids_to_import[exonid]=[]
             
+    ### Define thresholds
+    exon_exp_threshold = UserOptions.ExonExpThreshold()
+    junction_exp_threshold = UserOptions.ExonExpThreshold()
+    
     ### Import non-normalized original counts                
     fn=filepath(filename); x=0; exp_dbase={}
     for line in open(fn,'rU').xreadlines():
@@ -1140,12 +1187,16 @@ def importNormalizedCountData(filename,expressed_gene_exon_db,normalize_feature_
         t = string.split(data,'\t')
         if x==0: array_names = t[1:]; x=1
         else:
-            exon_id=t[0]
-            exp_dbase[exon_id] = t[1:],0  ### Add the zero just to comply with the raw count input format (indicates exon length)
+            exon_id=t[0]; proceed = 'no'
+            max_count=max(map(float,t[1:]))
+            if '-' in exon_id:
+                if max_count>=junction_exp_threshold: proceed = 'yes'
+            elif max_count>=exon_exp_threshold: proceed = 'yes'
+            if proceed == 'yes': ### Ensures that the maximum sample (not group) user defined count threshold is achieved at the exon or junction-level
+                exp_dbase[exon_id] = t[1:],0  ### Add the zero just to comply with the raw count input format (indicates exon length)
 
     for exon in exp_dbase: array_count = len(exp_dbase[exon][0]); break        
-    steady_state_db = obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp); exp_dbase=[]
-    return steady_state_db
+    return exp_dbase, array_count
 
 def obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feature_exp):
     ###Calculate avg expression for each sample for each exon (using constitutive or all exon values)
@@ -1160,9 +1211,10 @@ def obtainGeneCounts(expressed_gene_exon_db,exp_dbase,array_count,normalize_feat
                 try:
                     exp_val = exp_dbase[exon][0][x]
                     if normalize_feature_exp == 'RPKM':
-                        if float(exp_val) != 0: ### Here, we use the original raw count data, whereas above is the adjusted quantile or raw count data
-                            exp_list.append(exp_val); len_list.append(exp_dbase[exon][1]) ### This is for RNASeq -> don't include undetected exons - made in v.204
-                    elif float(exp_val) != 1: exp_list.append(exp_val)
+                        ### Decided to include all exons, expressed or not to prevent including lowly expressed exons that are long, that can bias the expression call
+                        #if float(exp_val) != 0: ### Here, we use the original raw count data, whereas above is the adjusted quantile or raw count data
+                        exp_list.append(exp_val); len_list.append(exp_dbase[exon][1]) ### This is for RNASeq -> don't include undetected exons - made in v.204
+                    else: exp_list.append(exp_val) #elif float(exp_val) != 1:
                 except KeyError: null =[] ###occurs if the expression exon list is missing some of these exons
             try:
                 if len(exp_list)==0:
@@ -1804,7 +1856,7 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
         x=0; regulated_critical_exon_temp={}
         fn=filepath(results_dir+filename)
 
-        new_filename = string.join(string.split(filename,'-')[:2],'-')
+        new_filename = string.join(string.split(filename,'-')[:-5],'-')
         if '_vs_' in filename and '_vs_' in new_filename: export_filename = new_filename
         else: export_filename = string.join(string.split(filename,'-')[:-5],'-')
 
@@ -1821,7 +1873,9 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
             else:
                 geneid = t[0]; exonid = t[4]; probeset1 = t[7]; probeset2 = ''; score = t[1][:4]; symbol = t[2]; description = t[3]; regions = t[-4]; direction = t[5]
                 genomic_loc = t[-1]; splicing_event = t[-3]; external_exon = t[-6]; gene_exp = t[-8]; protein_annot = t[14]; domain_inferred = t[15]; domain_overlap = t[17]
-                method = 'splicing-index'
+                if ':' in geneid: geneid = string.split(geneid,':')[0] ### User reported that gene:gene was appearing and not sure exactly where or why but added this to address it
+                if 'FIRMA' in fn: method = 'FIRMA'
+                else: method = 'splicing-index'
                 if 'ASPIRE' in filename or 'linearregres' in filename:
                     f1=float(t[12]); f2=float(t[13]); probeset1 = t[8]; probeset2 = t[10]; direction = t[6]; exonid2 = t[5]; splicing_event = t[-4]
                     protein_annot = t[19]; domain_inferred = t[20]; domain_overlap = t[24]; method = 'linearregres'; regions = t[-5]
@@ -1833,13 +1887,17 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
                         except Exception: geneid = geneid
                     if 'RNASeq' not in filename and 'junction' not in filename: regions = string.replace(regions,'-','.')
                 probesets = [probeset1,probeset2]
-                if (method == 'splicing-index' and '-' in regions) or exonid == None:
+                if ((method == 'splicing-index' or method == 'FIRMA') and '-' in regions) or exonid == None:
                     null=[] ### Don't consider
                 else:
                     regions = string.replace(regions,';','|')
                     regions = string.replace(regions,'-','|')
                     regions = string.split(regions,'|')
                     for region in regions:
+                        if len(region) == 0:
+                            try: region = t[17]+t[18] ### For junction introns where no region ID exists
+                            except Exception: null=[]
+                        if ':' in region: region = string.split(region,':')[-1] ### User reported that gene:gene was appearing and not sure exactly where or why but added this to address it
                         uid = geneid+':'+region
                         ss = SplicingData(score,symbol,description,exonid,probesets,direction,splicing_event,external_exon,genomic_loc,gene_exp,protein_annot,domain_inferred,domain_overlap,method,filename)
                         try: regulated_critical_exon_temp[uid].append(ss)
@@ -1853,7 +1911,7 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
                 if (scores[0][0]*scores[-1][0])<0:
                     ss1 = scores[0][1]; ss2 = scores[-1][1]
                     if ss1.ProbesetsSorted() == ss2.ProbesetsSorted(): ss1.setDirection('mutual') ### same exons, hence, mutually exclusive event (or similiar)
-                    else: ss1.setDirection('conflict') ### opposite directions, hence, conflicting data
+                    else: ss1.setDirection('both') ### opposite directions in the same comparison-file, hence, conflicting data
                     report=[ss1]
                 else:
                     if abs(scores[0][0])>abs(scores[-1][0]): report=[scores[0][1]]
@@ -1876,7 +1934,7 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
 
     export_data,status = AppendOrWrite(export_path)
     if status == 'not found': 
-        header = string.join(['uid','symbol','description','exonids','independent confirmation','score','regulation direction','alternative exon annotaitons','associated isoforms','inferred regulated domains','overlapping domains','method','supporting evidence score'],'\t')+'\n'
+        header = string.join(['uid','symbol','description','exonids','independent confirmation','score','regulation direction','alternative exon annotations','associated isoforms','inferred regulated domains','overlapping domains','method','supporting evidence score'],'\t')+'\n'
         export_data.write(header)
 
     print len(regulated_critical_exons), 'regulated exon IDs imported.\n'
@@ -1886,71 +1944,99 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
     regulated_critical_exons_copy={}
     for uid in regulated_critical_exons:
         regulated_critical_exons_copy[uid]=regulated_critical_exons[uid]
-        
+    u=0
+    ### This is most applicable to RNA-Seq since the junction IDs correspond to the Exon Regions not the probeset Exon IDs
     for uid in regulated_critical_exons_copy: ### Look through the copied version since we can't delete entries while iterating through
         ls = regulated_critical_exons_copy[uid]
-        jd = ls[0]
-        if jd.Method() != 'splicing-index':
-            try:
-                gene,exonsEx = string.split(jd.Probesets()[1],':') ### Exclusion probeset will have the exon not annotated as the critical exon (although it should be as well)
-                gene,exonsIn = string.split(jd.Probesets()[0],':')
-            except Exception: gene=None ### occurs for trans-splicing
-            if gene !=None:
-                critical_exon = None
-                five_prime,three_prime = string.split(exonsEx,'-')
-                five_primeIn,three_primeIn = string.split(exonsIn,'-')
-                if gene == 'ENSG00000133083': print five_prime,three_prime, five_primeIn,three_primeIn
-                if five_primeIn == five_prime: ### Hence, the exclusion 3' exon should be added
-                    critical_exon = gene+':'+three_prime
-                    exonid = three_prime
-                elif three_primeIn == three_prime: ### Hence, the exclusion 3' exon should be added
-                    critical_exon = gene+':'+five_prime
-                    exonid = five_prime
-                else:
-                    if ('5' in jd.SplicingEvent()) or ('five' in jd.SplicingEvent()):
-                        critical_exon = gene+':'+five_prime
-                        exonid = five_prime
-                    elif ('3' in jd.SplicingEvent()) or ('three' in jd.SplicingEvent()):
+        u+=1
+        #if u<20: print uid
+        for jd in ls:
+            if jd.Method() != 'splicing-index' and jd.Method() != 'FIRMA':
+                try: ### Applicable to RNA-Seq
+                    gene,exonsEx = string.split(jd.Probesets()[1],':') ### Exclusion probeset will have the exon not annotated as the critical exon (although it should be as well)
+                    gene,exonsIn = string.split(jd.Probesets()[0],':')
+                except Exception:
+                    gene, ce = string.split(uid,':')
+                    exonsIn, exonsEx = string.split(jd.ExonID(),'vs.')
+                if gene !=None:
+                    critical_exon = None
+                    five_prime,three_prime = string.split(exonsEx,'-')
+                    try: five_primeIn,three_primeIn = string.split(exonsIn,'-')
+                    except Exception: five_primeIn = exonsIn; three_primeIn = exonsIn ### Only should occur during testing when a exon rather than junction ID is considered
+                    #if gene == 'ENSG00000133083': print five_prime,three_prime, five_primeIn,three_primeIn
+                    if five_primeIn == five_prime: ### Hence, the exclusion 3' exon should be added
                         critical_exon = gene+':'+three_prime
                         exonid = three_prime
-                    elif ('alt-N-term' in jd.SplicingEvent()) or ('altPromoter' in jd.SplicingEvent()):
+                    elif three_primeIn == three_prime: ### Hence, the exclusion 3' exon should be added
                         critical_exon = gene+':'+five_prime
                         exonid = five_prime
-                    elif ('alt-C-term' in jd.SplicingEvent()):
-                        critical_exon = gene+':'+three_prime
-                        exonid = three_prime
-                if critical_exon != None:
-                    if critical_exon in regulated_critical_exons:
-                        if len(regulated_critical_exons[critical_exon]) == 1:
-                            if len(ls)==1 and uid in regulated_critical_exons: ### Can be deleted by this method
-                                if 'vs.' not in regulated_critical_exons[critical_exon][0].ExonID() and 'vs.' not in regulated_critical_exons[critical_exon][0].ExonID():
-                                    regulated_critical_exons[uid].append(regulated_critical_exons[critical_exon][0])
-                                    del regulated_critical_exons[critical_exon]
-                            elif uid in regulated_critical_exons: ###If two entries already exit
-                                ed = regulated_critical_exons[uid][1]
-                                ed2 = regulated_critical_exons[critical_exon][0]
-                                if 'vs.' not in ed.ExonID() and 'vs.' not in ed2.ExonID():
-                                    if ed.Direction() != ed2.Direction(): ### should be opposite directions
-                                        ed.appendExonID(exonid)
-                                        ed.setEvidence(ed.Evidence()+1)
-                                        ed.setScore(ed.Score()+'|'+ed2.Score())
+                    else:
+                        if ('5' in jd.SplicingEvent()) or ('five' in jd.SplicingEvent()):
+                            critical_exon = gene+':'+five_prime
+                            exonid = five_prime
+                        elif ('3' in jd.SplicingEvent()) or ('three' in jd.SplicingEvent()):
+                            critical_exon = gene+':'+three_prime
+                            exonid = three_prime
+                        elif ('alt-N-term' in jd.SplicingEvent()) or ('altPromoter' in jd.SplicingEvent()):
+                            critical_exon = gene+':'+five_prime
+                            exonid = five_prime
+                        elif ('alt-C-term' in jd.SplicingEvent()):
+                            critical_exon = gene+':'+three_prime
+                            exonid = three_prime
+                    #print critical_exon, uid, jd.ExonID(),jd.SplicingEvent(); sys.exit() 
+                    if critical_exon != None:
+                        if critical_exon in regulated_critical_exons:
+                            #print uid, critical_exon; sys.exit()
+                            if len(regulated_critical_exons[critical_exon]) == 1:
+                                if len(ls)==1 and uid in regulated_critical_exons: ### Can be deleted by this method
+                                    if 'vs.' not in regulated_critical_exons[critical_exon][0].ExonID() and 'vs.' not in regulated_critical_exons[critical_exon][0].ExonID():
+                                        regulated_critical_exons[uid].append(regulated_critical_exons[critical_exon][0])
                                         del regulated_critical_exons[critical_exon]
+                                elif uid in regulated_critical_exons: ###If two entries already exit
+                                    ed = regulated_critical_exons[uid][1]
+                                    ed2 = regulated_critical_exons[critical_exon][0]
+                                    if 'vs.' not in ed.ExonID() and 'vs.' not in ed2.ExonID():
+                                        if ed.Direction() != ed2.Direction(): ### should be opposite directions
+                                            ed.appendExonID(exonid)
+                                            ed.setEvidence(ed.Evidence()+1)
+                                            ed.setScore(ed.Score()+'|'+ed2.Score())
+                                            del regulated_critical_exons[critical_exon]
     for uid in regulated_critical_exons:
         #if 'ENSG00000133083' in uid: print [uid]
+        exon_level_confirmation = 'no'
         ls = regulated_critical_exons[uid]
         jd = regulated_critical_exons[uid][0]
         if len(ls)>1:
-            exon_level_confirmation = 'yes'
-            ed = regulated_critical_exons[uid][1]
-            method = jd.Method()+'|'+ed.Method()
-            score = jd.Score()+'|'+ed.Score()
-            if jd.Direction() == ed.Direction(): direction = jd.Direction()
-            elif jd.Direction() == 'mutual' or ed.Direction() == 'mutual': direction = 'mutual'
-            else: direction = jd.Direction()+'|'+ ed.Direction()
-            exonids = jd.ExonID()+'|'+ ed.ExonID()
-            evidence = jd.Evidence()+ed.Evidence()
-        else:
-            exon_level_confirmation = 'no'
+            methods = []; scores = []; direction = []; exonids = []; evidence = 0
+            junction_data_found = 'no'; exon_data_found = 'no'
+            for jd in ls:
+                if jd.Method() == 'ASPIRE' or jd.Method() == 'linearregres': 
+                    junction_data_found = 'yes'
+                    methods.append(jd.Method())
+                    scores.append(jd.Score())
+                    direction.append(jd.Direction())
+                    exonids.append(jd.ExonID())
+                    evidence+=jd.Evidence()
+            for ed in ls:
+                if ed.Method() == 'splicing-index' or ed.Method() == 'FIRMA':
+                    exon_data_found = 'yes' ### pick one of them
+                    methods.append(ed.Method())
+                    scores.append(ed.Score())
+                    direction.append(ed.Direction())
+                    exonids.append(ed.ExonID())
+                    evidence+=ed.Evidence()
+            if junction_data_found == 'yes' and exon_data_found == 'yes': exon_level_confirmation = 'yes';
+            method = string.join(methods,'|')
+            unique_direction = unique.unique(direction)
+            if len(unique_direction) == 1: direction = unique_direction[0]
+            else: direction = string.join(direction,'|')
+            score = string.join(scores,'|')
+            exonids_unique = unique.unique(exonids)
+            if len(exonids_unique) == 1: exonids = exonids_unique[0]
+            else: exonids = string.join(exonids,'|')
+            evidence = str(evidence)
+            if 'mutual' in direction: direction = 'mutual'
+        if len(ls) == 1:
             direction = jd.Direction()
             score = jd.Score()
             method = jd.Method()
@@ -1976,10 +2062,19 @@ if __name__ == '__main__':
     species = 'Hs' ### edit this
     
     summary_results_db = {}
-    summary_results_db['Hs_Junction_d14_vs_d7.p5_average-ASPIRE-exon-inclusion-results.txt'] = [] ### edit this
-    summary_results_db['Hs_Junction_d14_vs_d7.p5_average-splicing-index-exon-inclusion-results.txt'] = [] ### edit this
-    root_dir = 'C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/Combined-GSE14588_RAW/junction/' ### edit this
+    root_dir = '/Users/nsalomonis/Desktop/ExonInclusions/' ### edit this
+    root_dir = '/Users/nsalomonis/Desktop/hESC-splicing-factor-KD/'#HJAY_Data/HJAY_Data/'
+    root_dir = '/home/blumerjb/BEDS_J/BEDS_J3/'
+    #summary_results_db['Hs_Junction_d14_vs_d7.p5_average-ASPIRE-exon-inclusion-results.txt'] = [] ### edit this
+    #summary_results_db['Hs_Junction_d14_vs_d7.p5_average-splicing-index-exon-inclusion-results.txt'] = [] ### edit this
     
+    results_dir = root_dir +'AltResults/AlternativeOutput/'
+    dir_list = read_directory(results_dir)
+    for i in dir_list:
+        if '_average' in i:
+            comparison, end = string.split(i,'_average')
+            if '-exon-inclusion-results.txt' in i: summary_results_db[comparison]=[]
+
     compareExonAndJunctionResults(species,array_type,summary_results_db,root_dir); sys.exit()
     
     fl = UI.ExpressionFileLocationData('','','',''); fl.setCELFileDir(loc); fl.setRootDir(loc)

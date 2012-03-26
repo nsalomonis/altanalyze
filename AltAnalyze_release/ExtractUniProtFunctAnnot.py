@@ -167,15 +167,19 @@ def getUniProtURLsForAllSupportedSpecies():
     
 def import_uniprot_db(filename):
     fn=filepath(filename); global species_not_imported; species_not_imported=[]
-    ac = '';sm='';id = '';sq = '';osd = ''; gn = '';dr = '';de = '';ft_string = '';ft = []; ensembl = []; mgi = []; unigene = []; embl = []
-    ft_call=''; rc=''; go=''; x = 0; y = 0
+    ac = '';sm='';id = '';sq = '';osd = ''; gn = '';dr = '';de = '';ft_string = ''; kw = ''; ft = []; ensembl = []; mgi = []; unigene = []; embl = []
+    ft_call=''; rc=''; go=''; x = 0; y = 0; count = 0
     for line in open(fn,'r').xreadlines():
         data, newline= string.split(line,'\n'); 
         #if x<3: print data
         #else: kill
+        if 'SRSF1_HUMAN' in data:
+            count = 0
+        if count == 1: print data
         if data[0:2] == 'ID': id += data[5:]
         elif "GO; GO:" in data: go += data[5:]
         elif data[0:2] == 'DE': de += data[5:]
+        elif data[0:2] == 'KW': kw += data[5:] ### Keywords
         elif data[0:2] == 'AC': ac += data[5:]
         elif data[0:2] == 'OS': osd += data[5:]
         elif data[0:2] == 'RC': rc = rc + data[5:]
@@ -205,6 +209,8 @@ def import_uniprot_db(filename):
             if '-!- SIMILARITY' in data: sm = sm + data[21:]; y = 1            
         if data[0] == '/':
             ###Alternatively: if species_name in osd or 'trembl' in filename:
+            if count == 1:
+                count = 2
             if species_name == 'Mus musculus': alt_osd = 'mouse'
             else: alt_osd = 'alt_osd'
             try:
@@ -212,7 +218,7 @@ def import_uniprot_db(filename):
             except TypeError: print species_name,osd,alt_osd;kill
                     
             if species_name in osd or alt_osd in osd:
-              class_def,cellular_components = analyzeCommonProteinClassesAndCompartments(sm,ft_call,ft_string,rc,de,go)
+              class_def,cellular_components = analyzeCommonProteinClassesAndCompartments(sm,kw,ft_call,ft_string,rc,de,go)
               ft_list2 = []; ac = string.split(ac,'; '); ac2=[]
               for i in ac:  i = string.replace(i,';',''); ac2.append(i)
               ac = ac2
@@ -254,18 +260,19 @@ def import_uniprot_db(filename):
               y = UniProtAnnotations(id,ac,sq,ft_list2,ensembl,gn,file_type,de,embl,unigene,mgi,ft_call,class_def,cellular_components)
               uniprot_db[id] = y
             else: species_not_imported.append(osd)
-            ac = '';id = '';sq = '';osd = '';gn = '';dr = '';de = ''; ft_call=''; rc='';sm='';go=''
+            ac = '';id = '';sq = '';osd = '';gn = '';dr = '';de = ''; ft_call=''; rc='';sm='';go=''; kw=''
             ft_string = '';ft = []; ensembl = []; mgi = []; unigene = []; embl = []
             
             x+=1
     print "Number of imported swissprot entries:", len(uniprot_db)
 
-def analyzeCommonProteinClassesAndCompartments(sm,ft_call,ft_string,rc,de,go):
+def analyzeCommonProteinClassesAndCompartments(sm,kw,ft_call,ft_string,rc,de,go):
     ### Used to assign "Common Protein Classes" annotations to Gene Expression summary file (ExpressionOutput folder)
     class_def=[]; annotation=[]; cellular_components = []
-    if 'DNA-binding domain' in sm or 'Transcription' in go: class_def.append('transcription regulator')
+    if 'DNA-binding domain' in sm or 'Transcription' in go or 'Transcription regulation' in kw: class_def.append('transcription regulator')
     if 'protein kinase superfamily' in sm or 'Kinase' in go: class_def.append('kinase')
-        
+    if 'mRNA splicing' in kw or 'mRNA processing' in kw: class_def.append('splicing regulator')
+
     if 'G-protein coupled receptor' in sm or 'LU7TM' in sm:
         g_type = []
         if ('adenylate cyclase' in ft_call) or ('adenylyl cyclase'in ft_call):
@@ -439,6 +446,7 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
     global uniprot_ensembl_db;uniprot_ensembl_db={}
     global uniprot_db;uniprot_db={}; global species_name; global uniprot_fildir
     global secondary_to_primary_db; secondary_to_primary_db={}
+    import update; reload(update)
     
     species_name = species_full
     
@@ -449,15 +457,15 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
     uniprot_file = string.split(uniprot_filename_url,'/')[-1]; uniprot_file = string.replace(uniprot_file,'.gz','')
     trembl_file = string.split(trembl_filename_url,'/')[-1]; trembl_file = string.replace(trembl_file,'.gz','')
     uniprot_fildir = 'AltDatabase/uniprot/'+species+'/'
+    uniprot_download_fildir = 'AltDatabase/uniprot/'
     uniprot_ens_file = species+'_Ensembl-UniProt.txt'; uniprot_ens_location = uniprot_fildir+uniprot_ens_file
-    uniprot_location = uniprot_fildir+uniprot_file
-    trembl_location = uniprot_fildir+trembl_file
+    uniprot_location = uniprot_download_fildir+uniprot_file
+    trembl_location = uniprot_download_fildir+trembl_file
 
     add_trembl_annotations = 'no' ### Currently we don't need these annotations    
     try: importEnsemblUniprot(uniprot_ens_location)
     except IOError:
         try:
-            import update; reload(update)
             ### Download the data from the AltAnalyze website (if there)
             update.downloadCurrentVersion(uniprot_ens_location,species,'txt')
             importEnsemblUniprot(uniprot_ens_location)
@@ -467,12 +475,13 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
         uniprot_ens_location_built = string.replace(uniprot_ens_location_built,'uniprot','Uniprot-SWISSPROT')
         importEnsemblUniprot(uniprot_ens_location_built)
     except Exception: null=[]
+    
     ### Import UniProt annotations
-    if force == 'no': import_uniprot_db(uniprot_location)
+    counts = update.verifyFile(uniprot_location,'counts')
+    if force == 'no' or counts > 8: import_uniprot_db(uniprot_location)
     else:
-        import update; reload(update)
         ### Directly download the data from UniProt
-        gz_filepath, status = update.download(uniprot_filename_url,uniprot_fildir,'')
+        gz_filepath, status = update.download(uniprot_filename_url,uniprot_download_fildir,'')
 
         if status == 'not-removed':
             try: os.remove(gz_filepath) ### Not sure why this works now and not before
@@ -485,9 +494,8 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
             if force == 'yes': uniprot_location += '!!!!!' ### Force an IOError
             import_uniprot_db(trembl_location)
         except IOError:
-            import update; reload(update)
             ### Directly download the data from UniProt
-            update.download(trembl_filename_url,uniprot_fildir,'')
+            update.download(trembl_filename_url,uniprot_download_fildir,'')
             import_uniprot_db(trembl_location)        
     export()
     exportEnsemblUniprot(uniprot_ens_location)

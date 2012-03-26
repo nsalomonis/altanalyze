@@ -573,10 +573,10 @@ def getEnsemblAnnotationsFromGOElite(species_code):
                 if gotype[0] == 'C' or gotype[0] == 'c':
                     try: component_db[gene].append(go_name)
                     except KeyError: component_db[gene] = [go_name]
-                elif gotype[0] == 'P' or gotype[0] == 'p':
+                elif gotype[0] == 'P' or gotype[0] == 'p' or gotype[0] == 'b':
                     try: process_db[gene].append(go_name)
                     except KeyError: process_db[gene] = [go_name]
-                elif gotype[0] == 'F' or gotype[0] == 'f':
+                elif gotype[0] == 'F' or gotype[0] == 'f' or gotype[0] == 'm':
                     try: function_db[gene].append(go_name)
                     except KeyError: function_db[gene] = [go_name]
                     
@@ -1010,22 +1010,20 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                         try: wikipathway_gene_db[id].append(('HMDB',pathway_name))
                         except Exception: wikipathway_gene_db[id] = [('HMDB',pathway_name)]
 
-            """
             else:
                 try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'EntrezGene')
                 except Exception: gene_to_mapp = {}
                 for id in gene_to_mapp:
                     for pathway_name in gene_to_mapp[id]:
-                        try: wikipathway_gene_db[id].append(('EntrezGene',pathway_name))
-                        except Exception: wikipathway_gene_db[id] = [('EntrezGene',pathway_name)]
+                        try: wikipathway_gene_db[id].append(pathway_name)
+                        except Exception: wikipathway_gene_db[id] = [pathway_name]
                         
                 try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'Ensembl')
                 except Exception: gene_to_mapp = {}
                 for id in gene_to_mapp:
                     for pathway_name in gene_to_mapp[id]:
-                        try: wikipathway_gene_db[id].append(('Ensembl',pathway_name))
-                        except Exception: wikipathway_gene_db[id] = [('Ensembl',pathway_name)]
-            """
+                        try: wikipathway_gene_db[id].append(pathway_name)
+                        except Exception: wikipathway_gene_db[id] = [pathway_name]
        
         if relationship_type == 'mapped':
             hmdb_wikipathway_db={}
@@ -1198,6 +1196,7 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
     print 'Exported',y,'gene-MAPP relationships for species:',species, 'for',len(wikipathway_db),'pathways.'
    
 def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipathways):
+    print integrate_affy_associations
     global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
     global parse_wikipathways; global meta; meta = {}; global ens_eg_db; ens_eg_db={}
     parse_wikipathways = Parse_wikipathways
