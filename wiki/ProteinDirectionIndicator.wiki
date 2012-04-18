@@ -6,7 +6,8 @@ _*Answer*_: The (+) and (-) notations indicate which protein, domain or miRNA bi
 
 This same rationale is true for protein domains and microRNA binding site predictions. For a protein domain (e.g, kinase domain), a (+) most often indicates increased expression of the transcript region aligning to the domain in the experimental group versus the control. However, since a protein domain can be effected by inclusion or exclusion of an exon that is not directly overlapping with the domain, this domain can also exist up or downstream of the regulated exon. As a sanity check, you can always take the probeset sequence and BLAT align it a the http://genome.ucsc.edu and see which Ensembl transcripts it aligns to or even just view the data in DomainGraph. This should help the result make more sense.
 
-A full description of fields for different examples can be found in the following [http://altanalyze.org/image/SI_examples.xls Excel tables].
-
+A full description of fields for different examples can be found in the following:
+ * [http://altanalyze.org/image/SI_examples.xls Splicing-Index results Excel table]
+ * [http://altanalyze.org/image/ASPIRE_examples.xls ASPIRE results Excel table]
 For more sophisticated comparisons, see the following paper:
 [http://dx.plos.org/10.1371/journal.pcbi.1000553]
