@@ -5,7 +5,7 @@
 
 [http://www.plosgenetics.org/article/info%3Adoi%2F10.1371%2Fjournal.pgen.1002649 Transcriptional Regulation of Rod Photoreceptor Homeostasis Revealed by In Vivo NRL Targetome Analysis]. Hao H, Kim DS, Klocke B, Johnson KR, Cui K, Gotoh N, Zang C, Gregorski J, Gieser L, Peng W, Fann Y, Seifert M, Zhao K, Swaroop A. PLoS Genet. 2012 Apr;8(4):e1002649
 
-[http://www.biomedcentral.com/1471-2105/13/S4/S21 BEAT: Bioinformatics Exon Array Tool to store, analyze and visualize Affymetrix GeneChip Human Exon Array data from disease experiments]. Arianna Consiglio, Massimo Carella, Giorgio De Caro, Gianfranco Delle Foglie, Candida Giovannelli, Giorgio Grillo, Massimo Ianigro, Flavio Licciulli, Orazio Palumbo, Ada Piepoli, Elena Ranieri and Sabino Liuni.  BMC Bioinformatics 2012, 13(Suppl 4):S21 doi:10.1186/1471-2105-13-S4-S21
+[http://www.biomedcentral.com/1471-2105/13/S4/S21 BEAT: Bioinformatics Exon Array Tool to store, analyze and visualize Affymetrix GeneChip Human Exon Array data from disease experiments]. Consiglio A, Carella M, Caro GD, Foglie GD, Giovannelli C, Grillo G, Ianigro M, Licciulli F, Palumbo O, Piepoli A, Ranieri E and Liuni S.  BMC Bioinformatics 2012, 13(Suppl 4):S21 doi:10.1186/1471-2105-13-S4-S21
 
 [http://content.karger.com/produktedb/produkte.asp?doi=332598 Exon Arrays Reveal Alternative Splicing Aberrations in Parkinson’s Disease Leukocytes]. Lilach Soreq, Hagai Bergman, Zvi Israel, Hermona Soreq. Neurodegener Dis. 2011 Dec 9.
 
