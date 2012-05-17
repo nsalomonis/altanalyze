@@ -12,6 +12,7 @@
  * Graph, network and dendrogram output to SVG: http://igraph.sourceforge.net
  * Streamlined dendrograms (Numpy, matplotlib): http://code.google.com/p/scipy-cluster/
  * Other: http://vermeulen.ca/python-graphics.html
+ * Advanced table viewer: http://www.nemethi.de/tablelist/tablelist.html
 
 ===Data Analysis===
  * Exon expression extraction: http://code.google.com/p/bedtools/
