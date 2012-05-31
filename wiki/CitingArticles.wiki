@@ -2,8 +2,10 @@
 #labels Featured
 
 === Articles Citing AltAnalyze ===
-[http://www.molvis.org/molvis/v18/a119/ Transcriptome analysis using next generation sequencing reveals molecular signatures of diabetic retinopathy and efficacy of candidate drugs]. Kandpal RP, Rajasimha HK, Brooks MJ, Nellissery J, Wan J, Qian J, Kern TS, Swaroop A. Molecular Vision 2012; 18:1123-1146
 
+[http://onlinelibrary.wiley.com/doi/10.1002/emmm.201100995/full Cholinergic-associated loss of hnRNP-A/B in Alzheimer's disease impairs cortical splicing and cognitive function in mice]. Berson A, Barbash S, Shaltiel G, Goll Y, Hanin G, Greenberg DS, Ketzef M, Becker AJ, Friedman A, Soreq H. EMBO Mol Med. doi: 10.1002/emmm.201100995 
+
+[http://www.molvis.org/molvis/v18/a119/ Transcriptome analysis using next generation sequencing reveals molecular signatures of diabetic retinopathy and efficacy of candidate drugs]. Kandpal RP, Rajasimha HK, Brooks MJ, Nellissery J, Wan J, Qian J, Kern TS, Swaroop A. Molecular Vision 2012; 18:1123-1146
 
 [http://www.plosgenetics.org/article/info%3Adoi%2F10.1371%2Fjournal.pgen.1002649 Transcriptional Regulation of Rod Photoreceptor Homeostasis Revealed by In Vivo NRL Targetome Analysis]. Hao H, Kim DS, Klocke B, Johnson KR, Cui K, Gotoh N, Zang C, Gregorski J, Gieser L, Peng W, Fann Y, Seifert M, Zhao K, Swaroop A. PLoS Genet. 2012 Apr;8(4):e1002649
 
