@@ -1,6 +1,6 @@
 #summary Feature To Implement
 
-== Features to Implement in AltAnalyze version 2 ==
+== Features to Implement in AltAnalyze version 2+ ==
 
 === Core Algorithms ===
 
