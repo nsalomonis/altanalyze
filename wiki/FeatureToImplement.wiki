@@ -21,3 +21,4 @@
  * *Clustering* - Add additional clustering metrics found in Scipy (agglomerative) are less likely to crash for gene-clustering as well as hopach using PIPE or Java equivalent. Add GUI options and the option for uses to visualize group associations with the cluster. Output results for TreeView.
  * *Lineage Profiler* - For significant cell types, display regulated genes associated with lineages as a network. 
  * *SubgeneViewer* - Support for all splicing array platforms via SQLite relationship access. Assess feasibility of viewing as networks as opposed to Matplotlib.
+ * *Robust RNA-Seq QC* - Identify and integrate more robust methods (FASTQC).
