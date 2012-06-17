@@ -6,6 +6,21 @@
 
 LineageProfiler is a program used to identify the most likely cell types and tissues represented in a given RNA sample. These results are then visualized at the level of hierarchically clustered cell types and samples and upon a comprehensive curated lineage network. This software can be applied to microarray and RNA-Seq profiling data. While this tool is integrated with the full AltAnalyze analysis workflows, it can also be run independently on data processed outside of AltAnalyze.
 
+*Input Data*
+LineageProfiler is compatible with four types of input data:
+ # Gene expression values (probe intensity or read-counts)
+ # Exon expression values (probe intensity or read-counts)
+ # Gene expression p-values or calls
+ # Exon expression p-values or calls
+
+*Databases*
+The following three expression compendium database types are provided:
+ # Affymetrix Exon 1.0 arrays *(Human and Mouse)*
+ # Affymetrix Gene 1.0 arrays *(Human and Mouse)*
+ # Affymetrix 3' arrays *(Human Only)*
+
+_Note: In the initial release of this software (AltAnalyze version 2.0.7), only the first type of input data is supported with only one database for mouse and human, however all will be supported in subsequent releases. Exon-level expression data is generated through AltAnalyze's analysis pipeline._
+
 === Example Results ===
 
 under construction
