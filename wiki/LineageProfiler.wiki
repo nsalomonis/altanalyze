@@ -4,9 +4,13 @@
 
 == Overview ==
 
-LineageProfiler is a program used to identify the most likely cell types and tissues represented in a given RNA sample. These results are then visualized at the level of hierarchically clustered cell types and samples and upon a comprehensive curated lineage network. This software can be applied to microarray and RNA-Seq profiling data. While this tool is integrated with the full AltAnalyze analysis workflows, it can also be run independently on data processed outside of AltAnalyze.
+LineageProfiler is a program used to identify the most likely cell types and tissues represented in a given RNA sample. These results are then visualized at the level of hierarchically clustered cell types and samples upon a comprehensive curated lineage network. This software can be applied to microarray and RNA-Seq profiling data. While this tool is integrated with the full AltAnalyze analysis workflows, it can also be run independently on data processed outside of AltAnalyze.
 
-*Input Data*
+=== Analysis Method ===
+
+To derive correlation scores to different cell types and tissues, a database is created reflecting the most specifically-expressed genes or exons present in a particular cell type or tissue, relative to all tissues and cell types examined (ranging from 50 to 150). The resulting database is a small subset of the original, containing the most informative markers. Data from a user RNA-profile is compared to the profile of each tissue just for these markers to derive correlation coefficients and resulting Z scores based on the distribution of values for each user RNA-profile.
+
+=== Input Data ===
 
 LineageProfiler is compatible with four types of input data:
  # Gene expression values (probe intensity or read-counts)
@@ -14,14 +18,16 @@ LineageProfiler is compatible with four types of input data:
  # Gene expression p-values or calls
  # Exon expression p-values or calls
 
-*Databases*
+=== Databases ===
 
-The following three expression compendium database types are provided:
+Expression compendium database are currently derived using the following platforms:
  # Affymetrix Exon 1.0 arrays *(Human and Mouse)*
  # Affymetrix Gene 1.0 arrays *(Human and Mouse)*
  # Affymetrix 3' arrays *(Human Only)*
 
-_Note: In the initial release of this software (AltAnalyze version 2.0.7), only gene expression values are supported with only one database for mouse and human (Gene or Exon array, respectively), however all will be supported in subsequent releases. Exon-level expression data is generated through AltAnalyze's analysis pipeline._
+Similar results have been obtained using each of these platforms to different array platforms or RNA-Seq. Different cell and tissue content is represented in each, based on availability in GEO.
+
+_Note: In the initial release of this software (AltAnalyze version 2.0.7), only gene expression values are supported with only one database for mouse and human (Gene or Exon array, respectively), however all will be supported in subsequent releases._
 
 == Example Results ==
 
