@@ -21,7 +21,7 @@ The following three expression compendium database types are provided:
  # Affymetrix Gene 1.0 arrays *(Human and Mouse)*
  # Affymetrix 3' arrays *(Human Only)*
 
-_Note: In the initial release of this software (AltAnalyze version 2.0.7), only the first type of input data is supported with only one database for mouse and human, however all will be supported in subsequent releases. Exon-level expression data is generated through AltAnalyze's analysis pipeline._
+_Note: In the initial release of this software (AltAnalyze version 2.0.7), only gene expression values are supported with only one database for mouse and human (Gene or Exon array, respectively), however all will be supported in subsequent releases. Exon-level expression data is generated through AltAnalyze's analysis pipeline._
 
 == Example Results ==
 
