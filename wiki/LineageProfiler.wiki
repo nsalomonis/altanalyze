@@ -1,6 +1,6 @@
 #summary LineageProfiler Description
 
-== Lineage Profiler Analysis Program  ==
+= Lineage Profiler Analysis Program  =
 
 === Overview ===
 
