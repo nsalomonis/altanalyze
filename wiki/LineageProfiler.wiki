@@ -2,7 +2,7 @@
 
 = Lineage Profiler Analysis Program  =
 
-=== Overview ===
+== Overview ==
 
 LineageProfiler is a program used to identify the most likely cell types and tissues represented in a given RNA sample. These results are then visualized at the level of hierarchically clustered cell types and samples and upon a comprehensive curated lineage network. This software can be applied to microarray and RNA-Seq profiling data. While this tool is integrated with the full AltAnalyze analysis workflows, it can also be run independently on data processed outside of AltAnalyze.
 
@@ -23,11 +23,11 @@ The following three expression compendium database types are provided:
 
 _Note: In the initial release of this software (AltAnalyze version 2.0.7), only the first type of input data is supported with only one database for mouse and human, however all will be supported in subsequent releases. Exon-level expression data is generated through AltAnalyze's analysis pipeline._
 
-=== Example Results ===
+== Example Results ==
 
 under construction
 
-=== Software and Database Design ===
+== Software and Database Design ==
 
 
 under construction
