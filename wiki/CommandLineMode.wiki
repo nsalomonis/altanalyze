@@ -59,7 +59,7 @@ python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --grou
 _*Updating the database for a species*_
 
 {{{
-python AltAnalyze.py --species Mm --update Official --version EnsMart55
+python AltAnalyze.py --species Mm --update Official --version EnsMart65
 }}}
 
 _*Operating System Example Folder Locations*_
