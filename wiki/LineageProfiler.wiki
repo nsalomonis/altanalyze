@@ -35,5 +35,20 @@ under construction
 
 == Software and Database Design ==
 
+To derive lineage correlations and resulting scores in LineageProfiler, expression values or presence calls are compared to similar values in a reference database of cell types and tissues. Each database is array type specific (future will include RNA-Seq built), however, will work with different transcriptome profiling platforms (e.g., RNA-Seq).
 
-under construction
+Currently, the reference databases for mouse and human are derived from a collection of over 70 unique tissues and cell types collected from online public repositories (Affymetrix and GEO). For mouse, the default database is derived from a compendium of Affymetrix Gene 1.0 array data, while human is Affymetrix Exon 1.0. These were selected since they contained the highest quality and most specific gene probe content for that species and also contained the most diverse tissue and cell representation.
+
+=== Building the Lineage Marker Databases ===
+
+Rather than representing all genes in the final LineageProfiler correlation database, only a subset of genes representing the most tissue or cell type specific markers are determined and retained. To identify these markers, the compendium samples for each array are first assigned to distinct levels in a lineage hierarchy by manual curation. This is required since there is significant overlap between unique RNA sample groups. An example is heart:
+
+*Level 1* adult heart
+*Level 2* fetal heart
+*Level 3* left ventricle
+*Level 3* atria
+*Level 4* cardiac progenitor
+
+When identifying the top-predictive markers for each cell type or tissue, the compendium samples are compared to an idealized lineage-specific profile (no expression in any samples except in the lineage of interest) via Pearson correlation. First, *Level 1* lineages are examined to derive final ranked correlations for each tissue. Next, *Level 2* lineages are combined with *Leve1 1* and analyzed to obtain final ranked correlations for all *Level 2* lineages. This is repeated, with each group of cells and tissues compared to *Level 1*, which is typically composed of more heterogenous tissues. In this way, lower level lineages are required to have more specific expression profiles than the higher the first level. The top 60 markers are obtained for each lineage and stored. The final database is composed of all top markers. When correlated unknown samples to this database, all common genes in the user and lineage database are compared via direct Pearson correlation to obtain a correlation coefficient. In this way, the original lineage marker associations can not bias any unknown sample correlations since all genes are considered.
+
+The specific marker genes for each lineage are used only for GO-Elite analysis, to identify enriched lineages for given comparisons.
