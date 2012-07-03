@@ -14,6 +14,12 @@ _*Downloading and installing a species specific database (mouse)*_
 python AltAnalyze.py --species Mm --update Official --version EnsMart62
 }}}
 
+_*Analyzing RNA-Seq files – BED format exons and junction results using default options and GO-Elite*_
+
+{{{
+python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups.YourExperiment.txt" --compdir "C:/BEDFiles/comps.YourExperiment.txt" --output "C:/BEDFiles" --expname "YourExperiment --runGOElite yes"
+}}}
+
 _*Analyzing CEL files – Affymetrix 3’ array using default options and GO-Elite*_
 
 {{{
