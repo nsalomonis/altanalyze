@@ -57,7 +57,7 @@ Note: Installing from source is necessary when apt-get or easy_install does not 
 
 _*Developers Only*_
 
-Both PyInstaller and cx_Freeze have been used to build GO-Elite binary distributions. In general, PyInstaller works the best with the described patch for Ubuntu, whereas cx_Freeze will work for some but not all Ubuntu releases and configurations (e.g., compatible with 10.04). 
+Both PyInstaller and cx_Freeze have been used to build AltAnalyze binary distributions. In general, PyInstaller works the best with the described patch for Ubuntu, whereas cx_Freeze will work for some but not all Ubuntu releases and configurations (e.g., compatible with 10.04). 
 
  * Install cx_Freeze from source (problems with apt-get) _*(may require libssl-dev be installed)*_ 
  * OR download and extract PyInstaller 1.6 (requires this [http://www.pyinstaller.org/ticket/339 patch])
