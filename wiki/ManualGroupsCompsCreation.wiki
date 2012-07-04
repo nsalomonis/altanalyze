@@ -1,7 +1,7 @@
-#summary Creating Groups and Comps in Office
+#summary Creating Groups and Comps Outside AltAnalyze
 #labels Featured
 
-= Creating Groups and Comps in Office =
+= Creating Groups and Comps Outside AltAnalyze=
 ==Creating a Comparison and Groups File==
 Two other files, besides expression are also required by AltAnalyze to instruct the program which samples correspond to which groups (groups file) and which groups you want to compare (comparison file). While these files can be produced within AltAnalyze through the user interface by the user, for very large datasets with hundreds of samples and dozens of groups or users running AltAnalyze by command-line, the user may need to do this outside of AltAnalyze in Excel.  When made by the AltAnalyze GUI, the program will save two files with the prefix "groups." and "comps" to the same folder with the expression file (must have the same suffix as the expression file). These files are saved to the same directory as the expression file (ExpressionInput). 
 
