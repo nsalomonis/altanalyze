@@ -10,3 +10,7 @@ Proceed through the following tutorials to analyze data for the indicated platfo
 [Tutorial_AltExpressionAnalysis Tutorial 2 - Analyzing Splicing Data   Featured]
 
 [Tutorial_AltExpression_RNASeq Tutorial 3 - Analyzing RNASeq Splicing Data]
+
+= Related Items =
+
+[CommandLineMode Running AltAnalyze from the Command-Line]
