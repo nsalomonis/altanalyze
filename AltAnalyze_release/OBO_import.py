@@ -18,8 +18,7 @@
 
 """This module contains methods for reading in OBO format Gene Ontology files and building
 numeric nested hierarchy paths (e.g., reconstructing the directed acyclic graph), importing
-prebuilt hiearchy paths, creating nested GO associations from existing gene-GO files and
-building GenMAPP format database tables (only by running this module directly)."""
+prebuilt hiearchy paths, creating nested Ontology associations from existing gene-Ontology files."""
 
 import sys, string
 import export
@@ -51,7 +50,10 @@ class GrabFiles:
         print self.data
     def searchdirectory(self,search_term):
         #self is an instance while self.data is the value of the instance
-        files = getDirectoryFiles(self.data,str(search_term))
+        try: files = getDirectoryFiles(self.data,str(search_term))
+        except Exception:
+            files = [] ### directory doesn't exist
+            #print self.data, "doesn't exist"
         return files
     
 def getDirectoryFiles(import_dir, search_term):
@@ -68,15 +70,15 @@ def eliminate_redundant_dict_values(database):
     for key in database: list = unique.unique(database[key]); list.sort(); db1[key] = list
     return db1
 
-class GOPath:
-    def __init__(self,goid,go_name,current_level,rank,path,GO_type):
-        self._goid = goid; self._go_name = go_name; self._current_level = current_level
-        self._rank = rank; self._path = path; self._GO_type = GO_type
-    def GOID(self): return self._goid
-    def GOIDStr(self): return self._goid[3:]
-    def GOName(self): return self._go_name
-    def GOLevel(self): return self._current_level
-    def GOType(self): return self._GO_type
+class OntologyPath:
+    def __init__(self,ontology_id,ontology_term,current_level,rank,path,specific_type):
+        self._ontology_id = ontology_id; self._ontology_term = ontology_term; self._current_level = current_level
+        self._rank = rank; self._path = path; self._specific_type = specific_type
+    def OntologyID(self): return self._ontology_id
+    def OntologyIDStr(self): return self._ontology_id[3:]
+    def OntologyTerm(self): return self._ontology_term
+    def OntologyLevel(self): return self._current_level
+    def OntologyType(self): return self._specific_type
     def Rank(self): return self._rank
     def PathStr(self):
         path_index = pathToString(self.PathList())
@@ -84,7 +86,7 @@ class GOPath:
     def PathList(self): return self._path
     def PathTuple(self): return tuple(self._path)
     def Report(self):
-        output = self.GOID()+'|'+self.GOName()
+        output = self.OntologyID()+'|'+self.OntologyTerm()
         return output
     def __repr__(self): return self.Report()
     
@@ -94,32 +96,31 @@ def pathToString(path_list):
     path_index = string.join(path_str,'.')
     return path_index
 
-class GOTree:
-    def __init__(self,goid,go_name,GO_type):
-        self._goid = goid; self._go_name = go_name; self._GO_type = GO_type
-    def GOID(self): return self._goid
-    def GOName(self): return self._go_name
-    def GOType(self): return self._GO_type
-    def setGOType(self,gotype): self._GO_type=gotype
+class OntologyTree:
+    def __init__(self,ontology_id,ontology_term,ontology_type):
+        self._ontology_id = ontology_id; self._ontology_term = ontology_term; self._ontology_type = ontology_type
+    def OntologyID(self): return self._ontology_id
+    def OntologyTerm(self): return self._ontology_term
+    def OntologyType(self): return self._ontology_type
+    def setOntologyType(self,ontology_type): self._ontology_type=ontology_type
     def Report(self):
-        output = self.GOID()+'|'+self.GOName()
+        output = self.OntologyID()+'|'+self.OntologyTerm()
         return output
     def __repr__(self): return self.Report()
 
-class GOTreeDetailed(GOTree):
+class OntologyTreeDetailed(OntologyTree):
     ###Class not currently used
-    def __init__(self,goid,go_name,GO_type,parent_goid,relation):
-        self._goid = goid; self._go_name = go_name; self._GO_type = GO_type
-        self._parent_goid = parent_goid; self._relation = relation
-    def ParentGOID(self): return self._parent_goid
+    def __init__(self,ontology_id,ontology_term,ontology_type,parent_ontology_id,relation):
+        self._ontology_id = ontology_id; self._ontology_term = ontology_term; self._ontology_type = ontology_type
+        self._parent_ontology_id = parent_ontology_id; self._relation = relation
+    def ParentOntologyID(self): return self._parent_ontology_id
     def Relation(self): return self._relation
     def Report(self):
-        output = self.GOID()+'|'+self.GOName()
+        output = self.OntologyID()+'|'+self.OntologyTerm()
         return output
     def __repr__(self): return self.Report()
 
 ###################################### UPDATED OBO CODE - BEGIN
-
 def nestTree(parent_node,path,export_data,count_nodes):
     ### export_data,count_nodes are used for QC only
     children = edges[parent_node]
@@ -135,228 +136,94 @@ def nestTree(parent_node,path,export_data,count_nodes):
             count_nodes = nestTree(child,p,export_data,count_nodes)
         #if count_nodes==1000: kill
 
-        path_goid_db[tuple_path] = child
-        if child not in built_go_paths:
-            built_go_paths[child] = [tuple_path]
-        elif tuple_path not in built_go_paths[child]:
-            built_go_paths[child].append(tuple_path)
+        path_ontology_db[tuple_path] = child
+        if child not in built_ontology_paths:
+            built_ontology_paths[child] = [tuple_path]
+        elif tuple_path not in built_ontology_paths[child]:
+            built_ontology_paths[child].append(tuple_path)
         path[-1]+=1
     return count_nodes
                                  
-def importOBONew(filedir,path,GO_type,rank):
-    if GO_type == '': discover_root = 'yes'
+def importOBONew(filedir,path,specific_type,rank):
+    if specific_type == '': discover_root = 'yes'
     else: discover_root = 'no'
     global edges
-    #print [discover_root,GO_type,path]
-    fn=filepath(filedir); x=0; stored={}; edges={}; category = 'null'; all_children={}; go_annotations_extra={}
-    goid=''; go_name=''; edge_count=0; root_node = None
+    #print [discover_root,specific_type,path]
+    fn=filepath(filedir); x=0; stored={}; edges={}; category = 'null'; all_children={}; ontology_annotations_extra={}
+    ontology_id=''; ontology_term=''; edge_count=0; root_node = None
     for line in open(fn,'r').xreadlines():             
         data = cleanUpLine(line)
         s = string.split(data,' '); d = string.split(data,':')
         if x == 0:
-            ###First few lines of files
-            if 'date:' in data:
-                build_date,version = extractDate(s[1])
-                #print 'Current version of GO being parsed',build_date
-                if version == previous_version:  ###If the current version is different (allows for any version differences to trigger a rebuild)
-                    return 'old-version','old-version','old-version','old-version','old-version','old-version'
-                    break
-                else: exportVersionData(version,build_date,'OBO/')
                 x=1
         if x > 0:
             #if s[0]=='def:': definition = d[1]
             if s[0]=='id:':
                 try:
-                    goid = s[1]
-                    #goid=string.split(goid,':')[1]
+                    ontology_id = s[1]
+                    #ontology_id=string.split(ontology_id,':')[1]
                     category = 'null'
-                except Exception: null=[]; goid = ''; go_name = ''
+                except Exception: null=[]; ontology_id = ''; ontology_term = ''
             if s[0]=='namespace:': category = s[1]
             if s[0]=='name:':
-                go_name = d[1][1:]
-                if go_name == GO_type:
-                    root_node = goid
-            if category == GO_type or discover_root=='yes':
+                ontology_term = d[1][1:]
+                if ontology_term == specific_type:
+                    root_node = ontology_id
+            if category == specific_type or discover_root=='yes':
                 if s[0]=='is_a:': ### Note: sometimes there are multiple parents indicated for a single child
                     parent = s[1] ### immediate parent node
                     #parent=string.split(parent,':')[1]
                     if parent in edges: ### each child has one parent, one parent can have many children
                         children = edges[parent]
-                        children[goid]=[]
-                    else: children = {goid:[]}
+                        children[ontology_id]=[]
+                    else: children = {ontology_id:[]}
                     edges[parent]=children
                     edge_count+=1
-                    if discover_root=='yes': all_children[goid] = []
-                    if goid not in go_annotations:
-                        gt = GOTree(goid,go_name,GO_type)  
-                        go_annotations[goid] = gt
-                elif root_node == goid: ### For example, biological process
-                    gt = GOTree(goid,go_name,GO_type)  
-                    go_annotations[goid] = gt
-                elif goid != '' and go_name != '':
-                    gt = GOTree(goid,go_name,GO_type)
-                    go_annotations_extra[goid] = gt
+                    if discover_root=='yes': all_children[ontology_id] = []
+                    if ontology_id not in ontology_annotations:
+                        gt = OntologyTree(ontology_id,ontology_term,specific_type)  
+                        ontology_annotations[ontology_id] = gt
+                elif root_node == ontology_id: ### For example, biological process
+                    gt = OntologyTree(ontology_id,ontology_term,specific_type)  
+                    ontology_annotations[ontology_id] = gt
+                elif ontology_id != '' and ontology_term != '':
+                    gt = OntologyTree(ontology_id,ontology_term,specific_type)
+                    ontology_annotations_extra[ontology_id] = gt
                     
     if discover_root=='yes':
         ### The root node should not exist as a child node
         for parent in edges:
             if parent not in all_children: root_node = parent
-        GO_type = go_annotations_extra[root_node].GOName()
-        print 'Parent node assigned to:',GO_type
-        ### Assing the root_node name as the GO-Type
-        for goid in go_annotations:
-            go_annotations[goid].setGOType(GO_type)
+        specific_type = ontology_annotations_extra[root_node].OntologyTerm()
+        #print 'Parent node assigned to:',specific_type
+        ### Assing the root_node name as the Ontology-Type
+        for ontology_id in ontology_annotations:
+            ontology_annotations[ontology_id].setOntologyType(specific_type)
     if root_node == None:
-        print 'NO ROOT NODE IDENTIFIED... SHOULD BE:', GO_type; kill
+        print 'NO ROOT NODE IDENTIFIED... SHOULD BE:', specific_type; kill
     
-    if len(path)==0: path.append(0); path_goid_db[tuple(path)] = root_node; return_path = list(path); #print [tuple(path)]
-    else: path = [path[0]+1]; path_goid_db[tuple(path)] = root_node; return_path = list(path); #print [tuple(path)]
-    print edge_count,'edges imported'
-    print len(go_annotations), 'GO annotations'
+    if len(path)==0: path.append(0); path_ontology_db[tuple(path)] = root_node; return_path = list(path); #print [tuple(path)]
+    else: path = [path[0]+1]; path_ontology_db[tuple(path)] = root_node; return_path = list(path); #print [tuple(path)]
     
     #export_data = export.ExportFile('OBO/test.txt')
     export_data=''
     nestTree(root_node,path,export_data,0)
     #export_data.close()
     #print 'Tree built'
-    if run_mappfinder == 'yes':
-        for path in path_goid_db:
-            if mappfinder_version != current_version:
-                path_dictionary[path]=[path]
-                ###Build nested Path-index
-                path_len = len(path); i=-1
-                while path_len+i > 0:
-                    parent_path = path[:i]
-                    if parent_path in path_dictionary: path_dictionary[parent_path].append(path)
-                    i-=1
+    for path in path_ontology_db:
+        path_dictionary[path]=[path]
+        ###Build nested Path-index
+        path_len = len(path); i=-1
+        while path_len+i > 0:
+            parent_path = path[:i]
+            if parent_path in path_dictionary: path_dictionary[parent_path].append(path)
+            i-=1
                     
-    print GO_type, 'parsed....'
+    print edge_count,'edges and',len(ontology_annotations), 'Ontology annotations imported for',specific_type
     #print [[[return_path]]]
-    return path_goid_db,built_go_paths,go_annotations,path_dictionary,return_path,rank
-    
+    return path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,return_path,rank
 ###################################### UPDATED OBO CODE - END
-
-###### Begin Gene-Relationship Parsing ######
-def importGOTree(filedir,path,rank):
-    """Use the code designed to import OBO gene ontology DAG tree data for the GO-Elite mappfinder analysis to build
-    the GenMAPP GO relationship tables.  At this stage, there is no species filtering"""
-    fn=filepath(filedir); x=0; stored={}
-    GO_type_name = string.replace(string.split(filedir,'/')[-1],'.ontology','')
-    GO_type = string.upper(GO_type_name[0])
-    if len(built_go_paths)<1: last_level=-1
-    else: last_level=2
-    for line in open(fn,'r').xreadlines():             
-        data = cleanUpLine(line)
-        t = string.split(data,'\t')
-        if x == 0:
-            ###First few lines of files are annotations
-            if data[0] != '!': x = 1
-            ###Determine the database version (if newer than previous build, proceed)
-            if '!date' in data:
-                build_date,version = extractDate(data)
-                #print 'Current version of GO being parsed',build_date
-                if version == previous_version:  ###If the current version is different (allows for any version differences to trigger a rebuild)
-                    return 'old-version','old-version','old-version','old-version','old-version','old-version'
-                    break
-                else: exportVersionData(version,build_date,'OBO/')
-        if x > 0:
-            goid,go_name,current_level,relation = parseLine(data)
-            if current_level != -1:  ###Ignore very top level term (Gene_Ontology): Start number with next level down
-                if current_level>last_level:
-                    path.append(0) ###If the current level is lower than the previous, add a deeper (child) path
-                    #print path, '1'
-                elif current_level==last_level:
-                    path[-1]+=1 ###If the current level is the same as the previous, increment number (distinct sibling to previous)
-                    #print path, '2'
-                elif current_level<last_level:
-                    ###If the current level is higher than the previous, increment number of parent and remove child information
-                    try: path = path[:current_level+1]; path[-1]+=1 ###remove child data and increment
-                    except IndexError: print path, current_level, last_level, goid, go_name;kill
-                    #print path, '3'
-                #if go_name == 'mitochondrion': print goid,go_name;kill
-                ###s = GOPath(goid,go_name,current_level,rank,path,GO_type)
-                path = tuple(path)
-                goid = goid[3:]
-                if goid not in go_annotations:
-                    s = GOTree(goid,go_name,GO_type)  
-                    go_annotations[goid] = s
-                try: built_go_paths[goid].append(path)
-                except KeyError: built_go_paths[goid] = [path]
-                path_goid_db[path] = goid
-                
-                if export_databases == 'yes':
-                    ###identify the current goid's parent goid (needed for GenMAPP database export file)
-                    try:parent_path = path[:-1]; parent_goid = path_goid_db[parent_path]
-                    except KeyError: parent_goid = '' ###Occurs for all three top GO levels
-                    if (goid,parent_goid) not in stored: ###don't add the same relationship twice
-                        go_summary = [goid,go_name,GO_type,parent_goid,relation,'',build_date,'']
-                        go_summary = string.join(go_summary,'\t')+'\n'; gofo.write(go_summary)
-                        stored[(goid,parent_goid)] = []
-                    tree_summary =  [str(rank+1),str(current_level+1), goid, go_name]
-                    tree_summary = string.join(tree_summary,'\t')+'\n'; treefo.write(tree_summary)
-                    
-                if run_mappfinder == 'yes':
-                    if mappfinder_version != current_version:
-                        path_dictionary[path]=[path]
-                        ###Build nested Path-index
-                        path_len = len(path); i=-1
-                        while path_len+i > 0:
-                            parent_path = path[:i]
-                            if parent_path in path_dictionary: path_dictionary[parent_path].append(path)
-                            i-=1
-                path = list(path)
-                rank+=1; last_level = current_level
-                
-    print GO_type_name, 'GO terms parsed'
-    return built_go_paths,path_goid_db,go_annotations,path_dictionary,path,rank
-
-def exportGOCounts(built_go_paths):
-    ###Make the GenMAPP GO-Counts table
-    for goid in built_go_paths:
-        goid_count = str(len(built_go_paths[goid]))
-        count_summary =  [goid,goid_count]
-        count_summary = string.join(count_summary,'\t')+'\n'; countfo.write(count_summary)
-    countfo.close()
         
-def parseLine(c):
-    y=[]
-    x = string.find(c,'%')
-    if x>-1: y.append(x)
-    x = string.find(c,'$')
-    if x>-1: y.append(x)
-    x = string.find(c,'<')
-    if x>-1: y.append(x)
-    y.sort(); level = y[0] ###indicates the number of spaces and thus the level of the GO-term
-    c_list = string.split(c[level+1:],' ; '); goid = c_list[1]; go_name = c_list[0]
-    relation = c[level]
-    goid_list = string.split(goid,',') ###sometimes, there are more than one GOIDs per GO-term (synonym IDs). Only take the first
-    goid = goid_list[0]
-    goid_list = string.split(goid,' ') ### goid can often contain additional nested GO-terms downstream. Remove these
-    goid = goid_list[0]
-    return goid,go_name,level-1,relation ###-1 Since we eliminate Gene_Ontology as a level (for simplicity when joining GO Categories)
-
-def extractDate(string_val):
-    if ' ' in string_val:
-        month_db = {}
-        month_db['Jan'] = '1'; month_db['Feb'] = '2'; month_db['Mar'] = '3'; month_db['Apr'] = '4'; month_db['May'] = '5'
-        month_db['Jun'] = '6'; month_db['Jul'] = '7'; month_db['Aug'] = '8'; month_db['Sep'] = '9'; month_db['Oct'] = '10'
-        month_db['Nov'] = '11'; month_db['Dec'] = '12'
-        date_info = string.split(string_val,' ')
-        month = date_info[-5]; month = month_db[month]
-        year = date_info[-1]
-        day = date_info[-4]
-        avg_days_in_month = 365/12.0
-        version = int(((int(month)*avg_days_in_month)-avg_days_in_month)+int(day)+(int(year)*365.0)) ###The previous "version" was not precise. Instead use the date as # of days starting from Jan 1, 0000.
-        date = month+'/'+day+'/'+year
-    else:
-        #19:05:2011
-        day,month,year=string.split(string_val,':')
-        month=str(int(month))
-        date = month+'/'+day+'/'+year
-        avg_days_in_month = 365/12.0
-        version = int(((int(month)*avg_days_in_month)-avg_days_in_month)+int(day)+(int(year)*365.0))
-    return date,version
-
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
     line = string.replace(line,'\c','')
@@ -364,31 +231,139 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-def remoteImportVersionData(dir):
-    importVersionData(dir)
-    return str(previous_version)
+def swapKeyValues(db):
+    swapped={}
+    for key in db:
+        values = list(db[key]) ###If the value is not a list, make a list
+        for value in values:
+            try: swapped[value].append(key)
+            except KeyError: swapped[value] = [key]
+    swapped = eliminate_redundant_dict_values(swapped)
+    return swapped
 
-def importVersionData(dir):
-    program_type,database_dir = unique.whatProgramIsThis()
+def exportCurrentOntologyBuild(path_ontology_db,ontology_annotations,ontology_type):
+    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
     if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
-    elif 'OBO' in dir: parent_dir = ''
-    else: parent_dir = database_dir
-    original_dir = dir
-    dir = parent_dir+dir
-    global previous_version; global previous_date
-    filename = dir+'version.txt'; fn=filepath(filename)
-    try:
-        for line in open(fn,'r').readlines():
-            data = cleanUpLine(line)
-            previous_version, previous_date = string.split(data,'\t')
-            #print 'Last version of GO parsed',previous_date
+    new_file = parent_dir+'OBO/builds/built_'+ontology_type+'_paths.txt'
+    try: fn=filepath(new_file); data = open(fn,'w')
     except Exception:
-        #print original_dir,dir
-        exportVersionData(0,'0/0/0',original_dir) ###Occurs if the version file is deleted... created a new one that requires a new build
-        importVersionData(original_dir)
-    previous_version = int(previous_version)
+        new_dir = parent_dir+'OBO/builds'; fn = filepath(new_dir)
+        os.mkdir(fn) ###Re-Create directory if deleted
+        fn=filepath(new_file); data = open(fn,'w')
+    data.write('Path'+'\t'+'ontology_id'+'\n')
+    for path in path_ontology_db:
+        ontology_id = path_ontology_db[path]; path = pathToString(path)
+        data.write(path +'\t'+ ontology_id +'\n')
+    data.close()
+
+    new_file = parent_dir+'OBO/builds/'+ontology_type+'_annotations.txt'
+    fn=filepath(new_file); data = open(fn,'w')
+    data.write('ontology_id'+'\t'+'Ontology Name'+'\t'+'Ontology Type'+'\n')    
+    for ontology_id in ontology_annotations:
+        s = ontology_annotations[ontology_id]
+        data.write(ontology_id +'\t'+ s.OntologyTerm() +'\t'+ s.OntologyType() +'\n')
+    data.close()
+
+def convertStrListToIntList(path):
+    path_int=[]
+    for str in path: path_int.append(int(str))
+    return path_int
+
+def importPreviousOntologyAnnotations(target_ontology_type):
+    ontology_annotations={}
+    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
+    if target_ontology_type == 'GeneOntology': target_ontology_type = 'go'
+    filename = parent_dir+'OBO/builds/'+target_ontology_type+'_annotations.txt'; fn=filepath(filename); x=0
+    for line in open(fn,'r').xreadlines():
+        if x==0: x=1 ###Skip the title line
+        else:
+            data = cleanUpLine(line)
+            ontology_id,ontology_name,ontology_type = string.split(data,'\t')
+            if ':' not in ontology_id: ontology_id = 'GO:'+ontology_id
+            if ontology_name[0]== ' ': ontology_name = ontology_name[1:]
+            s = OntologyTree(ontology_id,ontology_name,ontology_type)
+            ontology_annotations[ontology_id] = s
+    return ontology_annotations
+
+def importPreviousOntologyBuild(ontology_type):
+    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
+    if ontology_type == 'GeneOntology': ontology_type = 'go'
+    filename = parent_dir+'OBO/builds/built_'+ontology_type+'_paths.txt'; fn=filepath(filename); x=0; count=0
+
+    for line in open(fn,'r').xreadlines(): count+=1
+    original_increment = int(count/10); increment = original_increment
+    
+    try: ### This reduces run-time for the typical analysis where the databases are in sync and up-to-date
+        if run_mappfinder == 'yes':
+            if verified_nested == 'no':
+                build_nestedDB='yes'
+            else: build_nestedDB = 'no'
+        else: build_nestedDB = 'no'
+    except Exception: build_nestedDB = 'yes'
+            
+    for line in open(fn,'r').xreadlines():
+        if x==0: x+=1 ###Skip the title line
+        else:
+            x+=1
+            if x == increment: increment+=original_increment; print '*',    
+            data = cleanUpLine(line)
+            path,ontology_id = string.split(data,'\t')
+            path = tuple(map(int,string.split(path,'.')))
+            #path = string.split(path_str,'.'); path = convertStrListToIntList(path); path = tuple(path)
+            #s = OntologyPath(ontology_id,'','','',path,''); s = OntologyPathAbr(ontology_id,path)
+            if ':' not in ontology_id: ontology_id = 'GO:'+ontology_id
+            path_ontology_db[path] = ontology_id
+            try: built_ontology_paths[ontology_id].append(path)
+            except KeyError: built_ontology_paths[ontology_id] = [path]
+            if build_nestedDB == 'yes':
+                path_dictionary[path]=[path]
+    ###All of the paths need to be added before  
+    if build_nestedDB == 'yes':
+        if build_nestedDB == 'yes':
+            for path in path_dictionary:
+                ###Build nested Path-index
+                path_len = len(path); i=-1
+                while path_len+i > 0:
+                    parent_path = path[:i]
+                    try: path_dictionary[parent_path].append(path)
+                    except Exception: null=[]
+                    i-=1    
+
+#### Import gene data and associate with Nested Ontology
+def grabNestedOntologyIDs():
+    nested_ontology_tree={}
+    for path in path_dictionary:
+        parent_ontology_id = path_ontology_db[path]
+        child_ontology_list=[]
+        for child_path in path_dictionary[path]:
+            child_ontology_id = path_ontology_db[child_path]; child_ontology_list.append(child_ontology_id)
+        child_ontology_list = unique.unique(child_ontology_list)
+        nested_ontology_tree[parent_ontology_id] = child_ontology_list
+    return nested_ontology_tree
+    
+def linkGenesToNestedOntology(ontology_to_gene):
+    nested_ontology_genes={}; made_unique={}; x=0
+    original_increment = int(len(nested_ontology_tree)/10); increment = original_increment    
+
+    for parent_ontology_id in nested_ontology_tree:
+        x+=1
+        if x == increment: increment+=original_increment; print '*',
+        for child_ontology_id in nested_ontology_tree[parent_ontology_id]: ### This list of ontology_ids includes the parent, since it is the first entry in path_dictionary
+            if child_ontology_id in ontology_to_gene:
+                ensembls=ontology_to_gene[child_ontology_id]
+                for ensembl in ensembls:
+                    try:
+                        ens_db = nested_ontology_genes[parent_ontology_id]
+                        ens_db[ensembl] = ''
+                    except KeyError:
+                        ens_db = {}; ens_db[ensembl] = ''; e = ens_db
+                        nested_ontology_genes[parent_ontology_id] = e 
+    return nested_ontology_genes
 
 def exportVersionData(version,version_date,dir):
+    ### Used by the module UI
     program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
     if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
     elif 'OBO' in dir or 'Config' in dir: parent_dir = ''
@@ -400,236 +375,83 @@ def exportVersionData(version,version_date,dir):
     data = export.ExportFile(new_file)
     data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
     
-def swapKeyValues(db):
-    swapped={}
-    for key in db:
-        values = list(db[key]) ###If the value is not a list, make a list
-        for value in values:
-            try: swapped[value].append(key)
-            except KeyError: swapped[value] = [key]
-    swapped = eliminate_redundant_dict_values(swapped)
-    return swapped
-
-def exportCurrentGOBuild(path_goid_db,go_annotations):
-    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
-    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
-    new_file = parent_dir+'OBO/builds/built_go_paths.txt'
-    try: fn=filepath(new_file); data = open(fn,'w')
-    except Exception:
-        new_dir = parent_dir+'OBO/builds'; fn = filepath(new_dir)
-        os.mkdir(fn) ###Re-Create directory if deleted
-        fn=filepath(new_file); data = open(fn,'w')
-    data.write('Path'+'\t'+'GOID'+'\n')
-    for path in path_goid_db:
-        goid = path_goid_db[path]; path = pathToString(path)
-        data.write(path +'\t'+ goid +'\n')
-    data.close()
-
-    new_file = parent_dir+'OBO/builds/go_annotations.txt'
-    fn=filepath(new_file); data = open(fn,'w')
-    data.write('GOID'+'\t'+'GO Name'+'\t'+'GO Type'+'\n')    
-    for goid in go_annotations:
-        s = go_annotations[goid]
-        data.write(goid +'\t'+ s.GOName() +'\t'+ s.GOType() +'\n')
-    data.close()
-
-def convertStrListToIntList(path):
-    path_int=[]
-    for str in path: path_int.append(int(str))
-    return path_int
-
-def importPreviousGOAnnotations():
-    go_annotations={}
-    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
-    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
-    filename = parent_dir+'OBO/builds/go_annotations.txt'; fn=filepath(filename); x=0
-    for line in open(fn,'r').xreadlines():
-        if x==0: x=1 ###Skip the title line
-        else:
-            data = cleanUpLine(line)
-            goid,go_name,go_type = string.split(data,'\t')
-            if ':' not in goid: goid = 'GO:'+goid
-            if go_name[0]== ' ': go_name = go_name[1:]
-            s = GOTree(goid,go_name,go_type)
-            go_annotations[goid] = s
-    return go_annotations
-
-def importPreviousGOBuild():
-    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
-    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
-    filename = parent_dir+'OBO/builds/built_go_paths.txt'; fn=filepath(filename); x=0; count=0
-    importVersionData('OBO/'); global current_version; current_version = previous_version
-    global current_version_date; current_version_date = previous_date ### Needed for buildNestedGOAssociations
-    for line in open(fn,'r').xreadlines(): count+=1
-    original_increment = int(count/20); increment = original_increment
-    
-    try: ### This reduces run-time for the typical analysis where the databases are in sync and up-to-date
-        if run_mappfinder == 'yes':
-            if (mappfinder_version != current_version and current_version != 0) or verified_nested == 'no':
-                build_nestedDB='yes'
-            else: build_nestedDB = 'no'
-        else: build_nestedDB = 'no'
-    except Exception: build_nestedDB = 'no'
-            
-    for line in open(fn,'r').xreadlines():
-        if x==0: x+=1 ###Skip the title line
-        else:
-            x+=1
-            if x == increment: increment+=original_increment; print '*',    
-            data = cleanUpLine(line)
-            path,goid = string.split(data,'\t')
-            path = tuple(map(int,string.split(path,'.')))
-            #path = string.split(path_str,'.'); path = convertStrListToIntList(path); path = tuple(path)
-            #s = GOPath(goid,'','','',path,''); s = GOPathAbr(goid,path)
-            if ':' not in goid: goid = 'GO:'+goid
-            path_goid_db[path] = goid
-            try: built_go_paths[goid].append(path)
-            except KeyError: built_go_paths[goid] = [path]
-            if build_nestedDB == 'yes':
-                if mappfinder_version != current_version:
-                    path_dictionary[path]=[path]
-    ###All of the paths need to be added before  
-    if build_nestedDB == 'yes':
-        if mappfinder_version != current_version:
-            for path in path_dictionary:
-                ###Build nested Path-index
-                path_len = len(path); i=-1
-                while path_len+i > 0:
-                    parent_path = path[:i]
-                    try: path_dictionary[parent_path].append(path)
-                    except Exception: null=[]
-                    i-=1    
-    
-#### Import gene data and associate with Nested GO
-def grabNestedGOIDs():
-    nested_go_tree={}
-    for path in path_dictionary:
-        parent_goid = path_goid_db[path]
-        child_goid_list=[]
-        for child_path in path_dictionary[path]:
-            child_goid = path_goid_db[child_path]; child_goid_list.append(child_goid)
-        child_goid_list = unique.unique(child_goid_list)
-        nested_go_tree[parent_goid] = child_goid_list
-    return nested_go_tree
-    
-def linkGenesToNestedGO(go_to_gene):
-    nested_go_genes={}; made_unique={}; x=0
-    original_increment = int(len(nested_go_tree)/20); increment = original_increment    
-
-    for parent_goid in nested_go_tree:
-        x+=1
-        if x == increment: increment+=original_increment; print '*',
-        for child_goid in nested_go_tree[parent_goid]: ### This list of goids includes the parent, since it is the first entry in path_dictionary
-            if child_goid in go_to_gene:
-                ensembls=go_to_gene[child_goid]
-                for ensembl in ensembls:
-                    try:
-                        ens_db = nested_go_genes[parent_goid]
-                        ens_db[ensembl] = ''
-                    except KeyError:
-                        ens_db = {}; ens_db[ensembl] = ''; e = ens_db
-                        nested_go_genes[parent_goid] = e 
-    return nested_go_genes
-
-def exportGORelationships(nested_go_gene,gene_to_source_id,mod,source_type):
+def exportOntologyRelationships(nested_ontology_gene,gene_to_source_id,mod,source_type,ontology_type):
     program_type,database_dir = unique.whatProgramIsThis()
-    new_file = database_dir+'/'+species_code+'/nested/'+mod+'_to_Nested-GO.txt'
+    if ontology_type == 'GeneOntology': ontology_type = 'GO'
+    new_file = database_dir+'/'+species_code+'/nested/'+mod+'_to_Nested-'+ontology_type+'.txt'
     data = export.ExportFile(new_file)
-    title = [mod,'GOID']; title_str = string.join(title,'\t')
+    title = [mod,'ontology_id']; title_str = string.join(title,'\t')
     data.write(title_str+'\n')
-    for goid in nested_go_gene:
-        for gene in nested_go_gene[goid]:
-            output_list = [gene,goid]
+    for ontology_id in nested_ontology_gene:
+        for gene in nested_ontology_gene[ontology_id]:
+            output_list = [gene,ontology_id]
             output_str = string.join(output_list,'\t')
             data.write(output_str+'\n')
     data.close()
     print new_file, 'saved to disk'
 
-def setGenMAPPexportGlobals():
-    global gofo; global treefo; global countfo
-    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
-    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
-    of = parent_dir+'OBO/builds/genmapp_go.txt';of=filepath(of); gofo = open(of,'w') ###create output for GenMAPP GeneOntology table database
-    oft = parent_dir+'OBO/builds/genmapp_go_tree.txt'; oft=filepath(oft); treefo = open(oft,'w') ###create output for GenMAPP GeneOntology table database
-    ofc = parent_dir+'OBO/builds/genmapp_go_count.txt'; ofc=filepath(ofc);countfo = open(ofc,'w') ###create output for GenMAPP GeneOntology table database
-    gofo_title = ['ID', 'Name', 'Type', 'Parent', 'Relation', 'Species', 'Date', 'Remarks']
-    treefo_title = ['OrderNo', 'Level', 'ID', 'Name']
-    countfo_title = ['ID', 'Count']
-    gofo_title = string.join(gofo_title,'\t')+'\n'; gofo.write(gofo_title)
-    treefo_title = string.join(treefo_title,'\t')+'\n'; treefo.write(treefo_title)
-    countfo_title = string.join(countfo_title,'\t')+'\n'; countfo.write(countfo_title)
-    return of,oft,ofc
-
-def reOrganizeGenMAPPFiles(of,oft,ofc):
-    ###copy files to different filename
-    new_of = string.replace(of,'go','go_table'); shutil.copyfile(of, new_of)
-    new_oft = string.replace(oft,'go_tree','go_tree_table'); shutil.copyfile(oft, new_oft)
-    new_ofc = string.replace(ofc,'go_count','go_count_table'); shutil.copyfile(ofc, new_ofc)
-
 #### Main functions that grab data from above functions
-def buildNestedGOTree(mappfinder,export_dbases):
+def remoteImportOntologyTree(ontology_type):
+    global built_ontology_paths; global path_ontology_db; global path_dictionary
+    built_ontology_paths={}; path_ontology_db={}; path_dictionary={}
+    importPreviousOntologyBuild(ontology_type)
+    return built_ontology_paths, path_ontology_db, path_dictionary
+    
+def buildNestedOntologyTree(mappfinder):
     program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
     if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
     
     global run_mappfinder; run_mappfinder = mappfinder
-    global export_databases; export_databases = export_dbases ###declaring the global here makes it applicable everywhere else
-    ###Import all the OBO GO tree information from http:/www.geneontology.org/
-    import_dir = '/'+parent_dir+'OBO'; global path_dictionary; path_dictionary={}; global built_go_paths; built_go_paths={}
-    global go_annotations; go_annotations={} ###global built_go_paths; built_go_paths={};
-    global path_goid_db; path_goid_db={}; global GO_version; path=[]; rank=0
-    c = GrabFiles(); c.setdirectory(import_dir); file_dirs = c.searchdirectory('.ontology'); file_dirs.reverse()
-    x = file_dirs[1:]+file_dirs[0:1] ###Reorganize to mimic Steve Lawlors program
-    if len(file_dirs)==0:
-        file_dirs = c.searchdirectory('.obo'); file_dirs.reverse(); x = file_dirs[1:]+file_dirs[0:1]
-    importVersionData('OBO/')
-    if export_databases == 'yes': of,oft,ofc = setGenMAPPexportGlobals()
+    ###Import all the OBO Ontology tree information from http:/www.geneontology.org/
+    import_dir = '/'+parent_dir+'OBO'; global Ontology_version; path=[]; rank=0
+    c = GrabFiles(); c.setdirectory(import_dir)
+    file_dirs = c.searchdirectory('.ontology')
+    file_dirs += c.searchdirectory('.obo')
+    file_dirs.reverse()
+    x = file_dirs[1:]+file_dirs[0:1] ###Reorganize to mimic GenMAPP order
     start_time = time.time()
+    ontology_type = ''
+    #print file_dirs
     for file_dir in file_dirs:
-        ###Import the 3 main GO files and index them so that the first path corresponds to the Ontology type - Software checks the date before parsing
         if '.obo' in file_dir or '.ontology' in file_dir:
             if 'gene_ontology' in file_dir or 'goslim' in file_dir:
-                ### This is the latest supported format
-                path_goid_db,built_go_paths,go_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'biological_process',rank)
-                #print len(path_goid_db),len(built_go_paths),len(go_annotations)
-                try: path_goid_db,built_go_paths,go_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'molecular_function',rank)
-                except Exception: null=[]
-                #print len(path_goid_db),len(built_go_paths),len(go_annotations)
-                path_goid_db,built_go_paths,go_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'cellular_component',rank)
-                #print len(path_goid_db),len(built_go_paths),len(go_annotations)
+                ontology_type = 'GeneOntology'
+                if 'goslim' in file_dir: ontology_type = 'GOSlim'
+                ###Import the 3 main Ontology files and index them so that the first path corresponds to the Ontology type - Software checks the date before parsing
+                path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'biological_process',rank)
+                try: path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'molecular_function',rank)
+                except Exception: null=[] ### Sometimes missing from GO-Slim
+                path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'cellular_component',rank)
             else:
-                path_goid_db,built_go_paths,go_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'',rank)
+                ontology_type = getOntologyType(file_dir)
+                path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'',rank)
+            deleteNestedOntologyFiles(ontology_type) ### Necessary to trigger an update for all species
         else:
-            ### This is the old flat file format which is no longer supported
-            built_go_paths,path_goid_db,go_annotations,path_dictionary,path,rank = importGOTree(file_dir,path,rank)
-        if built_go_paths == 'old-version': break
-    if built_go_paths == 'old-version' or program_type == 'AltAnalyze' or len(file_dirs)==0:
-        GO_version = 'old'
-        print "Importing previously parsed version of GO"; go_annotations={}; built_go_paths={}; path_dictionary={}; path_goid_db={}
-        try:
-            importPreviousGOBuild()
-            if export_databases == 'yes':
-                gofo.close(); treefo.close(); countfo.close()
-                os.remove(of);os.remove(oft);os.remove(ofc) ###If export file is built with a new version, don't need this empty file when parsing an old version
-        except IOError: ### Occurs when the OBO/builds directory is deleted but the version file still exists
-            """
-            print "build directory not found. Re-importing GO annotations"
-            exportVersionData(0,'0/0/0','OBO/'); current_version = -1
-            buildNestedGOTree(mappfinder,export_dbases) ### Re-initialize current function
-            """
-            unlisted_variable = kill
-    else:
-        GO_version = 'new'
-        exportCurrentGOBuild(path_goid_db,go_annotations)
-        if export_databases == 'yes':
-            gofo.close(); treefo.close()
-            exportGOCounts(built_go_paths)
-            reOrganizeGenMAPPFiles(of,oft,ofc)
-            os.remove(of);os.remove(oft);os.remove(ofc) ###If export file is built with a new version, don't need this empty file when parsing an old version
+            print 'The ontology format present in',file_dir,'is no longer supported.'
+        exportCurrentOntologyBuild(path_ontology_db,ontology_annotations,ontology_type)
     end_time = time.time(); time_diff = int(end_time-start_time)
+    
+    print "Ontology categories imported and nested in %d seconds" % time_diff
+        
+def getOntologyType(file_dir):
+    ontology_type = string.split(file_dir,'/')[-1]
+    if '_' in ontology_type:
+        ontology_type = string.split(ontology_type,'_')[0]+'Ontology'
+    else:
+        ontology_type = string.split(ontology_type,'.')[0]+'Ontology'
+    return ontology_type
 
-    print "GO categories imported and nested in %d seconds" % time_diff
-    return built_go_paths, path_goid_db, path_dictionary
-
+def deleteNestedOntologyFiles(ontology_type):
+    program_type,database_dir = unique.whatProgramIsThis()
+    current_species_dirs = unique.read_directory('/'+database_dir)
+    for species_code in current_species_dirs:
+        c = GrabFiles(); c.setdirectory('/'+database_dir+'/'+species_code+'/nested')
+        if ontology_type == 'GeneOntology': ontology_type = 'GO'
+        file_dirs = c.searchdirectory('-'+ontology_type) ### list all nested files referencing the Ontology type
+        for file in file_dirs:
+            try: os.remove(filepath(database_dir+'/'+species_code+'/nested/'+file))
+            except Exception: null=[]
+    
 def verifyFileLength(filename):
     count = 0
     try:
@@ -640,111 +462,88 @@ def verifyFileLength(filename):
     except Exception: null=[]
     return count
 
-def verifyNestedFileCreation(species,mod_types):
-    ### Determine which mods are present for GO
+def verifyNestedFileCreation(species,mod_types,ontology_type):
+    ### Determine which mods are present for Ontology
+    program_type,database_dir = unique.whatProgramIsThis()
     mods_present = []; nested_present=[]; verified = 'no'
     for mod in mod_types:
-        go_file = 'Databases/'+species+'/gene-go/'+mod+'-GeneOntology.txt'
-        count = verifyFileLength(go_file) ### See if there are lines present in the file (if present)
+        ontology_file = database_dir+'/'+species+'/gene-go/'+mod+'-'+ontology_type+'.txt'
+        count = verifyFileLength(ontology_file) ### See if there are lines present in the file (if present)
         if count>1: mods_present.append(mod)
     if len(mods_present)>0:
         for mod in mods_present:
-            go_file = 'Databases/'+species+'/nested/'+mod+'_to_Nested-GO.txt'
-            count = verifyFileLength(go_file) ### See if there are lines present in the file (if present)
+            if ontology_type == 'GeneOntology': ontology_type = 'GO'
+            ontology_file = database_dir+'/'+species+'/nested/'+mod+'_to_Nested-'+ontology_type+'.txt'
+            count = verifyFileLength(ontology_file) ### See if there are lines present in the file (if present)
             if count>1: nested_present.append(mod)
         if len(nested_present) == len(mods_present): verified = 'yes'
     return verified
         
-def buildNestedGOAssociations(species,export_dbases,mod_types,genmapp_mod):
+def findAvailableOntologies(species,mod_types):
+    program_type,database_dir = unique.whatProgramIsThis()
+    c = GrabFiles(); c.setdirectory('/'+database_dir+'/'+species+'/gene-go'); file_dirs=[]
+    for mod in mod_types:
+        file_dirs+= c.searchdirectory(mod+'-')
+    avaialble_ontologies=[]
+    for filedir in file_dirs:
+        ontology_type = string.split(filedir,'-')[-1][:-4] ### remove the .txt
+        avaialble_ontologies.append(ontology_type)
+    avaialble_ontologies = unique.unique(avaialble_ontologies)
+    return avaialble_ontologies
+
+def moveOntologyToArchiveDir():
+    ### Move any existing OBO files to an archived directory as to not combine new with old annotations
+    c = GrabFiles()
+    c.setdirectory('/OBO')
+    file_dirs = c.searchdirectory('.ontology')+c.searchdirectory('.obo')
+    
+    for file_dir in file_dirs:
+        new_file_dir = string.replace(file_dir,'OBO/','OBO/archive/')
+        print 'Moving:',file_dir,'to:',new_file_dir
+        export.customFileMove(file_dir,new_file_dir)
+                
+def buildNestedOntologyAssociations(species,mod_types,target_ontology_type):
     global species_code; species_code = species; global verified_nested
-    ###Check to see if a current version of the nested gene databases exists
+    global path_dictionary; path_dictionary={}
+    global built_ontology_paths; built_ontology_paths={}
+    global ontology_annotations; ontology_annotations={}
+    global path_ontology_db; path_ontology_db={}
+    
     if ('Linux' in platform.system()): mappfinder_db_input_dir = species_code+'/nested/'
-    else: mappfinder_db_input_dir = '/'+species_code+'/nested/'    
-    verified_nested = verifyNestedFileCreation(species,mod_types) ### This is in addition to looking at the version files (in case a problem occurs with these)
-    if verified_nested == 'no':
-        exportVersionData(0,'0/0/0',mappfinder_db_input_dir)
-    importVersionData(mappfinder_db_input_dir)
-    
-    global mappfinder_version; mappfinder_version = previous_version
-    built_go_paths, path_goid_db, path_dictionary = buildNestedGOTree('yes',export_dbases)
-    
-    if (mappfinder_version != current_version and current_version != 0) or verified_nested == 'no':  ### modified this code such that any version change warrants a rebuild and if reset by BuildEntrezAffymetrixAssociations or other, that it triggers a rebuild
-        print 'Building GO nested gene association files for',species_code
-        ###Build Gene to GO associations for all MODs and export these for re-import by
-        ###the MAPPFinder module
-        global nested_go_tree; nested_go_tree = grabNestedGOIDs()
+    else: mappfinder_db_input_dir = '/'+species_code+'/nested/'
+            
+    buildNestedOntologyTree('yes') ### Checks the OBO directory to process new ontology files (if there)
+    moveOntologyToArchiveDir() ### Move any new read ontology files to
+
+    avaialble_ontologies = findAvailableOntologies(species,mod_types)
+
+    verified_nested_db={}
+    for ontology_type in avaialble_ontologies:
+        ### This module verifies that the nested files are present (no longer considers database versions)
+        verified_nested = verifyNestedFileCreation(species,mod_types,ontology_type) 
+        verified_nested_db[ontology_type] = verified_nested
+    verified_nested = verified_nested_db[target_ontology_type]
+    importPreviousOntologyBuild(target_ontology_type) ### populates the global variables we return below
+    if verified_nested == 'no':  ### modified this code such that any version change warrants a rebuild and if reset by BuildEntrezAffymetrixAssociations or other, that it triggers a rebuild
+        print 'Building %s Ontology nested gene association files for %s' % (target_ontology_type,species_code)
+        ###Build Gene to Ontology associations for all MODs and export these for re-import by the MAPPFinder module
+        global nested_ontology_tree
+        nested_ontology_tree = grabNestedOntologyIDs()
         for mod in mod_types:
             try:
                 start_time = time.time()
-                mod_to_go = gene_associations.importGeneGOData(species_code,mod,'null')
-                go_to_mod = swapKeyValues(mod_to_go); total_gene_count = len(mod_to_go); mod_to_go=[]
-                ###Obtain a database of GOIDs with all nested gene associations
-                nested_go_mod = linkGenesToNestedGO(go_to_mod)
-                exportGORelationships(nested_go_mod,{},mod,'')
+                mod_to_ontology = gene_associations.importGeneToOntologyData(species_code,mod,'null',target_ontology_type)
+                ontology_to_mod = swapKeyValues(mod_to_ontology); total_gene_count = len(mod_to_ontology); mod_to_ontology=[]
+                ###Obtain a database of ontology_ids with all nested gene associations
+                nested_ontology_mod = linkGenesToNestedOntology(ontology_to_mod)
+                exportOntologyRelationships(nested_ontology_mod,{},mod,'',target_ontology_type)
                 end_time = time.time(); time_diff = int(end_time-start_time)
-                exportVersionData(current_version,current_version_date,mappfinder_db_input_dir)
-                print "GO Nested Lists Process/Created in %d seconds" % time_diff
-                if export_databases == 'yes' and mod == genmapp_mod:
-                    ###Read-In GenMAPP GO databases (built in ImportGOTree) and filter to make species specific using nested GO-association
-                    ###Do this only using Ensembl associations, since these the MOD for GenMAPP
-                    print 'exporting GenMAPP-GeneOntology tables for the gene ID system',mod,'for',species
-                    exportAndFilterGenMAPPGOTables(species,go_to_mod,nested_go_mod,total_gene_count)
+                print "Ontology Nested Lists Process/Created in %d seconds" % time_diff
             except Exception:
-                print mod, 'associated files not present!'
-                null = 'null' ###No MOD relational files present
-    return built_go_paths, path_goid_db, path_dictionary
-
-def exportAndFilterGenMAPPGOTables(species,go_to_ensembl,nested_go_gene,total_gene_count):
-    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
-    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
-
-    import_dir = '/'+parent_dir+'OBO/builds'
-    c = GrabFiles(); c.setdirectory(import_dir)
-    go_tables = c.searchdirectory('go_table'); go_trees = c.searchdirectory('go_tree_table'); go_counts = c.searchdirectory('go_count_table')
-    go_tables=filepath(go_tables[0]);go_trees=filepath(go_trees[0]);go_counts=filepath(go_counts[0]); x=0
-    filterGenMAPPGOTables(go_tables,nested_go_gene,species)
-    filterGenMAPPGOTables(go_trees,nested_go_gene,species)
-    filterGenMAPPGOTables(go_counts,nested_go_gene,species)
-    ###The fourth file to be output is the ensembl-GO count table built using nested and non-nested GO-gene counts
-    program_type,database_dir = unique.whatProgramIsThis()
-    export_data_fn = database_dir+'/'+species+'/nested/'+'genmapp_Ens-GOCounts.txt';
-    export_data_fn=filepath(export_data_fn); export_data = open(export_data_fn,'w')
-    title = ['GO','Count','Total']; title = string.join(title,'\t')+'\n'; export_data.write(title)
-    values = string.join(['GO','0',str(total_gene_count)],'\t')+'\n'; export_data.write(values)
-    for goid in nested_go_gene:
-        ###Some terms in go_to_ensembl are not in nested_go_gene (less than 0.1% of terms). These are retired IDs that are in the Ensembl-GO table
-        try: gene_count = str(len(go_to_ensembl[goid]))
-        except KeyError: gene_count = '0'
-        nested_gene_count = str(len(nested_go_gene[goid]))
-        values = [goid,gene_count,nested_gene_count]
-        values = string.join(values,'\t')+'\n'; export_data.write(values)
-    export_data.close()
-
-def filterGenMAPPGOTables(fn,nested_go_gene,species):
-    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
-    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
-        
-    export_data_fn = string.replace(fn,parent_dir+'OBO/builds',database_dir+'/'+species+'/nested/')
-    print 'Writing species specific GenMAPP GO databases to',export_data_fn
-    export_data = open(export_data_fn,'w'); x=0
-    for line in open(fn,'r').xreadlines():
-        data = cleanUpLine(line)
-        t = string.split(data,'\t')
-        if x == 0:
-            y = 0; x=1; export_data.write(line)
-            if 'OrderNo' in line:
-                reassign_order = 'yes' ###The order is reassigned without breaks
-            else: reassign_order = 'no'
-            for i in t: ###Since the ID field varies in location, find it in the header
-                if i == 'ID': id_index = y
-                y+=1
-        else:
-            goid = t[id_index] ###If the GOID in the nested database, that term should be included (since nested account for all child terms linked to GO)
-            if goid in nested_go_gene:
-                if reassign_order == 'yes':
-                    values = [str(x)]+t[1:]; line = string.join(values,'\t')+'\n'; x+=1
-                export_data.write(line)
-    export_data.close()
+                if mod != 'HMDB':
+                    None ### optionally indicate if a MOD doesn't have local files supporting the creation of a nested set
+                    #print mod, 'associated files not present!'
+    return built_ontology_paths, path_ontology_db, path_dictionary
 
 def speciesData():
     program_type,database_dir = unique.whatProgramIsThis()
@@ -774,30 +573,10 @@ def sourceData():
         system_codes[system_code] = source ###Used when users include system code data in their input file
                 
 if __name__ == '__main__':
-    """This module imports GO hierarchy data, nests it, outputs it to GO-elite and associates
-    gene level data with nested GO terms for MAPPFinder"""
-    buildNestedGOTree('no','no');sys.exit()
-    genmapp_mod = 'Ensembl'; species_code = 'Mm'; export_databases = 'no'; mod_types = ['Ensembl','EntrezGene']
-    buildNestedGOAssociations(species_code,export_databases,mod_types,genmapp_mod)
-    kill
-    sourceData(); speciesData() ###finds species for which available information is stored locally   
-    x = 1; print "Select species for GO table extraction"
-    for species_name in species_list: print str(x)+')',species_name; x+=1
-    inp = sys.stdin.readline(); inp = int(inp.strip())
-    species = species_list[inp-1]; species_code = species_codes[species]
-    export_databases = 'yes'
-
-    x = 1; print "Specify MOD for GenMAPP-GeneOntology database export"
-    for mod_name in mod_types: print str(x)+')',mod_name; x+=1
-    print str(x)+') NA'
-    inp = sys.stdin.readline(); inp = int(inp.strip())
-    genmapp_mod = mod_types[inp-1]
-    
-    print 'Building GenMAPP tables for',species,species_code   
-    #buildNestedGOTree('no') ###always no unless running via the buildNestedGOAssociations function
-    mod_types = ['Ensembl','EntrezGene']
-    buildNestedGOAssociations(species_code,export_databases,mod_types,genmapp_mod)
-    print "Build Complete (hit any key to exit)"; sys.stdin.readline()
+    """This module imports Ontology hierarchy data, nests it, outputs it to GO-Elite and associates
+    gene level data with nested Ontology terms for MAPPFinder"""
+    species_code = 'Hs'; mod_types = ['Ensembl','EntrezGene']; ontology_type = 'MPhenoOntology'
+    buildNestedOntologyAssociations(species_code,mod_types,ontology_type); sys.exit()
     
 #!/usr/bin/python
 ###########################

@@ -854,9 +854,11 @@ def import_sequence_data(filename,filter_db,species,analysis_type):
                                                     if analysis_parameter == 'region_only':
                                                         ### Only extract the specific region exon sequence
                                                         exon_start,exon_stop = int(probe_start),int(probe_stop)
+                                                        #if ':440657' in probeset_id: print ens_exon_list,probe_start,probe_stop
                                                         #probe_coord = [int(probe_start),int(probe_stop)]; probe_coord.sort()
                                                         #exon_start,exon_stop = probe_coord
                                                     else: exon_start,exon_stop = exon_location_db[ens_exon]
+                                                    #if ':440657' in probeset_id: print [exon_start,exon_stop]
                                                     exon_sequence = grabSeq(sequence,strand,start,stop,exon_start,exon_stop,'exon')
                                                     #print [exon_id,exon_sequence, start,stop,exon_start,exon_stop];kill
                                                     """Could repeat if we build another dictionary with exon->adjacent exon positions (store in a class where

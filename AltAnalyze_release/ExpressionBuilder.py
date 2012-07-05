@@ -25,6 +25,7 @@ import reorder_arrays
 import ExonArray
 import export
 import time
+import traceback
 import UI
 import BuildAffymetrixAssociations; reload(BuildAffymetrixAssociations)
 import FilterDabg; reload(FilterDabg)
@@ -142,7 +143,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     
     try:
         array_folds, array_fold_headers, summary_filtering_stats,raw_data_comp_headers = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data,array_type,normalization_method,fl)
-    except Exception: 
+    except IOError: 
         print_out = 'AltAnalyze encountered an error with the format of the expression file.\nIf the data was designated as log intensities and it is not, then re-run as non-log.'
         try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); force_exit ### Forces the error log to pop-up
         except NameError: print print_out; sys.exit()
@@ -151,15 +152,21 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     if array_type == 'RNASeq' and 'counts.' not in expr_input_dir: addMaxReadCounts(expr_input_dir)
     
     ### Export these results to a DATASET statistics and annotation results file
-    if 'exp.' in expr_input_dir:
-        if array_type == 'RNASeq' and norm == 'RPKM': filterRNASeq(count_statistics_db)
+    if 'counts.' not in expr_input_dir:
+        if array_type == 'RNASeq' and norm == 'RPKM':
+            filterRNASeq(count_statistics_db)
+            ### Export count summary in GenMAPP format
+            if include_raw_data == 'yes': headers = removeRawCountData(array_fold_headers)
+            else: headers = array_fold_headers
+            exportDataForGenMAPP(headers,'counts')
+            
         exportAnalyzedData(comp_group_list2,expr_group_db)
     
         ### Export formatted results for input as an expression dataset into GenMAPP or PathVisio
         if data_type == 'expression':
             if include_raw_data == 'yes': headers = removeRawData(array_fold_headers)
             else: headers = array_fold_headers
-            exportDataForGenMAPP(headers)
+            exportDataForGenMAPP(headers,'expression')
             
         try: clearObjectsFromMemory(summary_filtering_stats); clearObjectsFromMemory(array_folds)
         except Exception: null=[]
@@ -172,7 +179,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
         for key in array_folds:
             count_statistics_db[key] = array_folds[key]
         for name in array_fold_headers: count_statistics_headers.append(name)"""
-        
+
         try: clearObjectsFromMemory(summary_filtering_stats)
         except Exception: null=[]
         try: clearObjectsFromMemory(summary_filtering_stats); summary_filtering_stats=[]
@@ -196,11 +203,57 @@ def filterRNASeq(counts_db):
     
 def addMaxReadCounts(filename):
     import RNASeq
-    max_count_db = RNASeq.importGeneCounts(filename)
+    max_count_db,array_names = RNASeq.importGeneCounts(filename,'max')
     for gene in summary_filtering_stats:
         gs = summary_filtering_stats[gene]
         gs.setMaxCount(max_count_db[gene]) ### Shouldn't cause an error, but we want to get an exception if it does (something is wrong with the analysis)        
+
+def simpleGroupImport(group_dir):
+    """ Used for calculating fold changes prior to clustering for individual samples (genomtric folds) """
+    group_sample_db={}
+    group_name_db={}
+    group_name_sample_db={}
+    sample_list=[]
+    group_db={}
+    fn = filepath(group_dir)
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        sample_filename,group_number,group_name = string.split(data,'\t')
+        group_sample_db[sample_filename] = group_name+':'+sample_filename
+        try: group_name_sample_db[group_name].append(group_name+':'+sample_filename)
+        except Exception: group_name_sample_db[group_name] = [group_name+':'+sample_filename]
+        sample_list.append(sample_filename)
+        group_db[sample_filename] = group_name
         
+        group_name_db[group_number]=group_name ### used by simpleCompsImport
+        
+    ### Get the comparisons indicated by the user
+    comps_name_db,comp_groups = simpleCompsImport(group_dir,group_name_db)
+    return sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db
+                
+def simpleCompsImport(group_dir,group_name_db):
+    """ Used for calculating fold changes prior to clustering for individual samples (genomtric folds) """
+    comps_dir = string.replace(group_dir,'groups.','comps.')
+    comps_name_db={}
+    comp_groups=[]
+    fn = filepath(comps_dir)
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        exp_group_num,con_group_num = string.split(data,'\t')
+        exp_group_name = group_name_db[exp_group_num]
+        con_group_name = group_name_db[con_group_num]
+        try: comps_name_db[con_group_name].append(exp_group_name)
+        except Exception:
+            #comps_name_db[con_group_name] = [exp_group_name] ### If we don't want to include the control samples
+            comps_name_db[con_group_name] = [con_group_name] ### Add the control group versus itself the first time
+            comps_name_db[con_group_name].append(exp_group_name)
+        ### Keep track of the order of the groups for ordering the cluster inputs
+        if con_group_name not in comp_groups:
+            comp_groups.append(con_group_name)
+        if exp_group_name not in comp_groups:
+            comp_groups.append(exp_group_name)
+    return comps_name_db,comp_groups
+
 def importArrayGroups(expr_group_dir,array_linker_db):
     new_index_order = 0    
     expr_group_list=[]
@@ -247,6 +300,7 @@ def exportArrayHeaders(expr_group_dir,array_linker_db):
     new_file = string.replace(expr_group_dir,'groups.','arrays.')
     new_file = string.replace(new_file,'exp.','arrays.')
     new_file = string.replace(new_file,'counts.','arrays.')
+    if 'arrays.' not in new_file: new_file = 'arrays.' + new_file ### Can occur if the file does not have 'exp.' in it
     fn=filepath(new_file); data = open(fn,'w')
     for array in array_linker_db: data.write(array+'\n')
     data.close()
@@ -298,10 +352,12 @@ def importSystemCodes():
         else: systems[system_name] = system_code
     return systems
             
-def exportDataForGenMAPP(headers):
+def exportDataForGenMAPP(headers,input_type):
     ###Export summary columns for GenMAPP analysis
     systems = importSystemCodes()
     GenMAPP_file = expression_dataset_output_dir + 'GenMAPP-'+experiment_name+'.txt'
+    if 'counts' in input_type:
+        GenMAPP_file = string.replace(GenMAPP_file,'GenMAPP-','COUNTS-')
     try: genmapp = export.createExportFile(GenMAPP_file,expression_dataset_output_dir[:-1])
     except RuntimeError:
         export.isFileOpen(GenMAPP_file,expression_dataset_output_dir[:-1])
@@ -348,16 +404,41 @@ def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_fol
                     values = t[1:-2]; probeset = t[0]; system_code = t[1]
                     array_folds[probeset] = values
             if operation == 'summary':
-                exportGeneRegulationSummary(headers,system_code)
+                exportGeneRegulationSummary(filename,headers,system_code)
             else:
                 input_files_exported = exportGOEliteInput(headers,system_code)
     array_folds=[]
-    
+
+def importCountSummary():
+    ### Copied code from buildCriterion
+    count_summary_db={}
+    indexed_headers={}
+    filetype = 'COUNTS-'
+    dir_list = read_directory(expression_dataset_output_dir[:-1])
+    for filename in dir_list:
+        if filetype in filename: 
+            fn=filepath(expression_dataset_output_dir+filename)
+            count_summary_db = {}; x=0
+            for line in open(fn,'rU').xreadlines():
+                data = cleanUpLine(line); t = string.split(data,'\t')
+                if x==0:
+                    x=1; i=0
+                    for header in t:
+                        indexed_headers[header]=i
+                        i+=1
+                else: 
+                    values = t[1:-2]; probeset = t[0]; system_code = t[1]
+                    count_summary_db[probeset] = values
+            return count_summary_db, indexed_headers
+        
 def exportGOEliteInput(headers,system_code):
     ### Filter statistics based on user-defined thresholds as input for GO-Elite analysis
     criterion_db={}; denominator_geneids={}; index = 0; ttest=[]
     for column in headers:
-        if ptype_to_use in column and 'ANOVA' not in column: ttest.append(index)
+        if 'ANOVA' in ptype_to_use and ptype_to_use in column: ttest.append(index) ### Not currently implemented
+        elif ptype_to_use in column and 'ANOVA' not in column: ttest.append(index)
+        lfi = 2 ### relative logfold index position
+        if ptype_to_use == 'adjp': lfi = 3
         index+=1
         
     for probeset in array_folds:
@@ -366,7 +447,7 @@ def exportGOEliteInput(headers,system_code):
             denominator_geneids[probeset]=[]
             if index in ttest:
                 criterion_name = headers[index][5:]
-                try: log_fold = float(af[index-2])
+                try: log_fold = float(af[index-lfi])
                 except Exception: log_fold = 0 ### Occurs when a fold change is annotated as 'Insufficient Expression'
                 try: p_value = float(value)
                 except Exception: p_value = 1 ### Occurs when a p-value is annotated as 'Insufficient Expression'
@@ -380,6 +461,14 @@ def exportGOEliteInput(headers,system_code):
                         try: criterion_db[criterion_name+'-downregulated'].append((probeset,log_fold,p_value))
                         except KeyError: criterion_db[criterion_name+'-downregulated'] = [(probeset,log_fold,p_value)]                    
             index += 1
+    
+    ### Format these statistical filtering parameters as a string to include in the file as a record
+    if m_cutoff<0: fold_cutoff = -1/math.pow(2,m_cutoff)     
+    else: fold_cutoff = math.pow(2,m_cutoff)        
+    stat_filters = ' (Regulation criterion: fold > '+str(fold_cutoff)+' and '+ptype_to_use+ ' p-value < '+str(p_cutoff)+')'
+    stat_filters_filename = '-fold'+str(fold_cutoff)+'_'+ptype_to_use+str(p_cutoff)
+    
+    ### Format these lists to export as tab-delimited text files
     if len(criterion_db)>0:
         ### Export denominator gene IDs
         input_files_exported = 'yes'
@@ -396,9 +485,9 @@ def exportGOEliteInput(headers,system_code):
         for criterion_name in criterion_db:
             if criterion_name[-1] == ' ': criterion_file_name = criterion_name[:-1]
             else: criterion_file_name = criterion_name
-            goelite_file = expression_dir + 'GO-Elite/input/GE.'+criterion_file_name+'.txt'
+            goelite_file = expression_dir + 'GO-Elite/input/GE.'+criterion_file_name+stat_filters_filename+'.txt'
             goelite = export.createExportFile(goelite_file,expression_dir+'GO-Elite/input')        
-            goelite_title = ['GeneID','SystemCode',criterion_name+'-log_fold',criterion_name+'-p_value']
+            goelite_title = ['GeneID'+stat_filters,'SystemCode',criterion_name+'-log_fold',criterion_name+'-p_value']
             goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
             for (probeset,log_fold,p_value) in criterion_db[criterion_name]:
                 values = string.join([probeset,system_code,str(log_fold),str(p_value)],'\t')+'\n'
@@ -407,40 +496,66 @@ def exportGOEliteInput(headers,system_code):
     else: input_files_exported = 'no'
     return input_files_exported
 
-def exportGeneRegulationSummary(headers,system_code):
-    """Perform a series of targetted queries to report the number of coding and non-coding genes expressed
-    along with various regulation and annotation parameters"""
+def exportGeneRegulationSummary(filename,headers,system_code):
+    """
+    1) Exports summary results description - Performs a series of targetted queries to report the number
+    of coding and non-coding genes expressed along with various regulation and annotation parameters.
+    
+    2) Exports a global regulated expression table - Values are log2 geometric folds relative to baseline
+    of the entire row (all samples) for any criterion met (see ptype_to_use, m_cutoff, p_cutoff). Optionally
+    cluster these results downstream and perform QC analyses."""
     
     criterion_db={}; detected_exp_db={}; denominator_geneids={}; index = 0; ttest=[]; avg_columns=[]; all_criterion=[]; all_groups=[]
     search_miR = 'miR-1('
     coding_types = ['protein_coding','ncRNA']
     
     for column in headers:
-        if ptype_to_use in column and 'ANOVA' not in column: ttest.append(index)
+        if 'ANOVA' in ptype_to_use and ptype_to_use in column: ttest.append(index) ### Not currently implemented
+        elif ptype_to_use in column and 'ANOVA' not in column: ttest.append(index)
+        lfi = 2 ### relative logfold index position
+        if ptype_to_use == 'adjp': lfi = 3
         index+=1
         if 'Protein Classes' in column: pc = index-1
         if 'microRNA' in column: mi = index-1
         if 'avg-' in column: avg_columns.append(index-1)
+        if 'Symbol' in column: sy = index-1
         
+    try: count_summary_db,indexed_headers = importCountSummary()
+    except Exception: count_summary_db={}
+    genes_to_import={}; probeset_symbol={}
     for probeset in array_folds:
         index = 0; af = array_folds[probeset]
+        probeset_symbol[probeset] = af[sy]
         for value in array_folds[probeset]:
             denominator_geneids[probeset]=[]
             if index in avg_columns:
-                group_name = headers[index][4:]
+                column_name = headers[index]
+                group_name = column_name[4:]
                 try: protein_class = af[pc]
                 except Exception: protein_class = 'NULL'
-                if float(af[index])>0:
-                    if group_name not in all_groups: all_groups.append(group_name)
-                    if 'protein_coding' in protein_class:
-                        try: detected_exp_db[group_name,'protein_coding']+=1
-                        except KeyError: detected_exp_db[group_name,'protein_coding']=1
+                proceed = False
+                if array_type == 'RNASeq':
+                    if norm == 'RPKM':
+                        try: ### Counts file should be present but if not, still proceed
+                            i2 = indexed_headers[column_name]
+                            if float(af[index])>gene_rpkm_threshold and count_summary_db[probeset][i2]>gene_exp_threshold:
+                                proceed = True
+                        except Exception:
+                            proceed = True
                     else:
-                        try: detected_exp_db[group_name,'ncRNA']+=1
-                        except KeyError: detected_exp_db[group_name,'ncRNA']=1
+                        if float(af[index])>expr_threshold:
+                            proceed = True
+                    if proceed==True:
+                        if group_name not in all_groups: all_groups.append(group_name)
+                        if 'protein_coding' in protein_class:
+                            try: detected_exp_db[group_name,'protein_coding']+=1
+                            except KeyError: detected_exp_db[group_name,'protein_coding']=1
+                        else:
+                            try: detected_exp_db[group_name,'ncRNA']+=1
+                            except KeyError: detected_exp_db[group_name,'ncRNA']=1
             if index in ttest:
                 criterion_name = headers[index][5:]
-                try: log_fold = float(af[index-2])
+                try: log_fold = float(af[index-lfi])
                 except Exception: log_fold = 0 ### Occurs when a fold change is annotated as 'Insufficient Expression'
                 try: p_value = float(value)
                 except Exception: p_value = 1 ### Occurs when a p-value is annotated as 'Insufficient Expression'
@@ -450,56 +565,73 @@ def exportGeneRegulationSummary(headers,system_code):
                     if criterion_name not in all_criterion: all_criterion.append(criterion_name)
                     try: criterion_db[criterion_name]+=1
                     except KeyError: criterion_db[criterion_name] = 1
+                    genes_to_import[probeset]=[] ### All, regulated genes (any criterion)
                     
                     if 'protein_coding' in protein_class:
                         if log_fold>0:
                             try: criterion_db[criterion_name,'upregulated','protein_coding']+=1
                             except KeyError: criterion_db[criterion_name,'upregulated','protein_coding'] = 1
-                            if 'miR-1(' in af[mi]:
-                                try: criterion_db[criterion_name,'upregulated','protein_coding',search_miR[:-1]]+=1
-                                except KeyError: criterion_db[criterion_name,'upregulated','protein_coding',search_miR[:-1]] = 1
+                            try:
+                                if 'miR-1(' in af[mi]:
+                                    try: criterion_db[criterion_name,'upregulated','protein_coding',search_miR[:-1]]+=1
+                                    except KeyError: criterion_db[criterion_name,'upregulated','protein_coding',search_miR[:-1]] = 1
+                            except Exception: None ### occurs when mi not present
                         else:
                             try: criterion_db[criterion_name,'downregulated','protein_coding']+=1
                             except KeyError: criterion_db[criterion_name,'downregulated','protein_coding'] = 1
-                            if 'miR-1(' in af[mi]:
-                                try: criterion_db[criterion_name,'downregulated','protein_coding',search_miR[:-1]]+=1
-                                except KeyError: criterion_db[criterion_name,'downregulated','protein_coding',search_miR[:-1]] = 1
+                            try:
+                                if 'miR-1(' in af[mi]:
+                                    try: criterion_db[criterion_name,'downregulated','protein_coding',search_miR[:-1]]+=1
+                                    except KeyError: criterion_db[criterion_name,'downregulated','protein_coding',search_miR[:-1]] = 1
+                            except Exception: None ### occurs when mi not present
                     else:
-                        if log_fold>0:
-                            try: criterion_db[criterion_name,'upregulated','ncRNA']+=1
-                            except KeyError: criterion_db[criterion_name,'upregulated','ncRNA'] = 1
-                            if 'miR-1(' in af[mi]:
-                                try: criterion_db[criterion_name,'upregulated','ncRNA',search_miR[:-1]]+=1
-                                except KeyError: criterion_db[criterion_name,'upregulated','ncRNA',search_miR[:-1]] = 1
+                        if protein_class == 'NULL':
+                            class_name = 'unclassified'
                         else:
-                            try: criterion_db[criterion_name,'downregulated','ncRNA']+=1
-                            except KeyError: criterion_db[criterion_name,'downregulated','ncRNA'] = 1
-                            if 'miR-1(' in af[mi]:
-                                try: criterion_db[criterion_name,'downregulated','ncRNA',search_miR[:-1]]+=1
-                                except KeyError: criterion_db[criterion_name,'downregulated','ncRNA',search_miR[:-1]] = 1
-
+                            class_name = 'ncRNA'
+                        if log_fold>0:
+                            try: criterion_db[criterion_name,'upregulated',class_name]+=1
+                            except KeyError: criterion_db[criterion_name,'upregulated',class_name] = 1
+                            try:
+                                if 'miR-1(' in af[mi]:
+                                    try: criterion_db[criterion_name,'upregulated',class_name,search_miR[:-1]]+=1
+                                    except KeyError: criterion_db[criterion_name,'upregulated',class_name,search_miR[:-1]] = 1
+                            except Exception: None ### occurs when mi not present
+                        else:
+                            try: criterion_db[criterion_name,'downregulated',class_name]+=1
+                            except KeyError: criterion_db[criterion_name,'downregulated',class_name] = 1
+                            try:
+                                if 'miR-1(' in af[mi]:
+                                    try: criterion_db[criterion_name,'downregulated',class_name,search_miR[:-1]]+=1
+                                    except KeyError: criterion_db[criterion_name,'downregulated',class_name,search_miR[:-1]] = 1
+                            except Exception: None ### occurs when mi not present
             index += 1
 
     if len(criterion_db)>0:
-
-        summary_path = expression_dataset_output_dir +'summary.txt'
+        exportGeometricFolds(expression_dataset_output_dir+filename,array_type,genes_to_import,probeset_symbol)
+        
+        filename = string.replace(filename,'DATASET-','SUMMARY-')
+        filename = string.replace(filename,'GenMAPP-','SUMMARY-')
+        summary_path = expression_dataset_output_dir +filename
         export_data = export.ExportFile(summary_path)
-        print 'Export summary gene expression results to:',summary_path
+        print 'Export summary gene expression results to:',filename
 
         ### Output Number of Expressed Genes        
         title = ['Biological group']
         for group_name in all_groups: title.append(group_name)
         title = string.join(title,'\t')+'\n'; export_data.write(title)
 
-        for coding_type in coding_types:
-            if coding_type == 'protein_coding': values = ['Expressed protein-coding genes']
-            else: values = ['Expressed ncRNAs']
-            for group in all_groups:
-                for group_name in detected_exp_db:
-                    if group in group_name and coding_type in group_name:
-                        values.append(str(detected_exp_db[group_name]))
-            values = string.join(values,'\t')+'\n'; export_data.write(values)
-        export_data.write('\n')
+        if array_type == 'RNASeq':
+            ### Only really informative for RNA-Seq data right now, since DABG gene-level stats are not calculated (too time-intensive for this one statistic)
+            for coding_type in coding_types:
+                if coding_type == 'protein_coding': values = ['Expressed protein-coding genes']
+                else: values = ['Expressed ncRNAs']
+                for group in all_groups:
+                    for group_name in detected_exp_db:
+                        if group in group_name and coding_type in group_name:
+                            values.append(str(detected_exp_db[group_name]))
+                values = string.join(values,'\t')+'\n'; export_data.write(values)
+            export_data.write('\n')
 
         if m_cutoff<0: fold_cutoff = -1/math.pow(2,m_cutoff)     
         else: fold_cutoff = math.pow(2,m_cutoff)        
@@ -534,7 +666,171 @@ def exportGeneRegulationSummary(headers,system_code):
                 values = string.join(values,'\t')+'\n'; export_data.write(values)
             export_data.write('\n')
         export_data.close()
+
+def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol):
+    """ Import sample and gene expression values from input file, filter, calculate geometric folds
+    and export. Use for clustering and QC."""
+    filename = string.replace(filename,'///','/')
+    filename = string.replace(filename,'//','/')
+    if 'ExpressionOutput' in filename:
+        export_path = string.replace(filename,'ExpressionOutput','ExpressionOutput/Clustering')
+        export_path = string.replace(export_path,'DATASET-','SampleLogFolds-') ### compared to all-sample mean
+        export_path2 = string.replace(export_path,'SampleLogFolds-','OutlierLogFolds-') ### compared to all-sample mean
+        export_path3 = string.replace(export_path,'SampleLogFolds-','RelativeSampleLogFolds-') ### compared to control groups
+        filename = string.replace(filename,'ExpressionOutput','ExpressionInput')
+        filename = string.replace(filename,'DATASET-','exp.')
+        groups_dir = string.replace(filename,'exp.','groups.')
+        if platform != "3'array" and platform != "AltMouse":
+            ### This is the extension for gene-level results for exon sensitive platfomrs
+            filename = string.replace(filename,'.txt','-steady-state.txt')
+        status = verifyFile(filename)
+        if status != 'yes':
+            filename = string.replace(filename,'exp.','')
+            filename = string.replace(filename,'ExpressionInput','')
+            status = verifyFile(filename)
+
+    if status == 'yes':
+        export_data = export.ExportFile(export_path)
+        export_outliers = export.ExportFile(export_path2)
+        export_relative = export.ExportFile(export_path3)
+        print 'Export inputs for clustering to:',export_path
         
+        fn=filepath(filename); row_number=0; exp_db={}; relative_headers_exported = False
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            if data[0]=='#': row_number = 0
+            elif row_number==0:
+                sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = simpleGroupImport(groups_dir)
+                try: sample_index_list = map(lambda x: t[1:].index(x), sample_list) ### lookup index of each sample in the ordered group sample list
+                except Exception:
+                    print sample_list
+                    print filename, groups_dir; kill
+                new_sample_list = map(lambda x: group_sample_db[x], sample_list) ### lookup index of each sample in the ordered group sample list
+                title = string.join([t[0]]+new_sample_list,'\t')+'\n' ### output the new sample order (group file order)
+                export_data.write(title)
+                export_outliers.write(title)
+                
+                ### Used for the relative fold calculation
+                group_index_db={}
+                for x in sample_list:
+                    group_name = group_db[x]
+                    sample_index = t[1:].index(x)
+                    try: group_index_db[group_name].append(sample_index)
+                    except Exception: group_index_db[group_name] = [sample_index] ### dictionary of group to input file sample indexes
+                row_number=1
+            else:
+                gene = t[0]
+                if platform == 'RNASeq':
+                    ### Convert to log2 RPKM values - or counts
+                    values = map(lambda x: math.log(float(x),2), t[1:])
+                else:
+                    values = map(float,t[1:])
+                    
+                ### Calculate log-fold values relative to the mean of all sample expression values
+                values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
+                avg = statistics.avg(values)
+                log_folds = map(lambda x: (x-avg), values)
+                                
+                if gene in genes_to_import:
+                    ### Genes regulated in any user-indicated comparison according to the fold and pvalue cutoffs provided
+                    log_folds = map(lambda x: str(x), log_folds)
+                    try: gene = gene+' '+probeset_symbol[gene]
+                    except Exception: gene = gene
+                    export_data.write(string.join([gene]+log_folds,'\t')+'\n')
+                    
+                    ### Calculate log-fold values relative to the mean of each valid group comparison
+                    control_group_avg={}; comps_exp_db={}
+                    for group_name in comps_name_db: ### control group names
+                        con_group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
+                        control_group_avg[group_name] = statistics.avg(con_group_values) ### store the mean value of each control group
+                        for exp_group in comps_name_db[group_name]:
+                            try: comps_exp_db[exp_group].append(group_name) ### Create a reversed version of the comps_name_db, list experimental as the key
+                            except Exception: comps_exp_db[exp_group] = [group_name]
+                            
+                    relative_log_folds=[] ### append all new log folds to this list
+                    relative_column_names=[]
+                    for group_name in comp_groups:
+                        if group_name in comps_exp_db: ### Hence, the group has a designated control (controls may not) - could have the control group be a control for the control samples
+                            group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
+                            for control_group_name in comps_exp_db[group_name]:
+                                con_avg = control_group_avg[control_group_name]
+                                relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
+                            if relative_headers_exported == False:
+                                exp_sample_names = group_name_sample_db[group_name]
+                                relative_column_names += map(lambda x: (x+' vs '+control_group_name), exp_sample_names) ### add column names indicating the comparison
+
+                    if relative_headers_exported == False:
+                        title = string.join(['UID']+relative_column_names,'\t')+'\n' ### Export column headers for the relative fold changes
+                        export_relative.write(title)
+                        relative_headers_exported = True
+                    export_relative.write(string.join([gene]+relative_log_folds,'\t')+'\n')
+                        
+                else:
+                    ### When a gene is regulated and not significant, export to the outlier set
+                    try: gene = gene+' '+probeset_symbol[gene]
+                    except Exception: gene = gene
+                    ### These are defaults we may allow the user to control later
+                    if max([max(log_folds),abs(min(log_folds))])>1:
+                        proceed = True
+                        if platform == 'RNASeq':
+                            if max(values)<0.1: proceed = False
+                        if proceed == True:
+                            log_folds = map(lambda x: str(x), log_folds)
+                            export_outliers.write(string.join([gene]+log_folds,'\t')+'\n')
+                            
+                row_number+=1 ### Keep track of the first gene as to write out column headers for the relative outputs
+                
+        export_data.close()
+        export_outliers.close()
+        export_relative.close()
+
+def importAndOrganizeLineageOutputs(expr_input,filename,platform):
+    """ This function takes LineageProfiler z-scores and organizes the samples into groups
+    takes the mean results for each group and looks for changes in lineage associations """
+    
+    groups_dir = string.replace(expr_input,'exp.','groups.')
+    groups_dir = string.replace(groups_dir,'-steady-state.txt','.txt') ### groups is for the non-steady-state file
+    export_path = string.replace(filename,'ExpressionOutput','ExpressionOutput/Clustering')
+    export_path = string.replace(export_path,'.txt','-groups.txt')
+    export_data = export.ExportFile(export_path)
+    print 'Export inputs for clustering to:',export_path
+        
+    fn=filepath(filename); row_number=0; exp_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if data[0]=='#': row_number = 0
+        elif row_number==0:
+            group_index_db={}
+            ### use comps in the future to visualize group comparison changes
+            sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = simpleGroupImport(groups_dir)
+            for x in sample_list:
+                group_name = group_db[x]
+                sample_index = t[1:].index(x)
+                try: group_index_db[group_name].append(sample_index)
+                except Exception: group_index_db[group_name] = [sample_index] ### dictionary of group to input file sample indexes
+            groups = map(str, group_index_db) ### store group names
+            new_sample_list = map(lambda x: group_db[x], sample_list) ### lookup index of each sample in the ordered group sample list
+            title = string.join([t[0]]+groups,'\t')+'\n' ### output the new sample order (group file order)
+            export_data.write(title)
+            row_number=1
+        else:
+            tissue = t[0]
+            if platform == 'RNASeq' and 'LineageCorrelations' not in filename:
+                ### Convert to log2 RPKM values - or counts
+                values = map(lambda x: math.log(float(x),2), t[1:])
+            else:
+                values = map(float,t[1:])
+            avg_z=[]
+            for group_name in group_index_db:
+                group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
+                avg = statistics.avg(group_values)
+                avg_z.append(str(avg))
+            export_data.write(string.join([tissue]+avg_z,'\t')+'\n')
+    export_data.close()
+    return export_path
+
 def removeRawData(array_fold_headers):
     ### Prior to exporting data for GenMAPP, remove raw data columns
     columns_with_stats=[]; i=0; stat_headers = ['avg', 'log_fold', 'fold', 'rawp', 'adjp']; filtered_headers=[]
@@ -548,6 +844,21 @@ def removeRawData(array_fold_headers):
         filtered_list=[]
         for i in columns_with_stats: filtered_list.append(array_folds[probeset][i])
         array_folds[probeset] = filtered_list ### Re-assign values of the db
+    return filtered_headers
+
+def removeRawCountData(array_fold_headers):
+    ### Prior to exporting data for GenMAPP, remove raw data columns
+    columns_with_stats=[]; i=0; stat_headers = ['avg', 'log_fold', 'fold', 'rawp', 'adjp']; filtered_headers=[]
+    for header in array_fold_headers:
+        broken_header = string.split(header,'-')
+        ### Only keep those headers and indexes with recognized ExpressionBuilder inserted prefixes
+        if broken_header[0] in stat_headers: columns_with_stats.append(i); filtered_headers.append(header)
+        i+=1
+
+    for probeset in count_statistics_db:
+        filtered_list=[]
+        for i in columns_with_stats: filtered_list.append(count_statistics_db[probeset][i])
+        count_statistics_db[probeset] = filtered_list ### Re-assign values of the db
     return filtered_headers
 
 def exportAnalyzedData(comp_group_list2,expr_group_db):
@@ -820,149 +1131,267 @@ def parse_custom_annotations(filename):
     print len(custom_array_db), "custom array entries process"
     return custom_array_db
 
-def performTissueProfiling(expr_input_dir):
+def remoteLineageProfiler(expr_input_dir,ArrayType,Species,Vendor):
+    global species
+    global array_type
+    global vendor
+    global remoteAnalysis
+    remoteAnalysis = True
+    species = Species
+    array_type = ArrayType
+    vendor = Vendor
+    graphics_links = []
+    root_dir = export.findParentDir(expr_input_dir)+'ExpressionOutput/'
     try:
-        import TissueProfiler
-        compendium_platform = 'gene'
-        exp_output = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
-        TissueProfiler.runTissueProfiler(species,array_type,expr_input_dir,exp_output,'protein_coding',compendium_platform)
-    except IOError: null=[] ### Analysis may not be supported for species or data is incompatible
+        ### If this directory exists, create a global variable for it
+        dir_list = read_directory(root_dir[:-1])
+        global expression_dataset_output_dir
+        global experiment_name
+        experiment_name = string.replace(export.findFilename(expr_input_dir)[:-4],'exp.','')
+        expression_dataset_output_dir = root_dir
+    except Exception: None
     
+    graphic_links = performLineageProfiler(expr_input_dir,graphics_links)
+    return graphic_links
+    
+def performLineageProfiler(expr_input_dir,graphic_links):
+    try:
+        import WikiPathways_webservice
+        import LineageProfiler
+        start_time = time.time()
+        compendium_platform = 'gene'
+        
+        try: ### Works when expression_dataset_output_dir is defined
+            exp_output = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
+            array_type_data = array_type
+        except Exception: ### Otherwise, user directly supplied file is used
+            array_type_data = vendor, array_type
+            exp_output = export.findParentDir(expr_input_dir)+'/LineageCorrelations-'+export.findFilename(expr_input_dir)
+        try:
+            zscore_output_dir = LineageProfiler.runLineageProfiler(species,array_type_data,expr_input_dir,exp_output,'protein_coding',compendium_platform)
+            status = True
+        except Exception:
+            status = False
+            try:
+                if remoteAnalysis:
+                    print 'LineageProfiler analysis failed due to:\n'
+                    print traceback.format_exc(),'\n'
+            except Exception: None
+        if status:
+            time_diff = str(round(time.time()-start_time,1))
+            print 'LineageProfiler analysis completed in %s seconds' % time_diff
+            try: ### If the file a groups file exists in the expected directory structure -> export a groups z-score file
+                export_path = importAndOrganizeLineageOutputs(expr_input_dir,zscore_output_dir,array_type)
+            except Exception: export_path = zscore_output_dir ### keeps the sample z-score file as input
+            
+            ### Output a heat map of the sample Z-score correlations
+            graphic_links = LineageProfiler.visualizeLineageZscores(zscore_output_dir,export_path,graphic_links)
+            ### Color the TissueMap from WikiPathways using their webservice
+            print 'Coloring LineageMap profiles using WikiPathways webservice...'
+            graphic_links = WikiPathways_webservice.viewLineageProfilerResults(export_path,graphic_links)
+    except Exception:
+        ### Analysis may not be supported for species or data is incompatible
+        try:
+            if remoteAnalysis:
+                print 'LineageProfiler analysis failed due to:\n'
+                print traceback.format_exc(),'\n'
+        except Exception:
+            None
+    return graphic_links
+
+def visualizeQCPlots(expr_input_dir):
+    expr_input_dir = string.replace(expr_input_dir,'-steady-state','')  ### We want the full exon/probeset-level expression file
+    try:
+        import clustering
+        import QC
+
+        print 'Building quality control graphs...'
+        if array_type == 'RNASeq':
+            counts_input_dir = string.replace(expr_input_dir,'exp.','counts.')
+            graphic_links = QC.outputRNASeqQC(counts_input_dir)
+        else:
+            graphic_links = QC.outputArrayQC(expr_input_dir)
+        
+        print 'Building hierarchical cluster graphs...'
+        paths = getSampleLogFoldFilenames(expr_input_dir)
+        graphic_links = clustering.outputClusters(paths,graphic_links)
+    except Exception:
+        try: graphic_links = graphic_links
+        except Exception: graphic_links=None ### Matplotlib likely not installed - or other unknown issue
+    return graphic_links
+
+def getSampleLogFoldFilenames(filename):
+    if '/' in filename: delim = '/'
+    else: delim = '\\'
+    if 'ExpressionInput' in filename:
+        export_path = string.replace(filename,'ExpressionInput','ExpressionOutput/Clustering')
+        path1 = string.replace(export_path,'exp.','SampleLogFolds-')
+        path2 = string.replace(export_path,'exp.','OutlierLogFolds-')
+        path3 = string.replace(export_path,'exp.','RelativeSampleLogFolds-')
+        paths = [path1,path2,path3]
+    else:
+        paths = string.split(filename,delim)
+        path1 = string.join(paths[:-1],delim)+'/ExpressionOutput/Clustering/SampleLogFolds-'+paths[-1]
+        path2 = string.replace(path1,'SampleLogFolds-','OutlierLogFolds-')
+        path3 = string.replace(path1,'SampleLogFolds-','RelativeSampleLogFolds-')
+        paths = [path1,path2,path3]
+    return paths
+
 def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
                             avg_all_for_ss,Expression_data_format,Vendor,
                             constitutive_source,data_source,Include_raw_data,
                             perform_alt_analysis,GE_fold_cutoffs,GE_pvalue_cutoffs,
                             GE_ptype,exp_file_location_db,Root):
-  start_time = time.time()
-  global root; root = Root
-  #def remoteExpressionBuilder():
-  global species; global array_type ; species = Species; array_type = Array_type; global altanalyze_files; global vendor; vendor = Vendor
-  global filter_by_dabg; filter_by_dabg = 'yes' ### shouldn't matter, since the program should just continue on without it
-  global expression_data_format; global expression_dataset_output_dir; global root_dir; global data_type
-  global conventional_array_db; global custom_array_db; global constitutive_db; global include_raw_data; global experiment_name
-  global annotate_db; global probeset_db; global process_custom; global m_cutoff; global p_cutoff; global ptype_to_use; global norm
-  global arrayCode; arrayCode = 0; global probability_statistic; global fl
+    start_time = time.time()
+    global root; root = Root
+    #def remoteExpressionBuilder():
+    global species; global array_type ; species = Species; array_type = Array_type; global altanalyze_files; global vendor; vendor = Vendor
+    global filter_by_dabg; filter_by_dabg = 'yes' ### shouldn't matter, since the program should just continue on without it
+    global expression_data_format; global expression_dataset_output_dir; global root_dir; global data_type
+    global conventional_array_db; global custom_array_db; global constitutive_db; global include_raw_data; global experiment_name
+    global annotate_db; global probeset_db; global process_custom; global m_cutoff; global p_cutoff; global ptype_to_use; global norm
+    global arrayCode; arrayCode = 0; global probability_statistic; global fl
 
-  global count_statistics_db; global count_statistics_headers; count_statistics_db = {}
-  include_raw_data = Include_raw_data; expression_data_format = Expression_data_format
-  data_type = 'expression' ###Default, otherwise is 'dabg'
-  d = "core"; e = "extendend"; f = "full"; exons_to_grab = d ### Currently, not used by the program... intended as an option for ExonArrayAffymetrixRules full annotation (deprecated)
+    global count_statistics_db; global count_statistics_headers; count_statistics_db = {}
+    include_raw_data = Include_raw_data; expression_data_format = Expression_data_format
+    data_type = 'expression' ###Default, otherwise is 'dabg'
+    d = "core"; e = "extendend"; f = "full"; exons_to_grab = d ### Currently, not used by the program... intended as an option for ExonArrayAffymetrixRules full annotation (deprecated)
   
-  ### Original options and defaults
-  """
-  dabg_p = 0.75; data_type = 'expression' ###used for expression analysis when dealing with AltMouse arrays
-  a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; array_type = c
-  l = 'log'; n = 'non-log'; expression_data_format = l
-  w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; vendor = x
-  hs = 'Hs'; mm = 'Mm'; dr = 'Dr'; rn = 'Rn'; species = mm
-  include_raw_data = 'yes'  
-  expression_threshold = 70 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
-  avg_all_for_ss = 'no'  ###Default is 'no' since we don't want all probes averaged for the exon arrays
-  """
+    ### Original options and defaults
+    """
+    dabg_p = 0.75; data_type = 'expression' ###used for expression analysis when dealing with AltMouse arrays
+    a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; array_type = c
+    l = 'log'; n = 'non-log'; expression_data_format = l
+    w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; vendor = x
+    hs = 'Hs'; mm = 'Mm'; dr = 'Dr'; rn = 'Rn'; species = mm
+    include_raw_data = 'yes'  
+    expression_threshold = 70 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
+    avg_all_for_ss = 'no'  ###Default is 'no' since we don't want all probes averaged for the exon arrays
+    """
 
-  ct = 'count'; avg = 'average'; filter_method = avg
-  filter_by_dabg = 'yes'
+    ct = 'count'; avg = 'average'; filter_method = avg
+    filter_by_dabg = 'yes'
 
-  m_cutoff = m_cutoff = math.log(float(GE_fold_cutoffs),2); p_cutoff = float(GE_pvalue_cutoffs); ptype_to_use = GE_ptype
+    m_cutoff = m_cutoff = math.log(float(GE_fold_cutoffs),2); p_cutoff = float(GE_pvalue_cutoffs); ptype_to_use = GE_ptype
   
-  print "Beginning to Process the",species,array_type,'dataset'
+    print "Beginning to Process the",species,array_type,'dataset'
   
-  process_custom = 'no'  
-  if array_type == "custom": ### Keep this code for now, even though not currently used
-      import_dir = '/AltDatabase/affymetrix/custom'
-      dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-      for affy_data in dir_list:    #loop through each file in the directory to output results
-          affy_data_dir = 'AltDatabase/affymetrix/custom/'+affy_data
-          custom_array_db = parse_custom_annotations(affy_data_dir)
-          array_type = a; process_custom = 'yes'
-  if array_type == "AltMouse":
-      print "Processing AltMouse splicing data"
-      original_probeset_db,constitutive_db = importAltMerge('basic')
-      probe_annotation_file = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
-      original_annotate_db = import_annotations(probe_annotation_file)
-      conventional_array_db = []
-  elif array_type == "3'array":
-      process_go='yes';extract_go_names='yes';extract_pathway_names='yes'
-      probeset_db = []; annotate_db = []
-      constitutive_db = ""; conventional_array_db = {}
-      affy_data_dir = 'AltDatabase/affymetrix'
-      if vendor == 'Affymetrix':
+    process_custom = 'no'  
+    if array_type == "custom": ### Keep this code for now, even though not currently used
+        import_dir = '/AltDatabase/affymetrix/custom'
+        dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+        for affy_data in dir_list:    #loop through each file in the directory to output results
+            affy_data_dir = 'AltDatabase/affymetrix/custom/'+affy_data
+            custom_array_db = parse_custom_annotations(affy_data_dir)
+            array_type = a; process_custom = 'yes'
+    if array_type == "AltMouse":
+        print "Processing AltMouse splicing data"
+        original_probeset_db,constitutive_db = importAltMerge('basic')
+        probe_annotation_file = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
+        original_annotate_db = import_annotations(probe_annotation_file)
+        conventional_array_db = []
+    elif array_type == "3'array":
+        process_go='yes';extract_go_names='yes';extract_pathway_names='yes'
+        probeset_db = []; annotate_db = []
+        constitutive_db = ""; conventional_array_db = {}
+        affy_data_dir = 'AltDatabase/affymetrix'
+        if vendor == 'Affymetrix':
             try: conventional_array_db, arrayCode = BuildAffymetrixAssociations.importAffymetrixAnnotations(affy_data_dir,species,process_go,extract_go_names,extract_pathway_names)
             except Exception: print 'Error in processing CSV data. Getting this data from GO-Elite annotations instead.'
-      if vendor == 'Affymetrix' and len(conventional_array_db)>0: use_go='no'
-      else: use_go = 'yes'
-      try:
-          print "Adding additional gene, GO and WikiPathways annotations"
-          conventional_array_db = BuildAffymetrixAssociations.getArrayAnnotationsFromGOElite(conventional_array_db,species,vendor,use_go)
-      except Exception: print "Additional annotation import failed"
-      print len(conventional_array_db), "Array IDs with annotations from",vendor,"annotation files imported."
-  elif array_type != "AltMouse":
-      probeset_db = []; annotate_db = []; constitutive_db = []; conventional_array_db = []
-      ### The below function gathers GO annotations from the GO-Elite database (not Affymetrix as the module name implies)
-      conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
+        if vendor == 'Affymetrix' and len(conventional_array_db)>0: use_go='no'
+        else: use_go = 'yes'
+        try:
+            print "Adding additional gene, GO and WikiPathways annotations"
+            conventional_array_db = BuildAffymetrixAssociations.getArrayAnnotationsFromGOElite(conventional_array_db,species,vendor,use_go)
+        except Exception: print "Additional annotation import failed"
+        print len(conventional_array_db), "Array IDs with annotations from",vendor,"annotation files imported."
+    elif array_type != "AltMouse":
+        probeset_db = []; annotate_db = []; constitutive_db = []; conventional_array_db = []
+        ### The below function gathers GO annotations from the GO-Elite database (not Affymetrix as the module name implies)
+        conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
                 
-  altanalyze_files = []; datasets_with_all_necessary_files=0
-  for dataset in exp_file_location_db:
-      experiment_name = string.replace(dataset,'exp.',''); experiment_name = string.replace(experiment_name,'.txt','')
-      fl = exp_file_location_db[dataset]
-      expr_input_dir = fl.ExpFile()
-      stats_input_dir = fl.StatsFile()
-      expr_group_dir = fl.GroupsFile()
-      comp_group_dir = fl.CompsFile()
-      try: norm = fl.FeatureNormalization()
-      except Exception: norm = 'NA'
-      try: probability_statistic = fl.ProbabilityStatistic()
-      except Exception: probability_statistic = 'unpaired t-test'
-      residuals_input_dir = string.replace(expr_input_dir,'exp.','residuals.')
-      root_dir = fl.RootDir()
-      datasets_with_all_necessary_files +=1
-      checkArrayHeaders(expr_input_dir,expr_group_dir)
-      expression_dataset_output_dir = root_dir+"ExpressionOutput/"
-      if array_type != "3'array": #array_type != 'AltMouse' and 
-          try: probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(fl,array_type,dabg_p,expression_threshold,data_source,vendor,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis,expression_data_format)
-          except Exception, e:
-              print_out = 'Error ecountered for the '+species+', '+array_type+' dataset. Check to ensure that:\n(1) the correct platform and species were selected and\n(2) some expression values are present in ExpressionInput/exp.YourDataset.txt'
-              try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
-              except Exception: print print_out; sys.exit()
-          if array_type != 'AltMouse': expr_input_dir = expr_input_dir[:-4]+'-steady-state.txt'
-          else: probeset_db = original_probeset_db; annotate_db = original_annotate_db
-          for file in comparison_filename_list: altanalyze_files.append(file)
-          residual_file_status = ExonArray.verifyFile(residuals_input_dir)
-          ### Separate residual file into comparison files for AltAnalyze (if running FIRMA)
-          if residual_file_status == 'found': ExonArray.processResiduals(fl,Array_type,Species,perform_alt_analysis)
-      if norm == 'RPKM':
-        ### Separately analyze steady-state counts first, to replace fold changes
-        counts_expr_dir = string.replace(expr_input_dir,'exp.','counts.')
-        count_statistics_db, count_statistics_headers = calculate_expression_measures(counts_expr_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
-      calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
-      #performTissueProfiling(expr_input_dir) ### Correlate gene-level expression values with known cells and tissues
-  annotate_db={}; probeset_db={}; constitutive_db={}; array_fold_db={}; raw_data_comps={}; conventional_array_db=[]
-  clearObjectsFromMemory(conventional_array_db); conventional_array_db=[]
-  try: clearObjectsFromMemory(summary_filtering_stats); summary_filtering_stats=[]
-  except Exception: null=[]
-  try: clearObjectsFromMemory(array_folds); array_folds=[]
-  except Exception: null=[]
-  try: clearObjectsFromMemory(count_statistics_db); count_statistics_db=[]
-  except Exception: null=[]
+    global expr_threshold; global dabg_pval; global gene_exp_threshold; global gene_rpkm_threshold; dabg_pval = dabg_p
+    altanalyze_files = []; datasets_with_all_necessary_files=0
+    for dataset in exp_file_location_db:
+        experiment_name = string.replace(dataset,'exp.',''); experiment_name = string.replace(experiment_name,'.txt','')
+        fl = exp_file_location_db[dataset]
+        expr_input_dir = fl.ExpFile()
+        stats_input_dir = fl.StatsFile()
+        expr_group_dir = fl.GroupsFile()
+        comp_group_dir = fl.CompsFile()
+        try: norm = fl.FeatureNormalization()
+        except Exception: norm = 'NA'
+      
+        try: probability_statistic = fl.ProbabilityStatistic()
+        except Exception: probability_statistic = 'unpaired t-test'
+        try: gene_exp_threshold = fl.GeneExpThreshold()
+        except Exception: gene_exp_threshold = 0
+        try: gene_rpkm_threshold = fl.RPKMThreshold()
+        except Exception: gene_rpkm_threshold = 0
+        if expression_data_format == 'log':
+            try: expr_threshold = math.log(float(expression_threshold),2)
+            except Exception: expr_threshold = 0 ### Applies to RNASeq datasets
+        else:
+            expr_threshold = float(expression_threshold)
+        
+        residuals_input_dir = string.replace(expr_input_dir,'exp.','residuals.')
+        root_dir = fl.RootDir()
+        datasets_with_all_necessary_files +=1
+        checkArrayHeaders(expr_input_dir,expr_group_dir)
+        expression_dataset_output_dir = root_dir+"ExpressionOutput/"
+        if array_type != "3'array": #array_type != 'AltMouse' and 
+            try: probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(fl,array_type,dabg_p,expression_threshold,data_source,vendor,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis,expression_data_format)
+            except Exception, e:
+                print e
+                print_out = 'Error ecountered for the '+species+', '+array_type+' dataset. Check to ensure that:\n(1) the correct platform and species were selected and\n(2) some expression values are present in ExpressionInput/exp.YourDataset.txt'
+                try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
+                except Exception: print print_out; sys.exit()
+            if array_type != 'AltMouse': expr_input_dir = expr_input_dir[:-4]+'-steady-state.txt'
+            else: probeset_db = original_probeset_db; annotate_db = original_annotate_db
+            for file in comparison_filename_list: altanalyze_files.append(file)
+            residual_file_status = ExonArray.verifyFile(residuals_input_dir)
+            ### Separate residual file into comparison files for AltAnalyze (if running FIRMA)
+            if residual_file_status == 'found': ExonArray.processResiduals(fl,Array_type,Species,perform_alt_analysis)
+        if norm == 'RPKM':
+            ### Separately analyze steady-state counts first, to replace fold changes
+            counts_expr_dir = string.replace(expr_input_dir,'exp.','counts.')
+            if 'counts.' not in counts_expr_dir: counts_expr_dir = 'counts.'+counts_expr_dir ### Occurs if 'exp.' not in the filename
+            count_statistics_db, count_statistics_headers = calculate_expression_measures(counts_expr_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
+        calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
+        buildCriterion(GE_fold_cutoffs, p_cutoff, ptype_to_use, root_dir+'/ExpressionOutput/','summary') ###Outputs a summary of the dataset and all comparisons to ExpressionOutput/summary.txt
+        #except Exception: null=[]
+        graphic_links = None
+        if fl.ProducePlots() == 'yes':
+            graphic_links = visualizeQCPlots(expr_input_dir)
+        if fl.PerformLineageProfiler() == 'yes':
+            if graphic_links==None: graphic_links = []
+            graphic_links = performLineageProfiler(expr_input_dir,graphic_links) ### Correlate gene-level expression values with known cells and tissues
+        if graphic_links != None:
+            fl.setGraphicLinks(graphic_links) ### Uses Matplotlib to export QC and clustering plots
+        
+    annotate_db={}; probeset_db={}; constitutive_db={}; array_fold_db={}; raw_data_comps={}; conventional_array_db=[]
+    clearObjectsFromMemory(conventional_array_db); conventional_array_db=[]
+    try: clearObjectsFromMemory(summary_filtering_stats); summary_filtering_stats=[]
+    except Exception: null=[]
+    try: clearObjectsFromMemory(array_folds); array_folds=[]
+    except Exception: null=[]
+    try: clearObjectsFromMemory(count_statistics_db); count_statistics_db=[]
+    except Exception: null=[]
   
-  #print 'after deleted'; returnLargeGlobalVars()
-
-  ### Code in progress for version 2.1
-  try: buildCriterion(GE_fold_cutoffs, p_cutoff, ptype_to_use, root_dir+'/ExpressionOutput/','summary') ###Outputs a summary of the dataset and all comparisons to ExpressionOutput/summary.txt
-  except Exception: null=[]
+    #print 'after deleted'; returnLargeGlobalVars()
   
-  if datasets_with_all_necessary_files == 0:
-      ###Thus no files were found with valid inputs for all file types
-      print 'WARNING....No propperly named datasets were found. ExpressionBuilder requires that there are at least 3 files with the prefixes "exp.", "groups." and "comps.", with the following dataset name being identical with all three files.'
-      print "...check these file names before running again."
-      inp = sys.stdin.readline(); sys.exit()
-  altanalyze_files = unique.unique(altanalyze_files) ###currently not used, since declaring altanalyze_files a global is problematic (not available from ExonArray... could add though)
-  if array_type != "3'array" and perform_alt_analysis != 'expression':
-      altanalyze_output = FilterDabg.remoteRun(fl,species,array_type,expression_threshold,filter_method,dabg_p,expression_data_format,altanalyze_files,avg_all_for_ss)
-      return 'continue',altanalyze_output
-  else:
-      end_time = time.time(); time_diff = int(end_time-start_time)
-      return 'stop'
+    if datasets_with_all_necessary_files == 0:
+        ###Thus no files were found with valid inputs for all file types
+        print 'WARNING....No propperly named datasets were found. ExpressionBuilder requires that there are at least 3 files with the prefixes "exp.", "groups." and "comps.", with the following dataset name being identical with all three files.'
+        print "...check these file names before running again."
+        inp = sys.stdin.readline(); sys.exit()
+    altanalyze_files = unique.unique(altanalyze_files) ###currently not used, since declaring altanalyze_files a global is problematic (not available from ExonArray... could add though)
+    if array_type != "3'array" and perform_alt_analysis != 'expression':
+        altanalyze_output = FilterDabg.remoteRun(fl,species,array_type,expression_threshold,filter_method,dabg_p,expression_data_format,altanalyze_files,avg_all_for_ss)
+        return 'continue',altanalyze_output
+    else:
+        end_time = time.time(); time_diff = int(end_time-start_time)
+        return 'stop'
 
 def verifyFile(filename):
     fn=filepath(filename)
@@ -972,16 +1401,37 @@ def verifyFile(filename):
     return  found
 
 if __name__ == '__main__':
-  buildCriterion(2, 0.05, 'rawp', 'C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/RNASeq/Kathy-RNASeq/RPKM-normalization/ExpressionOutput/','summary')
-  """
-  dabg_p = 0.75
-  a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; Array_type = c
-  l = 'log'; n = 'non-log'; Expression_data_format = l
-  w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; vendor = x
-  hs = 'Hs'; mm = 'Mm'; dr = 'Dr'; rn = 'Rn'; Species = mm
-  Include_raw_data = 'yes'  
-  expression_threshold = 0 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
-  avg_all_for_ss = 'no'  ###Default is 'no' since we don't want all probes averaged for the exon arrays
+    array_type = "gene"
+    norm = 'RPKM'
+    expr_threshold = 1
+    dabg_pval = 0.05
+    gene_exp_threshold = 10
+    gene_rpkm_threshold = 0.5
   
-  remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,vendor,constitutive_source,data_source,Include_raw_data)
-  """
+    dir = '/Users/nsalomonis/Desktop/User Diagnostics/TestCELAnalysis/ExpressionOutput/'
+    #buildCriterion(2, 0.05, 'rawp', dir,'summary');sys.exit()
+    experiment_name = 'test'
+    species = 'Hs'
+    expression_dataset_output_dir = "/ExpressionOutput/"
+    expr_input_dir = "ExpressionInput/exp.test-steady-state.txt"
+    expr_input_dir = 'C:/Users/Nathan Salomonis/Desktop/GSE24243_RAW/ExpressionInput/exp.Skin_JN_BF.txt'
+    graphic_links=[]
+    graphic_links = visualizeQCPlots(expr_input_dir)
+    print graphic_links
+    graphic_links = performLineageProfiler(expr_input_dir,graphic_links)
+    print graphic_links; sys.exit()
+
+    print graphic_links
+    sys.exit()
+    """
+    dabg_p = 0.75
+    a = "3'array"; b = "exon"; c = "AltMouse"; e = "custom"; Array_type = c
+    l = 'log'; n = 'non-log'; Expression_data_format = l
+    w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; vendor = x
+    hs = 'Hs'; mm = 'Mm'; dr = 'Dr'; rn = 'Rn'; Species = mm
+    Include_raw_data = 'yes'  
+    expression_threshold = 0 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
+    avg_all_for_ss = 'no'  ###Default is 'no' since we don't want all probes averaged for the exon arrays
+  
+    remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,vendor,constitutive_source,data_source,Include_raw_data)
+    """

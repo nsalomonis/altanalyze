@@ -25,7 +25,11 @@ import string
 import unique
 import shutil
 import UI
-
+if sys.platform == "win32":
+    mode = 'wb' ### writes as in a binary mode versus text mode which introduces extra cariage returns in Windows
+else:
+    mode = 'w' ### writes text mode which can introduce extra carriage return characters (e.g., /r)
+    
 def filepath(filename):
     fn = unique.filepath(filename)
     return fn
@@ -41,21 +45,17 @@ def getParentDir(filename):
     
 def findParentDir(filename):
     ### :: reverses string
-    x = string.find(filename[::-1],'\\')*-1 ### get just the parent directory
-    if x == 1:
-        x = string.find(filename[::-1],'//')*-1 ### get just the parent directory
-    if x == 1:
-        x = string.find(filename[::-1],'/')*-1 ### get just the parent directory
+    filename = string.replace(filename,'//','/')
+    filename = string.replace(filename,'//','/') ### If /// present
+    filename = string.replace(filename,'\\','/')
+    x = string.find(filename[::-1],'/')*-1 ### get just the parent directory
     return filename[:x]
 
 def findFilename(filename):
     filename = string.replace(filename,'//','/')
+    filename = string.replace(filename,'//','/') ### If /// present
     filename = string.replace(filename,'\\','/')
-    x = string.find(filename[::-1],'\\')*-1 ### get just the parent directory
-    if x == 1:
-        x = string.find(filename[::-1],'//')*-1 ### get just the parent directory
-    if x == 1:
-        x = string.find(filename[::-1],'/')*-1 ### get just the parent directory
+    x = string.find(filename[::-1],'/')*-1 ### get just the parent directory
     return filename[x:]
 
 def ExportFile(filename):
@@ -66,7 +66,6 @@ def ExportFile(filename):
     except RuntimeError:
         isFileOpen(filename,dir)
         file_var = createExportFile(filename,dir)
-    
     return file_var
 
 def customFileMove(old_fn,new_fn):
@@ -78,6 +77,14 @@ def customFileMove(old_fn,new_fn):
     raw.close()
     os.remove(old_fn)
 
+def customFileCopy(old_fn,new_fn):
+    old_fn = filepath(old_fn)
+    new_fn = filepath(new_fn)
+    raw = ExportFile(new_fn)
+    for line in open(old_fn,'rU').xreadlines():
+        raw.write(line)
+    raw.close()
+    
 def isFileOpen(new_file,dir):
     try: 
         file_open = 'yes'
@@ -89,7 +96,7 @@ def isFileOpen(new_file,dir):
                     if file in new_file: ###Thus the file is open
                         try:
                             fn=filepath(new_file);
-                            file_var = open(fn,'w')
+                            file_var = open(fn,mode)
                             """
                             except Exception:
                                 try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
@@ -108,11 +115,10 @@ def isFileOpen(new_file,dir):
     except OSError: null = []
             
 def createExportFile(new_file,dir):
-    a=0
     try:
         #isFileOpen(new_file,dir)  ###Creates problems on Mac - not clear why
         fn=filepath(new_file)
-        file_var = open(fn,'w')
+        file_var = open(fn,mode)
         """except Exception:
             try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
             except Exception:
@@ -120,10 +126,9 @@ def createExportFile(new_file,dir):
                 print fn,"\nPlease login as an administrator or re-install the software as a non-admin.";sys.exit()
             file_var = open(fn,'w')"""
     except Exception:
-        a+=1
         createExportDir(new_file,dir) ###Occurs if the parent directory is also missing
         fn=filepath(new_file)
-        file_var = open(fn,'w')
+        file_var = open(fn,mode)
         """except Exception:
             try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
             except Exception:
@@ -168,7 +173,7 @@ def createExportDir(new_file,dir):
     if paths_added == 'yes':
         try:
             fn=filepath(new_file)
-            file_var = open(fn,'w')
+            file_var = open(fn,mode)
         except Exception:
             print "Parent directory not found locally for", [dir,new_file]; sys.exit()
     #else: print "Parent directory not found locally for", [dir,new_file]; sys.exit()
@@ -248,22 +253,26 @@ def copyFile(source_file,destination_file):
     try: createExportFolder(dir)
     except Exception: null=[] ### already exists
     shutil.copyfile(source_file,destination_file)
-    print '\nFile copied to:',destination_file
+    #print '\nFile copied to:',destination_file
     
 def deleteFolder(dir):
     try:
         dir = filepath(dir); dir_list = read_directory(dir) ### Get all files in directory
-        print 'deleting dir:',dir
+        #try: print 'deleting dir:',dir
+        #except Exception: null=None ### Occurs due to a Tkinter issue sometimes
         for file in dir_list:
             fn = filepath(dir+'/'+file)
-            if '.' in fn: os.remove(fn)
-            else: deleteFolder(fn) ### Remove subdirectories
+            try:
+                if '.' in file: os.remove(fn)
+                else: deleteFolder(fn) ### Remove subdirectories
+            except Exception: None
         os.removedirs(dir)
         #print dir
         return 'success'
     except OSError: return 'failed'
 
 if __name__ == '__main__':
+    createExportFolder('Databases/null/null'); sys.exit()
     createExportDir('C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/RNASeq/hESC-NP/TopHat-hESC_differentiation/AltExpression/pre-filtered/counts/a.txt','C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/RNASeq/hESC-NP/TopHat-hESC_differentiation/AltExpression/pre-filtered/counts'); sys.exit()
     deleteFolder('BuildDBs/Entrez/Gene2GO');kill
     fn = '/Users/nsalomonis/Desktop/GSE13297_RAW//AltExpression/ExonArray/Hs/Hs_Exon_CS_vs_hESC.p5_average.txt'

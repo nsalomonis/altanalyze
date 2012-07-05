@@ -31,7 +31,8 @@ py2app_adj2 = '/GO_Elite.app/Contents/Resources/lib/python2.5/site-packages.zip'
 py2app_adj3 = '/GO_Elite.app/Contents/Resources/lib/python2.6/site-packages.zip'
 py2app_adj4 = '/GO_Elite.app/Contents/Resources/lib/python2.7/site-packages.zip'
 py2exe_adj = '\\library.zip' ###py2exe
-py2app_ge_dirs = [py2app_adj,py2exe_adj,py2app_adj1,py2app_adj2,py2app_adj3,py2app_adj4]
+cx_Freeze_adj = '/library.zip'
+py2app_ge_dirs = [py2app_adj,py2exe_adj,py2app_adj1,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj]
 
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 py2app_adj1 = '/AltAnalyze.app/Contents/Resources/lib/python2.4/site-packages.zip'
@@ -39,11 +40,24 @@ py2app_adj2 = '/AltAnalyze.app/Contents/Resources/lib/python2.5/site-packages.zi
 py2app_adj3 = '/AltAnalyze.app/Contents/Resources/lib/python2.6/site-packages.zip'
 py2app_adj4 = '/AltAnalyze.app/Contents/Resources/lib/python2.7/site-packages.zip'
 py2exe_adj = '\\library.zip' ###py2exe
-py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2app_adj4]
+cx_Freeze_adj = '/library.zip'
+py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj]
 py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
+if ('linux' in sys.platform or 'posix' in sys.platform) and getattr(sys, 'frozen', False): ### For PyInstaller
+    application_path = os.path.dirname(sys.executable)
+    #application_path = sys._MEIPASS  ### should be the same as the above
+else:
+    application_path = os.path.dirname(__file__)
+    
+if 'AltAnalyze?' in application_path:
+    application_path = string.replace(application_path,'//','/')
+    application_path = string.replace(application_path,'\\','/') ### If /// present
+    application_path = string.split(application_path,'AltAnalyze?')[0]
+
 def filepath(filename):
-    dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
+    #dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
+    dir = application_path   
     try: dir_list = os.listdir(filename); fn = filename ### test to see if the path can be found (then it is the full path)
     except Exception: fn=os.path.join(dir,filename)
     if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
@@ -51,33 +65,38 @@ def filepath(filename):
     if 'Databases' in fn or 'AltDatabase' in fn:
         getCurrentGeneDatabaseVersion()
         fn = correctGeneDatabaseDir(fn)
+    fn = string.replace(fn,'.txt.txt','.txt')
+    fn = string.replace(fn,'//','/')
+    fn = string.replace(fn,'//','/') ### If /// present
     return fn
 
 def read_directory(sub_dir):
-    dir=os.path.dirname(dirfile.__file__)
+    dir=application_path
     for py2app_dir in py2app_dirs: dir = string.replace(dir,py2app_dir,'')
     if 'Databases' in sub_dir or 'AltDatabase' in sub_dir:
         getCurrentGeneDatabaseVersion()
         sub_dir = correctGeneDatabaseDir(sub_dir)
     try: dir_list = os.listdir(dir+sub_dir)
     except Exception: dir_list = os.listdir(sub_dir) ### For linux
+    try: dir_list.remove('.DS_Store') ### This is needed on a mac
+    except Exception: null=[]
     return dir_list
     
 def returnDirectories(sub_dir):
-    dir=os.path.dirname(dirfile.__file__)
+    dir=application_path
     if 'Databases' in sub_dir or 'AltDatabase' in sub_dir:
         getCurrentGeneDatabaseVersion()
         sub_dir = correctGeneDatabaseDir(sub_dir)
     for py2app_dir in py2app_dirs:
         dir = string.replace(dir,py2app_dir,'')
-        try: dir_list = os.listdir(dir + sub_dir)
-        except Exception:
-            try: dir_list = os.listdir(sub_dir) ### For linux
-            except Exception: print dir, sub_dir; bad_exit
+    try: dir_list = os.listdir(dir + sub_dir)
+    except Exception:
+        try: dir_list = os.listdir(sub_dir) ### For linux
+        except Exception: print dir, sub_dir; bad_exit
     return dir_list
 
 def returnDirectoriesNoReplace(sub_dir):
-    dir=os.path.dirname(dirfile.__file__)
+    dir=application_path
     for py2app_dir in py2app_dirs:
         dir = string.replace(dir,py2app_dir,'')
     try: dir_list = os.listdir(dir + sub_dir)
@@ -87,7 +106,7 @@ def returnDirectoriesNoReplace(sub_dir):
     return dir_list
 
 def refDir():
-    reference_dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main            
+    reference_dir=application_path      #directory file is input as a variable under the main            
     for py2app_dir in py2app_dirs: 
         reference_dir = string.replace(reference_dir,py2app_adj,'')
     return reference_dir
@@ -106,8 +125,9 @@ def correctGeneDatabaseDir(fn):
         alt_version = 'AltDatabase/'+gene_database_dir
         elite_version = 'Databases/'+gene_database_dir
         fn=string.replace(fn,'//','/'); fn=string.replace(fn,'\\','/')
-        if alt_version not in fn and elite_version not in fn and 'EnsMart' in fn: proceed = 'yes' ### If the user creates that contains EnsMart
-        if gene_database_dir not in fn and 'EnsMart' not in fn: proceed = 'yes'
+        if (alt_version not in fn) and (elite_version not in fn): proceed = 'yes' ### If the user creates that contains EnsMart
+        if gene_database_dir not in fn: proceed = 'yes'
+        if 'EnsMart' in fn: proceed = 'no'
         if proceed == 'yes':
             fn = string.replace(fn,'Databases','Databases/'+gene_database_dir)
             if 'AltDatabase/affymetrix' not in fn and 'NoVersion' not in fn:
@@ -171,6 +191,8 @@ def list(d):
     return t
 
 if __name__ == '__main__':
-    fn = filepath('Databases/Mm/uid-gene/null.txt')
-    print fn;kill
+    fn = filepath('/home/nsalomonis/Desktop/GO-Elite_v.1.2.4-Ubuntu-1/GO_Elite?42197/GO-Elite_report-20120512-151332.log')
+    print fn; sys.exit()
+    fn = filepath('BuildDBs/Amadeus/symbol-Metazoan-Amadeus.txt')
+    print fn;sys.exit()
     unique_db([1,2,3,4,4,4,5])
