@@ -22,7 +22,20 @@ import math
 import random
 import copy
 try: import salstat_stats
-except Exception: null=[] #print 'WARNING! The library file "salstat_stats" is not installed'
+except Exception: null=[]; #print 'WARNING! The library file "salstat_stats" is not installed'
+
+
+try: ### Added for AltAnalyze - Nathan Salomonis, 1-24-2012
+    from math import *
+    import cmath as cm
+    from mpmath import *
+    from mpmath import functions as for_py2app
+except Exception: null=[] #print 'WARNING! The library file "mpmath" is not installed'
+
+def testMPMath():
+    print psi(0, 1), -euler
+    print psi(1, '1/4'), pi**2+8*catala
+    print psi(2, '1/2'), -14*apery
 
 def LinearRegression_lm(ls1,ls2,return_rsqrd):
     intercept = 0 ### when forced through the origin
@@ -86,7 +99,83 @@ def adjustPermuteStats(pval_db):
         zsd = pval_db[element]
         try: zsd.SetAdjP(adjp)
         except AttributeError: zsd[1] = adjp ### When values are indeces rather than objects
-    return pval_db
+
+class GroupStats:
+    def __init__(self,log_fold,fold,p):
+        self.log_fold = log_fold; self.fold = fold; self.p = p
+    def LogFold(self): return self.log_fold
+    def Fold(self): return self.fold
+    def Pval(self): return self.p
+    def PermuteP(self): return self.p ### This is not a permute p, but the object name in the function is PermuteP
+    def SetAdjPIndex(self,index): self.adj_index = index
+    def SetPvalIndex(self,index): self.pval_index = index
+    def AdjIndex(self): return self.adj_index
+    def RawIndex(self): return self.pval_index
+    def SetAdjP(self,adjp): self.adj_p = adjp
+    def AdjP(self): return str(self.adj_p)
+    def setPval(self,p): self.p = p ### Typically re-set when a moderated statistic is calculated (e.g., emperical Bayesian - eBayes)
+    def SetMod(self,adjp): self.adj_p = adjp
+    def setMaxCount(self,max_count): self.max_count = max_count
+    def MaxCount(self): return self.max_count
+    
+    def setAdditionalStats(self,data_list1,data_list2):
+        """ Obtain the statistics for a moderated t-test and store as object variables """
+        sg,n1,n2,avg1,avg2 = FeatureVariance(data_list1,data_list2)
+        self.sg = sg; self.n1 = n1; self.n2 = n2; self.avg1 = avg1; self.avg2 = avg2
+        del data_list1; del data_list2 ### probably unnecessary
+    def setAdditionalWelchStats(self,data_list1,data_list2):
+        svar1,svar2,n1,n2,avg1,avg2,df = WelchTestFeatureVariance(data_list1,data_list2)
+        sg = svar1+svar2 ### gene-level variance - this is actually s sub g squared or s2g - take square root to get sg
+        self.sg = sg; self.n1 = n1; self.n2 = n2; self.avg1 = avg1; self.avg2 = avg2; self.df = df
+        self.svar1 = svar1; self.svar2 = svar2
+        del data_list1; del data_list2 ### probably unnecessary
+    def Avg1(self): return self.avg1
+    def Avg2(self): return self.avg2
+    def N1(self): return float(self.n1)
+    def N2(self): return float(self.n2)
+    def DF(self): return self.df
+    def Svar1(self): return self.svar1
+    def Svar2(self): return self.svar2
+    def setFeatureVariance(self,sg): self.sg = sg
+    def FeatureVariance(self): return self.sg
+    def Report(self):
+        output = str(self.Pval())+'|'+str(self.Fold())
+        return output
+    def __repr__(self): return self.Report()
+  
+class moderatedStatData(GroupStats):
+    def __init__(self,data_list1,data_list2):
+        """ Obtain the statistics for a moderated t-test and store as object variables """
+        sg,n1,n2,avg1,avg2 = FeatureVariance(data_list1,data_list2)
+        self.sg = sg; self.n1 = n1; self.n2 = n2; self.avg1 = avg1; self.avg2 = avg2
+        del data_list1; del data_list2 ### probably unnecessary
+
+def moderateTestStats(pval_db,probability_statistic):
+    """ Calculate a moderated variance for each biological comparison based, based on the average variance of all genes or molecules.
+    This calculation should be identical for moderated student t-test p-values from the R package limma. Small variances might arrise
+    from differences in the precision float values stored by the different languages and threshold from the Newton Iteration step. This
+    implementation currently relies on first, second and third derivitive calculations (e.g., polygamma aka psi functions) from mpmath."""
+    
+    #tst = salstat_stats.TwoSampleTests([],[]) ### Create object with two empty lists - will analyze in object database afterwards
+    #d0, s0_squared = tst.getModeratedStandardDeviation(pval_db)
+    d0, s0_squared = getModeratedStandardDeviation(pval_db,probability_statistic)
+    #print 'Prior degrees of freedom:',d0, 'and Prior s0 squared:',s0_squared
+    #d0 = 2.054191
+    #s0_squared = 0.01090202
+    for uid in pval_db:
+        gs = pval_db[uid]
+        if 'Welch' in probability_statistic:
+            ModeratedWelchTest(gs,d0, s0_squared)
+        else:
+            #tst.ModeratedTTestUnpaired(gs,d0, s0_squared)
+            ModeratedTTestUnpaired(gs,d0,s0_squared)
+        """
+        if uid == '10367120':
+            print gs.Avg1(), gs.Avg2(), gs.FeatureVariance(), math.sqrt(gs.FeatureVariance()), gs.AdjP()
+            #gs.setFeatureVariance(math.sqrt(gs.FeatureVariance()))
+            #tst.ModeratedTTestUnpaired(gs,d0, s0_squared)
+            #print gs.Avg1(), gs.Avg2(), gs.FeatureVariance(), math.sqrt(gs.FeatureVariance()), gs.AdjP()
+        """
         
 def zscore(associated_in_group,in_static_interval,total,in_flexible_interval):               
     r = float(associated_in_group)       #number of genes with this domain regulated (in one direction)
@@ -261,15 +350,124 @@ def stdev(array):
     for x in array:
         x = float(x)
         sq_deviation = math.pow((x-x_bar),2)
-        sum_dev = sum_dev + sq_deviation
+        sum_dev += sq_deviation
 
     try:
-        s_sqr = (1/(n-1))*sum_dev #s squared is the variance
+        s_sqr = (1.0/(n-1.0))*sum_dev #s squared is the variance
         s = math.sqrt(s_sqr)
     except ZeroDivisionError:
         s = 'null'
     return s
 
+def FeatureVariance(data_list1,data_list2):
+    """Calculates the variance for a standard t-statistic to use for calculation of a moderated t-test"""
+    N1 = len(data_list1)
+    N2 = len(data_list2)
+    df = float((N1 + N2) - 2)
+    svar1 = math.pow(stdev(data_list1),2)
+    svar2 = math.pow(stdev(data_list2),2)
+    avg1 = avg(data_list1)
+    avg2 = avg(data_list2)
+    sg_squared = (svar1*(N1-1)+svar2*(N2-1))/df ### gene-level variance - this is actually s sub g squared or s2g - take square root to get sg
+    return sg_squared,N1,N2,avg1,avg2
+
+def WelchTestFeatureVariance(data_list1,data_list2):
+    """Calculates the variance for a standard t-statistic to use for calculation of a moderated t-test"""
+    n1 = len(data_list1)
+    n2 = len(data_list2)
+    svar1 = math.pow(stdev(data_list1),2)/n1
+    svar2 = math.pow(stdev(data_list2),2)/n2
+    avg1 = avg(data_list1)
+    avg2 = avg(data_list2)
+    try: df = math.pow((svar1+svar2),2)/((math.pow(svar1,2)/(n1-1)) + (math.pow(svar2,2)/(n2-1)))
+    except Exception: df = 1
+    return svar1,svar2,n1,n2,avg1,avg2,df
+
+def getModeratedStandardDeviation(comparison_db,probability_statistic):
+    variance_ls=[]; e_sum=0; d0_2nd_moment_gene_sum = 0
+    for uid in comparison_db:
+        gs = comparison_db[uid] ### Object containing summary statistics needed for each uid (aka feature)
+        if 'Welch' in probability_statistic:
+            df = gs.DF()
+        else:
+            try: df = (gs.N1() + gs.N2()) - 2
+            except Exception,e: print e, gs, [gs.N1(), gs.N2()];kill
+        sg_squared = gs.FeatureVariance()
+        #print uid, df, sg_squared;kill
+        ###calculate s0 and d0
+        if sg_squared > 1e-11:
+            zg = math.log(sg_squared)
+            eg = zg - psi(0,df/2) + math.log(df/2)
+            variance_ls.append((eg,df))
+
+    n = len(variance_ls) ### number of uids analyzed
+    
+    ### Get the mean eg for all IDs
+    for (eg,df) in variance_ls:
+        e_sum+=eg
+        e_avg = e_sum/len(variance_ls)
+
+    ### Calculate the d0 2nd derivitive that will later need to be solved for d0
+    for (eg,df) in variance_ls:
+        d0_2nd_moment_gene_sum += ((math.pow(eg-e_avg,2)*n)/(n-1)) - psi(1,df/2)
+        
+    d0_2nd_moment_solve = d0_2nd_moment_gene_sum/len(variance_ls)
+    #print [d0_2nd_moment_solve]
+    d0 = NewtonInteration(d0_2nd_moment_solve)*2
+    #print [d0]
+    d0 = float(d0)
+    e = cm.e
+    s0_squared = math.pow(e,e_avg+psi(0,d0/2) - math.log(d0/2))
+    return d0, s0_squared
+
+def NewtonInteration(x):
+    """ Method used to emperically identify the best estimate when you can't solve for the variable of interest (in this case, d0 aka y)"""
+    y = 0.5 + (1/x)
+    proceed = 1
+    while proceed == 1:
+        if x>1e7: y = 1/math.sqrt(x)
+        elif x<1e-6: y = 1/self.x
+        else:
+            d = (psi(1,y)*(1-(psi(1,y)/x)))/psi(2,y)
+            #print y, x, d
+            y = y + d
+        if (-d/y)< 1e-8:
+            proceed = 0
+            break
+    return y
+    
+def ModeratedWelchTest(gs,d0,s0_squared):
+    df = gs.DF()
+
+    ### use the s0_squared for the pairwise comparison calculated in the getModeratedStandardDeviation
+    svar1 = (d0*s0_squared+df*gs.Svar1())/(d0+df)
+    svar2 = (d0*s0_squared+df*gs.Svar2())/(d0+df)
+    #svar = sg ### Use this to test and see if this gives the same result as a non-moderated t-test
+    if svar1 != 0 and svar2 != 0:
+        t = (gs.Avg1()-gs.Avg2())/math.sqrt(svar1+svar2)
+        prob = salstat_stats.betai(0.5*df,0.5,float(df)/(df+t*t))
+    else: prob = 1
+    #gs.SetAdjP(prob)
+    gs.setPval(prob)
+    #print [t, df, prob], 'ModeratedWelchTest'
+
+def ModeratedTTestUnpaired(gs,d0,s0_squared):
+    """ This function was validated using output data from limma """
+    df = (gs.N1() + gs.N2()) - 2
+    sg_squared = gs.FeatureVariance()
+
+    ### use the s0_squared for the pairwise comparison calculated in the getModeratedStandardDeviation
+    svar = (d0*s0_squared+df*sg_squared)/(d0+df) ### square root
+    #svar = sg ### Use this to test and see if this gives the same result as a non-moderated t-test
+    if svar != 0:
+        df = df+d0
+        t = (gs.Avg1()-gs.Avg2())/math.sqrt(svar*(1.0/gs.N1() + 1.0/gs.N2()))
+        prob = betai(0.5*df,0.5,float(df)/(df+t*t))
+    else: prob = 1
+    #print [t, df, prob], 'ModeratedTTestUnpaired'
+    #gs.SetAdjP(prob)
+    gs.setPval(prob)
+        
 def log_fold_conversion_fraction(array):
     try:
         new_array = []
@@ -383,6 +581,9 @@ def paired_ttest(list1,list2,tails,variance):
     sx = stdev(dx_list)
     
 def ttest(list1,list2,tails,variance):
+        """ Although issues with this function and the incomplete beta were present in the past, evaluating these on 2-1-12
+        confirmed that these methods produce accurate p-values for various equal variance and unequal variance examples for equal and unequal sample sizes"""
+        
         val_list1=[]
         val_list2=[]
         n1 = float(len(list1))
@@ -401,6 +602,13 @@ def ttest(list1,list2,tails,variance):
             try:
                 t = (avg(val_list1) - avg(val_list2))/math.sqrt(var1+var2)
                 df = math.pow((var1+var2),2)/((math.pow(var1,2)/(n1-1)) + (math.pow(var2,2)/(n2-1)))
+                #print (avg(val_list1), avg(val_list2)), math.sqrt(var1+var2), math.pow(stdev(val_list1),2), math.pow(stdev(val_list2),2)
+                """
+                # Equivalent to the above - shows that the above df calculation is accurate
+                u = math.pow(stdev(val_list2),2)/math.pow(stdev(val_list1),2)
+                df2 = math.pow((1/n1)+(u/n2),2)/((1/(math.pow(n1,2)*(n1-1)))  + (math.pow(u,2)/(math.pow(n2,2)*(n2-1))))
+                print df, df2;sys.exit()"""
+                
             except Exception: t=1; df=1; tails=2
             #calculate the degree's of freedom
 
@@ -422,20 +630,28 @@ def ttest(list1,list2,tails,variance):
                 sx = math.sqrt(((n1-1)*var1+(n2-1)*var2)/(n1+n2-2))
                 try:
                     t = (avg(val_list1) - avg(val_list2))/(sx*math.sqrt(a1+a2))
+                    #t = (avg(val_list1) - avg(val_list2))/math.sqrt(sx*(a1+a2))
                     df = (n1 + n2 - 2)
                 except Exception: t=1; df=1; tails=2
-                
-                
+            
         return t,df,tails
 
+def incompleteBeta(t,df):
+    p = salstat_stats.betai(0.5*df,0.5,df/(df+t*t))
+    return p
+
 def t_probability(t,df):
+    ### Works accurately for large df's when performing unequal variance tests - unlike t_probabilityOld
+    return incompleteBeta(t,df)
+    
+def t_probabilityOld(t,df):
     """P(abs(T)<t) is equivalent to the probability between -t and +t.  So the two-sided p value for t is
     1-P(abs(T)<t)."""
     
     t = abs(t)
     original_df = df
     if df <0: df = df*-1
-    df=int(string.split(str(df),'.')[0])
+    df=int(string.split(str(df),'.')[0]) ###alternatively could round down as - math.floor(number*10)/10
     if original_df <0: df = df*-1
     if df >100: df = 100
     pi = 3.141592653589793238    
@@ -502,6 +718,16 @@ def t_probability(t,df):
     #print (2.0)/(3.0), ((w*(df-3.0))/(y*(df-2.0)))
     return p
 
+def rankExpectation(exp_db):
+    #exp_db[gene] = [53.4, 57.2]
+    # test both hypotheses separately (a>b) and (b>a)
+    # set a window for creating the normal distribution around all values to test - default is 50 genes on both sides - 100 total
+    #1) alength
+    # which ever is larger, max(mad(ax[r[x,1]:r[x,2]]),mm, max mad or minmad, take that
+    # can we emperically determine the min mad?
+    # pnorm is calculating a probability based on the z-score standard deviation
+    null=[]
+    
 def p_value(z):
     """A formula that is accurate to within 10^(-5) is the following: 
     P(z) = 1 - d(z)*(a1*t + a2*(t^2) + a3*(t^3)), where
@@ -573,13 +799,18 @@ def Ftest(arrays):
 def runComparisonStatistic(data_list1,data_list2,probability_statistic):
     ### This function uses the salstat_stats module from the SalStat statistics package http://salstat.sourceforge.net/
     ### This module is pure python and does not require other external libraries
-    tst = salstat_stats.TwoSampleTests(data_list1,data_list2)
-    # options = unpaired t-test|paired t-test|Kolmogorov Smirnov|Mann Whitney U|Rank Sums
-    if probability_statistic == 'paired t-test': p = tst.TTestPaired()
-    elif probability_statistic == 'Kolmogorov Smirnov': p = tst.KolmogorovSmirnov()
-    elif probability_statistic == 'Mann Whitney U': p = tst.MannWhitneyU()
-    elif probability_statistic == 'Rank Sums': p = tst.RankSums()
-    elif probability_statistic == 'unpaired t-test': p = tst.TTestUnpaired()
+    if probability_statistic == 'unpaired t-test' or 'moderated' in probability_statistic:
+        p = OneWayANOVA([data_list1,data_list2]) ### faster implementation of unpaired equal variance t-test
+    else:
+        tst = salstat_stats.TwoSampleTests(data_list1,data_list2)
+        # options = unpaired t-test|paired t-test|Kolmogorov Smirnov|Mann Whitney U|Rank Sums
+        if probability_statistic == 'paired t-test': p = tst.TTestPaired()
+        elif probability_statistic == 'Kolmogorov Smirnov': p = tst.KolmogorovSmirnov()
+        elif probability_statistic == 'Mann Whitney U': p = tst.MannWhitneyU()
+        elif probability_statistic == 'Rank Sums': p = tst.RankSums()
+        elif probability_statistic == 'unpaired t-test' or 'moderated' in probability_statistic:
+            ### Typically not run except during testing
+            p = tst.TTestUnpaired()
     return p
     
 ###########Below Code Curtosey of Distribution functions and probabilities module
@@ -653,8 +884,53 @@ def simpleLinRegress(x,y):
     slope = sum_val_num/sum_val_denom
     return slope
 
+def testModeratedStatistics():
+    dgt_ko = [5.405,5.375,5.614]
+    wt = [5.952,5.952,6.007]
+    
+    d0 = 2.054191
+    s0_squared = 0.01090202
+    
+    import reorder_arrays
+    gs = reorder_arrays.GroupStats(0,1,0)
+    
+    gs.setAdditionalStats(wt,dgt_ko) ### Assuming equal variance
+    ModeratedTTestUnpaired(gs,d0,s0_squared)   
+
+    gs.setAdditionalWelchStats(wt,dgt_ko) ### Assuming unequal variance
+    ModeratedWelchTest(gs,d0,s0_squared)
+    
 if __name__ == '__main__':
-    dirfile = unique    
+    dirfile = unique
+    
+    testModeratedStatistics(); sys.exit()
+    
+    high =[134, 146, 104, 119, 124, 161, 107, 83, 113, 129, 97, 123]
+    low = [70, 118, 101, 85, 107, 132, 94]
+
+    high=[0.71, 0.82, 0.82, 0.76, 0.76, 0.71, 0.71, 0.82]
+    low=[0.65, 0.53, 0.88, 0.59, 0.76, 0.59, 0.65]
+
+    #high = [102, 99, 90, 121, 114]
+    #low = [107, 125, 111, 117, 122]
+
+    #x,y = wt, dgt_ko
+    x,y = high[:7], low[:6]
+    x,y = high, low
+
+    p = OneWayANOVA([x,y])
+    print p
+    t,df,tails = ttest(x,y,2,3)
+    p = t_probability(t,df)
+    print p, t, df
+    sys.exit()
+    
+    """ behaves well for
+    1) equal sample number, equal variance
+    """
+    sys.exit()
+    
+    testMPMath();sys.exit()
     #r = pearson([0.0, -0.58999999999999997], [0.0, 0.000000])
     #print rdf=7
     #a = median([1,2,3.212,4]); print a; kill
@@ -701,12 +977,6 @@ if __name__ == '__main__':
     score2 = aspire_stringent(b1,e1,b2,e2)
     print score1, score2
     kill
-    
-    """p = OneWayANOVA([x,y])
-    print p
-    t,df,tails = ttest(x,y,2,3)
-    p = t_probability(t,df)
-    print p;kill"""
     
     x = [3,1,2,3,4,5]
     y = [0.100,0.401,0.204,0.300,0.398,0.502]        

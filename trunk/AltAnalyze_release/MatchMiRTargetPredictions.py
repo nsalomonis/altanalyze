@@ -158,6 +158,13 @@ class MicroRNATargetData:
     def Symbol(self): return self._symbol
     def Source(self): return self._source
     def Sequences(self): return self._mir_sequences
+    def setScore(self,score): self.score = score
+    def setCoordinates(self,coord): self.coord = coord
+    def Score(self): return self.score
+    def Coordinates(self): return self.coord
+    def Output(self):
+        export_line=string.join([self.MicroRNA(),self.GeneID(),self.Sequences(),self.Coordinates()],'\t')+'\n'
+        return export_line
     def Report(self):
         output = self.GeneID()
         return output
@@ -465,7 +472,9 @@ def mirandaImport(parse_sequences,force):
     where gene symbol was related to Ensembl gene. Both files provided target microRNA sequence."""
     
     ### Then download the latest annotations and sequences
-    
+    if parse_sequences == 'coordinates':
+        export_object = export.ExportFile('miRanda/'+species+'/miRanda.txt')
+        print "Exporting to:"+'miRanda/'+species+'/miRanda.txt'
     verify, filename = verifyExternalDownload('miRanda')
     if verify == 'no': filename = downloadFile('miRanda')
     print 'parsing', filename; count=0; null_count=[]
@@ -493,10 +502,21 @@ def mirandaImport(parse_sequences,force):
                         y = MicroRNATargetData(ensembl_geneid,'',mir,mir_sequences,'miRanda'); count+=1
                         try: microRNA_target_db[mir].append(y)
                         except KeyError: microRNA_target_db[mir] = [y]
+                        if parse_sequences == 'coordinates':
+                            """
+                            genome_coord = string.split(t[13],':')[1:]; chr = 'chr'+ genome_coord[0]
+                            strand = genome_coord[-1]; start, stop = string.split(genome_coord[1],'-')
+                            """
+                            genome_coord = t[13][1:-1]
+                            align_score = t[15]
+                            y.setScore(align_score); y.setCoordinates(genome_coord)
+                            export_object.write(y.Output())
     print count, 'miRNA-target relationships added for miRanda'
     null_count = unique.unique(null_count)
     print len(null_count), 'missing symbols',null_count[:10]
+    if parse_sequences == 'coordinates': export_object.close()
     
+
 def importEnsTranscriptAssociations(ens_gene_to_transcript,type):
     ###This function is used to extract out EnsExon to EnsTranscript relationships to find out directly
     ###which probesets associate with which transcripts and then which proteins
@@ -680,6 +700,24 @@ def importmiRNAMap(parse_sequences):
     print count, 'miRNA-target relationships added for mirnamap'
     return count
 
+def exportMiRandaPredictionsOnly(Species,Force,Only_add_sequence_to_previous_results):
+    global species; global only_add_sequence_to_previous_results; global symbol_ensembl; global force
+    global ens_gene_to_transcript; global microRNA_target_db; global mir_hit_db; global parse_sequences
+    global symbol_ensembl_current; combined_results={}
+    species = Species; compare_to_user_data = 'no'; force = Force
+    only_add_sequence_to_previous_results = Only_add_sequence_to_previous_results    
+
+    try: ens_gene_to_transcript = importEnsTranscriptAssociations({},'archive')
+    except Exception: ens_gene_to_transcript={} ### Archived file not on server for this species
+    ens_gene_to_transcript = importEnsTranscriptAssociations(ens_gene_to_transcript,'current')
+    symbol_ensembl,symbol_ensembl_current = processEnsemblAnnotations()
+    microRNA_target_db = {}; mir_hit_db = {}
+    if only_add_sequence_to_previous_results != 'yes':
+        parse_sequences = 'coordinates'
+        try: del symbol_ensembl['']
+        except KeyError: null=[]
+        mirandaImport(parse_sequences,'no')
+        
 def runProgram(Species,Force,Only_add_sequence_to_previous_results):
     global species; global only_add_sequence_to_previous_results; global symbol_ensembl; global force
     global ens_gene_to_transcript; global microRNA_target_db; global mir_hit_db; global parse_sequences
@@ -757,14 +795,73 @@ def reformatGeneToMiR(species,type):
         data.close()
         print filename,'exported...'
             
-if __name__ == '__main__':
-    a = 'Ag'; b = 'Hs'; c = 'Rn'; d = 'Mm'
-    species = d; force = 'no'; type = 'lax'
+def reformatAllSpeciesMiRAnnotations():
     existing_species_dirs = unique.read_directory('/AltDatabase/ensembl')
     for species in existing_species_dirs:
         try:
             reformatGeneToMiR(species,'lax')
             reformatGeneToMiR(species,'strict')
         except Exception: null=[] ### Occurs for non-species directories
-        
+
+def copyReformattedSpeciesMiRAnnotations(type):
+    existing_species_dirs = unique.read_directory('/AltDatabase/ensembl')
+    for species in existing_species_dirs:
+        try:
+            ir = filepath('AltDatabase/ensembl/'+species+'/'+species+'_microRNA-Ensembl-GOElite_'+type+'.txt')
+            er = filepath('GOElite/'+species+'_microRNA-Ensembl-GOElite_'+type+'.txt')
+            export.copyFile(ir, er)
+            print 'Copied miRNA-target database for:',species, type
+        except Exception: null=[] ### Occurs for non-species directories
+
+def reformatDomainAssocations(species):
+    filename = 'AltDatabase/'+species+'/RNASeq/probeset-domain-annotations-exoncomp.txt'
+    fn=filepath(filename); gene_domain_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        ens_gene = string.split(t[0],':')[0]
+        for i in t[1:]:
+            domain = string.split(i,'|')[0]
+            if 'IPR' in domain:
+                domain = string.split(domain,'-IPR')[0] +'(IPR'+ string.split(domain,'-IPR')[1]+')'
+            else:
+                domain+='(UniProt)'
+            try: gene_domain_db[ens_gene].append(domain)
+            except Exception: gene_domain_db[ens_gene] = [domain]
+    gene_domain_db = eliminateRedundant(gene_domain_db)
+    
+    export_file = 'GOElite/'+species+'_Ensembl-Domain.txt'
+    export_data = export.ExportFile(export_file)
+    export_data.write('Ensembl\tEn\tDomain\n')
+    for gene in gene_domain_db:
+        for domain in gene_domain_db[gene]:
+            export_data.write(gene+'\tEn\t'+domain+'\n')
+    export_data.close()
+    print 'zipping',export_file
+    import gzip
+    f_in = open(filepath(export_file), 'rb')
+    f_out = gzip.open(filepath(export_file)[:-4]+'.gz', 'wb')
+    f_out.writelines(f_in)
+    f_out.close()
+    f_in.close()
+
+    os.remove(filepath(export_file))
+    
+def exportGOEliteGeneSets(type):
+    existing_species_dirs = unique.read_directory('/AltDatabase/ensembl')
+    for species in existing_species_dirs:
+        if len(species)<4:
+            try:
+                reformatGeneToMiR(species,type)
+            except Exception: null=[] ### Occurs for non-species directories
+            reformatGeneToMiR(species,type)
+            reformatDomainAssocations(species)
+        copyReformattedSpeciesMiRAnnotations(type)
+           
+if __name__ == '__main__':
+    exportGOEliteGeneSets('lax');sys.exit()
+    existing_species_dirs = unique.read_directory('/AltDatabase/ensembl')
+    for species in existing_species_dirs:
+        if len(species)<4: reformatDomainAssocations(species)
+    #exportMiRandaPredictionsOnly('Hs','no','no');sys.exit()
     #runProgram(species,force,'no'); sys.exit()

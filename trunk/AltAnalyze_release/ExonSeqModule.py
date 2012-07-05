@@ -50,7 +50,8 @@ def importSplicingAnnotationDatabase(filename,array_type):
                 id1,id2 = string.split(probeset_id,':')
                 if id2[0]=='E' or id2[0]=='I': probeset_id = probeset_id ### This import method applies to 
                 else: probeset_id = id2
-            probe_data = AffyExonSTDataSimple(probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop)
+            ### Store exon region start and stop since this corresponds to the critical-exon-region-seq_update.txt file sequence coordinates
+            probe_data = AffyExonSTDataSimple(probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop,strand,chromosome)
             exon_db[probeset_id] = probe_data
     print len(exon_db), 'probesets imported'
     return exon_db
@@ -81,9 +82,9 @@ class SplicingAnnotationData:
     def GeneStructure(self): return self._block_structure
     def SecondaryExonID(self): return self._block_exon_ids
     def Chromosome(self): return self._chromosome
-    def Strand(self): return self._stand
-    def ProbeStart(self): return self._start
-    def ProbeStop(self): return self._stop
+    def Strand(self): return self._strand
+    def ProbeStart(self): return int(self._start)
+    def ProbeStop(self): return int(self._stop)
     def ProbesetClass(self): 
         ###e.g. core, extendended, full
         return self._probest_class
@@ -122,11 +123,13 @@ class AffyExonSTData(SplicingAnnotationData):
             else: return self._constitutive_status
 
 class AffyExonSTDataSimple(SplicingAnnotationData):
-    def __init__(self,probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop):
+    def __init__(self,probeset_id,ensembl_gene_id,exon_region,ens_exon_ids,probeset_start,probeset_stop,strand,chr):
         self._geneid = ensembl_gene_id; self._external_gene = ensembl_gene_id; self._exon_region = exon_region
         self._external_exonids = ens_exon_ids; self._probeset=probeset_id
+        self._chromosome = chr
         try: self._start=int(probeset_start); self._stop = int(probeset_stop)
         except Exception: self._start=probeset_start; self._stop = probeset_stop
+        self._strand = strand
     
 class JunctionDataSimple(SplicingAnnotationData):
     def __init__(self,probeset_id,ensembl_gene_id,array_geneid,junction_probesets,critical_exons):
@@ -387,10 +390,33 @@ def importmiRNATargetPredictions(species):
 class MicroRNAData:
     def __init__(self, gene_id, microrna, sequence, source):
         self._gene_id = gene_id; self._microrna = microrna; self._sequence = sequence; self._source = source
+        self.start_set = []
+        self.end_set = []
+        self.exon_sets=[]
     def GeneID(self): return self._gene_id
     def MicroRNA(self): return self._microrna
     def Sequence(self): return self._sequence
     def Source(self): return self._source
+    def setEnsExons(self,ens_exons): self.exon_sets+=ens_exons
+    def EnsExons(self):
+        exonsets_unique = unique.unique(self.exon_sets)
+        return string.join(exonsets_unique,'|')
+    def setCoordinates(self,chr,strand,start,end):
+        self.start_set.append(start)
+        self.end_set.append(end)
+        self.chr = chr
+        self.strand = strand
+    def Coordinates(self):
+        x=0; coords=[]
+        for i in self.start_set:
+            coord = self.Chr()+':'+str(i)+'-'+str(self.end_set[x])
+            coords.append(coord)
+            x+=1
+        coords = unique.unique(coords)
+        coords = string.join(coords,'|') ###If multiple coordinates
+        return coords
+    def Chr(self): return self.chr
+    def Strand(self): return self.strand
     def SummaryValues(self):
         output = self.GeneID()+'|'+self.MicroRNA()+'|'+self.Sequence()
         return output
@@ -406,7 +432,8 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
         for y in ensembl_mirna_db[gene]:
             miRNA = y.MicroRNA(); miRNA_seq = y.Sequence(); sources = y.Source()
             if mir_source == 'pictar':
-                if (gene,miRNA,miRNA_seq) not in added: data.write(gene+'\t'+miRNA+'\t'+miRNA_seq+'\n'); added[(gene,miRNA,miRNA_seq)]=[]
+                if (gene,miRNA,miRNA_seq) not in added:
+                    data.write(gene+'\t'+miRNA+'\t'+miRNA_seq+'\n'); added[(gene,miRNA,miRNA_seq)]=[]
             if gene in splice_event_db:
                 for ed in splice_event_db[gene]:
                     probeset = ed.Probeset()
@@ -422,6 +449,7 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
                                     if '|' in sources:  proceed='yes'
                                 else: proceed='yes'
                         if proceed == 'yes' and hit == 'yes':
+                            getMicroRNAGenomicCoordinates(ed,y) ### Add's genomic coordinate information to these objects
                             try: probeset_miRNA_db[probeset].append(y)
                             except KeyError: probeset_miRNA_db[probeset] = [y]
     if mir_source == 'pictar': data.close()
@@ -430,16 +458,43 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
     if stringency == 'lax': export_type = 'any'
     else: export_type = 'multiple'
     output_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset_microRNAs_'+export_type+'.txt'
+    coord_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset_coord_microRNAs_'+export_type+'.txt'
     k=0
-    fn=filepath(output_file); data = open(fn,'w')
+    fn=filepath(output_file)
+    cfn=filepath(coord_file)
+    data = open(fn,'w'); coord_data = open(cfn,'w')
     for probeset in probeset_miRNA_db:
         for y in probeset_miRNA_db[probeset]:
             miRNA = y.MicroRNA(); miRNA_seq = y.Sequence(); sources = y.Source()
             data.write(probeset+'\t'+miRNA+'\t'+miRNA_seq+'\t'+sources+'\n')
+            coord_data.write(probeset+'\t'+miRNA+'\t'+miRNA_seq+'\t'+sources+'\t'+y.GeneID()+'\t'+y.Coordinates()+'\t'+y.EnsExons()+'\n')
         k+=1
-    data.close()
+    data.close(); coord_data.close()
     print k, 'entries written to', output_file
 
+def getMicroRNAGenomicCoordinates(ed,y):
+    ### This function is used for internal QC
+    miRNA = y.MicroRNA(); miRNA_seq = y.Sequence(); sources = y.Source()
+    ps_start = ed.ProbeStart(); ps_end = ed.ProbeStop(); strand = ed.Strand(); chr = ed.Chromosome()
+    probeset_seq = ed.ExonSeq()
+    mi_start = string.find(probeset_seq,miRNA_seq)
+    mi_end = mi_start+len(miRNA_seq)
+    if strand == '+':
+        genomic_start = ps_start+mi_start
+        genomic_end = ps_start+mi_end
+    else:
+        genomic_start = ps_end-mi_start
+        genomic_end = ps_end-mi_end
+    y.setCoordinates(chr,strand,genomic_start,genomic_end)
+    y.setEnsExons(ed.ExternalExonIDList())
+    """
+    if miRNA == 'hsa-miR-31' and ed.Probeset()=='147198|5':
+        print ed.Probeset()
+        print probeset_seq
+        print ed.ExternalExonIDList()
+        print miRNA,miRNA_seq,chr,strand,genomic_start,genomic_end
+        print mi_start, mi_end, ps_start, ps_end"""
+        
 def checkProbesetSequenceFile(species):
     """ Check to see if the probeset sequence file is present and otherwise download AltAnalyze hosted version"""
     probeset_seq_file = getProbesetSequenceFile(species)

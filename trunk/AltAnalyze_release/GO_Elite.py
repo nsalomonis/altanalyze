@@ -20,25 +20,71 @@
 results, pruning redundant Gene Ontology paths, reading in command-line options and coordinating
 all GO-Elite analysis and update functions found in other modules."""
 
-import sys, string
-import os.path, platform
-import unique; reload(unique)
-import math
-import copy
-import time
-import shutil
-import webbrowser
-import gene_associations; reload(gene_associations)
-import OBO_import; reload(OBO_import)
-import export
-import UI
-import mappfinder; reload(mappfinder)
-import traceback
-import datetime
-use_Tkinter = 'no'
+try:
+    try: import traceback
+    except Exception: None
+    import sys, string
+    import os.path, platform
+    import unique; reload(unique)
+    import math
+    import copy
+    import time
+    import shutil
+    import webbrowser
+    import gene_associations; reload(gene_associations)
+    import OBO_import; reload(OBO_import)
+    import export
+    import UI
+    import mappfinder; reload(mappfinder)
+    import datetime
+except Exception:
+    print_out = "\nWarning!!! Critical Python incompatiblity encoutered.\nThis can occur if the users calls the GO-Elite "
+    print_out += "python source code WITHIN A COMPILED version directory which results in critical conflicts between "
+    print_out += "the compiled distributed binaries and the operating systems installed version of python. "
+    print_out += "If this applies, either:\n(A) double-click on the executable GO-Elite file (GO-Elite or GO-Elite.exe) "
+    print_out += "or\n(B) download the Source-Code version of GO-Elite and run this version (after installing any needed "
+    print_out += "dependencies (see our Wiki or Documentation). Otherwise, contact us at: genmapp@gladstone.ucsf.edu\n\n"
+    print_out += "Installation Wiki: http://code.google.com/p/go-elite/wiki/Installation\n"
+    print print_out
+    
+    try:
+        ### Create a log report of this
+        import unique
+        try: log_file = unique.filepath('GO-Elite_error-report.log')
+        except Exception: log_file = unique.filepath('/GO-Elite_error-report.log')
+        log_report = open(log_file,'w')
+        log_report.write(print_out)
+        try: log_report.write(traceback.format_exc())
+        except Exception: None
+        log_report.close()
+        print 'See log file for additional technical details:',log_file
+        ### Open this file
+        if os.name == 'nt':
+            try: os.startfile('"'+log_file+'"')
+            except Exception:  os.system('open "'+log_file+'"')
+        elif 'darwin' in sys.platform: os.system('open "'+log_file+'"')
+        elif 'linux' in sys.platform: os.system('xdg-open "'+log_file+'/"')   
+    except Exception: None
+    sys.exit()
+    
 debug_mode = 'no'
+Tkinter_failure = False
 start_time = time.time()
 
+try: command_args = string.join(sys.argv,' ')
+except Exception: command_args = ''
+if len(sys.argv[1:])>1 and '-' in command_args:
+    use_Tkinter = 'no'
+else:
+    try:
+        import Tkinter
+        from Tkinter import *
+        import PmwFreeze
+        use_Tkinter = 'yes'
+    except ImportError:
+        use_Tkinter = 'yes'
+        Tkinter_failure = True
+        
 ###### File Import Functions ######
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -110,13 +156,13 @@ def getAllDirectoryFiles(import_dir, search_term):
 
 def import_path_index():
     global path_id_to_goid;  global full_path_db; global all_nested_paths
-    try:  built_go_paths, path_goid_db, path_dictionary = OBO_import.buildNestedGOTree('no','no')
+    try:  built_go_paths, path_goid_db, path_dictionary = OBO_import.remoteImportOntologyTree(ontology_type)
     except IOError:
-        ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedGOTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
+        ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedOntologyTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
         print_out = "Unknown error encountered during Gene Ontology Tree import.\nPlease report to genmapp@gladstone.ucsf.edu if this error re-occurs."
         try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); sys.exit()
         except Exception: print print_out; sys.exit()
-    
+    print 'Imported',ontology_type,'tree-structure for pruning'
     full_path_db = built_go_paths
     path_id_to_goid = path_goid_db
     #all_nested_paths = path_dictionary 
@@ -186,7 +232,19 @@ def moveMAPPFinderFiles(input_dir):
                         print 'Tried to move the file',mappfinder_input,'to an archived folder, but it is currently open.'
                         print 'Please close this file and hit return or quit GO-Elite'
                         inp = sys.stdin.readline()
-            
+
+def checkPathwayType(filename):
+    type='GeneSet'
+    ontology_type = string.split(filename,'-')[-1][:-4]
+    if ontology_type == 'local': ontology_type = 'WikiPathways'
+    if ontology_type == 'GO': ontology_type = 'GeneOntology'
+    fn=filepath(filename); x=20; y=0
+    for line in open(fn,'rU').readlines():
+        y+=1
+        if y<x:
+            if 'Ontology-ID' in line: type = 'Ontology'
+    return ontology_type,type
+
 def importMAPPFinderResults(filename):
     zscore_changed_path_db = {}; go_full = {}; zscore_goid = {}
     global dummy_db; dummy_db = {}; global file_headers; file_headers = []
@@ -197,8 +255,10 @@ def importMAPPFinderResults(filename):
     for line in open(fn,'rU').readlines():
         data = cleanUpLine(line)
         if x == 0 and y == 0:
-            if 'GOID' in data: x = 1; go_titles = data + '\n'; input_file_type = 'GO'
-            elif 'MAPP Name' in data: y = 1; mapp_titles = data + '\n'; input_file_type = 'local'
+            if 'Ontology-ID' in data:
+                x = 1; go_titles = data + '\n'; input_file_type = 'Ontology'
+            elif 'Gene-Set Name' in data:
+                y = 1; mapp_titles = data + '\n'; input_file_type = 'GeneSet'
             elif data in species_list: ###Check species from results file
                 if data in species_list: species = data; species_code = species_codes[species]
             elif 'source identifiers supplied' in data:
@@ -221,7 +281,7 @@ def importMAPPFinderResults(filename):
                     try: UI.WarningWindow(print_out,' Exit ')
                     except Exception: print print_out
         elif x == 1:
-            try: goid, go_name, go_type, local_changed, local_measured, local_go, percent_changed_local, percent_present_local, number_changed, number_measured, number_go, percent_changed, percent_present, z_score, permutep, adjustedp = string.split(data,'\t')
+            try: goid, go_name, go_type, number_changed, number_measured, number_go, percent_changed, percent_present, z_score, permutep, adjustedp = string.split(data,'\t')
             except ValueError:
                 t = string.split(data,'\t')
                 print_out = "WARNING...GeneOntology results file has too few or too many columns.\nExpected 16 columns, but read"+ str(len(t))
@@ -411,218 +471,6 @@ def buildOrderedTree(go_index_list):
         print i, organized_tree_db[i]
     kill"""
     return organized_tree_db,path_dictionary_filtered
-
-def comparison(zscore_changed_path_db):
-    """This function performs the following operations:
-    1) builds a database of all possible parent and child paths (e.g. nodes) from the list of filtered GO terms.
-    2) identifies the most top-level nodes from 1 that will contain all nodes (where there's at one parent and one child).
-    3) identifies all node without a parent or child in zscore_changed_path_db (paths filtered upon import)"""
-    ###For each node in the hierarchy that has a child, list the parent as the key and any and all children (not specific branches) as the values.
-    ###Each parent could be a child if it has a parent in another dictionary.  Nodes not in path_dictionary have no parents or children regulated.
-    path_dictionary = buildFullTreePath(zscore_changed_path_db) ### All nested paths with more than two related nodes
-    print '*',
-    """Find the top parent nodes generated in the above path_dict query that are not in other dictionary
-    items.  These represent unique top level parent nodes... the rest are redundant, since they will be children of the top parent"""
-    path_dictionary_exclude = {}
-    for redundant_path in path_dictionary:
-        for unique_path in path_dictionary:
-            if redundant_path!= unique_path:  ###If not looking at the same path
-                if redundant_path in path_dictionary[unique_path]:
-                    ####Therefore unique_path is the actual parent of redundant_path, example: redundant_path_index = (0, 3, 24, 30, 8) and unique_path_index = (0, 3)
-                    redundant_children_paths = path_dictionary[redundant_path]
-                    ###Store these so we can remove both the parent and child paths
-                    path_dictionary_exclude[redundant_path] = redundant_children_paths  ###Probably don't need to store the redundant_children_paths (see next paragraph)
-    print '* * * *',
-    path_dictionary_include = {}; path_dictionary_include2 = {}
-    ###Find the top level parents by removeing the rendundant entries from the path_dictionary (excluding these entries from a new dictionary)
-    for parent_path in path_dictionary:
-        if parent_path not in path_dictionary_exclude:
-            unique_children_paths = path_dictionary[parent_path]
-            path_dictionary_include['node',parent_path] = unique_children_paths ### The node annotations is used later on to destinguish this as a known top level parent node
-            path_dictionary_include2[parent_path] = unique_children_paths  
-
-    ###Now, identify those top-level nodes not found in the above paragraph, since they are regulated but have no other significant parents or
-    ###child terms in the zscore_changed_path_db dictionary.  This will be likely listed in the output file.
-    exclude = {}; zscore_changed_path_db_unique = {}
-    for filtered_path in zscore_changed_path_db:
-        for parent_path in path_dictionary_include2:
-            if filtered_path in path_dictionary_include2[parent_path]: exclude[filtered_path]=filtered_path   
-        if filtered_path in path_dictionary_include2: exclude[filtered_path]=filtered_path         
-    for filtered_path in zscore_changed_path_db:
-        if filtered_path not in exclude: zscore_changed_path_db_unique['node',filtered_path] = ['null']
-    print '* * *',
-    s = "\nRound 1: length of original GO index: "+str(len(zscore_changed_path_db))+'\n'; log_report.append(s)
-    s = "Non-nested GO terms (unique): "+str(len(zscore_changed_path_db_unique))+'\n'; log_report.append(s)
-    s = "Length of initial GO tree build: "+str(len(path_dictionary))+'\n'; log_report.append(s)
-    s = "Length of GO tree node dictionary excluded: "+str(len(path_dictionary_exclude))+'\n'; log_report.append(s)
-    s = "Length of GO tree node dictionary included: "+str(len(path_dictionary_include))+'\n'; log_report.append(s)
-
-    iteration_count = 0  ###The next function iteratures many of the queries in this function, until optimized tree-hierarchies of nodes are created.  This states that no interations have occured yet
-
-    return path_dictionary_include,zscore_changed_path_db_unique,iteration_count, path_dictionary
-    
-def comparison_iterate(dbase, finished_node_dbase,iteration_count):
-    """This function is almost identical to "comparison" but handles two input databases from comparison and
-    allows for multiple items in the key field of the input and output tables. NOTE: comparison1 could be
-    adapted to serve this purpose"""
-    #This code finds common parent nodes among children and parents and collapses into a single branch
-    #node (i.e. dictionary).    
-    path_dictionary = {}; path_dictionary_temp = {}
-    for item in dbase:
-        for entry in dbase[item]:   #unlike the 1st comparison function, query the dictionary definitions
-            path_char = len(entry)  #get the number of characters to compare
-            if item in dbase:        #compare back to the same entry
-                for entry2 in dbase[item]:
-                    if entry != entry2:  #looking for children of entry
-                        base_path = entry2[0:path_char]
-                        #print entry, "base_path:",base_path
-                        if base_path == entry:
-                            new_node_set=[]
-                            for object in item:      #grab all individual key entries 
-                                new_node_set.append(object)  #append the next child node in the new key
-                            new_node_set.append(entry)
-                            new_node_set = tuple(new_node_set)   #need to convert the list to a tuple to be a dictionary key
-                            path_dictionary_temp[item[-1]] = ['temp']
-                            try: path_dictionary[new_node_set].append(entry2) #append child of entry
-                            except KeyError: path_dictionary[new_node_set] = [entry2]
-    #need to only look at the last entry of dbase to find last unique entry
-    dbase_temp = {}
-    for entry in dbase: dbase_temp[entry[-1]] = ['temp']
-
-    #find those nodes that had no more children this run and append to unique entries from last run
-    dbase_unique = {}
-    for entry in dbase:
-        entry2 = entry[-1]   #we added the word "node" into the key at [0]
-        #this adds entries that had no more nesting(one entry) to the finished dictionary as well
-        #as parent entries added to path_dictionary
-        if entry2 not in path_dictionary_temp:
-            if len(dbase[entry]) == 1: #this should have no sibling entries below the parent
-                finished_node_dbase[entry] = dbase[entry]
-            else:  #therefore, there are siblings that need to be separated into distinct entries
-                for node in dbase[entry]:
-                    entry3 = entry[1:]
-                    temp_list=[]
-                    temp_list.append('sibling1')
-                    for item in entry3:
-                        temp_list.append(item)
-                    temp_list.append(node)
-                    new_key = tuple(temp_list)
-                    finished_node_dbase[new_key] = ['siblings_type1']   #type1 specifies that the parent is unique, therefore no nested siblings of the parent term, just loners=> can analyze in calculate_score_for_children function
-                    entry3 = entry[1:]
-                    temp_list=[]
-                    temp_list.append('sibling2')
-                    for item in entry3:
-                        temp_list.append(item)
-                    new_key = tuple(temp_list)
-                    finished_node_dbase[new_key] = dbase[entry] #also add an entry which contains both children under the true parent: note: instead of node, sibling is listed now to distinguish
-
-    #find parent nodes generated in the above path_dict query that are not in other dictionary
-    #items of path_dict.  These represent unique top level parent nodes... the rest are redundant
-    path_dictionary_exclude = {}
-    for item in path_dictionary:
-        #item_parent = item[-2]
-        item_child = item[-1]
-        for item2 in path_dictionary:
-            #item2_parent = item2[-2]
-            #item2_child = item2[-1]
-            if item != item2:
-                if item_child in path_dictionary[item2]: #if the parent node is in the list of another entry, then it was prematurely added and should be excluded
-                    parent_path = path_dictionary[item] #not really necessary to add the parent_path?
-                    path_dictionary_exclude[item] = parent_path #exclude the parent item, prematurely added
-    path_dictionary_include = {}
-    for item in path_dictionary:
-        if item not in path_dictionary_exclude:
-            parent_path = path_dictionary[item]
-            path_dictionary_include[item] = parent_path
-    
-    #print "\nRound 2: length of original GO tree:",len(dbase)
-    #print "length of initial GO tree node dictionary:", len(path_dictionary)
-    #print "number of non-nested GO terms:",len(finished_node_dbase)
-    #print "length of GO tree node dictionary excluded:",len(path_dictionary_exclude)
-    #print "length of GO tree node dictionary included:",len(path_dictionary_include)
-            
-    ### added this code to account for nodes that have a parent, no children, but other siblings with and without children
-    ### previously these would have been eroneously eliminated
-    nodes_examined = []
-    for entry in path_dictionary_include:
-        for node in path_dictionary_include[entry]:
-             nodes_examined.append(node)
-        for node in entry:
-             if node != 'node':
-                nodes_examined.append(node)
-    for entry in finished_node_dbase:
-        for node in finished_node_dbase[entry]:
-             nodes_examined.append(node)
-        for node in entry:
-             if node != 'node':
-                nodes_examined.append(node)
-    nodes_examined = unique.unique(nodes_examined)
-    for nodes in dbase: ###This is where it switched
-        for entry in dbase[nodes]:
-            if entry not in nodes_examined:
-                temp_list = []
-                for item in nodes:
-                    temp_list.append(item)
-                temp_list.append(entry)
-                new_key = tuple(temp_list)
-                #print "new_key",new_key
-                finished_node_dbase[new_key] = ['null']
-    if iteration_count < 2: print '* * * *',
-    elif iteration_count < 3: print '* * *',
-    if len(path_dictionary_include) > 0:
-        iteration_count +=1
-        """print "path_dictionary_include"
-        for entry in path_dictionary_include:
-            print entry, ":", path_dictionary_include[entry]
-        print "finished_node_dbase"
-        for entry in finished_node_dbase:
-            print entry, ":", finished_node_dbase[entry] """
-        return comparison_iterate(path_dictionary_include, finished_node_dbase, iteration_count)
-    else:
-        """for i in finished_node_dbase:
-            if (0, 3, 24) in i: print i, finished_node_dbase[i]
-        kill"""
-        #print "Total number of iterations:",iteration_count
-        print '* GO-tree collapsing finished'
-        return chew_back(finished_node_dbase)
-
-def chew_back(dbase):
-    """This function takes a database of go nodes (e.g. [0.1.2,0.1.2.1,0.1.2.1.2]:[0.1.2.1.2.23]) and checks
-    to see if the second to last parent node is found in any other dictionary keys.  If it is, then there
-    is no need to transfer parent nodes to the children list, if no, then we must chew back."""
-    iterate_dbase ={}; finished_dbase = {}
-    #for entry in dbase: print entry,":", dbase[entry]
-    
-    original_dbase = copy.deepcopy(dbase)
-    #print "Lenth of input chewback database:",len(dbase)
-    #print "Looking for additional redundant terms across multiple branches...(please be patient)"
-    loop = 0; count = 0; iter=0
-    while len(dbase) > 0:
-        loop +=1; original_increment = int(len(dbase)/20); increment = original_increment
-        for entry in dbase:
-            count = 0; iter+=1; parent_node = entry[-2]; unique_branch_node = entry[-1]
-            if loop == 1:
-                if iter == increment: increment+=original_increment; print '*',
-            if len(entry)<3: #if there is only one parent node
-                finished_dbase[entry] = dbase[entry]; count = 1
-            else:
-                for entry2 in original_dbase:
-                    if entry != entry2 and unique_branch_node not in entry2:
-                        if parent_node in entry2: finished_dbase[entry] = dbase[entry]; count = 1
-            if count == 0:   #if the parent entry was not found in any of the dictionary keys, it's unique and thus, we need to chew back
-                new_entry = entry[0:-1]
-                children = dbase[entry]; last_entry = entry[-1]
-                updated_children = [last_entry]+children
-                iterate_dbase[new_entry] = updated_children
-        dbase = iterate_dbase
-        iterate_dbase = {}
-        #print "number of chew-back iterations:",loop
-        
-        
-    #print "Length of output chewback database:",len(finished_dbase)
-    print "Database chewback complete"
-    """for entry in finished_dbase: print entry,':',finished_dbase[entry] """
-    return finished_dbase             
 
 def link_score_to_all_paths(all_paths,zscore_changed_path_db):
     temp_list = []
@@ -836,6 +684,11 @@ def exportGOResults(go_full,go_titles,collapsed_go_tree,zscore_goid,go_gene_anno
     if len(go_elite_output_folder) == 0: output_folder = "output"; ref_dir = reference_dir +'/'+output_folder
     else: output_folder = go_elite_output_folder; ref_dir = go_elite_output_folder
     output_results = output_folder+'/'+mappfinder_input[0:-4]+ '_' +filter_method +'_elite.txt'
+    if ontology_type == 'WikiPathways':
+        output_results = string.replace(output_results, 'WikiPathways','local') ### Makes the output filename compatible with GenMAPP-CS plugin filenames
+    if ontology_type == 'GO':
+        output_results = string.replace(output_results, 'GeneOntology','GO') ### Makes the output filename compatible with GenMAPP-CS plugin filenames
+
     entries_added=[]  #keep track of added GOIDs - later, add back un-added for MAPPFinder examination
     print_out = 'Results file: '+output_results+ '\nis open...can not re-write.\nPlease close file and select "OK".'
     try: raw = export.ExportFile(output_results)
@@ -850,7 +703,7 @@ def exportGOResults(go_full,go_titles,collapsed_go_tree,zscore_goid,go_gene_anno
     else: value_headers = ''
     if len(go_gene_annotation_db)>0: go_titles = go_titles[:-1]+'\t'+'redundant with terms'+'\t'+'inverse redundant'+'\t'+'gene symbols'+value_headers+'\n' ###If re-outputing results after building gene_associations
     raw.write(go_titles)
-    combined_results[output_results] = [('go',mappfinder_input,go_titles)]
+    combined_results[output_results] = [((ontology_type,'Ontology'),mappfinder_input,go_titles)]
     
     #append data to a list, to sort it by go_cateogry and z-score
     collapsed_go_list = []; collapsed_go_list2 = []; goids_redundant_with_others={}
@@ -887,10 +740,10 @@ def exportGOResults(go_full,go_titles,collapsed_go_tree,zscore_goid,go_gene_anno
                 else: goid_vals = ''
                 data = data[:-1]+'\t'+redundant_with_terms+'\t'+inverse_redundant+'\t'+symbols+goid_vals+'\n'  ###If re-outputing results after building gene_associations
             raw.write(data)
-            combined_results[output_results].append(('go',mappfinder_input,data))
+            combined_results[output_results].append(((ontology_type,'Ontology'),mappfinder_input,data))
     raw.close()
 
-    combined_results[output_results].append(('','',''))
+    combined_results[output_results].append((('',''),'',''))
     summary_data_db['redundant_go_term_count'] = len(goids_redundant_with_others)
     #print "New MAPPFinder Elite file", output_results, "written...."
     return collapsed_go_list2
@@ -913,7 +766,7 @@ def exportLocalResults(filtered_mapps,mapp_titles,mapp_gene_annotation_db,mapp_v
     else: mapp_value_headers = ''
     if len(mapp_gene_annotation_db)>0: mapp_titles = mapp_titles[:-1]+'\t'+'redundant with terms'+'\t'+'inverse redundant'+'\t'+'gene symbols'+mapp_value_headers+'\n'
     raw.write(mapp_titles)
-    combined_results[output_results] = [('mapp',mappfinder_input,mapp_titles)]
+    combined_results[output_results] = [((ontology_type,'GeneSet'),mappfinder_input,mapp_titles)]
 
     filtered_mapp_list = []; mapps_redundant_with_others={}
     for (zscore,line,mapp_name) in filtered_mapps:
@@ -937,14 +790,17 @@ def exportLocalResults(filtered_mapps,mapp_titles,mapp_gene_annotation_db,mapp_v
                 else: mapp_vals = ''                
                 line = line[:-1]+'\t'+redundant_with_terms+'\t'+inverse_redundant+'\t'+symbols+mapp_vals+'\n'  ###If re-outputing results after building gene_associations
         raw.write(line)
-        combined_results[output_results].append(('mapp',mappfinder_input,line))
+        combined_results[output_results].append(((ontology_type,'GeneSet'),mappfinder_input,line))
     raw.close()
-    combined_results[output_results].append(('','',''))
+    combined_results[output_results].append((('',''),'',''))
     #print "Local Filtered MAPPFinder file", output_results, "written...."
     summary_data_db['redundant_mapp_term_count'] = len(mapps_redundant_with_others)
     
 def importORASimple(ora_dir,elite_pathway_db,file_type):
     summary_results_db={}
+    ontology_name = file_type
+    if file_type == 'GeneOntology': file_type = 'GO.'
+    if file_type == 'WikiPathways': file_type = 'local'
     dir_list = read_directory(ora_dir)
     for file in dir_list:
         if '.txt' in file and file_type in file:
@@ -954,20 +810,20 @@ def importORASimple(ora_dir,elite_pathway_db,file_type):
                 t = string.split(data,'\t')
                 try:
                     ### Applies to Ontology ORA files
-                    pathway_id = t[0]; pathway_name = t[1]; num_changed = t[8]; num_measured = t[9]; zscore = t[13]; permutep = t[14]; pathway_type = t[2]
+                    pathway_id = t[0]; pathway_name = t[1]; num_changed = t[3]; num_measured = t[4]; zscore = t[8]; permutep = t[9]; pathway_type = t[2]
                 except IndexError:
                     ### Applies to Local pathway files
                     try:
-                        pathway_name = t[0]; num_changed = t[1]; num_measured = t[2]; zscore = t[6]; permutep = t[7]; pathway_id = pathway_name; pathway_type = 'local'
+                        pathway_name = t[0]; num_changed = t[1]; num_measured = t[2]; zscore = t[6]; permutep = t[7]; pathway_id = pathway_name; pathway_type = 'GeneSet'
                     except Exception: pathway_name='null'
                     
                 ### If the pathway/ontology term was considered a pruned term (elite)
 
-                if pathway_name in elite_pathway_db:
+                if (pathway_name,ontology_name) in elite_pathway_db:
                     try:
                         int(num_changed)
                         ### Encode this data immediately for combination with the other input files and for export
-                        key = (pathway_id,pathway_name,pathway_type)
+                        key = (pathway_id,pathway_name,ontology_name,pathway_type)
                         values = [num_changed,num_measured,zscore,permutep]
                         try: summary_results_db[pathway_name,key].append([file,values])
                         except Exception: summary_results_db[pathway_name,key] = [[file,values]]
@@ -993,31 +849,41 @@ def outputOverlappingResults(combined_results,ora_dir):
     ontology_to_filename={}; pathway_to_filename={}
     
     ### determine which Elite pathways are in which files and store
-    ontology_files=[]; local_files=[]
+    ontology_files={}; local_files={}
     for filename in filename_list:
         file = export.findFilename(filename)[:-4]
         for (pathway_type,mapp_name,line) in combined_results[filename]:
+            specific_pathway_type,pathway_type = pathway_type
             t = string.split(line,'\t')
-            if pathway_type == 'go':
+            if pathway_type == 'Ontology':
                 go_name = t[1]
-                try: ontology_to_filename[go_name].append(file)
-                except Exception: ontology_to_filename[go_name]=[file]
-                if file not in ontology_files: ontology_files.append(file)
-            elif pathway_type == 'mapp':
+                try: ontology_to_filename[go_name,specific_pathway_type].append(file)
+                except Exception: ontology_to_filename[go_name,specific_pathway_type]=[file]
+                if specific_pathway_type not in ontology_files:
+                    ontology_files[specific_pathway_type] = [file]
+                elif file not in ontology_files[specific_pathway_type]:
+                    ontology_files[specific_pathway_type].append(file)
+            elif pathway_type == 'GeneSet':
                 pathway_name = t[0]
-                try: pathway_to_filename[pathway_name].append(file)
-                except Exception: pathway_to_filename[pathway_name]=[file]
-                if file not in local_files: local_files.append(file)
-                
-    ontology_elite_db = importORASimple(ora_dir,ontology_to_filename,'GO')
-    local_elite_db = importORASimple(ora_dir,pathway_to_filename,'local')
-
+                try: pathway_to_filename[pathway_name,specific_pathway_type].append(file)
+                except Exception: pathway_to_filename[pathway_name,specific_pathway_type]=[file]
+                if specific_pathway_type not in local_files:
+                    local_files[specific_pathway_type] = [file]
+                elif file not in local_files[specific_pathway_type]:
+                    local_files[specific_pathway_type].append(file)
+                    
     headers = ['number_changed','number_measured',' z_score','permuteP']
-    header_ontology = ['ontology_ID','ontology_name','ontology_type','elite_term_in']
-    header_local = ['local_ID','local_name','local_type','elite_term_in']
-    writeOverlapLine(raw,ontology_files,headers,header_ontology,ontology_elite_db,ontology_to_filename)
-    raw.write('\n')
-    writeOverlapLine(raw,local_files,headers,header_local,local_elite_db,pathway_to_filename)
+    header_ontology = ['Ontology-ID','Ontology-term','Ontology-name','Ontology-type','elite_term_in']
+    header_local = ['GeneSet-ID','GeneSet-term','GeneSet-name','GeneSet-type','elite_term_in']
+    for ontology_type in ontologies_analyzed:
+        input_file_type = ontologies_analyzed[ontology_type]
+        if input_file_type == 'Ontology':
+            ontology_elite_db = importORASimple(ora_dir,ontology_to_filename,ontology_type)
+            writeOverlapLine(raw,ontology_files,headers,header_ontology,ontology_elite_db,ontology_to_filename,ontology_type)
+        else:
+            local_elite_db = importORASimple(ora_dir,pathway_to_filename,ontology_type)
+            writeOverlapLine(raw,local_files,headers,header_local,local_elite_db,pathway_to_filename,ontology_type)
+        raw.write('\n')
     raw.close()
     
     ### Move to the root directory
@@ -1026,14 +892,14 @@ def outputOverlappingResults(combined_results,ora_dir):
     try: export.customFileMove(fn,fn2)
     except Exception: print fn; print fn2; print "OverlapResults failed to be copied from CompleteResults (please see CompleteResults instead)"
     
-def writeOverlapLine(raw,ontology_files,headers,header_ontology,ontology_elite_db,ontology_to_filename):
+def writeOverlapLine(raw,ontology_files,headers,header_ontology,ontology_elite_db,ontology_to_filename,ontology_type):
     file_headers=[]
-    for filename in ontology_files:
+    for filename in ontology_files[ontology_type]:
         file_headers += updateHeaderName(headers,filename)
     title = string.join(header_ontology+file_headers,'\t')+'\n'
     raw.write(title)
     for (pathway_name,key) in ontology_elite_db:
-        elite_files = string.join(ontology_to_filename[pathway_name],'|')
+        elite_files = string.join(ontology_to_filename[pathway_name,ontology_type],'|')
         row = list(key)+[elite_files]
         for (file,values) in ontology_elite_db[(pathway_name,key)]:
             row += values
@@ -1064,18 +930,18 @@ def output_combined_results(combined_results):
     filename_list.sort() ### rank the results alphebetically so local and GO results are seqeuntial
     for filename in filename_list:
         for (pathway_type,mapp_name,line) in combined_results[filename]:
+            specific_pathway_type,pathway_type = pathway_type
             data = cleanUpLine(line)
             t = string.split(data,'\t')
-            if pathway_type == 'go':
+            if pathway_type == 'Ontology':
                 goid = t[0]
-                del t[0]; del t[2:7]
+                del t[0]; #del t[2:7]
                 go_type = t[1]; del t[1]; specific_pathway_type = go_type
                 t[0] = t[0]+'('+goid+')'
-            elif pathway_type == 'mapp': specific_pathway_type = 'local'
-            else: specific_pathway_type = ''
             t.reverse(); t.append(specific_pathway_type); t.append(mapp_name); t.reverse()
             vals = string.join(t,'\t'); vals = vals + '\n'
             raw.write(vals)
+        #print filename, len(combined_results[filename])
     raw.close()
 
 def identifyGeneFiles(import_dir, mappfinder_input):
@@ -1200,7 +1066,19 @@ def countGOFullGenes(go_full,go_to_mod_genes):
             for gene in go_to_mod_genes[goid]: unique_go_full_genes[gene] = []
     return len(unique_go_full_genes)
                     
+def reorganizeResourceList(pathway_list):
+    ### Make sure that WikiPathways and GO are analyzed last, so that gene results are also reported last to GO_Elite.py
+    add_pathway=[]
+    pathway_list_reorganized=[]
+    for pathway in pathway_list:
+        if '-local.txt' in pathway: add_pathway.append(pathway)
+        elif '-GO.txt' in pathway: add_pathway.append(pathway)
+        else: pathway_list_reorganized.append(pathway)
+    pathway_list_reorganized+=add_pathway
+    return pathway_list_reorganized
+
 def runGOElite(mod):
+  print 'Running GO-Elite version 1.2.5\n'
   #UI.WarningWindow('test','test')    
   source_data = mod; speciesData(); sourceDataCheck(); sourceData()
   try: species_code = species_codes[species]
@@ -1208,33 +1086,47 @@ def runGOElite(mod):
 
   global exclude_related; global mappfinder_input; global nested_collapsed_go_tree; global uid_to_go; global collapsed_go_tree
   global path_dictionary_include; global organized_tree; global parent_highest_score; global gene_identifier_file; global main_output_folder
+  global ontology_type; global ontologies_analyzed; ontologies_analyzed = {}
   exclude_related = 'yes'
-  nested_paths_stored = '' ###Variable used to determine if gene databases for GO analysis are imported for that species
   
   global program_type; global log_file
   program_type,database_dir = unique.whatProgramIsThis()
   global combined_results; combined_results={}; global go_to_mod_genes; global mapp_to_mod_genes; global zscore_goid
   global combined_associations; combined_associations={}; global combined_gene_ranking; combined_gene_ranking={}
-  log_file = main_output_folder+'/GO-Elite_report.log'
 
   ### Add empty values for when there is no data on these values
   summary_keys = ['filtered_go_term_count','elite_go_term_count','redundant_go_term_count','filtered_local_count']
   summary_keys +=['redundant_mapp_term_count','go_gene_full_count','go_gene_elite_count','mapp_gene_elite_count']
   for key in summary_keys: summary_data_db[key]='0'
-
+  
+  print_items=[]
+  print_items.append("Primary GO-Elite Parameters")
+  print_items.append('\t'+'species'+': '+species_code)
+  print_items.append('\t'+'results-directory'+': '+main_output_folder)
+  print_items.append('\t'+'filter_method'+': '+filter_method)
+  print_items.append('\t'+'z_threshold'+': '+str(z_threshold))
+  print_items.append('\t'+'p_val_threshold'+': '+str(p_val_threshold))
+  print_items.append('\t'+'change_threshold'+': '+str(change_threshold))
+  print_items.append('\t'+'sort_only_by_zscore'+': '+sort_only_by_zscore)
+  print_items.append('\t'+'analysis_method'+': '+str(analysis_method))
+  print_items.append('\t'+'criterion_input_folder'+': '+criterion_input_folder)
+  print_items.append('\t'+'custom_sets_folder'+': '+custom_sets_folder)
+  universalPrintFunction(print_items)
+  
   if run_mappfinder=='yes':
-          global path_id_to_goid;  global full_path_db; global all_nested_paths; global collapsed_tree; export_databases = 'no'
-          genmapp_mod = 'Ensembl' ### default
-          try: full_path_db,path_id_to_goid,null = OBO_import.buildNestedGOAssociations(species_code,export_databases,mod_types,genmapp_mod)
-          except KeyError:
-              ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedGOTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
-              print_out = "Unknown error encountered during Gene Ontology Tree import.\nPlease report to genmapp@gladstone.ucsf.edu if this error re-occurs."
-              try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); sys.exit()
-              except Exception: print print_out; sys.exit()
-          file_dirs = criterion_input_folder, criterion_denom_folder, main_output_folder, custom_sets_folder
-          denom_search_dir = criterion_denom_folder
-          go_to_mod_genes, mapp_to_mod_genes = mappfinder.generateMAPPFinderScores(species,species_code,source_data,mod,system_codes,permutations,resources_to_analyze,file_dirs,root)
-  else: import_path_index(); denom_search_dir = ''
+      print_items = []
+      print_items.append("ORA Parameters")
+      print_items.append('\t'+'mod'+': '+mod)
+      print_items.append('\t'+'permutations'+': '+str(permutations))
+      print_items.append('\t'+'resources_to_analyze'+': '+resources_to_analyze)
+      universalPrintFunction(print_items)
+      
+      global path_id_to_goid;  global full_path_db; global all_nested_paths; global collapsed_tree; export_databases = 'no'
+      file_dirs = criterion_input_folder, criterion_denom_folder, main_output_folder, custom_sets_folder
+      denom_search_dir = criterion_denom_folder
+      go_to_mod_genes, mapp_to_mod_genes = mappfinder.generateMAPPFinderScores(species,species_code,source_data,mod,system_codes,permutations,resources_to_analyze,file_dirs,root)
+      reload(mappfinder) ### Clear memory of any retained objects
+  else: denom_search_dir = ''
   global export_user_summary_values; global go_elite_output_folder
   get_non_elite_terms_only = 'no' ### Used for internal benchmarking and QC
   export_user_summary_values = 'yes'
@@ -1268,50 +1160,47 @@ def runGOElite(mod):
       d = "File in the folder nested are: "+str(dir_list); log_report.append(d+'\n')
       log_report.append('('+filepath('Databases/'+species_code+'/nested')+')\n')
       mappfinder_db_input_dir = '/'+species_code+'/nested/'
-      nested_version = OBO_import.remoteImportVersionData(mappfinder_db_input_dir)
-      #except Exception: nested_version = 'null'
       try: print os.name, platform.win32_ver()[0], platform.architecture(), platform.mac_ver(), platform.libc_ver(), platform.platform()
       except Exception: print os.name
-      d = "Version of the nested files is: "+nested_version; log_report.append(d+'\n')
-      nested_version = OBO_import.remoteImportVersionData('OBO/')
-      d = "Version of the OBO files are: "+nested_version; log_report.append(d+'\n')
-      exportLog(log_report)
-      try: log_file = main_output_folder+'/GO-Elite_report.log'
-      except Exception: log_file = 'GO-Elite_report.log'
-      ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedGOTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
+      #exportLog(log_report)
+      ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedOntologyTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
       print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to genmapp@gladstone.ucsf.edu."
       try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy()
       except Exception: print print_out
-      try: os.startfile('"'+log_file+'"')
-      except Exception: null=[]
+      if os.name == 'nt':
+            try: os.startfile('"'+log_file+'"')
+            except Exception:  os.system('open "'+log_file+'"')
+      elif 'darwin' in sys.platform: os.system('open "'+log_file+'"')
+      elif 'linux' in sys.platform: os.system('xdg-open "'+log_file+'/"')   
       sys.exit()
 
-  use_improved_treebuild = 'yes'
-  global dataset_name; dataset_report=[]; go_ora_files=0; local_ora_files=0
+  global dataset_name; go_ora_files=0; local_ora_files=0; oraDirTogeneDir={}
+  dir_list = reorganizeResourceList(dir_list)
   for mappfinder_input in dir_list:    #loop through each file in the directory to output results
-    dataset_name = string.replace(mappfinder_input,'-GO.txt',''); dataset_name = string.replace(dataset_name,'-local.txt','')
-    if dataset_name not in dataset_report:
-        print 'Begining GO-Elite pruning for:',dataset_name; dataset_report.append(dataset_name)
+    dataset_name = string.join(string.split(mappfinder_input,'-')[:-1],'-')
+    print 'Pruning',mappfinder_input
     source_data = user_defined_source ###Resets the variables back to the user defined when missing from the MAPPFinder files
     mod = user_defined_mod
     mappfinder_input_dir = m.searchdirectory(mappfinder_input)
-    try: run_mod,run_source,zscore_changed_path_db,go_full,go_titles,zscore_goid,input_file_type,gene_identifier_file,species_code = importMAPPFinderResults(mappfinder_input_dir)
+    ontology_type,input_file_type = checkPathwayType(mappfinder_input_dir)
+    ontologies_analyzed[ontology_type] = input_file_type ### Use when examining overlapping terms between criterion
+    if input_file_type == 'Ontology':
+        import_path_index()
+    try:
+        run_mod,run_source,zscore_changed_path_db,go_full,go_titles,zscore_goid,input_file_type,gene_identifier_file,species_code = importMAPPFinderResults(mappfinder_input_dir)
     except Exception:
         print_out = 'Impropper ORA file format! Make sure to\n select the correct pre-processed input files.'
-        try: print "Analysis Complete"; UI.WarningWindow(print_out,'Critical Error!')
-        except Exception: print "Analysis Complete\n"
+        try: print "Analysis Failed"; UI.WarningWindow(print_out,'Critical Error!'); root.destroy()
+        except IOError: print "Analysis Failed\n"
+        sys.exit()
     if len(run_mod)>1: mod = run_mod
     if len(run_source)>1: source_data = run_source
-    if input_file_type == 'GO':
+    if input_file_type == 'Ontology':
         go_ora_files+=1
-        if run_mappfinder == 'yes':
+        if run_mappfinder == 'yes' and 'GO.txt' in mappfinder_input_dir:
             ### Used for gene-level summary reporting
             go_gene_full_count = countGOFullGenes(go_full,go_to_mod_genes); summary_data_db['go_gene_full_count'] = go_gene_full_count
-        if use_improved_treebuild == 'yes':
-            organized_tree,all_paths = buildOrderedTree(zscore_changed_path_db)
-        else:
-            path_dictionary_include,zscore_changed_path_db_unique,iteration_count,all_paths = comparison(zscore_changed_path_db)
-            organized_tree = comparison_iterate(path_dictionary_include,zscore_changed_path_db_unique,iteration_count)
+        organized_tree,all_paths = buildOrderedTree(zscore_changed_path_db) ### Improved GO-tree reconstruction method - implemented in version 1.22
         parent_highest_score = link_score_to_all_paths(all_paths,zscore_changed_path_db)
         child_highest_score = calculate_score_for_children(organized_tree,zscore_changed_path_db)
         collapsed_tree = collapse_tree(parent_highest_score,child_highest_score,organized_tree)
@@ -1326,14 +1215,13 @@ def runGOElite(mod):
         try: gene_file_dir = identifyGeneFiles(gene_input_dir, mappfinder_input)
         except Exception: gene_file_dir=''
         if len(gene_file_dir) > 0:
-            print "Begining to re-annotate pruned results..."
-            if (species_code != nested_paths_stored) or len(denom_search_dir)==0:  ###Otherwise these relationships are built already
-                nested_paths_stored = species_code
-                if len(denom_search_dir)==0: search_dir = gene_input_dir
-                else: search_dir = denom_search_dir ### Occurs when analyzing an input list and existing pruned results
-                uid_to_go, uid_to_mapp, uid_system, gene_annotations = gene_associations.grabNestedGeneAssociations(species_code,mod,source_data,system_codes,custom_sets_folder,search_dir)
-                print 'Annotations imported'
-            #else: print 'Apply Existing Gene Association Databases to GO Files'  ### Relevant species databases already exist (uid_to_go,gene_annotations,all_nested_paths)
+            #print "Begining to re-annotate pruned results...",
+            nested_paths_stored = species_code
+            if len(denom_search_dir)==0: search_dir = gene_input_dir
+            else: search_dir = denom_search_dir ### Occurs when analyzing an input list and existing pruned results
+            uid_to_go, uid_system, gene_annotations = gene_associations.grabNestedGeneToOntologyAssociations(species_code,
+                                                    mod,source_data,system_codes,search_dir,ontology_type)
+            #print 'Annotations imported'
             try:
                 vals = gene_associations.matchInputIDsToGOEliteTerms(gene_file_dir,
                                         go_elite_output_folder,system_codes,mappfinder_input_dir,
@@ -1347,10 +1235,10 @@ def runGOElite(mod):
                 #print len(unique_genes), "unique genes associated with GO-Elite terms"          
                 ###Re-output results, now with gene annotation data
                 collapsed_go_list = exportGOResults(go_full,go_titles,collapsed_go_list,zscore_goid,go_gene_annotation_db,go_values_db,value_headers,goids_with_redundant_genes)    
-
+                exportFilteredSIF(collapsed_go_list,mappfinder_input_dir)
             except OSError:
                 print_out = "\nWARNING: Could not delete parent GOID\n"+parent_goid+ "from go_count_db."
-                print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the MAPPFinder file is wrong (check this)\nor does not match the user selected MOD.'
+                print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the ORA results file is wrong (check this)\nor does not match the user selected MOD.'
                 print_out += '\kReport bug to the GO-Elite help desk.'
                 try: UI.WarningWindow(print_out,' Continue ')
                 except Exception: print print_out
@@ -1363,26 +1251,29 @@ def runGOElite(mod):
         ###Identify gene lists for the corresponding GO-elite results and generate nested associations
         try: gene_file_dir = identifyGeneFiles(gene_input_dir, mappfinder_input)
         except Exception: gene_file_dir = ''
+        oraDirTogeneDir[mappfinder_input] = gene_file_dir ### Store the corresponding gene file for each ORA file
         if len(gene_file_dir) > 0:
-            if species_code != nested_paths_stored:  ###Otherwise these relationships are built already
-                nested_paths_stored = species_code
-                uid_to_go, uid_to_mapp, uid_system, gene_annotations = gene_associations.grabNestedGeneAssociations(species_code,mod,source_data,system_codes,custom_sets_folder,denom_search_dir)
-            #else: print 'Apply Existing Gene Association Databases to Local Files' ### Relevant species databases already exist (uid_to_go,gene_annotations,all_nested_paths)
-            try:
-                vals = gene_associations.matchInputIDsToMAPPEliteTerms(gene_file_dir,
-                                        go_elite_output_folder,system_codes,mappfinder_input_dir,
-                                        uid_to_mapp,filtered_mapp_list,gene_annotations,uid_system,
-                                        combined_associations,combined_gene_ranking)
-                combined_associations,combined_gene_ranking,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes,mapp_gene_elite_count = vals
-                summary_data_db['mapp_gene_elite_count'] = mapp_gene_elite_count
-                exportLocalResults(go_full,go_titles,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes)
-            except KeyError:
-                print_out = "\nWARNING: Could not delete parent GOID\n"+parent_goid+ "from go_count_db."
-                print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the MAPPFinder file is wrong (check this)\nor does not match the user selected MOD.'
-                print_out += '\kReport bug to the GO-Elite help desk.'
-                try: UI.WarningWindow(print_out,' Continue ')
-                except Exception: print print_out
-        
+            nested_paths_stored = species_code
+            uid_to_mapp, uid_system, gene_annotations = gene_associations.grabNestedGeneToPathwayAssociations(species_code,
+                                                mod,source_data,system_codes,custom_sets_folder,denom_search_dir,ontology_type)
+            #print 'Annotations imported'
+
+            if len(uid_to_mapp)>0: ### alternative occurs if analyzing a custom_gene_set result without referencing it again (only should occur during testing)
+                try:
+                    vals = gene_associations.matchInputIDsToMAPPEliteTerms(gene_file_dir,
+                                            go_elite_output_folder,system_codes,mappfinder_input_dir,
+                                            uid_to_mapp,filtered_mapp_list,gene_annotations,uid_system,
+                                            combined_associations,combined_gene_ranking)
+                    combined_associations,combined_gene_ranking,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes,mapp_gene_elite_count = vals
+                    summary_data_db['mapp_gene_elite_count'] = mapp_gene_elite_count
+                except Exception:
+                    print_out = "\nWARNING: Could not delete parent GOID\n"+parent_goid+ "from go_count_db."
+                    print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the MAPPFinder file is wrong (check this)\nor does not match the user selected MOD.'
+                    print_out += '\kReport bug to the GO-Elite help desk.'
+                    try: UI.WarningWindow(print_out,' Continue ')
+                    except Exception: print print_out
+        exportLocalResults(go_full,go_titles,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes)
+        exportFilteredSIF(mapp_gene_annotation_db,mappfinder_input_dir)
         if program_type != 'GO-Elite' and mappfinder_input[:3] == 'AS.':
             local_filename = go_elite_output_folder+'/'+mappfinder_input[0:-4]+ '_'+filter_method+'_elite.txt'
             print 'Copying GO-Elite results to DomainGraph folder...'
@@ -1418,52 +1309,64 @@ def runGOElite(mod):
       fn2 = string.replace(fn,'CompleteResults/ORA_pruned/gene_associations','')
       try: export.customFileMove(fn,fn2)
       except IOError: print fn; print fn2; print "SummaryResults failed to be copied from CompleteResults (please see CompleteResults instead)"
-
+      
+      visualizePathways(species_code,oraDirTogeneDir,combined_results)
+      
       if webservice == 'no':
           try: moveMAPPFinderFiles(import_dir)
           except Exception,e:  print "Could not move ORA results... this will not impact this analysis:",e
       end_time = time.time(); time_diff = int(end_time-start_time)
-      print_out = 'Analysis complete. GO-Elite results\nexported to the specified GO-Elite\noutput and MAPPFinder output directories.'
+      print_out = 'Analysis completed. GO-Elite results\nexported to the specified GO-Elite\noutput and ORA output directories.'
       try:
           if (program_type == 'GO-Elite' or analysis_method == 'UI') and use_Tkinter == 'yes':
-              print 'Analysis Complete in %d seconds... Exiting GO-Elite' % time_diff
+              print 'Analysis completed in %d seconds... Exiting GO-Elite' % time_diff
               UI.InfoWindow(print_out,'Analysis Completed!')
               tl = Toplevel(); SummaryResultsWindow(tl,main_output_folder)
           else:
               ### Record results
-              try:
-                  result_list = recordGOEliteStats(); log_report.append('\n')
-                  for   d in result_list: log_report.append(d+'\n')
-                  log_report.append('\n')
-              except Exception: null=[]
+              result_list = recordGOEliteStats(); log_report.append('\n')
       except Exception:
-          try: print 'Analysis Complete in %d seconds... Exiting GO-Elite' % time_diff
+          try: print 'Analysis completed in %d seconds... Exiting GO-Elite' % time_diff
           except Exception: null=[]
   else:
       end_time = time.time(); time_diff = int(end_time-start_time)
       print_out = 'No input files to summarize!'
       if program_type == 'GO-Elite' and use_Tkinter == 'yes':
-          print 'Analysis Complete in %d seconds... Exiting GO-Elite' % time_diff
+          print 'Analysis completed in %d seconds... Exiting GO-Elite' % time_diff
           UI.WarningWindow(print_out,'Analysis Completed!')
           
-  exportLog(log_report)
+  #exportLog(log_report)
   run_parameter = 'skip'
   end_time = time.time(); time_diff = int(end_time-start_time)
   if program_type == 'GO-Elite' and use_Tkinter == 'yes': importGOEliteParameters(run_parameter)
-  else:
-      #try: import AltAnalyze; AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
-      try: print 'Analysis Complete in %d seconds... Exiting GO-Elite' % time_diff
-      except Exception: null=[]
 
+def exportFilteredSIF(collapsed_term_list,mappfinder_input_dir):
+    gene_association_file = string.replace(mappfinder_input_dir,'.txt','-associations.tab')
+    sif_output = string.replace(mappfinder_input_dir,'ORA','ORA_pruned')
+    sif_output = string.replace(sif_output,'.txt','.sif')
+    sif = export.ExportFile(sif_output)
+    
+    ### Import the gene associations for all GO/pathways analyzed and output Elite filtered results as a SIF
+    fn=filepath(gene_association_file); x = 0
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if x == 0: x=1
+        else:
+            ID,symbol,term = string.split(data,'\t')
+            if term in collapsed_term_list:
+                if term in full_go_name_db: term = full_go_name_db[term]
+                sif.write(string.join([term,'pr',ID+':'+symbol],'\t')+'\n')
+    sif.close()
+                
 class SummaryResultsWindow:
     def __init__(self,tl,output_dir):
         def showLink(event):
             idx= int(event.widget.tag_names(CURRENT)[1])
             webbrowser.open(LINKS[idx])
-        url = 'http://www.genmapp.org/go_elite/help_main.htm'; url = filepath(url)
+        url = 'http://www.genmapp.org/go_elite/help_main.htm'
         LINKS=(url,'')
         self.LINKS = LINKS
-        tl.title('GO-Elite version 1.2.2'); self.tl = tl
+        tl.title('GO-Elite version 1.2.5'); self.tl = tl
         
         #"""
         filename = 'Config/icon.gif'
@@ -1490,7 +1393,8 @@ class SummaryResultsWindow:
         txt.insert(END, "GO-Elite Help", ('link', str(0)))
         txt.insert(END, '\n\n')
 
-        result_list = recordGOEliteStats()
+        try: result_list = recordGOEliteStats()
+        except Exception: result_list=[]
         for d in result_list: txt.insert(END, d+'\n');
             
         txt.tag_config('link', foreground="blue", underline = 1)
@@ -1500,10 +1404,10 @@ class SummaryResultsWindow:
         open_results_folder.pack(side = 'left', padx = 5, pady = 5);
 
         self.dg_url = 'http://www.wikipathways.org'
-        text_button = Button(self.tl, text='View WikiPathways', command=self.WPlinkout)
+        text_button = Button(self.tl, text='WikiPathways website', command=self.WPlinkout)
         text_button.pack(side = 'right', padx = 5, pady = 5)
         self.output_dir = output_dir
-        self.whatNext_url = 'http://groups.google.com/group/go-elite/web/after-running-go-elite'
+        self.whatNext_url = 'http://code.google.com/p/go-elite/wiki/Tutorial_GUI_version#Downstream_Analyses'
         whatNext_pdf = 'Documentation/what_next_goelite.pdf'; whatNext_pdf = filepath(whatNext_pdf); self.whatNext_pdf = whatNext_pdf
         
         what_next = Button(self.tl, text='What Next?', command=self.whatNextlinkout)
@@ -1516,7 +1420,7 @@ class SummaryResultsWindow:
         quit_button = Button(root,text='Quit', command=self.quit)
         quit_button.pack(side = 'right', padx = 5, pady = 5)
 
-        button_text = 'Help'; url = 'http://www.genmapp.org/go_elite/help_main.htm'; self.help_url = filepath(url)        
+        button_text = 'Help'; url = 'http://www.genmapp.org/go_elite/help_main.htm'; self.help_url = url      
         pdf_help_file = 'Documentation/GO-Elite_Manual.pdf'; pdf_help_file = filepath(pdf_help_file); self.pdf_help_file = pdf_help_file
         help_button = Button(root, text=button_text, command=self.Helplinkout)
         help_button.pack(side = 'left', padx = 5, pady = 5); root.mainloop()
@@ -1530,7 +1434,9 @@ class SummaryResultsWindow:
         elif 'linux' in sys.platform: os.system('xdg-open "'+self.output_dir+'"')  
 
     def Helplinkout(self): self.GetHelpTopLevel(self.help_url,self.pdf_help_file)
-    def whatNextlinkout(self): self.GetHelpTopLevel(self.whatNext_url,self.whatNext_pdf)
+    def whatNextlinkout(self):
+        #self.GetHelpTopLevel(self.whatNext_url,self.whatNext_pdf) ### Provides the option to open a URL or PDF
+        webbrowser.open(self.whatNext_url) ### Just defaults to the URL
     def GetHelpTopLevel(self,url,pdf_file):
         self.pdf_file = pdf_file; self.url = url
         message = ''; self.message = message; self.online_help = 'Online Documentation'; self.pdf_help = 'Local PDF File'
@@ -1558,9 +1464,8 @@ class SummaryResultsWindow:
         except Exception: null=[]
         self._tl.destroy()
     def WPlinkout(self): webbrowser.open(self.dg_url)
-
     def quit(self):
-        exportLog(log_report)
+        #exportLog(log_report)
         try: self.tl.quit(); self.tl.destroy()
         except Exception: null=[]
         root.quit(); root.destroy(); sys.exit()
@@ -1569,41 +1474,37 @@ class SummaryResultsWindow:
         self.tl.destroy()
 
 def recordGOEliteStats():
-        result_list=[]
-        for key in summary_data_db: summary_data_db[key] = str(summary_data_db[key])
-        d = 'Dataset name: '+ dataset_name; result_list.append(d+'\n')
-        d = summary_data_db['filtered_go_term_count']+':\tReported Filtered GO-terms'; result_list.append(d)
-        d = summary_data_db['elite_go_term_count']+':\tReported Elite GO-terms'; result_list.append(d)
-        d = summary_data_db['redundant_go_term_count']+':\tElite GO-terms redundant with other Elite GO-terms'; result_list.append(d)
-        d = summary_data_db['filtered_local_count']+':\tReported Filtered Pathways'; result_list.append(d)
-        d = summary_data_db['redundant_mapp_term_count']+':\tFiltered Pathways redundant with other Filtered Pathways'; result_list.append(d)
+    log_report = open(log_file,'a')
+    result_list=[]
+    for key in summary_data_db: summary_data_db[key] = str(summary_data_db[key])
+    d = 'Dataset name: '+ dataset_name; result_list.append(d+'\n')
+    d = summary_data_db['filtered_go_term_count']+':\tReported Filtered GO-terms'; result_list.append(d)
+    d = summary_data_db['elite_go_term_count']+':\tReported Elite GO-terms'; result_list.append(d)
+    d = summary_data_db['redundant_go_term_count']+':\tElite GO-terms redundant with other Elite GO-terms'; result_list.append(d)
+    d = summary_data_db['filtered_local_count']+':\tReported Filtered Pathways'; result_list.append(d)
+    d = summary_data_db['redundant_mapp_term_count']+':\tFiltered Pathways redundant with other Filtered Pathways'; result_list.append(d)
 
-        if run_mappfinder == 'yes':
-            try: 
-                if mod == 'HMDB': name = 'metabolites'
-                else: name = 'genes'
-            except Exception: name = 'genes'
-        else: name = 'genes'
-        if run_mappfinder == 'yes':
-            d = summary_data_db['go_gene_full_count']+':\tNumber of '+name+' associated with Filtered GO-terms'; result_list.append(d)
-        d = summary_data_db['go_gene_elite_count']+':\tNumber of '+name+' associated with Elite GO-terms'; result_list.append(d)
-        d = summary_data_db['mapp_gene_elite_count']+':\tNumber of '+name+' associated with Filtered Pathways'; result_list.append(d)
+    if run_mappfinder == 'yes':
+        try: 
+            if mod == 'HMDB': name = 'metabolites'
+            else: name = 'genes'
+        except Exception: name = 'genes'
+    else: name = 'genes'
+    if run_mappfinder == 'yes':
+        d = summary_data_db['go_gene_full_count']+':\tNumber of '+name+' associated with Filtered GO-terms'; result_list.append(d)
+    d = summary_data_db['go_gene_elite_count']+':\tNumber of '+name+' associated with Elite GO-terms'; result_list.append(d)
+    d = summary_data_db['mapp_gene_elite_count']+':\tNumber of '+name+' associated with Filtered Pathways'; result_list.append(d)
         
-        log_report.append('\n')
-        for d in result_list: log_report.append(d+'\n')
-        return result_list
-    
-def exportLog(log_report):
-    log_file = main_output_folder+'/GO-Elite_report.log'
-    fn=filepath(log_file); data = open(fn,'w')
-    log_report = string.join(log_report,'')
-    data.write(log_report); data.close()
+    log_report.write('\n')
+    for d in result_list: log_report.write(d+'\n')
+    log_report.close()
+    return result_list
     
 class StatusWindow:
     def __init__(self,root,mod):
 
             self._parent = root
-            root.title('GO-Elite 1.2.2 - Status Window')
+            root.title('GO-Elite 1.2.5 - Status Window')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             if os.name == 'nt': height = 450; width = 500
@@ -1617,7 +1518,7 @@ class StatusWindow:
             group = PmwFreeze.Group(self.sf.interior(),tag_text = 'Output')
             group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
                 
-            Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
+            Label(group.interior(),width=180,height=452,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
 
             status = StringVarFile(statusVar,root) ### Likely captures the stdout
             sys.stdout = status; root.after(100, runGOElite(mod))
@@ -1627,14 +1528,17 @@ class StatusWindow:
             try: self._parent.destroy()
             except Exception: null=[]
 
-    def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
+    def deleteWindow(self):
+        #tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
+        self._parent.destroy(); sys.exit() ### just quit instead
     def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
     
 class StringVarFile:
     def __init__(self,stringVar,window):
         self.__newline = 0; self.__stringvar = stringVar; self.__window = window
     def write(self,s):
-        log_report.append(s) ### Variable to record each print statement
+        log_report = open(log_file,'a')
+        log_report.write(s); log_report.close() ### Variable to record each print statement
         new = self.__stringvar.get()
         for c in s:
             #if c == '\n': self.__newline = 1
@@ -1646,17 +1550,45 @@ class StringVarFile:
     def set(self,s): self.__stringvar.set(s); self.__window.update()   
     def get(self): return self.__stringvar.get()
                 
+def timestamp():
+    import datetime
+    today = str(datetime.date.today()); today = string.split(today,'-'); today = today[0]+''+today[1]+''+today[2]
+    time_stamp = string.replace(time.ctime(),':','')
+    time_stamp = string.replace(time_stamp,'  ',' ')
+    time_stamp = string.split(time_stamp,' ') ###Use a time-stamp as the output dir (minus the day)
+    time_stamp = today+'-'+time_stamp[3]
+    return time_stamp
+
+def TimeStamp():
+    time_stamp = time.localtime()
+    year = str(time_stamp[0]); month = str(time_stamp[1]); day = str(time_stamp[2])
+    if len(month)<2: month = '0'+month
+    if len(day)<2: day = '0'+day
+    return year+month+day
+
+def universalPrintFunction(print_items):
+    log_report = open(log_file,'a')
+    for item in print_items:
+        log_report.write(item+'\n')
+        if len(sys.argv[1:])>1: print item
+    log_report.close()
+    
 def importGOEliteParameters(run_parameter):
     global max_member_count; global filter_method; global z_threshold; global p_val_threshold; global change_threshold
     global sort_only_by_zscore; global permutations; global species; global analysis_method; global resources_to_analyze
     global run_mappfinder; global criterion_input_folder; global criterion_denom_folder; global main_output_folder
-    global log_report; log_report=[]; global summary_data_db; summary_data_db = {}; global custom_sets_folder; global mod
+    global log_file; global summary_data_db; summary_data_db = {}; global custom_sets_folder; global mod; global returnPathways
+    global imageType; imageType = True
+
     parameters = UI.getUserParameters(run_parameter)
-    species, run_mappfinder, mod, permutations, filter_method, z_threshold, p_val_threshold, change_threshold, resources_to_analyze, max_member_count, file_dirs = parameters
+    species, run_mappfinder, mod, permutations, filter_method, z_threshold, p_val_threshold, change_threshold, resources_to_analyze, max_member_count, returnPathways, file_dirs = parameters
     change_threshold = int(change_threshold); p_val_threshold = float(p_val_threshold); z_threshold = float(z_threshold)
     criterion_input_folder, criterion_denom_folder, main_output_folder, custom_sets_folder = file_dirs
-    try: permutations = int(permutations)
-    except ValueError: permutations = 0
+
+    time_stamp = timestamp() 
+    log_file = filepath(main_output_folder+'/GO-Elite_report-'+time_stamp+'.log')
+    log_report = open(log_file,'w'); log_report.close()
+    
     sort_only_by_zscore = 'yes'; analysis_method = 'UI'
     
     global root; root=''
@@ -1671,16 +1603,23 @@ def remoteAnalysis(variables,run_type):
     global max_member_count; global filter_method; global z_threshold; global p_val_threshold; global change_threshold
     global sort_only_by_zscore; global permutations; global species; global root; global custom_sets_folder
     global run_mappfinder; global criterion_input_folder; global criterion_denom_folder; global main_output_folder
-    global log_report; log_report=[]; global summary_data_db; summary_data_db = {}; global analysis_method
-    global resources_to_analyze
+    global summary_data_db; summary_data_db = {}; global analysis_method; global log_file; global mod
+    global resources_to_analyze; global returnPathways; global imageType; imageType = True
 
-    species_code,mod,permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,file_dirs,parent = variables
+    species_code,mod,permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,parent = variables
     #print variables
-    permutations = int(permutations); change_threshold = int(change_threshold); p_val_threshold = float(p_val_threshold); z_threshold = float(z_threshold)
+    try: permutations = int(permutations)
+    except Exception: permutations = permutations ### For Fisher Exact
+    change_threshold = int(change_threshold); p_val_threshold = float(p_val_threshold); z_threshold = float(z_threshold)
     speciesData()
     species = species_names[species_code]
     max_member_count = 10000; sort_only_by_zscore = 'yes'; run_mappfinder = 'yes'
     criterion_input_folder, criterion_denom_folder, main_output_folder = file_dirs; custom_sets_folder = '' ### Variable not currently used for AltAnalyze
+    
+    time_stamp = timestamp() 
+    log_file = filepath(main_output_folder+'/GO-Elite_report-'+time_stamp+'.log')
+    log_report = open(log_file,'w'); log_report.close()
+    
     if run_type == 'non-UI':
         analysis_method = run_type
         root = parent; runGOElite(mod)
@@ -1691,6 +1630,54 @@ def remoteAnalysis(variables,run_type):
         try: root.destroy()
         except Exception: null=[]
 
+def visualizePathways(species_code,oraDirTogeneDir,combined_results):
+    """ Sends all over-represented pathways to the WikiPathways API for visualization """
+    try:
+        if returnPathways != None and returnPathways != 'None':
+            ### If only the top X pathways should be returned, get this number
+            returnNumber = None
+            if 'top' in returnPathways:
+                returnNumber = int(string.replace(returnPathways,'top',''))
+                
+            import WikiPathways_webservice
+            count=0
+            filename_list=[]
+            for filename in combined_results: filename_list.append(filename)
+            filename_list.sort() ### rank the results alphebetically so local and GO results are sequential
+            wp_to_visualize = []
+            for filename in filename_list:
+                if 'local' in filename:
+                    criterion_name = string.split(export.findFilename(filename)[:-4],'-local')[0]+'-local.txt'
+                for (pathway_type,mapp_name,line) in combined_results[filename]:
+                    if ':WP' in line:
+                        gene_file_dir = oraDirTogeneDir[criterion_name]
+                        wpid = 'WP'+string.split(line,':WP')[-1]
+                        wpid = string.split(wpid,'\t')[0]
+                        wp_to_visualize.append([gene_file_dir,wpid])
+            print 'Exporting pathway images for %s Wikipathways (expect ~%s minute runtime)' % (str(len(wp_to_visualize)),str(len(wp_to_visualize)))
+
+            if imageType == 'png' or imageType == 'pdf':
+                print '...restricting to',imageType
+            for (gene_file_dir,wpid) in wp_to_visualize:
+                ### graphic_link is a dictionary of PNG locations
+                graphic_link = WikiPathways_webservice.visualizePathwayAssociations(gene_file_dir,species_code,mod,wpid,imageExport=imageType)
+                count+=1
+                print '.',
+                if returnNumber != None:
+                    if returnNumber == count:
+                        break
+            print 'exported to the folder "WikiPathways"'
+    except Exception:
+        None
+                    
+def displayHelp():
+    fn=filepath('Documentation/commandline.txt')
+    print '\n################################################\nGO-Elite Command-Line Help'
+    for line in open(fn,'rU').readlines():
+        print cleanUpLine(line)
+    print '\n################################################'
+    sys.exit()
+    
 ###### Command Line Functions (AKA Headless Mode) ######
 def commandLineRun():
     import getopt
@@ -1700,11 +1687,11 @@ def commandLineRun():
     global max_member_count; global filter_method; global z_threshold; global p_val_threshold; global change_threshold
     global sort_only_by_zscore; global permutations; global species; global root; global resources_to_analyze
     global run_mappfinder; global criterion_input_folder; global criterion_denom_folder; global main_output_folder; global custom_sets_folder
-    global log_report; log_report=[]; global summary_data_db; summary_data_db = {}; global analysis_method
+    global log_file; global summary_data_db; summary_data_db = {}; global analysis_method; global returnPathways; global mod; global imageType
 
     ###optional
-    permutations = 2000; filter_method = 'z-score'; mod = 'EntrezGene'; z_threshold = 1.96
-    p_val_threshold = 0.05; change_threshold = 3; main_output_folder = ''; resources_to_analyze = 'both'
+    permutations = 2000; filter_method = 'z-score'; mod = 'Ensembl'; z_threshold = 1.96
+    p_val_threshold = 0.05; change_threshold = 3; main_output_folder = ''; resources_to_analyze = 'all'
 
     ###required
     species_code = None
@@ -1728,7 +1715,7 @@ def commandLineRun():
     remove_download_files = 'no'
     export_versions_info = 'no'
     archive = 'no'
-    resources_to_analyze = 'both'
+    additional_resources = [None]
     buildNested = 'no'
     continue_build = 'no'
     OBOurl = ''
@@ -1736,6 +1723,12 @@ def commandLineRun():
     GOtype = 'GOslim'
     input_var = sys.argv[1:]
     nestTerms = 'no'
+    wpid = None
+    image_export = None
+    returnPathways = None
+    help = False
+    imageType = True
+    
     #input_var = ['--update', 'EntrezGene', '--species' ,'Mm'] ###used for testing
 
     try:
@@ -1744,12 +1737,19 @@ def commandLineRun():
                                     'update=','uaffygo=','system=', 'replaceDB=', 'speciesfull=',
                                     'taxid=', 'addspecies=', 'force=', 'version=', 'delfiles=',
                                     'archive=','exportinfo=','dataToAnalyze=','buildNested=',
-                                    'customSet=','OBOurl=','GOtype=','nestTerms='])
+                                    'customSet=','OBOurl=','GOtype=','nestTerms=','additional=',
+                                    'image=','wpid=','returnPathways=','imageType=','help='])
     except Exception, e: print e;sys.exit()
     
     for opt, arg in options:
         if opt == '--species': species_code=arg
         elif opt == '--mod': mod=arg
+        elif opt == '--image': image_export=arg
+        elif opt == '--wpid': wpid=arg
+        elif opt == '--imageType':
+            imageType=arg
+            if imageType=='all':
+                imageType = True
         elif opt == '--permutations': permutations=arg
         elif opt == '--method':
             filter_method=arg
@@ -1758,12 +1758,21 @@ def commandLineRun():
         elif opt == '--zscore': z_threshold=arg
         elif opt == '--pval': p_val_threshold=arg
         elif opt == '--num': change_threshold=arg
-        elif opt == '--dataToAnalyze': resources_to_analyze=arg
+        elif opt == '--dataToAnalyze':
+            resources_to_analyze=arg
+            if resources_to_analyze == 'local' or resources_to_analyze == 'WikiPathways':
+                resources_to_analyze = 'Pathways'
         elif opt == '--input': criterion_input_folder=arg
         elif opt == '--denom': criterion_denom_folder=arg
         elif opt == '--output': main_output_folder=arg
 
-        elif opt == '--update': update_dbs='yes'; update_method.append(arg)        
+        elif opt == '--update': update_dbs='yes'; update_method.append(arg)
+        elif opt == '--additional':
+            if additional_resources[0] == None:
+                additional_resources=[]
+                additional_resources.append(arg)
+            else:
+                additional_resources.append(arg)
         elif opt == '--uaffygo': process_affygo=arg
         elif opt == '--system': update_ensrel.append(arg) ### This is the related system. Multiple args to this flag are valid
         elif opt == '--version': ensembl_version = arg
@@ -1780,10 +1789,45 @@ def commandLineRun():
         elif opt == '--OBOurl': OBOurl = arg
         elif opt == '--GOtype': GOtype = arg
         elif opt == '--nestTerms': nestTerms = arg
+        elif opt == '--returnPathways': returnPathways = arg
+        elif opt == '--help': help = True
         
-    print ''
-    
+    if help:
+        displayHelp()
     species_full_original = species_full; species_code_original = species_code
+    if image_export != None:
+        if image_export == 'WikiPathways':
+            #python GO_Elite.py --input /users/test/input/criterion1.txt --image WikiPathways --mod Ensembl --system arrays --species Hs --wpid WP536
+            if wpid==None:
+                print 'Please provide a valid WikiPathways ID (e.g., WP1234)';sys.exit()
+            if species_code==None:
+                print 'Please provide a valid species ID for an installed database (to install: --update Official --species Hs --version EnsMart62Plus)';sys.exit()
+            if criterion_input_folder==None:
+                print 'Please provide a valid file location for your input IDs (also needs to inlcude system code and value column)';sys.exit()
+            import WikiPathways_webservice
+            try:
+                print 'Attempting to output a WikiPathways colored image from user data'
+                print 'mod:',mod
+                print 'species_code:',species_code
+                print 'wpid:',wpid
+                print 'imageType',imageType
+                print 'input GO-Elite ID file:',criterion_input_folder
+                graphic_link = WikiPathways_webservice.visualizePathwayAssociations(criterion_input_folder,species_code,mod,wpid,imageExport=imageType)
+            except Exception,e:
+                print traceback.format_exc()
+                if 'force_no_matching_error' in traceback.format_exc():
+                    print 'None of the input IDs mapped to this pathway' 
+                elif 'IndexError' in traceback.format_exc():
+                    print 'Input ID file does not have at least 3 columns, with the second column being system code'
+                elif 'ValueError' in traceback.format_exc():
+                    print 'Input ID file error. Please check that you do not have extra rows with no data' 
+                elif 'source_data' in traceback.format_exc():
+                    print 'Input ID file does not contain a valid system code' 
+                else:
+                    print 'Error generating the pathway "%s"' % wpid
+        print 'Finished exporting visualized pathway to:',graphic_link['WP']
+        sys.exit()
+        
     if 'EnsMart' in ensembl_version:
         import UI; UI.exportDBversion(ensembl_version)
         
@@ -1836,9 +1880,9 @@ def commandLineRun():
         if len(species_array_db)>0: UI.exportArrayVersionInfo(species_array_db)
         
     if replaceDB == 'yes': incorporate_previous = 'no'
-    if update_dbs == 'yes' and ((species_code == None and species_full == None) and (update_method != ['GO'])) and update_method != ['metabolites']:
+    if update_dbs == 'yes' and ((species_code == None and species_full == None) and (update_method != ['Ontology'])) and update_method != ['metabolites']:
         print '\nInsufficient flags entered (requires --species or --speciesfull)'; sys.exit()
-    elif (update_dbs == 'yes' or buildNested == 'yes') and (species_code != None or species_full != None or update_method == ['GO']):
+    elif (update_dbs == 'yes' or buildNested == 'yes') and (species_code != None or species_full != None or update_method == ['Ontology']):
 
         import BuildAffymetrixAssociations; import update; import EnsemblSQL; import UI
         file_location_defaults = UI.importDefaultFileLocations()
@@ -1850,7 +1894,7 @@ def commandLineRun():
             try: version_int = int(ensembl_version); ensembl_version = 'release-'+ensembl_version
             except ValueError: print 'The Ensembl version number is not formatted corrected. Please indicate the desired version number to use (e.g., "55").'; sys.exit()                
         
-        if update_method == ['GO']: species_code_list=[]
+        if update_method == ['Ontology']: species_code_list=[]
         elif species_code == 'all':
             ### Add all species from the current database
             for species_code in species_names: species_code_list.append(species_code)
@@ -1969,8 +2013,8 @@ def commandLineRun():
                 sd = UI.SpeciesData(species_code,species,compatible_mods,species_taxid)
                 species_codes[new_species_name] = sd
                 UI.exportSpeciesInfo(species_codes)
-                
-            ### Update Ensembl Databases
+                                        
+            ### Download Official Databases
             if 'Official' in update_method:
                 import UI
                 try: os.remove(filepath('Databases/'+species_code+'/nested/version.txt'))
@@ -1992,11 +2036,29 @@ def commandLineRun():
                     base_url = file_location_defaults['url'].Location()
                     #print base_url+'Databases/'+select_version+'/'+species_code+'.zip'
                     fln,status = update.download(base_url+'Databases/'+select_version+'/'+species_code+'.zip','Databases/','')
+                    
+                    ### Creates gene-Symbol.txt, EntrezGene-Ensembl.txt and augements gene-GO tables for between system analyses
+                    UI.buildInferrenceTables(species_code)
+                    
+                    ### Attempt to download additional Ontologies and GeneSets
+                    update_method.append('AdditionalResources')
+                    
+            ### Attempt to download additional Ontologies and GeneSets
+            if 'AdditionalResources' in update_method:
+                try:
+                    import GeneSetDownloader
+                    print 'Adding supplemental GeneSet and Ontology Collections'
+                    if 'all' in additional_resources:
+                        additionalResources = UI.importResourceList() ### Get's all additional possible resources
+                    else: additionalResources = additional_resources
+                    GeneSetDownloader.buildAccessoryPathwayDatabases([species_code],additionalResources,force)
+                    print 'Finished adding additional analysis resources.'
+                except Exception: print 'Download error encountered for additional Ontologies andGeneSets...\nplease try again later.'
+                if 'Official' in update_method:
                     if 'Internet' not in status:
                         print 'Finished downloading the latest species database files.'
-
-                UI.checkForSlimOBO(species_code) ### Copy Ensembl-GO to the uid-gene folder and copy over slim relationships if needed
-                
+                    
+            ### Download Ensembl Database
             if 'Ensembl' in update_method:
                 externalDBName_list=[]
                 try: child_dirs, ensembl_species, ensembl_versions = EnsemblSQL.getCurrentEnsemblSpecies(ensembl_version)
@@ -2024,8 +2086,11 @@ def commandLineRun():
                 elif 'arrays' in update_ensrel:
                     externalDBName_list=[]
                     for array in array_db:
-                        if '\\N_' not in array: externalDBName_list.append(array)
-                
+                        if '\\N_' not in array:
+                            if 'ProbeLevel' in update_method:
+                                if 'AFFY' in array: externalDBName_list.append(array) ### Ensures probe-level genomic coordinate assingment is restricted to Affy
+                            else: externalDBName_list.append(array)
+
                 import datetime
                 today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
                 dirversion = string.replace(ensembl_version,'release-','EnsMart')
@@ -2036,8 +2101,15 @@ def commandLineRun():
                 import EnsemblSQL; reload(EnsemblSQL)
                 if 'arrays' not in update_ensrel:
                     try: all_external_ids = EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,'GO',configType,'GeneAndExternal',overwrite_previous,replaceDB,external_system,force); iteration+=1
-                    except Exception, e: print e; print 'Critical Error!!!! Exiting GO-Elite...'; sys.exit()
-                    externalDBName_list = UI.filterExternalDBs(all_external_ids,externalDBName_list,external_ids,array_db)   
+                    except Exception, e:
+                        print traceback.format_exc()
+                        print 'Critical Error!!!! Exiting GO-Elite...'; sys.exit()
+                    externalDBName_list_updated = UI.filterExternalDBs(all_external_ids,externalDBName_list,external_ids,array_db)
+                    
+                ###Add additional systems not in our annotated Config file if the user specified parsing of all systems or all array systems
+                if 'arrays' in update_ensrel or 'all' in update_ensrel:
+                    externalDBName_list = externalDBName_list_updated
+                    
                 for externalDBName in externalDBName_list:
                     if externalDBName != ' ':
                         if force == 'yes' and iteration == 1: force = 'no'
@@ -2048,10 +2120,16 @@ def commandLineRun():
                             export.deleteFolder(output_dir)
                             
                         if externalDBName in array_db:
+                            #python GO_Elite.py --update Ensembl --update ProbeLevel --system arrays --version 65 --species Dr --force no
                             analysisType = 'FuncGen'
                             print [externalDBName], analysisType
-                            EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,analysisType,overwrite_previous,replaceDB,external_system,force); iteration+=1
-                            #except Exception,e: print e;sys.exit()
+                            if 'ProbeLevel' in update_method:
+                                analysisType = 'ProbeLevel'
+                                EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,analysisType,overwrite_previous,replaceDB,external_system,force); iteration+=1
+                                #except Exception,e: print e;sys.exit()
+                            else:
+                                EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,analysisType,overwrite_previous,replaceDB,external_system,force); iteration+=1
+                                #except Exception,e: print e;sys.exit()
                         else:
                             analysisType = 'GeneAndExternal'
                             print [externalDBName], analysisType
@@ -2123,17 +2201,21 @@ def commandLineRun():
                         ### Creates a nested GO (and stores objects in memory, but not needed
                         export_databases = 'no'; genmapp_mod = 'Ensembl'; sourceData()
                         print species_code,'Building Nested for mod types:',mod_types
-                        full_path_db,path_id_to_goid,null = OBO_import.buildNestedGOAssociations(species_code,export_databases,mod_types,genmapp_mod)
+                        avaialble_ontologies = OBO_import.findAvailableOntologies(species_code,mod_types)
+                        for ontology_type in avaialble_ontologies:
+                            try: full_path_db,path_id_to_goid,null = OBO_import.buildNestedOntologyAssociations(species_code,mod_types,ontology_type)
+                            except Exception: None
+            
             if 'GORelationships' in update_method:            
                 import gene_associations
                 import datetime
                 today = string.replace(str(datetime.date.today()),'-','')
-                go_annotations = OBO_import.importPreviousGOAnnotations()
+                go_annotations = OBO_import.importPreviousOntologyAnnotations()
                 try:
                     #if GOtype != 'GOslim':
                     if nestTerms == 'yes': nested = 'nested'
                     else: nested = 'null'
-                    ens_goslim = gene_associations.importGeneGOData(species_code,'Ensembl',nested) ### The last argument is gotype which can be null or nested
+                    ens_goslim = gene_associations.importGeneToOntologyData(species_code,'Ensembl',nested,ontology_type) ### The second to last last argument is gotype which can be null or nested
                     #else: ens_goslim = gene_associations.importUidGeneSimple(species_code,'Ensembl-goslim_goa')
                     print len(ens_goslim),'Ensembl-'+GOtype+ ' relationships imported...'
                     output_results = 'OBO/builds/'+species_code+'_'+GOtype+'_'+today+'.txt'
@@ -2158,12 +2240,19 @@ def commandLineRun():
                 try: export_data.close()
                 except Exception: null=[] ### If relationships not supported
               
-        if 'GO' in update_method:
+        if 'Ontology' in update_method:
             UI.updateOBOfiles(file_location_defaults,'yes',OBOurl,'')
 
     elif criterion_input_folder != None and criterion_denom_folder!= None and main_output_folder != None and species_code != None:
         file_dirs = criterion_input_folder, criterion_denom_folder, main_output_folder, custom_sets_folder
         parent = None
+    
+        time_stamp = timestamp() 
+        log_file = filepath(main_output_folder+'/GO-Elite_report-'+time_stamp+'.log')
+        try: log_report = open(log_file,'w'); log_report.close()
+        except Exception:
+            print "Warning! The output directory must exist before running GO-Elite. Since it is easy to accidently specify an invalid output directory, it is best that GO-Elite does not create this for you.\n"
+            sys.exit()
     
         if ensembl_version != 'current':
             ### Select database version otherwise use default
@@ -2184,6 +2273,13 @@ def commandLineRun():
         #criterion_input_folder, criterion_denom_folder, main_output_folder, custom_sets_folder = file_dirs
         analysis_method = 'non-UI'
         change_threshold = change_threshold-1
+        
+        try:
+            import UI
+            species_dirs = UI.returnDirectoriesNoReplace('/Databases')
+        except Exception:
+            print '\nPlease install a species database (to install: python GO_Elite.py --update Official --species Hs --version EnsMart62Plus)';sys.exit()
+
         print ''
         root = parent; runGOElite(mod)
     else:
@@ -2193,41 +2289,55 @@ def commandLineRun():
         MetabolomicsParser.buildMetabolomicsDatabase(force) ### will update any installed species
     sys.exit()
     
-###### Determine Command Line versus GUI Control ######
-
-program_type,database_dir = unique.whatProgramIsThis()
-command_args = string.join(sys.argv,' ')
-if len(sys.argv[1:])>1 and '-' in command_args and program_type != 'AltAnalyze': commandLineRun()
-else:
-    try:
-        import Tkinter
-        from Tkinter import *
-        import PmwFreeze
-        use_Tkinter = 'yes'
-    except ImportError: use_Tkinter = 'yes'; print "\nPmw or Tkinter not found... Tkinter print out not available";
-    
 if __name__ == '__main__':
     run_parameter = 'intro'
+    if Tkinter_failure == True:
+        print "\nPmw or Tkinter not found... Tkinter print out not available"
+        
+    try: 
+        ###### Determine Command Line versus GUI Control ######
+        program_type,database_dir = unique.whatProgramIsThis()
+        command_args = string.join(sys.argv,' ')
+        if len(sys.argv[1:])>1 and '-' in command_args:
+            ### Run in headless mode (Tkinter not required)
+            commandLineRun()
 
-    #gene_associations.swapAndExportSystems('At','Ensembl','EntrezGene')
-    #gene_associations.augmentEnsemblGO('At');sys.exit()
-                
-    if use_Tkinter == 'yes':
-        try: importGOEliteParameters(run_parameter)
-        except Exception, exception:
-
-            try: print "Operating System Info:",os.name, platform.win32_ver()[0], platform.architecture(), platform.mac_ver(), platform.libc_ver(), platform.platform()
-            except Exception: print os.name
+        if use_Tkinter == 'yes':
+            ### Run in GUI mode (Tkinter required)
+            importGOEliteParameters(run_parameter)
+    except Exception, exception:
+            try:
+                print_out = "Operating System Info: "+os.name +', '+str(platform.win32_ver()[0])+', '+str(platform.architecture())+', '+str(platform.mac_ver())+', '+str(platform.libc_ver())+', '+str(platform.platform())
+            except Exception:
+                print_out = "Operating System Info: "+os.name
             
-            print traceback.format_exc()
-            exportLog(log_report)
+            trace =  traceback.format_exc()
+            print '\nWARNING!!! Critical error encountered (see below details)\n'
+            print trace
             print "\n...exiting GO-Elite due to unexpected error"
+            time_stamp = timestamp() 
             try: log_file = log_file
-            except Exception: log_file = ''            
+            except Exception:
+                try: log_file = filepath(main_output_folder+'/GO-Elite_report-error_'+time_stamp+'.log')
+                except Exception:
+                    try: log_file = filepath('GO-Elite_report-error_'+time_stamp+'.log')
+                    except Exception: log_file = filepath('/GO-Elite_report-error_'+time_stamp+'.log')
+                        
+            try: log_report = open(log_file,'a') ### append
+            except Exception: log_report = open(log_file,'w') ### write
+            log_report.write(print_out+'\n')
+            log_report.write(trace)
+            
             print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to genmapp@gladstone.ucsf.edu."
-            try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy()
-            except Exception: print print_out
+            if use_Tkinter == 'yes':
+                try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy()
+                except Exception: print print_out
+            else: print print_out
+            log_report.close()
             if len(log_file)>0:
-                try: os.startfile('"'+log_file+'"')
-                except Exception: null=[]
+                if os.name == 'nt':
+                      try: os.startfile('"'+log_file+'"')
+                      except Exception:  os.system('open "'+log_file+'"')
+                elif 'darwin' in sys.platform: os.system('open "'+log_file+'"')
+                elif 'linux' in sys.platform: os.system('xdg-open "'+log_file+'/"')   
             sys.exit()

@@ -159,6 +159,7 @@ def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method
                     
                     try: microRNA_count_db[microRNA].append(geneid)
                     except KeyError: microRNA_count_db[microRNA] = [geneid]
+                    #if 'ENS' in microRNA: print [data,t];kill
                     gene_microRNA_denom[geneid] = []
         except KeyError: null=[]
     microRNA_count_db = eliminate_redundant_dict_values(microRNA_count_db)

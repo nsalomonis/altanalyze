@@ -221,7 +221,7 @@ def exportGroupedComparisonProbesetData(filename,probeset_db,data_type,array_nam
 
             try: array_names = raw_data_comp_headers[comparison]
             except KeyError: print raw_data_comp_headers;kill
-            title = ['ID']+array_names; title = string.join(title,'\t')+'\n'; data.write(title)
+            title = ['UID']+array_names; title = string.join(title,'\t')+'\n'; data.write(title)
             comparision_export_db[comparison] = data ###store the export file write data so we can write after organizing
 
         biotypes = importExonProbesetData(filename,probeset_db,'reorderFilterAndExportAll')
@@ -531,10 +531,16 @@ def getAnnotations(fl,Array_type,p_threshold,e_threshold,data_source,manufacture
     global dabg_p_threshold; dabg_p_threshold = float(p_threshold); global root_dir; global biotypes; global normalize_feature_exp
     global expression_threshold; global exp_data_format; exp_data_format = expression_data_format; global UserOptions; UserOptions = fl
 
+    """
     try: exon_exp_threshold = fl.ExonExpThreshold()
     except Exception: exon_exp_threshold = 0
-    try: rpkm_threshold = fl.RPKMThreshold()
-    except Exception: rpkm_threshold = 0
+    try: exon_rpkm_threshold = fl.ExonRPKMThreshold()
+    except Exception: exon_rpkm_threshold = 0
+    try: gene_rpkm_threshold = fl.RPKMThreshold()
+    except Exception: gene_rpkm_threshold = 0
+    try: gene_exp_threshold = fl.GeneExpThreshold()
+    except Exception: gene_exp_threshold = 0
+    """
     
     ### The input expression data can be log or non-log. If non-log, transform to log in FilterDABG prior to the alternative exon analysis - v.1.16    
     if expression_data_format == 'log':

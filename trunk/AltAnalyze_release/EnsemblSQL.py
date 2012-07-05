@@ -855,6 +855,7 @@ class EnsemblSQLEntryData:
     def ArrayChipID(self): return self.array_chip_id
     def ProbeSetID(self): return self.probe_set_id
     def Format(self): return self.format
+    def setProbeSetID(self,probe_set_id): self.probe_set_id = probe_set_id
         
 def importEnsemblSQLInfo(configType):
     filename = 'Config/EnsemblSQL.txt'
@@ -883,8 +884,8 @@ def importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_
         global protein_feature_db; global interpro_db; global external_synonym_db
         global external_db_db; global key_filter_db; global external_filter_db
         global seq_region_db; global array_db; global array_chip_db
-        global probe_set_db; global probe_db
-        key_filter_db={}; external_filter_db={}
+        global probe_set_db; global probe_db; global probe_feature_db
+        key_filter_db={}; external_filter_db={}; probe_set_db={}
 
     ###Generic function for importing all EnsemblSQL tables based on the SQLDescription tabl
     for filename in sql_group_db['Description']: ### Gets the SQL description table
@@ -939,14 +940,29 @@ def importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_description_dir,sql_group_
                         try: probe_db = combineDBs(probe_db,key_value_db,'list')
                         except Exception: probe_db = key_value_db
                         if '.0' in sql_filepath: print 'Entries in probe_db', len(probe_db)
+                        if 'AFFY' in manufacturer and 'ProbeLevel' in analysisType:
+                            for probe_id in probe_db:
+                                for pd in probe_db[probe_id]:
+                                    probe_set_db[pd.ProbeSetID()]=[] ### this dictionary is introduced prior to prob_set.txt import when annotating probe genome location
                     elif filename == "probe_set.txt":
-                        if 'AFFY' in manufacturer: probe_set_db = key_value_db
-                        else: probe_set_db = probe_db
-                        del probe_db
+                        if 'AFFY' in manufacturer and 'ProbeLevel' in analysisType:
+                            for probe_id in probe_db:
+                                for pi in probe_db[probe_id]:
+                                    pi.setProbeSetID(key_value_db[pi.ProbeSetID()].Name()) ### Add the probeset annotation name
+                            del probe_set_db ### this object is only temporarily created during probe_db addition - used to restrict to probesets in probe_db
+                        elif 'AFFY' in manufacturer:
+                            probe_set_db = key_value_db
+                            del probe_db
+                        else:
+                            probe_set_db = probe_db
+                            del probe_db
+                    elif filename == "probe_feature.txt":
+                        try: probe_feature_db = key_value_db
+                        except Exception: key_value_db = key_value_db
                     else: ###Shouldn't occur, unless we didn't account for a file type
                         print 'Warning!!! A file has been imported which does not exist in the program space'
                         print 'Filename =',filename;sys.exit()
-                except Exception,e:
+                except IOError,e:
                     print e
                     print '...Likely due to present SQL tables from a prior Ensembl version run that are no longer supported for this version. Ignoring and proceeding..'
     if sql_filepaths != 'stable-combined-version':
@@ -1056,15 +1072,22 @@ def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
         #if filename == 'xref.txt':print len(key_name), key_filter,external_filter, external_xref_key_filter;kill
         if skip == 'yes': null = []
         elif 'probe.' in filename:
+            ### For all array types (Affy & Other) - used to select specific array types - also stores non-Affy probe-data
             ### Each array has a specific ID - determine if this ID is the one we set in external_filter_db
             if ese.ArrayChipID() in external_filter_db:
                 vendor = external_filter_db[ese.ArrayChipID()][0]
-                if vendor == 'AFFY': key_value_db[ese.ProbeSetID()] = []
+                if vendor == 'AFFY' and analysisType != 'ProbeLevel':
+                    key_value_db[ese.ProbeSetID()] = [] ### key is the probe_id - used for Affy probe ID location analysis
                 else:
                     try: key_value_db[key].append(ese) ### probe_set.txt only appears to contain AFFY IDs, the remainder are saved in probe.txt under probe_id
                     except KeyError: key_value_db[key] = [ese]
         elif 'probe_set.' in filename:
-            if key in probe_db: key_value_db[key] = [ese]
+            if analysisType == 'ProbeLevel':
+                if key in probe_set_db: key_value_db[key] = ese
+            else:
+                if key in probe_db: key_value_db[key] = [ese]
+        elif 'probe_feature.' in filename:
+            if key in probe_db: key_value_db[key] = ese
         elif len(key_name)<1: key_value_db.append(ese)
         elif key_filter == 'no' and external_filter == 'no': key_value_db[key] = ese
         elif external_xref_key_filter == 'yes':
@@ -1080,6 +1103,7 @@ def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
                     data_types[ese.EnsemblObjectType()]=[]
           except Exception: print external_xref_key_filter, key_filter, filename;kill
         elif key in key_filter_db: key_value_db[key] = ese
+        elif 'seq_region.' in filename: key_value_db[key] = ese ### Specifically applies to ProbeLevel analyses
         elif external_filter == 'yes': ### For example, if UniGene's dbase ID is in the external_filter_db (when parsing xref)
             #if 'xref' in filename: print filename,[header_name], index,value_type,[value],ese.ExternalDbId(),external_filter_db;kill
             try:
@@ -1180,7 +1204,7 @@ def getCurrentEnsemblSpecies(version):
     if 'EnsMart' in version:
         version = string.replace(version,'EnsMart','') ### User may enter EnsMart65, but we want 65 (release- is added before the number)
         version = string.replace(version,'Plus','')
-    if 'release' not in version: version = 'release-'+version
+    if 'release' not in version and 'current' not in version: version = 'release-'+version
     ftp_server = 'ftp.ensembl.org'
     if version == 'current': subdir = '/pub/current_mysql'
     else: subdir = '/pub/'+version+'/mysql'
@@ -1233,10 +1257,10 @@ def getExternalDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir):
     importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
 """
 
-def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,ExternalDBName,configType,analysisType,Overwrite_previous,Rewrite_existing,external_system_db,force):
+def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,ExternalDBName,configType,analysis_type,Overwrite_previous,Rewrite_existing,external_system_db,force):
     global external_xref_key_db; global species; species = Species; global overwrite_previous; overwrite_previous = Overwrite_previous
     global rewrite_existing; rewrite_existing = Rewrite_existing; global ensembl_build; global externalDBName; externalDBName = ExternalDBName
-    global ensembl_build; ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
+    global ensembl_build; ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]; global analysisType; analysisType = analysis_type
     global manufacturer; global system_synonym_db; global added_systems; added_systems={}; global all_external_ids; all_external_ids={}
 
     ### Get System Code info and create DBs for automatically formatting system output names
@@ -1267,7 +1291,7 @@ def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,External
     
     output_dir = 'BuildDBs/EnsemblSQL/'+species+'/'
     importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
-
+    
     export_status='yes';output_id_type='Gene'
     if analysisType == 'GeneAndExternal':
         if 'over-write previous' in overwrite_previous: output_ens_dir = 'Databases/'+species+'/gene/Ensembl.txt'
@@ -1297,7 +1321,7 @@ def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,External
                 system_codes[ad.SystemName()] = ad
         UI.exportSystemInfoRemote(system_codes)
 
-    if analysisType == 'FuncGen':        
+    if analysisType == 'FuncGen' or analysisType == 'ProbeLevel':
         sl = string.split(externalDBName,'_'); manufacturer=sl[0];externalDBName=string.replace(externalDBName,manufacturer+'_','')
         ensembl_sql_dir = string.replace(ensembl_sql_dir,'_core_', '_funcgen_')
         ensembl_sql_description_dir = string.replace(ensembl_sql_description_dir,'_core_', '_funcgen_')
@@ -1306,13 +1330,18 @@ def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,External
         info = string.split(ensembl_sql_description_dir,'_'); ensembl_build = info[-2]
         sq = EnsemblSQLInfo(ensembl_sql_description_dir, 'EnsemblSQLFuncDescriptions', 'Description', '', '', '')
         sql_file_db['PrimaryFunc',ensembl_sql_description_dir] = sq
-        output_dir = 'BuildDBs/EnsemblSQL/'+species+'/FuncGen/'
-        
+        output_dir = 'BuildDBs/EnsemblSQL/'+species+'/FuncGen/'   
         xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'PrimaryFunc',force) ###Download and import the Ensembl SQL files
-        #print len(probe_set_db), len(transcript_stable_id_db), len(xref_db)
-        object_xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Object-XrefFunc',force)
-
-        buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,externalDBName,species)
+            
+        if analysisType == 'FuncGen':
+            #print len(probe_set_db), len(transcript_stable_id_db), len(xref_db)
+            object_xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Object-XrefFunc',force)
+            buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,externalDBName,species)
+        if analysisType == 'ProbeLevel':
+            ### There is alot of unnecessary data imported for this specific analysis but this strategy is likely the most straight forward code addition
+            sql_file_db['ProbeFeature',ensembl_sql_description_dir] = sq
+            importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'ProbeFeature',force)
+            outputProbeGenomicLocations(externalDBName,species)
     return all_external_ids
 
 def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,externalDBName,species):
@@ -1346,6 +1375,7 @@ def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,e
         ens_transcript_db[ens_transcript] = ti
 
     values_list=[]; nulls=0; type_errors=[]
+    ### Get array ID-gene relationships from exref and probe dbs
     if len(probe_set_db)>0:
         for probe_set_id in object_xref_db:
             try:
@@ -1360,13 +1390,13 @@ def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,e
                             probeset = ps.Name() ### The same probe ID shouldn't exist more than once, but for some arrays it does (associaed with multiple probe names)
                             values_list.append([ens_gene,probeset])
                     except Exception: nulls+=1
-            except TypeError:
+            except TypeError,e:
                 null=[]
                 print probe_set_id, len(probe_set_db), len(probe_set_db[probe_set_id])
                 for ps in probe_set_db[probe_set_id]:
                     probeset = ps.Name()
                     print probeset
-                kill
+                print 'ERROR ENCOUNTERED.',e; sys.exit()
 
         values_list = unique.unique(values_list)
         print 'ID types linked to '+external_system+' are: Gene:',len(values_list),'... not linked:',nulls
@@ -1375,6 +1405,32 @@ def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,e
             
     else: print "****** Unknown problem encountered with the parsing of:", externalDBName          
 
+def outputProbeGenomicLocations(externalDBName,species):
+    external_system = manufacturer
+    external_system = external_system[0]+string.lower(external_system[1:])
+    
+    print 'Exporting',externalDBName
+    output_dir = 'Affymetrix/'+species+'/'+externalDBName+'.txt'
+    
+    if 'Affy' in external_system:
+        headers = ['ProbeXY','ProbesetName','Chr','Start','End','Strand']; values_list=[]
+        print len(probe_db), ':Probes in Ensembl', len(probe_feature_db),':Probes with genomic locations'
+        for probe_id in probe_db:
+            for pi in probe_db[probe_id]: ### probe ID
+                probe_set_name = pi.ProbeSetID() ### probe_set_id is only a superfluous annotation - not used downstream
+                probe_name = pi.Name()
+                try:
+                    pl = probe_feature_db[probe_id] ### probe genomic location data
+                    chr = seq_region_db[pl.SeqRegionId()].Name()
+                    seq_region_start = pl.SeqRegionStart(); seq_region_end = pl.SeqRegionEnd(); strand = pl.SeqRegionStrand()
+                    values_list.append([probe_name,probe_set_name,chr,seq_region_start,seq_region_end,strand])
+                except Exception: null=[]
+        values_list = unique.unique(values_list)
+        print 'ID types linked to '+external_system+' are: Probe:',len(values_list)
+        if len(values_list)>0:
+            
+            exportEnsemblTable(values_list,headers,output_dir)
+    
 def buildEnsemblGeneGOEliteTable(species,xref_db,overwrite_previous):
     ### Get Definitions and Symbol for each Ensembl gene ID
     values_list = [];

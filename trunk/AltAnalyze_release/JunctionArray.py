@@ -1219,6 +1219,8 @@ def exportFiltered(db):
         for line in db[(old,new)]: ### Replace the old ID with the new one
             if old not in line and '|' in old:
                 old = old[:-2]
+            if ('miR-'+new) in line: ### Occurs when the probeset is a number found in the miRNA name
+                line = string.replace(line,'miR-'+new,'miR-'+old)
             line = string.replace(line,old,new); data.write(line)
     data.close()
     
@@ -1516,7 +1518,8 @@ def reAnnotateCriticalExonSequences(species,array_type):
     export_exon_filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_'+array_type+'_probesets.txt'        
     ensembl_probeset_db = ExonArrayEnsemblRules.reimportEnsemblProbesetsForSeqExtraction(export_exon_filename,'null',{})
     
-    analysis_type = 'get_sequence'
+    #analysis_type = 'get_sequence'
+    analysis_type = ('region_only','get_sequence') ### Added after EnsMart65
     dir = 'AltDatabase/'+species+'/SequenceData/chr/'+species; gene_seq_filename = dir+'_gene-seq-2000_flank.fa'
     ensembl_probeset_db = EnsemblImport.import_sequence_data(gene_seq_filename,ensembl_probeset_db,species,analysis_type)
 

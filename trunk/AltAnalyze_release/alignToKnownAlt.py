@@ -73,6 +73,8 @@ def importUCSCAnnotationData(species,ensembl_gene_coordinates,ensembl_annotation
     if data_type == 'polyA': filename = 'AltDatabase/ucsc/'+species+'/polyaDb.txt'
     start_time = time.time()
     fn=filepath(filename); x=0
+    verifyFile(filename,species) ### Makes sure file is local and if not downloads
+    
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         if data_type == 'splicing':
@@ -260,9 +262,31 @@ def reformatPolyAdenylationCoordinates(species,force):
                 bed_format = string.join([chr,pos_start,pos_end,geneid,'0',strand],'\t')+'\n'
                 export_data.write(bed_format)
     export_data.close()   
+        
+def verifyFile(filename,species_name):
+    fn=filepath(filename); counts=0
+    try:
+        for line in open(fn,'rU').xreadlines():
+            counts+=1
+            if counts>10: break
+    except Exception:
+        counts=0
+    if species_name == 'counts': ### Used if the file cannot be downloaded from http://www.altanalyze.org
+        return counts
+    elif counts == 0:
+        if species_name in filename: server_folder = species_name ### Folder equals species unless it is a universal file
+        elif 'Mm' in filename: server_folder = 'Mm' ### For PicTar
+        else: server_folder = 'all'
+        print 'Downloading:',server_folder,filename
+        update.downloadCurrentVersion(filename,server_folder,'txt')
+    else:
+        return counts
     
 if __name__ == '__main__':
-    species = 'Mm'; #species_full = 'Drosophila_melanogaster'
+    species = 'Hs'; #species_full = 'Drosophila_melanogaster'
+    filename = 'AltDatabase/ucsc/'+species+'/polyaDb.txt'
+    verifyFile(filename,species) ### Makes sure file is local and if not downloads.
+    sys.exit()
     importEnsExonStructureData(species,[],[],[]);sys.exit()
     reformatPolyAdenylationCoordinates(species,'no');sys.exit()
     #test = 'yes'

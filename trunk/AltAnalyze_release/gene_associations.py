@@ -57,16 +57,35 @@ class GrabFiles:
         all_matching,file_dir,file = getDirectoryFiles(self.data,str(search_term))
         #if len(file)<1: print search_term,'not found'
         return all_matching
-    
+    def getMatchingFolders(self,search_term):
+        dir_list = unique.read_directory(self.data); matching = ''
+        root_dir = filepath('')
+        for folder in dir_list:
+            if search_term in folder and '.' not in folder:
+                matching = filepath(self.data[1:]+'/'+folder)
+                if root_dir not in matching:
+                    matching = root_dir + matching ### python bug????
+        return matching
+        
 def getDirectoryFiles(import_dir, search_term):
     exact_file = ''; exact_file_dir=''; all_matching=[]
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
     for data in dir_list:    #loop through each file in the directory to output results
-        if (':' in import_dir) or ('/Users/' == import_dir[:7]): affy_data_dir = import_dir+'/'+data
+        present = verifyFile(import_dir+'/'+data) ### Check to see if the file is present in formatting the full file_dir
+        if present == True:
+            affy_data_dir = import_dir+'/'+data
         else: affy_data_dir = import_dir[1:]+'/'+data
         if search_term in affy_data_dir:
             if 'version.txt' not in affy_data_dir: exact_file_dir = affy_data_dir; exact_file = data; all_matching.append(exact_file_dir)
     return all_matching, exact_file_dir,exact_file
+
+def verifyFile(filename):
+    present = False
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines(): present = True; break
+    except Exception: present = False
+    return present
 
 class GeneRelationships:
     def __init__(self,uid,gene,terms,uid_system,gene_system):
@@ -161,8 +180,9 @@ def importGeneData(species_code,mod):
             s = GeneAnnotations(gene,symbol,name,system_type)
             gene_annotations[gene] = s
     if export_status == 'export':
-        export_dir = 'Databases/'+species_code+'/uid-gene/'+mod+'-Symbol'+'.txt'
-        data = export.ExportFile(export_dir)        
+        export_dir = database_dir+'/'+species_code+'/uid-gene/'+mod+'-Symbol'+'.txt'
+        data = export.ExportFile(export_dir)
+        data.write('GeneID\tSymbol\n')
         for gene in gene_annotations:
             s = gene_annotations[gene]
             if len(s.Symbol())>0:
@@ -177,30 +197,34 @@ def buildNestedAssociations(species_code):
     export_databases = 'no'; genmapp_mod = 'Ensembl' ### default
 
     import GO_Elite; system_codes,source_types,mod_types = GO_Elite.getSourceData()
-    OBO_import.buildNestedGOAssociations(species_code,export_databases,mod_types,genmapp_mod)
+    OBO_import.buildNestedOntologyAssociations(species_code,export_databases,mod_types,genmapp_mod)
         
-def importGeneGOData(species_code,mod,gotype):
+def importGeneToOntologyData(species_code,mod,gotype,ontology_type):
     program_type,database_dir = unique.whatProgramIsThis()
-    if gotype == 'nested': geneGO_import_dir = '/'+database_dir+'/'+species_code+'/nested'
-    elif gotype == 'null': geneGO_import_dir = '/'+database_dir+'/'+species_code+'/gene-go'
+    if gotype == 'nested':
+        geneGO_import_dir = '/'+database_dir+'/'+species_code+'/nested'
+        if ontology_type == 'GeneOntology': ontology_type = 'GO.'
+        mod += '_to_Nested'
+    elif gotype == 'null':
+        geneGO_import_dir = '/'+database_dir+'/'+species_code+'/gene-go'
     gg = GrabFiles(); gg.setdirectory(geneGO_import_dir)
-    try: filedir,file = gg.searchdirectory(mod) ###Identify gene files corresponding to a particular MOD
+    try: filedir,file = gg.searchdirectory(mod+'-'+ontology_type) ###Identify gene files corresponding to a particular MOD
     except Exception:
         if gotype == 'nested':
             buildNestedAssociations(species_code)
-            filedir,file = gg.searchdirectory(mod)
+            filedir,file = gg.searchdirectory(mod+'-'+ontology_type)
     global gene_to_go; x=0
     
     fn=filepath(filedir); gene_to_go={}
     for line in open(fn,'rU').xreadlines():
         if gotype == 'nested' and x==0: x = 1
         else:
-            if 'GeneOntology' not in line and 'GO ID' not in line: ### Header included in input from AP or BioMart
+            if 'Ontology' not in line and 'ID' not in line: ### Header included in input from AP or BioMart
                 data = cleanUpLine(line)
                 t = string.split(data,'\t')
                 if len(t)>1:
                     try: gene = t[0]; goid = t[1]
-                    except IndexError: print [line],t, 'GO-gene relationship not valid...please clean up',filedir;sys.exit()
+                    except IndexError: print [line],t, 'Ontology-gene relationship not valid...please clean up',filedir;sys.exit()
                     goid = string.replace(goid,'GO:','') ### Included in input from AP
                     ### If supplied without proceeding zeros
                     if len(goid)<7 and len(goid)>0:
@@ -233,26 +257,31 @@ def importGeneMAPPData(species_code,mod):
     return gene_to_mapp
 
 def exportCustomPathwayMappings(gene_to_custom,mod,system_codes,custom_sets_folder):
-    export_dir = custom_sets_folder+'/CustomGeneSets/custom_gene_set.txt'
-    print 'Exporting:',export_dir
+    if '.txt' in custom_sets_folder:
+        export_dir = custom_sets_folder
+    else:
+        export_dir = custom_sets_folder+'/CustomGeneSets/custom_gene_set.txt'
+    #print 'Exporting:',export_dir
     try: data = export.ExportFile(export_dir)
     except Exception: data = export.ExportFile(export_dir[1:])
     for system_code in system_codes:
         if system_codes[system_code] == mod: mod_code = system_code
     
     data.write('GeneID\t'+mod+'\tPathway\n'); relationships=0
+    
+    gene_to_custom = eliminate_redundant_dict_values(gene_to_custom)
     for gene in gene_to_custom:
         for pathway in gene_to_custom[gene]:
             values = string.join([gene,mod_code,pathway],'\t')+'\n'
             data.write(values); relationships+=1
     data.close()
-    print relationships,'Custom pathway-to-ID relationships exported...'
+    #print relationships,'Custom pathway-to-ID relationships exported...'
 
 def importGeneCustomData(species_code,system_codes,custom_sets_folder,mod):
     print 'Importing custom pathway relationships...'
     #print 'Trying to import text data'
     gene_to_custom = importTextCustomData(species_code,system_codes,custom_sets_folder,mod)
-    print len(gene_to_custom)
+    #print len(gene_to_custom)
     #print 'Trying to import gmt data'
     gmt_data = parseGMT(custom_sets_folder)
     #print 'Trying to import gpml data'
@@ -273,13 +302,14 @@ def importGeneCustomData(species_code,system_codes,custom_sets_folder,mod):
     gene_to_custom = combineDBs(gene_to_GMT,gene_to_custom)
     exportCustomPathwayMappings(gene_to_custom,mod,system_codes,custom_sets_folder)
     
+    """
     ### Combine WikiPathway associations with the custom
     try: gene_to_mapp = importGeneMAPPData(species_code,mod)
     except Exception: gene_to_mapp = {}
     for gene in gene_to_mapp:
         for mapp in gene_to_mapp[gene]:
             try: gene_to_custom[gene].append(mapp)
-            except KeyError: gene_to_custom[gene]= [mapp]
+            except KeyError: gene_to_custom[gene]= [mapp]"""
 
     return gene_to_custom
 
@@ -289,56 +319,58 @@ def importTextCustomData(species_code,system_codes,custom_sets_folder,mod):
     filedirs = gm.getAllFiles('.txt')
     global gene_to_custom; gene_to_custom={}
     for filedir in filedirs:
-        file = string.split(filedir,'/')[-1]
-        print "Reading custom gene set",filedir
-        fn=filepath(filedir); x = 1
-        for line in open(fn,'rU').xreadlines():
-            data = cleanUpLine(line)
-            if x==0: x=1
-            else:
-                x+=1
-                t = string.split(data,'\t')
-                try:
-                    gene = t[0]; mapp = t[2]; system_code = t[1]
-                    if system_code in system_codes: system = system_codes[system_code]
-                    else: 
-                        if x == 3: print system_code, "is not a recognized system code. Skipping import of",file; break
-                except Exception:
-                    if len(t)>0:
-                        gene = t[0]
-                        if len(t)==1: ### Hence, no system code is provided and only one gene-set is indicated per file
-                            source_data = predictIDSource(t[0],system_codes)
-                            if len(source_data)>0: system = source_data; mapp = file
-                            else:
-                                if x == 3: print file, 'is not propperly formatted (skipping import of relationships)'; break
-                        elif len(t)==2:
-                            if t[1] in system_codes: system = system_codes[t[1]]; mapp = file ### Hence, system code is provided by only one gene-set is indicated per file
-                            else:
+        try:
+            file = string.split(filedir,'/')[-1]
+            print "Reading custom gene set",filedir
+            fn=filepath(filedir); x = 1
+            for line in open(fn,'rU').xreadlines():
+                data = cleanUpLine(line)
+                if x==0: x=1
+                else:
+                    x+=1
+                    t = string.split(data,'\t')
+                    try:
+                        gene = t[0]; mapp = t[2]; system_code = t[1]
+                        if system_code in system_codes: system = system_codes[system_code]
+                        else: 
+                            if x == 3: print system_code, "is not a recognized system code. Skipping import of",file; break
+                    except Exception:
+                        if len(t)>0:
+                            gene = t[0]
+                            if len(t)==1: ### Hence, no system code is provided and only one gene-set is indicated per file
                                 source_data = predictIDSource(t[0],system_codes)
-                                if len(source_data)>0: system = source_data; mapp = t[1]
+                                if len(source_data)>0: system = source_data; mapp = file
                                 else:
                                     if x == 3: print file, 'is not propperly formatted (skipping import of relationships)'; break
-                    else: continue ### Skip line
-                try: gene_to_custom[gene].append(mapp)
-                except KeyError: gene_to_custom[gene]= [mapp]
-                
-        #print [system, mod, len(gene_to_custom)]
-        ### If the system code is not the MOD - Convert to the MOD
-        if (system != mod) and (system != None):
-            gene_to_custom2={}
-            mod_source = mod+'-'+system
-            try: gene_to_source_id = getGeneToUid(species_code,mod_source)
-            except Exception: print mod_source,'relationships not found. Skipping import of',file; break
-            source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
-            if system == 'Symbol': source_to_gene = lowerAllIDs(source_to_gene)
-            for source_id in gene_to_custom:
-                original_source_id = source_id ### necessary when Symbol
-                if system == 'Symbol': source_id = string.lower(source_id)
-                if source_id in source_to_gene:
-                    for gene in source_to_gene[source_id]:
-                        gene_to_custom2[gene] = gene_to_custom[original_source_id]
-            gene_to_custom = gene_to_custom2
-            
+                            elif len(t)==2:
+                                if t[1] in system_codes: system = system_codes[t[1]]; mapp = file ### Hence, system code is provided by only one gene-set is indicated per file
+                                else:
+                                    source_data = predictIDSource(t[0],system_codes)
+                                    if len(source_data)>0: system = source_data; mapp = t[1]
+                                    else:
+                                        if x == 3: print file, 'is not propperly formatted (skipping import of relationships)'; break
+                        else: continue ### Skip line
+                    try: gene_to_custom[gene].append(mapp)
+                    except KeyError: gene_to_custom[gene]= [mapp]
+                    
+            #print [system, mod, len(gene_to_custom)]
+            ### If the system code is not the MOD - Convert to the MOD
+            if (system != mod) and (system != None):
+                gene_to_custom2={}
+                mod_source = 'hide',mod+'-'+system+'.txt'
+                try: gene_to_source_id = getGeneToUid(species_code,mod_source)
+                except Exception: print mod_source,'relationships not found. Skipping import of',file; break
+                source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
+                if system == 'Symbol': source_to_gene = lowerAllIDs(source_to_gene)
+                for source_id in gene_to_custom:
+                    original_source_id = source_id ### necessary when Symbol
+                    if system == 'Symbol': source_id = string.lower(source_id)
+                    if source_id in source_to_gene:
+                        for gene in source_to_gene[source_id]:
+                            gene_to_custom2[gene] = gene_to_custom[original_source_id]
+                gene_to_custom = gene_to_custom2
+        except Exception:
+            print file, 'not formatted propperly!'
     return gene_to_custom
 
 def grabFileRelationships(filename):
@@ -365,10 +397,11 @@ def importUidGeneSimple(species_code,mod_source):
     return gene_to_uid
 
 def augmentEnsemblGO(species_code):
+    ontology_type = 'GeneOntology'
     entrez_ens = importUidGeneSimple(species_code,'EntrezGene-Ensembl')
-    try: ens_go=importGeneGOData(species_code,'Ensembl','null')
+    try: ens_go=importGeneToOntologyData(species_code,'Ensembl','null',ontology_type)
     except Exception: ens_go = {}
-    try: entrez_go=importGeneGOData(species_code,'Entrez','null')
+    try: entrez_go=importGeneToOntologyData(species_code,'Entrez','null',ontology_type)
     except Exception: entrez_go = {}
     ens_go_translated = {}
     for entrez in entrez_go:
@@ -398,19 +431,18 @@ def augmentEnsemblGO(species_code):
 
     ### Build Nested
     export_databases = 'no'; genmapp_mod = 'Ensembl'
-    full_path_db,path_id_to_goid,null = OBO_import.buildNestedGOAssociations(species_code,export_databases,['Ensembl'],genmapp_mod)
+    full_path_db,path_id_to_goid,null = OBO_import.buildNestedOntologyAssociations(species_code,export_databases,['Ensembl'],genmapp_mod)
 
-    
-def importUidGeneData(species_code,mod_source,gene_to_go,gene_to_mapp,denominator_source_ids):
+def importOntologyUIDGeneData(species_code,mod_source,gene_to_go,denominator_source_ids):
     program_type,database_dir = unique.whatProgramIsThis()
     geneUID_import_dir = '/'+database_dir+'/'+species_code+'/uid-gene'
     ug = GrabFiles(); ug.setdirectory(geneUID_import_dir)
     #print "begining to parse",mod_source, 'from',geneGO_import_dir
     filedir,filename = ug.searchdirectory(mod_source) ###Identify gene files corresponding to a particular MOD
-    fn=filepath(filedir); uid_to_go={}; uid_to_mapp={}; count=0; x=0
+    fn=filepath(filedir); uid_to_go={}; count=0; x=0
     uid_system,gene_system = grabFileRelationships(filename)
     for line in open(fn,'rU').xreadlines(): count+=1
-    original_increment = int(count/20); increment = original_increment
+    original_increment = int(count/10); increment = original_increment
     for line in open(fn,'rU').xreadlines():           
         data = cleanUpLine(line); x+=1
         if program_type == 'GO-Elite':
@@ -428,12 +460,34 @@ def importUidGeneData(species_code,mod_source,gene_to_go,gene_to_mapp,denominato
         try:
             if len(denominator_source_ids)>0:
                 null=denominator_source_ids[uid] ### requires that the source ID be in the list of analyzed denominators
+        except Exception: null=[]
+    return uid_to_go,uid_system
+
+def importGeneSetUIDGeneData(species_code,mod_source,gene_to_mapp,denominator_source_ids):
+    program_type,database_dir = unique.whatProgramIsThis()
+    geneUID_import_dir = '/'+database_dir+'/'+species_code+'/uid-gene'
+    ug = GrabFiles(); ug.setdirectory(geneUID_import_dir)
+    #print "begining to parse",mod_source, 'from',geneGO_import_dir
+    filedir,filename = ug.searchdirectory(mod_source) ###Identify gene files corresponding to a particular MOD
+    fn=filepath(filedir); uid_to_mapp={}; count=0; x=0
+    uid_system,gene_system = grabFileRelationships(filename)
+    for line in open(fn,'rU').xreadlines(): count+=1
+    original_increment = int(count/10); increment = original_increment
+    for line in open(fn,'rU').xreadlines():           
+        data = cleanUpLine(line); x+=1
+        if program_type == 'GO-Elite':
+            if x == increment: increment+=original_increment; print '*',
+        t = string.split(data,'\t')
+        uid = t[1]; gene = t[0] 
+        try:
+            if len(denominator_source_ids)>0:
+                null=denominator_source_ids[uid] ### requires that the source ID be in the list of analyzed denominators
             mapp_name = gene_to_mapp[gene]
             y = GeneRelationships(uid,gene,mapp_name,uid_system,gene_system)
             try: uid_to_mapp[uid].append(y)
             except KeyError: uid_to_mapp[uid] = [y]
         except Exception: null=[]
-    return uid_to_go,uid_to_mapp,uid_system
+    return uid_to_mapp,uid_system
 
 def eliminate_redundant_dict_values(database):
     db1={}
@@ -447,15 +501,15 @@ def getGeneToUid(species_code,mod_source):
     import_dir = '/'+database_dir+'/'+species_code+'/uid-gene'
     ug = GrabFiles(); ug.setdirectory(import_dir)
     filedir,filename = ug.searchdirectory(mod_source) ###Identify gene files corresponding to a particular MOD
-    
     fn=filepath(filedir); gene_to_uid={}; count = 0; x=0
     uid_system,gene_system = grabFileRelationships(filename)
 
     for line in open(fn,'r').xreadlines(): count+=1
-    original_increment = int(count/20); increment = original_increment
+    original_increment = int(count/10); increment = original_increment
     for line in open(fn,'rU').xreadlines():             
         data = cleanUpLine(line); x+=1
-        if x == increment and show_progress == 'yes': increment+=original_increment; print '*',
+        if x == increment and show_progress == 'yes':
+            increment+=original_increment; print '*',
         t = string.split(data,'\t')
         uid = t[1]; gene = t[0]
         try: gene_to_uid[gene].append(uid)
@@ -515,20 +569,20 @@ def addNewCustomSystem(filedir,system,save_option,species_code):
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        data_length = len(t)
-        ### Check the length of the input file
-        if data_length==3:
-            length3+=1
-            if len(t[0])>0:
-                try: gene = t[0]; symbol = t[1]; name = t[2]
-                except Exception:
-                    print 'Unexpected error in the following line'; print t, filedir;kill
+        if len(t[0])>0:
+            try:
+                ### Allow the user to only include one column here
+                gene = t[0]
+                try: symbol = t[1]
+                except Exception: symbol = gene
+                try: name = ''
+                except Exception: name = ''
                 s = GeneAnnotations(gene,symbol,name,'')
                 gene_annotations[gene] = s
-        else: lengthnot3+=1
+            except Exception:
+                print 'Unexpected error in the following line'; print t, filedir;kill
         
-    if length3>lengthnot3:
-        ###Ensure that the input file is almost completely 2 columns
+    if len(gene_annotations)>0:
         print 'Writing new annotation file:',species_code,system
         export_dir = 'Databases/'+species_code+'/gene/'+system+'.txt'
         data = export.ExportFile(export_dir)
@@ -540,39 +594,67 @@ def addNewCustomSystem(filedir,system,save_option,species_code):
         return 'exported'
     else: return 'not-exported'
     
+def importGeneSetsIntoDatabase(source_file,species_code,mod):
+    source_filename = export.findFilename(source_file)
+    export.deleteFolder('BuildDBs/temp') ### Delete any previous data
+    destination_dir = filepath('BuildDBs/temp/'+source_filename)
+    export.customFileCopy(source_file,destination_dir)
+    print destination_dir
+    custom_sets_folder = export.findParentDir(destination_dir)
+    import GO_Elite; system_codes,source_types,mod_types = GO_Elite.getSourceData()
+    gene_to_custom = importGeneCustomData(species_code,system_codes,custom_sets_folder,mod)
+    return gene_to_custom
+
 def addNewCustomRelationships(filedir,relationship_file,save_option,species_code):
-    mod,data_type = string.split(relationship_file,'-'); mod_id_to_related={}
-    if 'update' in save_option:
-        print "Importing existing",species_code,relationship_file,"relationships."
-        if data_type == 'MAPP':
-            mod_id_to_related=importGeneMAPPData(species_code,mod)
-        elif data_type == 'GeneOntology':
-            mod_id_to_related=importGeneGOData(species_code,mod,'null')
-            ###We have to reset the version to trigger a rebuild if we change any values in this table
-            OBO_import.exportVersionData(0,'0/0/0','/'+species_code+'/nested/')
-        else: mod_id_to_related=importUidGeneSimple(species_code,mod+'-'+data_type)
+    relationship_filename = export.findFilename(relationship_file)
+    mod,data_type = string.split(relationship_filename,'-')
+    mod_id_to_related={}
+    if 'update' in save_option or '.txt' not in filedir:
+        if 'gene-mapp' in relationship_file:
+            if '.txt' not in filedir: ### Then these are probably gmt, gpml or owl
+                mod_id_to_related = importGeneSetsIntoDatabase(filedir,species_code,mod)
+            else:
+                mod_id_to_related = importGeneMAPPData(species_code,mod)
+        elif 'gene-go' in relationship_file:
+            mod_id_to_related=importGeneToOntologyData(species_code,mod,'null',data_type)
+        else: mod_id_to_related=importUidGeneSimple(species_code,mod+'-'+data_type+'.txt')
     fn=filepath(filedir); length2=0; lengthnot2=0
-    for line in open(fn,'rU').xreadlines():
-        data = cleanUpLine(line)
-        t = string.split(data,'\t')
-        data_length = len(t)
-        ### Check the length of the input file
-        if data_length==2 or data_length==3: #This can occur if users load a custom gene set file created by GO-Elite
-            length2+=1
-            if len(t[0])>0 and len(t[-1])>0:
-                if ',' in t[0]: keys = string.split(t[0],',') ### These can be present in the MGI phenotype ontology gene association files
-                else: keys = [t[0]]
-                for key in keys:
-                    try: mod_id_to_related[key].append(t[-1])
-                    except KeyError: mod_id_to_related[key] = [t[-1]]
-        else: lengthnot2+=1
+    if '.txt' in fn:
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            data_length = len(t)
+            ### Check the length of the input file
+            if data_length==2 or data_length==3: #This can occur if users load a custom gene set file created by GO-Elite
+                length2+=1
+                if len(t[0])>0 and len(t[-1])>0:
+                    if ',' in t[0]: keys = string.split(t[0],',') ### These can be present in the MGI phenotype ontology gene association files
+                    else: keys = [t[0]]
+                    for key in keys:
+                        try: mod_id_to_related[key].append(t[-1])
+                        except KeyError: mod_id_to_related[key] = [t[-1]]
+            else: lengthnot2+=1
+    else: length2+=1
         
     if length2>lengthnot2:
         ###Ensure that the input file is almost completely 2 columns
         print 'Writing new relationship file:',species_code,relationship_file
-        if data_type == 'MAPP': export_dir = 'Databases/'+species_code+'/gene-mapp/'+relationship_file+'.txt'
-        elif data_type == 'GeneOntology': export_dir = 'Databases/'+species_code+'/gene-go/'+relationship_file+'.txt'
+        if 'Databases' in relationship_file:
+            export_dir = relationship_file ### Sometimes we just include the entire path for clarification
+            if 'mapp' in export_dir: data_type = 'MAPP'
+            else: data_type = 'Ontology'
+        elif data_type == 'MAPP': export_dir = 'Databases/'+species_code+'/gene-mapp/'+relationship_file+'.txt'
+        elif data_type == 'Ontology':
+            export_dir = 'Databases/'+species_code+'/gene-go/'+relationship_file+'.txt'
         else: export_dir = 'Databases/'+species_code+'/uid-gene/'+relationship_file+'.txt'
+        if data_type == 'Ontology':
+            ### To trigger a rebuild of the ontology nested, must deleted the existing nested for this ontology
+            nested_path = filepath(string.replace(relationship_file,'gene-go','nested'))
+            nested_path = string.replace(nested_path,'GeneOntology','GO')
+            obo=string.split(nested_path,'-')[-1]
+            nested_path = string.replace(nested_path,'-'+obo,'_to_Nested-'+obo) ### Will break if there is another '-' in the name
+            try: os.remove(nested_path)
+            except Exception: null=[]
         data = export.ExportFile(export_dir)
         data.write('ID\t\tRelated ID\n')
         for mod_id in mod_id_to_related:
@@ -581,13 +663,12 @@ def addNewCustomRelationships(filedir,relationship_file,save_option,species_code
                     data.write(string.join([mod_id,'',related_id],'\t')+'\n')
                 else: data.write(string.join([mod_id,related_id],'\t')+'\n')
         data.close()
-        if data_type == 'GeneOntology':
-            OBO_import.exportVersionData(0,'0/0/0','/'+species_code+'/nested/')  ### Erase the existing file so that the database is re-remade
         return 'exported'
     else: return 'not-exported'
                 
 def importUIDsForMAPPFinderQuery(filedir,system_codes,return_uid_values):
-    fn=filepath(filedir); x=0; uid_list = {}; uid_value_db = {}; source_data = ''; value_len_list = []; system_code_found = 'no'; first_uid=''; first_line = 'no lines in file'
+    fn=filepath(filedir); x=0; uid_list = {}; uid_value_db = {}; source_data = ''; value_len_list = []
+    system_code_found = 'no'; first_uid=''; first_line = 'no lines in file'; underscore = False
     source_data_db={}; error=''; bad_alphanumerics=0
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -613,8 +694,7 @@ def importUIDsForMAPPFinderQuery(filedir,system_codes,return_uid_values):
                 if len(t)>1: ###Therefore there is either gene values or system data associated with imported primary IDs
                     try:
                         system = t[1]
-                        if system[0]==' ': system = system[1:]
-                        if system[-1]==' ': system = system[:-1]
+                        system = string.replace(system,' ','')
                         if system in system_codes:
                             #if len(source_data)<1: source_data = system_codes[t[1]]; system_code_found = 'yes'
                             source_data = system_codes[system]; system_code_found = 'yes'; source_data_read = source_data
@@ -626,6 +706,7 @@ def importUIDsForMAPPFinderQuery(filedir,system_codes,return_uid_values):
                             if len(uid) > 0 and uid != ' ':
                                 all_alphanumeric = re.findall(r"\w",uid)
                                 if len(all_alphanumeric)>0: uid_value_db[uid] = values
+                                if '_' in uid: underscore=True
                     except Exception:
                         source_data_read =''
                 if len(source_data_read)<1:
@@ -640,9 +721,13 @@ def importUIDsForMAPPFinderQuery(filedir,system_codes,return_uid_values):
     elif len(source_data_db)>1:
         error = 'WARNING!!! There is more than one gene system (e.g., Ensembl and EntrezGene) in the file:\n"'+filename+'"\nPlease correct and re-run.'
     elif source_data == '':
-        error = 'WARNING!!! No gene SystemCode identified in:\n"'+filename+'"\nPlease provide in input text file and re-run.\n If SystemCode column present, the file format may be incorrect.'
+        error = 'WARNING!!! No System Code identified in:\n"'+filename+'"\nPlease provide in input text file and re-run.\n If System Code column present, the file format may be incorrect.'
+        try: error +='Possible system code: '+system+' not recognized.'
+        except Exception: None
     elif x>0 and bad_alphanumerics>1:
         error = 'WARNING!!! Invalid text file encoding found (invalid alphanumeric values). Please resave text file in a standard tab-delimited format'
+    if underscore and system == 'S':
+        error += '\nSwissProt IDs of the type P53_HUMAN (P04637) are not recognized as propper UniProt IDs. Consider using alternative compatible IDs (e.g., P04637).'
     if return_uid_values == 'yes' and len(value_len_list)>0:
         value_len_list.sort(); longest_value_list = value_len_list[-1]
         for uid in uid_value_db:
@@ -664,34 +749,51 @@ def getAllDenominators(denom_search_dir,system_codes):
         denom_gene_list,source_data_denom,error_message = importUIDsForMAPPFinderQuery(denom_search_dir+'/'+gene_file,system_codes,'no')
         for i in denom_gene_list: denom_all_db[i]=[]
     return denom_all_db
-    
-def grabNestedGeneAssociations(species_code,mod,source_data,system_codes,custom_sets_folder,denom_search_dir):
+
+def grabNestedGeneToOntologyAssociations(species_code,mod,source_data,system_codes,denom_search_dir,ontology_type):
     program_type,database_dir = unique.whatProgramIsThis()
     global printout; printout = 'yes'
     gene_annotations = importGeneData(species_code,mod)
     ### Filter source IDs for those in all user denominator files
     denominator_source_ids = getAllDenominators(denom_search_dir,system_codes)
-    
-    try: gene_to_go = importGeneGOData(species_code,mod,'nested')
-    except Exception: print "Warning...the MOD you have selected:",mod,"is missing the appropriate relationship files, necessary to run GO-Elite.  Either replace the missing files ("+database_dir+'/'+species_code+') or select a different MOD at runtime. Exiting program.'; sys.stdin.readline(); sys.exit()
-    if len(custom_sets_folder)>0:
-        gene_to_mapp = importGeneCustomData(species_code,system_codes,custom_sets_folder,mod)
+    try: gene_to_go = importGeneToOntologyData(species_code,mod,'nested',ontology_type)
+    except Exception:
+        print "Warning...the MOD you have selected:",mod,ontology_type,"is missing the appropriate relationship files",
+        print "necessary to run GO-Elite.  Either replace the missing files ("+database_dir+'/'+species_code+') or select a different MOD at runtime.'
+        print 'Exiting program.'; sys.exit()
+    if source_data != mod:
+        mod_source = mod+'-'+source_data+'.txt'
+        uid_to_go,uid_system = importOntologyUIDGeneData(species_code,mod_source,gene_to_go,denominator_source_ids)
+        gene_to_go = convertGeneDBtoGeneObjects(gene_to_go,mod)
+        for gene in gene_to_go: uid_to_go[gene] = gene_to_go[gene]
+        return uid_to_go, uid_system, gene_annotations
     else:
-        try: gene_to_mapp = importGeneMAPPData(species_code,mod)
+        gene_to_go = convertGeneDBtoGeneObjects(gene_to_go,mod)
+        return gene_to_go, mod, gene_annotations
+
+def grabNestedGeneToPathwayAssociations(species_code,mod,source_data,system_codes,custom_sets_folder,denom_search_dir,ontology_type):
+    program_type,database_dir = unique.whatProgramIsThis()
+    global printout; printout = 'yes'
+    gene_annotations = importGeneData(species_code,mod)
+    ### Filter source IDs for those in all user denominator files
+    denominator_source_ids = getAllDenominators(denom_search_dir,system_codes)
+    try:
+        if ontology_type == 'WikiPathways': ontology_type = 'MAPP'
+        gene_to_mapp = importGeneMAPPData(species_code,mod+'-'+ontology_type)
+    except Exception:
+        ### If a custom collection, shouldn't be found in the gene-mapp directory
+        try: gene_to_mapp = importGeneCustomData(species_code,system_codes,custom_sets_folder,mod)
         except Exception: gene_to_mapp = {}
     if source_data != mod:
-        mod_source = mod+'-'+source_data
-        uid_to_go,uid_to_mapp,uid_system = importUidGeneData(species_code,mod_source,gene_to_go,gene_to_mapp,denominator_source_ids)
-        gene_to_go = convertGeneDBtoGeneObjects(gene_to_go,mod)
+        mod_source = mod+'-'+source_data+'.txt'
+        uid_to_mapp,uid_system = importGeneSetUIDGeneData(species_code,mod_source,gene_to_mapp,denominator_source_ids)
         gene_to_mapp = convertGeneDBtoGeneObjects(gene_to_mapp,mod)
         ### Combine the gene and UID data in order to later filter out gene's linked to an arrayid that are not linked to the pathway (common for some pathways)
-        for gene in gene_to_go: uid_to_go[gene] = gene_to_go[gene]
         for gene in gene_to_mapp: uid_to_mapp[gene] = gene_to_mapp[gene]
-        return uid_to_go, uid_to_mapp, uid_system, gene_annotations
+        return uid_to_mapp, uid_system, gene_annotations
     else:
-        gene_to_go = convertGeneDBtoGeneObjects(gene_to_go,mod)
         gene_to_mapp = convertGeneDBtoGeneObjects(gene_to_mapp,mod)
-    return gene_to_go, gene_to_mapp, mod, gene_annotations
+        return gene_to_mapp, mod, gene_annotations
 
 def convertGeneDBtoGeneObjects(gene_to_pathway,mod):
     gene_to_pathway_objects={}
@@ -1020,10 +1122,15 @@ class GeneIDInfo:
         try:
             if ' ' == self.geneID[-1]: self.geneID = self.geneID[:-1]
         except Exception: null=[]
-        
     def GeneID(self): return str(self.geneID)
     def System(self): return str(self.system_name)
     def Pathway(self): return str(self.pathway)
+    def setGraphID(self,graphID): self.graphID = graphID
+    def GraphID(self): return self.graphID
+    def setLabel(self,label): self.label = label
+    def Label(self): return self.label
+    def setModID(self,mod_list): self.mod_list = mod_list
+    def ModID(self): return self.mod_list
     def Report(self):
         output = self.GeneID()+'|'+self.System()
         return output
@@ -1063,7 +1170,7 @@ def exportWikiPathwayData(species_name,pathway_db,type):
         values = string.replace(values,'\n','') ###Included by mistake
         export_data.write(values+'\n')
     export_data.close()
-    print 'WikiPathways data exported to:',export_dir
+    #print 'WikiPathways data exported to:',export_dir
     
 def clusterPrimaryPathwayGeneSystems(species_code,pathway_db):
     st = systemTranslation()
@@ -1094,7 +1201,8 @@ def clusterPrimaryPathwayGeneSystems(species_code,pathway_db):
 
 def convertAllGPML(specific_species,all_species):
     import update; import UI
-    species_names = UI.remoteSpeciesInfo('yes')
+    try: species_names = UI.remoteSpeciesInfo('yes') ### GO-Elite version
+    except Exception: species_names = UI.remoteSpeciesAlt() ### AltAnalyze version
     for species_code in species_names:
         if all_species == 'yes' or species_code in specific_species:
             species_name = species_names[species_code].SpeciesName()
@@ -1110,6 +1218,8 @@ def convertAllGPML(specific_species,all_species):
             fln,status = update.download(url,'GPML/','')
             
             if 'Internet' not in status:
+                if len(specific_species) == 1:
+                    print 'Including the latest WikiPathways associations'
                 gene_data,pathway_db = parseGPML('/GPML') ### Get pathway associations (gene and annotation)
                 clusterPrimaryPathwayGeneSystems(species_code,pathway_db)
                 exportWikiPathwayData(species_name,pathway_db,'native')
@@ -1117,7 +1227,7 @@ def convertAllGPML(specific_species,all_species):
                 ### Create a "MAPPED" version (mapped will contain BAD MAPPINGS provide by the source database)!!!
                 ensembl_to_WP = unifyGeneSystems(gene_data,species_code,'Ensembl') ### convert primary systems to MOD IDs
                 hmdb_to_WP = unifyGeneSystems(gene_data,species_code,'HMDB') ### convert primary systems to MOD IDs
-                convertBetweenSystems(species_code,pathway_db,ensembl_to_WP,hmdb_to_WP)
+                convertBetweenSystems(species_code,pathway_db,ensembl_to_WP,hmdb_to_WP) ### convert MOD IDs to all related primary systems (opposite as last method)
                 exportWikiPathwayData(species_name,pathway_db,'mapped')
                 #sys.exit()
 
@@ -1171,7 +1281,6 @@ def getRelated(species_code,mod_source):
     except Exception: gene_to_source_id={}
     return gene_to_source_id
 
-            
 class WikiPathwaysData:
     def __init__(self,pathway,wpid,revision,organism,gi):
         self.pathway = pathway; self.wpid = wpid; self.revision = revision; self.gi = gi
@@ -1217,27 +1326,60 @@ def parseGPML(custom_sets_folder):
     gene_data=[]; pathway_db={}
     for xml in filedirs:
         pathway_gene_data=[]
+        pathway_type = 'GPML'
         xml=filepath(xml)
         filename = string.split(xml,'/')[-1]
-        wpid = string.split(filename,'_')[-2]
+        try: wpid = string.split(filename,'_')[-2]
+        except Exception: wpid = filename[:-5]
         revision = string.split(filename,'_')[-1][:-5]
         dom = parse(xml)
-        tags = dom.getElementsByTagName('Xref')
+        #tags = dom.getElementsByTagName('Xref')
+        data_node_tags = dom.getElementsByTagName('DataNode')
         pathway_tag = dom.getElementsByTagName('Pathway')
+        comment_tag = dom.getElementsByTagName('Comment')
+        #print comment_tag.nodeValue; sys.exit()
         for pn in pathway_tag:
             pathway_name = pn.getAttribute("Name")
             organism = pn.getAttribute("Organism")
-        for i in tags:
-            system_name = i.getAttribute("Database")
-            id = i.getAttribute("ID")
-            if len(id)>0:
-                gi = GeneIDInfo(str(system_name),str(id),pathway_name)
+            data_source = pn.getAttribute("Data-Source")
+        for cm in comment_tag:
+            pathway_type = cm.getAttribute("Source")
+            ### This is an issue with KEGG pathways who's names are truncated
+            try:
+                extended_comment_text = cm.childNodes[0].nodeValue
+                if 'truncated' in extended_comment_text:
+                    pathway_name = string.split(extended_comment_text,': ')[-1]
+            except IndexError: null=[]
+        if 'Kegg' in pathway_type:
+            pathway_id = string.split(data_source,'?')[-1]
+            pathway_name += ':KEGG-'+pathway_id
+        for i in data_node_tags:
+            #print i.toxml()
+            id = ''
+            system_name = ''
+            for x in i.childNodes: ### DataNode is the parent attribute with children GraphId, TextLabel, Xref
+                if x.nodeName == 'Xref': ### Since the attributes we want are children of these nodes, must find the parents first
+                    system_name = x.getAttribute("Database") ### System Code
+                    id = x.getAttribute("ID") ### Gene or metabolite ID
+            label = i.getAttribute("TextLabel") ### Gene or metabolite label
+            graphID = i.getAttribute("GraphId") ### WikiPathways graph ID
+            gi = GeneIDInfo(str(system_name),str(id),pathway_name)
+            gi.setGraphID(graphID)
+            gi.setLabel(label)
+            if len(id)>0 or 'Tissue' in pathway_name: ### Applies to the Lineage Profiler pathway which doesn't have IDs
                 gene_data.append(gi)
                 pathway_gene_data.append(gi)
         wpd=WikiPathwaysData(pathway_name,wpid,revision,organism,pathway_gene_data)
         pathway_db[wpid]=wpd
+
     return gene_data,pathway_db
 
+def getGPMLGraphData(custom_sets_folder,species_code,mod):
+    """ Calls methods to import GPML data and retrieve MOD IDs (Ensembl/Entrez) for GPML graphIDs """
+    gpml_data,pathway_db = parseGPML(custom_sets_folder)
+    gene_to_WP = unifyGeneSystems(gpml_data,species_code,mod)
+    return pathway_db ### This object contains all pathways and all ID associations
+    
 def parseGPML2():
     import urllib
     from xml.dom import minidom
@@ -1379,7 +1521,7 @@ def unifyGeneSystems(xml_data,species_code,mod):
         if 'Ensembl' in source_data: source_data = 'Ensembl'
         if source_data in st: source_data = st[source_data] ### convert the name to the GO-Elite compatible name
         if source_data != mod:
-            mod_source = mod+'-'+source_data
+            mod_source = mod+'-'+source_data+'.txt'
             try: gene_to_source_id = getGeneToUid(species_code,('hide',mod_source)); #print mod_source, 'relationships imported.'
             except Exception: gene_to_source_id={}
             #print len(gene_to_source_id),mod_source,source_data
@@ -1404,6 +1546,7 @@ def unifyGeneSystems(xml_data,species_code,mod):
                 for mod_id in source_to_gene[geneID]:
                     try: mod_pathway[mod_id].append(gi.Pathway())
                     except Exception: mod_pathway[mod_id] = [gi.Pathway()]
+                gi.setModID(source_to_gene[geneID]) ### Update this object to include associated MOD IDs (e.g., Ensembl or Entrez)
             else:
                 null=[]
                 #print [gi.GeneID()]
@@ -1416,6 +1559,7 @@ def unifyGeneSystems(xml_data,species_code,mod):
         if source_data == mod:
             try: mod_pathway[gi.GeneID()].append(gi.Pathway())
             except Exception: mod_pathway[gi.GeneID()] = [gi.Pathway()]
+            gi.setModID([gi.GeneID()])
     #print len(system_ids),len(mod_pathway),len(mod_pathway)
     return mod_pathway
 
@@ -1435,7 +1579,6 @@ if __name__ == '__main__':
     species_code = 'Mx'; mod = 'HMDB'; gotype='nested'
     filedir = 'C:/Documents and Settings/Nathan Salomonis/My Documents/GO-Elite_120beta/Databases/EnsMart56Plus/Ce/gene/EntrezGene.txt'
     system = 'Macaroni'
-    
     biopax_data = parseBioPax('/test'); sys.exit()
     
     import GO_Elite
@@ -1455,7 +1598,7 @@ if __name__ == '__main__':
 
     addNewCustomSystem(filedir,system,'yes','Ms'); kill
     addNewCustomRelationships('test.txt','Ensembl-MAPP','update','Mm');kill
-    importGeneGOData(species_code,mod,gotype);kill
+    importGeneToOntologyData(species_code,mod,gotype,ontology_type);kill
     
     species_name = 'Homo Sapiens'; species_code = 'Hs'; source_data = 'EntrezGene'; mod = 'EntrezGene'
     system_codes={}; system_codes['X'] = 'Affymetrix'
@@ -1468,7 +1611,6 @@ if __name__ == '__main__':
         ###Import Input gene/source-id lists
         input_gene_list,source_data_input,error = importUIDsForMAPPFinderQuery('input/GenesToQuery/'+species_code+'/'+gene_file,system_codes,'no'); input_count = len(input_gene_list)
         
-    uid_to_go, uid_system, gene_annotations = grabNestedGeneAssociations(species_code,mod)
 
 #!/usr/bin/python
 ###########################

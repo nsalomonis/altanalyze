@@ -232,7 +232,7 @@ def verifyFile(filename,server_folder):
     elif counts == 0:
         if server_folder == None: server_folder = 'AltMouse'
         continue_analysis = downloadCurrentVersion(filename,server_folder,'')
-        if continue_analysis == 'no':
+        if continue_analysis == 'no' and 'nnot' not in filename:
             print 'The file:\n',filename, '\nis missing and cannot be found online. Please save to the designated directory or contact AltAnalyze support.'
     else:
         return counts
@@ -280,7 +280,16 @@ def importSpeciesInfo():
             species_codes[abrev] = sd
     return species_codes
     
+def downloadSuppressPrintOuts(url,dir,file_type):
+    global Suppress_Printouts
+    Suppress_Printouts = 'yes'
+    return download(url,dir,file_type)
+    
 def download(url,dir,file_type):
+    global suppress_printouts
+    try: suppress_printouts = Suppress_Printouts
+    except Exception: suppress_printouts = 'no'
+
     try: dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
     except Exception:
         output_filepath='failed'; status = "Internet connection not established. Re-establish and try again."
@@ -298,6 +307,9 @@ def download(url,dir,file_type):
 
 class download_protocol:
     def __init__(self,url,dir,file_type):
+        try: self.suppress = suppress_printouts
+        except Exception: self.suppress = 'no'
+        
         """Copy the contents of a file from a given URL to a local file."""
         filename = url.split('/')[-1]; self.status = ''
         #print [url, dir]
@@ -306,25 +318,27 @@ class download_protocol:
         output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
         output_filepath = filepath(dir+filename); self.output_filepath = output_filepath
         
-        print "Downloading the following file:",filename,' ',
+        if self.suppress == 'no':
+            print "Downloading the following file:",filename,' ',
         
         self.original_increment = 5
         self.increment = 0
         from urllib import urlretrieve
         webfile, msg = urlretrieve(url, output_filepath,reporthook=self.reporthookFunction)
-        print ''; self.testFile()
-        print self.status
+        if self.suppress == 'no': print ''
+        self.testFile()
+        if self.suppress == 'no': print self.status
 
         if 'Internet' not in self.status:
             if '.zip' in filename:
-                print "Extracting zip file...",
+                if self.suppress == 'no': print "Extracting zip file...",
                 try: decompressZipStackOverflow(filename,dir); status = 'completed'
                 except Exception:
                     #print 'Native unzip not present...trying python unzip methods...'
                     status = unzipFiles(filename,dir)
                     if status == 'failed': print 'zip extraction failed!'
                 self.gz_filepath = filepath(output_filepath); self.status = 'remove'
-                print "zip file extracted"
+                if self.suppress == 'no': print "zip file extracted"
             elif '.gz' in filename:
                 self.gz_filepath = output_filepath
                 if len(file_type)==0: extension = '.gz'
@@ -359,16 +373,19 @@ class download_protocol:
     def getStatus(self): return self.output_filepath, self.status
     def reporthookFunction(self, blocks_read, block_size, total_size):
         if not blocks_read:
-            print 'Connection opened. Downloading (be patient)'
+            if self.suppress == 'no':
+                print 'Connection opened. Downloading (be patient)'
         if total_size < 0:
             # Unknown size
-            print 'Read %d blocks' % blocks_read
+            if self.suppress == 'no':
+                print 'Read %d blocks' % blocks_read
         else:
             amount_read = blocks_read * block_size
             percent_read = ((amount_read)*1.00/total_size)*100
             if percent_read>self.increment:
                 #print '%d%% downloaded' % self.increment
-                print '*',
+                if self.suppress == 'no':
+                    print '*',
                 self.increment += self.original_increment
             #print 'Read %d blocks, or %d/%d' % (blocks_read, amount_read, (amount_read/total_size)*100.000)
 
@@ -387,7 +404,7 @@ def createExportFile(new_file,dir):
 
 def downloadCurrentVersionUI(filename,secondary_dir,file_type,root):
     continue_analysis = downloadCurrentVersion(filename,secondary_dir,file_type)
-    if continue_analysis == 'no':
+    if continue_analysis == 'no' and 'nnot' not in filename:
         import UI
         try: root.destroy(); UI.getUserParameters('no'); sys.exit()
         except Exception: sys.exit()
@@ -406,8 +423,8 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
     filename = export.findFilename(filename)
     url = url_dir+secondary_dir+'/'+filename
     file,status = download(url,dir,file_type); continue_analysis = 'yes'
-    if 'Internet' in status:
-        print_out = "File:\n"+url+"\ncould not be found on server or internet connection is unavailable."
+    if 'Internet' in status and 'nnot' not in filename: ### Exclude for Affymetrix annotation files
+        print_out = "File:\n"+url+"\ncould not be found on the server or an internet connection is unavailable."
         if len(sys.argv)<2:
             try:
                 UI.WarningWindow(print_out,'WARNING!!!')

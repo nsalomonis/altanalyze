@@ -165,14 +165,21 @@ def parse_input_data(filename,data_type):
                       if array_type == 'RNASeq':
                         if normalization_method == 'RPKM' and secondary_data_type == 'expression':
                             if ':I' in probeset: k=1 ### Don't require an RPKM threshold for intron IDs (these will likely never meet this unless small or fully retained and highly expressed)
-                            elif avg_stat>=rpkm_threshold: k=1
+                            elif ':' not in probeset:
+                                if avg_stat>=gene_rpkm_threshold: k=1
+                                else: k=0
+                            elif avg_stat>=exon_rpkm_threshold: k=1
+                            elif '-' in probeset: k=1 ### Don't consider RPKM for junctions, just counts
                             else: k=0
-                            #if 'ENSMUSG00000045991:E2.2' in probeset: print [probeset, normalization_method, secondary_data_type, rpkm_threshold, avg_stat, k]
-                        else:
+                            #if 'ENSMUSG00000045991:E2.2' in probeset: print [probeset, normalization_method, secondary_data_type, gene_rpkm_threshold, avg_stat, k]
+                        else: ### Otherwise, we are looking at count data
                             if '-' in probeset: ### junction meeting minimum read-count number
                                 if avg_stat>=junction_exp_threshold: k=1 ### junction_exp_threshold is the same as nonlog_exp_threshold
                                 else: k=0
-                            else: ### exon or intron meeting minimu read-count number
+                            elif ':' not in probeset:
+                                if avg_stat>=gene_exp_threshold: k=1
+                                else: k=0
+                            else: ### exon or intron meeting minimum read-count number
                                 if avg_stat>=exon_exp_threshold: k=1
                                 else: k=0
                             #if 'ENSMUSG00000045991:E2.2' in probeset: print [probeset, normalization_method, secondary_data_type, exon_exp_threshold, junction_exp_threshold, avg_stat, k]
@@ -310,7 +317,8 @@ def eliminate_redundant_dict_values(database):
 def remoteRun(fl,Species,Array_type,expression_threshold,filter_method_type,p_val,express_data_format,altanalyze_file_list,avg_all_for_ss):
   start_time = time.time()
   global p; global filter_method; global exp_data_format; global array_type; global species; global root_dir; global original_exp_threshold
-  global normalization_method; global exon_exp_threshold; global rpkm_threshold; global junction_exp_threshold
+  global normalization_method; global exon_exp_threshold; global gene_rpkm_threshold; global junction_exp_threshold
+  global exon_rpkm_threshold; global gene_exp_threshold
   
   original_exp_threshold = expression_threshold
   aspire_output_list=[]; aspire_output_gene_list=[]
@@ -324,11 +332,16 @@ def remoteRun(fl,Species,Array_type,expression_threshold,filter_method_type,p_va
   except Exception: normalization_method = 'NA'
   try: exon_exp_threshold = fl.ExonExpThreshold()
   except Exception: exon_exp_threshold = 0
-  try: rpkm_threshold = fl.RPKMThreshold()
-  except Exception: rpkm_threshold = 0
+  try: gene_rpkm_threshold = fl.RPKMThreshold()
+  except Exception: gene_rpkm_threshold = 0
   root_dir = fl.RootDir()
-  junction_exp_threshold = expression_threshold
-  
+  try: junction_exp_threshold = fl.JunctionExpThreshold()
+  except Exception: junction_exp_threshold = 0
+  try: exon_rpkm_threshold = fl.ExonRPKMThreshold()
+  except Exception: exon_rpkm_threshold = 0
+  try: gene_exp_threshold = fl.GeneExpThreshold()
+  except Exception: gene_exp_threshold = 0
+    
   if 'exon' in array_type: array_type = 'exon' ###In AnalayzeExpressionDataset module, this is named 'exon-array'
   
   global log_expression_threshold; global nonlog_exp_threshold; nonlog_exp_threshold = expression_threshold

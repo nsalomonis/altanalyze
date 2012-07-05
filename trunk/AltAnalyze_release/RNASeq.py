@@ -58,7 +58,7 @@ def cleanUpLine(line):
 
 ######### Below code deals with building the AltDatabase #########
 
-def exportNovelExonToBedCoordinates(species,novel_exon_coordinates):
+def exportNovelExonToBedCoordinates(species,novel_exon_coordinates,chr_status):
     ### Export the novel exon coordinates based on those in the junction BED file to examine the differential expression of the predicted novel exon
     #bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/databases/hESC_differentiation_exons.bed > day20_7B__exons-novel.bed
     bed_export_path = filepath('AltDatabase/'+species+'/RNASeq/'+species + '_Ensembl_exons.bed')
@@ -73,6 +73,8 @@ def exportNovelExonToBedCoordinates(species,novel_exon_coordinates):
         if gene == None: gene = 'NA'
         if gene != 'NA': ### Including these has no benefit for AltAnalyze (just slows down alignment and piles up memory)
             if ji.Strand() == '-': stop,start=start,stop
+            if chr_status == False:
+                chr = string.replace(chr,'chr','') ### This will thus match up to the BAM files
             bed_values = [chr,str(start),str(stop),gene,'0',str(ji.Strand())]
             bed_values = cleanUpLine(string.join(bed_values,'\t'))+'\n'
             bed_data.write(bed_values)
@@ -87,7 +89,7 @@ def moveBAMtoBEDFile(species,dataset_name,root_dir):
     export.customFileMove(bed_export_path,new_fn)
     return new_fn
 
-def reformatExonFile(species,type):
+def reformatExonFile(species,type,chr_status):
     if type == 'exon':
         filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt'
         export_path = 'AltDatabase/'+species+'/RNASeq/'+species + '_Ensembl_exons.txt'
@@ -116,6 +118,8 @@ def reformatExonFile(species,type):
             export_values+= [exonid, start, stop, splice_events, splice_junctions]
             export_values = string.join(export_values,'\t')+'\n'; export_data.write(export_values)
             if type == 'exon':
+                if chr_status == False:
+                    chr = string.replace(chr,'chr','') ### This will thus match up to the BAM files
                 bed_values = [chr,start,stop,gene+':'+exonid+'_'+ens_exon_ids,'0',strand]
                 bed_values = string.join(bed_values,'\t')+'\n'; bed_data.write(bed_values)
     export_data.close()
@@ -267,7 +271,7 @@ def getEnsemblAssociations(species,data_type,test_status,force):
     update.buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
     
     null = EnsemblImport.getEnsemblAssociations(species,data_type,test_status); null=[]
-    reformatExonFile(species,'exon'); reformatExonFile(species,'junction')
+    reformatExonFile(species,'exon',True); reformatExonFile(species,'junction',True)
     exportKnownJunctionComparisons(species)
     getExonAndJunctionSequences(species)
 
@@ -362,7 +366,32 @@ class JunctionData:
     def setRightExonRegionData(self,ri): self.ri = ri
     def RightExonRegionData(self): return self.ri
     def __repr__(self): return "JunctionData values"
-    
+
+def getBEDChrFormat(bed_dir,root_dir):
+    """ This method checks to see if the BED files (junciton or exon) have 'chr' proceeding the chr number. """
+    dir_list = read_directory(bed_dir)
+    x=0
+    break_now = False
+    chr_present = False
+    for filename in dir_list:
+        fn=filepath(bed_dir+filename)
+        #if ('.bed' in fn or '.BED' in fn): delim = 'r'
+        delim = 'rU'
+        if '.tab' in string.lower(filename) or '.bed' in string.lower(filename):
+            for line in open(fn,delim).xreadlines(): ### changed rU to r to remove \r effectively, rather than read as end-lines
+                if line[0] == '#': x=0 ### BioScope
+                elif x == 0: x=1 ###skip the first line
+                elif x < 10: ### Only check the first 10 lines
+                    if 'chr' in line: ### Need to look at multiple input formats (chr could be in t[0] or t[1])
+                        chr_present = True
+                    x+=1
+                else:
+                    break_now = True
+                    break
+            if break_now == True:
+                break
+    return chr_present
+
 def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getReads):
     dir_list = read_directory(bed_dir)
     begin_time = time.time()
@@ -408,7 +437,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                     proceed = 'yes' ### restrict by chromosome with minimum line parsing (unless we want counts instead)
                     if getReads == 'no':
                         try:
-                            if search_chr == t[0] or search_chr == t[1]: proceed = 'yes'
+                            if search_chr == t[0] or ('BioScope' in algorithm and search_chr == t[1]): proceed = 'yes'
                             else: proceed = 'no'
                         except IndexError:
                             print 'The input file:\n',filename
@@ -481,6 +510,8 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,getR
                                     proceed = 'yes'
                                 else: proceed = 'no'
                         if proceed == 'yes':
+                            if 'chr' not in chr:
+                                chr = 'chr'+chr ### Add the chromosome prefix
                             if strand == '+': pos_count+=1
                             else: neg_count+=1
                             if getReads == 'yes' and seq_length>0:
@@ -651,21 +682,24 @@ def exportGeneCounts(steady_state_export,headers,gene_count_db):
         export_data.write(sample_counts)
     export_data.close()
 
-def importGeneCounts(filename):
+def importGeneCounts(filename,import_type):
     ### Import non-normalized original counts and return the max value            
     counts_filename = string.replace(filename,'exp.','counts.')
     status = verifyFile(counts_filename)
     if status == 'not found': ### Occurs for non-normalized counts
         counts_filename = filename
-    fn=filepath(counts_filename); x=0; max_count_db={}
+    fn=filepath(counts_filename); x=0; count_db={}
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if x==0: array_names = t[1:]; x=1
         else:
             gene = t[0]
-            max_count_db[gene] = str(statistics.maxval(t[1:]))
-    return max_count_db
+            if import_type == 'max':
+                count_db[gene] = str(max(map(float,t[1:])))
+            else:
+                count_db[gene] = map(float,t[1:])
+    return count_db,array_names
 
 def calculateGeneRPKM(gene_count_db):
     """Determines the total number of reads in a sample and then calculates RPMK relative to a pre-determined junction length (60).
@@ -728,9 +762,11 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
     root_dir=fl.RootDir()
     ### Import experimentally identified junction splice-sites
     normalize_feature_exp = fl.FeatureNormalization()
+    chr_status = getBEDChrFormat(bed_dir,root_dir) ### If false, need to remove 'chr' from the search_chr
+    if testImport == 'yes':
+        print 'Chromosome annotation detected =',chr_status
     if fl.ExonBedBuildStatus() == 'yes':
-        reformatExonFile(species,'exon') ### exports BED format exons for exon expression extraction
-        
+        reformatExonFile(species,'exon',chr_status) ### exports BED format exons for exon expression extraction
     """
     Strategies to reduce memory in RNASeq:
     1)	(done)Delete old AltDatabase-local version if it exists before starting
@@ -754,7 +790,11 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
       if 'linux' in sys.platform or testImport == 'yes': print 'parsing data for chromosome:',search_chr ### Unix platforms are not displaying the progress in real-time
       else: print "*",
       junction_annotations={}
+      if chr_status == False:
+           search_chr = string.replace(search_chr,'chr','')
       junction_db,biotypes,algorithms = importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,search_chr,'no')
+      if chr_status == False:
+           search_chr = 'chr'+search_chr ### Add chr back to the name
       if len(biotypes)>0: biotypes_store = biotypes
       if len(junction_db)>0:
             
@@ -919,7 +959,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
             
             if fl.ExonBedBuildStatus() == 'yes':
                 ### Append to the exported BED format exon coordinate file
-                bedfile = exportNovelExonToBedCoordinates(species,novel_exon_coordinates)
+                bedfile = exportNovelExonToBedCoordinates(species,novel_exon_coordinates,chr_status)
             
             ### Identify reciprocol junctions and retrieve splice-event annotations for exons and inclusion junctions
             junction_annotations,critical_exon_annotations = JunctionArray.inferJunctionComps(species,('RNASeq',junction_region_db,root_dir))
@@ -950,7 +990,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
                     
             #read_aligned_to_gene, 'exons aligned to Ensembl genes out of',one_found+not_found
                         
-            align_exon_db={}; exons_without_gene_alignments={}
+            align_exon_db={}; exons_without_gene_alignments={}; multigene_exon=0
             for key in unmapped_exon_db:
                 (chr,exon1_stop,exon2_start) = key
                 ji=unmapped_exon_db[key]
@@ -974,6 +1014,8 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
                             exon_data = (coordinate,ji.Chr()+'-'+str(coordinate),'novel')
                             try: align_exon_db[geneid].append(exon_data)
                             except KeyError: align_exon_db[geneid] = [exon_data]
+                        else:
+                            multigene_exon+=1 ### Shouldn't occur due to a fix in the gene-alignment method which will find the correct gene on the 2nd interation
                 else: exons_without_gene_alignments[key]=ji; exons_without_gene_alignment_count+=1
             
             ### Remove redundant exon entries and store objects (this step may be unnecessary)
@@ -995,7 +1037,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
             end_time = time.time()
             if testImport == 'yes':
                 print 'Exon sequences aligned to exon regions in',int(end_time-begin_time),'seconds'
-            
+
             ### Combine the start and end region alignments into a single exon annotation entry
             combineDetectedExons(unmapped_exon_db,align_exon_db,novel_exon_db)
             clearObjectsFromMemory(unmapped_exon_db); clearObjectsFromMemory(align_exon_db); clearObjectsFromMemory(novel_exon_db)
@@ -1127,8 +1169,11 @@ def importRawCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
             
     ### Define thresholds
     exon_exp_threshold = UserOptions.ExonExpThreshold()
-    rpkm_threshold = UserOptions.RPKMThreshold()
-    junction_exp_threshold = UserOptions.ExonExpThreshold()
+    junction_exp_threshold = UserOptions.JunctionExpThreshold()
+    exon_rpkm_threshold = UserOptions.ExonRPKMThreshold()
+
+    gene_rpkm_threshold = UserOptions.RPKMThreshold()
+    gene_exp_threshold = UserOptions.GeneExpThreshold()
     
     ### Import RPKM normalized expression values               
     fn=filepath(filename); x=0; rpkm_dbase={}
@@ -1139,7 +1184,7 @@ def importRawCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
         else:
             exon_id=t[0]
             max_count=max(map(float,t[1:]))
-            if max_count>=rpkm_threshold: rpkm_dbase[exon_id]=[] ### Only retain exons/junctions meeting the RPKM threshold
+            if max_count>=exon_rpkm_threshold: rpkm_dbase[exon_id]=[] ### Only retain exons/junctions meeting the RPKM threshold
             
     ### Import non-normalized original counts                
     counts_filename = string.replace(filename,'exp.','counts.')
@@ -1158,7 +1203,9 @@ def importRawCountData(filename,expressed_gene_exon_db,normalize_feature_exp):
                 max_count=max(map(float,t[1:])); proceed = 'no'
                 if '-' in exon_id:
                     length = 60.0
-                    if max_count>=junction_exp_threshold: proceed = 'yes'
+                    if max_count>=junction_exp_threshold:
+                        ### Only considered when exon data is not present in the analysis
+                        proceed = 'yes'
                 elif max_count>=exon_exp_threshold: proceed = 'yes'
                 if proceed == 'yes' and exon_id in rpkm_dbase: ### Ensures that the maximum sample (not group) user defined count threshold is achieved at the exon or junction-level
                     exp_dbase[exon_id] = t[1:],length ### Include sequence length for normalization
@@ -1178,7 +1225,11 @@ def importNormalizedCountData(filename,expressed_gene_exon_db,normalize_feature_
             
     ### Define thresholds
     exon_exp_threshold = UserOptions.ExonExpThreshold()
-    junction_exp_threshold = UserOptions.ExonExpThreshold()
+    junction_exp_threshold = UserOptions.JunctionExpThreshold()
+    exon_rpkm_threshold = UserOptions.ExonRPKMThreshold()
+    
+    gene_rpkm_threshold = UserOptions.RPKMThreshold()
+    gene_exp_threshold = UserOptions.GeneExpThreshold()
     
     ### Import non-normalized original counts                
     fn=filepath(filename); x=0; exp_dbase={}
@@ -1276,6 +1327,7 @@ def getChromosomeStrandCoordinates(species):
         if testImport == 'yes':
             if chr=='chr1': chromosomes[chr]=[]
             if chr=='chr19': chromosomes[chr]=[] ### Gene rich chromosome
+            if chr=='chrMT': chromosomes[chr]=[] ### Gene rich chromosome
         elif len(chr)<7: chromosomes[chr]=[]
         all_chromosomes[chr]=[]
     ### Some organisms aren't organized into classical chromosomes (why I don't know)
@@ -1544,7 +1596,7 @@ def combineDetectedExons(unmapped_exon_db,align_exon_db,novel_exon_db):
                 null = aligned_exon_lookup_db[gene,ed.ReadStart()-1] ### offset introduced on import
                 novel_exon_lookup_db[gene,ed.ReadStart()-1]=ed
             except Exception: null=[]
-                
+                    
     ### Lookup the propper exon region ID and gene ID to format the unique ID and export coordinates
     x = 0
     for key in unmapped_exon_db:
@@ -1572,7 +1624,14 @@ def combineDetectedExons(unmapped_exon_db,align_exon_db,novel_exon_db):
                     ed1 = exon_info[0]; ed2 = ed1; x+=1 ### if only one splice site aligned to a gene region (shouldn't occur)
                     if x == 2: null=[]; #print 'SOME EXONS FOUND WITH ONLY ONE ALIGNING POSITION...',key,ji.GeneID(),ed1.ExonRegionID(),e1,e2
                 try: red1 = ed1.ExonRegionData(); red2 = ed2.ExonRegionData()
-                except Exception: print ji.GeneID(), key;kill
+                except Exception:
+                    print [ji.GeneID(), ji.Chr(), key]
+                    print e1, e2
+                    try: print ed1.ExonRegionData()
+                    except Exception: 'ed1 failed'
+                    try: print ed2.ExonRegionData()
+                    except Exception: 'ed2 failed'
+                    kill
                 region1 = ed1.ExonRegionID(); region2 = ed2.ExonRegionID()
                 #print region1,region2,ji.GeneID(),ji.Chr(),ji.Strand()
              
@@ -1715,6 +1774,7 @@ def alignReadsToExons(novel_exon_db,ens_exon_db):
                     region_numbers.append(int(string.split(rd.ExonRegionIDs()[1:],'.')[0]))
                     if rd.Strand() == '-': region_starts.append(rd.ExonStop()); region_stops.append(rd.ExonStart())
                     else: region_starts.append(rd.ExonStart()); region_stops.append(rd.ExonStop())
+                    #print [rd.ExonStart(),rd.ExonStop(), rd.Strand()]
                     if ed.ReadStart()>=rd.ExonStart() and ed.ReadStart()<=rd.ExonStop():
                         ed.setAlignmentRegion('exon')
                         if 'I' in rd.ExonRegionIDs(): ### In an annotated intron
@@ -1755,19 +1815,30 @@ def alignReadsToExons(novel_exon_db,ens_exon_db):
     if testImport == 'yes': print aligned_exons, 'splice sites aligned to exon region out of', examined_exons
 
 def geneAlign(chr,chr_gene_locations,location_gene_db,chr_reads,switch_coord,read_aligned_to_gene):
+    """ This function aligns the start or end position for each feature (junction or exon) to a gene, in two 
+    steps by calling this function twice. In the second interation, the coordinates are reversed """
+    
     index = 0 ### Don't examine genes already looked at
     genes_assigned = 0; trans_splicing=[]
-    for (coord,ji) in chr_reads:
+    for (coord,ji) in chr_reads: ### junction coordinates or exon coordinates with gene object
         if index >5: index -=5 ### It is possible for some genes to overlap, so set back the index of genomically ranked genes each time
         gene_id_obtained = 'no'
-        if switch_coord == 'no': rs,re=coord
-        else: re,rs=coord
+        if switch_coord == 'no': rs,re=coord ### reverse the coordinates for the second iteration
+        else: re,rs=coord ### first-interation coordinates (start and end)
         while index < len(chr_gene_locations):                 
             cs,ce = chr_gene_locations[index]
+            ### Determine if the first listed coordinate lies within the gene
             if cs <= rs and ce >= rs:
+                ### Yes, it does
                 gene,strand = location_gene_db[chr,cs,ce]
-                if switch_coord == 'yes':
-                    first_geneid = ji.GeneID()
+                if switch_coord == 'yes': ### Only applies to coordinates, where the end-position didn't lie in the same gene as the start-position
+                    if cs <= re and ce >= re:
+                        ### This occurs when the first iteration detects a partial overlap, but the gene containing both coordinates is downstream
+                        ### Hence, not trans-splicing
+                        ji.setGeneID(gene)
+                        break
+                    first_geneid = ji.GeneID() ### see what gene was assigned in the first iteration (start position only)
+                    #print ['trans',coord, first_geneid, gene]  ### Note: in rare cases, an exon can overlap with two genes (bad Ensembl annotations?)
                     ji.setTransSplicing()
                     side = ji.checkExonPosition(rs)
                     if side == 'left':
@@ -1775,13 +1846,18 @@ def geneAlign(chr,chr_gene_locations,location_gene_db,chr_reads,switch_coord,rea
                         ji.setSecondaryGeneID(first_geneid)
                     else:
                         ji.setSecondaryGeneID(gene)
-                        #if ji.GeneID() == None: print 'B',coord, ji.GeneID(), econdaryGeneID()
+                        #if ji.GeneID() == None: print 'B',coord, ji.GeneID(), secondaryGeneID()
                         #print ji.GeneID(), ji.SecondaryGeneID();kill
                     genes_assigned+=1; gene_id_obtained = 'yes'
                 else:
+                    ### First iteration, store the identified gene ID (only looking at the start position)
                     ji.setGeneID(gene);  gene_id_obtained = 'yes'
-                    if cs <= re and ce >= re: genes_assigned+=1
-                    else: trans_splicing.append((coord,ji))
+                    ### Check the end position, to ensure it is also lies within the gene region
+                    if cs <= re and ce >= re:
+                        genes_assigned+=1
+                    else:
+                        ### Hence, the end lies outside the gene region
+                        trans_splicing.append((coord,ji))
                 break
             else:
                 if rs < ce and re < ce: break
@@ -1800,6 +1876,8 @@ def geneAlign(chr,chr_gene_locations,location_gene_db,chr_reads,switch_coord,rea
     read_aligned_to_gene += genes_assigned           
     #print genes_assigned, chr, 'Gene IDs assigned out of', len(chr_reads)
     #print len(trans_splicing),'reads with evidence of trans-splicing'
+    
+    ### For any coordinate-pair where the end-position doesn't lie within the same gene as the start, re-run for those to see which gene they are in
     if switch_coord == 'no' and len(trans_splicing)>0:
         read_aligned_to_gene = geneAlign(chr,chr_gene_locations,location_gene_db,trans_splicing,'yes',read_aligned_to_gene)
     return read_aligned_to_gene
@@ -1834,6 +1912,11 @@ class SplicingData:
     def ExonID(self): return self.exonid
     def appendExonID(self,exonid): self.exonid+='|'+exonid
     def Probesets(self): return self.probesets
+    def ProbesetDisplay(self):
+        if len(self.Probesets()[1])>0:
+            return string.join(self.Probesets(),'-')
+        else:
+            return self.Probesets()[0]
     def ProbesetsSorted(self):
         ### Don't sort the original list
         a = [self.probesets[0],self.probesets[1]]
@@ -1871,15 +1954,15 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
             t = string.split(data,'\t')
             if x==0: x=1; #print t[12],t[13],t[22],t[23]
             else:
-                geneid = t[0]; exonid = t[4]; probeset1 = t[7]; probeset2 = ''; score = t[1][:4]; symbol = t[2]; description = t[3]; regions = t[-4]; direction = t[5]
+                geneid = t[0]; exonid = t[4]; probeset1 = t[6]; probeset2 = ''; score = t[1][:4]; symbol = t[2]; description = t[3]; regions = t[-4]; direction = t[5]
                 genomic_loc = t[-1]; splicing_event = t[-3]; external_exon = t[-6]; gene_exp = t[-8]; protein_annot = t[14]; domain_inferred = t[15]; domain_overlap = t[17]
                 if ':' in geneid: geneid = string.split(geneid,':')[0] ### User reported that gene:gene was appearing and not sure exactly where or why but added this to address it
                 if 'FIRMA' in fn: method = 'FIRMA'
-                else: method = 'splicing-index'
+                elif 'splicing-index' in fn: method = 'splicing-index'
                 if 'ASPIRE' in filename or 'linearregres' in filename:
                     f1=float(t[12]); f2=float(t[13]); probeset1 = t[8]; probeset2 = t[10]; direction = t[6]; exonid2 = t[5]; splicing_event = t[-4]
                     protein_annot = t[19]; domain_inferred = t[20]; domain_overlap = t[24]; method = 'linearregres'; regions = t[-5]
-                    if 'ASPIRE' in filename: method = 'ASPIRE'
+                    if 'ASPIRE' in filename: method = 'ASPIRE'; score = t[1][:5]
                     if '-' not in exonid: exonid=None ### Occurs when the inclusion just in an exon (possibly won't indicate confirmation so exclude)
                     else: exonid = exonid+' vs. '+exonid2
                     if 'AltMouse' in filename:
@@ -1934,7 +2017,7 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
 
     export_data,status = AppendOrWrite(export_path)
     if status == 'not found': 
-        header = string.join(['uid','symbol','description','exonids','independent confirmation','score','regulation direction','alternative exon annotations','associated isoforms','inferred regulated domains','overlapping domains','method','supporting evidence score'],'\t')+'\n'
+        header = string.join(['uid','source-IDs','symbol','description','exonids','independent confirmation','score','regulation direction','alternative exon annotations','associated isoforms','inferred regulated domains','overlapping domains','method','supporting evidence score'],'\t')+'\n'
         export_data.write(header)
 
     print len(regulated_critical_exons), 'regulated exon IDs imported.\n'
@@ -2007,7 +2090,7 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
         ls = regulated_critical_exons[uid]
         jd = regulated_critical_exons[uid][0]
         if len(ls)>1:
-            methods = []; scores = []; direction = []; exonids = []; evidence = 0
+            methods = []; scores = []; direction = []; exonids = []; probesets = []; evidence = 0
             junction_data_found = 'no'; exon_data_found = 'no'
             for jd in ls:
                 if jd.Method() == 'ASPIRE' or jd.Method() == 'linearregres': 
@@ -2016,7 +2099,10 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
                     scores.append(jd.Score())
                     direction.append(jd.Direction())
                     exonids.append(jd.ExonID())
+                    probesets.append(jd.ProbesetDisplay())
                     evidence+=jd.Evidence()
+                    ### Prefferentially obtain isoform annotations from the reciprocal analysis which is likely more accurate
+                    isoform_annotations = [jd.ProteinAnnotation(), jd.DomainInferred(), jd.DomainOverlap()]
             for ed in ls:
                 if ed.Method() == 'splicing-index' or ed.Method() == 'FIRMA':
                     exon_data_found = 'yes' ### pick one of them
@@ -2024,26 +2110,31 @@ def importAltAnalyzeExonResults(dir_list,results_dir):
                     scores.append(ed.Score())
                     direction.append(ed.Direction())
                     exonids.append(ed.ExonID())
+                    probesets.append(ed.ProbesetDisplay())
                     evidence+=ed.Evidence()
+                    #isoform_annotations = [ed.ProteinAnnotation(), ed.DomainInferred(), ed.DomainOverlap()]
             if junction_data_found == 'yes' and exon_data_found == 'yes': exon_level_confirmation = 'yes';
             method = string.join(methods,'|')
             unique_direction = unique.unique(direction)
             if len(unique_direction) == 1: direction = unique_direction[0]
             else: direction = string.join(direction,'|')
             score = string.join(scores,'|')
+            probesets = string.join(probesets,'|')
             exonids_unique = unique.unique(exonids)
             if len(exonids_unique) == 1: exonids = exonids_unique[0]
             else: exonids = string.join(exonids,'|')
             evidence = str(evidence)
             if 'mutual' in direction: direction = 'mutual'
         if len(ls) == 1:
+            probesets = jd.ProbesetDisplay()
             direction = jd.Direction()
             score = jd.Score()
             method = jd.Method()
             exonids = jd.ExonID()
             evidence = jd.Evidence()
-        values = [uid, jd.Symbol(), jd.Description(), exonids, exon_level_confirmation, score, direction, jd.SplicingEvent()]
-        values += [jd.ProteinAnnotation(), jd.DomainInferred(), jd.DomainOverlap(), method, str(evidence)]
+            isoform_annotations = [jd.ProteinAnnotation(), jd.DomainInferred(), jd.DomainOverlap()]
+        values = [uid, probesets, jd.Symbol(), jd.Description(), exonids, exon_level_confirmation, score, direction, jd.SplicingEvent()]
+        values += isoform_annotations+[method, str(evidence)]
         values = string.join(values,'\t')+'\n'
         export_data.write(values); n+=1
     print n,'exon IDs written to file.'
@@ -2058,13 +2149,15 @@ if __name__ == '__main__':
     test_status = 'yes'
     data_type = 'ncRNA'
     data_type = 'mRNA'
-    array_type = 'junction'
+    array_type = 'RNASeq'
     species = 'Hs' ### edit this
     
     summary_results_db = {}
     root_dir = '/Users/nsalomonis/Desktop/ExonInclusions/' ### edit this
     root_dir = '/Users/nsalomonis/Desktop/hESC-splicing-factor-KD/'#HJAY_Data/HJAY_Data/'
     root_dir = '/home/blumerjb/BEDS_J/BEDS_J3/'
+    root_dir = '/Users/nsalomonis/Desktop/dataAnalysis/collaborations/HuLi/iPS-Genetic-Differences/HJAY/'
+    root_dir = '/Users/nsalomonis/Desktop/dataAnalysis/collaborations/HuLi/iPS-Genetic-Differences/RNASeq/'
     #summary_results_db['Hs_Junction_d14_vs_d7.p5_average-ASPIRE-exon-inclusion-results.txt'] = [] ### edit this
     #summary_results_db['Hs_Junction_d14_vs_d7.p5_average-splicing-index-exon-inclusion-results.txt'] = [] ### edit this
     

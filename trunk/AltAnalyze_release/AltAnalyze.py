@@ -39,6 +39,17 @@ import random
 import traceback
 import shutil
 
+try:
+    from scipy import stats
+except Exception:
+    None ### scipy is not required but is used as a faster implementation of Fisher Exact Test when present
+
+try:
+    from PIL import Image as PIL_Image
+    import ImageTk
+except Exception:
+    None #print 'Python Imaging Library not installed... using default PNG viewer'
+    
 use_Tkinter = 'no'
 debug_mode = 'no'
 analysis_start_time = time.time()
@@ -570,7 +581,8 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
               if count == 0: array_index_list.append(array_group_db[group])
               for array_index in array_group_db[group]:
                   try: exp_val = float(t[array_index+1])
-                  except Exception: bad_row_import[probeset]=line; exp_val = 1
+                  except Exception:
+                    if 'Gene_ID' not in line: bad_row_import[probeset]=line; exp_val = 1
                   ###appended is the numerical expression value for each array in the group (temporary array)
                   try: temp_group_array[group].append(exp_val)  #add 1 since probeset is the first column
                   except KeyError: temp_group_array[group] = [exp_val]
@@ -709,17 +721,14 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                     #t,df,tails = statistics.ttest(data_list1,data_list2,2,3) #unpaired student ttest, calls p_value function
                     #t = abs(t); df = round(df) #Excel doesn't recognize fractions in a DF
                     #p = statistics.t_probability(t,df)
-                    if probability_statistic == 'unpaired t-test':
-                        p = statistics.OneWayANOVA([data_list1,data_list2])
-                    else:
-                        p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
-                        if p == -1:
-                            if len(data_list1)>1 and len(data_list2)>1:
-                                print_out = "The probability statistic selected ("+probability_statistic+") is not compatible with the\nexperimental design. Please consider an alternative statistic or correct the problem.\nExiting AltAnalyze."
-                                try: UI.WarningWindow(print_out,'Exit')
-                                except Exception: print print_out; print "Exiting program"
-                                badExit()
-                            else: p = 1
+                    p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
+                    if p == -1:
+                        if len(data_list1)>1 and len(data_list2)>1:
+                            print_out = "The probability statistic selected ("+probability_statistic+") is not compatible with the\nexperimental design. Please consider an alternative statistic or correct the problem.\nExiting AltAnalyze."
+                            try: UI.WarningWindow(print_out,'Exit')
+                            except Exception: print print_out; print "Exiting program"
+                            badExit()
+                        else: p = 1
                 except Exception: p = 1
                 fold_dbase[probeset] = [0]; fold_dbase[probeset].append(log_fold)
                 stats_dbase[probeset]=[avg1]; stats_dbase[probeset].append(p)
@@ -916,10 +925,7 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                 try:
                     #t,df,tails = statistics.ttest(data_list1,data_list2,2,3) #unpaired student ttest, calls p_value function
                     #t = abs(t); df = round(df); ttest_exp_p = statistics.t_probability(t,df)
-                    if probability_statistic == 'unpaired t-test':
-                        ttest_exp_p = statistics.OneWayANOVA([data_list1,data_list2])
-                    else:
-                        ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
+                    ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
                 except Exception: ttest_exp_p = 1                                
                 fold_dbase[probeset] = [0]; fold_dbase[probeset].append(log_fold)
                 if ttest_exp_p == -1: del fold_dbase[probeset]; probesets_to_delete.append(probeset); x += 1
@@ -1045,8 +1051,10 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                                                 else: i1,i2=index1,index2
                                                 dI_scores.append((abs(dI),i1,i2))
                                         except Exception:
-                                            if array_type != 'RNASeq': ### RNASeq has counts of zero and one that can cause the same result between groups and probesets
-                                                print probeset1, probeset2, b1, e1, b2, e2, index1, index2;kill
+                                            #if array_type != 'RNASeq': ### RNASeq has counts of zero and one that can cause the same result between groups and probesets
+                                            #print probeset1, probeset2, b1, e1, b2, e2, index1, index2, events_examined;kill
+                                            ### ZeroDivisionError - Occurs for RNA-Seq but can occur for array data under extreemly rare circumstances (Rex=Rin even when different b1,e1 and b2,ed values)
+                                            null=[]
                                     index2+=1
                                 index1+=1
                             dI_scores.sort()
@@ -1111,10 +1119,7 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                             baseline_exp = statistics.avg(data_list1); experimental_exp = statistics.avg(data_list2); fold_change = experimental_exp - baseline_exp
                             group_name1 = array_group_list[index1]; group_name2 = array_group_list[index2]
                             try:
-                                if probability_statistic == 'unpaired t-test':
-                                    ttest_exp_p = statistics.OneWayANOVA([data_list1,data_list2])
-                                else:
-                                    ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
+                                ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
                             except Exception: ttest_exp_p = 'NA'
                             if index == 0:
                                 try: adj_fold = statistics.avg(adj_exp_lists1[index2]) - statistics.avg(adj_exp_lists1[index1])
@@ -1132,12 +1137,8 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                             index+=1
 
                           try:
-                            if probability_statistic == 'unpaired t-test':
-                                pp1 = statistics.OneWayANOVA([adj_exp_lists1[index1], adj_exp_lists1[index2]])
-                                pp2 = statistics.OneWayANOVA([adj_exp_lists2[index1], adj_exp_lists2[index2]])
-                            else:
-                                pp1 = statistics.runComparisonStatistic(adj_exp_lists1[index1], adj_exp_lists1[index2],probability_statistic)
-                                pp2 = statistics.runComparisonStatistic(adj_exp_lists2[index1], adj_exp_lists2[index2],probability_statistic)
+                            pp1 = statistics.runComparisonStatistic(adj_exp_lists1[index1], adj_exp_lists1[index2],probability_statistic)
+                            pp2 = statistics.runComparisonStatistic(adj_exp_lists2[index1], adj_exp_lists2[index2],probability_statistic)
                           except Exception:  pp1 = 'NA'; pp2 = 'NA'
                           if analysis_method == 'ASPIRE' and len(dI_scores)>0:
                               p1 = JunctionExpressionData(adj_exp_lists1[index1], adj_exp_lists1[index2], pp1, ped1)
@@ -1160,7 +1161,7 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                                 splice_event_list.append((dI,ejd))
                             else: excluded_probeset_db[affygene+':'+critical_exon_list[1][0]] = probeset1, affygene, dI, 'NA', anovaNIp
                             
-            permute_p_values = statistics.adjustPermuteStats(permute_p_values)
+            statistics.adjustPermuteStats(permute_p_values)
             ex_db = splice_event_list, probeset_comp_db, permute_p_values, excluded_probeset_db
             original_fold_dbase = fold_dbase; original_avg_const_exp_db=[]; nonlog_NI_db = []; fold_dbase=[]
             summary_data_db['denominator_exp_events']=events_examined
@@ -1517,6 +1518,10 @@ def calculateZScores(hit_count_db,denom_count_db,total_gene_denom_count,total_ge
         if element_type == 'domain': original_domain_z_score_data[element] = zsd
         elif element_type == 'microRNA': original_microRNA_z_score_data[element] = zsd
         permuted_z_scores[element] = [z]
+        if perform_element_permutation_analysis == 'no':
+            ### The below is an alternative to the permute t-statistic that is more effecient
+            p = FishersExactTest(r,n,R,N)
+            zsd.SetP(p)
     return N,R
 
 ######### Begin Permutation Analysis #######
@@ -1541,11 +1546,23 @@ def calculatePermuteStats(original_element_z_score_data):
         if abs(nullz) == z: ###Only add the nullz values if they can count towards the p-value (if equal to the original z)
             null_z_to_add = permutations - len(permute_scores)
             permute_scores+=[abs(nullz)]*null_z_to_add ###Add null_z's in proportion to the amount of times there were not genes found for that element
-        if len(permute_scores)>0: p = permute_p(permute_scores,z)  
+        if len(permute_scores)>0:
+            p = permute_p(permute_scores,z)
         else: p = 1
         #if p>1: p=1
         zsd.SetP(p)
 
+def FishersExactTest(r,n,R,N):
+    a = r; b = n-r; c=R-r; d=N-R-b
+    table = [[int(a),int(b)], [int(c),int(d)]]
+    
+    try: ### Scipy version - cuts down rutime by ~1/3rd the time
+        oddsratio, pvalue = stats.fisher_exact(table)
+        return pvalue
+    except Exception:
+        ft = fishers_exact_test.FishersExactTest(table)
+        return ft.two_tail_p()
+        
 def adjustPermuteStats(original_element_z_score_data):
     #1. Sort ascending the original input p value vector.  Call this spval.  Keep the original indecies so you can sort back.
     #2. Define a new vector called tmp.  tmp= spval.  tmp will contain the BH p values.
@@ -1845,6 +1862,7 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
         microRNA_symbol_list = filtered_microRNA_exon_db[(affygene,uid)]
         for mir_key in microRNA_symbol_list:
             microRNA,gene_symbol,miR_seq, miR_sources = mir_key
+            #if 'ENS' in microRNA: print microRNA; kill  ### bug in some miRNA annotations introduced in the build process
             specific_microRNA_tuple = (microRNA,'~')
             try: microRNA_hit_gene_count_db[microRNA].append(affygene)
             except KeyError: microRNA_hit_gene_count_db[microRNA] = [affygene]
@@ -1929,7 +1947,7 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
         original_increment = int(permutations/20); increment = original_increment
         start_time = time.time(); print 'Permuting the Domain/miRBS analysis %d times' % permutations
         x=0; permute_domain_inputs=[]; permute_miR_inputs=[]
-        while x<10:
+        while x<permutations:
             if x == increment: increment+=original_increment; print '*',
             permute_input_list = random.sample(denominator_list,input_count); x+=1
             permute_domain_input_gene_counts = countGenesForElement(permute_input_list,probeset_to_gene,probeset_domain_db)
@@ -2267,7 +2285,8 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
 
             ### Export significant reciprocol junction pairs and scores
             values_ps = [probeset1+'|'+probeset2,affygene,'changed',dI,'NA',str(lowest_raw_p)]; values_ps = string.join(values_ps,'\t')+'\n'
-            ProcessedSpliceData_data.write(values_ps)
+            try: ProcessedSpliceData_data.write(values_ps)
+            except Exception: None
             
             values_ge = [affygene,'En',dI,str(lowest_raw_p)]; values_ge = string.join(values_ge,'\t')+'\n'
             if array_type == 'junction' or array_type == 'RNASeq': goelite_data.write(values_ge)
@@ -2350,7 +2369,8 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
 
             ### Export significant exon/junction IDs and scores
             values_ps = [probeset1,affygene,'changed',dI,'NA',str(lowest_raw_p)]; values_ps = string.join(values_ps,'\t')+'\n'
-            ProcessedSpliceData_data.write(values_ps)
+            try: ProcessedSpliceData_data.write(values_ps)
+            except Exception: None
             
             if array_type == 'gene' or array_type == 'junction' or array_type == 'RNASeq':
                 if (array_type == 'junction' or array_type == 'RNASeq') and explicit_data_type == 'null':
@@ -2606,10 +2626,7 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
             #t = abs(t);df = round(df)
             #print 'ttest t:',t,'df:',df
             #p = str(statistics.t_probability(t,df))
-            if probability_statistic == 'unpaired t-test':
-                p = str(statistics.OneWayANOVA([down_protein_list,up_protein_list]))
-            else:
-                p = str(statistics.runComparisonStatistic(down_protein_list,up_protein_list,probability_statistic))
+            p = str(statistics.runComparisonStatistic(down_protein_list,up_protein_list,probability_statistic))
             #print dataset_name,p
         except Exception: p = 'NA'
     else: p = 'NA'
@@ -2792,10 +2809,7 @@ def analyzeSplicingIndex(fold_dbase):
                 try:
                     if calculate_normIntensity_p == 'yes':
                         try:
-                            if probability_statistic == 'unpaired t-test':
-                                normIntensityP = statistics.OneWayANOVA([group1_ratios,group2_ratios])
-                            else:
-                                normIntensityP = statistics.runComparisonStatistic(group1_ratios,group2_ratios,probability_statistic)
+                            normIntensityP = statistics.runComparisonStatistic(group1_ratios,group2_ratios,probability_statistic)
                         except Exception: normIntensityP = 'NA' ### Occurs when analyzing two groups with no variance
                     else: normIntensityP = 'NA' ### Set to an always signficant value
                     splicing_index = group1_mean_ratio-group2_mean_ratio; abs_splicing_index = abs(splicing_index)
@@ -2819,10 +2833,7 @@ def analyzeSplicingIndex(fold_dbase):
                         data_list1 = array_raw_group_values[probeset][0]; data_list2 = array_raw_group_values[probeset][1]
                         baseline_exp = statistics.avg(data_list1); experimental_exp = statistics.avg(data_list2); fold_change = experimental_exp - baseline_exp
                         try:
-                            if probability_statistic == 'unpaired t-test':
-                                ttest_exp_p = statistics.OneWayANOVA([data_list1,data_list2])
-                            else:
-                                ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
+                            ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
                         except Exception: ttest_exp_p = 1                                
                         normInt1 = (baseline_exp-constit_exp1); normInt2 = (experimental_exp-constit_exp2); adj_fold = normInt2 - normInt1
                         ped = ProbesetExpressionData(baseline_exp, experimental_exp, fold_change, adj_fold, ttest_exp_p, '')
@@ -2987,7 +2998,7 @@ def FIRMAanalysis(fold_dbase):
                 try: del fold_dbase[probeset]
                 except KeyError: null=[]
 
-    #print 'Begining FIRMA analysis (please be patient)...'
+    #print 'Beginning FIRMA analysis (please be patient)...'
 
     ### Used to the export relative individual adjusted probesets fold changes used for splicing index values   
     if export_NI_values == 'yes':
@@ -3045,10 +3056,7 @@ def FIRMAanalysis(fold_dbase):
             firma_list1 = firma_lists[0][1]; firma_list2 = firma_lists[-1][1]; firma_avg1 = firma_lists[0][0]; firma_avg2 = firma_lists[-1][0]
         if calculate_normIntensity_p == 'yes':
             try:
-                if probability_statistic == 'unpaired t-test':
-                    normIntensityP = statistics.OneWayANOVA([firma_list1,firma_list2])
-                else:
-                    normIntensityP = statistics.runComparisonStatistic(firma_list1,firma_list2,probability_statistic)
+                normIntensityP = statistics.runComparisonStatistic(firma_list1,firma_list2,probability_statistic)
             except Exception: normIntensityP = 'NA' ### Occurs when analyzing two groups with no variance
         else: normIntensityP = 'NA'
         firma_fold_change = firma_avg2 - firma_avg1
@@ -3074,10 +3082,7 @@ def FIRMAanalysis(fold_dbase):
             baseline_exp = statistics.avg(data_list1); experimental_exp = statistics.avg(data_list2); fold_change = experimental_exp - baseline_exp
             group_name1 = array_group_list[index1]; group_name2 = array_group_list[index2]
             try:
-                if probability_statistic == 'unpaired t-test':
-                    ttest_exp_p = statistics.OneWayANOVA([data_list1,data_list2])
-                else:
-                    ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
+                ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
             except Exception: ttest_exp_p = 1                                
             normInt1 = (baseline_exp-constit_exp1); normInt2 = (experimental_exp-constit_exp2); adj_fold = normInt2 - normInt1
             ped = ProbesetExpressionData(baseline_exp, experimental_exp, fold_change, adj_fold, ttest_exp_p, group_name2+'_vs_'+group_name1)
@@ -3395,10 +3400,7 @@ def calculateAllASPIREScores(p1,p2):
         exp_scores.append(score)
     
     try:
-        if probability_statistic == 'unpaired t-test':
-            aspireP = statistics.OneWayANOVA([baseline_scores,exp_scores])
-        else:
-            aspireP = statistics.runComparisonStatistic(baseline_scores,exp_scores,probability_statistic)
+        aspireP = statistics.runComparisonStatistic(baseline_scores,exp_scores,probability_statistic)
     except Exception: aspireP = 'NA' ### Occurs when analyzing two groups with no variance
     """
     if aspireP<0.05 and oscore>0.2 and statistics.avg(exp_scores)<0:
@@ -3460,20 +3462,14 @@ def analyzeJunctionSplicing(nonlog_NI_db):
                 baseline_exp = statistics.avg(data_list1); experimental_exp = statistics.avg(data_list2); fold_change = experimental_exp - baseline_exp
                 #group_name1 = array_group_list[0]; group_name2 = array_group_list[1]
                 try:
-                    if probability_statistic == 'unpaired t-test':
-                        ttest_exp_p = statistics.OneWayANOVA([data_list1,data_list2])
-                    else:
-                        ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
+                    ttest_exp_p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
                 except Exception: ttest_exp_p = 'NA'
                 adj_fold = statistics.avg(group2_ratios) - statistics.avg(group1_ratios)
                 ped = ProbesetExpressionData(baseline_exp, experimental_exp, fold_change, adj_fold, ttest_exp_p, '')
 
                 try:
                     try:
-                        if probability_statistic == 'unpaired t-test':
-                            normIntensityP = statistics.OneWayANOVA([group1_ratios,group2_ratios])
-                        else:
-                            normIntensityP = statistics.runComparisonStatistic(group1_ratios,group2_ratios,probability_statistic)
+                        normIntensityP = statistics.runComparisonStatistic(group1_ratios,group2_ratios,probability_statistic)
                     except ZeroDivisionError:
                         #print group1_ratios,group2_ratios,array_raw_group_values[probeset],avg_const_exp_db[geneid];kill
                         normIntensityP = 'NA' ###occurs for constitutive probesets
@@ -3550,6 +3546,7 @@ def analyzeJunctionSplicing(nonlog_NI_db):
                     elif (Rex<Rin): y = 'downregulated'
                     else: y = 'upregulated'
                     temp_list = []
+
                     if event_call == 'mx-mx':
                         temp_list.append(exon_set1); temp_list.append(exon_set2);temp_list.sort()
                         if (affygene,temp_list) not in event_mx_temp: #use this logic to prevent mx entries being added more than once
@@ -3609,7 +3606,7 @@ def analyzeJunctionSplicing(nonlog_NI_db):
 
     clearObjectsFromMemory(probeset_normIntensity_db)
     probeset_normIntensity_db={}; ### Potentially large memory object containing summary stats for all probesets
-    permute_p_values = statistics.adjustPermuteStats(permute_p_values)
+    statistics.adjustPermuteStats(permute_p_values)
     summary_data_db['denominator_exp_events']=denominator_events    
     print "Number of exon-events analyzed:", s
     print "Number of exon-events excluded:", t
@@ -3807,12 +3804,10 @@ def getAllLinearRegressionScores(probeset1,probeset2,p1_g1,p2_g1,p1_g2,p2_g2,gro
             group2_scores.append(log_f); index+=1
         
         try:
-            if probability_statistic == 'unpaired t-test':
-                linregressP = statistics.OneWayANOVA([group1_scores,group2_scores])
-            else:
-                linregressP = statistics.runComparisonStatistic(group1_scores,group2_scores,probability_statistic)
-        except ZeroDivisionError: linregressP = 1 ### Occurs when analyzing two groups with no variance
-
+            linregressP = statistics.runComparisonStatistic(group1_scores,group2_scores,probability_statistic)
+        except ZeroDivisionError:
+            linregressP = 0; group1_scores = [0]; group2_scores = [log_fold]
+            
     except Exception:
         linregressP = 0; group1_scores = [0]; group2_scores = [log_fold]
 
@@ -4123,10 +4118,7 @@ def add_a_space(string):
     return string
 
 def convertToLog2(data_list):
-    new_list=[]
-    for item in data_list:
-        new_list.append(math.log(float(item),2))
-    return new_list
+    return map(lambda x: math.log(float(x), 2), data_list)
     
 def addGlobalFudgeFactor(data_list,data_type):
     new_list = []
@@ -4362,13 +4354,12 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            self._parent = root
-            root.title('AltAnalyze version 2.0.6 beta')
+            root.title('AltAnalyze version 2.0.7 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 450; width = 500
             if os.name != 'nt': height = 500; width = 600
-            self.sf = PmwFreeze.ScrolledFrame(self._parent,
+            self.sf = PmwFreeze.ScrolledFrame(root,
                     labelpos = 'n', label_text = 'Results Status Window',
                     usehullsize = 1, hull_width = width, hull_height = height)
             self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
@@ -4377,19 +4368,25 @@ class StatusWindow:
             group = PmwFreeze.Group(self.sf.interior(),tag_text = 'Output')
             group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
                 
-            Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
+            Label(group.interior(),width=190,height=552,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
 
             status = StringVarFile(statusVar,root) ### Likely captures the stdout
             sys.stdout = status; root.after(100, AltAnalyzeMain(expr_var, alt_var, goelite_var, additional_var, exp_file_location_db, root))
-            self._parent.mainloop(); self._parent.destroy()
-
-    def deleteWindow(self): tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
-    def quit(self): self._parent.quit(); self._parent.destroy(); sys.exit()
+            root.protocol("WM_DELETE_WINDOW", self.deleteWindow)
+            root.mainloop()
+    def deleteWindow(self):
+        root.destroy()
+    def quit(self):
+        root.quit()
+        root.destroy()
+        sys.exit()
 
 def exportComparisonSummary(dataset_name,summary_data_dbase,return_type):
     log_report = open(log_file,'a')
     result_list=[]
-    for key in summary_data_dbase: summary_data_dbase[key] = str(summary_data_dbase[key])
+    for key in summary_data_dbase:
+        if key != 'QC': ### The value is a list of strings
+            summary_data_dbase[key] = str(summary_data_dbase[key])
     d = 'Dataset name: '+ dataset_name[:-1]; result_list.append(d+'\n')
     d = summary_data_dbase['gene_assayed']+':\tAll genes examined'; result_list.append(d)
     d = summary_data_dbase['denominator_exp_genes']+':\tExpressed genes examined for AS'; result_list.append(d)
@@ -4423,53 +4420,95 @@ def exportComparisonSummary(dataset_name,summary_data_dbase,return_type):
 class SummaryResultsWindow:
     def __init__(self,tl,analysis_type,output_dir,dataset_name,output_type,summary_data_dbase):
         def showLink(event):
-            idx= int(event.widget.tag_names(CURRENT)[1])
-            webbrowser.open(LINKS[idx])
-        #def urlcallback(url,linkout=self.linkout): linkout(url)
-        #url = 'ReadMe/help_main.htm'; url = filepath(url)
-        url = 'http://www.altanalyze.org/help_main.htm'; url = filepath(url)
-        LINKS=(url,'')
-        self.LINKS = LINKS
-        tl.title('AltAnalyze version 2.0.6 beta'); self.tl = tl
+            try:
+                idx = int(event.widget.tag_names(CURRENT)[1]) ### This is just the index provided below (e.g., str(0))
+                #print [self.LINKS[idx]]
+                if 'http://' in self.LINKS[idx]:
+                    webbrowser.open(self.LINKS[idx])
+                elif self.LINKS[idx][-1] == '/':
+                    self.openSuppliedDirectory(self.LINKS[idx])
+                else:
+                   ### Instead of using this option to open a hyperlink (which is what it should do), we can open another Tk window
+                    try: self.viewPNGFile(self.LINKS[idx])  ### ImageTK PNG viewer
+                    except Exception:
+                        try: self.ShowImageMPL(self.LINKS[idx]) ### MatPlotLib based dispaly
+                        except Exception:
+                            self.openPNGImage(self.LINKS[idx]) ### Native OS PNG viewer
+                            #self.DisplayPlots(self.LINKS[idx]) ### GIF based dispaly
+            except Exception: null=[] ### anomalous error
+
+        self.emergency_exit = False            
+        self.LINKS = []
+        self.tl = tl
+        tl.title('AltAnalyze version 2.0.7 beta')
         self.analysis_type = analysis_type
-        
-        #"""
+
         filename = 'Config/icon.gif'
         fn=filepath(filename); img = PhotoImage(file=fn)
         can = Canvas(tl); can.pack(side='top'); can.config(width=img.width(), height=img.height())        
         can.create_image(2, 2, image=img, anchor=NW)
-        #"""
-        use_scroll = 'no'
-        
-        label_text_str = 'AltAnalyze Result Summary'; height = 150; width = 510
-        if analysis_type == 'AS': height = 250
+        use_scroll = 'yes'
+
+        if 'QC' in summary_data_dbase:
+            graphic_links = summary_data_dbase['QC'] ### contains hyperlinks to QC and Clustering plots
+            if len(graphic_links)==0: del summary_data_dbase['QC'] ### This can be added if an analysis fails
+        else:
+            graphic_links = []
+            
+        label_text_str = 'AltAnalyze Result Summary'; height = 150; width = 500
+        if analysis_type == 'AS' or 'QC' in summary_data_dbase: height = 330
+        if analysis_type == 'AS' and 'QC' in summary_data_dbase: height = 330
+
         self.sf = PmwFreeze.ScrolledFrame(tl,
             labelpos = 'n', label_text = label_text_str,
             usehullsize = 1, hull_width = width, hull_height = height)
         self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
         self.frame = self.sf.interior()
-        
-        txt=Text(self.frame,bg='gray')                    
+
+        txt=Text(self.frame,bg='gray',width=150, height=80)              
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'Primary Analysis Finished....\n')
-        txt.insert(END, '\nResults saved to:\n'+output_dir+'\n')
-        txt.insert(END, '\nFor more information see the ')
-        txt.insert(END, "AltAnalyze Online Help", ('link', str(0)))
-        txt.insert(END, '\n\n')
+        #txt.insert(END, 'Primary Analysis Finished....\n')
+        txt.insert(END, 'Results saved to:\n'+output_dir+'\n')
+        
+        f = Font(family="System", size=12, weight="bold")
+        txt.tag_config("font", font=f)
+
         if analysis_type == 'AS':
+            txt.insert(END, '\n')
             result_list = exportComparisonSummary(dataset_name,summary_data_dbase,'print')        
             for d in result_list: txt.insert(END, d+'\n')
-            
+                
+        if 'QC' in summary_data_dbase and len(graphic_links)>0:
+            txt.insert(END, '\nQC and Expression Clustering Plots',"font")
+            txt.insert(END, '\n\n  1) ')
+            i=0                
+            for (name,file_dir) in graphic_links:
+                txt.insert(END, name, ('link', str(i)))
+                if len(graphic_links) > (i+1):
+                    txt.insert(END, '\n  %s) ' % str(i+2))
+                self.LINKS.append(file_dir)
+                i+=1
+            txt.insert(END, '\n\nView all plots in the folder ')
+            txt.insert(END, 'DataPlots',('link', str(i)))
+            self.LINKS.append(output_dir+'DataPlots/')
+        else:
+            url = 'http://code.google.com/p/altanalyze/'
+            self.LINKS=(url,'')
+            txt.insert(END, '\nFor more information see the ')
+            txt.insert(END, "AltAnalyze Online Help", ('link', str(0)))
+            txt.insert(END, '\n\n')
+
         txt.tag_config('link', foreground="blue", underline = 1)
         txt.tag_bind('link', '<Button-1>', showLink)
+        txt.insert(END, '\n\n')
 
-        open_results_folder = Button(self.tl, text = 'Results Folder', command = self.openDirectory)
+        open_results_folder = Button(tl, text = 'Results Folder', command = self.openDirectory)
         open_results_folder.pack(side = 'left', padx = 5, pady = 5);
         if analysis_type == 'AS':
             #self.dg_url = 'http://www.altanalyze.org/domaingraph.htm'
             self.dg_url = 'http://www.altanalyze.org/domaingraph.htm'
             dg_pdf_file = 'Documentation/domain_graph.pdf'; dg_pdf_file = filepath(dg_pdf_file); self.dg_pdf_file = dg_pdf_file
-            text_button = Button(self.tl, text='Start DomainGraph in Cytoscape', command=self.SelectCytoscapeTopLevel)
+            text_button = Button(tl, text='Start DomainGraph in Cytoscape', command=self.SelectCytoscapeTopLevel)
             text_button.pack(side = 'right', padx = 5, pady = 5)
             self.output_dir = output_dir + "AltResults"
             self.whatNext_url = 'http://code.google.com/p/altanalyze/wiki/AnalyzingASResults' #http://www.altanalyze.org/what_next_altexon.htm'
@@ -4481,12 +4520,12 @@ class SummaryResultsWindow:
             else: self.output_dir = output_dir
             self.whatNext_url = 'http://code.google.com/p/altanalyze/wiki/AnalyzingGEResults' #'http://www.altanalyze.org/what_next_expression.htm'
             whatNext_pdf = 'Documentation/what_next_GE.pdf'; whatNext_pdf = filepath(whatNext_pdf); self.whatNext_pdf = whatNext_pdf
-        what_next = Button(self.tl, text='What Next?', command=self.whatNextlinkout)
+        what_next = Button(tl, text='What Next?', command=self.whatNextlinkout)
         what_next.pack(side = 'right', padx = 5, pady = 5)
-        quit_buttonTL = Button(self.tl,text='Close View', command=self.close)
+        quit_buttonTL = Button(tl,text='Close View', command=self.close)
         quit_buttonTL.pack(side = 'right', padx = 5, pady = 5)
         
-        continue_to_next_win = Button(text = 'Continue', command = root.destroy)
+        continue_to_next_win = Button(text = 'Continue', command = self.continue_win)
         continue_to_next_win.pack(side = 'right', padx = 10, pady = 10)
         quit_button = Button(root,text='Quit', command=self.quit)
         quit_button.pack(side = 'right', padx = 5, pady = 5)
@@ -4494,15 +4533,76 @@ class SummaryResultsWindow:
         button_text = 'Help'; help_url = 'http://www.altanalyze.org/help_main.htm'; self.help_url = filepath(help_url)
         pdf_help_file = 'Documentation/AltAnalyze-Manual.pdf'; pdf_help_file = filepath(pdf_help_file); self.pdf_help_file = pdf_help_file
         help_button = Button(root, text=button_text, command=self.Helplinkout)
-        help_button.pack(side = 'left', padx = 5, pady = 5); root.mainloop()
-        
-        tl.mainloop() ###Needed to show graphic
+        help_button.pack(side = 'left', padx = 5, pady = 5)
+        if self.emergency_exit == False:
+            tl.mainloop() ###Needed to show graphic
+        else:
+            """ This shouldn't have to be called, but is when the topLevel window isn't closed first
+            specifically if a PNG file is opened. the sys.exitfunc() should work but doesn't.
+            work on this more later """
+            #AltAnalyzeSetup('no')
+            try: self._tls.quit(); self._tls.destroy()
+            except Exception: None
+            try:  self._tlx.quit(); self._tlx.destroy()
+            except Exception: None
+            try:  self._tlx.quit(); self._tlx.destroy()
+            except Exception: None
+            try:  tl.quit(); tl.destroy()
+            except Exception: None
+            try:  root.quit(); root.destroy()
+            except Exception: None
+
+            UI.getUpdatedParameters(array_type,species,'Process Expression file',output_dir)
+            sys.exit() ### required when opening PNG files on Windows to continue (not sure why)
+            #sys.exitfunc()
+ 
+    def deleteTLWindow(self):
+        self.emergency_exit = True
+        try:  self._tls.quit(); self._tls.destroy()
+        except Exception: None
+        try:  self._tlx.quit(); self._tlx.destroy()
+        except Exception: None
+        self.tl.quit()
+        self.tl.destroy()
+        sys.exitfunc()
+    def deleteWindow(self):
+        self.emergency_exit = True
+        try:  self._tls.quit(); self._tls.destroy()
+        except Exception: None
+        try:  self._tlx.quit(); self._tlx.destroy()
+        except Exception: None
+        try:
+            self.tl.quit()
+            self.tl.destroy()
+        except Exception: None
+        sys.exitfunc()
+    def continue_win(self):
+        self.emergency_exit = True
+        try: self._tls.quit(); self._tls.destroy()
+        except Exception: None
+        try:  self._tlx.quit(); self._tlx.destroy()
+        except Exception: None
+        self.tl.quit()
+        self.tl.destroy()
+        root.quit()
+        root.destroy()
+        try: self.tl.grid_forget()
+        except Exception: None
+        try: root.grid_forget()
+        except Exception: None
+        sys.exitfunc()
     def openDirectory(self):
         if os.name == 'nt':
             try: os.startfile('"'+self.output_dir+'"')
             except Exception:  os.system('open "'+self.output_dir+'"')
         elif 'darwin' in sys.platform: os.system('open "'+self.output_dir+'"')
-        elif 'linux' in sys.platform: os.system('xdg-open "'+self.output_dir+'/"')   
+        elif 'linux' in sys.platform: os.system('xdg-open "'+self.output_dir+'/"')
+    def openSuppliedDirectory(self,dir):
+        if os.name == 'nt':
+            try: os.startfile('"'+self.output_dir+'"')
+            except Exception:  os.system('open "'+dir+'"')
+        elif 'darwin' in sys.platform: os.system('open "'+dir+'"')
+        elif 'linux' in sys.platform: os.system('xdg-open "'+dir+'/"')   
     def DGlinkout(self):
         try:
             altanalyze_path = filepath('') ### Find AltAnalye's path
@@ -4516,17 +4616,72 @@ class SummaryResultsWindow:
             parent_dir = '/opt'; application_dir = 'Cytoscape_v'; application_name = 'Cytoscape'
         try: openCytoscape(altanalyze_path,application_dir,application_name)
         except Exception: null=[]
-        self._tl.destroy()
-
+        try: self._tls.destroy()
+        except Exception: None
         try: ###Remove this cytoscape as the default
             file_location_defaults = UI.importDefaultFileLocations()
             del file_location_defaults['CytoscapeDir']
             UI.exportDefaultFileLocations(file_location_defaults)
         except Exception: null=[]
-        
         self.GetHelpTopLevel(self.dg_url,self.dg_pdf_file)
     def Helplinkout(self): self.GetHelpTopLevel(self.help_url,self.pdf_help_file)
     def whatNextlinkout(self): self.GetHelpTopLevel(self.whatNext_url,self.whatNext_pdf)
+    def ShowImageMPL(self,file_location):
+        """ Visualization method using MatPlotLib """
+        try:
+            import matplotlib
+            import matplotlib.pyplot as pylab
+        except Exception:
+            #print 'Graphical output mode disabled (requires matplotlib, numpy and scipy)'
+            None
+        fig = pylab.figure()
+        pylab.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.00) ### Fill the plot area left to right
+        ax = fig.add_subplot(111)
+        ax.set_xticks([]) ### Hides ticks
+        ax.set_yticks([])
+        img= pylab.imread(file_location)
+        imgplot = pylab.imshow(img)
+        pylab.show()
+    def viewPNGFile(self,png_file_dir):
+        """ View PNG file within a PMW Tkinter frame """
+        import ImageTk
+        tlx = Toplevel(); self._tlx = tlx
+        sf = PmwFreeze.ScrolledFrame(tlx, labelpos = 'n', label_text = '',
+                usehullsize = 1, hull_width = 800, hull_height = 550)
+        sf.pack(padx = 0, pady = 0, fill = 'both', expand = 1)
+        frame = sf.interior()
+
+        tlx.title(png_file_dir)
+        img = ImageTk.PhotoImage(file=png_file_dir)
+        can = Canvas(frame)
+        can.pack(fill=BOTH, padx = 0, pady = 0)
+        w = img.width()
+        h = height=img.height()
+        
+        can.config(width=w, height=h)        
+        can.create_image(2, 2, image=img, anchor=NW)
+        tlx.mainloop()
+
+    def openPNGImage(self,png_file_dir):
+        if os.name == 'nt':
+            try: os.startfile('"'+png_file_dir+'"')
+            except Exception:  os.system('open "'+png_file_dir+'"')
+        elif 'darwin' in sys.platform: os.system('open "'+png_file_dir+'"')
+        elif 'linux' in sys.platform: os.system('xdg-open "'+png_file_dir+'"')   
+    def DisplayPlots(self,file_location):
+        """ Native Tkinter method - Displays a gif file in a standard TopLevel window (nothing fancy) """
+        tls = Toplevel(); self._tls = tls; nulls = '\t\t\t\t'; tls.title('AltAnalyze Plot Visualization')
+        self.sf = PmwFreeze.ScrolledFrame(self._tls,
+                labelpos = 'n', label_text = '', usehullsize = 1, hull_width = 520, hull_height = 500)
+        self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
+        self.frame = self.sf.interior()
+        group = PmwFreeze.Group(self.sf.interior(),tag_text = file_location)
+        group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
+        img = PhotoImage(file=filepath(file_location))
+        can = Canvas(group.interior()); can.pack(side='left',padx = 10, pady = 20); can.config(width=img.width(), height=img.height())        
+        can.create_image(2, 2, image=img, anchor=NW)
+        tls.mainloop()
+
     def GetHelpTopLevel(self,url,pdf_file):
         try:
             config_db = UI.importConfigFile()
@@ -4535,8 +4690,8 @@ class SummaryResultsWindow:
         self.pdf_file = pdf_file; self.url = url
         if ask_for_help == 'null':
             message = ''; self.message = message; self.online_help = 'Online Documentation'; self.pdf_help = 'Local PDF File'
-            tl = Toplevel(); self._tl = tl; nulls = '\t\t\t\t'; tl.title('Please select one of the options')
-            self.sf = PmwFreeze.ScrolledFrame(self._tl,
+            tls = Toplevel(); self._tls = tls; nulls = '\t\t\t\t'; tls.title('Please select one of the options')
+            self.sf = PmwFreeze.ScrolledFrame(self._tls,
                     labelpos = 'n', label_text = '', usehullsize = 1, hull_width = 320, hull_height = 200)
             self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
             self.frame = self.sf.interior()
@@ -4551,7 +4706,9 @@ class SummaryResultsWindow:
             except Exception: text_button = Button(group.interior(), text=self.pdf_help, command=self.openPDFHelp); text_button.pack(side = 'top', padx = 5, pady = 5)
             text_button3 = Button(group.interior(), text='No Thanks', command=self.skipHelp); text_button3.pack(side = 'top', padx = 5, pady = 5) 
             c = Checkbutton(group.interior(), text = "Apply these settings each time", command=self.setHelpConfig); c.pack(side = 'bottom', padx = 5, pady = 0)
-            tl.mainloop()
+            tls.mainloop()
+            try: tls.destroy()
+            except Exception: None
         else:
             file_location_defaults = UI.importDefaultFileLocations()
             try:
@@ -4567,8 +4724,8 @@ class SummaryResultsWindow:
         except Exception: cytoscape_type = 'null'; config_db={}
         if cytoscape_type == 'null':
             message = ''; self.message = message
-            tl = Toplevel(); self._tl = tl; nulls = '\t\t\t\t'; tl.title('Cytoscape Automatic Start Options')
-            self.sf = PmwFreeze.ScrolledFrame(self._tl,
+            tls = Toplevel(); self._tls = tls; nulls = '\t\t\t\t'; tls.title('Cytoscape Automatic Start Options')
+            self.sf = PmwFreeze.ScrolledFrame(self._tls,
                     labelpos = 'n', label_text = '', usehullsize = 1, hull_width = 420, hull_height = 200)
             self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
             self.frame = self.sf.interior()
@@ -4592,7 +4749,9 @@ class SummaryResultsWindow:
             l2 = Label(group.interior(), text='Note: Cytoscape can take up-to a minute to initalize', fg="blue");  l2.pack(side = 'bottom', padx = 5, pady = 0)
             c = Checkbutton(group.interior(), text = "Apply these settings each time and don't show again", command=self.setCytoscapeConfig); c.pack(side = 'bottom', padx = 5, pady = 0)
             #c2 = Checkbutton(group.interior(), text = "Open PDF of DomainGraph help rather than online help", command=self.setCytoscapeConfig); c2.pack(side = 'bottom', padx = 5, pady = 0)
-            tl.mainloop()
+            tls.mainloop()
+            try: tls.destroy()
+            except Exception: None
         else:
             file_location_defaults = UI.importDefaultFileLocations()
             try: cytoscape_app_dir = file_location_defaults['CytoscapeDir'].Location(); openFile(cytoscape_app_dir)
@@ -4627,12 +4786,12 @@ class SummaryResultsWindow:
         except Exception: 
             dir = FindDir(parent_dir,application_dir); dir = filepath(parent_dir+'/'+dir) 
             self.default_dir = filepath(parent_dir)
-        try: dirPath = tkFileDialog.askdirectory(parent=self._tl,initialdir=self.default_dir)
+        try: dirPath = tkFileDialog.askdirectory(parent=self._tls,initialdir=self.default_dir)
         except Exception: 
             self.default_dir = ''
-            try: dirPath = tkFileDialog.askdirectory(parent=self._tl,initialdir=self.default_dir)
+            try: dirPath = tkFileDialog.askdirectory(parent=self._tls,initialdir=self.default_dir)
             except Exception: 
-                try: dirPath = tkFileDialog.askdirectory(parent=self._tl)
+                try: dirPath = tkFileDialog.askdirectory(parent=self._tls)
                 except Exception: dirPath=''
         try:
             #print [dirPath],application_name
@@ -4661,7 +4820,8 @@ class SummaryResultsWindow:
                 file_location_defaults['CytoscapeDir'] = fl
             UI.exportDefaultFileLocations(file_location_defaults)
         except Exception: null=[]
-        self._tl.destroy()
+        try: self._tls.destroy()
+        except Exception: None
         self.GetHelpTopLevel(self.dg_url,self.dg_pdf_file)
     def openOnlineHelp(self):
         file_location_defaults = UI.importDefaultFileLocations()
@@ -4672,7 +4832,8 @@ class SummaryResultsWindow:
         UI.exportDefaultFileLocations(file_location_defaults)
         webbrowser.open(self.url)
         #except Exception: null=[]
-        self._tl.destroy()
+        try: self._tls.destroy()
+        except Exception: None
     def skipHelp(self):
         file_location_defaults = UI.importDefaultFileLocations()
         try: file_location_defaults['HelpChoice'].SetLocation('skip')
@@ -4680,7 +4841,8 @@ class SummaryResultsWindow:
             fl = UI.FileLocationData('', 'skip', 'all')
             file_location_defaults['HelpChoice'] = fl
         UI.exportDefaultFileLocations(file_location_defaults)
-        self._tl.destroy()
+        try: self._tls.destroy()
+        except Exception: None
     def openPDFHelp(self):
         file_location_defaults = UI.importDefaultFileLocations()
         try:file_location_defaults['HelpChoice'].SetLocation('PDF')
@@ -4693,7 +4855,8 @@ class SummaryResultsWindow:
             except Exception:  os.system('open "'+self.pdf_file+'"')
         elif 'darwin' in sys.platform: os.system('open "'+self.pdf_file+'"')
         elif 'linux' in sys.platform: os.system('xdg-open "'+self.pdf_file+'"')   
-        self._tl.destroy()
+        try: self._tls.destroy()
+        except Exception: None
     def quit(self):
         root.quit()
         root.destroy()
@@ -4803,7 +4966,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   species,array_type,manufacturer,constitutive_source,dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis = expr_var
   analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,remove_intronic_junctions,permute_p_threshold,perform_permutation_analysis, export_NI_values, analyze_all_conditions = alt_var
   calculate_normIntensity_p, run_MiDAS, use_direct_domain_alignments_only, microRNA_prediction_method, filter_for_AS, additional_algorithms = additional_var
-  ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,pathway_permutations,mod = goelite_var
+  ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,pathway_permutations,mod,returnPathways = goelite_var
   
   original_remove_intronic_junctions = remove_intronic_junctions
   if run_from_scratch == 'Annotate External Results': analysis_method = 'external'
@@ -4812,14 +4975,18 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
     fl = exp_file_location_db[dataset]
     try: exon_exp_threshold = fl.ExonExpThreshold()
     except Exception: exon_exp_threshold = 'NA'
-    try: rpkm_threshold = fl.RPKMThreshold()
+    try: gene_exp_threshold = fl.GeneExpThreshold()
+    except Exception: gene_exp_threshold = 'NA'
+    try: exon_rpkm_threshold = fl.ExonRPKMThreshold()
+    except Exception: exon_rpkm_threshold = 'NA'
+    try: rpkm_threshold = fl.RPKMThreshold() ### Gene-Level
     except Exception: rpkm_threshold = 'NA'
     fl.setJunctionExpThreshold(raw_expression_threshold) ### For RNA-Seq, this specifically applies to exon-junctions
     
     if test_goelite == 'yes': ### It can be difficult to get error warnings from GO-Elite, unless run here
       results_dir = filepath(fl.RootDir())
       file_dirs = results_dir+'GO-Elite/input',results_dir+'GO-Elite/denominator',results_dir+'GO-Elite'
-      variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,file_dirs,root
+      variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,root
       GO_Elite.remoteAnalysis(variables,'non-UI')
 
   global perform_element_permutation_analysis; global permutations
@@ -4847,7 +5014,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   else: id_name = 'array IDs'
 
   print_items=[]; #print [permute_p_threshold]; sys.exit()
-  print_items.append("Expression Analysis Parameters Being Used...")
+  print_items.append("AltAnalyze version 2.0.7 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'species'+': '+species)
   print_items.append('\t'+'method'+': '+array_type)
   print_items.append('\t'+'manufacturer'+': '+manufacturer)
@@ -4857,7 +5024,9 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   if array_type == 'RNASeq':
     print_items.append('\t'+'junction expression threshold'+': '+str(raw_expression_threshold))
     print_items.append('\t'+'exon_exp_threshold'+': '+str(exon_exp_threshold))
-    print_items.append('\t'+'rpkm_threshold'+': '+str(rpkm_threshold))
+    print_items.append('\t'+'gene_exp_threshold'+': '+str(gene_exp_threshold))
+    print_items.append('\t'+'exon_rpkm_threshold'+': '+str(exon_rpkm_threshold))
+    print_items.append('\t'+'gene_rpkm_threshold'+': '+str(rpkm_threshold))
   else:
     print_items.append('\t'+'raw_expression_threshold'+': '+str(raw_expression_threshold))
   print_items.append('\t'+'avg_all_for_ss'+': '+avg_all_for_ss)
@@ -4905,13 +5074,18 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   summary_data_db['miRNA_gene_hits'] = 0
           
   if test_results_pannel == 'yes': ### It can be difficult to get error warnings from GO-Elite, unless run here
+      graphic_links = []
+      graphic_links.append(['test','Config/AltAnalyze_structure-RNASeq.jpg'])
+      summary_data_db['QC']=graphic_links
       print_out = 'Analysis complete. AltAnalyze results\nexported to "AltResults/AlternativeOutput".'
       dataset = 'test'; results_dir=''
       print "Analysis Complete\n";
+                
       if root !='' and root !=None:
           UI.InfoWindow(print_out,'Analysis Completed!')
-          tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset,'parent',summary_data_db)
-              
+          tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir,dataset,'parent',summary_data_db)
+      root.destroy(); sys.exit()
+      
   global export_go_annotations; global aspire_output_list; global aspire_output_gene_list
   global filter_probesets_by; global global_addition_factor; global onlyAnalyzeJunctions
   global log_fold_cutoff; global aspire_cutoff; global annotation_system; global alt_exon_logfold_cutoff
@@ -4939,7 +5113,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   elif additional_algorithm == 'FIRMA': analyze_metaprobesets = 'yes'
   else: analyze_metaprobesets = 'no'
 
-  ### Check to see if this is a real or FAKE dataset
+  ### Check to see if this is a real or FAKE (used for demonstration purposes) dataset
   if run_from_scratch == 'Process CEL files': 
       for dataset in exp_file_location_db:
         fl = exp_file_location_db[dataset]
@@ -4951,13 +5125,14 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
               print "Analysis Complete\n";
               if root !='' and root !=None:
                   UI.InfoWindow(print_out,'Analysis Completed!')
-                  tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset,'parent',summary_data_db)             
+                  tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset,'parent',summary_data_db)
           except Exception: null=[]
           skip_intro = 'yes'
           if pathway_permutations == 'NA' and run_from_scratch != 'Annotate External Results':
               reload(UI)
               UI.getUpdatedParameters(array_type,species,run_from_scratch,results_dir)
-          AltAnalyzeSetup('no')
+          try: AltAnalyzeSetup('no')
+          except Exception: sys.exit()
       try:
           try:
               UI.probesetSummarize(exp_file_location_db,analyze_metaprobesets,filter_probeset_types,species,root)
@@ -5029,7 +5204,11 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             perform_alt_analysis,ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,
             exp_file_location_db,root)
       reload(ExpressionBuilder) ### Clears Memory
-      remove_intronic_junctions = original_remove_intronic_junctions ### This var get's reset when running FilterDABG
+      remove_intronic_junctions = original_remove_intronic_junctions ### This var gets reset when running FilterDABG
+      try:
+           summary_data_db['QC'] = fl.GraphicLinks() ### provides links for displaying QC and clustering plots
+      except Exception:
+           null=[] ### Visualization support through matplotlib either not present or visualization options excluded
       #print '!!!!!finished expression builder'
       #returnLargeGlobalVars()
       expression_data_format = 'log' ### This variable is set from non-log in FilterDABG when present (version 1.16)
@@ -5038,41 +5217,6 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           system_codes = UI.getSystemInfo()
           go_elite_analysis_supported = 'yes'
           species_names = UI.getSpeciesInfo()
-          goelite_species_codes = importGOEliteSpeciesInfo()
-          incorporate_csv_annotations = 'no' ###This is a nice little function but not needed if we support all array IDs for all Affymetrix species
-          if array_type == "3'array" and incorporate_csv_annotations=='yes':
-              species_full = species_names[species]
-              import BuildAffymetrixAssociations
-              status = GO_Elite.checkGOEliteSpecies(species)
-              if status == 'no':
-                  ###Add species to GO-Elite species database
-                  sd = SpeciesData(species,species_full,['En','L'],'')
-                  goelite_species_codes[species_full]=sd
-                  exportGOEliteSpeciesInfo(goelite_species_codes)
-
-                  date = TimeStamp(); file_type = ('wikipathways_'+date+'.tab','.txt')
-                  fln,status = update.download('http://www.wikipathways.org/wpi/pathway_content_flatfile.php?output=tab','AltDatabase/wikipathways/',file_type)
-                  if 'Internet' not in status:
-                      incorporate_previous_associations = 'yes'; process_go = 'yes'; parse_wikipathways = 'yes'; overwrite_affycsv = 'over-write previous'
-                      integrate_affy_associations = 'yes'
-                      BuildAffymetrixAssociations.importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,integrate_affy_associations,overwrite_affycsv)
-              else:
-                if incorporate_csv_annotations == 'yes': 
-                    import_dir = '/AltDatabase/affymetrix/'+species; dir_list = read_directory(import_dir)
-                    fn_dir = filepath(import_dir[1:])
-                    if len(dir_list)>0:
-                        for file in dir_list:
-                            fn = fn_dir+'/'+file
-                            if '.csv' in fn:
-                                probesets_found = checkGOEliteProbesets(fn,species)
-                                #print probesets_found, file
-                                if probesets_found == 'no': go_elite_analysis_supported = 'no'
-                    if go_elite_analysis_supported == 'no':
-                        ###Add annotations for a missing array
-                        incorporate_previous_associations = 'yes'; process_go = 'no'; parse_wikipathways = 'no'; overwrite_affycsv = 'over-write previous'
-                        integrate_affy_associations = 'yes'
-                        BuildAffymetrixAssociations.buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv)
-                        go_elite_analysis_supported = 'yes'
           for dataset in exp_file_location_db:
               fl = exp_file_location_db[dataset]; results_dir = filepath(fl.RootDir())
               file_dirs = results_dir+'GO-Elite/input',results_dir+'GO-Elite/denominator',results_dir+'GO-Elite'
@@ -5080,7 +5224,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           if pathway_permutations != 'NA':
               try:
                   input_dir_list = read_directory(file_dirs[0]) ### returns an error if no input files exported
-                  variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,file_dirs,root
+                  variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,root
                   if go_elite_analysis_supported == 'yes':
                       input_files = read_directory(file_dirs[0]) ### Are there any files to analyze?
                       if len(input_files)>0:
@@ -5101,9 +5245,13 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                   if pathway_permutations == 'NA' and run_from_scratch != 'Annotate External Results':                
                       if go_elite_analysis_supported == 'yes': 
                           UI.getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
-                  AltAnalyzeSetup('no')
+                  try: AltAnalyzeSetup('no')
+                  except Exception:
+                      print traceback.format_exc()
+                      sys.exit()
               else:  print '\n'+print_out; sys.exit()
-          except Exception: sys.exit()
+          except Exception:
+              print sys.exit()
       else: altanalyze_files = status[1] ### These files are the comparison files to analyze
   elif run_from_scratch == 'update DBs':
       null=[] ###Add link to new module here (possibly)
@@ -5133,7 +5281,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           print "WARNING!!!! Invalid gene expression fold cutoff entered,\nusing the default value of 2, must be greater than 1."
       log_fold_cutoff = math.log(float(gene_expression_cutoff),2)
     
-      if analysis_method != 'ASPIRE':
+      if analysis_method != 'ASPIRE' and analysis_method != 'none':
           if p_threshold <= 0 or p_threshold >1:
               p_threshold = 0.05 ### A number less than one is invalid
               print "WARNING!!!! Invalid alternative exon p-value threshold entered,\nusing the default value of 0.05."              
@@ -5172,7 +5320,9 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       elif array_type == 'AltMouse': probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+'MASTER-probeset-transcript.txt'
       else: probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_probesets.txt'
 
-      analysis_summary = RunAltAnalyze()
+      if analysis_method != 'none':
+          analysis_summary = RunAltAnalyze() ### Only run if analysis methods is specified (only available for RNA-Seq and junction analyses)
+      else: analysis_summary = None
 
       if analysis_summary != None:
           summary_results_db, aspire_output_gene_list, number_events_analyzed = analysis_summary
@@ -5238,8 +5388,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   if pathway_permutations != 'NA':
       input_files = read_directory(file_dirs[0]) ### Are there any files to analyze?
       if len(input_files)>0:
-          variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,file_dirs,root
-          print '\ns to run GO-Elite analysis on alternative exon resutlts'
+          variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,root
+          print '\nBeginning to run GO-Elite analysis on alternative exon resutlts'
           GO_Elite.remoteAnalysis(variables,'non-UI')
           try: GO_Elite.moveMAPPFinderFiles(file_dirs[0])
           except Exception: print 'Input GO-Elite files could NOT be moved.'
@@ -5247,17 +5397,19 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           except Exception: print 'Input GO-Elite files could NOT be moved.'
       else: print 'No GO-Elite input files to analyze (check your criterion).'
   print_out = 'Analysis complete. AltAnalyze results\nexported to "AltResults/AlternativeOutput".'
+
   try:
       if root !='' and root !=None:
           print "Analysis Complete\n";
           UI.InfoWindow(print_out,'Analysis Completed!')
-          tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset_name,'specific',summary_data_db2)            
+          tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset_name,'specific',summary_data_db2)
   except Exception: null=[]
   skip_intro = 'yes'
   if root !='' and root !=None:
       if pathway_permutations == 'NA' and run_from_scratch != 'Annotate External Results':
           UI.getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
-      AltAnalyzeSetup('no')
+      try: AltAnalyzeSetup('no')
+      except Exception: sys.exit()
           
 def exportSummaryResults(summary_results_db,analysis_method,aspire_output_list,aspire_output_gene_list,annotate_db,array_type,number_events_analyzed,root_dir):       
       try:
@@ -5371,9 +5523,29 @@ def verifyFileLength(filename):
     except Exception: null=[]
     return count
 
+def verifyGroupFileFormat(filename):
+    correct_format = False
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            if len(string.split(data,'\t'))==3:
+                correct_format = True
+            break
+    except Exception: correct_format = False
+    return correct_format
+
+def displayHelp():
+    fn=filepath('Documentation/commandline.txt')
+    print '\n################################################\nAltAnalyze Command-Line Help'
+    for line in open(fn,'rU').readlines():
+        print cleanUpLine(line)
+    print '\n################################################ - END HELP'
+    sys.exit()
+    
 ###### Command Line Functions (AKA Headless Mode) ######
 def commandLineRun():
-    print 'AltAnalyze 2.0.6 beta - Running commandline options'
+    print 'Running commandline options'
     import getopt
     #/hd3/home/nsalomonis/normalization/mir1 - boxer
     #python AltAnalyze.py --species Mm --arraytype "3'array" --celdir "C:/CEL" --output "C:/CEL" --expname miR1_column --runGOElite yes --GEelitepval 1.1 --elitepermut 20
@@ -5390,6 +5562,7 @@ def commandLineRun():
     constitutive_source='Ensembl'
     ensembl_version = 'current'
     species_code = None
+    species = None
     main_input_folder = None
     output_dir = None
     array_type = None
@@ -5399,6 +5572,8 @@ def commandLineRun():
     input_cdf_file = None
     exp_name = None
     run_GOElite = None
+    visualize_qc_results = 'yes'
+    run_lineage_profiler = 'no'
     input_exp_file = ''
     cel_file_dir = ''
     input_stats_file = ''
@@ -5416,10 +5591,24 @@ def commandLineRun():
     codingType = 'protein_coding'
     probability_statistic = 'unpaired t-test'
     specific_array_type = None
+    additional_resources = [None]
+    wpid = None
+    mod = 'Ensembl'
+    transpose = False
+    input_file_dir = None
+    denom_file_dir = None
+    image_export = []
     selected_species = ['Hs','Mm','Rn'] ### These are the species that additional array types are currently supported
     selected_platforms = ['AltMouse','exon','gene','junction']
     
     print '\nArguments input:',sys.argv,'\n'
+    if '--help' in sys.argv[1:]:
+        try: displayHelp() ### Print out a help file and quit
+        except Exception: print 'See: http://www.altanalyze.org for documentation and command-line help';sys.exit()
+        
+    try: getopt.getopt(sys.argv[1:],'', []) ### Test to make sure the command-line flags each have an argument
+    except Exception: print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
+    
     options, remainder = getopt.getopt(sys.argv[1:],'', ['species=', 'mod=','elitepval=', 'elitepermut=',
                                                          'method=','zscore=','pval=','num=',
                                                          'runGOElite=','denom=','output=','arraytype=',
@@ -5438,7 +5627,12 @@ def commandLineRun():
                                                          'altpermutep=','altpermute=','removeIntronOnlyJunctions=',
                                                          'normCounts=','buildExonExportFile=','groupStat=',
                                                          'codingType=','rpkm=','exonExp=','specificArray=',
-                                                         'ignoreBuiltSpecies='])
+                                                         'ignoreBuiltSpecies=','ORAstat=','outputQCPlots=',
+                                                         'runLineageProfiler=','input=','image=', 'wpid=',
+                                                         'additional=','row_method=','column_method=',
+                                                         'row_metric=','column_metric=','color_gradient=',
+                                                         'transpose=','returnPathways='])
+
     for opt, arg in options:
         #print [opt, arg]
         if opt == '--species': species=arg
@@ -5468,13 +5662,119 @@ def commandLineRun():
         elif opt == '--version': ensembl_version = arg
         elif opt == '--codingType': codingType=arg
         elif opt == '--force': force=arg
-    
+        elif opt == '--input': input_file_dir=arg
+        elif opt == '--image': image_export.append(arg)
+        elif opt == '--wpid': wpid=arg
+        elif opt == '--mod': mod=arg
+        elif opt == '--additional':
+            if additional_resources[0] == None:
+                additional_resources=[]
+                additional_resources.append(arg)
+            else:
+                additional_resources.append(arg)
+        elif opt == '--transpose':
+            if arg == 'True': transpose = True
+        elif opt == '--runLineageProfiler': ###Variable declared here and later (independent analysis here or pipelined with other analyses later)
+            run_lineage_profiler=arg
+        elif opt == '--denom':
+            denom_file_dir=arg ### Indicates that GO-Elite is run independent from AltAnalyze itself
+            array_type = 'exon' #### Required to import general GO-Elite defaults
+
+    ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
+    if len(image_export) > 0:
+        if 'WikiPathways' in image_export:
+            #python AltAnalyze.py --input /Users/test/input/criterion1.txt --image WikiPathways --mod Ensembl --system arrays --species Hs --wpid WP536
+            if wpid==None:
+                print 'Please provide a valid WikiPathways ID (e.g., WP1234)';sys.exit()
+            if species==None:
+                print 'Please provide a valid species ID for an installed database (to install: --update Official --species Hs --version EnsMart62Plus)';sys.exit()
+            if input_file_dir==None:
+                print 'Please provide a valid file location for your input IDs (also needs to inlcude system code and value column)';sys.exit()
+            import WikiPathways_webservice
+            try:
+                print 'Attempting to output a WikiPathways colored image from user data'
+                print 'mod:',mod
+                print 'species_code:',species
+                print 'wpid:',wpid
+                print 'input GO-Elite ID file:',input_file_dir
+                graphic_link = WikiPathways_webservice.visualizePathwayAssociations(input_file_dir,species,mod,wpid)
+            except Exception,e:
+                if 'force_no_matching_error' in traceback.format_exc():
+                    print '\nUnable to run!!! None of the input IDs mapped to this pathway\n' 
+                elif 'IndexError' in traceback.format_exc():
+                    print '\nUnable to run!!! Input ID file does not have at least 3 columns, with the second column being system code\n'
+                elif 'ValueError' in traceback.format_exc():
+                    print '\nUnable to run!!! Input ID file error. Please check that you do not have extra rows with no data\n' 
+                elif 'source_data' in traceback.format_exc():
+                    print '\nUnable to run!!! Input ID file does not contain a valid system code\n'
+                elif 'goelite' in traceback.format_exc():
+                    print '\nUnable to run!!! A valid species database needs to first be installed. For example, run:'
+                    print 'python AltAnalyze.py --update Official --species Hs --version EnsMart65\n'
+                else:
+                    print traceback.format_exc()
+                    print '\nError generating the pathway "%s"' % wpid,'\n'
+            try:
+                printout = 'Finished exporting visualized pathway to:',graphic_link['WP']
+                print printout,'\n'
+            except Exception: None
+            sys.exit()
+
+        if 'hierarchical' in image_export:
+            #python AltAnalyze.py --input "/Users/test/pluri.txt" --image hierarchical --row_method average --column_method single --row_metric cosine --column_metric euclidean --color_gradient red_white_blue --transpose False
+            if input_file_dir==None:
+                print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
+            row_method = 'average'
+            column_method = 'single'
+            row_metric = 'cosine'
+            column_metric = 'euclidean'
+            color_gradient = 'red_white_blue'
+
+            for opt, arg in options: ### Accept user input for these hierarchical clustering variables
+                if opt == '--row_method': row_method=arg
+                elif opt == '--column_method': column_method=arg
+                elif opt == '--row_metric': row_metric=arg
+                elif opt == '--column_metric': column_metric=arg
+                elif opt == '--color_gradient': color_gradient=arg
+            UI.createHeatMap(input_file_dir, row_method, row_metric, column_method, column_metric, color_gradient, transpose, None)
+            sys.exit()
+            
+        if 'PCA' in image_export:
+            #AltAnalyze.py --input "/Users/nsalomonis/Desktop/folds.txt" --image PCA
+            if input_file_dir==None:
+                print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
+            UI.performPCA(input_file_dir, transpose, None)
+            sys.exit()
+            
+    if run_lineage_profiler == 'yes' and input_file_dir != None:
+        #python AltAnalyze.py --input "/Users/nsalomonis/Merrill/test.txt" --runLineageProfiler yes --vendor Affymetrix --platform "3'array" --species Mm
+        if array_type==None:
+            print "Please include a platform name (e.g., --platform RNASeq)";sys.exit()
+        if species==None:
+            print "Please include a species name (e.g., --species Hs)";sys.exit()
+        try:
+            status = UI.verifyLineageProfilerDatabases(species,'command-line')
+        except ValueError:
+            ### Occurs due to if int(gene_database[-2:]) < 65: - ValueError: invalid literal for int() with base 10: ''
+                print '\nPlease install a valid gene database before proceeding.\n'
+                print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart65\n';sys.exit()
+        if status == False:
+            print 'Please note: LineageProfiler not currently supported for this species...';sys.exit()
+        graphic_links = ExpressionBuilder.remoteLineageProfiler(input_file_dir,array_type,species,manufacturer)
+        if len(graphic_links)>0:
+            print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
+            print print_out
+        else:
+            print_out = 'Analysis error occured...\nplease see warning printouts.'
+            print print_out
+        sys.exit()
+     
+    ########## Begin database dependent AltAnalyze workflows
     if ensembl_version != 'current' and 'markers' not in update_method:
         dbversion = string.replace(ensembl_version,'EnsMart','')
-        import UI; UI.exportDBversion('EnsMart'+dbversion)
+        UI.exportDBversion('EnsMart'+dbversion)
         gene_database = unique.getCurrentGeneDatabaseVersion()
         print 'Current database version:',gene_database
-    if array_type == None and update_dbs != 'yes':
+    if array_type == None and update_dbs != 'yes' and denom_file_dir == None:
         print "Please specify an array or data type (e.g., RNASeq, exon, gene, junction, AltMouse, 3'array)."; sys.exit()
     if 'archive' in update_method:
         ###
@@ -5527,7 +5827,7 @@ def commandLineRun():
             if species == 'selected': species = selected_species ### just analyze the species for which multiple platforms are supported
             elif species == 'all':
                 all_supported_names = {}; all_species_names={}
-                import UI; species_names = UI.getSpeciesInfo()
+                species_names = UI.getSpeciesInfo()
                 for species in species_names: all_supported_names[species_names[species]]=species
                 import EnsemblSQL
                 child_dirs, ensembl_species, ensembl_versions = EnsemblSQL.getCurrentEnsemblSpecies('release-'+ensembl_version)
@@ -5659,16 +5959,18 @@ def commandLineRun():
         ensembl_version = 'EnsMart'+ensembl_version
 
         ### Get all possible species
-        import UI; species_names = UI.getSpeciesInfo(); possible_species={}
+        species_names = UI.getSpeciesInfo(); possible_species={}
         possible_species = species_names
         possible_arrays = ['exon','gene','junction','AltMouse','RNASeq']
         try:
             if species == 'all': possible_species = possible_species
+            elif species == 'selected': possible_species = selected_species
             else: possible_species = [species]
         except Exception: species = possible_species
         if array_type == None or array_type == 'all': possible_arrays = possible_arrays
         else: possible_arrays = [array_type]+additional_array_types
         species_to_package={}
+        
         dirs = unique.read_directory('/AltDatabase/'+ensembl_version)
         #print possible_arrays, possible_species; sys.exit()
         for species_code in dirs:
@@ -5840,13 +6142,12 @@ def commandLineRun():
             print 'Cell/Tissue marker classification analysis finished';sys.exit()
     
     if 'EnsMart' in ensembl_version:
-        import UI; UI.exportDBversion(ensembl_version)
+        UI.exportDBversion(ensembl_version)
     
     annotation_found = verifyFile(input_annotation_file)
     proceed = 'no'
     
-    import UI
-    if 'Official' not in update_method:
+    if 'Official' not in update_method and denom_file_dir == None: ### If running GO-Elite independent of AltAnalyze (see below GO_Elite call)
         try:
             time_stamp = timestamp()
             if len(cel_file_dir)>0:
@@ -5867,7 +6168,11 @@ def commandLineRun():
         run_from_scratch ='Process AltAnalyze filtered'; proceed='yes'
     if len(input_exp_file)>0:
         run_from_scratch = 'Process Expression file'; proceed='yes'
-        ief_list = string.split(input_exp_file,'/'); parent_dir = string.join(ief_list[:-1],'/'); exp_name = ief_list[-1]
+        input_exp_file = string.replace(input_exp_file,'\\','/') ### Windows convention is \ rather than /, but works with /
+        ief_list = string.split(input_exp_file,'/')
+        if len(output_dir)>0: parent_dir = output_dir
+        else: parent_dir = string.join(ief_list[:-1],'/')
+        exp_name = ief_list[-1]
 
     if len(cel_file_dir)>0:
         if exp_name == None: print "No experiment name defined. Please sumbit a name (e.g., --expname CancerComp) before proceeding."; sys.exit()
@@ -5878,6 +6183,17 @@ def commandLineRun():
         try: cel_files,cel_files_fn = UI.identifyCELfiles(cel_file_dir,array_type)
         except Exception: print "No",file_ext,"files found in the directory:",cel_file_dir;sys.exit()
         if array_type != 'RNASeq': cel_file_list_dir = UI.exportCELFileList(cel_files_fn,cel_file_dir)
+
+        if groups_file != None and comps_file != None:
+            try: export.copyFile(groups_file, string.replace(exp_file_dir,'exp.','groups.'))
+            except Exception: print 'Groups file already present in target location.'
+            try: export.copyFile(comps_file, string.replace(exp_file_dir,'exp.','comps.'))
+            except Exception: print 'Comparison file already present in target location.'
+            groups_file = string.replace(exp_file_dir,'exp.','groups.')
+            comps_file = string.replace(exp_file_dir,'exp.','comps.')
+            if verifyGroupFileFormat(groups_file) == False:
+                print "\nWarning! The format of your groups file is not correct. For details, see:\nhttp://code.google.com/p/altanalyze/wiki/ManualGroupsCompsCreation\n"
+                sys.exit()
 
         if array_type != 'RNASeq':
             """Determine if Library and Annotations for the array exist, if not, download or prompt for selection"""
@@ -5907,7 +6223,7 @@ def commandLineRun():
                 sa = supproted_array_db[specific_array_type]; species = sa.Species(); array_type = sa.ArrayType()
                 input_cdf_file, input_annotation_file, bgp_file, clf_file = UI.getAffyFilesRemote(specific_array_type,array_type,species)
             else: array_type = "3'array"
-            
+
             cdf_found = verifyFile(input_cdf_file)
             annotation_found = verifyFile(input_annotation_file)
     
@@ -5946,7 +6262,7 @@ def commandLineRun():
                             info_list = bgp_file,osfilepath(destination_parent+bgp_short); UI.StatusWindow(info_list,'copy')
                             if 'Glue' in pgf_file:
                                 info_list = kil_file,osfilepath(destination_parent+kil_short); UI.StatusWindow(info_list,'copy')
-    if annotation_found != "found" and update_dbs == 'no' and array_type != 'RNASeq':
+    if annotation_found != "found" and update_dbs == 'no' and array_type != 'RNASeq' and denom_file_dir == None:
         ### Copy valid Annotation files to a local AltAnalyze database directory
         try:
             input_annotation_lower = string.lower(input_annotation_file)
@@ -5958,21 +6274,27 @@ def commandLineRun():
                 info_list = input_annotation_file,filepath(destination_parent+csv_short); UI.StatusWindow(info_list,'copy')
         except Exception: print "No Affymetrix annotation file provided. AltAnalyze will use any .csv annotations files in AltDatabase/Affymetrix/"+species
 
-    if 'Official' in update_method and species != None: proceed = 'yes'
+    if denom_file_dir != None:
+        proceed = 'yes' ### Only run GO-Elite
+        
+    if 'Official' in update_method and species != None:
+        proceed = 'yes'
     elif array_type != None and species != None:          
         expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = UI.importDefaults(array_type,species)
-        ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, filter_method, z_threshold, p_val_threshold, change_threshold,resources_to_analyze, goelite_permutations, mod = goelite_defaults
+        ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, filter_method, z_threshold, p_val_threshold, change_threshold, ORA_algorithm, resources_to_analyze, goelite_permutations, mod, returnPathways, NA = goelite_defaults
         use_direct_domain_alignments_only,microRNA_prediction_method = functional_analysis_defaults
         analysis_method, additional_algorithms, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, additional_score, permute_p_threshold, gene_expression_cutoff, remove_intronic_junctions, perform_permutation_analysis, export_NI_values, run_MiDAS, calculate_normIntensity_p, filter_for_AS = alt_exon_defaults
-        dabg_p, rpkm_threshold, expression_threshold, exon_exp_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_algorithm, null = expr_defaults
-    else: print 'No species defined. Please include the species code (e.g., "--species Hs") and array type (e.g., "--arraytype exon") before proceeding.'; sys.exit()     
+        dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_statistic, visualize_qc_results, run_lineage_profiler, null = expr_defaults
+    else:
+        print 'No species defined. Please include the species code (e.g., "--species Hs") and array type (e.g., "--arraytype exon") before proceeding.'; sys.exit()     
 
     array_type_original = array_type
     #if array_type == 'gene': array_type = "3'array"
     
     for opt, arg in options:
         if opt == '--runGOElite': run_GOElite=arg
-        elif opt == '--mod': mod=arg
+        elif opt == '--outputQCPlots': visualize_qc_results=arg
+        elif opt == '--runLineageProfiler': run_lineage_profiler=arg
         elif opt == '--elitepermut': goelite_permutations=arg
         elif opt == '--method': filter_method=arg
         elif opt == '--zscore': z_threshold=arg
@@ -5982,12 +6304,16 @@ def commandLineRun():
         elif opt == '--GEelitepval': ge_pvalue_cutoffs=arg
         elif opt == '--GEelitefold': ge_fold_cutoffs=arg
         elif opt == '--GEeliteptype': ge_ptype=arg
+        elif opt == '--ORAstat': ORA_algorithm=arg
+        elif opt == '--returnPathways': returnPathways=arg
         
         elif opt == '--dabgp': dabg_p=arg
         elif opt == '--rawexp': expression_threshold=arg
-        elif opt == '--rpkm': rpkm_threshold=arg
+        elif opt == '--geneRPKM': rpkm_threshold=arg
+        elif opt == '--exonRPKM': exon_rpkm_threshold=arg
+        elif opt == '--geneExp': gene_exp_threshold=arg
         elif opt == '--exonExp': exon_exp_threshold=arg
-        elif opt == '--groupStat': probability_algorithm=arg
+        elif opt == '--groupStat': probability_statistic=arg
         elif opt == '--avgallss': avg_all_for_ss=arg
         elif opt == '--logexp': expression_data_format=arg
         elif opt == '--inclraw': include_raw_data=arg
@@ -6017,9 +6343,9 @@ def commandLineRun():
         elif opt == '--annotatedir': external_annotation_dir=arg
         elif opt == '--additionalScore': additional_score=arg
         elif opt == '--additionalAlgorithm': additional_algorithms=arg
-
+        
     if proceed == 'yes':
-        import UI; species_codes = UI.remoteSpeciesInfo()
+        species_codes = UI.remoteSpeciesInfo()
         ### Update Ensembl Databases
         if 'Official' in update_method:
             file_location_defaults = UI.importDefaultFileLocations()
@@ -6058,7 +6384,22 @@ def commandLineRun():
             if species_full not in db_versions[select_version]:
                 print db_versions[select_version]
                 print species_full, ': This species is not available for this version %s of the Official database.' % select_version
-            else: UI.getOnlineEliteDatabase(file_location_defaults,ensembl_version,[species],'')
+            else:
+                UI.getOnlineEliteDatabase(file_location_defaults,ensembl_version,[species],'')
+            
+            ### Attempt to download additional Ontologies and GeneSets
+            if additional_resources[0] != None: ### Indicates that the user requested the download of addition GO-Elite resources
+                try:
+                    import GeneSetDownloader
+                    print 'Adding supplemental GeneSet and Ontology Collections'
+                    if 'all' in additional_resources:
+                        additionalResources = UI.importResourceList() ### Get's all additional possible resources
+                    else: additionalResources = additional_resources
+                    GeneSetDownloader.buildAccessoryPathwayDatabases([species],additionalResources,'yes')
+                    print 'Finished adding additional analysis resources.'
+                except Exception:
+                    print 'Download error encountered for additional Ontologies and GeneSets...\nplease try again later.'
+                    
             print "Finished adding database"
             sys.exit()
         try:
@@ -6066,6 +6407,8 @@ def commandLineRun():
             change_threshold = int(change_threshold)-1
             goelite_permutations = int(goelite_permutations);change_threshold = change_threshold
             p_val_threshold = float(p_val_threshold); z_threshold = float(z_threshold)
+            if ORA_algorithm == 'Fisher Exact Test':
+                goelite_permutations = 'FisherExactTest'
         except Exception: print 'One of the GO-Elite input values is inapporpriate. Please review and correct.';sys.exit()
         if run_GOElite == None or run_GOElite == 'no': goelite_permutations = 'NA' ### This haults GO-Elite from running
 
@@ -6076,14 +6419,42 @@ def commandLineRun():
         if microRNA_prediction_method == 'two or more': microRNA_prediction_method = 'multiple'
         else: microRNA_prediction_method = 'any'
 
+        ### Run GO-Elite directly from user supplied input and denominator ID folders (outside of the normal workflows)
+        if run_GOElite == 'yes' and denom_file_dir != None:
+            #python AltAnalyze.py --input "/Users/nsalomonis/Desktop/Mm_sample/input_list_small" --runGOElite yes --denom "/Users/nsalomonis/Desktop/Mm_sample/denominator" --mod Ensembl --species Mm
+            if denom_file_dir == None:
+                print 'Please include a folder containing a valid denominator ID list for the input ID sets.'; sys.exit()
+            try:
+                if output_dir==None:
+                    ### Set output to the same directory or parent if none selected
+                    i = -1 ### 1 directory up
+                    output_dir = string.join(string.split(input_file_dir,'/')[:i],'/')
+                file_dirs = input_file_dir, denom_file_dir, output_dir
+                import GO_Elite
+                if ORA_algorithm == 'Fisher Exact Test':
+                    goelite_permutations = 'FisherExactTest'
+                goelite_var = species,mod,goelite_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,''
+                GO_Elite.remoteAnalysis(goelite_var,'non-UI')
+                sys.exit()
+            except Exception:
+                print "Unexpected error encountered. Please see log file."; sys.exit()
+       
+        if run_lineage_profiler == 'yes':
+            status = UI.verifyLineageProfilerDatabases(species,'command-line')
+            if status == False:
+                print 'Please note: LineageProfiler not currently supported for this species...'
+                
         if array_type == 'junction' or array_type == 'RNASeq': ### Download junction databases
-            import UI
-            UI.checkForLocalArraySupport(species,array_type,specific_array_type,'command-line')
+            try: UI.checkForLocalArraySupport(species,array_type,specific_array_type,'command-line')
+            except Exception:
+                print 'Please install a valid gene database before proceeding.\n'
+                print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart65';sys.exit()
                     
         probeset_types = ['full','core','extended']
         if return_all == 'yes': ### Perform no alternative exon filtering when annotating existing FIRMA or MADS results
             dabg_p = 1; expression_threshold = 1; p_threshold = 1; alt_exon_fold_variable = 1
             gene_expression_cutoff = 10000; filter_probeset_types = 'full'; exon_exp_threshold = 1; rpkm_threshold = 0
+            gene_exp_threshold = 1; exon_rpkm_threshold = 0
         else:
             if array_type != "3'array":
                 try:
@@ -6098,6 +6469,10 @@ def commandLineRun():
                 except Exception: rpkm_threshold = -1
                 try: exon_exp_threshold = float(exon_exp_threshold)
                 except Exception: exon_exp_threshold = 0
+                try: gene_exp_threshold = float(gene_exp_threshold)
+                except Exception: gene_exp_threshold = 0
+                try: exon_rpkm_threshold = float(exon_rpkm_threshold)
+                except Exception: exon_rpkm_threshold = 0
                 
                 if filter_probeset_types not in probeset_types and array_type == 'exon':
                     print "Invalid probeset-type entered:",filter_probeset_types,'. Must be "full", "extended" or "core"'; sys.exit()
@@ -6116,9 +6491,13 @@ def commandLineRun():
                     print "Invalid additional score threshold entered:",additional_score,'. Must be > 1'; sys.exit()
                 if array_type == 'RNASeq':
                     if rpkm_threshold < 0:
-                        print "Invalid RPKM threshold entered:",rpkm_threshold,'. Must be >= 0'; sys.exit()
+                        print "Invalid gene RPKM threshold entered:",rpkm_threshold,'. Must be >= 0'; sys.exit()
                     if exon_exp_threshold < 1:
                         print "Invalid exon expression threshold entered:",exon_exp_threshold,'. Must be > 1'; sys.exit()
+                    if exon_rpkm_threshold < 0:
+                        print "Invalid exon RPKM threshold entered:",exon_rpkm_threshold,'. Must be >= 0'; sys.exit()
+                    if gene_exp_threshold < 1:
+                        print "Invalid gene expression threshold entered:",gene_exp_threshold,'. Must be > 1'; sys.exit()
                         
         if 'FIRMA' in additional_algorithms and array_type == 'RNASeq':
             print 'FIRMA is not an available option for RNASeq... Changing this to splicing-index.'
@@ -6152,8 +6531,8 @@ def commandLineRun():
         expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
         alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,remove_intronic_junctions,permute_p_threshold,perform_permutation_analysis, export_NI_values, analyze_all_conditions
         additional_var = calculate_normIntensity_p, run_MiDAS, use_direct_domain_alignments_only, microRNA_prediction_method, filter_for_AS, additional_algorithms
-        goelite_var = ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,goelite_permutations,mod
-
+        goelite_var = ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,goelite_permutations,mod,returnPathways
+        
         if run_from_scratch == 'buildExonExportFiles':
             fl = UI.ExpressionFileLocationData('','','',''); fl.setExonBedBuildStatus('yes'); fl.setFeatureNormalization('none')
             fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
@@ -6164,11 +6543,25 @@ def commandLineRun():
             if len(input_exp_file)>0:
                 if groups_file != None and comps_file != None:
                     if 'exp.' in input_exp_file: new_exp_file = input_exp_file
-                    else: new_exp_file = 'exp.'+input_exp_file
-                    try: shutil.copyfile(groups_file, string.replace(new_exp_file,'exp.','groups.'))
+                    else:
+                        new_exp_file = export.findParentDir(input_exp_file)+'exp.'+export.findFilename(input_exp_file)
+                    if 'ExpressionInput' not in new_exp_file:
+                        ### This expression file is not currently used (could make it the default after copying to this location)
+                        if output_dir[-1] != '/' and output_dir[-1] != '\\':
+                            output_dir += '/'
+                        new_exp_file = output_dir+'ExpressionInput/'+export.findFilename(new_exp_file)
+                        try: export.copyFile(input_exp_file, new_exp_file)
+                        except Exception: print 'Expression file already present in target location.'
+                    try: export.copyFile(groups_file, string.replace(new_exp_file,'exp.','groups.'))
                     except Exception: print 'Groups file already present in target location.'
-                    try: shutil.copyfile(comps_file, string.replace(new_exp_file,'exp.','comps.'))
+                    try: export.copyFile(comps_file, string.replace(new_exp_file,'exp.','comps.'))
                     except Exception: print 'Comparison file already present in target location.'
+                    groups_file = string.replace(new_exp_file,'exp.','groups.')
+                    comps_file = string.replace(new_exp_file,'exp.','comps.')
+                    input_exp_file = new_exp_file
+                    if verifyGroupFileFormat(groups_file) == False:
+                        print "\nWarning! The format of your groups file is not correct. For details, see:\nhttp://code.google.com/p/altanalyze/wiki/ManualGroupsCompsCreation\n"
+                        sys.exit()
                 try:
                     cel_files, array_linker_db = ExpressionBuilder.getArrayHeaders(input_exp_file)
                     if len(input_stats_file)>1: ###Make sure the files have the same arrays and order first
@@ -6176,20 +6569,20 @@ def commandLineRun():
                         if cel_files2 != cel_files:
                             print "The probe set p-value file:\n"+input_stats_file+"\ndoes not have the same array order as the\nexpression file. Correct before proceeding."; sys.exit()
                 except Exception: print '\nWARNING...Expression file not found: "'+input_exp_file+'"\n\n'; sys.exit()
-                
+            
             exp_name = string.replace(exp_name,'exp.',''); dataset_name = exp_name; exp_name = string.replace(exp_name,'.txt','')
-            groups_name = 'groups.'+dataset_name; comps_name = 'comps.'+dataset_name
-            groups_file_dir = parent_dir+'/'+groups_name; comps_file_dir = parent_dir+'/'+comps_name
+            groups_name = 'ExpressionInput/groups.'+dataset_name; comps_name = 'ExpressionInput/comps.'+dataset_name
+            groups_file_dir = output_dir+'/'+groups_name; comps_file_dir = output_dir+'/'+comps_name
             groups_found = verifyFile(groups_file_dir)
             comps_found = verifyFile(comps_file_dir)
-            if groups_found != 'found' or comps_found != 'found':
+            if ((groups_found != 'found' or comps_found != 'found') and analyze_all_conditions != 'all groups') or (analyze_all_conditions == 'all groups' and groups_found != 'found'):
                 files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
                 if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
                 else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
             fl = UI.ExpressionFileLocationData(input_exp_file,input_stats_file,groups_file_dir,comps_file_dir)
             dataset_name = exp_name
             if analyze_all_conditions == "all groups":
-                try: array_group_list,group_db = UI.importArrayGroupsSimple(groups_file_dir)
+                try: array_group_list,group_db = UI.importArrayGroupsSimple(groups_file_dir,cel_files)
                 except Exception: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
                 print len(group_db), 'groups found'
                 if len(group_db) == 2: analyze_all_conditions = 'pairwise'
@@ -6206,7 +6599,7 @@ def commandLineRun():
             comps_file_dir = string.replace(exp_file_dir,'exp.','comps.')
             groups_found = verifyFile(groups_file_dir)
             comps_found = verifyFile(comps_file_dir)
-            if groups_found != 'found' or comps_found != 'found':
+            if ((groups_found != 'found' or comps_found != 'found') and analyze_all_conditions != 'all groups') or (analyze_all_conditions == 'all groups' and groups_found != 'found'):
                 files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
                 if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
                 #else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
@@ -6214,7 +6607,8 @@ def commandLineRun():
             exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
             parent_dir = output_dir  ### interchangable terms (parent_dir used with expression file import)
             if analyze_all_conditions == "all groups":
-                array_group_list,group_db = UI.importArrayGroupsSimple(groups_file_dir)
+                array_group_list,group_db = UI.importArrayGroupsSimple(groups_file_dir,cel_files)
+                UI.exportGroups(exp_file_location_db,array_group_list)
                 print len(group_db), 'groups found'
                 if len(group_db) == 2: analyze_all_conditions = 'pairwise'
 
@@ -6242,21 +6636,25 @@ def commandLineRun():
             apt_location = fl.APTLocation()
             root_dir = fl.RootDir(); fl.setExonBedBuildStatus(build_exon_bedfile)
             fl.setFeatureNormalization(normalize_feature_exp)
-            fl.setProbabilityStatistic(probability_algorithm)
-            
+            fl.setProbabilityStatistic(probability_statistic)
+            fl.setProducePlots(visualize_qc_results)
+            fl.setPerformLineageProfiler(run_lineage_profiler)
         if array_type == 'RNASeq': ### Post version 2.0, add variables in fl rather than below
             fl.setRPKMThreshold(rpkm_threshold)
             fl.setExonExpThreshold(exon_exp_threshold)
+            fl.setGeneExpThreshold(gene_exp_threshold)
+            fl.setExonRPKMThreshold(exon_rpkm_threshold)
+            fl.setJunctionExpThreshold(expression_threshold)
         
         ### Verify database presence
         try: dirs = unique.read_directory('/AltDatabase')
         except Exception: dirs=[]
         if species not in dirs:
-            print '\n'+species,'species not yet installed. Please install before proceeding (e.g., "python AltAnalyze.py --update Official --species',species,'--version EnsMart60").'
+            print '\n'+species,'species not yet installed. Please install before proceeding (e.g., "python AltAnalyze.py --update Official --species',species,'--version EnsMart65").'
         global commandLineMode; commandLineMode = 'yes'
         AltAnalyzeMain(expr_var, alt_var, goelite_var, additional_var, exp_file_location_db,None)
     else:
-        print 'Insufficient Flags entered (requires --species, --input, --denom and --output)'
+        print 'Insufficient Flags entered (requires --species and --output)'
 
 def cleanUpCommandArguments():
     ### Needed on PC
@@ -6283,7 +6681,7 @@ def runCommandLineVersion():
     try: cleanUpCommandArguments()
     except Exception: null=[]
     #print [command_args];sys.exit()
-    if len(sys.argv[1:])>1 and '-' in command_args: commandLineRun()
+    if len(sys.argv[1:])>0 and '--' in command_args: commandLineRun()
 
 ###### Determine Command Line versus GUI Control ######
 command_args = string.join(sys.argv,' ')
@@ -6294,10 +6692,62 @@ else:
         from Tkinter import *
         import PmwFreeze
         import tkFileDialog
+        from tkFont import Font
         use_Tkinter = 'yes'
     except ImportError: use_Tkinter = 'yes'; print "\nPmw or Tkinter not found... Tkinter print out not available";
 
+def testResultsPanel():
+    import QC
+    file = "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/3'Array/Merrill/ExpressionInput/exp.test.txt"
+    #QC.outputArrayQC(file)
+    global root; root = Tk()
+    global pathway_permutations; pathway_permutations = 'NA'
+    global log_file; log_file = 'null.txt'
+    global array_type; global explicit_data_type
+    
+    explicit_data_type = 'exon-only'
+    array_type = 'RNASeq'
+        
+    fl = UI.ExpressionFileLocationData('','','','')
+    graphic_links = []
+    graphic_links.append(['PCA','PCA.png'])
+    graphic_links.append(['HC','HC.png'])
+    graphic_links.append(['PCA1','PCA.png'])
+    graphic_links.append(['HC1','HC.png'])
+    graphic_links.append(['PCA2','PCA.png'])
+    graphic_links.append(['HC2','HC.png'])
+    graphic_links.append(['PCA3','PCA.png'])
+    graphic_links.append(['HC3','HC.png'])
+    graphic_links.append(['PCA4','PCA.png'])
+    graphic_links.append(['HC4','HC.png'])    
+    summary_db={}
+    summary_db['QC'] = graphic_links
+    #summary_db={}
+    fl.setGraphicLinks(graphic_links)
+    
+    summary_db['gene_assayed'] = 1
+    summary_db['denominator_exp_genes'] = 1
+    summary_db['alt_events'] = 1
+    summary_db['denominator_exp_events'] = 1
+    summary_db['alt_events'] = 1
+    summary_db['denominator_exp_events'] = 1
+    summary_db['alt_events'] = 1
+    summary_db['denominator_exp_events'] = 1
+    summary_db['alt_genes'] = 1
+    summary_db['direct_domain_genes'] = 1
+    summary_db['miRNA_gene_hits'] = 1
+    
+    print_out = 'Analysis complete. AltAnalyze results\nexported to "AltResults/AlternativeOutput".'
+    dataset = 'test'; results_dir=''
+    print "Analysis Complete\n";
+    if root !='' and root !=None:
+        UI.InfoWindow(print_out,'Analysis Completed!')
+        tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir,dataset,'parent',summary_db)
+        print 'here'
+    sys.exit()
+    
 if __name__ == '__main__':
+    #testResultsPanel()
     skip_intro = 'yes'; #sys.exit()
     runCommandLineVersion()
     if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)

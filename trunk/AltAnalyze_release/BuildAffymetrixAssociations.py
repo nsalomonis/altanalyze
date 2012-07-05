@@ -44,7 +44,7 @@ def read_directory(sub_dir):
             if entry[-4:] == ".txt" or entry[-4:] == ".csv" or entry[-4:] == ".TXT" or entry[-4:] == ".tab" or '.zip' in entry:
                 dir_list2.append(entry)
     except Exception:
-        print sub_dir, "NOT FOUND!!!!"
+        #print sub_dir, "NOT FOUND!!!!"
         dir_list2=[]
     return dir_list2
 
@@ -407,29 +407,28 @@ def parse_affymetrix_annotations(filename,species):
                     ai.setSpecies(affy_data[ss])
                     ai.setCoordinates(affy_data[al])
                     affy_annotation_db[probeset] = ai
-    print 'Affymetrix CSV annotations imported..'
     return version
 
 def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use_go):
     import gene_associations; import time
     start_time = time.time()
     ### Get Gene Ontology gene associations
-    try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl')
+    try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl-MAPP.txt') ### was just 'Ensembl'
     except Exception: gene_to_mapp_ens = {}
-    try: gene_to_mapp_eg = gene_associations.importGeneMAPPData(species_code,'EntrezGene')
+    try: gene_to_mapp_eg = gene_associations.importGeneMAPPData(species_code,'EntrezGene-MAPP.txt')
     except Exception: gene_to_mapp_eg = {}
     if vendor == 'Affymetrix': ### Remove exon associations which decrease run efficency and are superfulous
         try: ens_to_array = gene_associations.getGeneToUidNoExon(species_code,'Ensembl-'+vendor); print 'Ensembl-'+vendor,'relationships imported'
         except Exception: ens_to_array={}
         try: eg_to_array = gene_associations.getGeneToUidNoExon(species_code,'EntrezGene-'+vendor); print 'EntrezGene-'+vendor,'relationships imported'
         except Exception: eg_to_array={}
-        print '* *',
+        print '*',
     else:
         try: ens_to_array = gene_associations.getGeneToUid(species_code,'Ensembl-'+vendor)
         except Exception: ens_to_array = {}
         try: eg_to_array = gene_associations.getGeneToUid(species_code,'EntrezGene-'+vendor)
         except Exception: eg_to_array = {}
-    print '* *',
+    print '*',
     try: ens_annotations = gene_associations.importGeneData(species_code,'Ensembl')
     except Exception: ens_annotations = {}
     try: eg_annotations = gene_associations.importGeneData(species_code,'EntrezGene')
@@ -437,25 +436,27 @@ def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use
     
     if use_go == 'yes':
         import OBO_import
-        go_annotations = OBO_import.importPreviousGOAnnotations()
+        go_annotations = OBO_import.importPreviousOntologyAnnotations('GeneOntology')
 
-        try: gene_to_go_ens = gene_associations.importGeneGOData(species_code,'Ensembl','null')
+        try: gene_to_go_ens = gene_associations.importGeneToOntologyData(species_code,'Ensembl','null','GeneOntology')
         except Exception: gene_to_go_ens = {}
-        print '* *',
-        try: gene_to_go_eg = gene_associations.importGeneGOData(species_code,'EntrezGene','null')
+        print '*',
+        try: gene_to_go_eg = gene_associations.importGeneToOntologyData(species_code,'EntrezGene','null','GeneOntology')
         except Exception: gene_to_go_eg = {}
-        print '* *',
+        print '*',
         component_db,process_db,function_db,selected_array_ens = annotateGOElitePathways('GO',go_annotations,gene_to_go_ens,ens_to_array)
-        print '* *',
+        print '*',
         component_eg_db,process_eg_db,function_eg_db,selected_array_eg = annotateGOElitePathways('GO',go_annotations,gene_to_go_eg,eg_to_array)
-        print '* *',
+        print '*',
         component_db = combineDBs(component_eg_db,component_db)
-        print '* *',
+        print '*',
         process_db = combineDBs(process_eg_db,process_db)
-        print '* *',
+        print '*',
         function_db = combineDBs(function_eg_db,function_db)
-        print '* *',
-    else: print '* * * * * * * * * *',
+    else:
+        selected_array_ens={}
+        selected_array_eg ={}
+        print '* * * * * *',
     unique_arrayids={} ### Get all unique probesets
     for gene in ens_to_array:
         for uid in ens_to_array[gene]: unique_arrayids[uid]=[]
@@ -465,7 +466,7 @@ def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use
     array_ens_mapp_db = annotateGOElitePathways('MAPP','',gene_to_mapp_ens,ens_to_array)
     array_eg_mapp_db = annotateGOElitePathways('MAPP','',gene_to_mapp_eg,eg_to_array)
     array_mapp_db = combineDBs(array_ens_mapp_db,array_eg_mapp_db)
-    print '* *',
+    print '*',
     array_to_ens = swapKeyValues(ens_to_array)
     array_to_eg = swapKeyValues(eg_to_array)
 
@@ -482,7 +483,7 @@ def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use
     global array_symbols; global array_descriptions; array_symbols={}; array_descriptions={}
     getArrayIDAnnotations(array_to_ens,ens_annotations,'Ensembl')
     getArrayIDAnnotations(array_to_eg,eg_annotations,'Entrez')
-    print '* *',
+    print '*',
     for arrayid in unique_arrayids:
         try: component_names = component_db[arrayid]
         except Exception: component_names=[]
@@ -553,13 +554,13 @@ def getEnsemblAnnotationsFromGOElite(species_code):
     import gene_associations; import time
     start_time = time.time()
     ### Get Gene Ontology gene associations
-    try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl')
+    try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl-MAPP.txt')
     except Exception: gene_to_mapp_ens = {}
 
     import OBO_import
-    go_annotations = OBO_import.importPreviousGOAnnotations()
+    go_annotations = OBO_import.importPreviousOntologyAnnotations('GeneOntology')
 
-    try: gene_to_go_ens = gene_associations.importGeneGOData(species_code,'Ensembl','null')
+    try: gene_to_go_ens = gene_associations.importGeneToOntologyData(species_code,'Ensembl','null','GeneOntology')
     except Exception: gene_to_go_ens = {}
     
     component_db={}; process_db={}; function_db={}; all_genes={}
@@ -568,8 +569,8 @@ def getEnsemblAnnotationsFromGOElite(species_code):
         for goid in gene_to_go_ens[gene]:
             if goid in go_annotations:
                 s = go_annotations[goid]
-                go_name = string.replace(s.GOName(),'\\','')
-                gotype = s.GOType()
+                go_name = string.replace(s.OntologyTerm(),'\\','')
+                gotype = s.OntologyType()
                 if gotype[0] == 'C' or gotype[0] == 'c':
                     try: component_db[gene].append(go_name)
                     except KeyError: component_db[gene] = [go_name]
@@ -626,9 +627,9 @@ def annotateGOElitePathways(pathway_type,go_annotations,gene_to_pathway,gene_to_
                 try:
                     if pathway_type == 'GO':
                         s = go_annotations[pathway]
-                        go_name = string.replace(s.GOName(),'\\','')
-                        try: array_pathway_db[arrayid,s.GOType()].append(go_name)
-                        except Exception: array_pathway_db[arrayid,s.GOType()] = [go_name]
+                        go_name = string.replace(s.OntologyTerm(),'\\','')
+                        try: array_pathway_db[arrayid,s.OntologyType()].append(go_name)
+                        except Exception: array_pathway_db[arrayid,s.OntologyType()] = [go_name]
                     else:
                         try: array_pathway_db[arrayid].append(pathway + '(WikiPathways)')
                         except Exception: array_pathway_db[arrayid] = [pathway + '(WikiPathways)']
@@ -656,11 +657,14 @@ def annotateGOElitePathways(pathway_type,go_annotations,gene_to_pathway,gene_to_
                     
                 selected_array_gene[arrayid] = gene
             
-        component_db={}; process_db={}; function_db={}; determine_best_geneID=[] 
+        component_db={}; process_db={}; function_db={}; determine_best_geneID=[]
         for (arrayid,gotype) in array_pathway_db:
-            if string.lower(gotype[0]) == 'c': component_db[arrayid] = array_pathway_db[(arrayid,gotype)]
-            elif string.lower(gotype[0]) == 'p': process_db[arrayid] = array_pathway_db[(arrayid,gotype)]
-            if string.lower(gotype[0]) == 'f': function_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+            if string.lower(gotype[0]) == 'c':
+                component_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+            elif string.lower(gotype[0]) == 'b' or string.lower(gotype[0]) == 'p':
+                process_db[arrayid] = array_pathway_db[(arrayid,gotype)]
+            if string.lower(gotype[0]) == 'm' or string.lower(gotype[0]) == 'f':
+                function_db[arrayid] = array_pathway_db[(arrayid,gotype)]
         return component_db,process_db,function_db,selected_array_gene
     else: return array_pathway_db
 
@@ -913,25 +917,23 @@ def getMetaboliteIDTranslations(species_code):
 
 def importMetaboliteIDs(species_code,mod,source,meta_metabolite_db):
     mod_source = mod+'-'+source
-    gene_to_source_id = gene_associations.getGeneToUid(species_code,mod_source)
+    gene_to_source_id = gene_associations.getGeneToUid(species_code,('hide',mod_source))
     source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
-    print mod_source, 'relationships imported'
+    #print mod_source, 'relationships imported'
     meta_metabolite_db[source] = source_to_gene
     return meta_metabolite_db
         
 def importWikipathways(system_codes,incorporate_previous_associations,process_go,species_full,species,integrate_affy_associations,relationship_type,overwrite_affycsv):
     global wikipathways_file; global overwrite_previous
     overwrite_previous = overwrite_affycsv
-    program_type,database_dir = unique.whatProgramIsThis()
-    if program_type == 'AltAnalyze': database_dir = '/AltDatabase'
-    else: database_dir = '/BuildDBs'
+    database_dir = '/BuildDBs'
     import_dir = database_dir+'/wikipathways'
     g = GrabFiles(); g.setdirectory(import_dir); wikipathway_gene_db={}; eg_wikipathway_db={}; ens_wikipathway_db={}
     search_term = relationship_type+'_data_'+species_full
     #search_term = 'wikipathways'
     filename = g.searchdirectory(search_term) ###Identify gene files corresponding to a particular MOD
-    print "Parsing",filename; wikipathways_file = string.split(filename,'/')[-1]
-    print "Extracting data for species:",species_full,species
+    #print "Parsing",filename; wikipathways_file = string.split(filename,'/')[-1]
+    #print "Extracting data for species:",species_full,species
 
     if len(filename)>1:
         fn=filepath(filename); gene_go={}; x = 0
@@ -1003,7 +1005,7 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
 
         if incorporate_previous_associations == 'yes':
             if relationship_type == 'mapped':
-                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'HMDB')
+                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'HMDB-MAPP.txt')
                 except Exception: gene_to_mapp = {}
                 for id in gene_to_mapp:
                     for pathway_name in gene_to_mapp[id]:
@@ -1011,14 +1013,14 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                         except Exception: wikipathway_gene_db[id] = [('HMDB',pathway_name)]
 
             else:
-                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'EntrezGene')
+                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'EntrezGene-MAPP.txt')
                 except Exception: gene_to_mapp = {}
                 for id in gene_to_mapp:
                     for pathway_name in gene_to_mapp[id]:
                         try: wikipathway_gene_db[id].append(pathway_name)
                         except Exception: wikipathway_gene_db[id] = [pathway_name]
                         
-                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'Ensembl')
+                try: gene_to_mapp = gene_associations.importGeneMAPPData(species,'Ensembl-MAPP.txt')
                 except Exception: gene_to_mapp = {}
                 for id in gene_to_mapp:
                     for pathway_name in gene_to_mapp[id]:
@@ -1043,11 +1045,12 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                                     except KeyError: hmdb_wikipathway_db[pathway] = [mod_id]
                 hmdb_wikipathway_db = eliminate_redundant_dict_values(hmdb_wikipathway_db)
                 ad = system_codes['HMDB']
-                system_code = ad.SystemCode()
+                try: system_code = ad.SystemCode()
+                except Exception: system_code = ad
                 if len(hmdb_wikipathway_db)>0: exportGeneToMAPPs(species,'HMDB',system_code,hmdb_wikipathway_db)
             except ValueError: null=[] ### Occurs with older versions of GO-Elite     
         else:
-            print "Number of unique gene IDs linked to Wikipathways for species:",len(wikipathway_gene_db)
+            #print "Number of unique gene IDs linked to Wikipathways for species:",len(wikipathway_gene_db)
             parse_wikipathways = 'yes'
             buildAffymetrixCSVAnnotations(species,incorporate_previous_associations,process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv)
             grabEliteDbaseMeta(species) ### Similiar to buildAffymetrixCSVAnnotations, grabs many-to-one gene associations for various systems
@@ -1093,8 +1096,8 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                     if len(ens_relationships[id1])<3:
                         for id2 in ens_relationships[id1]: meta2[id2,id1] = []
                 
-                print len(meta), "gene relationships imported"
-                print len(wikipathway_gene_db), "gene IDs extracted from Wikipathway pathways"
+                #print len(meta), "gene relationships imported"
+                #print len(wikipathway_gene_db), "gene IDs extracted from Wikipathway pathways"
                 """for (primary,gene_id) in meta:
                     if gene_id == 'NP_598767': print wikipathway_gene_db[gene_id];kill"""
                 ### Since relationships are inferred in new versions of the WikiPathways tables, we don't require meta (no longer true - reverted to old method)
@@ -1136,11 +1139,13 @@ def importWikipathways(system_codes,incorporate_previous_associations,process_go
                 #print len(eg_wikipathway_db), len(ens_wikipathway_db)
                 #print system_codes
                 ad = system_codes['EntrezGene']
-                system_code = ad.SystemCode()
+                try: system_code = ad.SystemCode()
+                except Exception: system_code = ad
                 if len(eg_wikipathway_db)>0:
                     exportGeneToMAPPs(species,'EntrezGene',system_code,eg_wikipathway_db)
                 ad = system_codes['Ensembl']
-                system_code = ad.SystemCode()
+                try: system_code = ad.SystemCode()
+                except Exception: system_code = ad
                 if len(ens_wikipathway_db)>0:
                     exportGeneToMAPPs(species,'Ensembl',system_code,ens_wikipathway_db)
                 return len(meta)
@@ -1182,7 +1187,7 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
     else: parent_dir = 'NewDatabases'
     
     new_file = parent_dir+'/'+species+'/gene-mapp/'+system_name+'-MAPP.txt'
-    print "Exporting",new_file
+    #print "Exporting",new_file
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
     y=0
     data1 = export.ExportFile(new_file)
@@ -1193,10 +1198,10 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
         #print gene_ids;kill
         for gene_id in gene_ids: data1.write(gene_id+'\t'+system_code+'\t'+pathway+'\n'); y+=1
     data1.close()
-    print 'Exported',y,'gene-MAPP relationships for species:',species, 'for',len(wikipathway_db),'pathways.'
+    #print 'Exported',y,'gene-MAPP relationships for species:',species, 'for',len(wikipathway_db),'pathways.'
    
 def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipathways):
-    print integrate_affy_associations
+    #print integrate_affy_associations
     global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
     global parse_wikipathways; global meta; meta = {}; global ens_eg_db; ens_eg_db={}
     parse_wikipathways = Parse_wikipathways
@@ -1222,11 +1227,14 @@ def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipa
                 except Exception: null=[] ### Not sure why this error occurs since the file is not open
                 affy_data_dir = string.replace(affy_data_dir,'.zip','')
             parse_affymetrix_annotations(affy_data_dir,species)
-    if len(affy_annotation_db)>0 and integrate_affy_associations == 'yes': exportAffymetrixCSVAnnotations(species,dir_list)
+    if len(affy_annotation_db)>0:
+        print 'Affymetrix CSV annotations imported..'
+        if integrate_affy_associations == 'yes':
+            exportAffymetrixCSVAnnotations(species,dir_list)
     if parse_wikipathways == 'yes':
-        #print len(meta)
-        try: exportMetaGeneData(species)
-        except Exception: null=[]
+        if len(meta) > 0:
+            try: exportMetaGeneData(species)
+            except Exception: null=[]
  
 def exportAffymetrixCSVAnnotations(species,dir_list):
     import gene_associations; global entrez_annotations
@@ -1259,10 +1267,11 @@ def importAffymetrixAnnotations(dir,Species,Process_go,Extract_go_names,Extract_
 
     import_dir = '/'+dir+'/'+species
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-    print 'Parsing Affymetrix Annotation files...'
+    print 'Parsing Affymetrix Annotation files...',
     for affy_data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = dir+'/'+species+'/'+affy_data
         if '.csv' in affy_data_dir: version = parse_affymetrix_annotations(affy_data_dir,species)
+    print 'done'
     return affy_annotation_db, version
 
 def buildAffymetrixCSVAnnotations(Species,Incorporate_previous_associations,Process_go,parse_wikipathways,integrate_affy_associations,overwrite_affycsv):

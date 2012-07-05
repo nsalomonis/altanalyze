@@ -69,28 +69,11 @@ def reorderArrayHeaders(data_headers,array_order,comp_group_list,array_linker_db
             
     #return expbuilder_value_db,group_count_list2,ranked_array_headers,raw_data_comps,raw_data_comp_headers
     return group_count_list2,raw_data_comp_headers
-   
-class GroupStats:
-    def __init__(self,log_fold,fold,p):
-        self.log_fold = log_fold; self.fold = fold; self.p = p
-    def LogFold(self): return self.log_fold
-    def Fold(self): return self.fold
-    def Pval(self): return self.p
-    def PermuteP(self): return self.p ### This is not a permute p, but the object name in the function is PermuteP
-    def SetAdjPIndex(self,index): self.index = index
-    def Index(self): return self.index
-    def SetAdjP(self,adjp): self.adj_p = adjp
-    def AdjP(self): return str(self.adj_p)
-    def setMaxCount(self,max_count): self.max_count = max_count
-    def MaxCount(self): return self.max_count
-    def Report(self):
-        output = self.GroupName()+'|'+self.Pval()
-        return output
-    def __repr__(self): return self.Report()
 
 def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type,norm,fl):
     ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
     expbuilder_value_db = {}; group_name_db = {}; summary_filtering_stats = {}; pval_summary_db= {}
+    replicates = 'yes'
     
     stat_result_names = ['avg-','log_fold-','fold-','rawp-','adjp-']
     group_summary_result_names = ['avg-']
@@ -98,10 +81,10 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     ### Define expression variables
     try: probability_statistic = fl.ProbabilityStatistic()
     except Exception: probability_statistic = 'unpaired t-test'
-    try: gene_exp_threshold = fl.ExonExpThreshold()
+    try: gene_exp_threshold = fl.GeneExpThreshold()
     except Exception: gene_exp_threshold = 0
-    try: rpkm_threshold = fl.RPKMThreshold()
-    except Exception: rpkm_threshold = 0
+    try: gene_rpkm_threshold = fl.RPKMThreshold()
+    except Exception: gene_rpkm_threshold = 0
     
     ### Begin processing sample expression values according to the organized groups
     for row_id in data:
@@ -142,18 +125,15 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             try:
                 #t,df,tails = statistics.ttest(data_list1,data_list2,2,3) #unpaired student ttest, calls p_value function
                 #t = abs(t); df = round(df); p = str(statistics.t_probability(t,df))
-                if probability_statistic == 'unpaired t-test':
-                    p = statistics.OneWayANOVA([data_list1,data_list2])
-                else:
-                    p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
-            except Exception: p = 1
+                p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
+            except Exception: p = 1; sg = 1; N1=0; N2=0
             comp = group1,group2
             if array_type == 'RNASeq':
                 if norm == 'RPKM': adj = 0
                 else: adj = 1
                 avg1 = math.pow(2,avg1)-adj; avg2 = math.pow(2,avg2)-adj
                 if norm == 'RPKM':
-                    if avg1 < rpkm_threshold and avg2 < rpkm_threshold:
+                    if avg1 < gene_rpkm_threshold and avg2 < gene_rpkm_threshold:
                         log_fold = 'Insufficient Expression'
                         fold = 'Insufficient Expression'
                 else:
@@ -161,9 +141,15 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                         log_fold = 'Insufficient Expression'
                         fold = 'Insufficient Expression'
             try:
-                gs = GroupStats(log_fold,fold,p)
+                gs = statistics.GroupStats(log_fold,fold,p)
                 stat_results[comp] = groups_name,gs,group2_name
-            except TypeError: print comp, len(stat_results); kill_program
+                if probability_statistic == 'moderated t-test':
+                    gs.setAdditionalStats(data_list1,data_list2) ### Assuming equal variance
+                if probability_statistic == 'moderated Welch-test':
+                    gs.setAdditionalWelchStats(data_list1,data_list2) ### Assuming unequal variance
+            except Exception:
+                null=[]; replicates = 'no' ### Occurs when not enough replicates
+                #print comp, len(stat_results); kill_program
             group_summary_results[group1] = group1_name,[avg1]
             group_summary_results[group2] = group2_name,[avg2]
 
@@ -177,7 +163,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
         except Exception: max_fold = 'NA'
         try: ftestp = statistics.OneWayANOVA(grouped_exp_data)
         except Exception: ftestp = 1
-        gs = GroupStats(max_fold,0,ftestp)
+        gs = statistics.GroupStats(max_fold,0,ftestp)
         summary_filtering_stats[row_id] = gs
         
         stat_result_list = []
@@ -218,6 +204,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                     ### Create a placeholder and store the position of the adjusted p-value to be calculated
                     expbuilder_value_db[row_id].append('') 
                     gs.SetAdjPIndex(len(expbuilder_value_db[row_id])-1)
+                    gs.SetPvalIndex(len(expbuilder_value_db[row_id])-2)
                     pval_summary_db[(row_id,comp)] = gs
 
     ###do the same for the headers, but at the dataset level (redundant processes)
@@ -269,20 +256,32 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
         raw_data_comp_headers[comp] = temp_raw
 
     ###Calculate adjusted ftest p-values using BH95 sorted method
-    summary_filtering_stats = statistics.adjustPermuteStats(summary_filtering_stats)
+    statistics.adjustPermuteStats(summary_filtering_stats)
     
     ### Calculate adjusted p-values for all p-values using BH95 sorted method
+    round=0
     for info in comp_group_list:
         compid = int(info[0]),int(info[1]); pval_db={}
         for (rowid,comp) in pval_summary_db:
             if comp == compid:
                 gs = pval_summary_db[(rowid,comp)]
                 pval_db[rowid] = gs
-        pval_db = statistics.adjustPermuteStats(pval_db)
+        if 'moderated' in probability_statistic and replicates == 'yes':
+            ### Moderates the original reported test p-value prior to adjusting
+            try: statistics.moderateTestStats(pval_db,probability_statistic)
+            except ZeroDivisionError:
+                if round == 0:
+                    if replicates == 'yes':
+                        print 'Moderated test failed due to issue with mpmpath, using unmoderated unpaired test instead!'
+                null=[] ### Occurs when not enough replicates
+            round+=1
+        statistics.adjustPermuteStats(pval_db)
         for rowid in pval_db:
             gs = pval_db[rowid]
-            expbuilder_value_db[rowid][gs.Index()] = gs.AdjP() ### set the place holder to the calculated value
-            
+            expbuilder_value_db[rowid][gs.AdjIndex()] = gs.AdjP() ### set the place holder to the calculated value
+            if 'moderated' in probability_statistic:
+                expbuilder_value_db[rowid][gs.RawIndex()] = gs.Pval() ### Replace the non-moderated with a moderated p-value
+                
     pval_summary_db=[]            
     ###Finished re-ordering lists and adding statistics to expbuilder_value_db
     return expbuilder_value_db, array_fold_headers, summary_filtering_stats, raw_data_comp_headers
