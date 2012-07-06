@@ -4970,6 +4970,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   
   original_remove_intronic_junctions = remove_intronic_junctions
   if run_from_scratch == 'Annotate External Results': analysis_method = 'external'
+  if returnPathways == 'no' or returnPathways == 'None':
+    returnPathways = None
 
   for dataset in exp_file_location_db:
     fl = exp_file_location_db[dataset]
@@ -6343,6 +6345,9 @@ def commandLineRun():
         elif opt == '--annotatedir': external_annotation_dir=arg
         elif opt == '--additionalScore': additional_score=arg
         elif opt == '--additionalAlgorithm': additional_algorithms=arg
+        
+    if returnPathways == 'no' or returnPathways == 'None':
+        returnPathways = None
         
     if proceed == 'yes':
         species_codes = UI.remoteSpeciesInfo()
