@@ -12,7 +12,7 @@ In general, implemented methods include:
  * Quantile normalization (*RNASeq*)
  * RPKM (gene, exon, junction) (*RNASeq*)
  * Geometric fold calculation
- * Moderated and conventional t-tests and f-tests
+ * [ModeratedTest Moderated and conventional t-tests and f-tests]
 
 ===[ScoringMethod Alternative Exon Analyses]===
 
