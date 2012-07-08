@@ -8,6 +8,6 @@ These results are returned in the form of [http://www.altanalyze.org/help.htm#re
 
  * [CitingArticles Example analyses]
  * [AlternativeOutput Overview of associated file types]
- * [http://www.altanalyze.org/help.htm#inference Description of the algorithm]
+ * Description of the [http://www.altanalyze.org/help.htm#inference algorithm] and underlying [http://www.altanalyze.org/help.htm#inferring_protein annotations].
  * [ProteinDirectionIndicator Detailed examples results]
  * [DomainGraph Visualization in DomainGraph]
