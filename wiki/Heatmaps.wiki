@@ -1,0 +1,14 @@
+#summary Clustering Heatmaps
+
+== Hierarchical Clustering Heatmaps ==
+
+Currently, AltAnalyze users can perform hierarchical clustering in one of two ways:
+
+ # Through analysis of raw array or RNA-Seq data (*Workflow Analysis*)
+ # Immediate analysis of filtered fold files (*Independent Analysis*)
+
+For both approaches, a colored gene expression heatmap is produced with arrays clustered (columns) and genes clustered (rows) using basic methods found in other clustering programs, such as Cluster/TreeView. AltAnalyze makes this process extremely simple, with the user only needed to providing their transcriptome datasets.
+
+===Workflow Analysis===
+
+Introduced in AltAnalyze 2.0.7, AltAnalyze includes built in methods to automatically cluster significantly differentially expressed or outlier genes, defined based on the user's statistical filtering options. In addition to genes, cell-type predictions from the new method LineageProfiler are also clustered using this method. When finished with an analysis, the user will be presented with these plots in the interface and can be also be found in the folder *DataPlots*. The input data matrices can also be re-clustered with different options following an analysis (*Additional Analyses* option - see below).
