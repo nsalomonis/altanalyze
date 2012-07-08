@@ -6,23 +6,26 @@ AltAnalyze implements various previously described algorithms for gene expressio
 
 In general, implemented methods include:
 
-*Gene Expression Analyses*
+===Gene Expression Analyses===
 
+ * Robust Multichip Analysis (*Affymetrix*)
+ * Quantile normalization (*RNASeq*)
+ * RPKM (gene, exon, junction) (*RNASeq*)
  * Geometric fold calculation
  * Moderated and conventional t-tests and f-tests
 
-*Alternative Exon Analyses*
+===[ScoringMethod Alternative Exon Analyses]===
 
  * Reciprocal-junction analyses (ASPIRE, Linear regression)
  * Alternative exon (splicing-index, FIRMA, MiDAS, adjusted f-tests)
 
-*Over-representation*
+===[http://genmapp.org/go_elite/help.htm#s4 Over-representation]===
 
  * Fisher Exact Test
  * Z score calculation
  * Permutation-based p-values
 
-*LineageProfiler analysis*
+===LineageProfiler analysis===
 
  * Pearson/Spearman's correlation
  * Z score calculation
