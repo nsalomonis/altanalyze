@@ -9,6 +9,7 @@ In general, implemented methods include:
 ===Gene Expression Analyses===
 
  * Robust Multichip Analysis (*Affymetrix*)
+ * Detection Above Background p-values (*Affymetrix*)
  * Quantile normalization (*RNASeq*)
  * RPKM (gene, exon, junction) (*RNASeq*)
  * Geometric fold calculation
