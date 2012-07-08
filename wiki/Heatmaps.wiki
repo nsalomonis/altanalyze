@@ -15,7 +15,7 @@ Support for heatmap visualization and hierarchical clustering is provided throug
 
 ===Workflow Analysis===
 
-This analysis is the standard workflow for microarrays and RNA-Seq data (see [Tutorials tutorials]). In this workflow, differentially expressed or outlier genes (defined based on the user's statistical filtering options) are clustered using default coloring and distance algorithms. In addition to genes, cell-type predictions from the new method LineageProfiler are also clustered using this method (see LineageProfiler description for details). When finished with an analysis, the user will be presented with these plots in the interface and can be also be found in the folder {{{ *DataPlots* }}}. These input data matrices can also be re-clustered with different options following an analysis (*Additional Analyses* option - see below).
+This analysis is the standard workflow for microarrays and RNA-Seq data (see [Tutorials tutorials]). In this workflow, differentially expressed or outlier genes (defined based on the user's statistical filtering options) are clustered using default coloring and distance algorithms. In addition to genes, cell-type predictions from the new method LineageProfiler are also clustered using this method (see LineageProfiler description for details). When finished with an analysis, the user will be presented with these plots in the interface and can be also be found in the folder *{{{ DataPlots }}}*. These input data matrices can also be re-clustered with different options following an analysis (*Additional Analyses* option - see below).
 
 The three default plots for genes are:
  # Significant regulated genes (relative to the *row mean*)
