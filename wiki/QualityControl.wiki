@@ -2,7 +2,7 @@
 
 == Quality Control Analyses in AltAnalyze==
 
-Several quality control metrics are applied in AltAnalyze to identify putative outlier samples. The main output of all of these analyses are PDF and PNG image files output to the results directory under the folder *{{{ DataPlots }}}*. A detailed description of these methods is provided [www.altanalyze.org/help.htm#QC here].
+Several quality control metrics are applied in AltAnalyze to identify putative outlier samples. The main output of all of these analyses are PDF and PNG image files output to the results directory under the folder *{{{ DataPlots }}}*. A detailed description of these methods is provided [http://www.altanalyze.org/help.htm#QC here].
 
 === Affymetrix ===
 
