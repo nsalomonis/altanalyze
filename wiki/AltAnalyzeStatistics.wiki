@@ -2,7 +2,7 @@
 
 == Statistical Methods Implemented in AltAnalyze ==
 
-AltAnalyze implements various previously described algorithms for gene expression quantification, differential gene expression, alternative exon expression and feature/pathway over-representation. These algorithms are implemented in the context of a rigorous exon/transcript annotation framework, based on data from Ensembl and UCSC mRNAs. Details on all of these methods is provided [http://www.altanalyze.org/help.htm here].
+AltAnalyze implements various previously described algorithms for gene expression quantification, differential gene expression, alternative exon expression and feature/pathway over-representation. These algorithms are implemented in the context of a rigorous exon/transcript annotation framework, based on data from Ensembl and UCSC mRNAs. Details on all of these methods is *[http://www.altanalyze.org/help.htm provided here]*.
 
 In general, implemented methods include:
 
