@@ -23,7 +23,7 @@ LineageProfiler is compatible with four types of input data:
 
 === Visualization ===
 
-Results from LineageProfiler are automatically viewed upon a Hierarchically clustered [Heatmaps heatmap] and on a Lineage network from WikiPathways. For both, correlation based Z scores are visualized as positive associations (red) and negative associations (blue - only for hierarchically clustered results). The community curated Wikipathway can be viewed [http://www.altanalyze.org/help_main.htm here].
+Results from LineageProfiler are automatically viewed upon a Hierarchically clustered [Heatmaps heatmap] and on a Lineage network from WikiPathways. For both, correlation based Z scores are visualized as positive associations (red) and negative associations (blue - only for hierarchically clustered results). The community curated Wikipathway can be accessed [http://www.wikipathways.org/index.php/Pathway:WP2062 here].
 
 === Databases ===
 
