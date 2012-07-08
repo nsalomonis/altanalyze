@@ -8,7 +8,9 @@ LineageProfiler is a program used to identify the most likely cell types and tis
 
 === Analysis Method ===
 
-To derive correlation scores to different cell types and tissues, a database is created reflecting the most specifically-expressed genes or exons present in a particular cell type or tissue, relative to all tissues and cell types examined (ranging from 50 to 150). The resulting database is a small subset of the original, containing the most informative markers. Data from a user RNA-profile is compared to the profile of each tissue just for these markers to derive correlation coefficients and resulting Z scores based on the distribution of values for each user RNA-profile.
+To derive correlation scores to different cell types and tissues (lineages), a database is created reflecting the most specifically-expressed genes or exons present in a particular lineage, relative to all lineages types examined (ranging from 50 to 150). The resulting database is a small subset of the original, containing the most informative markers. Data from a user RNA-profile is compared to the profile of each lineage just for these markers to derive correlation coefficients and resulting Z scores based on the distribution of values for each user RNA-profile. Z scores to each lineage are calculated from the distribution of Pearson correlation coefficients, specifically for each sample or condition analyzed.
+
+Lineage differences between conditions is specifically evaluated via [GOElite GO-Elite] using the database of lineage specific markers for examined differentially expressed genes. 
 
 === Input Data ===
 
@@ -17,6 +19,11 @@ LineageProfiler is compatible with four types of input data:
  # Exon expression values (probe intensity or read-counts)
  # Gene expression p-values or calls
  # Exon expression p-values or calls
+
+
+=== Visualization ===
+
+Results from LineageProfiler are automatically viewed upon a Hierarchically clustered [Heatmap] and on a Lineage network from WikiPathways. For both, correlation based Z scores are visualized as positive associations (red) and negative associations (blue - only for hierarchically clustered results). 
 
 === Databases ===
 
