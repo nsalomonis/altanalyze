@@ -1,0 +1,6 @@
+#summary Alternative Polyadenylation Annotations
+
+== Alternative Polyadenylation Annotations in AltAnalyze ==
+Incorporating Alternative Poly-Adenylation Predictions 
+
+Poly-adenylation (polyA) sites are identified using the polyA database ([http://polya.umdnj.edu/]) version 2. This database provides polyA site genomic coordinates for human, mouse, rat, chicken and zebrafish, generated in 2006 from various genomic database builds. Of these, only human polyA sites are provided as an annotation track in the UCSC genome database. For human, the polyA sites for the appropriate human genome build are downloaded and parsed using the same methods for the knownAlt UCSC annotation track. If multiple polyA sites are observed in a given Ensembl gene, exon regions overlapping with these binding sites are reported as “alternative_polyA” along with the alternative splicing annotations. To report these same annotations for other species, annotations from the polyADB_2 flat-file were converted to UCSC BED format and batch converted to the latest genome build using [http://www.genome.ucsc.edu/cgi-bin/hgLiftOver]. In some cases, multiple lift-over translations were required. Intermediate files are available at [http://www.altanalyze.org/archiveDBs/]. Due to missing chromosome annotations for most predictions in zebrafish, these annotations were not included. 
