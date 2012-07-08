@@ -1,8 +1,23 @@
 #summary AltAnalyze update history
+#labels Featured
 
 ==AltAnalyze Software Update History==
 
 _note:_ For further details and explanation, see the associated sections in the full [http://www.altanalyze.org/help_main.htm online AltAnalyze documentation].
+
+===Version 2.0.7 Updates===
+In this version, we have added a number of new analysis methods to support comprehensive automated gene-expression analysis as well as improved RNA-Seq analysis and filtering. Changes include:
+ # Heatmap visualization of hierarchically clustered genes (significant and outlier).
+ # Principal Component Analysis and visualization. 
+ # Independent Affymetrix RMA and RNA-Seq feature-level quality control plot visualization.
+ # LineageProfiler cell and tissue correlation analysis arrays and RNA-Seq expression detection platforms.
+ # WikiPathways visualization for selected or enriched GO-Elite pathways.
+ # Support for GO-Elite version 1.2.5 additional resources (e.g., transcription factor targets, microRNA targets, disease ontology, biomarkers, domains, KEGG, PathwayCommons). [http://genmapp.org/go_elite/help.htm#resources Details here
+ # Ability to perform clustering, LineageProfiler, pathway enrichment or pathway visualization independent from other functions.
+ # Moderated t-tests based on R's limma algorithm. 
+ # Included support of RNA-Seq BED file annotations missing the 'chr' chromosome annotation. 
+ # Added separate RNA-Seq filtering options for exons, junctions and genes.
+ # Fixed Gene Ontology annotation bug for gene-expression results.
 
 ===Version 2.0.6 Updates===
 In this version, we improve upon changes made in the previous release and supply several new methods and analysis support. Changes include:
