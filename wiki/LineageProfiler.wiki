@@ -2,6 +2,7 @@
 
 = Lineage Profiler Analysis Program  =
 
+[http://altanalyze.org/image/cardiac_differentiation_LP.jpg]
 == Overview ==
 
 LineageProfiler is a program used to identify the most likely cell types and tissues represented in a given RNA sample. These results are then visualized at the level of hierarchically clustered cell types and samples upon a comprehensive curated lineage network. This software can be applied to microarray and RNA-Seq profiling data. While this tool is integrated with the full AltAnalyze analysis workflows, it can also be run independently on data processed outside of AltAnalyze.
