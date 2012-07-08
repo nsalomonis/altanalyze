@@ -1,0 +1,23 @@
+#summary Quality Control Analyses
+
+== Quality Control Analyses in AltAnalyze==
+
+Several quality control metrics are applied in AltAnalyze to identify putative outlier samples. The main output of all of these analyses are PDF and PNG image files output to the results directory under the folder *{{{ DataPlots }}}*. A detailed description of these methods is provided [www.altanalyze.org/help.htm#QC here].
+
+=== Affymetrix ===
+
+ # Distribution of normalized log2 probeset intensity values
+ # Mean raw signal intensities of each array
+ # Mean absolute deviation (MAD) of the RMA residuals for each array
+
+=== RNA-Seq ===
+
+ # Distribution of log2 read-counts (exon and junction)
+ # Feature-level box-plots for the distribution of exon, junction and intron read-counts 
+ # Total number of reads for each sample, broken down by exon, junction and intron aligning
+
+=== All Platforms ===
+
+ # [Heatmaps Hierarchical clustering] or significant genes and outliers
+ # Principal Component Analysis of samples (significant genes)
+ # Cell/tissue characterization of each sample (LineageProflier)
