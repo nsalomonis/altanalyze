@@ -7,6 +7,7 @@ AltAnalyze allows users to identify putative protein domains, motifs or microRNA
 These results are returned in the form of [http://www.altanalyze.org/help.htm#results_overview spreadsheets] that indicate affected domains and associated protein isoforms for each analyzed splicing-event. The following links provide additional details on these analyses.
 
  * [CitingArticles Example analyses]
+ * [AlternativeOutput Overview of associated file types]
  * [http://www.altanalyze.org/help.htm#inference Description of the algorithm]
  * [ProteinDirectionIndicator Detailed examples results]
  * [DomainGraph Visualization in DomainGraph]
