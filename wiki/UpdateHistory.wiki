@@ -12,7 +12,7 @@ In this version, we have added a number of new analysis methods to support compr
  # Independent Affymetrix RMA and RNA-Seq feature-level quality control plot visualization.
  # LineageProfiler cell and tissue correlation analysis arrays and RNA-Seq expression detection platforms.
  # WikiPathways visualization for selected or enriched GO-Elite pathways.
- # Support for GO-Elite version 1.2.5 additional resources (e.g., transcription factor targets, microRNA targets, disease ontology, biomarkers, domains, KEGG, Pathway Commons). [http://genmapp.org/go_elite/help.htm#resources Details here
+ # Support for GO-Elite version 1.2.5 additional resources (e.g., transcription factor targets, microRNA targets, disease ontology, biomarkers, domains, KEGG, Pathway Commons). [http://genmapp.org/go_elite/help.htm#resources Details here].
  # Ability to perform clustering, LineageProfiler, pathway enrichment or pathway visualization independent from other functions.
  # Moderated t-tests based on R's limma algorithm. 
  # Included support of RNA-Seq BED file annotations missing the 'chr' chromosome annotation. 
