@@ -7,7 +7,7 @@ _note:_ For further details and explanation, see the associated sections in the 
 
 ===Version 2.0.7 Updates===
 In this version, we have added a number of new analysis methods to support comprehensive automated gene-expression analysis as well as improved RNA-Seq analysis and filtering. Changes include:
- # Heatmap visualization of hierarchically clustered genes (significant and outlier).
+ # [http://code.google.com/p/altanalyze/wiki/Heatmaps Heatmap] visualization of hierarchically clustered genes (significant and outlier).
  # Principal Component Analysis and visualization. 
  # Independent Affymetrix RMA and RNA-Seq feature-level quality control plot visualization.
  # LineageProfiler cell and tissue correlation analysis arrays and RNA-Seq expression detection platforms.
