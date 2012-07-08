@@ -1,6 +1,6 @@
 #summary Domain-Level Analyses
 
-= Domain-Level Analyses in AltAnalyze =
+== Domain-Level Analyses in AltAnalyze ==
 
 AltAnalyze allows users to identify putative protein domains, motifs or microRNA bindings potentially disrupted by alternative splicing in their experiment. These results are incredibly useful at prioritizing results in terms of functional effects (e.g. modified DNA-binding domains).
 
