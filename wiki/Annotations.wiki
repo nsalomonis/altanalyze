@@ -7,6 +7,7 @@ Annotations are provided for the various analyses in AltAnalyze at the level of 
 === Gene Expression Results ===
 
 AltAnalyze extracts useful gene annotations for determining whether a gene: 
+
  * Protein-coding potential
  * “Drug-able” targets (e.g. GPCR, kinase)
  * Transcriptional and splicing regulator
@@ -15,8 +16,6 @@ AltAnalyze extracts useful gene annotations for determining whether a gene:
  * Associated Gene Ontology terms
  * UniProt annotated cellular compartment
  * Putative housekeeping genes
-
-To obtain these annotations, AltAnalyze extracts various annotations for several public genomic databases (Ensembl, UniProt, miRBase, TargetScan, miRanda, Pictar, miRNAMap, WikiPathways, Gene Ontology, Affymetrix). Extracted from Ensembl are annotations for protein coding potential in addition to pseudogenes, rRNA, miRNAs, snoRNAs, lincRNA and other gene types. From UniProt, annotations for kinase, GPCR and coupling pathway, single transmembrane receptors transcriptional regulator and cellular compartment. Annotations for Gene Ontology termas and WikiPathways are extracted on the fly from the downloaded Official GO-Elite annotation databases. Housekeeping gene predictions are extracted from this same database, by searching for Ensembl-Affymetrix associations for probesets containing the ‘AFFX’ notation. Any microRNA targeting prediction from miRBase, TargetScan, miRanda, Pictar, miRNAMap are reported along with the source of the annotation and overlapping predictions.
 
 === Alternative Isoform Annotations ===
 
