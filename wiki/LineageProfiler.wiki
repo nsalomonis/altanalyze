@@ -5,7 +5,7 @@
 [http://altanalyze.org/image/cardiac_differentiation_LineageProfiler.jpg]
 == Overview ==
 
-LineageProfiler is a program used to identify the most likely cell types and tissues represented in a given RNA sample. These results are then visualized at the level of hierarchically clustered cell types and samples upon a comprehensive curated lineage network. This software can be applied to microarray and RNA-Seq profiling data. While this tool is integrated with the full AltAnalyze analysis workflows, it can also be run independently on data processed outside of AltAnalyze.
+LineageProfiler is a program used to identify the most likely cell types and tissues represented in a given RNA sample. These results are then visualized as association scores at the level of hierarchically clustered cell types and curated lineage networks. This software can be applied to microarray and RNA-Seq profiling data. While this tool is integrated with the full AltAnalyze analysis workflows, it can also be run independently on data processed outside of AltAnalyze (see [http://www.altanalyze.org/help_main.htm documentation]).
 
 === Analysis Method ===
 
@@ -21,10 +21,9 @@ LineageProfiler is compatible with four types of input data:
  # Gene expression p-values or calls
  # Exon expression p-values or calls
 
-
 === Visualization ===
 
-Results from LineageProfiler are automatically viewed upon a Hierarchically clustered [Heatmap] and on a Lineage network from WikiPathways. For both, correlation based Z scores are visualized as positive associations (red) and negative associations (blue - only for hierarchically clustered results). 
+Results from LineageProfiler are automatically viewed upon a Hierarchically clustered [Heatmap] and on a Lineage network from WikiPathways. For both, correlation based Z scores are visualized as positive associations (red) and negative associations (blue - only for hierarchically clustered results). The community curated WikiPathway can be viewed [http://www.altanalyze.org/help_main.htm here].
 
 === Databases ===
 
