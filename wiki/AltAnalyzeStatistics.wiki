@@ -1,0 +1,28 @@
+#summary AltAnalyze Statistical Methods
+
+== Statistical Methods Implemented in AltAnalyze ==
+
+AltAnalyze implements various previously described algorithms for gene expression quantification, differential gene expression, alternative exon expression and feature/pathway over-representation. These algorithms are implemented in the context of a rigorous exon/transcript annotation framework, based on data from Ensembl and UCSC mRNAs. Details on all of these methods is provided [http://www.altanalyze.org/help.htm here].
+
+In general, implemented methods include:
+
+*Gene Expression Analyses*
+
+ * Geometric fold calculation
+ * Moderated and conventional t-tests and f-tests
+
+*Alternative Exon Analyses*
+
+ * Reciprocal-junction analyses (ASPIRE, Linear regression)
+ * Alternative exon (splicing-index, FIRMA, MiDAS, adjusted f-tests)
+
+*Over-representation*
+
+ * Fisher Exact Test
+ * Z score calculation
+ * Permutation-based p-values
+
+*LineageProfiler analysis*
+
+ * Pearson/Spearman's correlation
+ * Z score calculation
