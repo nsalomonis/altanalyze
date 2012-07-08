@@ -19,9 +19,8 @@ AltAnalyze extracts useful gene annotations for determining whether a gene:
 
 === Alternative Isoform Annotations ===
 
-Alternative isoform data is obtained through extraction of transcript data from the Ensembl and UCSC databases. This database is primarily built from Ensembl and augmented with unique exons, junctions and transcripts found in the UCSC mRNA table for each species in Ensembl. Novel isoform annotations are included for Affymetrix junction arrays (HJAY, hGlue) and imported RNASeq data.
+Alternative isoform data is obtained through extraction of transcript data from the Ensembl and UCSC databases. This database is primarily built from Ensembl and augmented with unique exons, junctions and transcripts found in the UCSC mRNA table for each species in Ensembl. Novel isoform annotations are included for Affymetrix junction arrays (HJAY, hGlue) and imported RNASeq data. These annotations include:
 
-These annotations include:
  # mRNA transcripts
  # associated proteins
  # exons
