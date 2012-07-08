@@ -18,6 +18,6 @@ Several quality control metrics are applied in AltAnalyze to identify putative o
 
 === All Platforms ===
 
- # [Heatmaps Hierarchical clustering] or significant genes and outliers
+ # [Heatmaps Hierarchical clustering] of significant genes and outliers
  # Principal Component Analysis of samples (significant genes)
- # Cell/tissue characterization of each sample (LineageProflier)
+ # Cell/tissue characterization of each sample (LineageProfiler)
