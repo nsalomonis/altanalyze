@@ -20,6 +20,6 @@ For new issues, in your report please include:
 
 1) Your Operating System (e.g. Windows Vista, OSX 10.6, 64bit, etc.)
 
-2) The version of the AltAnalyze program (e.g., 1.15), database you are using (e.g., Mus Musculus EnsMart55) and array type (e.g., Affymetrix Exon 1.0).
+2) The version of the AltAnalyze program (e.g., 1.15), database you are using (e.g., Mus Musculus EnsMart55) and platform/array type (e.g., Affymetrix Exon 1.0, TopHat BED files).
 
 3) Detailed information about the bug, including the exact circumstances that caused it and any error message that appears. Usually this is contained within a log file contained in the designated results output directory (AltAnalyze_report.log) or in the AltAnalyze program directory.
