@@ -7,4 +7,9 @@ AltAnalyze provides a moderated t-test option (unpaired, assuming equal variance
 
 == Conventional Tests Implemented in AltAnalyze ==
 
-In addition to these moderated tests, multiple conventional statistical tests are provided for the various comparison analyses available (e.g. differential gene expression, alternative exon expression). For group comparisons involving greater than two groups, a standard f-test statistic is used. For pairwise group comparisons, users can choose from unpaired and paired t-test’s (assuming equal variance), rank sum, Mann Whitney and Kolmogorov Smirnov.  These tests are made available from the open-source statistical package [http://salstat.sourceforge.net/ SalStat]. 
+In addition to these moderated tests, multiple conventional statistical tests are provided for the various comparison analyses available (e.g. differential gene expression, alternative exon expression). For group comparisons involving greater than two groups, a standard f-test statistic is used. For pairwise group comparisons, users can choose from unpaired and paired t-test’s (assuming equal variance), rank sum, Mann Whitney and Kolmogorov Smirnov.  These tests are made available from the open-source statistical package [http://salstat.sourceforge.net/ SalStat].
+
+
+== False Discovery Rate P-values ==
+
+ * Adjusted p-values for these various tests are calculated using the Benjamini-Hochberg correction method.
