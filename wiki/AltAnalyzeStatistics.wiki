@@ -13,7 +13,8 @@ In general, implemented methods include:
  * Quantile normalization (*RNASeq*)
  * RPKM (gene, exon, junction) (*RNASeq*)
  * Geometric fold calculation
- * [ModeratedTest Moderated and conventional t-tests and f-tests]
+ * [ModeratedTest Moderated and conventional two-sample tests and f-test]
+ * Benjamini-Hochberg adjusted FDR test
 
 ===[ScoringMethod Alternative Exon Analyses]===
 
@@ -25,6 +26,7 @@ In general, implemented methods include:
  * Fisher Exact Test
  * Z score calculation
  * Permutation-based p-values
+ * Benjamini-Hochberg adjusted FDR test
 
 ===LineageProfiler analysis===
 
