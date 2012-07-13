@@ -42,9 +42,9 @@ under construction
 
 == Software and Database Design ==
 
-To derive lineage correlations and resulting scores in LineageProfiler, expression values or presence calls are compared to similar values in a reference database of cell types and tissues. Each database is array type specific (future will include RNA-Seq built), however, will work with different transcriptome profiling platforms (e.g., RNA-Seq).
+To derive lineage correlations and resulting scores in LineageProfiler, expression values or presence calls are compared to similar values in a reference database of cell types and tissues. Although each compendium database is built from a specific transcriptome profiling platform, these have been found to effectively work in profiling lineages from various microarray and RNA-Seq platforms.
 
-Currently, the reference databases for mouse and human are derived from a collection of over 70 unique tissues and cell types collected from online public repositories (Affymetrix and GEO). For mouse, the default database is derived from a compendium of Affymetrix Gene 1.0 array data, while human is Affymetrix Exon 1.0. These were selected since they contained the highest quality and most specific gene probe content for that species and also contained the most diverse tissue and cell representation.
+Currently, the reference lineage databases for mouse and human are derived from a collection of over 70 unique tissues and cell types collected from online public repositories (Affymetrix and GEO). For mouse, the default database is derived from a compendium of Affymetrix Gene 1.0 array data, while human is Affymetrix Exon 1.0. These were selected since they contained the highest quality and most specific gene probe content for that species and also contained the most diverse tissue and cell representation.
 
 === Building the Lineage Marker Databases ===
 
