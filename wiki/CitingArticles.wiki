@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.biotechniques.com/BiotechniquesJournal/2012/July/AMDA-2.13-A-major-update-for-automated-cross-platform-microarray-data-analysis/biotechniques-332870.html?pageNum=2 AMDA 2.13: A major update for automated cross-platform microarray data analysis]. Kapetis D, Clarelli F, Vitulli1 F, de Rosbo NK, Beretta O, Foti1 M, Ricciardi-Castagnoli P, and Zolezzi F. BioTechniques 53:33-40 ( July 2012) doi 10.2144/0000113889.
+
 [http://bioinformatics.oxfordjournals.org/content/early/2012/06/27/bioinformatics.bts366.abstract GO-Elite: A Flexible Solution for Pathway and Ontology Over-Representation]. Zambon AC, Gaj S, Ho I, Hanspers K, Vranizan K, Evelo CT, Conklin BR, Pico AR, Salomonis N. Bioinformatics. 2012 Jun 27.
 
 [http://bioinformatics.oxfordjournals.org/content/early/2012/05/29/bioinformatics.bts320.long AS-EAST: A functional annotation tool for putative proteins encoded by alternatively spliced transcripts]. Shionyu M, Takahashi KI, Go M. Bioinformatics. 2012 May 29.
