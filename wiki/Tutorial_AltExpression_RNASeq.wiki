@@ -14,7 +14,10 @@ Sample data can be downloaded [RNASeq_sample_data here].
 
 ==Building Junction and Exon Alignments==
 
-AltAnalyze can be run with junction and/or exon read counts from BED format (e.g. TopHat) or BioScope result files. Instructions for obtaining junction and exon-level input files from your sequencing experiments can be found [ObtainingRNASeqInputs here]. If you already have junction.bed files, instructions for building exon.bed files can be found [BAMtoBED here].
+AltAnalyze can be run with junction and/or exon read counts from BED format (e.g. TopHat) or BioScope result files. Instructions for obtaining junction and exon-level input files from your sequencing experiments can be found [ObtainingRNASeqInputs here]. If you already have junction.bed files, instructions for building exon.bed files can be found [BAMtoBED here]. These instructions will have you: 
+ # [http://code.google.com/p/altanalyze/wiki/BAMtoBED Load your junction files in AltAnalyze]
+ # [http://code.google.com/p/altanalyze/wiki/BAMtoBED Build an exon coordinate reference for BEDTools]
+ # [http://code.google.com/p/altanalyze/wiki/BEDTools Build an exon count BED file for each BAM file]
 
 ==Installing AltAnalyze and Saving Your Data==
 AltAnalyze versiown 2.0 can be downloaded for multiple operating systems from [http://www.altanalyze.org http://www.altanalyze.org]. Once you have downloaded the compressed archive to your computer, extract it to an accessible folder on your hard-drive (e.g., your user account). In addition to AltAnalyze, Cytoscape and DomainGraph are automatically downloaded when a species database is first installed. See the 2nd to last step in the Running AltAnalyze instructions for how to immediately start DomainGraph after generating results.
