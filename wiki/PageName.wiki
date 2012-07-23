@@ -1,0 +1,3 @@
+#summary OfflineSupport
+
+== Offline Support for AltAnalyze ==
