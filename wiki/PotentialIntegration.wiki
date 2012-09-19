@@ -4,13 +4,8 @@
 
 ===Visualization===
  * Network visualization: http://code.google.com/p/python-graph/w/list
- * Sophisticated network analysis: http://igraph.sourceforge.net/
- * Vector graphics support (requires numpy): http://matplotlib.sourceforge.net/
  * RNA-Seq isoform visualization (requires Matplotlib and PyML) : http://splicegrapher.sourceforge.net/
- * RNA-Seq quality control and visualization (requires GCC): http://code.google.com/p/ever-seq/
- * Expression cluster visualization: http://www.bioinformatics.ubc.ca/matrix2png/
  * Graph, network and dendrogram output to SVG: http://igraph.sourceforge.net
- * Streamlined dendrograms (Numpy, matplotlib): http://code.google.com/p/scipy-cluster/
  * Other: http://vermeulen.ca/python-graphics.html
  * Advanced table viewer: http://www.nemethi.de/tablelist/tablelist.html
 
@@ -21,8 +16,6 @@
  * RNA-Seq QC and visualization: http://code.google.com/p/ever-seq/
  * RNA-Seq QC and visualization: http://code.google.com/p/rseqc/
  * RNA-Seq QC and visualization: https://confluence.broadinstitute.org/display/CGATools/RNA-SeQC/
-===Other===
- * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
 
 note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
 
