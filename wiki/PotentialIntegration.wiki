@@ -20,6 +20,7 @@
  * PCA and clustering: http://pyrorobotics.org/?page=PyroModuleAnalysis
  * RNA-Seq QC and visualization: http://code.google.com/p/ever-seq/
  * RNA-Seq QC and visualization: http://code.google.com/p/rseqc/
+ * RNA-Seq QC and visualization: https://confluence.broadinstitute.org/display/CGATools/RNA-SeQC/
 ===Other===
  * Cross-platform R interface: http://www.webarray.org/softwares/PypeR/
 
