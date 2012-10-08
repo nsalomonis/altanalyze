@@ -13,6 +13,13 @@ python AltAnalyze.py --species Hs --update Official --version EnsMart62
 }}}
 
 
+_*Exporting a Exon BED reference file for BedTools*_
+
+{{{
+python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --output "C:/BEDFiles" --expname "hESC_differentiation" --buildExonExportFile yes
+}}}
+
+
 _*Analyzing  BED files – RNASeq Junction Bed files using default options*_
 
 {{{
