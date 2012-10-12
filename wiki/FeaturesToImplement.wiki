@@ -29,3 +29,4 @@
 === Distribution ===
  * Evaluate virtualenv and buildout egg based distributions
  * For MatPlotLib, Numpy and Scipy, only make import calls to specific functions to decrease dependencies and distribution size.
+ * Java wrapper of pure-python code in Cytoscape to allow for module-by-module migration from python to Java. Eliminates OS specific build issues. Requires using Cytoscape based visualization as an alternative (long term goal).
