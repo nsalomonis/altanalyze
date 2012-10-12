@@ -19,9 +19,12 @@
 === Visualization ===
 
  * *Clustering* - Add additional clustering metrics found in Scipy (agglomerative) are less likely to crash for gene-clustering as well as hopach using PIPE or Java equivalent. Add GUI options and the option for uses to visualize group associations with the cluster. Output results for TreeView.
+ * *Comparison List Tool* - Allows for simple comparison of lists, recognizing known file types (e.g., alternative exon) and generates Venn Diagrams.
+ * *Gene Correlation Tool Finder* - Input a gene and get the top correlated genes for GE or AS.
+ * *View Gene, Pathway or Alternative Exon Expression Patterns* - Hierarchical clustering of alt.exons for all groups and samples or pathways. Also allow for gene-specific HC view (all exons or all junctions) or pathway view (all alt exons or diff. exp. genes).
  * *Lineage Profiler* - For significant cell types, display regulated genes associated with lineages as a network. 
  * *SubgeneViewer* - Support for all splicing array platforms via SQLite relationship access. Assess feasibility of viewing as networks as opposed to Matplotlib.
- * *Robust RNA-Seq QC* - Identify and integrate more robust methods (FASTQC).
+ * *Robust RNA-Seq QC* - Identify and integrate more robust methods (FASTQC, EverSeq).
 
 === Distribution ===
  * Evaluate virtualenv and buildout egg based distributions
