@@ -4,7 +4,7 @@
 === Articles Citing AltAnalyze ===
 
 [http://www.ncbi.nlm.nih.gov/pubmed/23057549 KLF10 gene expression is associated with high fetal hemoglobin levels and with response to hydroxyurea treatment in β-hemoglobinopathy patients]. Borg J, Phylactides M, Bartsakoulia M, Tafrali C, Lederer C, Felice AE, Papachatzopoulou A, Kourakli A, Stavrou EF, Christou S, Hou J, Karkabouna S, Lappa-Manakou C, Ozgur Z, van Ijcken W, von Lindern M, Grosveld FG, Georgitsi M, Kleanthous M, Philipsen S, Patrinos GP.
-Pharmacogenomics. 2012 Oct;13(13):1487-500. doi: 10.2217/pgs.12.125.
+Pharmacogenomics. 2012 Oct;13(13):1487-500.
 
 [http://www.biotechniques.com/BiotechniquesJournal/2012/July/AMDA-2.13-A-major-update-for-automated-cross-platform-microarray-data-analysis/biotechniques-332870.html?pageNum=2 AMDA 2.13: A major update for automated cross-platform microarray data analysis]. Kapetis D, Clarelli F, Vitulli1 F, de Rosbo NK, Beretta O, Foti1 M, Ricciardi-Castagnoli P, and Zolezzi F. BioTechniques 53:33-40 ( July 2012) doi 10.2144/0000113889.
 
