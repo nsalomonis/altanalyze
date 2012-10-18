@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://onlinelibrary.wiley.com/doi/10.1111/pcmr.12011/full Fishing for melanoma markers through comparative transcriptome analysis]. Mione M, Armant O. Pigment Cell & Melanoma Research. 2012. doi: 10.1111/pcmr.12011
+
 [http://www.ncbi.nlm.nih.gov/pubmed/23057549 KLF10 gene expression is associated with high fetal hemoglobin levels and with response to hydroxyurea treatment in β-hemoglobinopathy patients]. Borg J, Phylactides M, Bartsakoulia M, Tafrali C, Lederer C, Felice AE, Papachatzopoulou A, Kourakli A, Stavrou EF, Christou S, Hou J, Karkabouna S, Lappa-Manakou C, Ozgur Z, van Ijcken W, von Lindern M, Grosveld FG, Georgitsi M, Kleanthous M, Philipsen S, Patrinos GP.
 Pharmacogenomics. 2012 Oct;13(13):1487-500.
 
