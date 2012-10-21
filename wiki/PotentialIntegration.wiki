@@ -16,7 +16,7 @@
  * RNA-Seq QC and visualization: http://code.google.com/p/ever-seq/
  * RNA-Seq QC and visualization: http://code.google.com/p/rseqc/
  * RNA-Seq QC and visualization: https://confluence.broadinstitute.org/display/CGATools/RNA-SeQC/
-
+ * Evaluate [http://en.m.wikipedia.org/wiki/Independent_component_analysis#section_2 ICA] for LineageProfiler
 note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
 
 = Visualization Software Installation Notes =
