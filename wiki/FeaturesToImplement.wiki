@@ -30,3 +30,9 @@
  * Evaluate virtualenv and buildout egg based distributions
  * For MatPlotLib, Numpy and Scipy, only make import calls to specific functions to decrease dependencies and distribution size.
  * Java wrapper of pure-python code in Cytoscape to allow for module-by-module migration from python to Java. Eliminates OS specific build issues. Requires using Cytoscape based visualization as an alternative (long term goal).
+
+=== Bug Fixes ===
+ * Ontology annotation and nesting error within for non-GeneOntology categories (fixed in 2.0.8).
+ * Excessive wait times for hierarchical clustering (reduced default allowed cluster size from 10k to 7k).
+ * PAZAR GO-Elite annotation parser updated to the new PAZAR file format.
+ * RNA-Seq counts filtering error for lines starting with 0 counts (resulted in inclusion of some gene fold changes that otherwise would have been excluded due to low expression).
