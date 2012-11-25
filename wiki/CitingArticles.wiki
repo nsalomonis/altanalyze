@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://ajblood.us/files/AJBR1210006.pdf Growth factor independence 1 (Gfi1) regulates cell-fate decision of a bipotential granulocytic-monocytic precursor defined by expression of Gfi1 and CD48]. Lothar Vassen1, Ulrich Dührsen, Christian Kosan, Hui Zeng, Tarik Möröy1. Am J Blood Res 2012;2(4):228-242
+
 [http://onlinelibrary.wiley.com/doi/10.1111/pcmr.12011/full Fishing for melanoma markers through comparative transcriptome analysis]. Mione M, Armant O. Pigment Cell & Melanoma Research. 2012. doi: 10.1111/pcmr.12011
 
 [http://www.ncbi.nlm.nih.gov/pubmed/23057549 KLF10 gene expression is associated with high fetal hemoglobin levels and with response to hydroxyurea treatment in β-hemoglobinopathy patients]. Borg J, Phylactides M, Bartsakoulia M, Tafrali C, Lederer C, Felice AE, Papachatzopoulou A, Kourakli A, Stavrou EF, Christou S, Hou J, Karkabouna S, Lappa-Manakou C, Ozgur Z, van Ijcken W, von Lindern M, Grosveld FG, Georgitsi M, Kleanthous M, Philipsen S, Patrinos GP.
