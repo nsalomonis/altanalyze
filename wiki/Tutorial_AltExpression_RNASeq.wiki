@@ -34,7 +34,7 @@ Now you are ready to process your input files and obtain alternative exons with 
     * ([http://altanalyze.org/image2/Select_RNASeq_pulldown.jpg AltAnalyze: Select Species and Platform Type]) Select the species “Homo sapiens”, the platform "RNASeq" and “Continue”.
     * ([http://altanalyze.org/image2/Select_Analysis_Method_RNASeq.jpg AltAnalyze: Select Analysis Method]) Select the “Process Junction files” button and "Continue".  
     * ([http://altanalyze.org/image2/Select_BED_files.jpg AltAnalyze: Select BED files for Import]) For dataset name, type in "hESC_differentiation", select the directory containing the BED files (make sure these have been extracted from the TAR file and Gzip files) and then select an empty directory to save the results to.
-    * ([http://altanalyze.org/image2/ExpressionAnalysis_RNASeq.jpg AltAnalyze: Expression Analysis Parameters]) Accept the default parameters by clicking “Continue”.  These options can be modified later on, if you wish to increase or decrease the stringency of the analysis.
+    * ([http://altanalyze.org/image2/ExpressionAnalysis_RNASeq.jpg AltAnalyze: Expression Analysis Parameters]) Although you can accept the default parameters by clicking “Continue”, it is recommended that you include the option to automatically perform pathway, Ontology and gene-set enrichment analysis ([http://code.google.com/p/altanalyze/wiki/GOElite see here for details]).
     * ([http://altanalyze.org/image2/AltExonAnalysis_RNASeq.jpg AltAnalyze: Alternative Exon Analysis Parameters]) Accept the default parameters by clicking “Continue”. 
     * ([http://altanalyze.org/image2/groups.jpg AltAnalyze: Assign BED files to a Group]) Type in the group name for each sample (first three are hESC and second three are neural_precursors).
     * ([http://altanalyze.org/image2/pairwise_comps.jpg AltAnalyze: Establish All Pairwise Comparisons]) Selects the groups to compare (neural_precursors vs. hESC).
@@ -68,62 +68,14 @@ Results from *files #2-5* are produced from all junctions that may suggest alter
 
 More information about these files can be found in the [http://www.altanalyze.org/help_main.htm AltAnalyze ReadMe] (section 2.3).
 
-==Full Directory Tree of Output Files==
+==Navigating AltAnalyze Results==
 
-After you run AltAnalyze, the following directory tree and set of files will be generated in the folder that you specified for output. For this example, the species is "species," and we assume there were two comparisons made, between groups A and B, and between groups B and C.
-
-   * AltAnalyze_report.log
-   * AltExpression/
-      * FullDatasets/
-         * RNASeq/
-            * species/
-               * YourExperiment.txt
-      * RNASeq/
-         * species/
-            * A_vs_B.txt
-            * B_vs_C.txt
-      * pre-filtered/
-         * expression/
-            * A_vs_B.txt
-            * B_vs_C.txt
-   * AltResults/
-      * AlternativeOutput/
-         * ...
-      * DomainGraph/
-         * ...
-      * RawSpliceData/
-         * species/
-            * ASPIRE/
-               * A_vs_B.txt
-               * B_vs_C.txt
-   * ExpressionInput/
-      * comps.YourExperiment.txt
-      * exp.YourExperiment-steady-state.txt
-      * exp.YourExperiment.txt
-      * groups.YourExperiment.txt
-      * stats.YourExperiment.txt
-   * ExpressionOutput/
-      * DATASET-YourExperiment.txt
-      * GenMAPP-YourExperiment.txt
-   * GO-Elite/
-      * denominator/
-         * ...
-      * GO-Elite_report.log
-      * GO-Elite_results/
-         * CompleteResults/
-            * ORA/
-               * ...
-            * ORA_pruned/
-               * ...
-         * pruned-gene-associations.txt
-         * pruned-results_z-score_elite.txt
-      * input/
-         * ...
+AltAnalyze produces a large number of results, including tab-delimited spreadsheets, expression clustered heatmaps and colored pathways. A detailed description of these various outputs can be found [http://www.altanalyze.org/help.htm#results_overview here].
 
 ==Visualizing AltAnalyze Results in DomainGraph==
-The text file results produced by AltAnalyze can be directly used as input in the protein domain and microRNA binding site visualization program, DomainGraph. DomainGraph is a plugin for the Java program Cytoscape which can be immediately opened from AltAnalyze. Rather than visualizing junctions, however, DomainGraph currently only supports exon visualization. RNASeq highlighted exons (identified directly from exons or by reciprocal exon-junctions) are associated with Affymetrix Exon 1.0 identifiers to be loaded in DomainGraph.
 
-==Visualizing Over-Represented GO terms and Pathways==
-Once over-represented pathways have been found or before doing this analysis, you can see which genes on which pathways are alternatively regulated in the program PathVisio or GenMAPP 2.1. PathVisio is a cross-platform analysis program, while GenMAPP is restricted to Windows. Both tools are easy use and have access to a large archive of curated pathways. An input file for either PathVisio or GenMAPP is found in the directory "ExpressionOutput" with the prefix "GenMAPP-". This text file will need to be imported into either program prior to building criterion for analysis. 
+Isoform and domain-level results produced in AltAnalyze (AltResults/DomainGraph) can be directly loaded by DomainGraph. DomainGraph is a plugin for the Java program Cytoscape which can be immediately opened through AltAnalyze. Rather than visualizing junctions, however, DomainGraph currently only supports exon visualization. RNASeq highlighted exons (identified directly from exons or by reciprocal exon-junctions) are associated with Affymetrix Exon 1.0 identifiers to be loaded in DomainGraph. Instructions can be found [http://domaingraph.bioinf.mpi-inf.mpg.de/tutorial.php here].
 
-For making pathways, PathVisio or WikiPathways is recommended, since these resources produce superior pathway content (valid interactions between genes and metabolite IDs) in the same format (gpml). PathVisio can also export pathways to the GenMAPP format. A PathVisio tutorial can be [http://www.pathvisio.org/wiki/PathVisioTutorials found here], while a GenMAPP tutorial can be [http://www.genmapp.org/tutorial_v2.html found here].
+==Gene-Set Enrichment Analysis==
+
+AltAnalyze includes the option to perform a powerful biological enrichment analysis, that includes multiple Ontologies, pathways and gene-set categories (e.g., transcription factor targets). This option can be selected from the Expression Analysis Parameters Window by selecting the option "Analyze ontologies and pathways with GO-Elite". From this menu, criterion for filtering your data for differentially expressed genes and visualizing WikiPathway enrichment results are included.
