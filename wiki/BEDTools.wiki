@@ -16,6 +16,16 @@ After installation of BEDTools, AltAnalyze users will need to call the utility b
 In the below example, "hESC_differentiation_exons.bed" is produced by AltAnalyze prior to running BEDTools ([BAMtoBED see instructions here]), containing all known mRNA exon region coordinates from Ensembl/UCSC and all novel exon coordinates indicated from the TopHat junction BED results. These methods should work equivalently for non-TopHat produced BAM files, however, additional sorting of the BAM file may be required (e.g., SAMTools). 
 
 _Build Exon BED file from BAM_
+
+*For a Single BAM File*
 {{{
-bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/user/BAMtoBED/hESC_differentiation_exons.bed > /home/user/RNASeqStudy/Sample1/day0_s1__exons.bed
+bamToBed -i accepted_hits.bam -split| coverageBed -a stdin -b /home/user/BAMtoBED/Hs_cancer_exons.bed > /home/user/RNASeqStudy/Sample1/day0_s1__exons.bed
 }}}
+
+*For Many BAM Files (one per folder)*
+
+{{{
+for f in */accepted_hits.bam; do parentdir=`dirname $f`;   parentdirname=`basename $parentdir`; bamToBed -i $f -split| coverageBed -a stdin -b Hs_cancer_exons.bed > ${parentdirname}__exon.bed; done
+}}}
+
+This will loop through every folder in the current directory, find the accepted_hits.bam file and name the resulting exon.bed file as "folder_name"__exon.bed. Thus, you can obtain all exon.bed files with this single command.
