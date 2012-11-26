@@ -3,7 +3,7 @@
 
 = Tutorial 3 - Analyzing RNASeq Alternative Exons & Junctions =
 
-The below tutorial applies to the analysis of RNA sequencing data. A separate tutorial for the analysis of *Affymetrix Exon and Gene arrays* can be found [Tutorial_AltExpressionAnalysis here]. 
+The below tutorial applies to the analysis of RNA sequencing data. A separate tutorial for the analysis of *Affymetrix Exon and Gene arrays* can be found [Tutorial_AltExpressionAnalysis here]. If using an Affymetrix junction array, the analysis steps and results are analogous.
 
 ==Introduction==
 AltAnalyze allows users to assess differential gene expression, sample quality, alternative exon expression, isoform functional relevance and enriched gene-sets. For RNA-Seq data, AltAnalyze takes pre-aligned exon-junctions and/or exon coordinates and read counts for gene and alternative isoform-level analyses (junction and/or exon).  AltAnalyze makes this process relatively easy, with the user only required to download and extract the program and provide one set of basic files. In the following tutorial we will walk through these steps using a sample dataset.
