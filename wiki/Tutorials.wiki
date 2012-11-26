@@ -5,11 +5,11 @@
 
 Proceed through the following tutorials to analyze data for the indicated platform
 
-[Tutorial_GeneExpressionAnalysis Tutorial 1 - Analyzing Gene Expression Data Only]
+[Tutorial_GeneExpressionAnalysis Tutorial 1 - Analyzing Conventional Microarrays]
 
-[Tutorial_AltExpressionAnalysis Tutorial 2 - Analyzing Splicing Data   Featured]
+[Tutorial_AltExpressionAnalysis Tutorial 2 - Analyzing Splicing-Sensitive Arrays]
 
-[Tutorial_AltExpression_RNASeq Tutorial 3 - Analyzing RNASeq Splicing Data]
+[Tutorial_AltExpression_RNASeq Tutorial 3 - Analyzing RNA-Seq Exons and Junctions]
 
 = Related Items =
 
