@@ -36,3 +36,4 @@
  * Excessive wait times for hierarchical clustering (reduced default allowed cluster size from 10k to 7k).
  * PAZAR GO-Elite annotation parser updated to the new PAZAR file format.
  * RNA-Seq counts filtering error for lines starting with 0 counts (resulted in inclusion of some gene fold changes that otherwise would have been excluded due to low expression).
+ * For Affymetrix splicing-sensitive arrays, mitochondrial genome encoded probesets were missing from databases EnsMart65 and before due to Affymetrix and UCSC annotating these chromosomes as chrM rather than chrMT (Ensembl).
