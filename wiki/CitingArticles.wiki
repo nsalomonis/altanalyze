@@ -2,6 +2,7 @@
 #labels Featured
 
 === Articles Citing AltAnalyze ===
+[http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0049978 Contextualization Procedure and Modeling of Monocyte Specific TLR Signaling]. MK Aurich, I Thiele . PLoS ONE 7(12): e49978. doi:10.1371/journal.pone.0049978
 
 [http://ajblood.us/files/AJBR1210006.pdf Growth factor independence 1 (Gfi1) regulates cell-fate decision of a bipotential granulocytic-monocytic precursor defined by expression of Gfi1 and CD48]. Lothar Vassen1, Ulrich Dührsen, Christian Kosan, Hui Zeng, Tarik Möröy1. Am J Blood Res 2012;2(4):228-242
 
