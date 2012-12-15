@@ -4,6 +4,8 @@
 
 ===Visualization===
  * Network visualization: http://code.google.com/p/python-graph/w/list
+ * Python graph-tool: http://projects.skewed.de/graph-tool/
+ * iGraph
  * RNA-Seq isoform visualization (requires Matplotlib and PyML) : http://splicegrapher.sourceforge.net/
  * Graph, network and dendrogram output to SVG: http://igraph.sourceforge.net
  * Other: http://vermeulen.ca/python-graphics.html
