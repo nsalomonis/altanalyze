@@ -56,3 +56,9 @@ note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uc
  <li> No function restore_region in the class FigureCanvasMac in the module “backend_macosx.py” (only one that contains FigureCanvasMac). </li>
  <li> After contacting the MatPlotLib community, discovered that setting blit=False will fix this problem.</li>
 </ul>
+
+=== iGraph (directed networks with arrows) ===
+<ol>
+ <li> Depends on Cairo for non-SVG based visualization (PNG, PDF) </li>
+ <li> amd64bit installer from: http://www.lfd.uci.edu/~gohlke/pythonlibs/ </li>
+ <li> cairo dependencies from http://ftp.gnome.org/pub/gnome/binaries/win64/dependencies/ as described here: http://www.cs.rhul.ac.uk/home/tamas/development/igraph/tutorial/install.html#installing-igraph </li>
