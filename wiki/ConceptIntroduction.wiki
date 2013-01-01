@@ -1,0 +1,15 @@
+#summary Basic Concepts Introduction
+
+The sections below are meant to be an introduction to concepts surrounding the analysis of modern microarray and RNA-sequencing data from biological experiments. This is recommended for students and science professionals with minimal background in the field of genomics.
+
+= What is AltAnalyze Useful For? =
+
+The software described on this website is used understand how changes in the concentration of different RNAs lead to meaningful changes in cells that effect their function and identity. Since the amount of RNA is an indicator of both the activity of genes and the amount of protein produced, technologies that measure RNA levels can be useful in understanding how cells adapt to disease, genetic modifications or to external stimuli. These technologies include microarrays (GeneChips), RNA-sequencing (RNASeq) and protein mass-spectrometry (proteomics).
+
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
