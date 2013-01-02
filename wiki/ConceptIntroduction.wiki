@@ -4,12 +4,16 @@ The sections below are meant to be an introduction to concepts surrounding the a
 
 = What is AltAnalyze Useful For? =
 
-The software described on this website is used to understand how changes in the concentration of different RNAs lead to meaningful changes in cells that effect their function and identity. Since the amount of RNA is an indicator of both the activity of genes and the amount of protein produced, technologies that measure RNA levels can be useful in understanding how cells adapt to disease, genetic modifications or to external stimuli. These technologies include microarrays (GeneChips), RNA-sequencing (RNASeq) and protein mass-spectrometry (proteomics).
+The software described on this website is used to understand how changes in the concentration of different RNAs lead to meaningful changes in cells that effect their function and identity. Since the amount of RNA is an indicator of both the activity of genes and the amount of protein produced, technologies that measure RNA levels can be useful in understanding how cells adapt to disease, genetic modifications or to external stimuli. These technologies include microarrays (GeneChips), RNA-sequencing (RNASeq) and protein mass-spectrometry (proteomics). While proteomics can identify the specific protein isoforms produced, RNA-Seq and more often microarrays are used due to cost considerations and sensitivity. 
 
+==Using Microarrays==
 
-= Details =
+Microarrays, in their most simple form, are glass slides that have small pieces of DNA attached to them to bind to cDNA produced from your RNA sample. Since DNA readily will bind to its antisense strand with high fidelity, this technique allows researchers to quickly and cheaply assay for the amounts of specific RNA in the cell. Each cDNA made from RNA is labelled with a florescent marker that allows these slides to scanned to determine the amount of cDNA that binds a probe to estimate the amount of RNA present in the cell. Based on the design of the array, researchers can detect every gene and potentially every mRNA produced from those genes (see Alternative Splicing below). However, most arrays currently focus on one isoform for each gene and hence may miss important gene regulation data. This is why the approach taken by AltAnalyze, which aims to separate out the effects of gene transcription and gene splicing as separate pieces of information. 
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+==RNA-Sequencing==
+
+Microarrays are biased in their design, since they only contain probes to known RNA regions. An alternative and unbiased method is RNA sequencing, in which the cDNA produced from the RNA in a cell (using common laboratory reagents) can be directly sequenced and quantified. We still make cDNA from the RNA (using a technique called reverse transcription) since DNA is more stable that RNA and can be more easily amplified if needed. Using RNASeq we can determine the amounts of each RNA in the cell relatively well, assuming the sequencing reads are long enough (number of base-pairs), we sequence most of the transcripts in the cell (depth of sequencing) and have good software to predict all of the exons and junctions that are present (see Alternative Splicing below).
+
+== Alternative Splicing ==
+
+The major way in which the cell controls control the amount of protein made from a gene is through a process called transcription. Transcription occurs when the DNA on a chromosome is accessible to binding by transcription factors (proteins) to produce RNA. Other factors that influence the amount of protein produced include regulation by non-coding RNAs, such as microRNAs and alternative splicing. Alternative splicing acts by regulating which exons in a gene are included in the translated mRNA and which ones are not.
