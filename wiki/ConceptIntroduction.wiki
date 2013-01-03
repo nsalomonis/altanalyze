@@ -4,7 +4,7 @@ The sections below are meant to be an introduction to concepts surrounding the a
 
 = What is AltAnalyze Useful For? =
 
-The software described on this website is used to understand how changes in the concentration of different RNAs lead to meaningful differences in cells that effect their function and identity. Since the amount of RNA is an indicator of both the activity of genes and the amount of protein produced, technologies that measure RNA levels can be useful in understanding how cells adapt to disease, genetic modifications or to external stimuli. These technologies include microarrays (GeneChips), RNA-sequencing (RNASeq) and protein mass-spectrometry (proteomics). While the measurement methods differ and on their own can be complex, the analysis of this data is also challenging and often requires different perspectives and analytical methods (e.g., bioinformatics). 
+The software described on this website is used to understand how changes in the concentration of different RNAs lead to meaningful differences in cells that effect their function and identity. Since the amount of RNA is an indicator of both the activity of genes and the amount of protein produced, technologies that measure RNA levels can be useful in understanding how cells adapt to disease, genetic modifications or to external stimuli. These technologies include microarrays ([CompatibleArrays GeneChips]), RNA-sequencing (RNASeq) and protein mass-spectrometry (proteomics). While the measurement methods differ and on their own can be complex, the analysis of this data is also challenging and often requires different perspectives and analytical methods (e.g., bioinformatics). 
 
 Below we provide additional details on these methods:
 
