@@ -19,7 +19,7 @@ In general, implemented methods include:
 ===[ScoringMethod Alternative Exon Analyses]===
 
  * Reciprocal-junction analyses (ASPIRE, Linear regression)
- * [ScoringMethod Alternative exon] (splicing-index, FIRMA, MiDAS, adjusted f-tests)
+ * Alternative exon (splicing-index, FIRMA, MiDAS, adjusted f-tests)
 
 ===[http://genmapp.org/go_elite/help.htm#s4 Over-representation]===
 
