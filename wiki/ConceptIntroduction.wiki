@@ -8,17 +8,17 @@ The software described on this website is used to understand how changes in the 
 
 Below we provide additional details on these methods:
 
-Gene Activity Measurement Technologies
-Proteomics
-Microarrays
-RNA-Sequencing
+===[http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Gene_Activity_Measurement_Technologies Gene Activity Measurement Technologies]===
+ * [http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Proteomics Proteomics]
+ * [http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Microarrays Microarrays]
+ * [http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#RNA-Sequencing RNA-Sequencing]
 
-Distinct Forms of Gene Regulation
-Transcriptional Regulation
-Alternative Splicing
+===[http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Distinct_Forms_of_Gene_Regulation Distinct Forms of Gene Regulation]===
+ * [http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Transcriptional_Regulation Transcriptional Regulation]
+ * [http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Alternative_Splicing Alternative Splicing]
 
-Bioinformatics
-Analyzing Transcriptome Profiling Data
+===[http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Bioinformatics Bioinformatics]===
+ * [http://code.google.com/p/altanalyze/wiki/ConceptIntroduction#Analyzing_Transcriptome_Profiling_Data Analyzing Transcriptome Profiling Data]
 
 = Gene Activity Measurement Technologies =
 
