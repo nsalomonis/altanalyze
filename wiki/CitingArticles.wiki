@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://jem.rupress.org/content/early/2012/12/24/jem.20121044.abstract Poly(ADP-ribose) polymerase 1 regulates nuclear reprogramming and promotes iPSC generation without c-Myc]. Chiou SH, Jiang BH, Yu YL, Chou SJ, Tsai PH, Chang WC, Chen LK, Chen LH, Chien Y, Chiou GY. J Exp Med. 2012 Dec 31.
+
 [http://m.jbc.org/content/early/2012/12/06/jbc.M112.423871 Antagonistic function of the RNA-binding protein HuR and miR-200b in post-transcriptional regulation of VEGF-A expression and angiogenesis]. Chang S, Lu Y, Li1 X, Hsieh WY, Xiong Y, Ghosh M, Evans T, Elemento O, Hla T. December 6, 2012, doi: 10.1074/jbc.M112.423871 jbc.M112.423871.
 
 [http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0049978 Contextualization Procedure and Modeling of Monocyte Specific TLR Signaling]. MK Aurich, I Thiele . PLoS ONE 7(12): e49978. doi:10.1371/journal.pone.0049978
