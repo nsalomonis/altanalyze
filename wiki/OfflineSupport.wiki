@@ -6,7 +6,6 @@ When starting AltAnalyze 2.0 and greater, it will require the download of multip
 
 On a machine with support for downloading files through http, download the following files. This example assumes the user is working with human or Hs data.
 
-
 === Base Download Files ===
 
 *Primary Gene Database*
@@ -41,6 +40,12 @@ http://altanalyze.org/archiveDBs/AltDatabase/updated/EnsMart65/Hs_junction_Glue.
 
 [http://altanalyze.org/archiveDBs/AltDatabase/updated/EnsMart65/Hs_RNASeq.zip]
 
+=== Microarray Library Files ===
+
+Affymetrix arrays require library files to be downloaded. These can be obtained from the manufacturer or obtained from the below directory:
+[http://www.altanalyze.org/archiveDBs/LibraryFiles/]
+
+Download ALL of the files for your array to AltAnalyze/AltDatabase/affymetrix/LibraryFiles and extract.
 
 === Other dependencies ===
 
