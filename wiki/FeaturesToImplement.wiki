@@ -10,7 +10,7 @@
  * *Paired-end support* - Pre-compute and add junction counts based on paired ends that flank junctions (assuming they flank a junction within a known range given the mate-pair distance and no known conflicts). This would be done at the BAMtoBED-level.
  * *Transcript-Level analysis* - Integrate predictions from other applications (Cufflinks, NSMAP, etc.) and develop a unique approach for AltInteract that uses unique exons to determine likely isoforms that are expressed or not in a given sample or differentially expressed.
  * *Motif over-representation * - Include ESE/ESS/ISE/ISS prediction enrichment methods.
- * *Code re-design, more efficient database access (MySQL, Derby, other), python 3+ compatibility.
+ * *Code re-design * - more efficient methods throughout (using external libraries optionally to improve performance), more efficient database access (MySQL, Derby, other), python 3+ compatibility.
  * *Robust cross-platform network visualization.
 
 === Database Builds ===
