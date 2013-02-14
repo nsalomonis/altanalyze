@@ -10,7 +10,7 @@ The compiled versions of AltAnalyze (Windows, Mac OSX and Ubuntu) should run imm
  # Faster Fisher Exact Test: Scipy
  # Visualization output files: Matplotlib, Numpy, Scipy
  # PNG viewing in the GUI: Python Imaging Library
- # Statistical libraries for Combat: Patsy and Panda
+ # Statistical libraries for Combat: Patsy and Pandas
 
 These libraries can be installed from source code or from installers provided by the open-source project websites.
 
@@ -41,7 +41,7 @@ Python and Tkinter are all that are needed for AltAnalyze to run, but other depe
  # *Install scipy*: {{{sudo easy_install scipy}}}
  # *Install Imagetk*: {{{easy_install --find-links http://www.pythonware.com/products/pil/ Imaging}}}
  # *Install patsy*: {{{sudo easy_install patsy}}}
- # *Install panda*: {{{sudo easy_install panda}}}
+ # *Install pandas*: {{{sudo easy_install pandas}}}
 
 === Instructions for Ubuntu ===
 
