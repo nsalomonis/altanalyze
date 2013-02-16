@@ -11,6 +11,7 @@ The compiled versions of AltAnalyze (Windows, Mac OSX and Ubuntu) should run imm
  # Visualization output files: Matplotlib, Numpy, Scipy
  # PNG viewing in the GUI: Python Imaging Library
  # Statistical libraries for Combat: Patsy and Pandas
+ # Network visualization in igraph: igraph and cairo
 
 These libraries can be installed from source code or from installers provided by the open-source project websites.
 
@@ -42,6 +43,9 @@ Python and Tkinter are all that are needed for AltAnalyze to run, but other depe
  # *Install Imagetk*: {{{easy_install --find-links http://www.pythonware.com/products/pil/ Imaging}}}
  # *Install patsy*: {{{sudo easy_install patsy}}}
  # *Install pandas*: {{{sudo easy_install pandas}}}
+ # *Install fastcluster*: recommend install from source
+ # *Install igraph*: recommend installer
+ # *Install cairo*: recommend install from source (see INSTALL file)
 
 === Instructions for Ubuntu ===
 
