@@ -49,7 +49,7 @@ note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uc
 <ol>
  <li> Depends on numpy (already installed) </li>
  <li> easy_install matplotlib… encountered several errors, but installed. As an alternative can install from: http://matplotlib.sourceforge.net (installs numpy) </li>
- <li> Tried - http://www.thetechrepo.com/main-articles/465-how-to-create-a-graph-in-python - worked great!
+ <li> Tried - http://www.thetechrepo.com/main-articles/465-how-to-create-a-graph-in-python - worked great! </li>
  <li> Tried the animation examples on the website and encountered a common error: </li>
 <ul>
  <li> File "/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/matplotlib-1.1.0-py2.7-macosx-10.6-intel.egg/matplotlib/animation.py", line 248, in _blit_clear </li>
