@@ -22,6 +22,7 @@
  * Evaluate [http://en.m.wikipedia.org/wiki/Independent_component_analysis#section_2 ICA] for LineageProfiler
  * Combat in python (depends on other packages): https://github.com/brentp/combat.py/blob/master/combat.py
 note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
+ * Databases for probe-level splicing anlayses: http://affymetrix2.bioinf.fbb.msu.ru/files.html
 
 = Visualization Software Installation Notes =
 
@@ -63,3 +64,4 @@ note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uc
  <li> Depends on Cairo for non-SVG based visualization (PNG, PDF) </li>
  <li> amd64bit installer from: http://www.lfd.uci.edu/~gohlke/pythonlibs/ </li>
  <li> cairo dependencies from http://ftp.gnome.org/pub/gnome/binaries/win64/dependencies/ as described here: http://www.cs.rhul.ac.uk/home/tamas/development/igraph/tutorial/install.html#installing-igraph </li>
+</ol>
