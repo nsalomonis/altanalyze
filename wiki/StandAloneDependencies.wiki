@@ -46,6 +46,7 @@ Python and Tkinter are all that are needed for AltAnalyze to run, but other depe
  # *Install fastcluster*: recommend install from source
  # *Install igraph*: recommend installer
  # *Install cairo*: recommend install from source (see INSTALL file)
+ # *Install ordereddict (Python 2.6 or below) :* easy_install ordereddict
 
 === Instructions for Ubuntu ===
 
