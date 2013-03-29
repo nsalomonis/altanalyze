@@ -83,3 +83,4 @@ If you wish to create your own compiled version of AltAnalyze for distribution t
  # See the setup.py script for run instructions on different operating systems.
  # The suds package folder must exist in the Python site-packages folder (not just the egg - zip must be extracted).
  # Issues with matplotlib external dependencies may occur (see existing setup.py files for details).
+ # Issues with conflicting dependencies may occur on some OSs resulting in strange errors during binary creations. These include: the python library six may need to be called as site-packages/six/six.py rather than the egg file. 
