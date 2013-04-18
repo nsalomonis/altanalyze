@@ -7,4 +7,5 @@ Rn	Rattus norvegicus
 Gg	Gallus gallus	
 Dr	Danio rerio	
 Dm	Drosophila melanogaster	
+Zm	Zea mays	
 Sc	Saccharomyces cerevisiae	

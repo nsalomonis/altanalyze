@@ -1,9 +1,11 @@
+#!/usr/local/bin/python2.6
+
 import sys
 import suds
 
 _script = 'AltAnalyze.py'
 _appName = "AltAnalyze"
-_appVersion = '1.2.4'
+_appVersion = '2.0.8'
 _appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to take RNASeq or "
 _appDescription +="relatively raw microarray data (CEL files or normalized), identify predicted alternative splicing or alternative "
 _appDescription +="promoter changes and view how these changes may affect protein sequence, domain composition, and microRNA targeting."
@@ -23,18 +25,38 @@ scipy_exclude = [] #['libiomp5md.dll','libifcoremd.dll','libmmd.dll']
 
 """ xml.sax.drivers2.drv_pyexpat is an XML parser needed by suds that py2app fails to include. Identified by looking at the line: parser_list+self.parsers in
 /Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/PyXML-0.8.4-py2.7-macosx-10.6-intel.egg/_xmlplus/sax/saxexts.py
-check the py2app print out to see where this file is in the future """
+check the py2app print out to see where this file is in the future
+
+(reported issue - may or may not apply) For mac and igraph, core.so must be copied to a new location for py2app:
+sudo mkdir /System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/lib-dynload/igraph/
+cp /Library/Python/2.6/site-packages/igraph/core.so /System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/lib-dynload/igraph/
+
+"""
 
 if sys.platform.startswith("darwin"):
+        ### Local version: /usr/local/bin/python2.6
         ### example command: python setup.py py2app
-        includes+= ["xml.sax.drivers2.drv_pyexpat"]
         from distutils.core import setup
         import py2app
+        includes+= ["xml.sax.drivers2.drv_pyexpat","pkg_resources","distutils"]
+        """
+        resources = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
+        frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
+        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/Extras/lib/python/pkg_resources.py']
+        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/distutils/util.py']
+        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/distutils/sysconfig.py']
+        import pkg_resources
+        import distutils
+        import distutils.sysconfig
+        import distutils.util
+        """
         options = {"py2app":
                     {"excludes": excludes,
                      "includes": includes,
+                     #"frameworks": frameworks,
+                     #"resources": resources,
                      #argv_emulation = True,
-                    "iconfile": "altanalyze.icns"}
+                     "iconfile": "altanalyze.icns"}
         }
         setup(name=_appName,
                         app=[_script],
@@ -57,7 +79,8 @@ if sys.platform.startswith("win"):
         import matplotlib
         import unique
         import sys
-            
+        import six ### relates to a date-time dependency in matplotlib
+
         #sys.path.append(unique.filepath("Config\DLLs")) ### This is added, but DLLs still require addition to DLL python dir
         from distutils.filelist import findall
         import os

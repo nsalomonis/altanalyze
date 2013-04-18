@@ -48,12 +48,53 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,ensembl_version,force):
-    import UI; import update; global external_xref_key_db; global species; species = Species
-    global system_synonym_db; system_synonym_db={} ### Currently only used by GO-Elite
-    global rewrite_existing; rewrite_existing = 'yes'; global all_external_ids; all_external_ids={}; global added_systems; added_systems={}
+def getChrGeneOnly(Species,configType,ensembl_version,force):
+    global species; species = Species
+    global rewrite_existing; rewrite_existing = 'yes'
     print 'Downloading Ensembl flat files for parsing from Ensembl SQL FTP server...'
-    ### Get version directories for Ensembl
+    
+    global ensembl_build
+    ensembl_sql_dir, ensembl_sql_description_dir = getEnsemblSQLDir(ensembl_version)
+    print ensembl_sql_dir
+    ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
+    sql_file_db,sql_group_db = importEnsemblSQLInfo(configType) ###Import the Config file with the files and fields to parse from the downloaded SQL files
+
+    filtered_sql_group_db={} ### Get only these tables
+    filtered_sql_group_db['Primary'] = ['gene.txt','gene_stable_id.txt','seq_region.txt']
+        
+    filtered_sql_group_db['Description'] = [ensembl_sql_description_dir]
+    sq = EnsemblSQLInfo(ensembl_sql_description_dir, 'EnsemblSQLDescriptions', 'Description', '', '', '')
+    sql_file_db['Primary',ensembl_sql_description_dir] = sq        
+    output_dir = 'AltDatabase/ensembl/'+species+'/EnsemblSQL/'
+    importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,filtered_sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
+    
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze':
+        parent_dir = 'AltDatabase/goelite/'
+    else:
+        parent_dir = 'Databases/'
+    output_dir = parent_dir+species+'/uid-gene/Ensembl-chr.txt'
+            
+    headers = ['Ensembl Gene ID', 'Chromosome']
+    values_list=[]
+    for geneid in gene_db:
+        gi = gene_db[geneid]
+        try: ens_gene = gene_db[geneid].StableId()
+        except Exception: ens_gene = gene_stable_id_db[geneid].StableId() 
+        seq_region_id = gi.SeqRegionId()
+        chr = seq_region_db[seq_region_id].Name()
+        values = [ens_gene,chr]
+        values_list.append(values)
+    exportEnsemblTable(values_list,headers,output_dir)
+    
+def getEnsemblSQLDir(ensembl_version):
+    if 'Plus' in ensembl_version:
+        ensembl_version = string.replace(ensembl_version,'Plus','')
+    if 'EnsMart' in ensembl_version:
+        ensembl_version = string.replace(ensembl_version, 'EnsMart','')
+    original_version = ensembl_version
+    if 'Plant' in ensembl_version:
+        ensembl_version = string.replace(ensembl_version, 'Plant','')
     try:
         check = int(ensembl_version)    
         import UI; UI.exportDBversion('EnsMart'+ensembl_version)
@@ -63,14 +104,27 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
     import UI; species_names = UI.getSpeciesInfo()
     species_full = species_names[species]
     ens_species = string.replace(string.lower(species_full),' ','_')
-        
-    try: child_dirs, ensembl_species, ensembl_versions = getCurrentEnsemblSpecies(ensembl_version)
-    except Exception: print "\nPlease try a different version. This one does not appear to be valid."; sys.exit()
+    
+    try: child_dirs, ensembl_species, ensembl_versions = getCurrentEnsemblSpecies(original_version)
+    except Exception,e:
+        print "\nPlease try a different version. This one does not appear to be valid."
+        print "error:",e;sys.exit()
     ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
+    
+    return ensembl_sql_dir, ensembl_sql_description_dir
+
+def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,ensembl_version,force):
+    import UI; import update; global external_xref_key_db; global species; species = Species
+    global system_synonym_db; system_synonym_db={} ### Currently only used by GO-Elite
+    global rewrite_existing; rewrite_existing = 'yes'; global all_external_ids; all_external_ids={}; global added_systems; added_systems={}
+    print 'Downloading Ensembl flat files for parsing from Ensembl SQL FTP server...'
+    ### Get version directories for Ensembl
+
     global ensembl_build
+    ensembl_sql_dir, ensembl_sql_description_dir = getEnsemblSQLDir(ensembl_version)
     ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
-               
-    sql_file_db,sql_group_db = importEnsemblSQLInfo(configType) ###Import the Config file with the files and fields to parse from the donwloaded SQL files
+    
+    sql_file_db,sql_group_db = importEnsemblSQLInfo(configType) ###Import the Config file with the files and fields to parse from the downloaded SQL files
     sql_group_db['Description'] = [ensembl_sql_description_dir]
     sq = EnsemblSQLInfo(ensembl_sql_description_dir, 'EnsemblSQLDescriptions', 'Description', '', '', '')
     sql_file_db['Primary',ensembl_sql_description_dir] = sq
@@ -104,26 +158,12 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
         xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Xref',force)
         getDomainGenomicCoordinates(species,xref_db)
 
-        ### Download Seqeunce data
-        dirtype = 'fasta/'+ens_species+'/pep'
-        ensembl_protseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
-        dirtype = 'fasta/'+ens_species+'/cdna'
-        ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
-
-        if force == 'yes':            
-            output_dir = 'AltDatabase/ensembl/'+species + '/'
-            gz_filepath, status = update.download(ensembl_protseq_dir,output_dir,'')
-            if status == 'not-removed':
-                try: os.remove(gz_filepath) ### Not sure why this works now and not before
-                except OSError: status = status
-
-            output_dir = 'AltDatabase/'+species + '/SequenceData/'
-            gz_filepath, status = update.download(ensembl_cdnaseq_dir,output_dir,'')
-            if status == 'not-removed':
-                try: os.remove(gz_filepath) ### Not sure why this works now and not before
-                except OSError: status = status                
-    
-def getFullGeneSequences(ensembl_version,species):
+        if force == 'yes':
+            ### Download Transcript seqeunces
+            getEnsemblTranscriptSequences(original_version,species)
+     
+def getEnsemblTranscriptSequences(ensembl_version,species):
+    ### Download Seqeunce data
     import UI; species_names = UI.getSpeciesInfo()
     species_full = species_names[species]
     ens_species = string.replace(string.lower(species_full),' ','_')
@@ -131,8 +171,44 @@ def getFullGeneSequences(ensembl_version,species):
     if 'release-' not in ensembl_version:
         ensembl_version = 'release-'+ensembl_version
         
+    dirtype = 'fasta/'+ens_species+'/pep'
+    if 'Plant' in ensembl_version:
+        ensembl_protseq_dir = getCurrentEnsemblPlantSequences(ensembl_version,dirtype,ens_species)
+    else:
+        ensembl_protseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
+    dirtype = 'fasta/'+ens_species+'/cdna'
+    if 'Plant' in ensembl_version:
+        ensembl_cdnaseq_dir = getCurrentEnsemblPlantSequences(ensembl_version,dirtype,ens_species)
+    else:
+        ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
+        
+    output_dir = 'AltDatabase/ensembl/'+species + '/'
+    gz_filepath, status = update.download(ensembl_protseq_dir,output_dir,'')
+    if status == 'not-removed':
+        try: os.remove(gz_filepath) ### Not sure why this works now and not before
+        except OSError: status = status
+
+    output_dir = 'AltDatabase/'+species + '/SequenceData/'
+    gz_filepath, status = update.download(ensembl_cdnaseq_dir,output_dir,'')
+    if status == 'not-removed':
+        try: os.remove(gz_filepath) ### Not sure why this works now and not before
+        except OSError: status = status
+                
+def getFullGeneSequences(ensembl_version,species):
+    import UI; species_names = UI.getSpeciesInfo()
+    species_full = species_names[species]
+    ens_species = string.replace(string.lower(species_full),' ','_')
+
+    if 'EnsMart' in ensembl_version:
+        ensembl_version = string.replace(ensembl_version, 'EnsMart','')
+    if 'release-' not in ensembl_version:
+        ensembl_version = 'release-'+ensembl_version
+        
     dirtype = 'fasta/'+ens_species+'/dna'
-    ensembl_dnaseq_dirs = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
+    if 'Plant' in ensembl_version:
+        ensembl_dnaseq_dirs = getCurrentEnsemblPlantSequences(ensembl_version,dirtype,ens_species)
+    else:
+        ensembl_dnaseq_dirs = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
 
     output_dir = 'AltDatabase/'+species + '/SequenceData/chr/'
     global dna
@@ -377,6 +453,8 @@ def getDomainGenomicCoordinates(species,xref_db):
     ### This code was adapted from the following paragraph to get InterPro locations (this is simpiler)
     output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_ProteinCoordinates_build'+ensembl_build+'.tab'
     headers = ['protienID', 'exonID', 'AA_NT_Start', 'AA_NT_Stop', 'Genomic_Start', 'Genomic_Stop']; values_list=[]
+    cds_output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_EnsemblTranscriptCDSPositions.tab'
+    cds_headers = ['transcriptID', 'CDS_Start', 'CDS_Stop']; cds_values_list=[]
     protein_coding_exon_db={}; protein_length_db={}
     ### Get the bp position (relative to the exon not genomic) for each transcript, where protein translation begins and ends. Store with the exon data.
     for protein_id in translation_db:
@@ -386,8 +464,10 @@ def getDomainGenomicCoordinates(species,xref_db):
         ### Get info for exporting exon protein coordinate data
         try: ens_protein = translation_db[protein_id].StableId()
         except Exception: ens_protein = translation_stable_id_db[protein_id].StableId()
+        try: ens_transcript = transcript_db[transcript_id].StableId()
+        except Exception: ens_transcript = transcript_stable_id_db[transcript_id].StableId()
         #if ens_protein == 'ENSDARP00000087122':
-        cummulative_coding_length = 0
+        cumulative_exon_length = 0
         tis = transcript_db[transcript_id]; geneid = tis.GeneId(); gi = gene_db[geneid]; strand = gi.SeqRegionStrand() #Get strand
         if strand == '-1': start_correction = -3; end_correction = 2
         else: start_correction = 0; end_correction = 0
@@ -396,11 +476,11 @@ def getDomainGenomicCoordinates(species,xref_db):
         for (rank,eti) in eti_list:
             exonid = eti.ExonId()
             try: ens_exon = exon_db[exonid].StableId()
-            except Exception: ens_exon = exon_stable_id_db[exonid].StableId()  
+            except Exception: ens_exon = exon_stable_id_db[exonid].StableId()
+            ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
+            exon_length = abs(genomic_exon_end-genomic_exon_start)+1
             #print exonid,start_exon_id,end_exon_id
             if exonid == start_exon_id: ### Thus we are in the start exon for this transcript
-                ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
-                exon_length = abs(genomic_exon_end-genomic_exon_start)+1
                 coding_bp_in_exon = exon_length - seq_start; eti.setCodingBpInExon(coding_bp_in_exon) ### -1 since coding can't start at 0, but rather 1 at a minimum
                 #print 'start',genomic_exon_start,genomic_exon_end,exon_length,seq_start;kill
                 coding_exons.append(eti); ce+=1; translation_pos2=coding_bp_in_exon+1
@@ -412,9 +492,8 @@ def getDomainGenomicCoordinates(species,xref_db):
                     genomic_exon_end = ei.SeqRegionEnd()
                 #print 'trans1:',float(translation_pos1)/3, float(translation_pos2)/3
                 values_list.append([ens_protein,ens_exon,1,aaselect(translation_pos2),genomic_translation_start,genomic_exon_end])
+                cds_start = seq_start+cumulative_exon_length ### start position in this exon plus last exon cumulative length
             elif exonid == end_exon_id: ### Thus we are in the end exon for this transcript        
-                ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
-                exon_length = abs(genomic_exon_end-genomic_exon_start)+1
                 coding_bp_in_exon = seq_end; eti.setCodingBpInExon(coding_bp_in_exon)
                 coding_exons.append(eti); ce = 0
                 translation_pos1=translation_pos2+1
@@ -427,12 +506,10 @@ def getDomainGenomicCoordinates(species,xref_db):
                     genomic_exon_end = ei.SeqRegionStart()+coding_bp_in_exon
                 #print 'trans1:',float(translation_pos1)/3, float(translation_pos2)/3
                 values_list.append([ens_protein,ens_exon,aaselect(translation_pos1),aaselect(translation_pos2),genomic_translation_start,genomic_exon_end])
+                cds_end = seq_end+cumulative_exon_length ### start position in this exon plus last exon cumulative length
+                cds_values_list.append([ens_transcript,cds_start,cds_end])
                 #ens_exon = exon_stable_id_db[exonid].StableId()  
-                #if ens_exon == 'ENSE00001484483':
-                    #print 'stop',genomic_exon_start,genomic_exon_end,exon_length,seq_start,coding_bp_in_exon,seq_end;kill
             elif ce != 0: ###If we are in coding exons
-                ei = exon_db[exonid]; genomic_exon_start = ei.SeqRegionStart(); genomic_exon_end = ei.SeqRegionEnd()
-                exon_length = abs(genomic_exon_end-genomic_exon_start)+1
                 eti.setCodingBpInExon(exon_length)
                 coding_exons.append(eti)
                 translation_pos1=translation_pos2+1 ### 1 nucleotide difference from the last exon position
@@ -445,6 +522,7 @@ def getDomainGenomicCoordinates(species,xref_db):
                     genomic_exon_end = ei.SeqRegionEnd()
                 #print 'trans1:',float(translation_pos1)/3,float(translation_pos2)/3
                 values_list.append([ens_protein,ens_exon,aaselect(translation_pos1),aaselect(translation_pos2),genomic_translation_start,genomic_exon_end])
+            cumulative_exon_length += exon_length
             #ti = transcript_db[transcript_id]; geneid = ti.GeneId(); ens_gene = gene_stable_id_db[geneid].StableId()
             #ens_exon = exon_stable_id_db[exonid].StableId()
             #if ens_gene == 'ENSG00000106785':
@@ -454,11 +532,14 @@ def getDomainGenomicCoordinates(species,xref_db):
         protein_coding_exon_db[protein_id] = coding_exons
     print 'Exporting protein-to-exon genomic position translations',len(values_list)
     exportEnsemblTable(values_list,headers,output_dir)
-
+    exportEnsemblTable(cds_values_list,cds_headers,cds_output_dir)
+    #sys.exit()
+    
     ### Using the exon coding positions, determine InterPro coding genomic locations
     output_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_ProteinFeatures_build'+ensembl_build+'.tab'
     headers = ['ID', 'AA_Start', 'AA_Stop', 'Start', 'Stop', 'Name', 'Interpro', 'Description']
     interprot_match=0; values_list=[]
+    #print len(protein_feature_db),len(translation_db),len(interpro_db),len(interpro_annotation_db);sys.exit()
     for protein_feature_id in protein_feature_db:
         pfi = protein_feature_db[protein_feature_id]; protein_id = pfi.TranslationId(); evalue = pfi.Evalue()
         try: ens_protein = translation_db[protein_id].StableId()
@@ -466,7 +547,7 @@ def getDomainGenomicCoordinates(species,xref_db):
         seq_start = pfi.SeqStart(); seq_end = pfi.SeqEnd(); hit_id = pfi.HitId() ### hit_id is the domain accession which maps to 'id' in interpro
         seq_start = seq_start*3-2; seq_end = seq_end*3 ###convert to transcript basepair positions
         coding_exons = protein_coding_exon_db[protein_id]
-        cummulative_coding_length = 0; last_exon_cummulative_coding_length = 1
+        cumulative_coding_length = 0; last_exon_cumulative_coding_length = 1
         ti = translation_db[protein_id]; transcript_id = ti.TranscriptId() ### Get transcript ID, to look up strand
         ti = transcript_db[transcript_id]; geneid = ti.GeneId(); gi = gene_db[geneid]; strand = gi.SeqRegionStrand() #Get strand
         if strand == '-1': start_correction = -3; end_correction = 2
@@ -478,26 +559,26 @@ def getDomainGenomicCoordinates(species,xref_db):
                 #print interpro_name,ens_protein,seq_start,seq_end
                 genomic_domain_start = 0; genomic_domain_end = 0; domain_in_first_exon = 'no'; non_coding_seq_len = 0
                 for eti in coding_exons:
-                    coding_bp_in_exon = eti.CodingBpInExon(); cummulative_coding_length += coding_bp_in_exon
-                    if seq_start <= cummulative_coding_length and seq_start >= last_exon_cummulative_coding_length: ### Thus, domain starts in this exon
+                    coding_bp_in_exon = eti.CodingBpInExon(); cumulative_coding_length += coding_bp_in_exon
+                    if seq_start <= cumulative_coding_length and seq_start >= last_exon_cumulative_coding_length: ### Thus, domain starts in this exon
                         exonid = eti.ExonId(); ei = exon_db[exonid]
                         if abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) != coding_bp_in_exon:
                             ### Can occur in the first exon
                             domain_in_first_exon = 'yes'
                             non_coding_seq_len = abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) - coding_bp_in_exon
-                            genomic_bp_exon_offset = seq_start - last_exon_cummulative_coding_length + non_coding_seq_len
-                        else: genomic_bp_exon_offset = seq_start - last_exon_cummulative_coding_length
+                            genomic_bp_exon_offset = seq_start - last_exon_cumulative_coding_length + non_coding_seq_len
+                        else: genomic_bp_exon_offset = seq_start - last_exon_cumulative_coding_length
                         if strand == -1:
                             genomic_exon_start = ei.SeqRegionEnd() ### This needs to be reversed if reverse strand
                             genomic_domain_start = genomic_exon_start-genomic_bp_exon_offset+start_correction ### This is what we want! (minus 3 so that we start at the first bp of that codon, not the first of the next (don't count the starting coding as 3bp)
                         else:
                             genomic_exon_start = ei.SeqRegionStart()                        
                             genomic_domain_start = genomic_bp_exon_offset+genomic_exon_start+start_correction ### This is what we want! (minus 3 so that we start at the first bp of that codon, not the first of the next (don't count the starting coding as 3bp)
-                        #print genomic_exon_start,last_exon_cummulative_coding_length,genomic_domain_start,genomic_bp_exon_offset;kill
+                        #print genomic_exon_start,last_exon_cumulative_coding_length,genomic_domain_start,genomic_bp_exon_offset;kill
                         #pfi.setGenomicStart(genomic_domain_start)
-                    if seq_end <= cummulative_coding_length and seq_end >= last_exon_cummulative_coding_length: ### Thus, domain ends in this exon
+                    if seq_end <= cumulative_coding_length and seq_end >= last_exon_cumulative_coding_length: ### Thus, domain ends in this exon
                         exonid = eti.ExonId(); ei = exon_db[exonid]
-                        genomic_bp_exon_offset = seq_end - last_exon_cummulative_coding_length
+                        genomic_bp_exon_offset = seq_end - last_exon_cumulative_coding_length
                         if (abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) != coding_bp_in_exon) and domain_in_first_exon == 'yes': genomic_bp_exon_offset += non_coding_seq_len ### If the domain starts/ends in the first exon
                         if strand == -1:
                             genomic_exon_start = ei.SeqRegionEnd() ### This needs to be reversed if reverse strand      
@@ -508,21 +589,21 @@ def getDomainGenomicCoordinates(species,xref_db):
                         #pfi.setGenomicEnd(genomic_domain_end)
                     #"""
                     #ens_exon = exon_stable_id_db[eti.ExonId()].StableId()  
-                    #if cummulative_coding_length == seq_end and strand == -1 and seq_start == 1 and domain_in_first_exon == 'yes':
+                    #if cumulative_coding_length == seq_end and strand == -1 and seq_start == 1 and domain_in_first_exon == 'yes':
                         #print interpro_name,protein_id,eti.ExonId(),ens_protein,ens_exon,seq_end,genomic_domain_start,genomic_domain_end;kill
                     
                     #if ens_protein == 'ENSP00000369645':
                         #ei = exon_db[eti.ExonId()]
                         #print 'exon',ens_exon,eti.ExonId(),ei.SeqRegionStart(), ei.SeqRegionEnd()#"""
-                        #print interpro_name,seq_end, cummulative_coding_length,last_exon_cummulative_coding_length, genomic_domain_start, genomic_domain_end, ei.SeqRegionStart(), ei.SeqRegionEnd()
-                    last_exon_cummulative_coding_length = cummulative_coding_length + 1
+                        #print interpro_name,seq_end, cumulative_coding_length,last_exon_cumulative_coding_length, genomic_domain_start, genomic_domain_end, ei.SeqRegionStart(), ei.SeqRegionEnd()
+                    last_exon_cumulative_coding_length = cumulative_coding_length + 1
                 if genomic_domain_start !=0 and genomic_domain_end !=0:
                     values = [ens_protein,(seq_start/3)+1,seq_end/3,genomic_domain_start,genomic_domain_end,hit_id,interpro_ac,interpro_name]
                     values_list.append(values)
                 
     print 'interprot_matches:',interprot_match
     exportEnsemblTable(values_list,headers,output_dir)
-    
+
 def buildFilterDBForExternalDB(externalDBName):
     ### Generic function for pulling out any specific type of Xref without storing the whole database in memory
     global external_filter_db
@@ -1051,72 +1132,80 @@ def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
     for line in open(fn,'rU').xreadlines():         
         data = cleanUpLine(line); data = string.split(data,'\t')
         ese = EnsemblSQLEntryData(); skip = 'no'; entries+=1
-        for index in index_db:
-            header_name,value_type = index_db[index]
-            try: value = data[index]
-            except Exception:
-                if 'array.' in filename: skip = 'yes'; value = ''
-            try:
-                if value_type == 'integer': value = int(value) # Integers will take up less space in memory
-            except ValueError:
-                if value == '\\N': value = value
-                elif 'array.' in filename: skip = 'yes' ### There can be formatting issues with this file when read in python
-                else: skip = 'yes'; value = '' #print filename,[header_name], index,value_type,[value];kill
-            ###Although we are setting each index to value, the distinct headers will instruct
-            ###EnsemblSQLEntryData to assign the value to a distinct object
-            if header_name != key_name:
-                ese.setSQLValue(header_name,value)
-            else:
-                key = value
-        ### Filtering primarily used for all Xref, since this database is very large
-        #if filename == 'xref.txt':print len(key_name), key_filter,external_filter, external_xref_key_filter;kill
-        if skip == 'yes': null = []
-        elif 'probe.' in filename:
-            ### For all array types (Affy & Other) - used to select specific array types - also stores non-Affy probe-data
-            ### Each array has a specific ID - determine if this ID is the one we set in external_filter_db
-            if ese.ArrayChipID() in external_filter_db:
-                vendor = external_filter_db[ese.ArrayChipID()][0]
-                if vendor == 'AFFY' and analysisType != 'ProbeLevel':
-                    key_value_db[ese.ProbeSetID()] = [] ### key is the probe_id - used for Affy probe ID location analysis
+        if len(line)>3: ### In the most recent version (plant-16) encountered lines with just a single /
+            for index in index_db:
+                header_name,value_type = index_db[index]
+                try: value = data[index]
+                except Exception:
+                    if 'array.' in filename: skip = 'yes'; value = ''
+                    """
+                    ### This will often occur due to prior lines having a premature end of line (bad formatting in source data) creating a bad line (just skip it)
+                    else:
+                        ### Likely occurs when Ensembl adds new line types to their SQL file (bastards)
+                        print index_db,data, index, len(data),header_name,value_type
+                        kill"""
+                        
+                try:
+                    if value_type == 'integer': value = int(value) # Integers will take up less space in memory
+                except ValueError:
+                    if value == '\\N': value = value
+                    elif 'array.' in filename: skip = 'yes' ### There can be formatting issues with this file when read in python
+                    else: skip = 'yes'; value = '' #print filename,[header_name], index,value_type,[value];kill
+                ###Although we are setting each index to value, the distinct headers will instruct
+                ###EnsemblSQLEntryData to assign the value to a distinct object
+                if header_name != key_name:
+                    ese.setSQLValue(header_name,value)
                 else:
-                    try: key_value_db[key].append(ese) ### probe_set.txt only appears to contain AFFY IDs, the remainder are saved in probe.txt under probe_id
-                    except KeyError: key_value_db[key] = [ese]
-        elif 'probe_set.' in filename:
-            if analysisType == 'ProbeLevel':
-                if key in probe_set_db: key_value_db[key] = ese
-            else:
-                if key in probe_db: key_value_db[key] = [ese]
-        elif 'probe_feature.' in filename:
-            if key in probe_db: key_value_db[key] = ese
-        elif len(key_name)<1: key_value_db.append(ese)
-        elif key_filter == 'no' and external_filter == 'no': key_value_db[key] = ese
-        elif external_xref_key_filter == 'yes':
-            if key in external_xref_key_db:
-                try: key_value_db[key].append(ese)
-                except KeyError: key_value_db[key] = [ese]
-        elif 'object_xref' in filename:
-          try:
-            if key in probe_set_db:
-                if (manufacturer == 'AFFY' and ese.EnsemblObjectType() == 'ProbeSet') or (manufacturer != 'AFFY' and ese.EnsemblObjectType() == 'Probe'):
+                    key = value
+            ### Filtering primarily used for all Xref, since this database is very large
+            #if filename == 'xref.txt':print len(key_name), key_filter,external_filter, external_xref_key_filter;kill
+            if skip == 'yes': null = []
+            elif 'probe.' in filename:
+                ### For all array types (Affy & Other) - used to select specific array types - also stores non-Affy probe-data
+                ### Each array has a specific ID - determine if this ID is the one we set in external_filter_db
+                if ese.ArrayChipID() in external_filter_db:
+                    vendor = external_filter_db[ese.ArrayChipID()][0]
+                    if vendor == 'AFFY' and analysisType != 'ProbeLevel':
+                        key_value_db[ese.ProbeSetID()] = [] ### key is the probe_id - used for Affy probe ID location analysis
+                    else:
+                        try: key_value_db[key].append(ese) ### probe_set.txt only appears to contain AFFY IDs, the remainder are saved in probe.txt under probe_id
+                        except KeyError: key_value_db[key] = [ese]
+            elif 'probe_set.' in filename:
+                if analysisType == 'ProbeLevel':
+                    if key in probe_set_db: key_value_db[key] = ese
+                else:
+                    if key in probe_db: key_value_db[key] = [ese]
+            elif 'probe_feature.' in filename:
+                if key in probe_db: key_value_db[key] = ese
+            elif len(key_name)<1: key_value_db.append(ese)
+            elif key_filter == 'no' and external_filter == 'no': key_value_db[key] = ese
+            elif external_xref_key_filter == 'yes':
+                if key in external_xref_key_db:
                     try: key_value_db[key].append(ese)
                     except KeyError: key_value_db[key] = [ese]
-                    data_types[ese.EnsemblObjectType()]=[]
-          except Exception: print external_xref_key_filter, key_filter, filename;kill
-        elif key in key_filter_db: key_value_db[key] = ese
-        elif 'seq_region.' in filename: key_value_db[key] = ese ### Specifically applies to ProbeLevel analyses
-        elif external_filter == 'yes': ### For example, if UniGene's dbase ID is in the external_filter_db (when parsing xref)
-            #if 'xref' in filename: print filename,[header_name], index,value_type,[value],ese.ExternalDbId(),external_filter_db;kill
-            try:
-                #print key, [ese.ExternalDbId()], [ese.DbprimaryAcc()], [ese.DisplayLabel()];kill
-                #if key == 1214287: print [ese.ExternalDbId()], [ese.DbprimaryAcc()], [ese.DisplayLabel()]
-                if ese.ExternalDbId() in external_filter_db: key_value_db[key] = ese
-                all_external_ids[ese.ExternalDbId()]=[]
-            except AttributeError:
-                print len(external_filter_db),len(key_filter_db)
-                print 'index_db',index_db,'\n'
-                print 'key_name',key_name
-                print len(external_filter_db)
-                print len(key_value_db);kill
+            elif 'object_xref' in filename:
+              try:
+                if key in probe_set_db:
+                    if (manufacturer == 'AFFY' and ese.EnsemblObjectType() == 'ProbeSet') or (manufacturer != 'AFFY' and ese.EnsemblObjectType() == 'Probe'):
+                        try: key_value_db[key].append(ese)
+                        except KeyError: key_value_db[key] = [ese]
+                        data_types[ese.EnsemblObjectType()]=[]
+              except Exception: print external_xref_key_filter, key_filter, filename;kill
+            elif key in key_filter_db: key_value_db[key] = ese
+            elif 'seq_region.' in filename: key_value_db[key] = ese ### Specifically applies to ProbeLevel analyses
+            elif external_filter == 'yes': ### For example, if UniGene's dbase ID is in the external_filter_db (when parsing xref)
+                #if 'xref' in filename: print filename,[header_name], index,value_type,[value],ese.ExternalDbId(),external_filter_db;kill
+                try:
+                    #print key, [ese.ExternalDbId()], [ese.DbprimaryAcc()], [ese.DisplayLabel()];kill
+                    #if key == 1214287: print [ese.ExternalDbId()], [ese.DbprimaryAcc()], [ese.DisplayLabel()]
+                    if ese.ExternalDbId() in external_filter_db: key_value_db[key] = ese
+                    all_external_ids[ese.ExternalDbId()]=[]
+                except AttributeError:
+                    print len(external_filter_db),len(key_filter_db)
+                    print 'index_db',index_db,'\n'
+                    print 'key_name',key_name
+                    print len(external_filter_db)
+                    print len(key_value_db);kill
 
     #key_filter_db={}; external_filter_db={}; external_xref_key_db={}
                 
@@ -1151,6 +1240,8 @@ def importSQLDescriptions(import_group,filename,sql_file_db):
             if len(index_db)>0: ### Thus fields in the Config file are found in the description file
                 sql_data.setIndexDB(index_db)
             index_db = {}; index=0 ### re-set
+        elif '/*' in data or 'DROP TABLE IF EXISTS' in data:
+            None ### Not sure what this line is that has recently been added
         else: index+=1
     if len(index_db)>0: asql_data.setIndexDB(index_db)
     return sql_file_db
@@ -1201,13 +1292,24 @@ def clearvar(varname):
         if var == varname: del globals()[var]
     
 def getCurrentEnsemblSpecies(version):
+    original_version = version
     if 'EnsMart' in version:
         version = string.replace(version,'EnsMart','') ### User may enter EnsMart65, but we want 65 (release- is added before the number)
         version = string.replace(version,'Plus','')
-    if 'release' not in version and 'current' not in version: version = 'release-'+version
-    ftp_server = 'ftp.ensembl.org'
-    if version == 'current': subdir = '/pub/current_mysql'
-    else: subdir = '/pub/'+version+'/mysql'
+    if 'Plant' in version:
+        version = string.replace(version,'Plant','')
+    if 'release' not in version and 'current' not in version:
+        version = 'release-'+version
+    if 'Plant' in original_version:
+        ftp_server = 'ftp.ensemblgenomes.org'
+    else:
+        ftp_server = 'ftp.ensembl.org'
+    if version == 'current':
+        subdir = '/pub/current_mysql'
+    elif 'Plant' in original_version:
+        subdir = '/pub/plants/'+version+'/mysql'
+    else:
+        subdir = '/pub/'+version+'/mysql'
     dirtype = '_core_'
     ensembl_versions = getEnsemblVersions(ftp_server,'/pub')
     child_dirs, species_list = storeFTPDirs(ftp_server,subdir,dirtype)
@@ -1217,6 +1319,14 @@ def getCurrentEnsemblSequences(version,dirtype,species):
     ftp_server = 'ftp.ensembl.org'
     if version == 'current': subdir = '/pub/current_'+dirtype
     else: subdir = '/pub/'+version+'/'+dirtype
+    seq_dir = storeSeqFTPDirs(ftp_server,species,subdir,dirtype)
+    return seq_dir
+
+def getCurrentEnsemblPlantSequences(version,dirtype,species):
+    version = string.replace(version,'Plant','')
+    ftp_server = 'ftp.ensemblgenomes.org'
+    if version == 'current': subdir = '/pub/current_'+dirtype
+    else: subdir = '/pub/plants/'+version+'/'+dirtype
     seq_dir = storeSeqFTPDirs(ftp_server,species,subdir,dirtype)
     return seq_dir
 
@@ -1459,10 +1569,17 @@ def verifyFile(filename):
     return file_found
             
 if __name__ == '__main__':
+    
+    getChrGeneOnly('Hs','Basic','EnsMart65','yes');sys.exit()
     analysisType = 'GeneAndExternal'; externalDBName_list = ['AFFY_Zebrafish']
     force = 'no'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
     print 'proceeding'
-    getFullGeneSequences('60','Ts'); sys.exit()
+    
+    ensembl_version = '65'
+    species = 'Hs'
+    #getEnsemblTranscriptSequences(ensembl_version,species);sys.exit()
+    
+    getFullGeneSequences('Plant16','Zm'); sys.exit()
     #for i in child_dirs: print child_dirs[i]
     #"""
     ### WON'T WORK FOR MORE THAN ONE EXTERNAL DATABASE -- WHEN RUN WITHIN THIS MOD

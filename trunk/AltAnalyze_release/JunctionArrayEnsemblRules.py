@@ -277,7 +277,9 @@ def importAndReformatEnsemblJunctionAnnotations(species,array_type,nonconstituti
         else:
             t = string.split(data,'\t')
             probeset, exon_id, ensembl_gene_id, transcript_cluster_id, chr, strand, probeset_start, probeset_stop, affy_class, constitutitive_probeset, ens_exon_ids, exon_annotations,regionid,r_start,r_stop,splice_event,splice_junctions = t
-            if len(regionid)<1: regionid = exon_id; t[12] = exon_id
+            if len(regionid)<1: regionid = exon_id; t[12] = exon_id     
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             tc,probeset=string.split(probeset,':'); regionid = string.replace(regionid,'-','.'); original_region_id = regionid
             r_starts=string.split(r_start,'|'); r_stops=string.split(r_stop,'|')
             ed = EnsemblImport.ExonStructureData(ensembl_gene_id, chr, strand, probeset_start, probeset_stop, constitutitive_probeset, ens_exon_ids, []); ed.reSetExonID(regionid)

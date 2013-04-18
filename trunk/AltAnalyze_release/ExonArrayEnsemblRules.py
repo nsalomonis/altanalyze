@@ -88,6 +88,8 @@ def getProbesetAssociations(filename,ensembl_exon_db,ens_transcript_db,source_bi
               entries+=1
               try: probeset_id=int(t[pi]);transcript_cluster_id=int(t[tc]); chr=t[sn];strand=t[sd]
               except Exception: print affy_headers; print index; sys.exit()
+              if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+              if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
               start=int(t[st]);stop=int(t[sp]); exon_type=t[lv]; #fl=int(t[fn]); mRNA=int(t[mr]); est=int(t[es]); ensembl=int(t[eg])
               continue_analysis = 'no'
 
@@ -927,6 +929,8 @@ def reimportEnsemblProbesetsForSeqExtraction(filename,filter_type,filter_db):
             try: probeset_id, exon_id, ensembl_gene_id, transcript_cluster_id, chr, strand, probeset_start, probeset_stop, affy_class, constitutive_probeset, ens_exon_ids, exon_annotations,regionid,r_start,r_stop,splice_event,splice_junctions = string.split(data,'\t')
             except ValueError: t = string.split(data,'\t'); print t;kill
             ens_exon_ids = string.split(ens_exon_ids,'|')
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             ed = EnsemblImport.ExonStructureData(ensembl_gene_id, chr, strand, r_start, r_stop, constitutive_probeset, ens_exon_ids, [])
             ed.setAssociatedSplicingEvent(splice_event) ###Integrate splicing annotations to look for alternative promoters
             #ed.setAssociatedSplicingJunctions(splice_junctions)
@@ -939,6 +943,16 @@ def reimportEnsemblProbesetsForSeqExtraction(filename,filter_type,filter_db):
                 proceed = 'yes'
             elif filter_type == 'gene':
                 if ensembl_gene_id in filter_db: proceed = 'yes'
+                else: proceed = 'no'
+            elif filter_type == 'gene-probesets': ### get all probesets for a query gene
+                if ensembl_gene_id in filter_db:
+                    proceed = 'yes'
+                    exon_id = string.replace(exon_id,'-','.')
+                    block,region = string.split(exon_id[1:],'.')
+                    if '_' in region:
+                        region = string.split(region,'_')[0]
+                    ed = EnsemblImport.ProbesetAnnotation(exon_id, constitutive_probeset, regionid, splice_event, splice_junctions,r_start,r_stop)
+                    probe_data = (int(block),int(region)),ed,probeset_id ### sort by exon number            
                 else: proceed = 'no'
             elif filter_type == 'probeset':
                 if probeset_id in filter_db: proceed = 'yes'
@@ -1000,7 +1014,7 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
     filter_sgv_output = 'no'
     test = 'no'
     test_cluster = [3161519, 3161559, 3161561, 3161564, 3161566, 3161706, 3161710, 3161712, 2716656, 2475411]
-    #test_cluster = [2334476]
+    test_cluster = [4037623]
     partial_process = 'no'; status = 'null'
     if process_from_scratch == 'yes':
         if partial_process == 'no':

@@ -496,9 +496,12 @@ def moveOntologyToArchiveDir():
     c = GrabFiles()
     c.setdirectory('/OBO')
     file_dirs = c.searchdirectory('.ontology')+c.searchdirectory('.obo')
+
+    program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
+    if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
     
     for file_dir in file_dirs:
-        new_file_dir = string.replace(file_dir,'OBO/','OBO/archive/')
+        new_file_dir = string.replace(file_dir,parent_dir+'OBO/',parent_dir+'OBO/archive/')
         print 'Moving:',file_dir,'to:',new_file_dir
         export.customFileMove(file_dir,new_file_dir)
                 

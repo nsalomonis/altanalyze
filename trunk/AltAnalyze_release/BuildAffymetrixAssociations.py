@@ -409,7 +409,7 @@ def parse_affymetrix_annotations(filename,species):
                     affy_annotation_db[probeset] = ai
     return version
 
-def getArrayAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use_go):
+def getUIDAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use_go):
     import gene_associations; import time
     start_time = time.time()
     ### Get Gene Ontology gene associations
@@ -1313,7 +1313,7 @@ if __name__ == '__main__':
     System_codes = importSystemInfo(); process_go = 'yes'; incorporate_previous_associations = 'yes'
     import update; overwrite = 'over-write previous'
     import time; start_time = time.time()
-    getArrayAnnotationsFromGOElite({},'Hs','Agilent','yes')
+    getUIDAnnotationsFromGOElite({},'Hs','Agilent','yes')
     end_time = time.time(); time_diff = int(end_time-start_time); print time_diff, 'seconds'; kill
     #buildAffymetrixCSVAnnotations(Species_code,incorporate_previous_associations,process_go,'no',integrate_affy_associations,overwrite);kill   
     species_code = Species_code; parseGene2GO(tax_id,species_code,overwrite,'no');kill

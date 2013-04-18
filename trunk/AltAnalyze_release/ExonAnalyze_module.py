@@ -95,7 +95,7 @@ class GeneAnnotationData:
         return output
     def __repr__(self): return self.Report()
     
-def import_annotations(filename,array_type):
+def import_annotations(filename,array_type,keyBySymbol=False):
     fn=filepath(filename); annotate_db = {}; x = 0
     if array_type == 'AltMouse':
         for line in open(fn,'rU').xreadlines():
@@ -106,7 +106,10 @@ def import_annotations(filename,array_type):
                 except ValueError: affygene, description, ll_id, symbol = string.split(data,'\t'); rna_processing_annot = ''
                 if '"' in description: null,description,null = string.split(description,'"')
                 y = GeneAnnotationData(affygene, description, symbol, ll_id, rna_processing_annot)
-                annotate_db[affygene] = y
+                if keyBySymbol:
+                    annotate_db[symbol] = y
+                else:
+                    annotate_db[affygene] = y
     else:
         for line in open(fn,'rU').xreadlines():
             data = cleanUpLine(line)
@@ -115,6 +118,10 @@ def import_annotations(filename,array_type):
             except ValueError: ensembl, description, symbol = string.split(data,'\t')
             y = GeneAnnotationData(ensembl, description, symbol, ensembl, rna_processing_annot)
             annotate_db[ensembl] = y
+            if keyBySymbol:
+                annotate_db[symbol] = y
+            else:
+                annotate_db[ensembl] = y
     return annotate_db
 
 def importmicroRNADataExon(species,array_type,exon_db,microRNA_prediction_method,explicit_data_type,root_dir):
@@ -449,6 +456,68 @@ def compareProteinFeatures(protein_ft,neg_coding_seq,pos_coding_seq):
     neg_ft_missing2 = unique.unique(neg_ft_missing2)  
     return neg_ft_missing2,pos_ft_missing2
 
+def getFeatureIsoformGenomePositions(species,protein_ft_db,mRNA_protein_seq_db,gene_transcript_db,coordinate_type):
+    """ Adapted from compareProteinFeatures but for one isoform and returns genomic coordinates for each feature
+    This function is designed to export all unique isoforms rather than just comparison isoforms """
+    
+    import export
+    export_file = 'AltDatabase/ensembl/'+species+'/ProteinFeatureIsoform_complete.txt'                
+    export_data = export.ExportFile(export_file)
+
+    failed = 0
+    worked = 0
+    failed_ac=[]
+    for gene in protein_ft_db:
+        transcript_feature_db={}
+        for ft in protein_ft_db[gene]:
+            try:
+                ft_name = ft.PrimaryAnnot(); annotation = ft.SecondaryAnnot()
+                for (mRNA,type) in gene_transcript_db[gene]:
+                    try:
+                        protein,protein_seq = mRNA_protein_seq_db[mRNA]
+                        error = False
+                    except Exception:
+                        failed_ac.append(mRNA)
+                        error = True
+                    if error == False:
+                        if ft.DomainSeq() in protein_seq:
+                            if coordinate_type == 'genomic':
+                                pos1 = ft.GenomicStart(); pos2 = ft.GenomicStop()
+                            else:
+                                pos1 = str(ft.DomainStart()); pos2 = str(ft.DomainEnd())
+    
+                            ### There are often many features that overlap within a transcript, so consistently pick just one
+                            if mRNA in transcript_feature_db:
+                                db = transcript_feature_db[mRNA]
+                                if (pos1,pos2) in db:
+                                    db[pos1, pos2].append([protein,ft_name,annotation])
+                                else:
+                                    db[pos1, pos2]=[[protein,ft_name,annotation]]
+                            else:
+                                db={}
+                                db[pos1, pos2]=[[protein,ft_name,annotation]]
+                                transcript_feature_db[mRNA] = db
+                                
+                            #values = [mRNA, protein, pos1, pos2,ft_name,annotation]; unique_entries.append(values)
+                            worked+=1
+            except IOError:
+                failed+=1
+
+        for transcript in transcript_feature_db:
+            db = transcript_feature_db[transcript]
+            for (pos1,pos2) in db:
+                db[pos1,pos2].sort() ### Pick the alphabetically listed first feature
+                protein,ft_name,annotation = db[pos1,pos2][0]
+                values = [transcript, protein, pos1, pos2,ft_name,annotation]
+                export_data.write(string.join(values,'\t')+'\n')
+                
+    export_data.close()
+    print failed,'features failed to have corresponding aligned genomic locations out of', worked+failed
+    failed_ac = unique.unique(failed_ac)
+    print len(failed_ac),'mRNAs without identified/in silico derived proteins'  ### Appear to be ncRNAs without ATGs
+    print failed_ac[:20]
+    
+
 def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_domain_db,compare_all_features,data_type):
     """ This function is used by the module IdentifyAltIsoforms to run 'characterizeProteinLevelExonChanges'"""
     global protein_ft_db; protein_ft_db = protein_domain_db; protein_domain_db=[]
@@ -492,6 +561,7 @@ def formatAttributeForExport(attribute_db,filename):
         attribute_list = attribute_db[(gene,probeset)]; attribute_list2=[]
         for (attribute,direction) in attribute_list: attribute_list2.append(attribute+'|'+direction)
         export_db[probeset]=attribute_list2
+    print 'Exporting:',filename
     IdentifyAltIsoforms.exportSimple(export_db,filename,'')
         
 def importTranscriptBiotypeAnnotations(species):
@@ -520,7 +590,7 @@ def characterizeProteinLevelExonChanges(species,exon_hits,probeset_protein_db,ar
                 pp = probeset_protein_db[probeset]; hv=1
                 pos_ref_AC = pp.HitProteinID()
                 neg_ref_AC = pp.NullProteinID()
-                if array_type != 'exon' and array_type != 'gene': ### Instead of using the null_hit, use the second juncition probeset
+                if array_type != 'exon' and array_type != 'gene': ### Instead of using the null_hit, use the second junction probeset
                     try: np = probeset_protein_db[probeset2]; neg_ref_AC = np.HitProteinID()
                     except KeyError: null =[] ###just use the existing null                
             except KeyError: ###occurs if there is not protein associated with the first probeset (NA for exon arrays)
@@ -633,6 +703,7 @@ def characterizeProteinLevelExonChanges(species,exon_hits,probeset_protein_db,ar
                     data_tuple2 = function_var2,fcall
                     try: functional_attribute_db[array_geneid,uid].append(data_tuple2)
                     except KeyError: functional_attribute_db[array_geneid,uid]= [data_tuple2]
+    print len(functional_attribute_db),'Genes with affected functional attributes'
     return functional_attribute_db,protein_features
                                               
 def combine_databases(db1,db2):

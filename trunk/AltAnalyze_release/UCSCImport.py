@@ -82,6 +82,8 @@ def importEnsExonStructureData(species):
             else: strand = '+'
             if '_' in chr: c = string.split(chr,'_'); chr = c[0]
             exon_end = int(exon_end); exon_start = int(exon_start)
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             if 'ENS' in gene: ens_exonid_data = string.split(ens_exonid,'.'); ens_exonid = ens_exonid_data[0]
             if test == 'yes':
                 if gene in test_gene: proceed = 'yes'
@@ -178,6 +180,8 @@ def importUCSCExonStructureData(species):
         exon_size_list = t[-3]; exon_size_list = covertStrToListInt(exon_size_list) ##coordinates and are the same length
         strand = t[9]; accession = t[10]; clusterid = t[0]; chr = t[14][3:]
         if '_' in chr: c = string.split(chr,'_'); chr = c[0]
+        if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+        if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
         unique_geneid = clusterid,strand,chr  ###can have strand specific isoforms
         index=0; exon_coordiantes = []
         while index<len(coordinates):
@@ -673,6 +677,8 @@ def filterBuiltAssociations(species):
         if x==0: title = line; x+=1 ###first line
         else:
             gene, chr, strand, exon_start, exon_end, exonid, constitutive_exon, accession = t
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             try: raw_data[accession].append([exonid,x,line])
             except KeyError: raw_data[accession] = [[exonid,x,line]]
             #y = EnsemblImport.ExonStructureData(gene,chr,strand,exon_start,exon_end,constitutive_exon,exonid,accession)
@@ -724,6 +730,8 @@ def returnConstitutive(species):
         if x==0: x+=1 ###first line
         else:
             gene, chr, strand, exon_start, exon_end, exonid, constitutive_exon, accession = t
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             try: gene_exon_db[gene].append(exonid)
             except KeyError: gene_exon_db[gene] = [exonid]          
 

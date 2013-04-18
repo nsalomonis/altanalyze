@@ -84,6 +84,8 @@ def importUCSCAnnotationData(species,ensembl_gene_coordinates,ensembl_annotation
             try: regionid,chr,start,stop,null,null,strand,start,stop = string.split(data,'\t')
             except Exception: chr,start,stop,annotation,null,strand = string.split(data,'\t')
         start = int(start)+1; stop = int(stop); chr = string.replace(chr,'chr','') ###checked it out and all UCSC starts are -1 from the correspond Ensembl start
+        if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+        if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
         try: ucsc_gene_coordinates[chr,start,stop,strand].append(event_call)
         except KeyError: ucsc_gene_coordinates[chr,start,stop,strand] = [event_call]
         
@@ -244,6 +246,8 @@ def reformatPolyAdenylationCoordinates(species,force):
         if x==0: x=1
         else:
             siteid,llid,chr,sitenum,position,supporting_EST,cleavage = string.split(data,'\t')
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             if species in siteid:
                 if 'NA' not in chr: chr = 'chr'+chr
                 strand = '+'; geneid = siteid

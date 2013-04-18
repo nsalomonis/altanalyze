@@ -123,6 +123,8 @@ def getProbesetAssociations(filename):
         elif data[0] != '#' and 'probeset' not in data:
             probeset_id=t[pi];exon_cluster_id=t[ei];transcript_cluster_id=t[tc]; chr=t[sn];strand=t[sd]; mrna_assignment=t[ma]
             start=int(t[st]);stop=int(t[sp]); exon_type=t[lv]; fl=int(t[fn]); mRNA=int(t[mr]); est=int(t[es]); ensembl=int(t[eg])
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             ###Extract out the mRNA identifiers from the mRNA_annotation field
             ensembl_ids, mRNA_ids = grabRNAIdentifiers(mrna_assignment)
             mRNA_associations[probeset_id] = ensembl_ids, mRNA_ids

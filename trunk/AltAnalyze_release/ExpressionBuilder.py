@@ -115,7 +115,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
                         log_fold = math.log((float(fold)),2) ### changed from - log_fold = math.log((float(fold)+1),2) - version 2.05
                         fold_data3.append(log_fold)
                     except ValueError:  ###Not an ideal situation: Value is negative - Convert to zero
-                        if float(fold)<=0: math.log(1,2); fold_data3.append(log_fold)
+                        if float(fold)<=0: log_fold = math.log(1,2); fold_data3.append(log_fold)
                         else:
                             print_out = 'WARNING!!! The ID'+arrayid+ 'has an invalid expression value:'+fold+'\n. Correct and re-run'
                             try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); sys.exit()
@@ -143,7 +143,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     
     try:
         array_folds, array_fold_headers, summary_filtering_stats,raw_data_comp_headers = reorder_arrays.reorder(array_folds,array_names,expr_group_list,comp_group_list,probeset_db,include_raw_data,array_type,normalization_method,fl)
-    except IOError: 
+    except Exception: 
         print_out = 'AltAnalyze encountered an error with the format of the expression file.\nIf the data was designated as log intensities and it is not, then re-run as non-log.'
         try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); force_exit ### Forces the error log to pop-up
         except NameError: print print_out; sys.exit()
@@ -210,15 +210,32 @@ def addMaxReadCounts(filename):
 
 def simpleGroupImport(group_dir):
     """ Used for calculating fold changes prior to clustering for individual samples (genomtric folds) """
-    group_sample_db={}
-    group_name_db={}
-    group_name_sample_db={}
+    import collections
+    try:
+        ### OrderedDict used to return the keys in the orders added for markerFinder
+        group_sample_db=collections.OrderedDict()
+        group_name_db=collections.OrderedDict()
+        group_name_sample_db=collections.OrderedDict()
+        group_db=collections.OrderedDict()
+    except Exception:
+        try:
+            import ordereddict
+            group_sample_db = ordereddict.OrderedDict()
+            group_name_db=ordereddict.OrderedDict()
+            group_name_sample_db=ordereddict.OrderedDict()
+            group_db=ordereddict.OrderedDict()
+        except Exception:
+            group_sample_db={}
+            group_name_db={}
+            group_name_sample_db={}
+            group_db={}
     sample_list=[]
-    group_db={}
+    group_dir = verifyExpressionFile(group_dir)
     fn = filepath(group_dir)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        sample_filename,group_number,group_name = string.split(data,'\t')
+        try: sample_filename,group_number,group_name = string.split(data,'\t')
+        except Exception: print data;kill
         group_sample_db[sample_filename] = group_name+':'+sample_filename
         try: group_name_sample_db[group_name].append(group_name+':'+sample_filename)
         except Exception: group_name_sample_db[group_name] = [group_name+':'+sample_filename]
@@ -236,6 +253,7 @@ def simpleCompsImport(group_dir,group_name_db):
     comps_dir = string.replace(group_dir,'groups.','comps.')
     comps_name_db={}
     comp_groups=[]
+    comps_dir = verifyExpressionFile(comps_dir)
     fn = filepath(comps_dir)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -288,7 +306,8 @@ def importArrayGroups(expr_group_dir,array_linker_db):
             try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
             except Exception: print print_out; sys.exit()
         
-    except Exception:
+    except Exception,e:
+        print traceback.format_exc(),'\n'
         exportArrayHeaders(expr_group_dir,array_linker_db)
         print_out = 'No groups or comps files found for'+expr_group_dir+'... exiting program.'
         try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
@@ -362,11 +381,15 @@ def exportDataForGenMAPP(headers,input_type):
     except RuntimeError:
         export.isFileOpen(GenMAPP_file,expression_dataset_output_dir[:-1])
         genmapp = export.createExportFile(GenMAPP_file,expression_dataset_output_dir[:-1])
-    if array_type == "3'array":
+    if array_type == "3'array" and 'Ensembl' not in vendor:
         if vendor == 'Affymetrix': system_code = 'X'
-        if vendor == 'Illumina': system_code = 'Il'
-        if vendor == 'Agilent': system_code = 'Ag'
-        if vendor == 'Codelink': system_code = 'Co'
+        elif vendor == 'Illumina': system_code = 'Il'
+        elif vendor == 'Agilent': system_code = 'Ag'
+        elif vendor == 'Codelink': system_code = 'Co'
+        else:
+            ### This is another system selected by the user
+            system = string.replace(vendor,'other:','')
+            system_code = systems[system]
     elif array_type != 'AltMouse': system_code = 'En'
     else:
         try: system_code = systems[vendor]
@@ -608,7 +631,10 @@ def exportGeneRegulationSummary(filename,headers,system_code):
             index += 1
 
     if len(criterion_db)>0:
-        exportGeometricFolds(expression_dataset_output_dir+filename,array_type,genes_to_import,probeset_symbol)
+        try: exportGeometricFolds(expression_dataset_output_dir+filename,array_type,genes_to_import,probeset_symbol)
+        except Exception,e:
+            print 'Failed to export geometric folds due to:'
+            print e ### Don't exit the analysis just report the problem
         
         filename = string.replace(filename,'DATASET-','SUMMARY-')
         filename = string.replace(filename,'GenMAPP-','SUMMARY-')
@@ -667,12 +693,13 @@ def exportGeneRegulationSummary(filename,headers,system_code):
             export_data.write('\n')
         export_data.close()
 
-def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol):
+def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,exportOutliers=True,exportRelative=False,customPath=None):
     """ Import sample and gene expression values from input file, filter, calculate geometric folds
     and export. Use for clustering and QC."""
     filename = string.replace(filename,'///','/')
     filename = string.replace(filename,'//','/')
     if 'ExpressionOutput' in filename:
+        filename = string.replace(filename,'-steady-state.txt','.txt')
         export_path = string.replace(filename,'ExpressionOutput','ExpressionOutput/Clustering')
         export_path = string.replace(export_path,'DATASET-','SampleLogFolds-') ### compared to all-sample mean
         export_path2 = string.replace(export_path,'SampleLogFolds-','OutlierLogFolds-') ### compared to all-sample mean
@@ -688,11 +715,18 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol):
             filename = string.replace(filename,'exp.','')
             filename = string.replace(filename,'ExpressionInput','')
             status = verifyFile(filename)
-
+            
+    if customPath!=None:
+        ### If an alternative output path is desired
+        export_path = customPath
+    
+    if status != 'yes':
+        print "Clustering expression file not exported due to missing file:"
+        print filename
     if status == 'yes':
         export_data = export.ExportFile(export_path)
-        export_outliers = export.ExportFile(export_path2)
-        export_relative = export.ExportFile(export_path3)
+        if exportOutliers: export_outliers = export.ExportFile(export_path2)
+        if exportRelative: export_relative = export.ExportFile(export_path3)
         print 'Export inputs for clustering to:',export_path
         
         fn=filepath(filename); row_number=0; exp_db={}; relative_headers_exported = False
@@ -704,20 +738,25 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol):
                 sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = simpleGroupImport(groups_dir)
                 try: sample_index_list = map(lambda x: t[1:].index(x), sample_list) ### lookup index of each sample in the ordered group sample list
                 except Exception:
+                    missing=[]
+                    for x in sample_list:
+                        if x not in t[1:]: missing.append(x)
+                    print 'missing:',missing
+                    print t
                     print sample_list
                     print filename, groups_dir; kill
                 new_sample_list = map(lambda x: group_sample_db[x], sample_list) ### lookup index of each sample in the ordered group sample list
                 title = string.join([t[0]]+new_sample_list,'\t')+'\n' ### output the new sample order (group file order)
                 export_data.write(title)
-                export_outliers.write(title)
-                
-                ### Used for the relative fold calculation
-                group_index_db={}
-                for x in sample_list:
-                    group_name = group_db[x]
-                    sample_index = t[1:].index(x)
-                    try: group_index_db[group_name].append(sample_index)
-                    except Exception: group_index_db[group_name] = [sample_index] ### dictionary of group to input file sample indexes
+                if exportOutliers: export_outliers.write(title)
+                if exportRelative:
+                    ### Used for the relative fold calculation
+                    group_index_db={}
+                    for x in sample_list:
+                        group_name = group_db[x]
+                        sample_index = t[1:].index(x)
+                        try: group_index_db[group_name].append(sample_index)
+                        except Exception: group_index_db[group_name] = [sample_index] ### dictionary of group to input file sample indexes
                 row_number=1
             else:
                 gene = t[0]
@@ -726,7 +765,7 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol):
                     values = map(lambda x: math.log(float(x),2), t[1:])
                 else:
                     values = map(float,t[1:])
-                    
+                
                 ### Calculate log-fold values relative to the mean of all sample expression values
                 values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
                 avg = statistics.avg(values)
@@ -739,34 +778,36 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol):
                     except Exception: gene = gene
                     export_data.write(string.join([gene]+log_folds,'\t')+'\n')
                     
-                    ### Calculate log-fold values relative to the mean of each valid group comparison
-                    control_group_avg={}; comps_exp_db={}
-                    for group_name in comps_name_db: ### control group names
-                        con_group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
-                        control_group_avg[group_name] = statistics.avg(con_group_values) ### store the mean value of each control group
-                        for exp_group in comps_name_db[group_name]:
-                            try: comps_exp_db[exp_group].append(group_name) ### Create a reversed version of the comps_name_db, list experimental as the key
-                            except Exception: comps_exp_db[exp_group] = [group_name]
+                    if exportRelative:
+                        ### Calculate log-fold values relative to the mean of each valid group comparison
+                        control_group_avg={}; comps_exp_db={}
+                        for group_name in comps_name_db: ### control group names
+                            con_group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
+                            control_group_avg[group_name] = statistics.avg(con_group_values) ### store the mean value of each control group
+                            for exp_group in comps_name_db[group_name]:
+                                try: comps_exp_db[exp_group].append(group_name) ### Create a reversed version of the comps_name_db, list experimental as the key
+                                except Exception: comps_exp_db[exp_group] = [group_name]
+                                
+                        relative_log_folds=[] ### append all new log folds to this list
+                        relative_column_names=[]
+                        for group_name in comp_groups:
+                            if group_name in comps_exp_db: ### Hence, the group has a designated control (controls may not) - could have the control group be a control for the control samples
+                                group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
+                                for control_group_name in comps_exp_db[group_name]:
+                                    con_avg = control_group_avg[control_group_name]
+                                    relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
+                                if relative_headers_exported == False:
+                                    exp_sample_names = group_name_sample_db[group_name]
+                                    relative_column_names += map(lambda x: (x+' vs '+control_group_name), exp_sample_names) ### add column names indicating the comparison
+    
+                        if relative_headers_exported == False:
+                            title = string.join(['UID']+relative_column_names,'\t')+'\n' ### Export column headers for the relative fold changes
+                            export_relative.write(title)
+                            relative_headers_exported = True
                             
-                    relative_log_folds=[] ### append all new log folds to this list
-                    relative_column_names=[]
-                    for group_name in comp_groups:
-                        if group_name in comps_exp_db: ### Hence, the group has a designated control (controls may not) - could have the control group be a control for the control samples
-                            group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
-                            for control_group_name in comps_exp_db[group_name]:
-                                con_avg = control_group_avg[control_group_name]
-                                relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
-                            if relative_headers_exported == False:
-                                exp_sample_names = group_name_sample_db[group_name]
-                                relative_column_names += map(lambda x: (x+' vs '+control_group_name), exp_sample_names) ### add column names indicating the comparison
-
-                    if relative_headers_exported == False:
-                        title = string.join(['UID']+relative_column_names,'\t')+'\n' ### Export column headers for the relative fold changes
-                        export_relative.write(title)
-                        relative_headers_exported = True
-                    export_relative.write(string.join([gene]+relative_log_folds,'\t')+'\n')
-                        
-                else:
+                        export_relative.write(string.join([gene]+relative_log_folds,'\t')+'\n')
+                            
+                elif exportOutliers:
                     ### When a gene is regulated and not significant, export to the outlier set
                     try: gene = gene+' '+probeset_symbol[gene]
                     except Exception: gene = gene
@@ -782,8 +823,8 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol):
                 row_number+=1 ### Keep track of the first gene as to write out column headers for the relative outputs
                 
         export_data.close()
-        export_outliers.close()
-        export_relative.close()
+        if exportOutliers: export_outliers.close()
+        if exportRelative: export_relative.close()
 
 def importAndOrganizeLineageOutputs(expr_input,filename,platform):
     """ This function takes LineageProfiler z-scores and organizes the samples into groups
@@ -884,7 +925,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
             if arrayid in annotate_db: y = 1
             if arrayid in conventional_array_db: z = 1
             break
-        if array_type != "AltMouse" and array_type != "3'array" :
+        if array_type != "AltMouse" and (array_type != "3'array" or 'Ensembl' in vendor):
             #annotate_db[gene] = symbol, definition,rna_processing
             #probeset_db[gene] = transcluster_string, exon_id_string
             title = ['Ensembl_gene','Definition','Symbol','Transcript_cluster_ids','Constitutive_exons_used','Constitutive_IDs_used','Putative microRNA binding sites','Select Cellular Compartments','Select Protein Classes','Chromosome','Strand','Genomic Gene Corrdinates','GO-Biological Process','GO-Molecular Function','GO-Cellular Component','WikiPathways']
@@ -910,17 +951,18 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 symbol = ca.Symbol()
                 data_val = [arrayid,ca.Description(),ca.Symbol(),ca.Species(),ca.Coordinates()]
                 data_val = string.join(data_val,'\t')
-            elif array_type != 'AltMouse' and array_type != "3'array":
-                try:
-                    try: definition = annotate_db[arrayid][0]; symbol = annotate_db[arrayid][1]; rna_processing = annotate_db[arrayid][2]
-                    except TypeError: print arrayid, annotate_db[arrayid]; kill
-                except KeyError: definition=''; symbol=''; rna_processing=''
+            elif array_type != 'AltMouse' and (array_type != "3'array" or 'Ensembl' in vendor):
+                try: definition = annotate_db[arrayid][0]; symbol = annotate_db[arrayid][1]; rna_processing = annotate_db[arrayid][2]
+                except Exception: definition=''; symbol=''; rna_processing=''
                 report = 'all'
                 try: miRs = ensembl_microRNA_db[arrayid]
                 except KeyError: miRs = ''
-                trans_cluster = probeset_db[arrayid][0]
-                exon_ids = probeset_db[arrayid][1]
-                probesets = probeset_db[arrayid][2]
+                try:
+                    trans_cluster = probeset_db[arrayid][0]
+                    exon_ids = probeset_db[arrayid][1]
+                    probesets = probeset_db[arrayid][2]
+                except Exception:
+                    trans_cluster='';exon_ids='';probesets=''
                 try: compartment,custom_class = custom_annotation_dbase[arrayid]
                 except KeyError: compartment=''; custom_class=''
                 try: chr,strand,start,end = gene_location_db[arrayid]
@@ -941,7 +983,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 definition = annotate_db[arrayid][0]
                 symbol = annotate_db[arrayid][1]
                 data_val = arrayid +'\t'+ definition +'\t'+ symbol
-            elif array_type == "3'array":
+            elif array_type == "3'array" and 'Ensembl' not in vendor:
                 try:
                     ca = conventional_array_db[arrayid]
                     definition = ca.Description()
@@ -1131,15 +1173,17 @@ def parse_custom_annotations(filename):
     print len(custom_array_db), "custom array entries process"
     return custom_array_db
 
-def remoteLineageProfiler(expr_input_dir,ArrayType,Species,Vendor):
+def remoteLineageProfiler(params,expr_input_dir,ArrayType,Species,Vendor,customMarkers=False):
     global species
     global array_type
     global vendor
     global remoteAnalysis
+    global fl
     remoteAnalysis = True
     species = Species
     array_type = ArrayType
     vendor = Vendor
+    fl = params
     graphics_links = []
     root_dir = export.findParentDir(expr_input_dir)+'ExpressionOutput/'
     try:
@@ -1151,15 +1195,18 @@ def remoteLineageProfiler(expr_input_dir,ArrayType,Species,Vendor):
         expression_dataset_output_dir = root_dir
     except Exception: None
     
-    graphic_links = performLineageProfiler(expr_input_dir,graphics_links)
+    graphic_links = performLineageProfiler(expr_input_dir,graphics_links,customMarkers)
     return graphic_links
     
-def performLineageProfiler(expr_input_dir,graphic_links):
+def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False):
     try:
         import WikiPathways_webservice
         import LineageProfiler
         start_time = time.time()
-        compendium_platform = 'gene'
+        compendium_type = fl.CompendiumType()
+        compendium_platform = fl.CompendiumPlatform()
+        print 'Compendium platform selected:',compendium_platform
+        print 'Biological data type to examine:',compendium_type
         
         try: ### Works when expression_dataset_output_dir is defined
             exp_output = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
@@ -1168,10 +1215,11 @@ def performLineageProfiler(expr_input_dir,graphic_links):
             array_type_data = vendor, array_type
             exp_output = export.findParentDir(expr_input_dir)+'/LineageCorrelations-'+export.findFilename(expr_input_dir)
         try:
-            zscore_output_dir = LineageProfiler.runLineageProfiler(species,array_type_data,expr_input_dir,exp_output,'protein_coding',compendium_platform)
+            zscore_output_dir = LineageProfiler.runLineageProfiler(species,array_type_data,expr_input_dir,exp_output,compendium_type,compendium_platform,customMarkers)
             status = True
         except Exception:
             status = False
+            print traceback.format_exc(),'\n'
             try:
                 if remoteAnalysis:
                     print 'LineageProfiler analysis failed due to:\n'
@@ -1216,6 +1264,8 @@ def visualizeQCPlots(expr_input_dir):
         paths = getSampleLogFoldFilenames(expr_input_dir)
         graphic_links = clustering.outputClusters(paths,graphic_links)
     except Exception:
+        print 'Unable to generate QC plots:'
+        print traceback.format_exc()
         try: graphic_links = graphic_links
         except Exception: graphic_links=None ### Matplotlib likely not installed - or other unknown issue
     return graphic_links
@@ -1236,6 +1286,19 @@ def getSampleLogFoldFilenames(filename):
         path3 = string.replace(path1,'SampleLogFolds-','RelativeSampleLogFolds-')
         paths = [path1,path2,path3]
     return paths
+
+def importGeneAnnotations(species):
+    ### Used for internal testing
+    gene_annotation_file = "AltDatabase/ensembl/"+species+"/"+species+"_Ensembl-annotations_simple.txt"
+    fn=filepath(gene_annotation_file)
+    count = 0; annotate_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if count == 0: count = 1
+        else:
+            gene, description, symbol = string.split(data,'\t')
+            annotate_db[gene] = symbol,description,''
+    return annotate_db
 
 def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
                             avg_all_for_ss,Expression_data_format,Vendor,
@@ -1290,7 +1353,10 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         probe_annotation_file = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
         original_annotate_db = import_annotations(probe_annotation_file)
         conventional_array_db = []
-    elif array_type == "3'array":
+    elif array_type == "3'array" and 'Ensembl' not in vendor: ### If user supplied IDs are from Ensembl - doesn't matter the vendor
+        original_vendor = vendor
+        if 'other:' in vendor:
+            vendor = string.replace(vendor,'other:','')
         process_go='yes';extract_go_names='yes';extract_pathway_names='yes'
         probeset_db = []; annotate_db = []
         constitutive_db = ""; conventional_array_db = {}
@@ -1302,14 +1368,17 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         else: use_go = 'yes'
         try:
             print "Adding additional gene, GO and WikiPathways annotations"
-            conventional_array_db = BuildAffymetrixAssociations.getArrayAnnotationsFromGOElite(conventional_array_db,species,vendor,use_go)
+            conventional_array_db = BuildAffymetrixAssociations.getUIDAnnotationsFromGOElite(conventional_array_db,species,vendor,use_go)
         except Exception: print "Additional annotation import failed"
         print len(conventional_array_db), "Array IDs with annotations from",vendor,"annotation files imported."
+        vendor = original_vendor
     elif array_type != "AltMouse":
         probeset_db = []; annotate_db = []; constitutive_db = []; conventional_array_db = []
         ### The below function gathers GO annotations from the GO-Elite database (not Affymetrix as the module name implies)
         conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
-                
+    if 'Ensembl' in vendor:
+        annotate_db = importGeneAnnotations(species) ### populate annotate_db - mimicking export structure of exon array
+
     global expr_threshold; global dabg_pval; global gene_exp_threshold; global gene_rpkm_threshold; dabg_pval = dabg_p
     altanalyze_files = []; datasets_with_all_necessary_files=0
     for dataset in exp_file_location_db:
@@ -1319,6 +1388,8 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         stats_input_dir = fl.StatsFile()
         expr_group_dir = fl.GroupsFile()
         comp_group_dir = fl.CompsFile()
+        try: batch_effects = fl.BatchEffectRemoval()
+        except Exception: batch_effects = 'NA'
         try: norm = fl.FeatureNormalization()
         except Exception: norm = 'NA'
       
@@ -1332,17 +1403,26 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
             try: expr_threshold = math.log(float(expression_threshold),2)
             except Exception: expr_threshold = 0 ### Applies to RNASeq datasets
         else:
-            expr_threshold = float(expression_threshold)
+            try: expr_threshold = float(expression_threshold)
+            except Exception: expr_threshold = 0
         
         residuals_input_dir = string.replace(expr_input_dir,'exp.','residuals.')
         root_dir = fl.RootDir()
         datasets_with_all_necessary_files +=1
         checkArrayHeaders(expr_input_dir,expr_group_dir)
         expression_dataset_output_dir = root_dir+"ExpressionOutput/"
+        if batch_effects == 'yes':
+            import combat
+            try: combat.runPyCombat(fl)
+            except ZeroDivisionError:
+                print_out = 'Batch effect removal analysis (py-combat) failed due to an uknown error:'
+                print traceback.format_exc()
+                try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
+                except Exception: print print_out; sys.exit()
         if array_type != "3'array": #array_type != 'AltMouse' and 
             try: probeset_db,annotate_db,comparison_filename_list = ExonArray.getAnnotations(fl,array_type,dabg_p,expression_threshold,data_source,vendor,constitutive_source,species,avg_all_for_ss,filter_by_dabg,perform_alt_analysis,expression_data_format)
             except Exception, e:
-                print e
+                print traceback.format_exc()
                 print_out = 'Error ecountered for the '+species+', '+array_type+' dataset. Check to ensure that:\n(1) the correct platform and species were selected and\n(2) some expression values are present in ExpressionInput/exp.YourDataset.txt'
                 try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
                 except Exception: print print_out; sys.exit()
@@ -1400,23 +1480,33 @@ def verifyFile(filename):
     except Exception: found = 'no'
     return  found
 
+def verifyExpressionFile(filename):
+    """ Unlike the above, corrects the expression file path if not found """
+    fn=filepath(filename)
+    try:
+        for line in open(fn,'rU').xreadlines(): break
+    except Exception:
+        fn = string.replace(fn,'ExpressionInput/','') ### This file is in the parent path presumably (otherwise can't find it)
+    return fn
+
 if __name__ == '__main__':
-    array_type = "gene"
+    array_type = "3'array"
     norm = 'RPKM'
     expr_threshold = 1
     dabg_pval = 0.05
     gene_exp_threshold = 10
     gene_rpkm_threshold = 0.5
   
-    dir = '/Users/nsalomonis/Desktop/User Diagnostics/TestCELAnalysis/ExpressionOutput/'
-    #buildCriterion(2, 0.05, 'rawp', dir,'summary');sys.exit()
-    experiment_name = 'test'
+    dir = '/Users/nsalomonis/Desktop/CBD/LogTransformed/ExpressionOutput/'
+    #dir = 'C:/Users/Nathan Salomonis/Desktop/Endothelial_Kidney/ExpressionOutput/'
+    buildCriterion(2, 0.05, 'raw', dir,'goelite');sys.exit()
+    experiment_name = 'Vector'
     species = 'Hs'
     expression_dataset_output_dir = "/ExpressionOutput/"
     expr_input_dir = "ExpressionInput/exp.test-steady-state.txt"
-    expr_input_dir = 'C:/Users/Nathan Salomonis/Desktop/GSE24243_RAW/ExpressionInput/exp.Skin_JN_BF.txt'
+    expr_input_dir = '/Users/nsalomonis/Desktop/User Diagnostics/Mm_spinal_cord_injury/ExpressionInput/exp.Mm_spinal.txt'
     graphic_links=[]
-    graphic_links = visualizeQCPlots(expr_input_dir)
+    graphic_links = visualizeQCPlots(expr_input_dir);sys.exit()
     print graphic_links
     graphic_links = performLineageProfiler(expr_input_dir,graphic_links)
     print graphic_links; sys.exit()

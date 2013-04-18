@@ -89,6 +89,8 @@ class ExonAnnotationData:
         if len(self._chromosome_info)>0:
             null,chr = string.split(self._chromosome_info,'=chr')
             chromosome,null=string.split(chr,':')
+            if chromosome == 'chrM': chromosome = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chromosome == 'M': chromosome = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
         else: chromosome = 'not-assinged'
         return chromosome
     def Strand(self):
@@ -126,7 +128,10 @@ class EnsemblInformation:
         self._chr = chr; self._strand = strand; self._gene = gene; self._description = description
         self._symbol = symbol
     def GeneID(self): return self._gene
-    def Chromosome(self): return self._chr
+    def Chromosome(self):
+        if self._chr == 'chrM': self._chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+        if self._chr == 'M': self._chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+        return self._chr
     def Strand(self): return self._strand
     def Description(self): return self._description
     def Symbol(self): return self._symbol

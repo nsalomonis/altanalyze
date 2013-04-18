@@ -73,7 +73,8 @@ def customFileMove(old_fn,new_fn):
     new_fn = filepath(new_fn)
     raw = ExportFile(new_fn)
     for line in open(old_fn,'rU').xreadlines():
-        raw.write(line)
+        if line[0]!='#': ### Applies to Affymetrix APT data (screws up combat)
+            raw.write(line)
     raw.close()
     os.remove(old_fn)
 
@@ -82,7 +83,8 @@ def customFileCopy(old_fn,new_fn):
     new_fn = filepath(new_fn)
     raw = ExportFile(new_fn)
     for line in open(old_fn,'rU').xreadlines():
-        raw.write(line)
+        if line[0]!='#': ### Applies to Affymetrix APT data (screws up combat)
+            raw.write(line)
     raw.close()
     
 def isFileOpen(new_file,dir):

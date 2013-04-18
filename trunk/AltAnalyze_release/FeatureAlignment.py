@@ -73,6 +73,11 @@ class ProteinFunctionalSeqData:
     def PrimaryAnnot(self): return self._primary_annotation
     def SecondaryAnnot(self): return self._secondary_annotation
     def CombinedAnnot(self): return self.PrimaryAnnot()+'-'+self.SecondaryAnnot()
+    def addGenomicCoordinates(self,gstart,gstop):
+        self.genomic_start = str(gstart)
+        self.genomic_stop = str(gstop) ### keep as string for output
+    def GenomicStart(self): return self.genomic_start
+    def GenomicStop(self): return self.genomic_stop
     def DomainStart(self): return int(self._ft_start_pos)
     def DomainEnd(self): return int(self._ft_end_pos)
     def DomainSeq(self): return self._ft_seq
@@ -305,6 +310,7 @@ def import_ensembl_ft_data(species,filename,ensembl_arrayid_db,array_type):
     grabbing the same type of data (InterPro relationships and protein sequence) from different sets of files"""
     try: ensembl_protein_seq_db,ensembl_ft_db,domain_gene_counts = importCombinedEnsemblFTdata(filename,ensembl_arrayid_db,array_type)
     except IOError:
+        ### This is the current version which is supported
         protein_relationship_file,protein_feature_file,protein_seq_fasta,protein_coordinate_file = getEnsemblRelationshipDirs(species)
         ensembl_protein_seq_db = importEnsemblProtSeqFasta(protein_seq_fasta)
         ensembl_protein_gene_db = importEnsemblRelationships(protein_relationship_file,'gene')
@@ -321,6 +327,10 @@ def getEnsemblRelationshipDirs(species):
     protein_coordinate_file = m.searchdirectory(species+'_ProteinCoordinates_')
     return protein_relationship_file,protein_feature_file,protein_seq_fasta,protein_coordinate_file
 
+def remoteEnsemblProtSeqImport(species):
+    protein_relationship_file,protein_feature_file,protein_seq_fasta,protein_coordinate_file = getEnsemblRelationshipDirs(species)
+    return importEnsemblProtSeqFasta(protein_seq_fasta)
+    
 def importEnsemblProtSeqFasta(filename):
     print "Begining generic fasta import of",filename
     fn=filepath(filename); ensembl_protein_seq_db={}; sequence = ''
@@ -357,50 +367,60 @@ def importEnsemblRelationships(filename,type):
 def importEnsemblFTdata(filename,ensembl_arrayid_db,array_type,ensembl_protein_seq_db,ensembl_protein_gene_db):
     print "Importing:",filename
     global arrayid_ensembl_protein_db; arrayid_ensembl_protein_db={}; x=0
+    missing_prot_seq=[]; found_prot_seq={}
     fn=filepath(filename); ensembl_ft_db = {}; ensembl_ft_summary_db = {}# Use the last database for summary statistics
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         if x == 0: x=1 ###Don't extract the headers
         else: 
             ensembl_prot, aa_start, aa_stop, start, stop, name, interpro_id, description = string.split(data,'\t')
-            sd = ensembl_protein_seq_db[ensembl_prot]; protein_sequence = sd.Sequence()
-            ensembl_gene = ensembl_protein_gene_db[ensembl_prot]
-            ft_start_pos = aa_start; ft_end_pos = aa_stop
-            """Below code is ALMOST identical to importCombinedEnsemblFTdata (original code commented out)"""
-            ###If array_type is exon, ensembl is used as the primary gene ID and thus no internal arrayid is needed. Get only Ensembl's that are currently being analyzed (for over-representation analysis)
-            if ensembl_gene in ensembl_arrayid_db:
-                id_list = ensembl_arrayid_db[ensembl_gene]
-                for gene_id in id_list: 
-                    try: arrayid_ensembl_protein_db[gene_id].append(ensembl_prot)
-                    except KeyError: arrayid_ensembl_protein_db[gene_id] = [ensembl_prot]
-
-            #for entry in ft_info_list:
-            """try: peptide_start_end, gene_start_end, feature_source, interpro_id, description = string.split(entry,' ')
-            except ValueError: continue
-            ###142-180 3015022-3015156 Pfam IPR002050 Env_polyprotein
-            ft_start_pos, ft_end_pos = string.split(peptide_start_end,'-')"""
-            pos1 = int(ft_start_pos); pos2 = int(ft_end_pos)
-            ft_length = pos2-pos1
-            if ft_length > 6: pos_1 = pos1; pos_2 = pos2
+            if ensembl_prot in ensembl_protein_seq_db:
+                found_prot_seq[ensembl_prot]=[]
+                sd = ensembl_protein_seq_db[ensembl_prot]; protein_sequence = sd.Sequence()
+                ensembl_gene = ensembl_protein_gene_db[ensembl_prot]
+                ft_start_pos = aa_start; ft_end_pos = aa_stop
+                """Below code is ALMOST identical to importCombinedEnsemblFTdata (original code commented out)"""
+                ###If array_type is exon, ensembl is used as the primary gene ID and thus no internal arrayid is needed. Get only Ensembl's that are currently being analyzed (for over-representation analysis)
+                if ensembl_gene in ensembl_arrayid_db:
+                    id_list = ensembl_arrayid_db[ensembl_gene]
+                    for gene_id in id_list: 
+                        try: arrayid_ensembl_protein_db[gene_id].append(ensembl_prot)
+                        except KeyError: arrayid_ensembl_protein_db[gene_id] = [ensembl_prot]
+    
+                #for entry in ft_info_list:
+                """try: peptide_start_end, gene_start_end, feature_source, interpro_id, description = string.split(entry,' ')
+                except ValueError: continue
+                ###142-180 3015022-3015156 Pfam IPR002050 Env_polyprotein
+                ft_start_pos, ft_end_pos = string.split(peptide_start_end,'-')"""
+                pos1 = int(ft_start_pos); pos2 = int(ft_end_pos)
+                ft_length = pos2-pos1
+                if ft_length > 6: pos_1 = pos1; pos_2 = pos2
+                else:
+                    if ft_length < 3: pos_1 = pos1 - 3; pos_2 = pos2 + 3
+                    else: pos_1 = pos1 - 1; pos_2 = pos2 + 1
+                sequence_fragment = protein_sequence[pos_1:pos_2]  ###We will search for this sequence, so have this expanded if too small (see above code)
+                if len(description)>1 or len(interpro_id)>1:
+                    #ft_info = ProteinFunctionalSeqData(ensembl_prot,description,interpro_id,pos1,pos2,sequence_fragment)
+                    ft_info = ensembl_prot,description,interpro_id,pos1,pos2,sequence_fragment,int(start),int(stop) ###don't store as an instance yet... wait till we eliminate duplicates
+                    if ensembl_gene in ensembl_arrayid_db:  ###If the ensembl gene is connected to microarray identifiers
+                        arrayids = ensembl_arrayid_db[ensembl_gene]
+                        for arrayid in arrayids: ###This file differs in structure to the UniProt data 
+                            try: ensembl_ft_db[arrayid].append(ft_info)
+                            except KeyError: ensembl_ft_db[arrayid] = [ft_info]
             else:
-                if ft_length < 3: pos_1 = pos1 - 3; pos_2 = pos2 + 3
-                else: pos_1 = pos1 - 1; pos_2 = pos2 + 1
-            sequence_fragment = protein_sequence[pos_1:pos_2]  ###We will search for this sequence, so have this expanded if too small (see above code)
-            if len(description)>1 or len(interpro_id)>1:
-                #ft_info = ProteinFunctionalSeqData(ensembl_prot,description,interpro_id,pos1,pos2,sequence_fragment)
-                ft_info = ensembl_prot,description,interpro_id,pos1,pos2,sequence_fragment ###don't store as an instance yet... wait till we eliminate duplicates
-                if ensembl_gene in ensembl_arrayid_db:  ###If the ensembl gene is connected to microarray identifiers
-                    arrayids = ensembl_arrayid_db[ensembl_gene]
-                    for arrayid in arrayids: ###This file differs in structure to the UniProt data 
-                        try: ensembl_ft_db[arrayid].append(ft_info)
-                        except KeyError: ensembl_ft_db[arrayid] = [ft_info]
+                if ensembl_prot not in missing_prot_seq:
+                    missing_prot_seq.append(ensembl_prot)
+    if len(missing_prot_seq): ### This never occured until parsing Zm Plant - the same protein sequences should be present from Ensembl for the same build
+        print 'WARNING!!!!!!! Missing protein sequence from protein sequence file for',len(missing_prot_seq),'proteins relative to',len(found_prot_seq),'found.'
+        print 'missing examples:',missing_prot_seq[:10]
 
     ensembl_ft_db2 = {}                        
     ensembl_ft_db = eliminateRedundant(ensembl_ft_db) ###duplicate interprot information is typically present
     for arrayid in ensembl_ft_db:
         for ft_info in ensembl_ft_db[arrayid]:
-            ensembl_prot,description,interpro_id,pos1,pos2,sequence_fragment = ft_info
+            ensembl_prot,description,interpro_id,pos1,pos2,sequence_fragment,gstart,gstop = ft_info
             ft_info2 = ProteinFunctionalSeqData(ensembl_prot,description,interpro_id,pos1,pos2,sequence_fragment)
+            ft_info2.addGenomicCoordinates(gstart,gstop) ### Add the genomic start and stop of the domain to keep track of where this domain is located
             try: ensembl_ft_db2[arrayid].append(ft_info2)
             except KeyError: ensembl_ft_db2[arrayid] = [ft_info2]
             
@@ -538,6 +558,8 @@ def importEnsemblUniprot(species):
         ensembl=t[0];uniprot=t[1]
         try: uniprot_ensembl_db[uniprot].append(ensembl)
         except KeyError: uniprot_ensembl_db[uniprot] = [ensembl]
+        
+    uniprot_ensembl_db = eliminateRedundant(uniprot_ensembl_db)
     print len(uniprot_ensembl_db),"UniProt entries with Ensembl annotations"
     return uniprot_ensembl_db
 
@@ -570,6 +592,8 @@ def getGenomicPosition(ac,ens_protein,uniprot_seq_len,pos1,pos2,ep_list):
         return 0,0,'failed'
     
 def import_uniprot_ft_data(species,protein_coordinate_file,domain_gene_counts,ensembl_arrayid_db,array_type):
+    """ This function exports genomic coordinates for each UniProt feature ***IF*** valid protein IDs are present in Ensembl-UniProt file (derived from UniProt)"""
+    
     uniprot_protein_seq_db = importUniProtSeqeunces(species,ensembl_arrayid_db,array_type)
     uniprot_feature_file = 'AltDatabase/uniprot/'+species+'/'+'uniprot_feature_file.txt'
     
@@ -607,39 +631,48 @@ def import_uniprot_ft_data(species,protein_coordinate_file,domain_gene_counts,en
             
             ### Compare the position of each protein (where a matched Ensembl protein is known) to UniProt domain position to
             ### Identify genomic coordinates for overlap analysis
-            if ac in uniprot_ensembl_db:
-                if ft != 'CHAIN' and ft != 'CONFLICT' and ft != 'VARIANT' and ft != 'VARSPLIC' and ft != 'VAR_SEQ' and '>' not in annotation:
-                    ens_protein_list = uniprot_ensembl_db[ac]
-                    for ens_protein in ens_protein_list: ### Can be composed of gene and protein IDs, so just loop through it and see which matches (should only be one match)
-                        if ens_protein in ens_protein_pos_db and primary_uniprot_id in uniprot_protein_seq_db:
-                            uniprot_seq_len = uniprot_protein_seq_db[primary_uniprot_id].SequenceLength()
-                            ep_list = ens_protein_pos_db[ens_protein]
-                            genomic_feature_start,genomic_feature_stop,status = getGenomicPosition(ac,ens_protein,uniprot_seq_len,pos1,pos2,ep_list)
-                            if status == 'found':
-                                new_annotation = ft+'-'+string.replace(annotation,';','')
-                                values = [ens_protein,str(pos1),str(pos2),str(genomic_feature_start),str(genomic_feature_stop),'','UniProt',new_annotation]
-                                export_data.write(string.join(values,'\t')+'\n')
-            pos1 = pos1-1
-            ft_length = pos2-pos1
-            if ft_length > 6: pos_1 = pos1; pos_2 = pos2
-            else:
-                if ft_length < 3: pos_1 = pos1 - 3; pos_2 = pos2 + 3
-                else: pos_1 = pos1 - 1; pos_2 = pos2 + 1
-                
-            if primary_uniprot_id in uniprot_protein_seq_db:
-                full_prot_seq = uniprot_protein_seq_db[primary_uniprot_id].Sequence()
-                sequence_fragment = full_prot_seq[pos_1:pos_2] ###We will search for this sequence, so have this expanded if too small (see above code)
-                if ft != 'CHAIN' and ft != 'CONFLICT' and ft != 'VARIANT' and ft != 'VARSPLIC' and ft != 'VAR_SEQ' and '>' not in annotation: ###exlcludes variant, splice variant SNP and conflict info
-                    ft_info = ProteinFunctionalSeqData(primary_uniprot_id,ft,annotation,pos1,pos2,sequence_fragment)
-                    ###Store the primary ID as the arrayid (gene accession number)
-                    if primary_uniprot_id in uniprot_arrayid_db:
-                        arrayids = uniprot_arrayid_db[primary_uniprot_id]
-                        for arrayid in arrayids:
-                            try: uniprot_ft_db[arrayid].append(ft_info)
-                            except KeyError: uniprot_ft_db[arrayid] = [ft_info]
-            else:
-                ###Occurs for non-SwissProt ft_data (e.g. TrEMBL)
-                continue
+            ac_list = string.split(ac,',') ### Can be a comma separated list
+            
+            for ac in ac_list[:1]: ### We only select the first representative one, since this should be sufficient (need to determine more rigourously though - 7/15/12)
+                if ac in uniprot_ensembl_db:
+                    if ft != 'CHAIN' and ft != 'CONFLICT' and ft != 'VARIANT' and ft != 'VARSPLIC' and ft != 'VAR_SEQ' and '>' not in annotation:
+                        ens_protein_list = uniprot_ensembl_db[ac]
+                        for ens_protein in ens_protein_list: ### Can be composed of gene and protein IDs, so just loop through it and see which matches (should only be one match)
+                            if ens_protein in ens_protein_pos_db and primary_uniprot_id in uniprot_protein_seq_db:
+                                uniprot_seq_len = uniprot_protein_seq_db[primary_uniprot_id].SequenceLength()
+                                ep_list = ens_protein_pos_db[ens_protein]
+                                ### ep_list is a list of exon coordinates and corresponding protein positions
+                                try: genomic_feature_start,genomic_feature_stop,status = getGenomicPosition(ac,ens_protein,uniprot_seq_len,pos1,pos2,ep_list)
+                                except Exception: status == 'not'
+                                if status == 'found':
+                                    new_annotation = ft+'-'+string.replace(annotation,';','')
+                                    values = [ens_protein,str(pos1),str(pos2),str(genomic_feature_start),str(genomic_feature_stop),'','UniProt',new_annotation]
+                                    export_data.write(string.join(values,'\t')+'\n')
+                pos1 = pos1-1
+                ft_length = pos2-pos1
+                if ft_length > 6: pos_1 = pos1; pos_2 = pos2
+                else:
+                    if ft_length < 3: pos_1 = pos1 - 3; pos_2 = pos2 + 3
+                    else: pos_1 = pos1 - 1; pos_2 = pos2 + 1
+                    
+                if primary_uniprot_id in uniprot_protein_seq_db:
+                    full_prot_seq = uniprot_protein_seq_db[primary_uniprot_id].Sequence()
+                    sequence_fragment = full_prot_seq[pos_1:pos_2] ###We will search for this sequence, so have this expanded if too small (see above code)
+                    if ft != 'CHAIN' and ft != 'CONFLICT' and ft != 'VARIANT' and ft != 'VARSPLIC' and ft != 'VAR_SEQ' and '>' not in annotation: ###exlcludes variant, splice variant SNP and conflict info
+                        ft_info = ProteinFunctionalSeqData(primary_uniprot_id,ft,annotation,pos1,pos2,sequence_fragment)
+                        try:
+                            ft_info.addGenomicCoordinates(genomic_feature_start,genomic_feature_stop) ### Add the genomic start and stop of the domain to keep track of where this domain is located
+                        except Exception:
+                            None ### See above, this occurs when certain features can not be matched between the isoform and the domain (shouldn't occur)
+                        ###Store the primary ID as the arrayid (gene accession number)
+                        if primary_uniprot_id in uniprot_arrayid_db:
+                            arrayids = uniprot_arrayid_db[primary_uniprot_id]
+                            for arrayid in arrayids:
+                                try: uniprot_ft_db[arrayid].append(ft_info)
+                                except KeyError: uniprot_ft_db[arrayid] = [ft_info]
+                else:
+                    ###Occurs for non-SwissProt ft_data (e.g. TrEMBL)
+                    continue
         except ValueError: continue
         
     domain_gene_count_temp={}
@@ -703,8 +736,9 @@ def grab_exon_level_feature_calls(species,array_type,genes_analyzed):
         ###Otherwise, these databases can be built on-the-fly in downstream methods, since Ensembl will be used as the array gene id
     else: ensembl_arrayid_db = genes_analyzed ###ensembl to ensembl for those being analyzed in the program
     ensembl_protein_seq_db,ensembl_ft_db,domain_gene_counts = import_ensembl_ft_data(species,ensembl_ft_file,ensembl_arrayid_db,array_type) ###Import function domain annotations for Ensembl proteins
+    print 'Ensembl based domain feature genes:',len(ensembl_ft_db),len(domain_gene_counts)
     uniprot_protein_seq_db,uniprot_ft_db,domain_gene_counts = import_uniprot_ft_data(species,protein_coordinate_file,domain_gene_counts,ensembl_arrayid_db,array_type)  ###" " " " UniProt "
-
+    print 'UniProt based domain feature genes:',len(uniprot_ft_db),len(domain_gene_counts)
     arrayid_ft_db = combineDatabases(uniprot_ft_db,ensembl_ft_db)  ###arrayid relating to classes of functional domain attributes and associated proteins (ensembl and uniprot)
     return arrayid_ft_db,domain_gene_counts
 
@@ -720,9 +754,27 @@ def clearall():
     all = [var for var in globals() if (var[:2], var[-2:]) != ("__", "__")]
     for var in all: del globals()[var]
 
+def importGeneAnnotations(species):
+    ### Used for internal testing
+    gene_annotation_file = "AltDatabase/ensembl/"+species+"/"+species+"_Ensembl-annotations_simple.txt"
+    fn=filepath(gene_annotation_file)
+    count = 0; gene_db = {}            
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if count == 0: count = 1
+        else:
+            gene, description, symbol = string.split(data,'\t')
+            gene_db[gene] = [gene]
+    return gene_db
+
 if __name__ == '__main__':
-    species = 'Dr'; protein_coordinate_file = '/Users/nsalomonis/Desktop/code/AltAnalyze/AltAnalyze_v116_release/AltDatabase/EnsMart61/ensembl/Dr/Dr_ProteinCoordinates_build_61_9a.tab'
-    import_uniprot_ft_data(species,protein_coordinate_file,[],[],'RNASeq');sys.exit()
+    species = 'Zm'
+    array_type = 'RNASeq'
+    genes_analyzed = importGeneAnnotations(species)
+    uniprot_arrayid_db={}
+    grab_exon_level_feature_calls(species,array_type,genes_analyzed); sys.exit()
+    protein_coordinate_file = '/Users/nsalomonis/Desktop/AltAnalyze/AltDatabase/EnsMart16/ensembl/Zm/Zm_ProteinCoordinates_build_16_69_5.tab'
+    #mport_uniprot_ft_data(species,protein_coordinate_file,[],[],'RNASeq');sys.exit()
     
     species = 'Rn'; array_type = 'AltMouse'
     getEnsemblRelationshipDirs(species);sys.exit()

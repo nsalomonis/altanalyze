@@ -32,7 +32,8 @@ py2app_adj3 = '/GO_Elite.app/Contents/Resources/lib/python2.6/site-packages.zip'
 py2app_adj4 = '/GO_Elite.app/Contents/Resources/lib/python2.7/site-packages.zip'
 py2exe_adj = '\\library.zip' ###py2exe
 cx_Freeze_adj = '/library.zip'
-py2app_ge_dirs = [py2app_adj,py2exe_adj,py2app_adj1,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj]
+pyinstaller_adj = '/GO_Elite.app/Contents/MacOS'
+py2app_ge_dirs = [py2app_adj,py2exe_adj,py2app_adj1,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj,pyinstaller_adj]
 
 py2app_adj = '/AltAnalyze.app/Contents/Resources/Python/site-packages.zip'
 py2app_adj1 = '/AltAnalyze.app/Contents/Resources/lib/python2.4/site-packages.zip'
@@ -41,7 +42,8 @@ py2app_adj3 = '/AltAnalyze.app/Contents/Resources/lib/python2.6/site-packages.zi
 py2app_adj4 = '/AltAnalyze.app/Contents/Resources/lib/python2.7/site-packages.zip'
 py2exe_adj = '\\library.zip' ###py2exe
 cx_Freeze_adj = '/library.zip'
-py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj]
+pyinstaller_adj = '/AltAnalyze.app/Contents/MacOS'
+py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj,pyinstaller_adj]
 py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
 if ('linux' in sys.platform or 'posix' in sys.platform) and getattr(sys, 'frozen', False): ### For PyInstaller
@@ -55,11 +57,21 @@ if 'AltAnalyze?' in application_path:
     application_path = string.replace(application_path,'\\','/') ### If /// present
     application_path = string.split(application_path,'AltAnalyze?')[0]
 
+if 'GO_Elite?' in application_path:
+    application_path = string.replace(application_path,'//','/')
+    application_path = string.replace(application_path,'\\','/') ### If /// present
+    application_path = string.split(application_path,'GO_Elite?')[0]
+
 def filepath(filename):
     #dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
-    dir = application_path   
-    try: dir_list = os.listdir(filename); fn = filename ### test to see if the path can be found (then it is the full path)
-    except Exception: fn=os.path.join(dir,filename)
+    dir = application_path
+    if filename== '':  ### Windows will actually recognize '' as the AltAnalyze root in certain situations but not others
+        fn = dir
+    elif ':' in filename:
+        fn = filename
+    else:
+        try: dir_list = os.listdir(filename); fn = filename ### test to see if the path can be found (then it is the full path)
+        except Exception: fn=os.path.join(dir,filename)
     if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
     if 'Databases' in fn or 'AltDatabase' in fn:
@@ -113,10 +125,9 @@ def refDir():
 
 def whatProgramIsThis():
     reference_dir = refDir()
-    if 'AltAnalyze' in reference_dir: type = 'AltAnalyze'; database_dir = 'AltDatabase/goelite'
-    elif 'GO-Elite' in reference_dir: type = 'GO-Elite'; database_dir = 'Databases'
-    else: database_dir = 'AltDatabase/goelite'; type = 'AltAnalyze'
-    if 'Linux' in platform.system(): database_dir += '/'
+    if 'AltAnalyze' in reference_dir: type = 'AltAnalyze'; database_dir = 'AltDatabase/goelite/'
+    elif 'GO-Elite' in reference_dir: type = 'GO-Elite'; database_dir = 'Databases/'
+    else: database_dir = 'AltDatabase/goelite/'; type = 'AltAnalyze'
     return type,database_dir
 
 def correctGeneDatabaseDir(fn):
