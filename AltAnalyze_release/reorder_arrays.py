@@ -119,7 +119,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             data_list2 = grouped_ordered_array_list[group2] #baseline expression
             avg1 = statistics.avg(data_list1)
             try: avg2 = statistics.avg(data_list2)
-            except ValueError: print data_list2,row_id
+            except ValueError: print data_list2,row_id; forceError
             log_fold = avg1 - avg2
             fold = statistics.log_fold_conversion(log_fold)
             try:
@@ -269,10 +269,10 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
         if 'moderated' in probability_statistic and replicates == 'yes':
             ### Moderates the original reported test p-value prior to adjusting
             try: statistics.moderateTestStats(pval_db,probability_statistic)
-            except ZeroDivisionError:
+            except Exception:
                 if round == 0:
                     if replicates == 'yes':
-                        print 'Moderated test failed due to issue with mpmpath, using unmoderated unpaired test instead!'
+                        print 'Moderated test failed due to issue with mpmpath or out-of-range values\n   ... using unmoderated unpaired test instead!'
                 null=[] ### Occurs when not enough replicates
             round+=1
         statistics.adjustPermuteStats(pval_db)

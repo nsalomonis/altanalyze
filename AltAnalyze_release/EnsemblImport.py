@@ -547,6 +547,8 @@ def importEnsExonStructureDataSimple(species,type,gene_strand_db,exon_location_d
             ###switch exon-start and stop if in the reverse orientation
             if strand == '-1' or strand == '-': strand = '-'#; exon_start2 = int(exon_end); exon_end2 = int(exon_start); exon_start=exon_start2; exon_end=exon_end2
             else: strand = '+'; exon_end = int(exon_end)#; exon_start = int(exon_start)
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             exon_end = int(exon_end); exon_start = int(exon_start)
             exon_data = (exon_start,exon_end,ens_exonid)
             try: relative_exon_locations[ens_transcriptid,gene,strand].append(exon_data)
@@ -610,6 +612,8 @@ def importEnsExonStructureData(filename,species,data2process):
         if x==0: x=1
         else:
             gene, chr, strand, exon_start, exon_end, ens_exonid, constitutive_exon, ens_transcriptid = t
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             if data2process == 'all':
                 ###switch exon-start and stop if in the reverse orientation
                 if strand == '-1' or strand == '-': strand = '-'; exon_start2 = int(exon_end); exon_end2 = int(exon_start); exon_start=exon_start2; exon_end=exon_end2
@@ -1263,6 +1267,8 @@ def importPreviousBuildTranslation(filename,use_class_structures):
         if x == 0: x+=1 ###ignore the first line
         else:
             chr, gene_start, gene_stop, strand, ensembl_gene_id, ensembl_exon_id, exon_start, exon_stop, null, null, null,null, constitutive_exon = string.split(data,'\t')
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             gene_start = int(gene_start); gene_stop = int(gene_stop)
             exon_start = int(exon_start); exon_stop = int(exon_stop)
             if strand == '-1': strand = '-'
@@ -1323,6 +1329,8 @@ def importEnsemblDomainData(filename):
         if x == 1:
             try: ensembl_gene, chr, mgi, uniprot, ensembl_prot, seq_data, position_info = string.split(data,'\t')
             except ValueError: continue
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             ft_info_list = string.split(position_info,' | ')
             for entry in ft_info_list:
                 try: peptide_start_end, gene_start_end, feature_source, interprot_id, description = string.split(entry,' ')
@@ -1364,7 +1372,7 @@ def getEnsemblAssociations(Species,data_type,test_status):
     test_gene = ['ENSMUSG00000065005'] #'ENSG00000215305
     test_gene = ['ENSRNOE00000194194']
     test_gene = ['ENSG00000229611','ENSG00000107077','ENSG00000107077','ENSG00000107077','ENSG00000107077','ENSG00000107077','ENSG00000163132', 'ENSG00000115295']
-    test_gene = ['ENSRNOE00000194194']
+    test_gene = ['ENSG00000198804']
     #test_gene = ['ENSMUSG00000059857'] ### for JunctionArrayEnsemblRules
     #test_gene = meta_test
     exon_annotation_db,transcript_gene_db,gene_transcript,intron_retention_db,ucsc_splicing_annot_db = getEnsExonStructureData(species,data_type)
@@ -1447,6 +1455,8 @@ def getEnsemblGeneLocations(species,array_type,key):
             except Exception:
                 if array_type == 'RNASeq': gene = t[0]; chr=t[2]; strand=t[3]; exon_start=t[4]; exon_end=t[5] ### for Ensembl_exon.txt
                 else: gene = t[2]; chr=t[4]; strand=t[5]; exon_start=t[6]; exon_end=t[7] ### for Ensembl_probesets.txt
+            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             if strand == '-1' or strand == '-': strand = '-'
             else: strand = '+'
             exon_end = int(exon_end); exon_start = int(exon_start)

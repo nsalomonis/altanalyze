@@ -148,12 +148,21 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
                             ###Save all sequences to the disk rather than store these in memory. Just select the optimal sequences later. 
                             values = [transid,cDNA_seq]
                             values = string.join(values,'\t')+'\n'; datar.write(values); x+=1
-                        else: gene_not_found.append(ensembl_id)
+                        else:
+                            gene_not_found.append(ensembl_id)
                     t= string.split(data[1:],':'); sequence=''
                     transid_data = string.split(t[0],' '); transid = transid_data[0]; ensembl_id = t[-1]
-                    if 'gene' not in t[-2]: ### After Ensembl version 64
+                    ind=0
+                    for item in t:
+                        if 'gene' in item:
+                            ensembl_id = string.split(t[ind+1],' ')[0] ### In the following field
+                        ind+=1
+                    """
+                    if 'gene' in t[-3]:
+                        ensembl_id = string.split(t[-2],' ')[0] ### Case in Zm for plant and probably other cDNA files (different fields here!!!)
+                    elif 'gene' not in t[-2]: ### After Ensembl version 64
                         for entry in t:
-                            if 'gene_biotype' in entry: ensembl_id = string.split(entry,' ')[0]
+                            if 'gene_biotype' in entry: ensembl_id = string.split(entry,' ')[0]"""
         except IndexError: continue
         try:
             if data[0] != '>': sequence = sequence + data
@@ -162,7 +171,7 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
     datar.close(); dataw.close()
     end_time = time.time(); time_diff = int(end_time-start_time)
     gene_not_found = unique.unique(gene_not_found)
-    print len(genes_found), 'genes associated with Ensembl transcripts'
+    print len(genes_found), 'genes associated with reciprocal Ensembl junctions'
     print len(gene_not_found), "genes not found in the reciprocol junction database (should be there unless conflict present - or few alternative genes predicted during junction array design)"
     print gene_not_found[0:10],'not found examples'
     print "Ensembl transcript sequences analyzed in %d seconds" % time_diff
@@ -381,7 +390,10 @@ def importCriticalJunctionSeq(filename,species,array_type):
         if x==0: x=1
         else: 
             try: probeset,probeset_seq,junction_seq = t
-            except Exception: probeset,probeset_seq,junction_seq, null = t
+            except Exception:
+                try:
+                    probeset,probeset_seq,junction_seq, null = t
+                except Exception: print filename,t;kill
             if array_type == 'RNASeq':
                 ### Ensure the junction sequence is sufficient for searching
                 left,right = string.split(probeset_seq,'|')

@@ -225,9 +225,10 @@ def compareExonComposition(species,array_type):
     if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_all-transcript-matches.txt'  
     else: export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'                
     data = export.ExportFile(export_file)
-    
+
     ### Identifying isforms containing and not containing the probeset
     probeset_transcript_db={}; match_pairs_missing=0; valid_transcript_pairs={}; ok_transcript_pairs={}; probesets_not_found=0
+
     for probeset in probeset_exon_coor_db:
         geneid = probeset_gene_db[probeset][0]
         transcripts = ens_gene_transcript_db[geneid]
@@ -427,7 +428,7 @@ def compareProteinComposition(species,array_type,translate,compare_all_features)
     probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts = importProbesetTranscriptMatches(species,array_type,compare_all_features)
     all_transcripts=[]
 
-    if translate == 'yes1': ### Used if we want to re-derive all transcript-protein sequences
+    if translate == 'yes1': ### Used if we want to re-derive all transcript-protein sequences - set to yes1 when we want to disable this option
         transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch')
     else: transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch_new')
         
@@ -448,11 +449,16 @@ def compareProteinComposition(species,array_type,translate,compare_all_features)
             gene = probeset_gene_db[probeset][0]; genes_being_analyzed[gene]=[gene]
     protein_ft_db,domain_gene_counts = FeatureAlignment.grab_exon_level_feature_calls(species,array_type,genes_being_analyzed)
     
-    if compare_all_features == 'yes': ### Used when comparing all possible PROTEIN pairs      
+    if compare_all_features == 'yes': ### Used when comparing all possible PROTEIN pairs to find minimal domain changes      
         compareProteinFeaturesForPairwiseComps(probeset_protein_db,protein_seq_db,probeset_gene_db,species,array_type)
 
     ExonAnalyze_module.identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_ft_db,compare_all_features,data_type)
 
+def remoteTranslateRNAs(Species,unique_transcripts,unique_ens_transcripts,analysis_type):
+    global species
+    species = Species
+    translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type)
+    
 def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
     if analysis_type == 'local':
         ### Get protein ACs for UCSC transcripts if provided by UCSC (NOT CURRENTLY USED BY THE PROGRAM!!!!)
@@ -493,6 +499,7 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
     print len(transcript_protein_db),'transcripts with associated protein sequence.'
     
     missing_protein_data=[]
+    #transcript_protein_db={} ### Use to override existing mRNA-protein annotation files
     for ac in unique_transcripts:
         if ac not in transcript_protein_db: missing_protein_data.append(ac)
 
@@ -555,9 +562,53 @@ def importProteinSequences(species,just_get_ids):
         for line in open(fn,'rU').xreadlines():             
             probeset_data = cleanUpLine(line)  #remove endline
             mRNA_AC,protein_AC,protein_seq = string.split(probeset_data,'\t')
-            if just_get_ids == 'yes': transcript_protein_seq_db[mRNA_AC]=[]
+            if just_get_ids == 'yes':
+                transcript_protein_seq_db[mRNA_AC]=[]
             else: transcript_protein_seq_db[mRNA_AC] = protein_AC,protein_seq
     return seq_files, transcript_protein_seq_db
+        
+def importCDScoordinates(species):
+    """ Read in the CDS locations for Ensembl proteins, NCBI proteins and in silico derived proteins and then export to a single file """
+    cds_location_db={}
+    errors = {}
+    import_dir = '/AltDatabase/'+species+'/SequenceData/output/details' 
+    import_dir2 = '/AltDatabase/ensembl/'+species 
+    g = GrabFiles(); g.setdirectory(import_dir)
+    g2 = GrabFiles(); g2.setdirectory(import_dir2)
+    seq_files = g.searchdirectory('Transcript-')
+    seq_files += g2.searchdirectory('EnsemblTranscriptCDSPositions')
+
+    output_file = 'AltDatabase/ensembl/'+species +'/AllTranscriptCDSPositions.txt'
+    dataw = export.ExportFile(output_file)
+    
+    for seq_file in seq_files:
+        fn=filepath(seq_file)
+        for line in open(fn,'rU').xreadlines():             
+            line_data = cleanUpLine(line)  #remove endline
+            line_data = string.replace(line_data,'>','') ### occurs for some weird entries
+            line_data = string.replace(line_data,'<','') ### occurs for some weird entries
+            if 'join' in line_data:
+                ### Occures when the cds entry looks like this: AL137661 - join(203..1267,1267..2187) or 'AL137661\tjoin(203\t1267,1267\t2187)'
+                t = string.split(line_data,'\t')
+                mRNA_AC = t[0]; start = t[1][5:]; stop = t[-1][:-1]
+            else:
+                line_data = string.replace(line_data,'complement','') ### occurs for some weird entries
+                line_data = string.replace(line_data,')','') ### occurs for some weird entries
+                line_data = string.replace(line_data,'(','') ### occurs for some weird entries
+                try:
+                    mRNA_AC,start,stop = string.split(line_data,'\t')
+                    try:
+                        cds_location_db[mRNA_AC] = int(start),int(stop)
+                        dataw.write(string.join([mRNA_AC,start,stop],'\t')+'\n')
+                    except Exception:
+                        errors[line_data]=[]
+                        #print line_data;sys.exit()
+                except Exception:
+                    errors[line_data]=[]
+                    #print line_data;sys.exit()
+    print len(errors),'errors...out of',len(cds_location_db)
+    dataw.close()
+    return cds_location_db
 
 def importProbesetTranscriptMatches(species,array_type,compare_all_features):
     if compare_all_features == 'yes': ### Used when comparing all possible PROTEIN pairs    
@@ -616,6 +667,9 @@ def searchEntrez(accession_list,bio_type):
 def fetchSeq(accession_list,bio_type,version):
     output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-Protein_sequences_'+str(version)+'.txt'
     datar = export.ExportFile(output_file)
+    
+    output_file = 'AltDatabase/'+species+'/SequenceData/output/details/Transcript-Protein_sequences_'+str(version)+'.txt'
+    datad = export.ExportFile(output_file)
 
     print len(accession_list), "mRNA Accession numbers submitted to eUTILs."   
     start_time = time.time()
@@ -638,7 +692,7 @@ def fetchSeq(accession_list,bio_type,version):
         for a in search_results: ### list of dictionaries
             accession = a['GBSeq_primary-accession']
             if bio_type == 'nucleotide':
-                mRNA_seq=''; proceed = 'no'
+                mRNA_seq=''; proceed = 'no'; get_location = 'no'
                 ### Get translated protein sequence if available
                 try:
                     for entry in a["GBSeq_feature-table"]:
@@ -647,21 +701,30 @@ def fetchSeq(accession_list,bio_type,version):
                                 for i in entry[key]:
                                     if i['GBQualifier_name'] == 'protein_id': protein_id = i['GBQualifier_value']
                                     if i['GBQualifier_name'] == 'translation': protein_sequence = i['GBQualifier_value']; proceed = 'yes'
+                            if key == 'GBFeature_key':
+                                if entry[key] == 'CDS':
+                                    get_location = 'yes'
+                                else: get_location = 'no' ### Get CDS location (occurs only following the GBFeature_key CDS, but not after)
+                            if key == 'GBFeature_location' and get_location == 'yes':
+                                cds_location = entry[key]
                 except KeyError: null = []
                 alt_seq='no'
                 if proceed == 'yes':
                     if protein_sequence[0] != 'M': proceed = 'no'; alt_seq = 'yes'
                     else:
-                        values = [accession,protein_id,protein_sequence]; values = string.join(values,'\t')+'\n'; datar.write(values)                    
-                if proceed == 'no': ### Translate mRNA seq to protein
+                        values = [accession,protein_id,protein_sequence]; values = string.join(values,'\t')+'\n'; datar.write(values)
+                        datad.write(accession+'\t'+string.replace(cds_location,'..','\t')+'\n')
+                else: ### Translate mRNA seq to protein
                     mRNA_seq = a['GBSeq_sequence']
                     mRNA_db={}; mRNA_db[accession] = '',mRNA_seq
                     translation_db = BuildInSilicoTranslations(mRNA_db)
                     for mRNA_AC in translation_db: ### Export in silico protein predictions
-                        protein_id, protein_sequence = translation_db[mRNA_AC]
+                        protein_id, protein_sequence,cds_location = translation_db[mRNA_AC]
                         values = [mRNA_AC,protein_id,protein_sequence]; values = string.join(values,'\t')+'\n'; datar.write(values)
+                        datad.write(mRNA_AC+'\t'+string.replace(cds_location,'..','\t')+'\n')
                     if len(translation_db)==0 and alt_seq == 'yes': ### If no protein sequence starting with an "M" found, write the listed seq
-                        values = [accession,protein_id,protein_sequence]; values = string.join(values,'\t')+'\n'; datar.write(values)  
+                        values = [accession,protein_id,protein_sequence]; values = string.join(values,'\t')+'\n'; datar.write(values)
+                        datad.write(accession+'\t'+string.replace(cds_location,'..','\t')+'\n')
             else: protein_sequence = a['GBSeq_sequence']
         index+=200
         """print 'accession',accession    
@@ -672,6 +735,7 @@ def fetchSeq(accession_list,bio_type,version):
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "finished in %s seconds" % time_diff
     datar.close()
+    datad.close()
 
 def importEnsemblTranscriptSequence(missing_protein_ACs):
 
@@ -682,6 +746,9 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
     start_time = time.time()
     output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-EnsInSilicoProt_sequences.txt'
     datar = export.ExportFile(output_file)
+
+    output_file = 'AltDatabase/'+species+'/SequenceData/output/details/Transcript-EnsInSilicoProt_sequences.txt'
+    datad = export.ExportFile(output_file)
     
     print "Begining generic fasta import of",filename
     fn=filepath(filename); translated_mRNAs={}; sequence = ''
@@ -696,8 +763,9 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
                             mRNA_db = {}; mRNA_db[transid] = '',sequence[1:]
                             translation_db = BuildInSilicoTranslations(mRNA_db)
                             for mRNA_AC in translation_db: ### Export in silico protein predictions
-                                protein_id, protein_seq = translation_db[mRNA_AC]
+                                protein_id, protein_seq, cds_location = translation_db[mRNA_AC]
                                 values = [mRNA_AC,protein_id,protein_seq]; values = string.join(values,'\t')+'\n'; datar.write(values)
+                                datad.write(mRNA_AC+'\t'+string.replace(cds_location,'..','\t')+'\n')
                                 translated_mRNAs[mRNA_AC]=[]
                     ### Parse new line
                     #>ENST00000400685 cdna:known supercontig::NT_113903:9607:12778:1 gene:ENSG00000215618
@@ -717,10 +785,12 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
             mRNA_db = {}; mRNA_db[transid] = '',sequence[1:]
             translation_db = BuildInSilicoTranslations(mRNA_db)
             for mRNA_AC in translation_db: ### Export in silico protein predictions
-                protein_id, protein_seq = translation_db[mRNA_AC]
+                protein_id, protein_seq, cds_location = translation_db[mRNA_AC]
                 values = [mRNA_AC,protein_id,protein_seq]; values = string.join(values,'\t')+'\n'; datar.write(values)
+                datad.write(mRNA_AC+'\t'+string.replace(cds_location,'..','\t')+'\n')
                 translated_mRNAs[mRNA_AC]=[]
     datar.close()
+    datad.close()
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "Ensembl transcript sequences analyzed in %d seconds" % time_diff
 
@@ -859,10 +929,14 @@ def BuildInSilicoTranslations(mRNA_db):
         temp_protein_list=[]; y=0
         protein_id,sequence = mRNA_db[mRNA_AC]
         if protein_id == '': protein_id = mRNA_AC+'-PEP'
+        original_seqeunce = sequence
         sequence = string.upper(sequence)
+        loop=0
         while (string.find(sequence,'ATG')) != -1:  #while there is still a methionine in the DNA sequence, reload this DNA sequence for translation: find the longest ORF
             x = string.find(sequence,'ATG') #before doing this, need to find the start codon ourselves
             y += x  #maintain a running count of the sequence position
+            if loop!=0: y+=3 ### This accounts for the loss in sequence_met
+            #if y<300: print original_seqeunce[:y+2], x
             sequence_met = sequence[x:]  #x gives us the position where the first Met* is.
             
             ### New Biopython methods - http://biopython.org/wiki/Seq
@@ -879,6 +953,7 @@ def BuildInSilicoTranslations(mRNA_db):
             prot_seq_tuple = len(prot_seq_string),y,prot_seq_string,dna_seq  #added DNA sequence to determine which exon we're in later  
             temp_protein_list.append(prot_seq_tuple) #create a list of protein sequences to select the longest one
             sequence = sequence_met[3:]  # sequence_met is the sequence after the first or proceeduring methionine, reset the sequence for the next loop
+            loop+=1
         if len(temp_protein_list) == 0:
             continue
         else:
@@ -909,6 +984,7 @@ def BuildInSilicoTranslations(mRNA_db):
                             coding_dna_seq_string = protein_data[3]
                             alt_prot_seq_string = temp_protein_list[0][2]
                             alt_coding_dna_seq_string = temp_protein_list[0][3]
+                            pos1 = protein_data[1]
                             if first_time == 0:
                                 print mRNA_AC
                                 print coding_dna_seq_string
@@ -922,13 +998,14 @@ def BuildInSilicoTranslations(mRNA_db):
             dl = (len(prot_seq_string))*3  #figure out what the DNA coding sequence length is
             dna_seq_string_coding_to_end = coding_dna_seq_string.tostring()
             coding_dna_seq_string = dna_seq_string_coding_to_end[0:dl]
+            cds_location = str(pos1+1)+'..'+str(pos1+len(prot_seq_string)*3+3)
             ### Determine if a stop codon is in the sequence or there's a premature end
             coding_diff = len(dna_seq_string_coding_to_end) - len(coding_dna_seq_string)
             if coding_diff > 4: stop_found = 'stop-codon-present'
             else: stop_found = 'stop-codon-absent'
             #print [mRNA_AC],[protein_id],prot_seq_string[0:10]
             if mRNA_AC == 'AK025306': print '*********AK025306',[protein_id],prot_seq_string[0:10]
-            translation_db[mRNA_AC] = protein_id,prot_seq_string
+            translation_db[mRNA_AC] = protein_id,prot_seq_string,cds_location
     return translation_db
 
 def check4FrameShifts(pos1,pos2):
@@ -1037,6 +1114,10 @@ def characterizeProteinLevelExonChanges(uid,array_geneid,hit_data,null_data,arra
 
 ############# Code currently not used (LOCAL PROTEIN SEQUENCE ANALYSIS) ##############
 def importUCSCSequenceAssociations(species,transcripts_to_analyze):
+    """ NOTE: This method is currently not used, by the fact that the kgXref is not downloaded from the
+    UCSC ftp database. This file relates mRNAs primarily to UniProt rather than GenBank and thus is less
+    ideal than the direct NCBI API based method used downstream """
+    
     filename = 'AltDatabase/'+species+'/SequenceData/kgXref.txt'           
     fn=filepath(filename); mRNA_protein_db={}
     for line in open(fn,'r').readlines():
@@ -1115,6 +1196,9 @@ def importUCSCSequences(missing_protein_ACs):
     filename = 'AltDatabase/'+species+'/SequenceData/mrna.fa'
     output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-InSilicoProt_sequences.txt'
     datar = export.ExportFile(output_file)  
+
+    output_file = 'AltDatabase/'+species+'/SequenceData/output/details/Transcript-InSilicoProt_sequences.txt'
+    datad = export.ExportFile(output_file)
     
     print "Begining generic fasta import of",filename
     #'>gnl|ENS|Mm#S10859962 Mus musculus 12 days embryo spinal ganglion cDNA, RIKEN full-length enriched library, clone:D130006G06 product:unclassifiable, full insert sequence /gb=AK051143 /gi=26094349 /ens=Mm.1 /len=2289']
@@ -1133,8 +1217,9 @@ def importUCSCSequences(missing_protein_ACs):
                                 mRNA_db = {}; mRNA_db[accession] = '',sequence[1:]
                                 translation_db = BuildInSilicoTranslations(mRNA_db)
                                 for mRNA_AC in translation_db: ### Export in silico protein predictions
-                                    protein_id, protein_seq = translation_db[mRNA_AC]
+                                    protein_id, protein_seq, cds_location = translation_db[mRNA_AC]
                                     values = [mRNA_AC,protein_id,protein_seq]; values = string.join(values,'\t')+'\n'; datar.write(values)
+                                    datad.write(mRNA_AC+'\t'+string.replace(cds_location,'..','\t')+'\n')
                                     translated_mRNAs[mRNA_AC]=[]
                         ### Parse new line
                         values = string.split(data,' '); accession = values[0][1:]; sequence = '|'; continue
@@ -1143,6 +1228,7 @@ def importUCSCSequences(missing_protein_ACs):
                     if data[0] != '>': sequence = sequence + data
                 except IndexError: print kill; continue
     datar.close()
+    datad.close()
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "UCSC mRNA sequences analyzed in %d seconds" % time_diff
 
@@ -1161,6 +1247,7 @@ def runProgram(Species,Array_type,Data_type,translate_seq,run_seqcomp):
     if array_type == 'gene' or array_type == 'exon' or data_type == 'exon':
         compareExonComposition(species,array_type)
         compare_all_features = 'no'
+        print 'Begin Exon-based compareProteinComposition'
         compareProteinComposition(species,array_type,translate,compare_all_features)
         if run_seqcomp == 'yes':
             compare_all_features = 'yes'; translate = 'no'
@@ -1168,6 +1255,7 @@ def runProgram(Species,Array_type,Data_type,translate_seq,run_seqcomp):
     elif array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
         compareExonCompositionJunctionArray(species,array_type)
         compare_all_features = 'no'
+        print 'Begin Junction-based compareProteinComposition'
         compareProteinComposition(species,array_type,translate,compare_all_features)
         if run_seqcomp == 'yes':
             compare_all_features = 'yes'; translate = 'no'

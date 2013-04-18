@@ -121,12 +121,12 @@ class GrabFiles:
         print self.data
     def searchdirectory(self,search_term):
         #self is an instance while self.data is the value of the instance
-        file = getDirectoryFiles(self.data,str(search_term))
+        files,file_dir,file = gene_associations.getDirectoryFiles(self.data,str(search_term))
         if len(file)<1: print search_term,'not found'
-        return file
+        return file_dir
     def searchdirectory_start(self,search_term):
         #self is an instance while self.data is the value of the instance
-        files = getAllDirectoryFiles(self.data,str(search_term))
+        files,file_dir,file = gene_associations.getDirectoryFiles(self.data,str(search_term))
         match = ''
         for file in files:
             split_strs = string.split(file,'.')
@@ -797,6 +797,7 @@ def exportLocalResults(filtered_mapps,mapp_titles,mapp_gene_annotation_db,mapp_v
     summary_data_db['redundant_mapp_term_count'] = len(mapps_redundant_with_others)
     
 def importORASimple(ora_dir,elite_pathway_db,file_type):
+    """ This function imports pathway data for any elite pathway from the unfiltered results """
     summary_results_db={}
     ontology_name = file_type
     if file_type == 'GeneOntology': file_type = 'GO.'
@@ -889,19 +890,28 @@ def outputOverlappingResults(combined_results,ora_dir):
     ### Move to the root directory
     fn = filepath(output_results)
     fn2 = string.replace(fn,'CompleteResults/ORA_pruned','')
-    try: export.customFileMove(fn,fn2)
-    except Exception: print fn; print fn2; print "OverlapResults failed to be copied from CompleteResults (please see CompleteResults instead)"
+    try:
+        export.customFileMove(fn,fn2)
+        import clustering
+        clustering.clusterPathwayZscores(fn2) ### outputs the overlapping results as a heatmap
+    except Exception,e:
+        print e
+        print fn; print fn2; print "OverlapResults failed to be copied from CompleteResults (please see CompleteResults instead)"
     
 def writeOverlapLine(raw,ontology_files,headers,header_ontology,ontology_elite_db,ontology_to_filename,ontology_type):
     file_headers=[]
-    for filename in ontology_files[ontology_type]:
+    filenames = ontology_files[ontology_type]
+    filenames.sort() ### Sort by filename
+    for filename in filenames:
         file_headers += updateHeaderName(headers,filename)
     title = string.join(header_ontology+file_headers,'\t')+'\n'
     raw.write(title)
     for (pathway_name,key) in ontology_elite_db:
         elite_files = string.join(ontology_to_filename[pathway_name,ontology_type],'|')
         row = list(key)+[elite_files]
-        for (file,values) in ontology_elite_db[(pathway_name,key)]:
+        scores_data = ontology_elite_db[(pathway_name,key)]
+        scores_data.sort() ### Sort by filename to match above
+        for (file,values) in scores_data:
             row += values
         raw.write(string.join(row,'\t')+'\n')
         
@@ -1026,6 +1036,14 @@ def getSourceData():
     sourceDataCheck(); sourceData()
     return system_codes,source_types,mod_types
 
+def getSourceDataNames():
+    sourceDataCheck(); sourceData()
+    system_code_names={}
+    for sc in system_codes:
+        name = system_codes[sc]
+        system_code_names[name]=sc
+    return system_code_names,source_types,mod_types
+
 def sourceData():
     filename = 'Config/source_data.txt'; x=0
     fn=filepath(filename)
@@ -1078,7 +1096,7 @@ def reorganizeResourceList(pathway_list):
     return pathway_list_reorganized
 
 def runGOElite(mod):
-  print 'Running GO-Elite version 1.2.5\n'
+  print 'Running GO-Elite version 1.2.6\n'
   #UI.WarningWindow('test','test')    
   source_data = mod; speciesData(); sourceDataCheck(); sourceData()
   try: species_code = species_codes[species]
@@ -1235,7 +1253,7 @@ def runGOElite(mod):
                 #print len(unique_genes), "unique genes associated with GO-Elite terms"          
                 ###Re-output results, now with gene annotation data
                 collapsed_go_list = exportGOResults(go_full,go_titles,collapsed_go_list,zscore_goid,go_gene_annotation_db,go_values_db,value_headers,goids_with_redundant_genes)    
-                exportFilteredSIF(collapsed_go_list,mappfinder_input_dir)
+                exportFilteredSIF(mod,species_code,collapsed_go_list,mappfinder_input_dir,None)
             except OSError:
                 print_out = "\nWARNING: Could not delete parent GOID\n"+parent_goid+ "from go_count_db."
                 print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the ORA results file is wrong (check this)\nor does not match the user selected MOD.'
@@ -1272,8 +1290,9 @@ def runGOElite(mod):
                     print_out += '\kReport bug to the GO-Elite help desk.'
                     try: UI.WarningWindow(print_out,' Continue ')
                     except Exception: print print_out
-        exportLocalResults(go_full,go_titles,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes)
-        exportFilteredSIF(mapp_gene_annotation_db,mappfinder_input_dir)
+
+            exportLocalResults(go_full,go_titles,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes)
+            exportFilteredSIF(mod,species_code,mapp_gene_annotation_db,mappfinder_input_dir,oraDirTogeneDir)
         if program_type != 'GO-Elite' and mappfinder_input[:3] == 'AS.':
             local_filename = go_elite_output_folder+'/'+mappfinder_input[0:-4]+ '_'+filter_method+'_elite.txt'
             print 'Copying GO-Elite results to DomainGraph folder...'
@@ -1340,7 +1359,7 @@ def runGOElite(mod):
   end_time = time.time(); time_diff = int(end_time-start_time)
   if program_type == 'GO-Elite' and use_Tkinter == 'yes': importGOEliteParameters(run_parameter)
 
-def exportFilteredSIF(collapsed_term_list,mappfinder_input_dir):
+def exportFilteredSIF(mod,species_code,collapsed_term_list,mappfinder_input_dir,oraDirTogeneDir):
     gene_association_file = string.replace(mappfinder_input_dir,'.txt','-associations.tab')
     sif_output = string.replace(mappfinder_input_dir,'ORA','ORA_pruned')
     sif_output = string.replace(sif_output,'.txt','.sif')
@@ -1357,7 +1376,18 @@ def exportFilteredSIF(collapsed_term_list,mappfinder_input_dir):
                 if term in full_go_name_db: term = full_go_name_db[term]
                 sif.write(string.join([term,'pr',ID+':'+symbol],'\t')+'\n')
     sif.close()
-                
+    
+    try:
+        import clustering
+        try:
+            criterion_name = export.findFilename(mappfinder_input_dir)
+            ora_input_dir = oraDirTogeneDir[criterion_name] ### This is ONLY needed for transcription factor graph visualization
+        except Exception: ora_input_dir = None
+        clustering.buildGraphFromSIF(mod,species_code,sif_output,ora_input_dir)
+    except Exception:
+        #print traceback.format_exc()
+        None #Export from PyGraphViz not supported
+        
 class SummaryResultsWindow:
     def __init__(self,tl,output_dir):
         def showLink(event):
@@ -1366,7 +1396,7 @@ class SummaryResultsWindow:
         url = 'http://www.genmapp.org/go_elite/help_main.htm'
         LINKS=(url,'')
         self.LINKS = LINKS
-        tl.title('GO-Elite version 1.2.5'); self.tl = tl
+        tl.title('GO-Elite version 1.2.6'); self.tl = tl
         
         #"""
         filename = 'Config/icon.gif'
@@ -1504,7 +1534,7 @@ class StatusWindow:
     def __init__(self,root,mod):
 
             self._parent = root
-            root.title('GO-Elite 1.2.5 - Status Window')
+            root.title('GO-Elite 1.2.6 - Status Window')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             if os.name == 'nt': height = 450; width = 500
@@ -1584,7 +1614,6 @@ def importGOEliteParameters(run_parameter):
     species, run_mappfinder, mod, permutations, filter_method, z_threshold, p_val_threshold, change_threshold, resources_to_analyze, max_member_count, returnPathways, file_dirs = parameters
     change_threshold = int(change_threshold); p_val_threshold = float(p_val_threshold); z_threshold = float(z_threshold)
     criterion_input_folder, criterion_denom_folder, main_output_folder, custom_sets_folder = file_dirs
-
     time_stamp = timestamp() 
     log_file = filepath(main_output_folder+'/GO-Elite_report-'+time_stamp+'.log')
     log_report = open(log_file,'w'); log_report.close()
@@ -1633,6 +1662,7 @@ def remoteAnalysis(variables,run_type):
 def visualizePathways(species_code,oraDirTogeneDir,combined_results):
     """ Sends all over-represented pathways to the WikiPathways API for visualization """
     try:
+        failed=[]
         if returnPathways != None and returnPathways != 'None':
             ### If only the top X pathways should be returned, get this number
             returnNumber = None
@@ -1660,13 +1690,20 @@ def visualizePathways(species_code,oraDirTogeneDir,combined_results):
                 print '...restricting to',imageType
             for (gene_file_dir,wpid) in wp_to_visualize:
                 ### graphic_link is a dictionary of PNG locations
-                graphic_link = WikiPathways_webservice.visualizePathwayAssociations(gene_file_dir,species_code,mod,wpid,imageExport=imageType)
-                count+=1
-                print '.',
-                if returnNumber != None:
-                    if returnNumber == count:
-                        break
+                try:
+                    graphic_link = WikiPathways_webservice.visualizePathwayAssociations(gene_file_dir,species_code,mod,wpid,imageExport=imageType)
+                    count+=1
+                    print '.',
+                    if returnNumber != None:
+                        if returnNumber == count:
+                            break
+                except Exception:
+                    error_report = traceback.format_exc()
+                    failed.append(wpid)
             print 'exported to the folder "WikiPathways"'
+        if len(failed)>0:
+            print len(failed),'Wikipathways failed to be exported (e.g.,',failed[0],')'
+            print error_report
     except Exception:
         None
                     
@@ -1825,7 +1862,8 @@ def commandLineRun():
                     print 'Input ID file does not contain a valid system code' 
                 else:
                     print 'Error generating the pathway "%s"' % wpid
-        print 'Finished exporting visualized pathway to:',graphic_link['WP']
+        try: print 'Finished exporting visualized pathway to:',graphic_link['WP']
+        except Exception: None ### Occurs if nothing output
         sys.exit()
         
     if 'EnsMart' in ensembl_version:
@@ -1891,8 +1929,9 @@ def commandLineRun():
             UI.remoteSpeciesInfo('no'); species_codes = UI.importSpeciesInfo() ### Gets the information from the backup version
     
         if ensembl_version != 'current' and 'release-' not in ensembl_version and 'EnsMart' not in ensembl_version:
-            try: version_int = int(ensembl_version); ensembl_version = 'release-'+ensembl_version
-            except ValueError: print 'The Ensembl version number is not formatted corrected. Please indicate the desired version number to use (e.g., "55").'; sys.exit()                
+            if 'Plant' not in ensembl_version:
+                try: version_int = int(ensembl_version); ensembl_version = 'release-'+ensembl_version
+                except ValueError: print 'The Ensembl version number is not formatted corrected. Please indicate the desired version number to use (e.g., "55").'; sys.exit()                
         
         if update_method == ['Ontology']: species_code_list=[]
         elif species_code == 'all':

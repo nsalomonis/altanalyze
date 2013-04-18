@@ -38,7 +38,7 @@ def read_directory(sub_dir):
     dir_list = unique.read_directory(sub_dir); dir_list2 = []
     ###Code to prevent folder names from being included
     for entry in dir_list:
-        if entry[-4:] == ".txt" or entry[-4:] == ".csv" or ".owl" in entry or ".gpml" in entry or ".xml" in entry or ".gmt" in entry: dir_list2.append(entry)
+        if entry[-4:] == ".txt" or entry[-4:] == ".csv" or ".owl" in entry or ".gpml" in entry or ".xml" in entry or ".gmt" in entry or ".tab" in entry: dir_list2.append(entry)
     return dir_list2
 
 ###### Classes ######
@@ -64,7 +64,7 @@ class GrabFiles:
             if search_term in folder and '.' not in folder:
                 matching = filepath(self.data[1:]+'/'+folder)
                 if root_dir not in matching:
-                    matching = root_dir + matching ### python bug????
+                    matching = filepath(root_dir +'/'+ matching) ### python bug????
         return matching
         
 def getDirectoryFiles(import_dir, search_term):
@@ -158,6 +158,24 @@ def importGeneric(filename):
         t = string.split(data,'\t')
         key_db[t[0]] = t[1:]
     return key_db
+
+def importGenericDB(filename):
+    try:
+        key_db=collections.OrderedDict() ### Retain order if possible
+    except Exception:
+        key_db={}
+    fn=filepath(filename); x=0
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if data[0]=='#': x=x
+        elif x==0:
+            x=1
+            headers = t
+        else:
+            try: key_db[t[0]].append(t[1:])
+            except Exception: key_db[t[0]] = [t[1:]]
+    return key_db, headers
 
 ###### Begin Gene-Relationship Parsing ######
 def importGeneData(species_code,mod):
@@ -277,6 +295,66 @@ def exportCustomPathwayMappings(gene_to_custom,mod,system_codes,custom_sets_fold
     data.close()
     #print relationships,'Custom pathway-to-ID relationships exported...'
 
+def exportNodeInteractions(pathway_db,mod,custom_sets_folder):
+    
+    import GO_Elite
+    system_codes,source_types,mod_types = GO_Elite.getSourceData()
+    
+    export_dir = custom_sets_folder+'/Interactomes/interactions.txt'
+    print 'Exporting:',export_dir
+    try: data = export.ExportFile(export_dir)
+    except Exception: data = export.ExportFile(export_dir[1:])
+    for system_code in system_codes:
+        if system_codes[system_code] == mod: mod_code = system_code
+
+    try: gene_to_symbol_db = getGeneToUid(species_code,('hide',mod+'-Symbol.txt')); #print mod_source, 'relationships imported.'
+    except Exception: gene_to_symbol_db={}
+            
+    data.write('Symbol1\tInteractionType\tSymbol2\tGeneID1\tGeneID2\tPathway\n'); relationships=0
+
+    for pathway_id in pathway_db:
+        wpd = pathway_db[pathway_id]
+        for itd in wpd.Interactions():
+            gi1 = itd.GeneObject1()
+            gi2 = itd.GeneObject2()
+            if len(gene_to_symbol_db)>0:
+                try:
+                    if gi1.ModID()[0] in gene_to_symbol_db:
+                        symbol = gene_to_symbol_db[gi1.ModID()[0]][0]
+                        if len(symbol)>0:
+                            gi1.setLabel(symbol) ### Replace the WikiPathways user annnotated symbol with a MOD symbol
+                except Exception:
+                    None
+                try:
+                    if gi2.ModID()[0] in gene_to_symbol_db:
+                        symbol = gene_to_symbol_db[gi2.ModID()[0]][0]
+                        if len(symbol)>0:
+                            gi2.setLabel(symbol) ### Replace the WikiPathways user annnotated symbol with a MOD symbol
+                except Exception:
+                    None
+            try:
+                values = string.join([gi1.Label(),itd.InteractionType(),gi2.Label(),gi1.ModID()[0],gi2.ModID()[0],wpd.Pathway()],'\t')
+                relationships+=1
+                try:
+                    values = cleanUpLine(values)+'\n' ### get rid of any end-of lines introduced by the labels
+                    data.write(values)
+                except Exception:
+                    try: ### Occurs when 'ascii' codec can't encode characters due to UnicodeEncodeError
+                        values = string.join(['',itd.InteractionType(),gi2.Label(),gi1.ModID()[0],gi2.ModID()[0],wpd.Pathway()],'\t')
+                        values = cleanUpLine(values)+'\n' ### get rid of any end-of lines introduced by the labels
+                        data.write(values)
+                    except Exception:
+                        values = string.join([gi1.Label(),itd.InteractionType(),'',gi1.ModID()[0],gi2.ModID()[0],wpd.Pathway()],'\t')
+                        values = cleanUpLine(values)+'\n' ### get rid of any end-of lines introduced by the labels
+                        try: data.write(values)
+                        except Exception: None ### Occurs due to illegal characters
+            except AttributeError,e:
+                #print e
+                null=[] ### Occurs if a MODID is not present for one of the nodes
+            
+    data.close()
+    print relationships,'Interactions exported...'
+    
 def importGeneCustomData(species_code,system_codes,custom_sets_folder,mod):
     print 'Importing custom pathway relationships...'
     #print 'Trying to import text data'
@@ -301,7 +379,9 @@ def importGeneCustomData(species_code,system_codes,custom_sets_folder,mod):
     #print 'Combine gmt-other'
     gene_to_custom = combineDBs(gene_to_GMT,gene_to_custom)
     exportCustomPathwayMappings(gene_to_custom,mod,system_codes,custom_sets_folder)
-    
+    if len(gene_to_WP)>0: ### Export all pathway interactions
+        try: exportNodeInteractions(pathway_db,mod,custom_sets_folder)
+        except Exception: null=[]
     """
     ### Combine WikiPathway associations with the custom
     try: gene_to_mapp = importGeneMAPPData(species_code,mod)
@@ -317,7 +397,9 @@ def importTextCustomData(species_code,system_codes,custom_sets_folder,mod):
     program_type,database_dir = unique.whatProgramIsThis()
     gm = GrabFiles(); gm.setdirectory(custom_sets_folder); system = None
     filedirs = gm.getAllFiles('.txt')
-    global gene_to_custom; gene_to_custom={}
+    global gene_to_custom
+    gene_to_custom={}
+    file_gene_to_custom={}
     for filedir in filedirs:
         try:
             file = string.split(filedir,'/')[-1]
@@ -350,27 +432,31 @@ def importTextCustomData(species_code,system_codes,custom_sets_folder,mod):
                                     else:
                                         if x == 3: print file, 'is not propperly formatted (skipping import of relationships)'; break
                         else: continue ### Skip line
-                    try: gene_to_custom[gene].append(mapp)
-                    except KeyError: gene_to_custom[gene]= [mapp]
+                    try: file_gene_to_custom[gene].append(mapp)
+                    except KeyError: file_gene_to_custom[gene]= [mapp]
                     
-            #print [system, mod, len(gene_to_custom)]
+            #print [system, mod, len(file_gene_to_custom)]
             ### If the system code is not the MOD - Convert to the MOD
             if (system != mod) and (system != None):
-                gene_to_custom2={}
                 mod_source = 'hide',mod+'-'+system+'.txt'
                 try: gene_to_source_id = getGeneToUid(species_code,mod_source)
                 except Exception: print mod_source,'relationships not found. Skipping import of',file; break
                 source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
                 if system == 'Symbol': source_to_gene = lowerAllIDs(source_to_gene)
-                for source_id in gene_to_custom:
+                for source_id in file_gene_to_custom:
                     original_source_id = source_id ### necessary when Symbol
                     if system == 'Symbol': source_id = string.lower(source_id)
                     if source_id in source_to_gene:
                         for gene in source_to_gene[source_id]:
-                            gene_to_custom2[gene] = gene_to_custom[original_source_id]
-                gene_to_custom = gene_to_custom2
+                            try: gene_to_custom[gene] += file_gene_to_custom[original_source_id]
+                            except Exception: gene_to_custom[gene] = file_gene_to_custom[original_source_id]
+            else:
+                for gene in file_gene_to_custom:
+                    try: gene_to_custom[gene] += file_gene_to_custom[gene]
+                    except Exception: gene_to_custom[gene] = file_gene_to_custom[gene]
         except Exception:
             print file, 'not formatted propperly!'
+        file_gene_to_custom={} ### Clear this file specific object
     return gene_to_custom
 
 def grabFileRelationships(filename):
@@ -561,6 +647,7 @@ def predictIDSource(id,system_codes):
     return source_data
 
 def addNewCustomSystem(filedir,system,save_option,species_code):
+    print 'Adding new custom system (be patient)' ### Print statement here forces the status window to appear quicker otherwise stalls
     gene_annotations={}
     if 'update' in save_option:
         print "Importing existing",species_code,system,"relationships."
@@ -606,6 +693,7 @@ def importGeneSetsIntoDatabase(source_file,species_code,mod):
     return gene_to_custom
 
 def addNewCustomRelationships(filedir,relationship_file,save_option,species_code):
+    print 'Adding new custom relationships (be patient)' ### Print statement here forces the status window to appear quicker otherwise stalls
     relationship_filename = export.findFilename(relationship_file)
     mod,data_type = string.split(relationship_filename,'-')
     mod_id_to_related={}
@@ -899,6 +987,77 @@ def matchInputIDsToMAPPEliteTerms(gene_file_dir,go_elite_output_dir,system_codes
     full_mapp_name_db={}
     return exportGeneGOAssociations(filename,go_elite_output_dir,go_elite_gene_associations,gene_uid_data,gene_annotations,full_mapp_name_db,uid_system)
 
+def simpleGenePathwayImport(species,geneset_type,pathway,OntologyID,directory):
+    ###Import a gene-set and only store geneIDs for that pathway
+    associated_IDs={}
+    if geneset_type == 'WikiPathways': geneset_type = 'MAPP'
+    filename = 'AltDatabase/goelite/'+species+'/'+directory+'/'+'Ensembl-'+geneset_type+'.txt'
+    if directory == 'nested':
+        if geneset_type == 'GeneOntology': geneset_type = 'GO'
+        if len(OntologyID)>1: pathway = OntologyID
+        else: pathway = lookupOntologyID(geneset_type,pathway) ### Translates from name to ID
+        filename = 'AltDatabase/goelite/'+species+'/'+directory+'/'+'Ensembl_to_Nested-'+geneset_type+'.txt'
+    
+    fn=filepath(filename)
+    ### Imports a geneset category and stores pathway-level names
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        #print [t[-1]],[pathway,OntologyID]
+        if t[-1] == pathway:
+            associated_IDs[t[0]] = None
+    return associated_IDs
+
+def filterGeneToUID(species_code,mod,source,filter_db):
+    mod_source = mod+'-'+source
+    if 'hide' in mod_source: show_progress, mod_source = mod_source
+    else: show_progress = 'yes'
+    program_type,database_dir = unique.whatProgramIsThis()
+    import_dir = '/'+database_dir+'/'+species_code+'/uid-gene'
+    ug = GrabFiles(); ug.setdirectory(import_dir)
+    filedir,filename = ug.searchdirectory(mod_source) ###Identify gene files corresponding to a particular MOD
+    fn=filepath(filedir); gene_to_uid={}; count = 0; x=0
+    uid_system,gene_system = grabFileRelationships(filename)
+
+    for line in open(fn,'rU').xreadlines():             
+        data = cleanUpLine(line)
+        if x==0: x=1
+        else:
+            t = string.split(data,'\t')
+            if t[0] in filter_db or t[1] in filter_db:
+                uid = t[1]; gene = t[0]
+                try: gene_to_uid[uid].append(gene)
+                except KeyError: gene_to_uid[uid] = [gene]
+    gene_to_uid = eliminate_redundant_dict_values(gene_to_uid)
+    return gene_to_uid
+
+def lookupOntologyID(geneset_type,ontology_name):
+    if geneset_type == 'GeneOntology': geneset_type = 'go'
+    filename = 'AltDatabase/goelite/OBO/builds/'+geneset_type+'_annotations.txt'
+
+    fn=filepath(filename)
+    ### Imports a geneset category and stores pathway-level names
+    i=0
+    for line in open(fn,'rU').xreadlines():
+        if i==0: i=1 ### Skip the header
+        else:
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            geneset_category = t[1]
+            if geneset_category == ontology_name:
+                ontology_id = t[0]; break
+    return ontology_id
+
+def swapKeyValues(db):
+    swapped={}
+    for key in db:
+        values = list(db[key]) ###If the value is not a list, make a list
+        for value in values:
+            try: swapped[value].append(key)
+            except KeyError: swapped[value] = [key]
+    swapped = eliminate_redundant_dict_values(swapped)
+    return swapped
+
 def identifyRedundantPathways(go_elite_gene_associations):
     for goid_or_mapp1 in go_elite_gene_associations:
         for goid_or_mapp2 in go_elite_gene_associations:
@@ -1126,7 +1285,9 @@ class GeneIDInfo:
     def System(self): return str(self.system_name)
     def Pathway(self): return str(self.pathway)
     def setGraphID(self,graphID): self.graphID = graphID
+    def setGroupID(self,groupid): self.groupid = groupid
     def GraphID(self): return self.graphID
+    def GroupID(self): return self.groupid
     def setLabel(self,label): self.label = label
     def Label(self): return self.label
     def setModID(self,mod_list): self.mod_list = mod_list
@@ -1201,6 +1362,7 @@ def clusterPrimaryPathwayGeneSystems(species_code,pathway_db):
 
 def convertAllGPML(specific_species,all_species):
     import update; import UI
+    global species_code
     try: species_names = UI.remoteSpeciesInfo('yes') ### GO-Elite version
     except Exception: species_names = UI.remoteSpeciesAlt() ### AltAnalyze version
     for species_code in species_names:
@@ -1211,7 +1373,8 @@ def convertAllGPML(specific_species,all_species):
             ### Clear and create the output dir
             try: export.deleteFolder('GPML')
             except Exception: null=[]
-            os.mkdir(filepath('GPML'))
+            try: os.mkdir(filepath('GPML'))
+            except Exception: null=[]
             
             ### Download all species GPML from .zip
             url = 'http://wikipathways.org//wpi/cache/wikipathways_'+species+'_Curation-AnalysisCollection__gpml.zip'
@@ -1223,13 +1386,15 @@ def convertAllGPML(specific_species,all_species):
                 gene_data,pathway_db = parseGPML('/GPML') ### Get pathway associations (gene and annotation)
                 clusterPrimaryPathwayGeneSystems(species_code,pathway_db)
                 exportWikiPathwayData(species_name,pathway_db,'native')
-    
+  
                 ### Create a "MAPPED" version (mapped will contain BAD MAPPINGS provide by the source database)!!!
-                ensembl_to_WP = unifyGeneSystems(gene_data,species_code,'Ensembl') ### convert primary systems to MOD IDs
+                ensembl_to_WP = unifyGeneSystems(gene_data,species_code,'Ensembl') ### convert primary systems to MOD IDs                
                 hmdb_to_WP = unifyGeneSystems(gene_data,species_code,'HMDB') ### convert primary systems to MOD IDs
                 convertBetweenSystems(species_code,pathway_db,ensembl_to_WP,hmdb_to_WP) ### convert MOD IDs to all related primary systems (opposite as last method)
                 exportWikiPathwayData(species_name,pathway_db,'mapped')
-                #sys.exit()
+                if len(pathway_db)>0: ### Export all pathway interactions
+                    try: exportNodeInteractions(pathway_db,'Ensembl','GPML')
+                    except Exception: null=[]
 
 def convertBetweenSystems(species_code,pathway_db,ensembl_to_WP,hmdb_to_WP):        
     WP_to_ensembl = OBO_import.swapKeyValues(ensembl_to_WP)
@@ -1301,6 +1466,8 @@ class WikiPathwaysData:
         self.count = len(unique.unique(combined))
     def setOriginalCount(self,original_count): self.original_count = original_count
     def OriginalCount(self): return self.original_count
+    def setInteractions(self,interactions): self.interactions = interactions
+    def Interactions(self): return self.interactions
     def GeneDataSystems(self): return self.ensembl,self.uniprot,self.refseq,self.unigene,self.entrez,self.mod
     def ChemSystems(self): return self.pubchem,self.cas,self.chebi
     def Ensembl(self): return self.Join(self.ensembl)
@@ -1315,6 +1482,20 @@ class WikiPathwaysData:
     def Join(self,ls): return string.join(unique.unique(ls),',')
     def Count(self): return str(self.count)
     def __repr__(self): return self.Report()
+
+class InteractionData:
+    def __init__(self, gene1,gene2,int_type):
+        self.gene1 = gene1; self.gene2 = gene2; self.int_type = int_type
+    def GeneObject1(self): return self.gene1
+    def GeneObject2(self): return self.gene2
+    def InteractionType(self): return self.int_type
+
+class EdgeData:
+    def __init__(self, graphid1,graphid2,int_type):
+        self.graphid1 = graphid1; self.graphid2 = graphid2; self.int_type = int_type
+    def GraphID1(self): return self.graphid1
+    def GraphID2(self): return self.graphid2
+    def InteractionType(self): return self.int_type
     
 def parseGPML(custom_sets_folder):
     import xml.dom.minidom
@@ -1324,8 +1505,12 @@ def parseGPML(custom_sets_folder):
     gm = GrabFiles(); gm.setdirectory(custom_sets_folder); system = None
     filedirs = gm.getAllFiles('.gpml') ### Identify gene files corresponding to a particular MOD
     gene_data=[]; pathway_db={}
+
     for xml in filedirs:
         pathway_gene_data=[]
+        complexes_data={}
+        edge_data=[]
+        #graph_node_data=[]
         pathway_type = 'GPML'
         xml=filepath(xml)
         filename = string.split(xml,'/')[-1]
@@ -1333,8 +1518,10 @@ def parseGPML(custom_sets_folder):
         except Exception: wpid = filename[:-5]
         revision = string.split(filename,'_')[-1][:-5]
         dom = parse(xml)
-        #tags = dom.getElementsByTagName('Xref')
+        tags = dom.getElementsByTagName('Xref')
         data_node_tags = dom.getElementsByTagName('DataNode')
+        groups = dom.getElementsByTagName('Group') ### complexes
+        edges = dom.getElementsByTagName('Point') ### interacting nodes/complexes
         pathway_tag = dom.getElementsByTagName('Pathway')
         comment_tag = dom.getElementsByTagName('Comment')
         #print comment_tag.nodeValue; sys.exit()
@@ -1342,6 +1529,23 @@ def parseGPML(custom_sets_folder):
             pathway_name = pn.getAttribute("Name")
             organism = pn.getAttribute("Organism")
             data_source = pn.getAttribute("Data-Source")
+        for ed in edges:
+            ### Store internal graph data for pathway edges to build gene interaction networks later
+            graphid = ed.getAttribute("GraphRef")
+            edge_type = ed.getAttribute("ArrowHead")
+            if edge_type == '': edge_pair = [graphid] ### either just a graphical line or the begining of a node-node edge
+            else:
+                try:
+                    edge_pair.append(graphid)
+                    edd = EdgeData(str(edge_pair[0]),str(edge_pair[1]),str(edge_type))
+                    edge_data.append(edd)
+                except Exception:
+                    None ### Can happen with some pathways
+        for gd in groups:
+            ### Specific to groups and complexes
+            groupID = gd.getAttribute("GroupId") ### Group node ID (same as "GroupRef")
+            graphID = gd.getAttribute("GraphId") ### GPML node ID
+            complexes_data[str(groupID)] = str(graphID)
         for cm in comment_tag:
             pathway_type = cm.getAttribute("Source")
             ### This is an issue with KEGG pathways who's names are truncated
@@ -1351,8 +1555,11 @@ def parseGPML(custom_sets_folder):
                     pathway_name = string.split(extended_comment_text,': ')[-1]
             except IndexError: null=[]
         if 'Kegg' in pathway_type:
-            pathway_id = string.split(data_source,'?')[-1]
-            pathway_name += ':KEGG-'+pathway_id
+            if '?' in data_source:
+                pathway_id = string.split(data_source,'?')[-1]
+                pathway_name += ':KEGG-'+pathway_id
+                if 'WP' not in wpid:
+                    wpid = pathway_id
         for i in data_node_tags:
             #print i.toxml()
             id = ''
@@ -1362,8 +1569,12 @@ def parseGPML(custom_sets_folder):
                     system_name = x.getAttribute("Database") ### System Code
                     id = x.getAttribute("ID") ### Gene or metabolite ID
             label = i.getAttribute("TextLabel") ### Gene or metabolite label
+            type = i.getAttribute('Type') #E.g.', GeneProduct, Metabolite
             graphID = i.getAttribute("GraphId") ### WikiPathways graph ID
+            groupID = i.getAttribute('GroupRef')### Group node ID
+            #graph_node_data.append([graphID,groupID,label,type])
             gi = GeneIDInfo(str(system_name),str(id),pathway_name)
+            gi.setGroupID(str(groupID)) ### Include internal graph IDs for determining edges
             gi.setGraphID(graphID)
             gi.setLabel(label)
             if len(id)>0 or 'Tissue' in pathway_name: ### Applies to the Lineage Profiler pathway which doesn't have IDs
@@ -1371,8 +1582,35 @@ def parseGPML(custom_sets_folder):
                 pathway_gene_data.append(gi)
         wpd=WikiPathwaysData(pathway_name,wpid,revision,organism,pathway_gene_data)
         pathway_db[wpid]=wpd
-
+        interaction_data = getInteractions(complexes_data,edge_data,wpd)
+        wpd.setInteractions(interaction_data)
     return gene_data,pathway_db
+
+def getInteractions(complexes_data,edge_data,wpd):
+    ### Annotate the interactions between nodes and between groups of nodes from WikiPathways
+    interaction_data=[]
+    wpid = wpd.WPID()
+    graphID_db={}
+
+    for gi in wpd.PathwayGeneData():
+        graphID_db[gi.GraphID()] = [gi] ### graphID for the node
+        if gi.GroupID() in complexes_data:
+            graph_id = complexes_data[gi.GroupID()]
+            try: graphID_db[graph_id].append(gi) ### graphID for the group of nodes with putative edges
+            except Exception: graphID_db[graph_id] = [gi]
+
+    for eed in edge_data:
+        if eed.GraphID1() != '' and eed.GraphID2() != '':
+            try:
+                gi_list1 = graphID_db[eed.GraphID1()]
+                gi_list2 = graphID_db[eed.GraphID2()]
+                
+                for gi1 in gi_list1:
+                    for gi2 in gi_list2:
+                        intd = InteractionData(gi1,gi2,eed.InteractionType())
+                        interaction_data.append(intd)
+            except KeyError: null=[] ### Typically occurs for interactions with Labels and similar objects
+    return interaction_data
 
 def getGPMLGraphData(custom_sets_folder,species_code,mod):
     """ Calls methods to import GPML data and retrieve MOD IDs (Ensembl/Entrez) for GPML graphIDs """
@@ -1575,16 +1813,86 @@ def combineDBs(db1,db2):
         else: db2[id]=db1[id]
     return db2
 
+def IDconverter(filename,species_code,input_system_name, output_system_name):
+    """ This is a function built to convert the IDs in an input file from one system to another while preserving the original members """
+    
+    print 'Attempting to convert IDs from ', export.findFilename(filename)
+    
+    input_data_db, headers = importGenericDB(filename)
+    if input_system_name == 'Ensembl': ### This is or MOD
+        source1_to_gene={}
+        for id in input_data_db:
+            source1_to_gene[id] = [id] ### make the primary ensembl ID = ensembl ID
+    else:
+        gene_to_source1 = getGeneToUid(species_code,'Ensembl-'+input_system_name)
+        source1_to_gene = OBO_import.swapKeyValues(gene_to_source1)
+
+    if output_system_name == 'Ensembl': ### This is or MOD
+        gene_to_source2={}
+        gene_annotations = importGeneData(species_code,'Ensembl')
+        for gene in gene_annotations:
+            if 'LRG_' not in gene: ### Bad gene IDs from Ensembl
+                gene_to_source2[gene] = [gene] ###import and use all availalable Ensembl IDs
+    else:
+        gene_to_source2 = getGeneToUid(species_code,'Ensembl-'+output_system_name)
+        
+    converted=0
+    converted_ids={}
+    for id in input_data_db:
+        secondary_ids = ''
+        genes = ''
+        if id in source1_to_gene:
+            genes = source1_to_gene[id]
+            for gene in genes:
+                if gene in gene_to_source2:
+                    secondary_ids = gene_to_source2[gene]
+                    secondary_ids = string.join(secondary_ids,'|')
+            genes = string.join(genes,'|')
+            converted+=1
+        converted_ids[id] = secondary_ids, genes
+        
+    if '.txt' in filename:
+        filename = string.replace(filename,'.txt','-'+output_system_name+'.txt')
+    else:
+        filename = filename[:-4]+'-'+output_system_name+'.txt'
+    export_data = export.ExportFile(filename)
+    headers = string.join([output_system_name,'Ensembl IDs']+headers,'\t')+'\n'
+    export_data.write(headers)
+    for id in input_data_db:
+        secondary_ids, genes = converted_ids[id]
+        for t in input_data_db[id]:
+            export_values = string.join([secondary_ids,genes]+[id]+t,'\t')+'\n'
+            export_data.write(export_values)
+    export_data.close()
+    
+    print ''
+    print converted, 'input',input_system_name,'IDs converted to',output_system_name,'out of',len(input_data_db)
+    filename = export.findFilename(filename)
+    return filename
+
 if __name__ == '__main__':
-    species_code = 'Mx'; mod = 'HMDB'; gotype='nested'
+    species_code = 'Hs'; mod = 'Ensembl'; gotype='nested'
     filedir = 'C:/Documents and Settings/Nathan Salomonis/My Documents/GO-Elite_120beta/Databases/EnsMart56Plus/Ce/gene/EntrezGene.txt'
     system = 'Macaroni'
-    biopax_data = parseBioPax('/test'); sys.exit()
     
     import GO_Elite
     system_codes,source_types,mod_types = GO_Elite.getSourceData()
-    custom_sets_folder = '/test'
-    importGeneCustomData(species_code,system_codes,custom_sets_folder,mod); sys.exit()
+    #custom_sets_folder = '/test'
+    #importGeneCustomData(species_code,system_codes,custom_sets_folder,mod); sys.exit()
+    
+    ### Test interactions export    
+    custom_sets_folder = 'GPML'
+    species_code = 'Hs'; mod = 'Ensembl'
+
+    gene_to_symbol_db = getGeneToUid(species_code,('hide',mod+'-Symbol.txt')); #print mod_source, 'relationships imported.'
+                            
+    gpml_data,pathway_db = parseGPML(custom_sets_folder)
+    gene_to_WP = unifyGeneSystems(gpml_data,species_code,mod)
+    exportNodeInteractions(pathway_db,mod,custom_sets_folder)
+    sys.exit()
+    biopax_data = parseBioPax('/test'); sys.exit()
+    
+
     
     gene_data,pathway_db = parseGPML('/test')
     print len(gpml_data)

@@ -19,6 +19,8 @@
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import math
+#import pkg_resources
+#import distutils
 import statistics
 import sys, string
 import os.path
@@ -815,10 +817,8 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                 summary_output = root_dir+'AltResults/RawSpliceData/'+species+'/'+analysis_method+'/'+dataset_name[:-1]+'.txt'
                 print "Exporting all normalized intensities to:\n"+summary_output
                 adjoutput = export.ExportFile(summary_output)
-                if export_exon_regions == 'yes':
-                    title = string.join(['Gene\tExonID\tprobesetID']+original_array_names,'\t')+'\n'; adjoutput.write(title)
-                else:
-                    title = string.join(['gene-probesets']+original_array_names,'\t')+'\n'; adjoutput.write(title)
+                title = string.join(['Gene\tExonID\tprobesetID']+original_array_names,'\t')+'\n'; adjoutput.write(title)
+
 
             ### Pick which data lists have the most extreem values using the NI_dbase (adjusted folds for each condition)
             original_increment = int(len(nonlog_NI_db)/20); increment = original_increment; interaction = 0
@@ -851,15 +851,15 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                                     exon_regions = string.split(ed.ExonRegionID(),'|')
                                     for er in exon_regions:
                                         if len(er)>0: er = er
-                                        else: er = ed.ExonID()
+                                        else:
+                                            try: er = ed.ExonID()
+                                            except Exception: er = 'NA'
                                         ev = string.join([geneid+'\t'+er+'\t'+probeset]+adj_exp_vals,'\t')+'\n'
                                         if len(filtered_probeset_db)>0:
                                             if probeset in filtered_probeset_db: adjoutput.write(ev) ### This is used when we want to restrict to only probesets known to already by changed
                                         else: adjoutput.write(ev)
                             except Exception:
-                                ev = string.join([geneid+'-'+probeset]+adj_exp_vals,'\t')+'\n'; adjoutput.write(ev)
-                        else:
-                            ev = string.join([geneid+'-'+probeset]+adj_exp_vals,'\t')+'\n'; adjoutput.write(ev)
+                                ev = string.join([geneid+'\t'+'NA'+'\t'+probeset]+adj_exp_vals,'\t')+'\n'; adjoutput.write(ev)
     
                 NI_list.sort()
                 examine_pairwise_comparisons = 'yes'
@@ -1000,10 +1000,7 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                 summary_output = root_dir+'AltResults/RawSpliceData/'+species+'/'+analysis_method+'/'+dataset_name[:-1]+'.txt'
                 print "Exporting all normalized intensities to:\n"+summary_output
                 adjoutput = export.ExportFile(summary_output)
-                if export_exon_regions == 'yes':
-                    title = string.join(['gene\tprobesets\tExonRegion']+original_array_names,'\t')+'\n'; adjoutput.write(title)
-                else:
-                    title = string.join(['gene-probesets']+original_array_names,'\t')+'\n'; adjoutput.write(title)
+                title = string.join(['gene\tprobesets\tExonRegion']+original_array_names,'\t')+'\n'; adjoutput.write(title)
                     
             events_examined= 0; denominator_events=0; fold_dbase=[]; adj_fold_dbase=[]; scores_examined=0
             splice_event_list=[]; splice_event_list_mx=[]; splice_event_list_non_mx=[]; event_mx_temp = []; permute_p_values={}; probeset_comp_db={}#use this to exclude duplicate mx events
@@ -1096,7 +1093,6 @@ def performExpressionAnalysis(filename,constitutive_probeset_db,exon_db,annotate
                                             if probeset1 in filtered_probeset_db and probeset2 in filtered_probeset_db:
                                                 adjoutput.write(ev) ### This is used when we want to restrict to only probesets known to already by changed
                                         else: adjoutput.write(ev)
-                                else: ev = string.join([geneid+'-'+probeset1+'-'+probeset2]+adj_exp_vals,'\t')+'\n'; adjoutput.write(ev)
                             try: anovaNIp = statistics.OneWayANOVA(anova_test) ### This stays an ANOVA independent of the algorithm choosen since groups number > 2
                             except Exception: anovaNIp='NA'
                             
@@ -1991,6 +1987,22 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
     if array_type != 'AltMouse':
         DG_output = root_dir+'AltResults/DomainGraph/' + dataset_name + analysis_method+'-DomainGraph.txt'
         DG_data = export.ExportFile(DG_output)
+        
+        ### Write out only the inclusion hits to a subdir
+        SRFinder_inclusion = root_dir+'GO-Elite/exon/' + dataset_name + analysis_method+'-inclusion.txt'
+        SRFinder_in_data = export.ExportFile(SRFinder_inclusion)
+        SRFinder_in_data.write('probeset\tSystemCode\tdeltaI\tp-value\n')
+    
+        ### Write out only the exclusion hits to a subdir
+        SRFinder_exclusion = root_dir+'GO-Elite/exon/' + dataset_name + analysis_method+'-exclusion.txt'
+        SRFinder_ex_data = export.ExportFile(SRFinder_exclusion)
+        SRFinder_ex_data.write('probeset\tSystemCode\tdeltaI\tp-value\n')
+
+        ### Write out only the denominator set to a subdir
+        SRFinder_denom = root_dir+'GO-Elite/exon_denominator/' + dataset_name + analysis_method+'-exclusion.txt'
+        SRFinder_denom_data = export.ExportFile(SRFinder_denom)
+        SRFinder_denom_data.write('probeset\tSystemCode\n')
+        
         ens_version = unique.getCurrentGeneDatabaseVersion()
         ProcessedSpliceData_output = string.replace(DG_output,'DomainGraph','ProcessedSpliceData') ### This is the same as the DG export but without converting the probeset IDs for non-exon arrays
         ProcessedSpliceData_data = export.ExportFile(ProcessedSpliceData_output)
@@ -2289,15 +2301,22 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
             except Exception: None
             
             values_ge = [affygene,'En',dI,str(lowest_raw_p)]; values_ge = string.join(values_ge,'\t')+'\n'
-            if array_type == 'junction' or array_type == 'RNASeq': goelite_data.write(values_ge)
+            if array_type == 'junction' or array_type == 'RNASeq':   ### Only applies to reciprocal junction sensitive platforms (but not currently AltMouse)
+                goelite_data.write(values_ge)
 
-            if array_type == 'junction' or array_type == 'RNASeq':
+            if array_type == 'junction' or array_type == 'RNASeq': ### Only applies to reciprocal junction sensitive platforms (but not currently AltMouse)
                 try: exon_probeset = exon_array_translation_db[affygene+':'+exon_data[1][0]][0]; probeset1 = exon_probeset; gcn+=1
-                except Exception: null=[] #probeset1 = affygene+':'+exon_data[1][0]
+                except Exception: probeset1 = None #probeset1 = affygene+':'+exon_data[1][0]
             try:
                 null = int(probeset1) ### Must be an int to work in DomainGraph
                 values_dg = [probeset1,affygene,'changed',dI,'NA',str(lowest_raw_p)]; values_dg = string.join(values_dg,'\t')+'\n'
-                if array_type == 'junction' or array_type == 'RNASeq': DG_data.write(values_dg)
+                if array_type == 'junction' or array_type == 'RNASeq':
+                    DG_data.write(values_dg)
+                    values_srf = string.join([probeset1,'Ae',dI,str(lowest_raw_p)],'\t')+'\n'
+                    if float(dI)>0:
+                        SRFinder_ex_data.write(values_srf)
+                    elif float(dI)<0:
+                        SRFinder_in_data.write(values_srf)
             except Exception: null=[]
             
         else:
@@ -2375,14 +2394,19 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
             if array_type == 'gene' or array_type == 'junction' or array_type == 'RNASeq':
                 if (array_type == 'junction' or array_type == 'RNASeq') and explicit_data_type == 'null':
                     try: exon_probeset = exon_array_translation_db[affygene+':'+exon_data[1][0]][0]; probeset1 = exon_probeset; gcn+=1
-                    except Exception: probeset1 = affygene+':'+exon_data[1][0]
+                    except Exception: probeset1 = None ### don't write out a line
                 else:
                     try: exon_probeset = exon_array_translation_db[probeset1][0]; probeset1 = exon_probeset; gcn+=1
-                    except Exception: null=[]; #print gcn, probeset1;kill
+                    except Exception: probeset1=None; #null=[]; #print gcn, probeset1;kill - force an error - new in version 2.0.8
             try:
                 null = int(probeset1)
                 values_dg = [probeset1,affygene,'changed',dI,str(si_pvalue),midas_p]; values_dg = string.join(values_dg,'\t')+'\n'
                 DG_data.write(values_dg)
+                values_srf = string.join([probeset1,'Ae',dI,str(lowest_raw_p)],'\t')+'\n'
+                if float(dI)>0:
+                    SRFinder_ex_data.write(values_srf)
+                elif float(dI)<0:
+                    SRFinder_in_data.write(values_srf)
             except Exception: null=[]
             values_ge = [affygene,'En',dI,str(si_pvalue),midas_p]; values_ge = string.join(values_ge,'\t')+'\n'
             goelite_data.write(values_ge)
@@ -2430,18 +2454,30 @@ def splicingAnalysisAlgorithms(nonlog_NI_db,fold_dbase,dataset_name,gene_express
             ### Write DomainGraph results
             if array_type == 'gene' or array_type == 'junction' or array_type == 'RNASeq':
                 try: exon_probeset = exon_array_translation_db[probeset][0]; probeset = exon_probeset; gcn+=1
-                except Exception: null=[]
+                except Exception: probeset=None; # null=[] - force an error - new in version 2.0.8
                 
             try: values_dg = [probeset,eed.GeneID(),'UC',eed.Score(),str(eed.TTestNormalizedRatios()),midas_p]
             except Exception:
-                 excl_probeset, geneid, score, rawp, pvalue = eed
-                 if ':' in probeset: probeset = excl_probeset ### Example: ENSMUSG00000029213:E2.1, make this just the numeric exclusion probeset - Not sure if DG handles non-numeric
-                 values_dg = [probeset,geneid,'UC', str(score), str(rawp), str(pvalue)]
+                try:
+                    excl_probeset, geneid, score, rawp, pvalue = eed
+                    if ':' in probeset: probeset = excl_probeset ### Example: ENSMUSG00000029213:E2.1, make this just the numeric exclusion probeset - Not sure if DG handles non-numeric
+                    values_dg = [probeset,geneid,'UC', str(score), str(rawp), str(pvalue)]
+                except Exception: None
             try:
                 null=int(probeset)
                 values_dg = string.join(values_dg,'\t')+'\n'; DG_data.write(values_dg)
             except Exception: null=[]
+        
+        if array_type == 'gene' or array_type == 'junction' or array_type == 'RNASeq':
+            for id in exon_array_translation_db:
+                SRFinder_denom_data.write(exon_array_translation_db[id]+'\tAe\n')
+        else:
+            for probeset in exon_db:
+                SRFinder_denom_data.write(probeset+'\tAe\n')
         DG_data.close()
+        SRFinder_in_data.close()
+        SRFinder_ex_data.close()
+        SRFinder_denom_data.close()
 
     for affygene in direct_domain_gene_alignments:
         domains = string.split(direct_domain_gene_alignments[affygene],', ')
@@ -2761,7 +2797,7 @@ def analyzeSplicingIndex(fold_dbase):
     if export_NI_values == 'yes':
         summary_output = root_dir+'AltResults/RawSpliceData/'+species+'/'+analysis_method+'/'+dataset_name[:-1]+'.txt'
         data = export.ExportFile(summary_output)
-        title = string.join(['gene-probesets']+original_array_names,'\t')+'\n'; data.write(title)
+        title = string.join(['gene\tExonID\tprobesets']+original_array_names,'\t')+'\n'; data.write(title)
 
     print 'Calculating splicing-index values (please be patient)...',
     if array_type == 'RNASeq': id_name = 'exon/junction IDs'
@@ -2802,7 +2838,9 @@ def analyzeSplicingIndex(fold_dbase):
                 group1_ratios = si_interim_group_db[0]; group2_ratios = si_interim_group_db[1]
                 group1_mean_ratio = statistics.avg(group1_ratios); group2_mean_ratio = statistics.avg(group2_ratios)
                 if export_NI_values == 'yes':
-                    ev = string.join([geneid+'-'+probeset]+si_interim_group_str_db[0]+si_interim_group_str_db[1],'\t')+'\n'; data.write(ev)
+                    try: er = ed.ExonID()
+                    except Exception: er = 'NA'
+                    ev = string.join([geneid+'\t'+er+'\t'+probeset]+si_interim_group_str_db[0]+si_interim_group_str_db[1],'\t')+'\n'; data.write(ev)
                 #if ((math.log(group1_mean_ratio,2))*(math.log(group2_mean_ratio,2)))<0: opposite_SI_log_mean = 'yes'
                 if (group1_mean_ratio*group2_mean_ratio)<0: opposite_SI_log_mean = 'yes'
                 else: opposite_SI_log_mean = 'no'
@@ -3041,7 +3079,9 @@ def FIRMAanalysis(fold_dbase):
             firma_lists.append(firma_list); index+=1
             
         if export_NI_values == 'yes': ### DO THIS HERE SINCE firma_lists IS SORTED BELOW!!!!
-            export_list = [geneid+'-'+probeset]; export_list2=[]
+            try: er = ed.ExonID()
+            except Exception: er = 'NA'
+            export_list = [geneid+'\t'+er+'\t'+probeset]; export_list2=[]
             for firma_ls in firma_lists:
                 if len(array_group_list)>2: firma_ls =firma_ls[1] ### See above modification of firma_list object for multiple group anlaysis
                 export_list+=firma_ls
@@ -4354,7 +4394,7 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            root.title('AltAnalyze version 2.0.7 beta')
+            root.title('AltAnalyze version 2.0.8 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 450; width = 500
@@ -4435,12 +4475,13 @@ class SummaryResultsWindow:
                         except Exception:
                             self.openPNGImage(self.LINKS[idx]) ### Native OS PNG viewer
                             #self.DisplayPlots(self.LINKS[idx]) ### GIF based dispaly
-            except Exception: null=[] ### anomalous error
+            except Exception:
+                null=[] ### anomalous error
 
         self.emergency_exit = False            
         self.LINKS = []
         self.tl = tl
-        tl.title('AltAnalyze version 2.0.7 beta')
+        tl.title('AltAnalyze version 2.0.8 beta')
         self.analysis_type = analysis_type
 
         filename = 'Config/icon.gif'
@@ -4862,7 +4903,7 @@ class SummaryResultsWindow:
         root.destroy()
         sys.exit()
     def close(self):
-        self.tl.quit()
+        #self.tl.quit()   #### This was causing multiple errors in 2.0.7 - evaluate more!
         self.tl.destroy()
                 
 class StringVarFile:
@@ -5016,7 +5057,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   else: id_name = 'array IDs'
 
   print_items=[]; #print [permute_p_threshold]; sys.exit()
-  print_items.append("AltAnalyze version 2.0.7 - Expression Analysis Parameters Being Used...")
+  print_items.append("AltAnalyze version 2.0.8 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'species'+': '+species)
   print_items.append('\t'+'method'+': '+array_type)
   print_items.append('\t'+'manufacturer'+': '+manufacturer)
@@ -5116,7 +5157,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   else: analyze_metaprobesets = 'no'
 
   ### Check to see if this is a real or FAKE (used for demonstration purposes) dataset
-  if run_from_scratch == 'Process CEL files': 
+  if run_from_scratch == 'Process CEL files' or 'Feature Extraction' in run_from_scratch: 
       for dataset in exp_file_location_db:
         fl = exp_file_location_db[dataset]
         pgf_file=fl.InputCDFFile()
@@ -5135,42 +5176,56 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
               UI.getUpdatedParameters(array_type,species,run_from_scratch,results_dir)
           try: AltAnalyzeSetup('no')
           except Exception: sys.exit()
-      try:
-          try:
-              UI.probesetSummarize(exp_file_location_db,analyze_metaprobesets,filter_probeset_types,species,root)
-              if analyze_metaprobesets == 'yes':
-                  analyze_metaprobesets = 'no' ### Re-run the APT analysis to obtain probeset rather than gene-level results (only the residuals are needed from a metaprobeset run)
-                  UI.probesetSummarize(exp_file_location_db,analyze_metaprobesets,filter_probeset_types,species,root)
-          except Exception:
-                  import platform
-                  print "Trying to change APT binary access privileges"
-                  for dataset in exp_file_location_db: ### Instance of the Class ExpressionFileLocationData
-                      fl = exp_file_location_db[dataset]; apt_dir =fl.APTLocation()
-                  if '/bin' in apt_dir: apt_file = apt_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
-                  elif os.name == 'nt': apt_file = apt_dir + '/PC/'+platform.architecture()[0]+'/apt-probeset-summarize.exe'
-                  elif 'darwin' in sys.platform: apt_file = apt_dir + '/Mac/apt-probeset-summarize'
-                  elif 'linux' in sys.platform:
-                      if '32bit' in platform.architecture(): apt_file = apt_dir + '/Linux/32bit/apt-probeset-summarize'
-                      elif '64bit' in platform.architecture(): apt_file = apt_dir + '/Linux/64bit/apt-probeset-summarize'
-                      apt_file = filepath(apt_file)
-                  os.chmod(apt_file,0777)
-                  midas_dir = string.replace(apt_file,'apt-probeset-summarize','apt-midas')
-                  os.chmod(midas_dir,0777)
-                  UI.probesetSummarize(exp_file_location_db,analysis_method,filter_probeset_types,species,root)
-      except Exception:
-        print_out = 'AltAnalyze encountered an un-expected error while running Affymetrix\n'
-        print_out += 'Power Tools (APT). Additional information may be found in the directory\n'
-        print_out += '"ExpressionInput/APT" in the output directory. You may also encounter issues\n'
-        print_out += 'if you are logged into an account with restricted priveledges.\n\n'
-        print_out += 'If this issue can not be resolved, contact AltAnalyze help or run RMA outside\n'
-        print_out += 'of AltAnalyze and import the results using the analysis option "expression file".\n'
-        print traceback.format_exc()
+      if 'CEL files' in run_from_scratch:
+        import APT
         try:
-            UI.WarningWindow(print_out,'Exit')
-            root.destroy(); sys.exit()
+            try:
+                APT.probesetSummarize(exp_file_location_db,analyze_metaprobesets,filter_probeset_types,species,root)
+                if analyze_metaprobesets == 'yes':
+                    analyze_metaprobesets = 'no' ### Re-run the APT analysis to obtain probeset rather than gene-level results (only the residuals are needed from a metaprobeset run)
+                    APT.probesetSummarize(exp_file_location_db,analyze_metaprobesets,filter_probeset_types,species,root)
+            except Exception:
+                    import platform
+                    print "Trying to change APT binary access privileges"
+                    for dataset in exp_file_location_db: ### Instance of the Class ExpressionFileLocationData
+                        fl = exp_file_location_db[dataset]; apt_dir =fl.APTLocation()
+                    if '/bin' in apt_dir: apt_file = apt_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
+                    elif os.name == 'nt': apt_file = apt_dir + '/PC/'+platform.architecture()[0]+'/apt-probeset-summarize.exe'
+                    elif 'darwin' in sys.platform: apt_file = apt_dir + '/Mac/apt-probeset-summarize'
+                    elif 'linux' in sys.platform:
+                        if '32bit' in platform.architecture(): apt_file = apt_dir + '/Linux/32bit/apt-probeset-summarize'
+                        elif '64bit' in platform.architecture(): apt_file = apt_dir + '/Linux/64bit/apt-probeset-summarize'
+                        apt_file = filepath(apt_file)
+                    os.chmod(apt_file,0777)
+                    midas_dir = string.replace(apt_file,'apt-probeset-summarize','apt-midas')
+                    os.chmod(midas_dir,0777)
+                    APT.probesetSummarize(exp_file_location_db,analysis_method,filter_probeset_types,species,root)
         except Exception:
-            print print_out; sys.exit()
-
+          print_out = 'AltAnalyze encountered an un-expected error while running Affymetrix\n'
+          print_out += 'Power Tools (APT). Additional information may be found in the directory\n'
+          print_out += '"ExpressionInput/APT" in the output directory. You may also encounter issues\n'
+          print_out += 'if you are logged into an account with restricted priveledges.\n\n'
+          print_out += 'If this issue can not be resolved, contact AltAnalyze help or run RMA outside\n'
+          print_out += 'of AltAnalyze and import the results using the analysis option "expression file".\n'
+          print traceback.format_exc()
+          try:
+              UI.WarningWindow(print_out,'Exit')
+              root.destroy(); sys.exit()
+          except Exception:
+              print print_out; sys.exit()
+      elif 'Feature Extraction' in run_from_scratch:
+        import ProcessAgilentArrays
+        try: ProcessAgilentArrays.agilentSummarize(exp_file_location_db)
+        except Exception:
+            print_out = 'Agilent array import and processing failed... see error log for details...'
+            print traceback.format_exc()
+            try:
+                UI.WarningWindow(print_out,'Exit')
+                root.destroy(); sys.exit()
+            except Exception:
+                print print_out; sys.exit()
+        reload(ProcessAgilentArrays)
+        
   if run_from_scratch == 'Process RNA-seq reads' or run_from_scratch == 'buildExonExportFiles':
       import RNASeq; reload(RNASeq); import RNASeq
       for dataset in exp_file_location_db: fl = exp_file_location_db[dataset]
@@ -5197,15 +5252,38 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             print_out+= 'match the junction name (e.g., Sample1__exon.bed and Sample1__junction.bed)\n'
             print_out+= 'and re-run AltAnalyze (see tutorials at http://altanalyze.org for help).'
             UI.InfoWindow(print_out,'Export Complete')
-            root.destroy(); sys.exit()
+            try: root.destroy(); sys.exit()
+            except Exception: sys.exit()
 
-  if run_from_scratch == 'Process Expression file' or run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads':
+  if run_from_scratch == 'Process Expression file' or run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or 'Feature Extraction' in run_from_scratch:
       status = ExpressionBuilder.remoteExpressionBuilder(species,array_type,
             dabg_p,raw_expression_threshold,avg_all_for_ss,expression_data_format,
             manufacturer,constitutive_source,data_source,include_raw_data,
             perform_alt_analysis,ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,
             exp_file_location_db,root)
       reload(ExpressionBuilder) ### Clears Memory
+      #status = 'stop'
+      if fl.MarkerFinder() == 'yes':
+            ### Identify putative condition-specific marker genees
+            import markerFinder
+            fl.setOutputDir(root_dir) ### This needs to be set here
+            exp_file = fl.ExpFile()
+            if array_type != "3'array": exp_file = string.replace(exp_file,'.txt','-steady-state.txt')
+            markerFinder_inputs = [exp_file,fl.DatasetFile()] ### Output a replicate and non-replicate version
+            for input_exp_file in markerFinder_inputs:
+                ### This applies to an ExpressionOutput DATASET file compoosed of gene expression values (averages already present)
+                output_dir = markerFinder.getAverageExpressionValues(input_exp_file,array_type) ### Either way, make an average annotated file from the DATASET file
+                if 'DATASET' in input_exp_file:
+                    group_exp_file = string.replace(input_exp_file,'DATASET','AVERAGE')
+                else:
+                    group_exp_file = (input_exp_file,output_dir) ### still analyze the primary sample
+                compendiumType = 'protein_coding'
+                try: markerFinder.analyzeData(group_exp_file,species,array_type,compendiumType)
+                except Exception: None
+            ### Generate heatmaps (unclustered - order by markerFinder)
+            try: markerFinder.generateMarkerHeatMaps(fl,array_type)
+            except Exception: None
+                
       remove_intronic_junctions = original_remove_intronic_junctions ### This var gets reset when running FilterDABG
       try:
            summary_data_db['QC'] = fl.GraphicLinks() ### provides links for displaying QC and clustering plots
@@ -5556,10 +5634,12 @@ def commandLineRun():
     #python AltAnalyze.py --species Mm --arraytype "3'array" --expdir "C:/CEL/ExpressionInput/exp.miR1_column.txt" --output "C:/CEL" --runGOElite yes --GEelitepval 1.1 --elitepermut 20
     #python AltAnalyze.py --species Mm --platform RNASeq --bedDir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles" --groupdir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles/ExpressionInput/groups.test.txt" --compdir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles/ExpressionInput/comps.test.txt" --output "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles" --expname "test"
     #python AltAnalyze.py --species Mm --platform RNASeq --filterdir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles/" --output "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles"
+    #python AltAnalyze.py --expdir "/Users/nsalomonis/Desktop/Nathan/ExpressionInput/exp.test.txt" --exonMapFile "/Users/nsalomonis/Desktop/Nathan/hgu133_probe.txt" --species Hs --platform "3'array" --output "/Users/nsalomonis/Desktop/Nathan"
 
     global apt_location; global root_dir; global probability_statistic; global log_file; global summary_data_db; summary_data_db={}
 
     ###required
+    marker_finder='no'
     manufacturer='Affymetrix'
     constitutive_source='Ensembl'
     ensembl_version = 'current'
@@ -5575,7 +5655,7 @@ def commandLineRun():
     exp_name = None
     run_GOElite = None
     visualize_qc_results = 'yes'
-    run_lineage_profiler = 'no'
+    run_lineage_profiler = 'yes'
     input_exp_file = ''
     cel_file_dir = ''
     input_stats_file = ''
@@ -5590,7 +5670,7 @@ def commandLineRun():
     remove_intronic_junctions = 'no'
     ignore_built_species = 'no'
     build_exon_bedfile = 'no'
-    codingType = 'protein_coding'
+    compendiumType = 'protein_coding'
     probability_statistic = 'unpaired t-test'
     specific_array_type = None
     additional_resources = [None]
@@ -5602,16 +5682,20 @@ def commandLineRun():
     image_export = []
     selected_species = ['Hs','Mm','Rn'] ### These are the species that additional array types are currently supported
     selected_platforms = ['AltMouse','exon','gene','junction']
+    returnPathways = 'no'
+    compendiumPlatform = 'gene'
+    exonMapFile = None
+    platformType = None ### This option is used to store the orignal platform type
+    perform_alt_analysis = 'no'
+    mappedExonAnalysis = False ### Map the original IDs to the RNA-Seq exon database  (when True)
     
     print '\nArguments input:',sys.argv,'\n'
     if '--help' in sys.argv[1:]:
         try: displayHelp() ### Print out a help file and quit
         except Exception: print 'See: http://www.altanalyze.org for documentation and command-line help';sys.exit()
         
-    try: getopt.getopt(sys.argv[1:],'', []) ### Test to make sure the command-line flags each have an argument
-    except Exception: print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
-    
-    options, remainder = getopt.getopt(sys.argv[1:],'', ['species=', 'mod=','elitepval=', 'elitepermut=',
+    try:
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['species=', 'mod=','elitepval=', 'elitepermut=',
                                                          'method=','zscore=','pval=','num=',
                                                          'runGOElite=','denom=','output=','arraytype=',
                                                          'celdir=','expdir=','output=','statdir=',
@@ -5628,12 +5712,16 @@ def commandLineRun():
                                                          'additionalAlgorithm=','noxhyb=','platform=','bedDir=',
                                                          'altpermutep=','altpermute=','removeIntronOnlyJunctions=',
                                                          'normCounts=','buildExonExportFile=','groupStat=',
-                                                         'codingType=','rpkm=','exonExp=','specificArray=',
+                                                         'compendiumPlatform=','rpkm=','exonExp=','specificArray=',
                                                          'ignoreBuiltSpecies=','ORAstat=','outputQCPlots=',
                                                          'runLineageProfiler=','input=','image=', 'wpid=',
                                                          'additional=','row_method=','column_method=',
                                                          'row_metric=','column_metric=','color_gradient=',
-                                                         'transpose=','returnPathways='])
+                                                         'transpose=','returnPathways=','compendiumType=',
+                                                         'exonMapFile='])
+    except Exception:
+        print traceback.format_exc()
+        print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
 
     for opt, arg in options:
         #print [opt, arg]
@@ -5642,6 +5730,9 @@ def commandLineRun():
             if array_type != None: additional_array_types.append(arg)
             else: array_type=arg; platform = array_type
             if specific_array_type == None: specific_array_type = platform
+        elif opt == '--exonMapFile':
+            perform_alt_analysis = 'yes' ### Perform alternative exon analysis
+            exonMapFile = arg
         elif opt == '--specificArray': specific_array_type = arg  ### e.g., hGlue
         elif opt == '--celdir': cel_file_dir=arg
         elif opt == '--bedDir': cel_file_dir=arg
@@ -5662,7 +5753,7 @@ def commandLineRun():
             if specific_array_type == None: specific_array_type = platform
         elif opt == '--update': update_dbs='yes'; update_method.append(arg)
         elif opt == '--version': ensembl_version = arg
-        elif opt == '--codingType': codingType=arg
+        elif opt == '--compendiumPlatform': compendiumPlatform=arg ### platform for which the LineageProfiler compendium is built on
         elif opt == '--force': force=arg
         elif opt == '--input': input_file_dir=arg
         elif opt == '--image': image_export.append(arg)
@@ -5678,14 +5769,32 @@ def commandLineRun():
             if arg == 'True': transpose = True
         elif opt == '--runLineageProfiler': ###Variable declared here and later (independent analysis here or pipelined with other analyses later)
             run_lineage_profiler=arg
+        elif opt == '--compendiumType': ### protein-coding, ncRNA, or exon
+            compendiumType=arg
         elif opt == '--denom':
             denom_file_dir=arg ### Indicates that GO-Elite is run independent from AltAnalyze itself
             array_type = 'exon' #### Required to import general GO-Elite defaults
-
+            
+    if platformType == None: platformType = array_type
+    if perform_alt_analysis == 'yes':
+        if platform == "3'array":
+            mappedExonAnalysis = True
+            cel_file_dir = input_exp_file
+            exp_name = export.findFilename(input_exp_file)
+            exp_name = string.replace(exp_name,'.txt','')
+            exp_name = string.replace(exp_name,'exp.','')
+            input_exp_file = ''
+            ### To perform alternative exon analyses for platforms without a dedicated database, must happing appropriate mapping info or array type data
+            ### (will need to perform downstream testing for unsupported Affymetrix exon, gene and junction arrays)
+            if exonMapFile == None and specific_array_type == None and cel_file_dir == '':
+                print_out = "\nUnable to run!!! Please designate either a specific platfrom (e.g., --specificArray hgU133_2), select CEL files, or an "
+                print_out += "exon-level mapping file location (--exonMapFile C:/mapping.txt) to perform alternative exon analyses for this platform."
+        ### Will need to check here to see if the platform is supported (local or online files) OR wait until an error is encountered later
+        
     ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
     if len(image_export) > 0:
         if 'WikiPathways' in image_export:
-            #python AltAnalyze.py --input /Users/test/input/criterion1.txt --image WikiPathways --mod Ensembl --system arrays --species Hs --wpid WP536
+            #python AltAnalyze.py --input /Users/test/input/criterion1.txt --image WikiPathways --mod Ensembl --species Hs --wpid WP536
             if wpid==None:
                 print 'Please provide a valid WikiPathways ID (e.g., WP1234)';sys.exit()
             if species==None:
@@ -5746,7 +5855,7 @@ def commandLineRun():
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
             UI.performPCA(input_file_dir, transpose, None)
             sys.exit()
-            
+
     if run_lineage_profiler == 'yes' and input_file_dir != None:
         #python AltAnalyze.py --input "/Users/nsalomonis/Merrill/test.txt" --runLineageProfiler yes --vendor Affymetrix --platform "3'array" --species Mm
         if array_type==None:
@@ -5761,7 +5870,7 @@ def commandLineRun():
                 print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart65\n';sys.exit()
         if status == False:
             print 'Please note: LineageProfiler not currently supported for this species...';sys.exit()
-        graphic_links = ExpressionBuilder.remoteLineageProfiler(input_file_dir,array_type,species,manufacturer)
+        graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,input_file_dir,array_type,species,manufacturer)
         if len(graphic_links)>0:
             print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
             print print_out
@@ -6115,6 +6224,7 @@ def commandLineRun():
             #python AltAnalyze.py --update markers --platform gene --expdir "/home/socr/c/users2/salomoni/other/boxer/normalization/Mm_Gene-TissueAtlas/ExpressionInput/exp.meta.txt"
             #python AltAnalyze.py --update markers --platform gene --expdir "/home/socr/c/users2/salomoni/other/boxer/normalization/Mm_Gene-TissueAtlas/AltResults/RawSpliceData/Mm/splicing-index/meta.txt"
             #python AltAnalyze.py --update markers --platform "3'array" --expdir "/home/socr/c/users2/salomoni/other/boxer/normalization/U133/ExpressionOutput/DATASET-meta.txt"
+            #python AltAnalyze.py --update markers --compendiumType ncRNA --platform "exon" --expdir "/home/socr/c/users2/salomoni/conklin/nsalomonis/normalization/Hs_Exon-TissueAtlas/ExpressionOutput/DATASET-meta.txt"
             """The markerFinder module:
             1) takes an input ExpressionOutput file (DATASET.YourExperimentName.txt)
             2) extracts group average expression and saves to AVERAGE.YourExperimentName.txt to the ExpressionOutput directory
@@ -6134,13 +6244,22 @@ def commandLineRun():
                     group_exp_file = string.replace(input_exp_file,'Raw','AVERAGE')
                 else:
                     group_exp_file = string.replace(input_exp_file,'FullDatasets','AVERAGE-FullDatasets')
-                altexon_correlation_file = markerFinder.analyzeData(group_exp_file,species,platform,codingType)
+                altexon_correlation_file = markerFinder.analyzeData(group_exp_file,species,platform,compendiumType)
                 markerFinder.getExprValsForNICorrelations(platform,altexon_correlation_file,group_exp_file)
             else:
                 ### This applies to an ExpressionOutput DATASET file compoosed of gene expression values (averages already present)
-                markerFinder.getAverageExpressionValues(input_exp_file)
-                group_exp_file = string.replace(input_exp_file,'DATASET','AVERAGE')
-                markerFinder.analyzeData(group_exp_file,species,platform,codingType)
+                output_dir = markerFinder.getAverageExpressionValues(input_exp_file,platform) ### Either way, make an average annotated file from the DATASET file
+                if 'DATASET' in input_exp_file:
+                    group_exp_file = string.replace(input_exp_file,'DATASET','AVERAGE')
+                else:
+                    group_exp_file = (input_exp_file,output_dir) ### still analyze the primary sample
+                markerFinder.analyzeData(group_exp_file,species,platform,compendiumType)
+                fl = UI.ExpressionFileLocationData(input_exp_file,'','',''); fl.setOutputDir(export.findParentDir(export.findParentDir(input_exp_file)[:-1]))
+                try: fl.setVendor(manufacturer)
+                except Exception:
+                    print '--vendor not indicated by user... assuming Affymetrix'
+                    fl.setVendor('Affymetrix')
+                markerFinder.generateMarkerHeatMaps(fl,array_type)
             print 'Cell/Tissue marker classification analysis finished';sys.exit()
     
     if 'EnsMart' in ensembl_version:
@@ -6162,8 +6281,13 @@ def commandLineRun():
             else: output_dir +='/'
             log_file = filepath(output_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
-        except Exception: print 'Please designate an output directory before proceeding (e.g., --output "C:\RNASeq)';sys.exit()
+        except Exception,e:
+            print e
+            print 'Please designate an output directory before proceeding (e.g., --output "C:\RNASeq)';sys.exit()
 
+    if mappedExonAnalysis:
+        array_type = 'RNASeq' ### Although this is not the actual platform, the resulting data will be treated as RNA-Seq with parameters most suitable for arrays
+        
     if len(external_annotation_dir)>0:
         run_from_scratch = 'Annotate External Results'
     if len(input_filtered_dir)>0:
@@ -6183,7 +6307,9 @@ def commandLineRun():
         if array_type == 'RNASeq': file_ext = '.BED'
         else: file_ext = '.CEL'
         try: cel_files,cel_files_fn = UI.identifyCELfiles(cel_file_dir,array_type)
-        except Exception: print "No",file_ext,"files found in the directory:",cel_file_dir;sys.exit()
+        except Exception:
+            if mappedExonAnalysis: pass
+            else: print "No",file_ext,"files found in the directory:",cel_file_dir;sys.exit()
         if array_type != 'RNASeq': cel_file_list_dir = UI.exportCELFileList(cel_files_fn,cel_file_dir)
 
         if groups_file != None and comps_file != None:
@@ -6228,7 +6354,9 @@ def commandLineRun():
 
             cdf_found = verifyFile(input_cdf_file)
             annotation_found = verifyFile(input_annotation_file)
-    
+            if input_cdf_file == None:
+                print [specific_array_type], 'not currently supported... Please provide CDF to AltAnalyze (commandline or GUI) or manually add to AltDatabase/affymetrix/LibraryFiles'; sys.exit()
+                
             if cdf_found != "found":
                 ### Copy valid Library files to a local AltAnalyze database directory
                 input_cdf_file_lower = string.lower(input_cdf_file)
@@ -6286,7 +6414,7 @@ def commandLineRun():
         ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, filter_method, z_threshold, p_val_threshold, change_threshold, ORA_algorithm, resources_to_analyze, goelite_permutations, mod, returnPathways, NA = goelite_defaults
         use_direct_domain_alignments_only,microRNA_prediction_method = functional_analysis_defaults
         analysis_method, additional_algorithms, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, additional_score, permute_p_threshold, gene_expression_cutoff, remove_intronic_junctions, perform_permutation_analysis, export_NI_values, run_MiDAS, calculate_normIntensity_p, filter_for_AS = alt_exon_defaults
-        dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, avg_all_for_ss, include_raw_data, probability_statistic, visualize_qc_results, run_lineage_profiler, null = expr_defaults
+        dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_statistic, batch_effects, marker_finder, visualize_qc_results, run_lineage_profiler, null = expr_defaults
     else:
         print 'No species defined. Please include the species code (e.g., "--species Hs") and array type (e.g., "--arraytype exon") before proceeding.'; sys.exit()     
 
@@ -6319,6 +6447,7 @@ def commandLineRun():
         elif opt == '--avgallss': avg_all_for_ss=arg
         elif opt == '--logexp': expression_data_format=arg
         elif opt == '--inclraw': include_raw_data=arg
+        elif opt == '--combat': batch_effects=arg
         elif opt == '--runalt': perform_alt_analysis=arg
         elif opt == '--altmethod': analysis_method=arg
         elif opt == '--altp': p_threshold=arg
@@ -6327,6 +6456,7 @@ def commandLineRun():
         elif opt == '--GEcutoff': gene_expression_cutoff=arg
         elif opt == '--removeIntronOnlyJunctions': remove_intronic_junctions=arg
         elif opt == '--normCounts': normalize_feature_exp=arg
+        elif opt == '--normMatrix': normalize_gene_data=arg
         elif opt == '--altpermutep': permute_p_threshold=arg
         elif opt == '--altpermute': perform_permutation_analysis=arg
         elif opt == '--exportnormexp': export_NI_values=arg
@@ -6533,7 +6663,7 @@ def commandLineRun():
         except Exception: permute_p_threshold = permute_p_threshold
                 
         ### Store variables for AltAnalyzeMain
-        expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
+        expr_var = species,array_type,manufacturer,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data,run_from_scratch,perform_alt_analysis
         alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_variable,gene_expression_cutoff,remove_intronic_junctions,permute_p_threshold,perform_permutation_analysis, export_NI_values, analyze_all_conditions
         additional_var = calculate_normIntensity_p, run_MiDAS, use_direct_domain_alignments_only, microRNA_prediction_method, filter_for_AS, additional_algorithms
         goelite_var = ge_fold_cutoffs,ge_pvalue_cutoffs,ge_ptype,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,goelite_permutations,mod,returnPathways
@@ -6605,9 +6735,11 @@ def commandLineRun():
             groups_found = verifyFile(groups_file_dir)
             comps_found = verifyFile(comps_file_dir)
             if ((groups_found != 'found' or comps_found != 'found') and analyze_all_conditions != 'all groups') or (analyze_all_conditions == 'all groups' and groups_found != 'found'):
-                files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
-                if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
-                #else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
+                if mappedExonAnalysis: pass
+                else:
+                    files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
+                    if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
+                    #else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
             fl = UI.ExpressionFileLocationData(exp_file_dir,stats_file_dir,groups_file_dir,comps_file_dir)
             exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
             parent_dir = output_dir  ### interchangable terms (parent_dir used with expression file import)
@@ -6640,16 +6772,23 @@ def commandLineRun():
             
             apt_location = fl.APTLocation()
             root_dir = fl.RootDir(); fl.setExonBedBuildStatus(build_exon_bedfile)
+            fl.setMarkerFinder(marker_finder)
             fl.setFeatureNormalization(normalize_feature_exp)
+            fl.setNormMatrix(normalize_gene_data)
             fl.setProbabilityStatistic(probability_statistic)
             fl.setProducePlots(visualize_qc_results)
             fl.setPerformLineageProfiler(run_lineage_profiler)
+            fl.setCompendiumType(compendiumType)
+            fl.setCompendiumPlatform(compendiumPlatform)
+            fl.setVendor(manufacturer)
         if array_type == 'RNASeq': ### Post version 2.0, add variables in fl rather than below
             fl.setRPKMThreshold(rpkm_threshold)
             fl.setExonExpThreshold(exon_exp_threshold)
             fl.setGeneExpThreshold(gene_exp_threshold)
             fl.setExonRPKMThreshold(exon_rpkm_threshold)
             fl.setJunctionExpThreshold(expression_threshold)
+            fl.setExonMapFile(exonMapFile)
+            fl.setPlatformType(platformType)
         
         ### Verify database presence
         try: dirs = unique.read_directory('/AltDatabase')
@@ -6679,7 +6818,6 @@ def cleanUpCommandArguments():
             if z!= -1 and z!=1: ### Hence, it is in the argument but not at the second position
                 print 'Illegal parentheses found. Please re-type these and re-run.'; sys.exit()
 
-    
 def runCommandLineVersion():
     ### This code had to be moved to a separate function to prevent iterative runs upon AltAnalyze.py re-import
     command_args = string.join(sys.argv,' ')
@@ -6741,7 +6879,7 @@ def testResultsPanel():
     summary_db['alt_genes'] = 1
     summary_db['direct_domain_genes'] = 1
     summary_db['miRNA_gene_hits'] = 1
-    
+    #summary_db={}
     print_out = 'Analysis complete. AltAnalyze results\nexported to "AltResults/AlternativeOutput".'
     dataset = 'test'; results_dir=''
     print "Analysis Complete\n";
@@ -6749,10 +6887,52 @@ def testResultsPanel():
         UI.InfoWindow(print_out,'Analysis Completed!')
         tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir,dataset,'parent',summary_db)
         print 'here'
-    sys.exit()
+    #sys.exit()
     
 if __name__ == '__main__':
     #testResultsPanel()
     skip_intro = 'yes'; #sys.exit()
     runCommandLineVersion()
     if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)
+
+    """ To do list:
+    0) (done) Integrate new network visualizationality in clustering
+    1) RNA-Seq and LineageProfiler: threshold based RPKM expression filtering for binary absent present gene and exon calls
+    2) (demo) Splicing graph/isoform visualization
+    3) SQLite for gene-set databases prior to clustering and network visualization
+    4) (done) Gene-level correlation queries for clustering
+    5) (explored - not good) Optional algorithm type of PCA
+    6) (done) Optional normalization of expression data for clustering
+    7) (partially) Integrate splicing factor enrichment analysis (separate module?)
+    8) (done) Venn diagram option
+    9) (done) Additional Analyses: (A) combine lists, (B) annotate ID list, (C) run marker finder directly, (D) any graph from table option, (E) network from SIF, (F) inference networks from gene-lists (protein-protein, protein-DNA, protein-splicing)
+    10) Optional denominator option for GO-Elite (create from input and ID system IDs)
+    11) Update fields in summary combined alt.exon files (key by probeset)
+    12) Check field names for junction, exon, RNA-Seq in summary alt.exon report
+    13) (done) Support additional ID types for initial import (ID select option and pulldown - Other)
+    14) Proper FDR p-value for alt.exon analyses (include all computed p-values)
+    15) Add all major clustering and LineageProfiler options to UI along with stats filtering by default
+    16) Make GO-Elite analysis the default
+    17) Support R check (and response that they need it) along with GUI gcrma, agilent array, hopach, combat
+    18) Probe-level annotations from Ensembl (partial code in place) and probe-level RMA in R (or possibly APT) - google pgf for U133 array
+    19) (done) Include various gene databases for LineageProfiler in download and allow for custom databases to be used (markerFinder based)
+    20) (done) Quantile normalization option for any non-Affy, non-RNASeq data (check box)
+    21) (done) Import agilent from Feature extraction files (pull-down option)
+    
+    Advantages of this tool kit:
+    0) Easiest to use, hands down
+    1) Established and novel functionality for transcriptome/proteomics analysis built in
+    2) Independent and cooperative options for RNA-Seq and array analysis (splicing and gene expression)
+    3) Superior functional analyses (TF-target, splicing-factor target, lineage markers, WikiPathway visualization)
+    4) Options for different levels of users with different integration options (multiple statistical method options, option R support)
+    5) Built in secondary analysis options for already processed data (graphing, clustering, biomarker discovery, pathway analysis, network visualization)
+    6) Incorporates highly validated alternative exon identification methods, independent and jointly
+    
+    Primary Engineer Work:
+    0) C-library calls and/or multithreading where applicable to improve peformance.
+    1) MySQL or equivalent transition for all large database queries (e.g., HuEx 2.1 on-the-fly coordinate mapping).
+    2) Splicing-domain visualization (matplotlib).
+    3) Isoform-domain network visualization and WP overlays.
+    4) Webservice calls to in silico protein translation, domain prediction, splicing factor regulation.
+    5) Stand-alone integration with bedtools, QC tools, TopHat, Cufflinks, Miso (optional).
+    """

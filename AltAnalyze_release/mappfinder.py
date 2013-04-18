@@ -71,26 +71,15 @@ class GrabFiles:
         print self.data
     def searchdirectory(self,search_term):
         #self is an instance while self.data is the value of the instance
-        all_matching,file_dir,file = getDirectoryFiles(self.data,str(search_term))
+        all_matching,file_dir,file = gene_associations.getDirectoryFiles(self.data,str(search_term))
         #if len(file)<1: print search_term,'not found'
         return file_dir,file
     def getAllFiles(self,search_term):
         #self is an instance while self.data is the value of the instance
-        all_matching,file_dir,file = getDirectoryFiles(self.data,str(search_term))
+        all_matching,file_dir,file = gene_associations.getDirectoryFiles(self.data,str(search_term))
         #if len(file)<1: print search_term,'not found'
         return all_matching
     
-def getDirectoryFiles(import_dir, search_term):
-    exact_file = ''; exact_file_dir=''; all_matching=[]
-    dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
-    for data in dir_list:    #loop through each file in the directory to output results
-        if (':' in import_dir) or ('/Users/' == import_dir[:7]) or ('Linux' in platform.system()): affy_data_dir = import_dir+'/'+data
-        else: affy_data_dir = import_dir[1:]+'/'+data
-        if search_term in affy_data_dir:
-            exact_file_dir = affy_data_dir; exact_file = data;
-            if '_version.txt' not in data: all_matching.append(data)
-    return all_matching, exact_file_dir,exact_file
-
 ################# Import and Annotate Data
 def eliminate_redundant_dict_values(database):
     db1={}
@@ -351,7 +340,7 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
             if run_status == 0:
                 ### Returns the number of successfully analyzed gene-set databases
                 program_type,database_dir = unique.whatProgramIsThis()
-                print_out = "Warning!!! Either the MOD you have selected: "+mod+"\nis missing the appropriate relationshipfiles necessary to run GO-Elite\nor you have selected an invalid resource to analyze.  Either replace\nthe missing MOD files in "+database_dir+'/'+species_code+' sub-directories or\nselect a different MOD at run-time.'
+                print_out = "Warning!!! Either the MOD you have selected: "+mod+"\nis missing the appropriate relationship files necessary to run GO-Elite\nor you have selected an invalid resource to analyze.  Either replace\nthe missing MOD files in "+database_dir+'/'+species_code+' sub-directories or\nselect a different MOD at run-time.'
                 ForceCriticalError(print_out)
                 
     end_time = time.time()

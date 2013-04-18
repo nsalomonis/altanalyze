@@ -397,7 +397,7 @@ def getModeratedStandardDeviation(comparison_db,probability_statistic):
         ###calculate s0 and d0
         if sg_squared > 1e-11:
             zg = math.log(sg_squared)
-            eg = zg - psi(0,df/2) + math.log(df/2)
+            eg = zg - psi(0,df/2.0) + math.log(df/2.0)
             variance_ls.append((eg,df))
 
     n = len(variance_ls) ### number of uids analyzed
@@ -425,15 +425,14 @@ def NewtonInteration(x):
     y = 0.5 + (1/x)
     proceed = 1
     while proceed == 1:
-        if x>1e7: y = 1/math.sqrt(x)
-        elif x<1e-6: y = 1/self.x
+        if x>1e7: y = 1/math.sqrt(x); proceed = 0
+        elif x<1e-6: y = 1/x; proceed = 0
         else:
             d = (psi(1,y)*(1-(psi(1,y)/x)))/psi(2,y)
-            #print y, x, d
             y = y + d
-        if (-d/y)< 1e-8:
-            proceed = 0
-            break
+            if (-d/y)< 1e-8:
+                proceed = 0
+                break
     return y
     
 def ModeratedWelchTest(gs,d0,s0_squared):
@@ -489,8 +488,12 @@ def log_fold_conversion(array):
             else: real_fold = -1/(math.pow(2,log_fold)); new_array.append(real_fold)
     except TypeError:
         log_fold = float(array)
-        if log_fold > 0 or log_fold == 0: new_array = math.pow(2,log_fold)
-        else: new_array = -1/(math.pow(2,log_fold))
+        try:
+            if log_fold > 0 or log_fold == 0: new_array = math.pow(2,log_fold)
+            else: new_array = -1/(math.pow(2,log_fold))
+        except Exception:
+            print 'Error with fold transformation for the log fold:',log_fold
+            forceError
     return new_array
 
 def convert_to_log_fold(array):
@@ -903,6 +906,18 @@ def testModeratedStatistics():
 if __name__ == '__main__':
     dirfile = unique
     
+    r=1749
+    n=2536
+    R=9858
+    N=16595
+
+    r=19
+    n=32
+    R=8347
+    N=19411
+    
+    z = zscore(r,n,N,R)
+    print z, p_value(z);sys.exit()
     testModeratedStatistics(); sys.exit()
     
     high =[134, 146, 104, 119, 124, 161, 107, 83, 113, 129, 97, 123]
