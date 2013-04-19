@@ -23,6 +23,7 @@
  * Combat in python (depends on other packages): https://github.com/brentp/combat.py/blob/master/combat.py
 note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
  * Databases for probe-level splicing anlayses: http://affymetrix2.bioinf.fbb.msu.ru/files.html
+ * GEO data import: http://bcbio.wordpress.com/2010/01/02/automated-retrieval-of-expression-data-with-python-and-r/
 
 = Visualization Software Installation Notes =
 
