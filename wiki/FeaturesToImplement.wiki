@@ -11,8 +11,9 @@
  * *Transcript-Level analysis* - Integrate predictions from other applications (Cufflinks, NSMAP, etc.) and develop a unique approach for AltInteract that uses unique exons to determine likely isoforms that are expressed or not in a given sample or differentially expressed.
  * *Motif over-representation * - Include ESE/ESS/ISE/ISS prediction enrichment methods.
  * *Code re-design * - more efficient methods throughout (using external libraries optionally to improve performance), module reorganization, more efficient database access (MySQL, Derby, other), python 3+ compatibility.
- * *Robust cross-platform network visualization.
+ * *Robust cross-platform network visualization.*
  * *miRNA and splicing * - Extension of miRNA exon predictions to alternative isoforms (not just the regulated exon).
+ * *ncRNA database integration * - Include a comprehensive ncRNA and lincRNA database for gene expression studies.
 
 === Database Builds ===
 
