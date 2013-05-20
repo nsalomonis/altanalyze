@@ -12,6 +12,7 @@
  * *Motif over-representation * - Include ESE/ESS/ISE/ISS prediction enrichment methods.
  * *Code re-design * - more efficient methods throughout (using external libraries optionally to improve performance), module reorganization, more efficient database access (MySQL, Derby, other), python 3+ compatibility.
  * *Robust cross-platform network visualization.
+ * *Extension of miRNA exon predictions to alternative isoforms (not just the regulated exon).
 
 === Database Builds ===
 
