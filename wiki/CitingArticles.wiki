@@ -3,7 +3,7 @@
 
 === Articles Citing AltAnalyze ===
 
-http://www.frontiersin.org/Molecular_Neuroscience/10.3389/fnmol.2013.00010/abstract. [Small RNA sequencing-microarray analyses in Parkinson leukocytes reveal deep brain stimulation-induced splicing changes that classify brain region transcriptomes].Soreq L, Salomonis N, Bronstein M, Greenberg D, Israel Z, Bergman H and Soreq H. Front. Mol. Neurosci., 13 May 2013
+[http://www.frontiersin.org/Molecular_Neuroscience/10.3389/fnmol.2013.00010/abstract Small RNA sequencing-microarray analyses in Parkinson leukocytes reveal deep brain stimulation-induced splicing changes that classify brain region transcriptomes].Soreq L, Salomonis N, Bronstein M, Greenberg D, Israel Z, Bergman H and Soreq H. Front. Mol. Neurosci., 13 May 2013
 
 [http://www.jimmunol.org/content/early/2013/05/17/jimmunol.1300434.abstract. Protective Role of the Inflammatory CCR2/CCL2 Chemokine Pathway through Recruitment of Type 1 Cytotoxic γδ T Lymphocytes to Tumor Beds]. Lança T, Costa MF, Gonçalves-Sousa N, Rei M, Grosso AR, Penido C, Silva-Santos B. J Immunol. 2013 May 17
 
