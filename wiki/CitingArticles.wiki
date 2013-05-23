@@ -3,6 +3,10 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.jimmunol.org/content/early/2013/05/17/jimmunol.1300434.abstract. Protective Role of the Inflammatory CCR2/CCL2 Chemokine Pathway through Recruitment of Type 1 Cytotoxic γδ T Lymphocytes to Tumor Beds]. Lança T, Costa MF, Gonçalves-Sousa N, Rei M, Grosso AR, Penido C, Silva-Santos B. J Immunol. 2013 May 17
+
+[http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0061975 Genome-Wide Analysis of Alternative Splicing during Dendritic Cell Response to a Bacterial Challenge].  Rodrigues R, Grosso AR, Moita L. PLoS One. 2013 Apr 17;8(4):e61975.
+
 [http://rnajournal.cshlp.org/content/early/2013/03/01/rna.038042.112.abstract Global regulation of alternative splicing by adenosine deaminase acting on RNA (ADAR)]. Solomon O, Oren S, Safran M, Deshet-Unger N, Akiva P, Jacob-Hirsch J, Cesarkas K, Kabesa R, Amariglio N, Unger R, Rechavi G, Eyal E. RNA March 8, 2013.
 
 [http://jem.rupress.org/content/early/2012/12/24/jem.20121044.abstract Poly(ADP-ribose) polymerase 1 regulates nuclear reprogramming and promotes iPSC generation without c-Myc]. Chiou SH, Jiang BH, Yu YL, Chou SJ, Tsai PH, Chang WC, Chen LK, Chen LH, Chien Y, Chiou GY. J Exp Med. 2012 Dec 31.
