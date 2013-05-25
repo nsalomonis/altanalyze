@@ -2,6 +2,7 @@
 #labels Featured
 
 === Articles Citing AltAnalyze ===
+[http://www.sciencedirect.com/science/article/pii/S0959440X13000432 The impact of splicing on protein domain architecture]. Light S, Elofsson A. Curr Opin Struct Biol. 2013 Apr 4
 
 [http://www.frontiersin.org/Molecular_Neuroscience/10.3389/fnmol.2013.00010/abstract Small RNA sequencing-microarray analyses in Parkinson leukocytes reveal deep brain stimulation-induced splicing changes that classify brain region transcriptomes].Soreq L, Salomonis N, Bronstein M, Greenberg D, Israel Z, Bergman H and Soreq H. Front. Mol. Neurosci., 13 May 2013
 
