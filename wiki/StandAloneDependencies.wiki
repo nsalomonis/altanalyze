@@ -65,6 +65,9 @@ Note: Installing from source is necessary when apt-get or easy_install does not 
  * python setup.py build
  * sudo python setup.py install
 
+For igraph, install as described [http://igraph.wikidot.com/installing-python-igraph-on-linux here]
+ * This will install to the default system python (default or python installed by apt-get). If installed via other means (e.g., from source to /usr/local/bin), you will need to sym link the igraph folder from the equivalent system python version to your local installed and use the command: export LD_LIBRARY_PATH=/usr/lib/ or export LD_LIBRARY_PATH=/usr/local/lib/ if igraph gives an ImportError.
+
 _*Developers Only*_
 
 Both PyInstaller and cx_Freeze have been used to build AltAnalyze binary distributions. In general, PyInstaller works the best with the described patch for Ubuntu, whereas cx_Freeze will work for some but not all Ubuntu releases and configurations (e.g., compatible with 10.04). 
