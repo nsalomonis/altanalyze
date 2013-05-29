@@ -15,7 +15,7 @@ Networks can be built from various sources including:
  # Selected pathways/ontologies/gene-sets.
  # Existing interaction tables (e.g., SIF format).
 
-[http://altanalyze.org/graphics/AltAnalyze-network_WP2406-interactions_direct.png]
+[http://altanalyze.org/image/NetPerspective.jpg]
 
 When loaded with a differential expression file in the AltAnalyze produced [GOElite GO-Elite] input file format, nodes will be colored as red or blue, depending on their assigned numerical value (positive or negative column #3).
 
