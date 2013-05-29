@@ -1,7 +1,7 @@
 #summary AltAnalyze Tutorials
 #labels Featured
 
-= AltAnalyze Tutorials =
+= AltAnalyze Workflow Tutorials (GUI) =
 
 Proceed through the following tutorials to analyze data for the indicated platform
 
@@ -11,6 +11,18 @@ Proceed through the following tutorials to analyze data for the indicated platfo
 
 [Tutorial_AltExpression_RNASeq Tutorial 3 - Analyzing RNA-Seq Exons and Junctions]
 
-= Related Items =
+= AltAnalyze Independent Tools (GUI) =
+
+Simple and fast single use research tools available via *Additional Analyses*:
+ * [Heatmaps Expression Clustering]
+ * [PathwayAnalysis  Pathway Analysis and Visualization]
+ * [NetworkVisualization Network Analysis and Visualization]
+ * Alternative Exon Visualization
+ * [LineageProfiler Sample Classification]
+ * Venn Diagram Creation
+ * Table Merge
+ * ID System Translation
+
+= AltAnalyze Command Line Functionality =
 
 [CommandLineMode Running AltAnalyze from the Command-Line]
