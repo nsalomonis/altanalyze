@@ -4,6 +4,8 @@
 
 NetPerspective is a new tool in AltAnalyze designed to visualize biological interactions between gene, proteins, RNAs, metabolites and drugs in a coherent and easy way. 
 
+[http://altanalyze.org/image/NetPerspective.jpg]
+
 Interactions can be based on:
  # Highly validated protein and metabolite interactions from annotated pathways (WikiPathways, KEGG, HMDB).
  # Experimentally derived protein-protein or protein-DNA interactions (BioGRID, Amadeus, Pazar).
@@ -15,27 +17,14 @@ Networks can be built from various sources including:
  # Selected pathways/ontologies/gene-sets.
  # Existing interaction tables (e.g., SIF format).
 
-[http://altanalyze.org/image/NetPerspective.jpg]
+Multiple interaction algorithms can be used to identify:
+ # Direct interacting nodes.
+ # Nodes indirectly connecting through other genes/metabolites.
+ # The shortest possible path between two or more genes/metabolites.
+ # All available interactions.
 
-When loaded with a differential expression file in the AltAnalyze produced [GOElite GO-Elite] input file format, nodes will be colored as red or blue, depending on their assigned numerical value (positive or negative column #3).
+When loaded with a differential expression file in the AltAnalyze produced [GOElite GO-Elite] input file format, nodes will be colored as red or blue, depending on their assigned numerical value (positive or negative column #3). Additionally, IDs specifically in the input file can be used to augment a network (e.g., regulated protein expression in a metabolite network).
 
 *Using NetPerspective*
 
-Along with several other new functions AltAnalyze, NetPerspective can be run 
-
-===Workflow Analysis===
-
-This analysis is the standard workflow for microarrays and RNA-Seq data (see [Tutorials tutorials]). In this workflow, differentially expressed or outlier genes (defined based on the user's statistical filtering options) are clustered using default coloring and distance algorithms. In addition to genes, cell-type predictions from the new method LineageProfiler are also clustered using this method (see LineageProfiler description for details). When finished with an analysis, the user will be presented with these plots in the interface and can be also be found in the folder *{{{ DataPlots }}}*. These input data matrices can also be re-clustered with different options following an analysis (*Additional Analyses* option - see below).
-
-The three default plots for genes are:
- # Significant regulated genes (relative to the *row mean*)
- # Significant regulated genes (relative to the *comparison group mean*)
- # Outlier regulated genes (relative to the *row mean*)
-
-All of these plot the log2 fold changes relative to the row mean or comparison mean. The first of these clusters indicates how all samples compare to other samples, without considering specific user-comparisons (e.g., day 10 versus day 0). The second is for the same genes but with fold changes for each sample to the control group mean for any user-defined comparison (including control samples versus the control mean). The third is for any sample for any non-significant genes with a fold change greater than the user-defined fold threshold (default 2 fold) for a given sample versus the mean of all samples in that row.
-
-===Independent Analysis===
-
-In addition to running the workflow version of hierarchical clustering, users can select the *Additional Analyses* option to run hierarchical clustering any tab-delimited text file. This text file must have a header row of column annotations (e.g. sample names) and the first column with row annotations (e.g. gene names) and the remaining by positive and negative values. Multiple options for positive and negative gradients can be selected, along with clustering algorithms for rows and columns.
-
-[http://altanalyze.org/image/Clustering-pluri_small.jpg]
+NetPerspective can be run independent of the standard AltAnalyze workflows. To run, simply start AltAnalyze, select the appropriate species and ANY platform/vendor type (ignored for NetPerspective) and continue to the main analysis window. When presented, selected "Additional Analyses" then "Network Analysis". The above interface will be presented. Here you can select various options as outlined in the previous section. When providing a list of IDs, versus existing interactions, the input file type will need to be specified (option 2).
