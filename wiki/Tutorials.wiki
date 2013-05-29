@@ -13,7 +13,7 @@ Proceed through the following tutorials to analyze data for the indicated platfo
 
 = AltAnalyze Independent Tools (GUI) =
 
-Simple and fast single use research tools available via *Additional Analyses*:
+Simple and fast single use research tools available via the *Additional Analyses* menu:
  * [Heatmaps Expression Clustering]
  * [PathwayAnalysis  Pathway Analysis and Visualization]
  * [NetworkVisualization Network Analysis and Visualization]
