@@ -90,3 +90,4 @@ If you wish to create your own compiled version of AltAnalyze for distribution t
 
 == Potential Issues ==
  # Pandas installs it's own dateutil which may cause errors to be displayed in the console and possibly other issues.
+ # Eggs are not well supported by py2exe: http://www.py2exe.org/index.cgi/ExeWithEggs
