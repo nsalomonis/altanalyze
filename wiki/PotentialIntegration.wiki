@@ -11,6 +11,7 @@
  * Graph, network and dendrogram output to SVG: http://igraph.sourceforge.net
  * Other: http://vermeulen.ca/python-graphics.html
  * Advanced table viewer: http://www.nemethi.de/tablelist/tablelist.html
+ * Interactive heatmap, network and other in Orange: http://www.biolab.si/supp/bi-visprog/dicty/Heat%20Map.htm
 
 ===Data Analysis===
  * Exon expression extraction: http://code.google.com/p/bedtools/
