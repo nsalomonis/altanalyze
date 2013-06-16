@@ -2,7 +2,7 @@
 
 ==Sample Classification and Model Evaluation in LineageProfiler==
 
-In addition to predicting the cell or tissue-type of a given sample, LineageProfiler can be used to classify samples as belonging to a particular disease or treatment category. This is done by supplying an optional custom reference file and one or more gene models to test (see below sections). More advanced gene model discovery options also can also be performed when running the command-line version of this code (LineageProfilerIterate – see below).
+In addition to predicting the cell or tissue-type of a given sample, LineageProfiler can be used to classify samples as belonging to a particular disease or treatment category. This is done by supplying an optional custom reference file and one or more gene models to test (see below sections). More advanced gene model discovery options also can also be performed when running the command-line version of this code ([#Command-Line_Script LineageProfilerIterate] – see below).
 
 Prior to performing sample classification, the user must generate at least two files and an optional 3rd file:
 
@@ -10,7 +10,7 @@ Prior to performing sample classification, the user must generate at least two f
  # Reference file
  # Model file (optional)
  
-Once created, the user is ready to run LineageProfiler from either the AltAnalyze graphical user interface or the command-line [LineageProfilerIterate] script. The results will be a tab-delimited text file that assigns a prediction score for samples the input models and reference classes.
+Once created, the user is ready to run LineageProfiler from either the AltAnalyze graphical user interface or the command-line [#Command-Line_Script LineageProfilerIterate] script. The results will be a tab-delimited text file that assigns a prediction score for samples the input models and reference classes.
 
 ===AltAnalyze Graphical User Interface===
 
