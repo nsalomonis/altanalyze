@@ -1,0 +1,50 @@
+#summary Sample Classification in LineageProfiler
+
+==Sample Classification and Model Evaluation in LineageProfiler==
+
+In addition to predicting the cell or tissue-type of a given sample, LineageProfiler can be used to classify samples as belonging to a particular disease or treatment category. This is done by supplying an optional custom reference file and one or more gene models to test (see below sections). More advanced gene model discovery options also can also be performed when running the command-line version of this code (LineageProfilerIterate – see below).
+
+Prior to performing sample classification, the user must generate at least two files and an optional 3rd file:
+
+ # Expression file
+ # Reference file
+ # Model file (optional)
+ 
+Once created, the user is ready to run LineageProfiler from either the AltAnalyze graphical user interface or the command-line LineageProfilerIterate script. The results will be a tab-delimited text file that assigns a prediction score for samples the input models and reference classes.
+
+===AltAnalyze Graphical User Interface===
+
+To perform, download AltAnalyze from http://www.altanalyze.org, extract to your hard drive and install the latest human database when prompted (currently EnsMart65) after running the first time. From the Main Menu select “vendor/data type” as “Other ID” and under “platform” select “Symbol”, then select “Continue”. Next, select “Additional Analyses” then select “Continue”. Next, select the menu item “Lineage Analysis” and “Continue”. You will be presented with the analysis window to upload you qPCR delta-CT values for your analyzed set of IDs (e.g., genes) and a reference expression file containing your two classes (e.g., cancer and wt) (“Select an alternative MarkerFinder reference file”). Next, you can optionally select the option “Select marker models to restrict analysis to”, to select a file with different ID sets to analyze. Leave the other options as default and select continue to run.
+
+===Command-Line LineageProfilerIterate Script===
+
+When the command-line version of this code is run, the user has access to additional options, principally, identifying new optimal performing gene models given a user supplied reference file and expression file. Unlike novel discovery analyses, no model file is supplied and the expression file sample headers must indicate the class of the sample (e.g., cancer:sample1, wt:sample2). The reference file must contain the same class names (e.g., cancer and wt).  An example reference and expression file can be downloaded here.
+
+The script can be downloaded from here and requires installation of Python and the python library Scipy. Details on installing both are covered here. To run the script, save the LineageProfilerIterate.py file in a convenient location, open a command-prompt (Windows) or terminal window (Mac), change directories to the LineageProfilerIterate.py location and copy the full directory paths of your reference and expression files. Expression files are indicated by --i and reference files by --r. Different gene model sizes can be selected with the option --s.
+
+*Examples:*
+
+_Discover all possible 7-gene models from the sample data_
+
+{{{
+python LineageProfilerIterate.py --i "/Users/me/exp.ABI_PediatricSNS.txt" --r "/Users/me/MarkerFinder-ABI_PediatricSNS.txt" --s 4
+}}}
+
+_Classify known samples with existing gene models_
+
+{{{
+python LineageProfilerIterate.py --i "/Users/me/exp.ABI_PediatricSNS.txt" --r "/Users/me/MarkerFinder-ABI_PediatricSNS.txt" --m "/Users/me/7GeneModels.txt"
+}}}
+
+*Expression File*
+The expression file consists of normalized expression values (e.g., microarray, qPCR delta CT values) in a tab-delimited text file format with the file extension .txt. The first column in this file contains IDs that match first column of the reference file, the first row contains sample names and the remaining data consists of normalized expression values (e.g., delta CT values).
+
+*Reference File*
+The reference file can be generated from in an automated manner or manually. It consists of three columns, the first column contains IDs (e.g., gene ID or symbol) that match the first column of the expression file and two additional columns contain expression values for the two classes of interest (e.g., cancer and wt). The reference file can be built using multiple methods, including:
+
+ # Automatically generated from AltAnalyze (MarkerFinder results file).
+ # Directly obtained from an experiment (e.g., pooled reference sample RNA).
+ # Created from a collection of assayed samples using aggregated data (e.g., median or mean for each gene).
+
+*Model File*
+The model file consists of rows of IDs that are subsets of the IDs found in the reference and expression files. If this file is not provided, all IDs present will be used for classification. However, the model file allows for different ID sets to be evaluated as potential prognostic markers, with the combined results from these models presented in the output file (see example here). The best performing models discovered in a training set can be obtained from the Command-Line LineageProfilerIterate tool.
