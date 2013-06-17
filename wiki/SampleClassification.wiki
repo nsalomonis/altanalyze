@@ -14,7 +14,11 @@ Once created, the user is ready to run LineageProfiler from either the AltAnalyz
 
 ===AltAnalyze Graphical User Interface===
 
-To perform, download AltAnalyze from http://www.altanalyze.org, extract to your hard drive and install the latest human database when prompted (currently EnsMart65) after running the first time. From the Main Menu select “vendor/data type” as “Other ID” and under “platform” select “Symbol”, then select “Continue”. Next, select “Additional Analyses” then select “Continue”. Next, select the menu item “Lineage Analysis” and “Continue”. You will be presented with the analysis window to upload you qPCR delta-CT values for your analyzed set of IDs (e.g., genes) and a reference expression file containing your two classes (e.g., cancer and wt) (“Select an alternative MarkerFinder reference file”). Next, you can optionally select the option “Select marker models to restrict analysis to”, to select a file with different ID sets to analyze. Leave the other options as default and select continue to run.
+To perform, download AltAnalyze from http://www.altanalyze.org, extract to your hard drive and install the latest human database when prompted (currently EnsMart65) after running the first time. From the Main Menu select “vendor/data type” as “Other ID” and under “platform” select “Symbol”, then select “Continue”. Next, select “Additional Analyses” then select “Continue”. Next, select the menu item “Lineage Analysis” and “Continue”. 
+
+http://altanalyze.org/LineageProfilerScreen.png
+
+You will be presented with the analysis window to upload you expression (e.g., delta CT) values for your analyzed set of IDs (e.g., genes) and a reference expression file containing your two classes (e.g., cancer and wt) (“Select an alternative MarkerFinder reference file”). Next, you can optionally select the option “Select marker models to restrict analysis to”, to select a file with different ID sets to analyze. Leave the other options as default and select continue to run.
 
 ===Command-Line LineageProfilerIterate Script===
 
