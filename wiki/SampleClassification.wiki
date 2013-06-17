@@ -40,11 +40,11 @@ _Classify known samples with existing gene models_
 python LineageProfilerIterate.py --i "/Users/me/Pediatric_patients.txt" --r "/Users/me/AR_Stable_references.txt" --m "/Users/me/7GeneModels.txt"
 }}}
 
-*Expression File*
+===Expression File===
 
 The expression file consists of normalized expression values (e.g., microarray, qPCR delta CT values) in a tab-delimited text file format with the file extension .txt. The first column in this file contains IDs that match first column of the reference file, the first row contains sample names and the remaining data consists of normalized expression values (e.g., delta CT values).
 
-*Reference File*
+===Reference File===
 
 The reference file can be generated from in an automated manner or manually. It consists of three columns, the first column contains IDs (e.g., gene ID or symbol) that match the first column of the expression file and two additional columns contain expression values for the two classes of interest (e.g., cancer and wt). The reference file can be built using multiple methods, including:
 
@@ -52,6 +52,6 @@ The reference file can be generated from in an automated manner or manually. It 
  # Directly obtained from an experiment (e.g., pooled reference sample RNA).
  # Created from a collection of assayed samples using aggregated data (e.g., median or mean for each gene).
 
-*Model File*
+===Model File===
 
 The model file consists of rows of IDs that are subsets of the IDs found in the reference and expression files. If this file is not provided, all IDs present will be used for classification. However, the model file allows for different ID sets to be evaluated as potential prognostic markers, with the combined results from these models presented in the output file (see example here). The best performing models discovered in a training set can be obtained from the Command-Line LineageProfilerIterate tool.
