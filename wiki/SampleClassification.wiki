@@ -6,9 +6,9 @@ In addition to predicting the cell or tissue-type of a given sample, LineageProf
 
 Prior to performing sample classification, the user must generate at least two files and an optional 3rd file:
 
- # Expression file
- # Reference file
- # Model file (optional)
+ # [#Expression_File Expression file]
+ # [#Reference_File Reference file]
+ # [#Model_File Model file] (optional)
  
 Once created, the user is ready to run LineageProfiler from either the AltAnalyze graphical user interface or the command-line [#Command-Line_Script LineageProfilerIterate] script. The results will be a tab-delimited text file that assigns a prediction score for samples the input models and reference classes.
 
@@ -22,7 +22,7 @@ You will be presented with the analysis window to upload you expression (e.g., d
 
 ===Command-Line LineageProfilerIterate Script===
 
-When the command-line version of this code is run, the user has access to additional options, principally, identifying new optimal performing gene models given a user supplied reference file and expression file. Unlike novel discovery analyses, no model file is supplied and the expression file sample headers must indicate the class of the sample (e.g., cancer:sample1, wt:sample2). The reference file must contain the same class names (e.g., cancer and wt).  An example reference and expression file can be downloaded here.
+When the [https://github.com/nsalomonis/LineageProfilerIterate command-line version of this code is run], the user has access to additional options, principally, identifying new optimal performing gene models given a user supplied reference file and expression file. Unlike novel discovery analyses, no model file is supplied and the expression file sample headers must indicate the class of the sample (e.g., cancer:sample1, wt:sample2). The reference file must contain the same class names (e.g., cancer and wt).  An example reference and expression file can be downloaded here.
 
 The script can be downloaded from here and requires installation of Python and the python library Scipy. Details on installing both are covered here. To run the script, save the [https://raw.github.com/nsalomonis/LineageProfilerIterate/master/LineageProfilerIterate.py LineageProfilerIterate.py] file in a convenient location, open a command-prompt (Windows) or terminal window (Mac), change directories to the [https://raw.github.com/nsalomonis/LineageProfilerIterate/master/LineageProfilerIterate.py LineageProfilerIterate.py] location and copy the full directory paths of your reference and expression files. Expression files are indicated by --i and reference files by --r. Different gene model sizes can be selected with the option --s.
 
