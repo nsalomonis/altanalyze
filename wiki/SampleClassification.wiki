@@ -31,13 +31,13 @@ The script can be downloaded from here and requires installation of Python and t
 _Discover all possible 7-gene models from the sample data_
 
 {{{
-python LineageProfilerIterate.py --i "/Users/me/exp.ABI_PediatricSNS.txt" --r "/Users/me/MarkerFinder-ABI_PediatricSNS.txt" --s 4
+python LineageProfilerIterate.py --i "/Users/me/Pediatric_patients.txt" --r "/Users/me/AR_Stable_references.txt" --s 4
 }}}
 
 _Classify known samples with existing gene models_
 
 {{{
-python LineageProfilerIterate.py --i "/Users/me/exp.ABI_PediatricSNS.txt" --r "/Users/me/MarkerFinder-ABI_PediatricSNS.txt" --m "/Users/me/7GeneModels.txt"
+python LineageProfilerIterate.py --i "/Users/me/Pediatric_patients.txt" --r "/Users/me/AR_Stable_references.txt" --m "/Users/me/7GeneModels.txt"
 }}}
 
 *Expression File*
