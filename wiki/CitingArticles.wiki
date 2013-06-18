@@ -2,6 +2,11 @@
 #labels Featured
 
 === Articles Citing AltAnalyze ===
+
+[http://www.nature.com/ncomms/2013/130614/ncomms2974/full/ncomms2974.html Model-based rational design of an oncolytic virus with improved therapeutic potential]. Le Boeuf F, Batenchuk C, Vähä-Koskela M, Breton S, Roy D, Lemay C, Cox J, Abdelbary H, Falls T, Waghray G, Atkins H, Stojdl D, Diallo JS, Kærn M, Bell JC. Nat Commun. 2013 Jun 14;4:1974.
+
+[http://www.ingentaconnect.com/content/ben/cg/2013/00000014/00000003/art00004 Alternative Splicing (AS) of Genes As An Approach for Generating Protein Complexity]. Bishakha; M. Haupt, Larisa; R. Griffiths, Lyn. Current Genomics, Volume 14, Number 3, May 2013 , pp. 182-194(13).
+
 [http://www.sciencedirect.com/science/article/pii/S0959440X13000432 The impact of splicing on protein domain architecture]. Light S, Elofsson A. Curr Opin Struct Biol. 2013 Apr 4
 
 [http://www.frontiersin.org/Molecular_Neuroscience/10.3389/fnmol.2013.00010/abstract Small RNA sequencing-microarray analyses in Parkinson leukocytes reveal deep brain stimulation-induced splicing changes that classify brain region transcriptomes].Soreq L, Salomonis N, Bronstein M, Greenberg D, Israel Z, Bergman H and Soreq H. Front. Mol. Neurosci., 13 May 2013
