@@ -14,6 +14,7 @@
  * *Robust cross-platform network visualization.*
  * *miRNA and splicing * - Extension of miRNA exon predictions to alternative isoforms (not just the regulated exon).
  * *ncRNA database integration * - Include a comprehensive ncRNA and lincRNA database for gene expression studies.
+ * *Automatic genome version detection * - Detect which genome version is being analyzed or look for potential mismatches and flag the user immediately if the % of mapped reads are not isoform aligned.
 
 === Database Builds ===
 
