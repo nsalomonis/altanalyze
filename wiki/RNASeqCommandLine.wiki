@@ -9,7 +9,7 @@ Examples:
 _*Downloading and installing a species specific database (human)*_
 
 {{{
-python AltAnalyze.py --species Hs --update Official --version EnsMart62
+python AltAnalyze.py --species Hs --update Official --version EnsMart65
 }}}
 
 
