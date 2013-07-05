@@ -12,7 +12,7 @@ The core algorithm is the same one used for the LineageProfiler cell-type marker
 
 By default, MarkerFinder is run when performing a standard AltAnalyze expression Analysis. Both tabular and heatmap image files will be produced. The tabular files are saved to the folder ExpressionOutput/MarkerFinder and the heatmap image files are saved to DataPlots/MarkerFinder.
 
-=== Customization and StandAlone Analysis ===
+=== Customization and Stand-Alone Analysis ===
 
 To perform, download AltAnalyze from http://www.altanalyze.org, extract to your hard drive and install the latest human database when prompted (currently EnsMart65) after running the first time. From the Main Menu select “vendor/data type” as “Other ID” and under “platform” select “Symbol”, then select “Continue”. Next, select “Additional Analyses” then select “Continue”. Next, select the menu item “Lineage Analysis” and “Continue”. 
 
