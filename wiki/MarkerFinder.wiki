@@ -2,7 +2,9 @@
 
 == Marker Discovery Analysis in AltAnalyze ==
 
-AltAnalyze includes a built-in method to identify putative markers that are selectively expressed in a single analyzed condition. This method is most appropriate when analyzing greater than 2 biological groups to discover genes or other IDs that can optimally distinguish a given biological group from all others. MarkerFinder is run by default in the standard AltAnalyze workflows and can be run on its own from the Additional Analyses Menu. Additional options are available in the latter for more sophisticated marker identification, along with training and evaluation methods (see SampleClassification).
+AltAnalyze includes a built-in method to identify putative markers that are selectively expressed in a single analyzed condition. This method is most appropriate when analyzing greater than 2 biological groups to discover genes or other IDs that can optimally distinguish a given biological group from all others. MarkerFinder is run by default in the standard AltAnalyze workflows.
+
+This approach is distinct from the [SampleClassification LineageProfilerIterate] approach, which allows for more sophisticated marker identification, along with training and evaluation methods (see SampleClassification).
 
 === Core Algorithm ===
 
@@ -12,9 +14,9 @@ The core algorithm is the same one used for the LineageProfiler cell-type marker
 
 By default, MarkerFinder is run when performing a standard AltAnalyze expression Analysis. Both tabular and heatmap image files will be produced. The tabular files are saved to the folder ExpressionOutput/MarkerFinder and the heatmap image files are saved to DataPlots/MarkerFinder.
 
-=== Customization and Stand-Alone Analysis ===
+=== Application of MarkerFinder Results for Sample Classification ===
 
-To perform, download AltAnalyze from http://www.altanalyze.org, extract to your hard drive and install the latest human database when prompted (currently EnsMart65) after running the first time. From the Main Menu select “vendor/data type” as “Other ID” and under “platform” select “Symbol”, then select “Continue”. Next, select “Additional Analyses” then select “Continue”. Next, select the menu item “Lineage Analysis” and “Continue”. 
+MarkerFinder result files can be loaded as input in the LineageProfiler analysis menu. First, download AltAnalyze from http://www.altanalyze.org, extract to your hard drive and install the latest human database when prompted (currently EnsMart65) after running the first time. From the Main Menu select “vendor/data type” as “Other ID” and under “platform” select “Symbol”, then select “Continue”. Next, select “Additional Analyses” then select “Continue”. Next, select the menu item “Lineage Analysis” and “Continue”. 
 
 http://altanalyze.org/image/LineageProfilerScreen.png
 
