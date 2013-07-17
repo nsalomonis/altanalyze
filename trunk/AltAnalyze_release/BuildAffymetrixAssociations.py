@@ -806,14 +806,14 @@ def exportRelationshipDBs(species):
             if x3 == 0:
                 new_file3 = parent_dir+'/'+species+'/gene/EntrezGene.txt'
                 data3 = export.ExportFile(new_file3); x3=1
-                data3.write('ID'+'\t'+'Symbol'+'\t'+'Name'+'\t'+'Species'+'\t'+'Date'+'\t'+'Remarks'+'\n')
+                data3.write('UID'+'\t'+'Symbol'+'\t'+'Name'+'\t'+'Species'+'\t'+'Date'+'\t'+'Remarks'+'\n')
             data3.write(geneid+'\t'+ea.Symbol()+'\t'+ea.Description()+'\t'+species+'\t'+today+'\t'+''+'\n')
         elif ens_annotations_found == 'no' and 'ENS:' in geneid:
             geneid = string.replace(geneid,'ENS:','')
             if x6 == 0:
                 new_file6 = parent_dir+'/'+species+'/gene/EntrezGene.txt'
                 data6 = export.ExportFile(new_file6); x6=1
-                data6.write('ID'+'\t'+'Symbol'+'\t'+'Name'+'\n')
+                data6.write('UID'+'\t'+'Symbol'+'\t'+'Name'+'\n')
             data6.write(geneid+'\t'+ea.Symbol()+'\t'+ea.Description()+'\n')
             
     if x1==1: data1.close()
@@ -1191,7 +1191,7 @@ def exportGeneToMAPPs(species,system_name,system_code,wikipathway_db):
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
     y=0
     data1 = export.ExportFile(new_file)
-    data1.write('ID'+'\t'+'SystemCode'+'\t'+'MAPP'+'\n')
+    data1.write('UID'+'\t'+'SystemCode'+'\t'+'MAPP'+'\n')
     #print len(wikipathway_db)
     for pathway in wikipathway_db:
         gene_ids = unique.unique(wikipathway_db[pathway])

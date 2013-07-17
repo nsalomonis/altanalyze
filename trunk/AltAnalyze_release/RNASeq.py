@@ -84,6 +84,7 @@ def exportNovelExonToBedCoordinates(species,novel_exon_coordinates,chr_status):
 def moveBAMtoBEDFile(species,dataset_name,root_dir):
     bed_export_path = filepath('AltDatabase/'+species+'/RNASeq/'+species + '_Ensembl_exons.bed')
     new_fn = root_dir+'/BAMtoBED/'+species + '_'+dataset_name+'_exons.bed'
+    new_fn = string.replace(new_fn,'.txt','')
     print 'Writing exon-level coordinates to BED file:'
     print new_fn
     export.customFileMove(bed_export_path,new_fn)
@@ -893,6 +894,8 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
     root_dir=fl.RootDir()
     try: platformType = fl.PlatformType()
     except Exception: platformType = 'RNASeq'
+    try: analysisMode = fl.AnalysisMode()
+    except Exception: analysisMode = 'GUI'
 
     ### Import experimentally identified junction splice-sites
     normalize_feature_exp = fl.FeatureNormalization()
@@ -924,7 +927,8 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
     chr_strand_gene_db,location_gene_db,chromosomes,gene_location_db = getChromosomeStrandCoordinates(species)
     print "Processing exon/junction coordinates sequentially by chromosome..."
     for search_chr in chromosomes:
-      if 'linux' in sys.platform or testImport == 'yes': print 'parsing data for chromosome:',search_chr ### Unix platforms are not displaying the progress in real-time
+      if 'linux' in sys.platform or testImport == 'yes' or analysisMode == 'commandline':
+            print 'parsing data for chromosome:',search_chr ### Unix platforms are not displaying the progress in real-time
       else: print "*",
       junction_annotations={}
       if chr_status == False:
@@ -1103,6 +1107,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name):
                 bedfile = exportNovelExonToBedCoordinates(species,novel_exon_coordinates,chr_status)
             
             ### Identify reciprocol junctions and retrieve splice-event annotations for exons and inclusion junctions
+            
             junction_annotations,critical_exon_annotations = JunctionArray.inferJunctionComps(species,('RNASeq',junction_region_db,root_dir))
             clearObjectsFromMemory(junction_region_db); junction_region_db=[]   
             

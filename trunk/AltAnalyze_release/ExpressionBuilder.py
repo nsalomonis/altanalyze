@@ -635,6 +635,7 @@ def exportGeneRegulationSummary(filename,headers,system_code):
         except Exception,e:
             print 'Failed to export geometric folds due to:'
             print e ### Don't exit the analysis just report the problem
+            None
         
         filename = string.replace(filename,'DATASET-','SUMMARY-')
         filename = string.replace(filename,'GenMAPP-','SUMMARY-')
@@ -693,7 +694,7 @@ def exportGeneRegulationSummary(filename,headers,system_code):
             export_data.write('\n')
         export_data.close()
 
-def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,exportOutliers=True,exportRelative=False,customPath=None):
+def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,exportOutliers=True,exportRelative=True,customPath=None):
     """ Import sample and gene expression values from input file, filter, calculate geometric folds
     and export. Use for clustering and QC."""
     filename = string.replace(filename,'///','/')
@@ -733,7 +734,7 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
         for line in open(fn,'rU').xreadlines():
             data = cleanUpLine(line)
             t = string.split(data,'\t')
-            if data[0]=='#': row_number = 0
+            if data[0]=='#' and row_number==0: row_number = 0
             elif row_number==0:
                 sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = simpleGroupImport(groups_dir)
                 try: sample_index_list = map(lambda x: t[1:].index(x), sample_list) ### lookup index of each sample in the ordered group sample list
@@ -744,7 +745,8 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                     print 'missing:',missing
                     print t
                     print sample_list
-                    print filename, groups_dir; kill
+                    print filename, groups_dir
+                    print 'Unknown Error!!! Skipping cluster input file build (check column and row formats for conflicts)'; forceExit
                 new_sample_list = map(lambda x: group_sample_db[x], sample_list) ### lookup index of each sample in the ordered group sample list
                 title = string.join([t[0]]+new_sample_list,'\t')+'\n' ### output the new sample order (group file order)
                 export_data.write(title)
@@ -796,10 +798,10 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                                 for control_group_name in comps_exp_db[group_name]:
                                     con_avg = control_group_avg[control_group_name]
                                     relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
-                                if relative_headers_exported == False:
-                                    exp_sample_names = group_name_sample_db[group_name]
-                                    relative_column_names += map(lambda x: (x+' vs '+control_group_name), exp_sample_names) ### add column names indicating the comparison
-    
+                                    if relative_headers_exported == False:
+                                        exp_sample_names = group_name_sample_db[group_name]
+                                        relative_column_names += map(lambda x: (x+' vs '+control_group_name), exp_sample_names) ### add column names indicating the comparison
+        
                         if relative_headers_exported == False:
                             title = string.join(['UID']+relative_column_names,'\t')+'\n' ### Export column headers for the relative fold changes
                             export_relative.write(title)
@@ -1210,6 +1212,7 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False):
         
         try: ### Works when expression_dataset_output_dir is defined
             exp_output = expression_dataset_output_dir + 'DATASET-'+experiment_name+'.txt'
+            #try: array_type_data = vendor, array_type
             array_type_data = array_type
         except Exception: ### Otherwise, user directly supplied file is used
             array_type_data = vendor, array_type
@@ -1235,8 +1238,9 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False):
             ### Output a heat map of the sample Z-score correlations
             graphic_links = LineageProfiler.visualizeLineageZscores(zscore_output_dir,export_path,graphic_links)
             ### Color the TissueMap from WikiPathways using their webservice
-            print 'Coloring LineageMap profiles using WikiPathways webservice...'
-            graphic_links = WikiPathways_webservice.viewLineageProfilerResults(export_path,graphic_links)
+            if customMarkers==False:
+                print 'Coloring LineageMap profiles using WikiPathways webservice...'
+                graphic_links = WikiPathways_webservice.viewLineageProfilerResults(export_path,graphic_links)
     except Exception:
         ### Analysis may not be supported for species or data is incompatible
         try:
@@ -1414,7 +1418,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         if batch_effects == 'yes':
             import combat
             try: combat.runPyCombat(fl)
-            except ZeroDivisionError:
+            except Exception:
                 print_out = 'Batch effect removal analysis (py-combat) failed due to an uknown error:'
                 print traceback.format_exc()
                 try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
@@ -1497,14 +1501,12 @@ if __name__ == '__main__':
     gene_exp_threshold = 10
     gene_rpkm_threshold = 0.5
   
-    dir = '/Users/nsalomonis/Desktop/CBD/LogTransformed/ExpressionOutput/'
     #dir = 'C:/Users/Nathan Salomonis/Desktop/Endothelial_Kidney/ExpressionOutput/'
-    buildCriterion(2, 0.05, 'raw', dir,'goelite');sys.exit()
+    buildCriterion(2, 0.05, 'rawp', dir,'goelite');sys.exit()
     experiment_name = 'Vector'
     species = 'Hs'
     expression_dataset_output_dir = "/ExpressionOutput/"
     expr_input_dir = "ExpressionInput/exp.test-steady-state.txt"
-    expr_input_dir = '/Users/nsalomonis/Desktop/User Diagnostics/Mm_spinal_cord_injury/ExpressionInput/exp.Mm_spinal.txt'
     graphic_links=[]
     graphic_links = visualizeQCPlots(expr_input_dir);sys.exit()
     print graphic_links
@@ -1520,7 +1522,7 @@ if __name__ == '__main__':
     w = 'Agilent'; x = 'Affymetrix'; y = 'Ensembl'; z = 'default'; data_source = y; constitutive_source = z; vendor = x
     hs = 'Hs'; mm = 'Mm'; dr = 'Dr'; rn = 'Rn'; Species = mm
     Include_raw_data = 'yes'  
-    expression_threshold = 0 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
+    expression_threshold = 70 ### Based on suggestion from BMC Genomics. 2006 Dec 27;7:325. PMID: 17192196, for hu-exon 1.0 st array
     avg_all_for_ss = 'no'  ###Default is 'no' since we don't want all probes averaged for the exon arrays
   
     remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,avg_all_for_ss,Expression_data_format,vendor,constitutive_source,data_source,Include_raw_data)

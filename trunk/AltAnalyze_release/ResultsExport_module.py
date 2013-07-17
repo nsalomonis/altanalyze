@@ -119,7 +119,7 @@ def outputSummaryResults(summary_results_db,name,analysis_method,root_dir):
         event_type1 = 'inclusion-events'; event_type2 = 'exclusion-events'; event_type3 = 'alternative-exons'
     else:
         event_type1 = 'inclusion-events'; event_type2 = 'exclusion-events'; event_type3 = 'mutually-exlusive-events'
-    title = 'Dataset-name' +'\t'+ event_type2+'\t'+event_type2 +'\t'+ event_type3 +'\t'+ 'up-deltaI-genes' +'\t'+ 'down-deltaI-genes' +'\t'+ 'total-'+analysis_method+'-genes'
+    title = 'Dataset-name' +'\t'+ event_type1+'\t'+event_type2 +'\t'+ event_type3 +'\t'+ 'up-deltaI-genes' +'\t'+ 'down-deltaI-genes' +'\t'+ 'total-'+analysis_method+'-genes'
     title = title +'\t' + 'upregulated_genes' +'\t'+ 'downregulated_genes' +'\t'+ analysis_method+'-genes-differentially-exp'+'\t'+ 'RNA_processing/binding-factors-upregulated' +'\t'+ 'RNA_processing/binding-factors-downregulated' +'\t'+ analysis_method+'_RNA_processing/binding-factors'
     title = title +'\t'+ 'avg-downregulated-peptide-length' +'\t'+ 'std-downregulated-peptide-length' +'\t'+ 'avg-upregulated-peptide-length' +'\t'+ 'std-upregulated-peptide-length' +'\t'+ 'ttest-peptide-length' +'\t'+ 'median-peptide-length-fold-change'
 
@@ -176,6 +176,8 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
                         exon_set1 = data[4]+'('+data[8]+')'; exon_set2 = data[5]+'('+data[10]+')'
                         event_call = data[27]; functional_attribute = data[14]
                         uniprot_attribute = data[15]; gene_expression_change = data[22]
+                        if analysis_method == 'linearregres' or analysis_method == 'ASPIRE':
+                            functional_attribute = data[19]; uniprot_attribute = data[20]
                         #print exon_set1, exon_set2, data[:5];kill
                 else:
                     if (array_type == 'exon' or array_type == 'gene') and analysis_method in filename:
@@ -226,7 +228,7 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
     for key in aspire_event_db2:
         dataset_size = len(aspire_event_db2[key])
         break
-                    
+
     ###Add all other Affygene's
     temp=[]; x = 0
     while x < dataset_size:
@@ -243,7 +245,7 @@ def compareAltAnalyzeResults(aspire_output_list,annotate_db,number_events_analyz
     
     fn=filepath(summary_output)
     data = open(fn,'w')
-    title = 'Affygene' +'\t'+ 'symbol'+'\t'+'description' +'\t'+ 'exon_set1' +'\t'+ 'exon_set2' +'\t'+ 'event_call' +'\t'+ 'splicing_factor_call'
+    title = 'GeneID' +'\t'+ 'symbol'+'\t'+'description' +'\t'+ 'exon_set1' +'\t'+ 'exon_set2' +'\t'+ 'event_call' +'\t'+ 'splicing_factor_call'
     for entry in dataset_name_list:
         title = title +'\t'+ entry + '-functional-attribute' +'\t'+ entry + '-uniprot-attribute' +'\t'+ entry +'-GE-change' +'\t'+ entry +'-dI'
     data.write(title +'\t'+ 'common-hits' + '\n')

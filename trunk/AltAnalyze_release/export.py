@@ -235,7 +235,7 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-def cleanFile(source_file):
+def cleanFile(source_file,removeExtra=None):
     ### Some files have extra odd encoding that results in blank new lines in the extracted file
     ### For succeptible directories copy all files line by line, removing existing end of lines
     file = findFilename(source_file); temp_file = 'tempdir/'+file
@@ -243,7 +243,10 @@ def cleanFile(source_file):
     fn=filepath(source_file)
     for line in open(fn,'rU').xreadlines():
         line = cleanUpLine(line)
-        if len(line)>0: data.write(line+'\n')
+        writeFile=True
+        if removeExtra!=None:
+            if line[0]==removeExtra: writeFile=False
+        if len(line)>0 and writeFile: data.write(line+'\n')
     data.close()
     ### Replace old file with new file
     copyFile(temp_file,source_file)
