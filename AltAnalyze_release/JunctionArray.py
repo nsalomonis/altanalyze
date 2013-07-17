@@ -738,6 +738,8 @@ class JunctionInformationSimple:
     def ExclusionJunction(self): return self.excl_junction
     def InclusionProbeset(self): return self.incl_probeset
     def ExclusionProbeset(self): return self.excl_probeset
+    def setNovelEvent(self,novel_event): self._novel_event = novel_event
+    def NovelEvent(self): return self._novel_event
     def setInclusionLookup(self,incl_junction_probeset): self.incl_junction_probeset = incl_junction_probeset
     def InclusionLookup(self): return self.incl_junction_probeset
     def __repr__(self): return self.GeneID()
@@ -753,6 +755,8 @@ def getPutativeSpliceEvents(species,array_type,exon_db,agglomerate_inclusion_pro
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line); junction_info=[]
         gene,critical_exon,excl_junction,incl_junction,excl_probeset,incl_probeset,source = string.split(data,'\t')
+        if source == 'AltAnalyze': novel_exon = 'known'
+        else: novel_exon = 'novel'
         """
         if gene == 'ENSG00000140464':
             a=0; b=0
@@ -765,6 +769,7 @@ def getPutativeSpliceEvents(species,array_type,exon_db,agglomerate_inclusion_pro
             if incl_probeset in exon_db:
                 ji = JunctionInformationSimple(critical_exon,excl_junction,incl_junction,excl_probeset,incl_probeset)
                 junction_info.append(ji)
+                ji.setNovelEvent(novel_exon) ### Indicates known or novel splicing event
                 #print [ji.InclusionProbeset(),ji.ExclusionProbeset()]
             if array_type == 'RNASeq':
                 critical_exons = string.split(critical_exon,'|')
@@ -772,6 +777,7 @@ def getPutativeSpliceEvents(species,array_type,exon_db,agglomerate_inclusion_pro
                     critical_exon_probeset = gene+':'+ce
                     ji=JunctionInformationSimple(ce,excl_junction,ce,excl_probeset,critical_exon_probeset)
                     junction_info.append(ji); ji.setInclusionLookup(incl_probeset) ### Use this ID to get protein and domain annotations
+                    ji.setNovelEvent(novel_exon) ### Indicates known or novel splicing event
                     """
                     if gene == 'ENSG00000140464' and ce == 'E5.2':
                         a=0; b=0
@@ -1348,19 +1354,24 @@ def inferJunctionComps(species,array_type):
             regionids = string.split(regionid,'|')
             for regionid in regionids:
                 if '-' in regionid:
+                    novel_5p=False; novel_3p=False
                     if 'I' in regionid: exons_type = 'exon-intron'
                     else: exons_type = 'exons'
                     exon_5prime_original, exon_3prime_original = string.split(regionid,'-')
                     
                     exon_5prime = string.split(exon_5prime_original,'.')
-                    if '_' in exon_5prime[1]: exon_5prime[1] = float(string.replace(exon_5prime[1],'_','.'))
+                    if '_' in exon_5prime[1]:
+                        exon_5prime[1] = float(string.replace(exon_5prime[1],'_','.'))
+                        novel_5p=True
                     else: exon_5prime[1] = int(exon_5prime[1])
                     e1a3 = (int(exon_5prime[0][1:]),int(exon_5prime[1])) ### The first is an int for the region - since it hybs early
                     e1a5 = (int(exon_5prime[0][1:]),exon_5prime[1]) 
                     e1 = e1a3, e1a5
 
                     exon_3prime = string.split(exon_3prime_original,'.')
-                    if '_' in exon_3prime[1]: exon_3prime[1] = float(string.replace(exon_3prime[1],'_','.'))
+                    if '_' in exon_3prime[1]:
+                        exon_3prime[1] = float(string.replace(exon_3prime[1],'_','.'))
+                        novel_3p=True
                     else:
                         try: exon_3prime[1] = int(exon_3prime[1])
                         except Exception: print exon_3prime;kill
@@ -1369,21 +1380,25 @@ def inferJunctionComps(species,array_type):
                     e2 = e2a3, e2a5
 
                     if exons_type == 'exons':
-                        count+=1
-                        try: putative_as_junction_db[gene].append((e1,e2))
-                        except Exception: putative_as_junction_db[gene] = [(e1,e2)]
-                        
-                        ### This matches the recorded junction ID from EnsemblImport.compareJunctions()
-                        try: probeset_juntion_db[gene,(e1a5,e2a3)].append(probeset)
-                        except Exception: probeset_juntion_db[gene,(e1a5,e2a3)] = [probeset]
-                        
-                        ### Defines exon-intron and exon-exon reciprical junctions based on shared exon blocks
-                        block = e1a3[0]; side = 'left'
-                        try: common_exon_blocks_exon[side,gene,block].append([regionid,probeset])
-                        except KeyError: common_exon_blocks_exon[side,gene,block] = [[regionid,probeset]]
-                        block = e2a3[0]; side = 'right'
-                        try: common_exon_blocks_exon[side,gene,block].append([regionid,probeset])
-                        except KeyError: common_exon_blocks_exon[side,gene,block] = [[regionid,probeset]]
+                        if novel_5p and novel_3p:
+                            None ### Ignore junctions where both the 5' and 3' splice sites are novel -> like false positives
+                            ### If you include these with novel junction discovery in TopHat, you can get a huge memory issue in compareJunctions
+                        else:
+                            count+=1
+                            try: putative_as_junction_db[gene].append((e1,e2))
+                            except Exception: putative_as_junction_db[gene] = [(e1,e2)]
+                            
+                            ### This matches the recorded junction ID from EnsemblImport.compareJunctions()
+                            try: probeset_juntion_db[gene,(e1a5,e2a3)].append(probeset)
+                            except Exception: probeset_juntion_db[gene,(e1a5,e2a3)] = [probeset]
+                            
+                            ### Defines exon-intron and exon-exon reciprical junctions based on shared exon blocks
+                            block = e1a3[0]; side = 'left'
+                            try: common_exon_blocks_exon[side,gene,block].append([regionid,probeset])
+                            except KeyError: common_exon_blocks_exon[side,gene,block] = [[regionid,probeset]]
+                            block = e2a3[0]; side = 'right'
+                            try: common_exon_blocks_exon[side,gene,block].append([regionid,probeset])
+                            except KeyError: common_exon_blocks_exon[side,gene,block] = [[regionid,probeset]]
                     else:
                         ### Defines exon-intron and exon-exon reciprical junctions based on shared exon blocks
                         if 'I' in exon_5prime: block = e2a3[0]; side = 'right'; critical_intron = exon_5prime_original
@@ -1393,7 +1408,9 @@ def inferJunctionComps(species,array_type):
         
     if array_type != 'RNASeq':               
         print count, 'probed junctions being compared to identify putative reciprocal junction comparisons'
+
     critical_exon_db, critical_gene_junction_db = EnsemblImport.compareJunctions(species,putative_as_junction_db,{})
+
     if array_type != 'RNASeq':
         print len(critical_exon_db),'genes with alternative reciprocal junctions pairs found'
     
@@ -1483,7 +1500,13 @@ def determineExclIncl(junction1,junction2,critical_exons):
     for critical_exon in critical_exons:
         if critical_exon in junction1: incl_junction = junction1; excl_junction = junction2
         if critical_exon in junction2: incl_junction = junction2; excl_junction = junction1
-    return excl_junction,incl_junction
+    try: return excl_junction,incl_junction
+    except Exception:
+        print critical_exons
+        print junction1
+        print junction2
+        print 'Warning... Unknown error. Contact AltAnalyze support for assistance.'
+        sys.exit()
 
 def formatJunctions(junction):
     #((3, 2), (6, 1))

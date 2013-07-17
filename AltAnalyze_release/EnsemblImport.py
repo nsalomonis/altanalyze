@@ -1745,7 +1745,7 @@ def compareJunctions(species,putative_as_junction_db,exon_regions):
                     splice_junctions = [(e1a5,e2a3),(e1b5,e2b3)] ###three junctions make up the cassette event, record the two evidenced by this comparison and agglomerate after all comps
                     splice_junction_str = reformatJunctions(splice_junctions[0],'junction')+'\t'+reformatJunctions(splice_junctions[1],'junction')
                     ###IMPORTANT NOTE: The temp_junctions are sorted, but doesn't mean that splice_junctions is sorted correctly... must account for this
-                    splice_junctions2 = customLSDeepCopy(splice_junctions); splice_junctions2.sort()
+                    splice_junctions2 = list(splice_junctions); splice_junctions2.sort()
                     if splice_junctions2 != splice_junctions: ###Then the sorting is wrong and the down-stream method won't work
                         ###Must re-do the above assingments
                         junction2,junction1 = temp_junctions
@@ -1918,7 +1918,9 @@ def compareJunctions(species,putative_as_junction_db,exon_regions):
             try: region_db[gene,rd.ExonRegionNumbers()]=rd
             except AttributeError: print gene, rd;kill
                 
-    if len(exon_regions) == 0: critical_exon_db_original = copy.deepcopy(critical_exon_db) ### get's modified somehow below
+    if len(exon_regions) == 0:
+        critical_exon_db_original = copy.deepcopy(critical_exon_db) ### get's modified somehow below
+        #critical_exon_db_original = manualDeepCopy(critical_exon_db) ### won't work because it is the object that is chagned
     
     alternative_exon_db={}; critical_junction_db={}; critical_gene_junction_db={}
     for gene in critical_exon_db:
@@ -2042,6 +2044,13 @@ def compareJunctions(species,putative_as_junction_db,exon_regions):
     if len(exon_regions)==0: exon_regions = critical_exon_db_original ### See JunctionArray.inferJunctionComps()
     
     return exon_regions,critical_gene_junction_db
+
+def manualDeepCopy(db):
+    ### Same as deep copy, possibly less memory intensive
+    db_copy={}
+    for i in db:
+        db_copy[i] = list(tuple(db[i]))
+    return db_copy
 
 def check_exon_polarity(critical_exon_block,exons_blocks_joined_to_critical):
     g=0;l=0

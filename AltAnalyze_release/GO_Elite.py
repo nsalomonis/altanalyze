@@ -1195,114 +1195,116 @@ def runGOElite(mod):
   global dataset_name; go_ora_files=0; local_ora_files=0; oraDirTogeneDir={}
   dir_list = reorganizeResourceList(dir_list)
   for mappfinder_input in dir_list:    #loop through each file in the directory to output results
-    dataset_name = string.join(string.split(mappfinder_input,'-')[:-1],'-')
-    print 'Pruning',mappfinder_input
-    source_data = user_defined_source ###Resets the variables back to the user defined when missing from the MAPPFinder files
-    mod = user_defined_mod
-    mappfinder_input_dir = m.searchdirectory(mappfinder_input)
-    ontology_type,input_file_type = checkPathwayType(mappfinder_input_dir)
-    ontologies_analyzed[ontology_type] = input_file_type ### Use when examining overlapping terms between criterion
-    if input_file_type == 'Ontology':
-        import_path_index()
     try:
-        run_mod,run_source,zscore_changed_path_db,go_full,go_titles,zscore_goid,input_file_type,gene_identifier_file,species_code = importMAPPFinderResults(mappfinder_input_dir)
-    except Exception:
-        print_out = 'Impropper ORA file format! Make sure to\n select the correct pre-processed input files.'
-        try: print "Analysis Failed"; UI.WarningWindow(print_out,'Critical Error!'); root.destroy()
-        except IOError: print "Analysis Failed\n"
-        sys.exit()
-    if len(run_mod)>1: mod = run_mod
-    if len(run_source)>1: source_data = run_source
-    if input_file_type == 'Ontology':
-        go_ora_files+=1
-        if run_mappfinder == 'yes' and 'GO.txt' in mappfinder_input_dir:
-            ### Used for gene-level summary reporting
-            go_gene_full_count = countGOFullGenes(go_full,go_to_mod_genes); summary_data_db['go_gene_full_count'] = go_gene_full_count
-        organized_tree,all_paths = buildOrderedTree(zscore_changed_path_db) ### Improved GO-tree reconstruction method - implemented in version 1.22
-        parent_highest_score = link_score_to_all_paths(all_paths,zscore_changed_path_db)
-        child_highest_score = calculate_score_for_children(organized_tree,zscore_changed_path_db)
-        collapsed_tree = collapse_tree(parent_highest_score,child_highest_score,organized_tree)
-        collapsed_go_tree = link_goid(collapsed_tree,zscore_changed_path_db,all_paths)
-        collapsed_go_list = exportGOResults(go_full,go_titles,collapsed_go_tree,zscore_goid,{},{},{},{})
-        summary_data_db['elite_go_term_count'] =  len(collapsed_go_list) ### All Elite GO-terms
-        summary_data_db['filtered_go_term_count'] = len(go_full)
-        ###For testing purposes, we can export all non-Elite terms
-        if get_non_elite_terms_only == 'yes': collapsed_go_list = getNonEliteTerms(collapsed_go_list,go_full)
-
-        ###Identify gene lists for the corresponding GO-elite results and generate nested associations
-        try: gene_file_dir = identifyGeneFiles(gene_input_dir, mappfinder_input)
-        except Exception: gene_file_dir=''
-        if len(gene_file_dir) > 0:
-            #print "Begining to re-annotate pruned results...",
-            nested_paths_stored = species_code
-            if len(denom_search_dir)==0: search_dir = gene_input_dir
-            else: search_dir = denom_search_dir ### Occurs when analyzing an input list and existing pruned results
-            uid_to_go, uid_system, gene_annotations = gene_associations.grabNestedGeneToOntologyAssociations(species_code,
-                                                    mod,source_data,system_codes,search_dir,ontology_type)
-            #print 'Annotations imported'
-            try:
-                vals = gene_associations.matchInputIDsToGOEliteTerms(gene_file_dir,
-                                        go_elite_output_folder,system_codes,mappfinder_input_dir,
-                                        collapsed_go_list,uid_to_go,gene_annotations,full_go_name_db,
-                                        uid_system,combined_associations,combined_gene_ranking)
-                combined_associations,combined_gene_ranking,go_gene_annotation_db,go_values_db,value_headers,goids_with_redundant_genes,go_gene_elite_count = vals
-                summary_data_db['go_gene_elite_count'] = go_gene_elite_count
-                unique_genes={}
-                for goid in go_gene_annotation_db:
-                    for s in go_gene_annotation_db[goid]: unique_genes[s.GeneID()]=[]
-                #print len(unique_genes), "unique genes associated with GO-Elite terms"          
-                ###Re-output results, now with gene annotation data
-                collapsed_go_list = exportGOResults(go_full,go_titles,collapsed_go_list,zscore_goid,go_gene_annotation_db,go_values_db,value_headers,goids_with_redundant_genes)    
-                exportFilteredSIF(mod,species_code,collapsed_go_list,mappfinder_input_dir,None)
-            except OSError:
-                print_out = "\nWARNING: Could not delete parent GOID\n"+parent_goid+ "from go_count_db."
-                print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the ORA results file is wrong (check this)\nor does not match the user selected MOD.'
-                print_out += '\kReport bug to the GO-Elite help desk.'
-                try: UI.WarningWindow(print_out,' Continue ')
-                except Exception: print print_out
-    else:
-        local_ora_files+=1
-        if run_mappfinder == 'yes': mapp_gene_full_count = countGOFullGenes(zscore_goid,mapp_to_mod_genes); summary_data_db['mapp_gene_full_count'] = mapp_gene_full_count
-        filtered_mapp_list = zscore_changed_path_db
-        exportLocalResults(go_full,go_titles,{},{},{},{})
-        summary_data_db['filtered_local_count'] =  len(go_full) ### All Elite GO-terms
-        ###Identify gene lists for the corresponding GO-elite results and generate nested associations
-        try: gene_file_dir = identifyGeneFiles(gene_input_dir, mappfinder_input)
-        except Exception: gene_file_dir = ''
-        oraDirTogeneDir[mappfinder_input] = gene_file_dir ### Store the corresponding gene file for each ORA file
-        if len(gene_file_dir) > 0:
-            nested_paths_stored = species_code
-            uid_to_mapp, uid_system, gene_annotations = gene_associations.grabNestedGeneToPathwayAssociations(species_code,
-                                                mod,source_data,system_codes,custom_sets_folder,denom_search_dir,ontology_type)
-            #print 'Annotations imported'
-
-            if len(uid_to_mapp)>0: ### alternative occurs if analyzing a custom_gene_set result without referencing it again (only should occur during testing)
+        dataset_name = string.join(string.split(mappfinder_input,'-')[:-1],'-')
+        print 'Pruning',mappfinder_input
+        source_data = user_defined_source ###Resets the variables back to the user defined when missing from the MAPPFinder files
+        mod = user_defined_mod
+        mappfinder_input_dir = m.searchdirectory(mappfinder_input)
+        ontology_type,input_file_type = checkPathwayType(mappfinder_input_dir)
+        ontologies_analyzed[ontology_type] = input_file_type ### Use when examining overlapping terms between criterion
+        if input_file_type == 'Ontology':
+            import_path_index()
+        try:
+            run_mod,run_source,zscore_changed_path_db,go_full,go_titles,zscore_goid,input_file_type,gene_identifier_file,species_code = importMAPPFinderResults(mappfinder_input_dir)
+        except Exception:
+            print_out = 'Impropper ORA file format! Make sure to\n select the correct pre-processed input files.'
+            try: print "Analysis Failed"; UI.WarningWindow(print_out,'Critical Error!'); root.destroy()
+            except IOError: print "Analysis Failed\n"
+            sys.exit()
+        if len(run_mod)>1: mod = run_mod
+        if len(run_source)>1: source_data = run_source
+        if input_file_type == 'Ontology':
+            go_ora_files+=1
+            if run_mappfinder == 'yes' and 'GO.txt' in mappfinder_input_dir:
+                ### Used for gene-level summary reporting
+                go_gene_full_count = countGOFullGenes(go_full,go_to_mod_genes); summary_data_db['go_gene_full_count'] = go_gene_full_count
+            organized_tree,all_paths = buildOrderedTree(zscore_changed_path_db) ### Improved GO-tree reconstruction method - implemented in version 1.22
+            parent_highest_score = link_score_to_all_paths(all_paths,zscore_changed_path_db)
+            child_highest_score = calculate_score_for_children(organized_tree,zscore_changed_path_db)
+            collapsed_tree = collapse_tree(parent_highest_score,child_highest_score,organized_tree)
+            collapsed_go_tree = link_goid(collapsed_tree,zscore_changed_path_db,all_paths)
+            collapsed_go_list = exportGOResults(go_full,go_titles,collapsed_go_tree,zscore_goid,{},{},{},{})
+            summary_data_db['elite_go_term_count'] =  len(collapsed_go_list) ### All Elite GO-terms
+            summary_data_db['filtered_go_term_count'] = len(go_full)
+            ###For testing purposes, we can export all non-Elite terms
+            if get_non_elite_terms_only == 'yes': collapsed_go_list = getNonEliteTerms(collapsed_go_list,go_full)
+    
+            ###Identify gene lists for the corresponding GO-elite results and generate nested associations
+            try: gene_file_dir = identifyGeneFiles(gene_input_dir, mappfinder_input)
+            except Exception: gene_file_dir=''
+            if len(gene_file_dir) > 0:
+                #print "Begining to re-annotate pruned results...",
+                nested_paths_stored = species_code
+                if len(denom_search_dir)==0: search_dir = gene_input_dir
+                else: search_dir = denom_search_dir ### Occurs when analyzing an input list and existing pruned results
+                uid_to_go, uid_system, gene_annotations = gene_associations.grabNestedGeneToOntologyAssociations(species_code,
+                                                        mod,source_data,system_codes,search_dir,ontology_type)
+                #print 'Annotations imported'
                 try:
-                    vals = gene_associations.matchInputIDsToMAPPEliteTerms(gene_file_dir,
+                    vals = gene_associations.matchInputIDsToGOEliteTerms(gene_file_dir,
                                             go_elite_output_folder,system_codes,mappfinder_input_dir,
-                                            uid_to_mapp,filtered_mapp_list,gene_annotations,uid_system,
-                                            combined_associations,combined_gene_ranking)
-                    combined_associations,combined_gene_ranking,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes,mapp_gene_elite_count = vals
-                    summary_data_db['mapp_gene_elite_count'] = mapp_gene_elite_count
-                except Exception:
+                                            collapsed_go_list,uid_to_go,gene_annotations,full_go_name_db,
+                                            uid_system,combined_associations,combined_gene_ranking)
+                    combined_associations,combined_gene_ranking,go_gene_annotation_db,go_values_db,value_headers,goids_with_redundant_genes,go_gene_elite_count = vals
+                    summary_data_db['go_gene_elite_count'] = go_gene_elite_count
+                    unique_genes={}
+                    for goid in go_gene_annotation_db:
+                        for s in go_gene_annotation_db[goid]: unique_genes[s.GeneID()]=[]
+                    #print len(unique_genes), "unique genes associated with GO-Elite terms"          
+                    ###Re-output results, now with gene annotation data
+                    collapsed_go_list = exportGOResults(go_full,go_titles,collapsed_go_list,zscore_goid,go_gene_annotation_db,go_values_db,value_headers,goids_with_redundant_genes)    
+                    exportFilteredSIF(mod,species_code,collapsed_go_list,mappfinder_input_dir,None)
+                except OSError:
                     print_out = "\nWARNING: Could not delete parent GOID\n"+parent_goid+ "from go_count_db."
-                    print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the MAPPFinder file is wrong (check this)\nor does not match the user selected MOD.'
+                    print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the ORA results file is wrong (check this)\nor does not match the user selected MOD.'
                     print_out += '\kReport bug to the GO-Elite help desk.'
                     try: UI.WarningWindow(print_out,' Continue ')
                     except Exception: print print_out
-
-            exportLocalResults(go_full,go_titles,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes)
-            exportFilteredSIF(mod,species_code,mapp_gene_annotation_db,mappfinder_input_dir,oraDirTogeneDir)
-        if program_type != 'GO-Elite' and mappfinder_input[:3] == 'AS.':
-            local_filename = go_elite_output_folder+'/'+mappfinder_input[0:-4]+ '_'+filter_method+'_elite.txt'
-            print 'Copying GO-Elite results to DomainGraph folder...'
-            fn = filepath(local_filename)
-            fn2 = string.replace(fn,'GO-Elite_results','DomainGraph')
-            fn2 = string.replace(fn2,'GO-Elite','AltResults')
-            fn2 = string.replace(fn2,'AS.','')
-            fn2 = string.split(fn2,'-local'); fn2=fn2[0]+'-pathways-DomainGraph.txt'
-            #shutil.copyfile(fn,fn2)
-                
+        else:
+            local_ora_files+=1
+            if run_mappfinder == 'yes': mapp_gene_full_count = countGOFullGenes(zscore_goid,mapp_to_mod_genes); summary_data_db['mapp_gene_full_count'] = mapp_gene_full_count
+            filtered_mapp_list = zscore_changed_path_db
+            exportLocalResults(go_full,go_titles,{},{},{},{})
+            summary_data_db['filtered_local_count'] =  len(go_full) ### All Elite GO-terms
+            ###Identify gene lists for the corresponding GO-elite results and generate nested associations
+            try: gene_file_dir = identifyGeneFiles(gene_input_dir, mappfinder_input)
+            except Exception: gene_file_dir = ''
+            oraDirTogeneDir[mappfinder_input] = gene_file_dir ### Store the corresponding gene file for each ORA file
+            if len(gene_file_dir) > 0:
+                nested_paths_stored = species_code
+                uid_to_mapp, uid_system, gene_annotations = gene_associations.grabNestedGeneToPathwayAssociations(species_code,
+                                                    mod,source_data,system_codes,custom_sets_folder,denom_search_dir,ontology_type)
+                #print 'Annotations imported'
+    
+                if len(uid_to_mapp)>0: ### alternative occurs if analyzing a custom_gene_set result without referencing it again (only should occur during testing)
+                    try:
+                        vals = gene_associations.matchInputIDsToMAPPEliteTerms(gene_file_dir,
+                                                go_elite_output_folder,system_codes,mappfinder_input_dir,
+                                                uid_to_mapp,filtered_mapp_list,gene_annotations,uid_system,
+                                                combined_associations,combined_gene_ranking)
+                        combined_associations,combined_gene_ranking,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes,mapp_gene_elite_count = vals
+                        summary_data_db['mapp_gene_elite_count'] = mapp_gene_elite_count
+                    except Exception:
+                        print_out = "\nWARNING: Could not delete parent GOID\n"+parent_goid+ "from go_count_db."
+                        print_out += '\nTypically occurs if the MOD or Source Type\nspecified in the MAPPFinder file is wrong (check this)\nor does not match the user selected MOD.'
+                        print_out += '\kReport bug to the GO-Elite help desk.'
+                        try: UI.WarningWindow(print_out,' Continue ')
+                        except Exception: print print_out
+    
+                exportLocalResults(go_full,go_titles,mapp_gene_annotation_db,mapp_values_db,mapp_value_headers,mapps_with_redundant_genes)
+                exportFilteredSIF(mod,species_code,mapp_gene_annotation_db,mappfinder_input_dir,oraDirTogeneDir)
+            if program_type != 'GO-Elite' and mappfinder_input[:3] == 'AS.':
+                local_filename = go_elite_output_folder+'/'+mappfinder_input[0:-4]+ '_'+filter_method+'_elite.txt'
+                print 'Copying GO-Elite results to DomainGraph folder...'
+                fn = filepath(local_filename)
+                fn2 = string.replace(fn,'GO-Elite_results','DomainGraph')
+                fn2 = string.replace(fn2,'GO-Elite','AltResults')
+                fn2 = string.replace(fn2,'AS.','')
+                fn2 = string.split(fn2,'-local'); fn2=fn2[0]+'-pathways-DomainGraph.txt'
+                #shutil.copyfile(fn,fn2)
+    except Exception:
+        print 'Error encountered in GO-Elite results pruning for this gene-set type'
   print 'gene associations assigned'
 
   if '/app' in filepath(import_dir): webservice = 'yes'
@@ -1385,7 +1387,7 @@ def exportFilteredSIF(mod,species_code,collapsed_term_list,mappfinder_input_dir,
         except Exception: ora_input_dir = None
         clustering.buildGraphFromSIF(mod,species_code,sif_output,ora_input_dir)
     except Exception:
-        #print traceback.format_exc()
+        print traceback.format_exc()
         None #Export from PyGraphViz not supported
         
 class SummaryResultsWindow:
@@ -1663,7 +1665,7 @@ def visualizePathways(species_code,oraDirTogeneDir,combined_results):
     """ Sends all over-represented pathways to the WikiPathways API for visualization """
     try:
         failed=[]
-        if returnPathways != None and returnPathways != 'None':
+        if returnPathways != None and returnPathways != 'None' and returnPathways != 'no':
             ### If only the top X pathways should be returned, get this number
             returnNumber = None
             if 'top' in returnPathways:

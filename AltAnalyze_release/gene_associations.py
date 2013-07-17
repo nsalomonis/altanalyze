@@ -673,7 +673,7 @@ def addNewCustomSystem(filedir,system,save_option,species_code):
         print 'Writing new annotation file:',species_code,system
         export_dir = 'Databases/'+species_code+'/gene/'+system+'.txt'
         data = export.ExportFile(export_dir)
-        data.write('ID\tSymbol\tDescription\n')
+        data.write('UID\tSymbol\tDescription\n')
         for gene in gene_annotations:
             s = gene_annotations[gene]
             data.write(string.join([gene,s.Symbol(),s.Description()],'\t')+'\n')
@@ -744,7 +744,7 @@ def addNewCustomRelationships(filedir,relationship_file,save_option,species_code
             try: os.remove(nested_path)
             except Exception: null=[]
         data = export.ExportFile(export_dir)
-        data.write('ID\t\tRelated ID\n')
+        data.write('UID\t\tRelated ID\n')
         for mod_id in mod_id_to_related:
             for related_id in mod_id_to_related[mod_id]:
                 if data_type == 'MAPP': ###Pathway files have 3 rather than 2 columns
@@ -1816,25 +1816,32 @@ def combineDBs(db1,db2):
 def IDconverter(filename,species_code,input_system_name, output_system_name):
     """ This is a function built to convert the IDs in an input file from one system to another while preserving the original members """
     
+    if 'HMDB' in input_system_name or 'HMDB' in output_system_name: mod = 'HMDB'
+    elif 'ChEBI' in input_system_name or 'ChEBI' in output_system_name: mod = 'HMDB'
+    elif 'KeggCompound' in input_system_name or 'KeggCompound' in output_system_name: mod = 'HMDB'
+    elif 'CAS' in input_system_name or 'CAS' in output_system_name: mod = 'HMDB'
+    elif 'PubChem' in input_system_name or 'PubChem' in output_system_name: mod = 'HMDB'
+    else: mod = 'Ensembl'
+        
     print 'Attempting to convert IDs from ', export.findFilename(filename)
     
     input_data_db, headers = importGenericDB(filename)
-    if input_system_name == 'Ensembl': ### This is or MOD
+    if input_system_name == mod: ### This is or MOD
         source1_to_gene={}
         for id in input_data_db:
             source1_to_gene[id] = [id] ### make the primary ensembl ID = ensembl ID
     else:
-        gene_to_source1 = getGeneToUid(species_code,'Ensembl-'+input_system_name)
+        gene_to_source1 = getGeneToUid(species_code,mod+'-'+input_system_name)
         source1_to_gene = OBO_import.swapKeyValues(gene_to_source1)
 
-    if output_system_name == 'Ensembl': ### This is or MOD
+    if output_system_name == mod: ### This is or MOD
         gene_to_source2={}
-        gene_annotations = importGeneData(species_code,'Ensembl')
+        gene_annotations = importGeneData(species_code,mod)
         for gene in gene_annotations:
             if 'LRG_' not in gene: ### Bad gene IDs from Ensembl
                 gene_to_source2[gene] = [gene] ###import and use all availalable Ensembl IDs
     else:
-        gene_to_source2 = getGeneToUid(species_code,'Ensembl-'+output_system_name)
+        gene_to_source2 = getGeneToUid(species_code,mod+'-'+output_system_name)
         
     converted=0
     converted_ids={}
@@ -1856,7 +1863,7 @@ def IDconverter(filename,species_code,input_system_name, output_system_name):
     else:
         filename = filename[:-4]+'-'+output_system_name+'.txt'
     export_data = export.ExportFile(filename)
-    headers = string.join([output_system_name,'Ensembl IDs']+headers,'\t')+'\n'
+    headers = string.join([output_system_name,mod+' IDs']+headers,'\t')+'\n'
     export_data.write(headers)
     for id in input_data_db:
         secondary_ids, genes = converted_ids[id]

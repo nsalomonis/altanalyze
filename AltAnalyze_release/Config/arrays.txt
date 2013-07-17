@@ -1,1 +1,12 @@
-array_type	array_name	manufacturer	constitutive_source	compatible_speciesexon	Exon ST array	Affymetrix	Ensembl	Mm|Hs|Rnjunction	Junction Glue array	Affymetrix	Ensembl	Hsgene	Gene ST array	Affymetrix	Ensembl	Mm|Hs|Rnjunction	Junction JAY array	Affymetrix	Ensembl	Mm|Hs3'array	Codelink expression array	Codelink	Codelink	Hs|Mm|Rn3'array	Illumina expression array	Illumina	Illumina	Hs|Mm3'array	Ensembl annotated data	Other ID	Ensembl	Hs|Mm|Rn3'array	Agilent expression array	Agilent	Agilent	Hs|Mm|Dr|RnRNASeq	RNA-seq aligned read counts	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm3'array	Misc. expression array	Misc	Misc	AltMouse	Junction AltMouse array	Affymetrix	Ensembl	Mm3'array	Affymetrix expression array	Affymetrix	Affymetrix	Mm|Hs|Rn|Dm|Bt|Dr|Sc|Ce|Gg|Zm
+array_type	array_name	manufacturer	constitutive_source	compatible_species
+exon	Exon ST array	Affymetrix	Ensembl	Mm|Hs|Rn
+junction	Junction Glue array	Affymetrix	Ensembl	Hs
+gene	Gene ST array	Affymetrix	Ensembl	Mm|Hs|Rn
+junction	Junction JAY array	Affymetrix	Ensembl	Mm|Hs
+3'array	Codelink expression array	Codelink	Codelink	Hs|Mm|Rn
+3'array	Illumina expression array	Illumina	Illumina	Hs|Mm
+3'array	Agilent expression array	Agilent	Agilent	Hs|Mm|Dr|Rn
+RNASeq	RNA-seq aligned read counts	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr
+3'array	Misc. expression array	Misc	Misc	
+AltMouse	Junction AltMouse array	Affymetrix	Ensembl	Mm
+3'array	Affymetrix expression array	Affymetrix	Affymetrix	Mm|Hs|Rn|Dm|Bt|Dr|Sc|Ce|Gg

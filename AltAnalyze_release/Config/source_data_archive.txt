@@ -23,7 +23,6 @@ Genoscope_pred_gene	Gen
 TetNig	Tet	
 GPCR	Gpcr	
 CioInt	Cio	
-SwissProt	Swiss	
 UniProt	S	
 ProteinID	Pi	
 Osford_FGU	Of	

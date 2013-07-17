@@ -355,7 +355,7 @@ class StatusWindow:
             root.title('AltAnalyze version 2.0.8 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
-            height = 270; width = 700
+            height = 300; width = 700
             if os.name != 'nt': height+=100; width+=50
             self.sf = PmwFreeze.ScrolledFrame(self._parent,
                     labelpos = 'n', label_text = 'Download File Status Window',
@@ -386,9 +386,9 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,getOnlineDBConfig(file_location_defaults,self._parent))
             except Exception,e: getOnlineDBConfig(file_location_defaults,None)
         if analysis_type == 'getOnlineEliteDatabase':
-            file_location_defaults,db_version,new_species_codes = info_list
-            try: sys.stdout = status; root.after(100,getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,self._parent))
-            except Exception,e: getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,None)
+            file_location_defaults,db_version,new_species_codes,update_goelite_resources = info_list
+            try: sys.stdout = status; root.after(100,getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,update_goelite_resources,self._parent))
+            except Exception,e: getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,update_goelite_resources,None)
         if analysis_type == 'getAdditionalOnlineResources':
             species_code,additional_resources = info_list
             try: sys.stdout = status; root.after(100,getAdditionalOnlineResources(species_code,additional_resources,self._parent))
@@ -398,13 +398,13 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, self._parent))
             except Exception,e: createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose,contrast,None)
         if analysis_type == 'performPCA':
-            filename, transpose = info_list
-            try: sys.stdout = status; root.after(100,performPCA(filename, transpose, self._parent))
-            except Exception,e: performPCA(filename, transpose, None)
+            filename, pca_labels, transpose = info_list
+            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, transpose, self._parent))
+            except Exception,e: performPCA(filename, pca_labels, transpose, None)
         if analysis_type == 'runLineageProfiler':
-            fl, filename, vendor, custom_markerFinder = info_list
-            try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, self._parent))
-            except Exception,e: runLineageProfiler(fl, filename, vendor, custom_markerFinder, None)
+            fl, filename, vendor, custom_markerFinder, geneModel_file = info_list
+            try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent))
+            except Exception,e: runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, None)
         if analysis_type == 'MergeFiles':
             files_to_merge, join_option, ID_option, output_merge_dir = info_list
             try: sys.stdout = status; root.after(100,MergeFiles(files_to_merge, join_option, ID_option, output_merge_dir, self._parent))
@@ -558,27 +558,43 @@ def IDconverter(filename, species_code, input_source, output_source, root):
         try: openDirectory(export.findParentDir(filename))
         except Exception: None
     
-def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, root):
-    import ExpressionBuilder
-    graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder)
-    if len(graphic_links)>0:
-        print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
+def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root):
+    
+    if geneModel == None:
+        import ExpressionBuilder
+        graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder)
+        if len(graphic_links)>0:
+            print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
+            try: InfoWindow(print_out, 'Continue')
+            except Exception: None
+        else:
+            print_out = 'Analysis error occured...\nplease see warning printouts.'
+            try: print print_out
+            except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
+            try: WarningWindow(print_out,'Continue')
+            except Exception: None
+    else:
+        import LineageProfilerIterate
+        codingtype = 'exon'; compendium_platform = 'exon'
+        platform = array_type,'Affymetrix'
+        LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel)
+        print_out = 'LineageProfiler classification results saved to the folder "SampleClassification".'
+        try: openDirectory(export.findParentDir(expr_input_dir)+'/SampleClassification')
+        except Exception: None
         try: InfoWindow(print_out, 'Continue')
         except Exception: None
-    else:
-        print_out = 'Analysis error occured...\nplease see warning printouts.'
-        try: print print_out
-        except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
-        try: WarningWindow(print_out,'Continue')
-        except Exception: None
+
     try: root.destroy()
     except Exception: None
     
-def performPCA(filename, transpose, root):
+def performPCA(filename, pca_labels, transpose, root):
     import clustering
     graphics = []
+    if pca_labels=='yes': pca_labels=True
+    else: pca_labels=False
+    
     try:
-        clustering.runPCAonly(filename, graphics, transpose)
+        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels)
         try: print'Finished building PCA.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -1038,8 +1054,8 @@ class GUI:
                 if os.name != 'nt': width+=50
             elif 'Genes_network' in option_list:
                 label_text_str = "Network Analysis Parameters"
-                height = 430; width = 350; use_scroll = 'yes'
-                if os.name != 'nt': width+=50
+                height = 430; width = 400; use_scroll = 'yes'
+                #if os.name != 'nt': width+=50
             else:
                 label_text_str = "AltAnalyze Main Dataset Parameters"
                 height = 310; width = 400; use_scroll = 'yes'
@@ -2171,7 +2187,7 @@ def getOnlineDBConfig(file_location_defaults,root):
             except Exception: print status3; root.destroy(); sys.exit()
     except Exception: null=[]
 
-def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,root):
+def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,update_goelite_resources,root):
     base_url = file_location_defaults['url'].Location()
     goelite_url = file_location_defaults['goelite'].Location()
     dbs_added = 0
@@ -2197,6 +2213,11 @@ def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,r
             #print goelite_url+'Databases/'+db_version+'Plus/'+species_code+'.zip'
         try: fln,status = update.download(goelite_url+'Databases/'+db_version+'Plus/'+species_code+'.zip','AltDatabase/goelite/','')
         except Exception: print "No species GO-Elite database found."
+        
+        if update_goelite_resources == 'yes': ### Get all additional GeneSet database types (can be lengthy download times)
+            try: getAdditionalOnlineResources(species_code, 'All Resources',None)
+            except Exception: print "Unable to update additional GO-Elite resources."
+        
         if 'Internet' not in status: print "GO-Elite database installed." ; dbs_added+=1
         else: print "No species GO-Elite database found."
         try: os.mkdir(filepath('AltDatabase/'+species_code))
@@ -2659,8 +2680,9 @@ def importUserOptions(array_type,vendor=None):
         else:
             array_options = t[i]
             if array_type == "3'array":
+                """
                 if 'normalize_gene_data' in data and vendor != 'Agilent':
-                    array_options = 'NA' ### only applies currently to Agilent arrays
+                    array_options = 'NA' ### only applies currently to Agilent arrays """
                 if 'channel_to_extract' in data and vendor != 'Agilent':
                     array_options = 'NA' ### only applies currently to Agilent arrays
             array_options = string.split(array_options,'|')
@@ -3101,9 +3123,11 @@ class ExpressionFileLocationData:
     def OutputDir(self): return self._output_dir
     def Vendor(self): return self.vendor
     def setPlatformType(self, platformType): self.platformType = platformType
+    def setAnalysisMode(self, analysis_mode): self.analysis_mode = analysis_mode
     def setExonMapFile(self, exonMapFile): self.exonMapFile = exonMapFile
     def ExonMapFile(self): return self.exonMapFile
     def PlatformType(self): return self.platformType
+    def AnalysisMode(self): return self.analysis_mode
     def DatasetFile(self):
         if 'exp.' in self.ExpFile():
             dataset_dir = string.replace(self.ExpFile(),'exp.','DATASET-')
@@ -3166,6 +3190,7 @@ def getDirectoryFiles():
             else: i = -1
             output_dir = string.join(string.split(input_exp_file,'/')[:i],'/')
             
+
 def getUpdatedParameters(array_type,species,run_from_scratch,file_dirs):
     ### Get default options for ExpressionBuilder and AltAnalyze
     na = 'NA'; log = 'log'; no = 'no'
@@ -3301,6 +3326,8 @@ def addOnlineSpeciesDatabases(backSelect):
         except Exception: species3='---'
         try: species_full = gu.Results()['species']
         except Exception: species_full = ''
+        try: update_goelite_resources = gu.Results()['update_goelite_resources']
+        except Exception: update_goelite_resources = ''
         if species_full == 'Add Species':
             AltAnalyze.AltAnalyzeSetup(species_full); sys.exit()
         new_species_list = [species1,species2,species3]; new_species_codes={}
@@ -3324,7 +3351,7 @@ def addOnlineSpeciesDatabases(backSelect):
                 exportArrayInfo(array_codes)
         if len(new_species_codes) > 0:
             analysis = 'getOnlineEliteDatabase'
-            values = file_location_defaults,db_version,new_species_codes
+            values = file_location_defaults,db_version,new_species_codes,update_goelite_resources ### Download the online databases
             StatusWindow(values,analysis)
             proceed = 'yes'
         else:
@@ -3594,8 +3621,11 @@ def getUserParameters(run_parameter):
         
         ### Set defaults based on avialable species
         
-        default_vendor = 'RNASeq'
-        default_specific_array = 'RNA-seq aligned read counts'
+        #default_vendor = 'RNASeq'
+        #default_specific_array = 'RNA-seq aligned read counts'
+        default_vendor = 'Affymetrix'
+        default_specific_array='Affymetrix expression array'
+        
         try: ### If the users have already analyzed Affy data, make this the default
             affymetrix_library_dir = 'AltDatabase/affymetrix/LibraryFiles'
             affy_dir_list = read_directory(filepath(affymetrix_library_dir))
@@ -4043,12 +4073,13 @@ def getUserParameters(run_parameter):
                     gu = GUI(root,option_db,option_list['PCA'],'')
                     try: input_cluster_file = gu.Results()['input_cluster_file']
                     except Exception: input_cluster_file = ''
+                    pca_labels = gu.Results()['pca_labels']
                     transpose = gu.Results()['transpose']
                     if len(input_cluster_file)>0:
                         analysis = 'performPCA'
                         if transpose == 'yes': transpose = True
                         else: transpose = False
-                        values = input_cluster_file, transpose
+                        values = input_cluster_file, pca_labels, transpose
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -4072,12 +4103,14 @@ def getUserParameters(run_parameter):
                     compendiumPlatform = gu.Results()['compendiumPlatform']
                     compendiumType = gu.Results()['compendiumType']
                     markerFinder_file = gu.Results()['markerFinder_file']
+                    geneModel_file = gu.Results()['geneModel_file']
+                    if len(geneModel_file) == 0: geneModel_file = None
                     if len(input_exp_file)>0:
                         analysis = 'runLineageProfiler'
                         fl = ExpressionFileLocationData('','','','') ### Create this object to store additional parameters for LineageProfiler
                         fl.setCompendiumType(compendiumType)
                         fl.setCompendiumPlatform(compendiumPlatform)
-                        values = fl, input_exp_file, vendor, markerFinder_file
+                        values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -4324,10 +4357,32 @@ def getUserParameters(run_parameter):
                     else: i = -1
                     output_dir = string.join(string.split(input_exp_file,'/')[:i],'/')
 
+            if "ExpressionInput" not in output_dir and len(input_exp_file)>1 and "ExpressionInput" not in input_exp_file:
+                try:
+                    ### If the user designates an output directory that doesn't contain ExpressionInput, move the exp-file there and rename
+                    output_dir = output_dir + '/ExpressionInput' ### Store the result files here so that files don't get mixed up
+                    try: os.mkdir(output_dir) ### Since this directory doesn't exist we have to make it
+                    except OSError: null = [] ### Directory already exists
+                    if 'exp.' not in input_exp_file: exp_prefix = 'exp.'
+                    else: exp_prefix=''
+                    moved_exp_dir = output_dir+'/'+exp_prefix+export.findFilename(input_exp_file)
+                    export.copyFile(input_exp_file, moved_exp_dir)
+                    input_exp_file = moved_exp_dir
+                    if len(input_stats_file)>1: ### Do the same for a stats file
+                        if 'stats.' not in input_exp_file: stats_prefix = 'stats.'
+                        else: stats_prefix=''
+                        moved_stats_dir = output_dir+'/'+stats_prefix+export.findFilename(input_stats_file)
+                        export.copyFile(input_stats_file, moved_stats_dir)
+                        input_stats_file = moved_stats_dir
+                except Exception: None
+                    
+
         if run_from_scratch != 'buildExonExportFiles': ### Update DBs is an option which has been removed from 1.1. Should be a separate menu item soon.
             expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = importDefaults(array_type,species)
-            if vendor == 'Agilent' and run_from_scratch == 'Process Expression file':
-                option_db['normalize_gene_data'].setArrayOptions(['NA']) ### Only use this option when processing Feature Extraction files
+            if vendor == 'Affymetrix' or vendor == 'RNASeq':
+                option_db['normalize_gene_data'].setArrayOptions(['NA']) ### Only use this option when processing Feature Extraction files or non-Affy non-RNA-Seq data
+            if vendor == 'Agilent' and 'Feature Extraction' in run_from_scratch:
+                option_db['normalize_gene_data'].setArrayOptions(['quantile']) ### Only set this as a default when performing Feature Extraction for Agilent data
             if run_from_scratch != 'Process AltAnalyze filtered' and run_from_scratch != 'Annotate External Results':
                 proceed = 'no'
                 option_db = check_moderated_support(option_db)
@@ -4742,7 +4797,7 @@ def getUserParameters(run_parameter):
             for cel_file in cel_files:
                 group = ''; group_name = ''    
                 agd = ArrayGroupData(cel_file,group,group_name); array_group_list.append(agd)
-                
+        
         if len(array_group_list)>0: ### Thus we are not analyzing the default (ExpressionInput) directory of expression, group and comp data.
             option_db,option_list = formatArrayGroupsForGUI(array_group_list)
             ###Force this GUI to repeat until the user fills in each entry, but record what they did add
@@ -4963,6 +5018,9 @@ def getUserParameters(run_parameter):
         fl.setCompendiumType(compendiumType)
         fl.setCompendiumPlatform(compendiumPlatform)
         fl.setVendor(vendor)
+        if run_from_scratch == 'Process Expression file':
+            fl.setRootDir(output_dir) ### When the data is not primary array data files, allow for option selection of the output directory
+            fl.setOutputDir(output_dir)
     if array_type == 'RNASeq': ### Post version 2.0, add variables in fl rather than below
         fl.setRPKMThreshold(rpkm_threshold)
         fl.setExonExpThreshold(exon_exp_threshold)

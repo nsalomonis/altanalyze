@@ -1,5 +1,3 @@
-#!/usr/local/bin/python2.6
-
 import sys
 import suds
 
@@ -15,7 +13,7 @@ _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
 excludes = [] #["wxPython"] #"numpy","scipy","matplotlib"
-includes = ["suds", "mpmath", "numpy"]
+includes = ["suds", "mpmath", "numpy", "matplotlib"]
 """ By default, suds will be installed in site-packages as a .egg file (zip compressed). Make a duplicate, change to .zip and extract
 here to allow it to be recognized by py2exe (must be a directory) """
 
@@ -25,38 +23,18 @@ scipy_exclude = [] #['libiomp5md.dll','libifcoremd.dll','libmmd.dll']
 
 """ xml.sax.drivers2.drv_pyexpat is an XML parser needed by suds that py2app fails to include. Identified by looking at the line: parser_list+self.parsers in
 /Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/PyXML-0.8.4-py2.7-macosx-10.6-intel.egg/_xmlplus/sax/saxexts.py
-check the py2app print out to see where this file is in the future
-
-(reported issue - may or may not apply) For mac and igraph, core.so must be copied to a new location for py2app:
-sudo mkdir /System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/lib-dynload/igraph/
-cp /Library/Python/2.6/site-packages/igraph/core.so /System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/lib-dynload/igraph/
-
-"""
+check the py2app print out to see where this file is in the future """
 
 if sys.platform.startswith("darwin"):
-        ### Local version: /usr/local/bin/python2.6
         ### example command: python setup.py py2app
+        includes+= ["xml.sax.drivers2.drv_pyexpat"]
         from distutils.core import setup
         import py2app
-        includes+= ["xml.sax.drivers2.drv_pyexpat","pkg_resources","distutils"]
-        """
-        resources = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
-        frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
-        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/Extras/lib/python/pkg_resources.py']
-        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/distutils/util.py']
-        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/distutils/sysconfig.py']
-        import pkg_resources
-        import distutils
-        import distutils.sysconfig
-        import distutils.util
-        """
         options = {"py2app":
                     {"excludes": excludes,
                      "includes": includes,
-                     #"frameworks": frameworks,
-                     #"resources": resources,
                      #argv_emulation = True,
-                     "iconfile": "altanalyze.icns"}
+                    "iconfile": "altanalyze.icns"}
         }
         setup(name=_appName,
                         app=[_script],
@@ -77,10 +55,12 @@ if sys.platform.startswith("win"):
         import suds
         import numpy
         import matplotlib
-        import unique
-        import sys
         import six ### relates to a date-time dependency in matplotlib
-
+        import unique
+        import patsy
+        import pandas
+        import sys
+            
         #sys.path.append(unique.filepath("Config\DLLs")) ### This is added, but DLLs still require addition to DLL python dir
         from distutils.filelist import findall
         import os
@@ -93,13 +73,17 @@ if sys.platform.startswith("win"):
         for f in matplotlibdata:
             dirname = os.path.join('matplotlibdata', f[len(matplotlibdatadir)+1:])
             matplotlibdata_files.append((os.path.split(dirname)[0], [f]))
+            
 
-        
+           
         windows=[{"script":_script,"icon_resources":[(1,_appIcon)]}]
         options={'py2exe':
                         {
                         "includes": 'suds',
+                        "includes": 'patsy',
+                        "includes": 'pandas',
                         "includes": 'matplotlib',
+                        "includes": 'six',
                         "includes": 'mpl_toolkits',
                         "includes": 'matplotlib.backends.backend_tkagg',
                         "dll_excludes": matplot_exclude+scipy_exclude,

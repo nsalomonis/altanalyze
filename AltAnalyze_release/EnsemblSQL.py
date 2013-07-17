@@ -95,6 +95,8 @@ def getEnsemblSQLDir(ensembl_version):
     original_version = ensembl_version
     if 'Plant' in ensembl_version:
         ensembl_version = string.replace(ensembl_version, 'Plant','')
+    if 'Bacteria' in ensembl_version:
+        ensembl_version = string.replace(ensembl_version, 'Bacteria','')
     try:
         check = int(ensembl_version)    
         import UI; UI.exportDBversion('EnsMart'+ensembl_version)
@@ -102,8 +104,12 @@ def getEnsemblSQLDir(ensembl_version):
     except Exception: print 'EnsMart version name is incorrect (e.g., should be "60")'; sys.exit()
     
     import UI; species_names = UI.getSpeciesInfo()
-    species_full = species_names[species]
-    ens_species = string.replace(string.lower(species_full),' ','_')
+    try:
+        species_full = species_names[species]
+        ens_species = string.replace(string.lower(species_full),' ','_')
+    except Exception:
+        ens_species = species
+        species_full = species
     
     try: child_dirs, ensembl_species, ensembl_versions = getCurrentEnsemblSpecies(original_version)
     except Exception,e:
@@ -117,6 +123,7 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
     import UI; import update; global external_xref_key_db; global species; species = Species
     global system_synonym_db; system_synonym_db={} ### Currently only used by GO-Elite
     global rewrite_existing; rewrite_existing = 'yes'; global all_external_ids; all_external_ids={}; global added_systems; added_systems={}
+    original_version = ensembl_version
     print 'Downloading Ensembl flat files for parsing from Ensembl SQL FTP server...'
     ### Get version directories for Ensembl
 
@@ -172,13 +179,13 @@ def getEnsemblTranscriptSequences(ensembl_version,species):
         ensembl_version = 'release-'+ensembl_version
         
     dirtype = 'fasta/'+ens_species+'/pep'
-    if 'Plant' in ensembl_version:
-        ensembl_protseq_dir = getCurrentEnsemblPlantSequences(ensembl_version,dirtype,ens_species)
+    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version:
+        ensembl_protseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
     else:
         ensembl_protseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
     dirtype = 'fasta/'+ens_species+'/cdna'
-    if 'Plant' in ensembl_version:
-        ensembl_cdnaseq_dir = getCurrentEnsemblPlantSequences(ensembl_version,dirtype,ens_species)
+    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version:
+        ensembl_cdnaseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
     else:
         ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
         
@@ -196,8 +203,12 @@ def getEnsemblTranscriptSequences(ensembl_version,species):
                 
 def getFullGeneSequences(ensembl_version,species):
     import UI; species_names = UI.getSpeciesInfo()
-    species_full = species_names[species]
-    ens_species = string.replace(string.lower(species_full),' ','_')
+    try:
+        species_full = species_names[species]
+        ens_species = string.replace(string.lower(species_full),' ','_')
+    except Exception:
+        ens_species = species
+        species_full = species
 
     if 'EnsMart' in ensembl_version:
         ensembl_version = string.replace(ensembl_version, 'EnsMart','')
@@ -205,8 +216,8 @@ def getFullGeneSequences(ensembl_version,species):
         ensembl_version = 'release-'+ensembl_version
         
     dirtype = 'fasta/'+ens_species+'/dna'
-    if 'Plant' in ensembl_version:
-        ensembl_dnaseq_dirs = getCurrentEnsemblPlantSequences(ensembl_version,dirtype,ens_species)
+    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version:
+        ensembl_dnaseq_dirs = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
     else:
         ensembl_dnaseq_dirs = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
 
@@ -1260,7 +1271,8 @@ def storeFTPDirs(ftp_server,subdir,dirtype):
         if dirtype in file_dir:
             species_name_data = string.split(file_dir,dirtype)
             species_name = species_name_data[0]
-            species_name = string.replace(string.upper(species_name[0])+species_name[1:],'_',' ')
+            if 'bacteria' not in species_name: ### Occurs for Bacteria Genomes
+                species_name = string.replace(string.upper(species_name[0])+species_name[1:],'_',' ')
             ensembl_sql_dir = 'ftp://'+ftp_server+subdir+'/'+file_dir+'/'
             ensembl_sql_description_dir = file_dir+'.sql'
             child_dirs[species_name] = ensembl_sql_dir,ensembl_sql_description_dir
@@ -1298,9 +1310,13 @@ def getCurrentEnsemblSpecies(version):
         version = string.replace(version,'Plus','')
     if 'Plant' in version:
         version = string.replace(version,'Plant','')
+    if 'Bacteria' in version:
+        version = string.replace(version,'Bacteria','')
     if 'release' not in version and 'current' not in version:
         version = 'release-'+version
     if 'Plant' in original_version:
+        ftp_server = 'ftp.ensemblgenomes.org'
+    elif 'Bacteria' in original_version:
         ftp_server = 'ftp.ensemblgenomes.org'
     else:
         ftp_server = 'ftp.ensembl.org'
@@ -1308,6 +1324,8 @@ def getCurrentEnsemblSpecies(version):
         subdir = '/pub/current_mysql'
     elif 'Plant' in original_version:
         subdir = '/pub/plants/'+version+'/mysql'
+    elif 'Bacteria' in original_version:
+        subdir = '/pub/'+version+'/bacteria/mysql'
     else:
         subdir = '/pub/'+version+'/mysql'
     dirtype = '_core_'
@@ -1322,10 +1340,16 @@ def getCurrentEnsemblSequences(version,dirtype,species):
     seq_dir = storeSeqFTPDirs(ftp_server,species,subdir,dirtype)
     return seq_dir
 
-def getCurrentEnsemblPlantSequences(version,dirtype,species):
-    version = string.replace(version,'Plant','')
+def getCurrentEnsemblGenomesSequences(version,dirtype,species):
+    original_version = version
+    if 'Plant' in version:
+        version = string.replace(version,'Plant','')
+    if 'Bacteria' in version:
+        version = string.replace(version,'Bacteria','')
     ftp_server = 'ftp.ensemblgenomes.org'
     if version == 'current': subdir = '/pub/current_'+dirtype
+    elif 'Bacteria' in original_version:
+        subdir = '/pub/'+version+'/bacteria/'+dirtype
     else: subdir = '/pub/plants/'+version+'/'+dirtype
     seq_dir = storeSeqFTPDirs(ftp_server,species,subdir,dirtype)
     return seq_dir
@@ -1333,6 +1357,7 @@ def getCurrentEnsemblPlantSequences(version,dirtype,species):
 def storeSeqFTPDirs(ftp_server,species,subdir,dirtype):
     from ftplib import FTP
     ftp = FTP(ftp_server); ftp.login()
+    print subdir;sys.exit()
     try: ftp.cwd(subdir)
     except Exception:
         subdir = string.replace(subdir,'/'+dirtype,'') ### Older version don't have this subdir 
@@ -1570,7 +1595,7 @@ def verifyFile(filename):
             
 if __name__ == '__main__':
     
-    getChrGeneOnly('Hs','Basic','EnsMart65','yes');sys.exit()
+    #getChrGeneOnly('Hs','Basic','EnsMart65','yes');sys.exit()
     analysisType = 'GeneAndExternal'; externalDBName_list = ['AFFY_Zebrafish']
     force = 'no'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
     print 'proceeding'
@@ -1579,7 +1604,7 @@ if __name__ == '__main__':
     species = 'Hs'
     #getEnsemblTranscriptSequences(ensembl_version,species);sys.exit()
     
-    getFullGeneSequences('Plant16','Zm'); sys.exit()
+    getFullGeneSequences('Bacteria18','bacteria_1_collection'); sys.exit()
     #for i in child_dirs: print child_dirs[i]
     #"""
     ### WON'T WORK FOR MORE THAN ONE EXTERNAL DATABASE -- WHEN RUN WITHIN THIS MOD
