@@ -3,8 +3,10 @@ Hs	Homo sapiens
 Ce	Caenorhabditis elegans	
 Bt	Bos taurus	
 Mm	Mus musculus	
-Rn	Rattus norvegicus	
 Gg	Gallus gallus	
+Rn	Rattus norvegicus	
 Dr	Danio rerio	
 Dm	Drosophila melanogaster	
+Zm	Zea mays	
 Sc	Saccharomyces cerevisiae	
+At	Arabidopsis thaliana	
