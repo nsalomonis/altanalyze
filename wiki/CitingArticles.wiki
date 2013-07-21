@@ -3,6 +3,10 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.ncbi.nlm.nih.gov/pubmed/23856522 Jmjd3 Controls Mesodermal and Cardiovascular Differentiation of Embryonic Stem Cells].
+Ohtani K, Zhao C, Dobreva G, Manavski Y, Kluge B, Braun T, Rieger MA, Zeiher AM, Dimmeler S.
+Circ Res. 2013 Jul 15.
+
 [http://www.ncbi.nlm.nih.gov/pubmed/23862100 A robust method to derive functional neural crest cells from human pluripotent stem cells]. Kreitzer FR, Salomonis N, Sheehan A, Huang M, Park JS, Spindler MJ, Lizarraga P, Weiss WA, So PL, Conklin BR. Am J Stem Cells. 2013 Jun 30;2(2):119-31
 
 [http://www.ncbi.nlm.nih.gov/pubmed/23782613 GPViz: dynamic visualization of genomic regions and variants affecting protein domains]. Snajder R, Trajanoski Z, Hackl H. Bioinformatics. 2013 Jul 5.
