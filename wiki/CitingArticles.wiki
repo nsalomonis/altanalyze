@@ -3,6 +3,10 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.ncbi.nlm.nih.gov/pubmed/23862100 A robust method to derive functional neural crest cells from human pluripotent stem cells]. Kreitzer FR, Salomonis N, Sheehan A, Huang M, Park JS, Spindler MJ, Lizarraga P, Weiss WA, So PL, Conklin BR. Am J Stem Cells. 2013 Jun 30;2(2):119-31
+
+[http://www.ncbi.nlm.nih.gov/pubmed/23782613 GPViz: dynamic visualization of genomic regions and variants affecting protein domains]. Snajder R, Trajanoski Z, Hackl H. Bioinformatics. 2013 Jul 5.
+
 [http://www.nature.com/ncomms/2013/130614/ncomms2974/full/ncomms2974.html Model-based rational design of an oncolytic virus with improved therapeutic potential]. Le Boeuf F, Batenchuk C, Vähä-Koskela M, Breton S, Roy D, Lemay C, Cox J, Abdelbary H, Falls T, Waghray G, Atkins H, Stojdl D, Diallo JS, Kærn M, Bell JC. Nat Commun. 2013 Jun 14;4:1974.
 
 [http://www.ingentaconnect.com/content/ben/cg/2013/00000014/00000003/art00004 Alternative Splicing (AS) of Genes As An Approach for Generating Protein Complexity]. Bishakha; M. Haupt, Larisa; R. Griffiths, Lyn. Current Genomics, Volume 14, Number 3, May 2013 , pp. 182-194(13).
