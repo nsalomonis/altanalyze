@@ -3,6 +3,9 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.biomedcentral.com/1471-2164/14/478/abstract Deep brain stimulation modulates nonsense-mediated RNA decay in Parkinson's patients leukocytes.] Soreq L, Bergman H, Israel Z, Soreq H.
+BMC Genomics. 2013 Jul 16;14(1):478
+
 [http://www.ncbi.nlm.nih.gov/pubmed/23856522 Jmjd3 Controls Mesodermal and Cardiovascular Differentiation of Embryonic Stem Cells].
 Ohtani K, Zhao C, Dobreva G, Manavski Y, Kluge B, Braun T, Rieger MA, Zeiher AM, Dimmeler S.
 Circ Res. 2013 Jul 15.
