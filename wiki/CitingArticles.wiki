@@ -60,6 +60,9 @@ Pharmacogenomics. 2012 Oct;13(13):1487-500.
 [http://jcs.biologists.org/content/early/2011/12/22/jcs.092239.short Son maintains accurate splicing for a subset of human pre-mRNAs].
 Alok Sharma, Michael Markey, Keshia Torres-Muñoz, Sapna Varia, Madhavi Kadakia, Athanasios Bubulya and Paula A. Bubulya. J Cell Sci. 2011 Dec 22 doi: 10.1242/​jcs.092239
 
+[http://www.jimmunol.org/content/187/5/2233.abstract MicroRNA regulation of molecular networks mapped by global microRNA, mRNA, and protein expression in activated T lymphocytes].
+Grigoryev YA, Kurian SM, Hart T, Nakorchevsky AA, Chen C, Campbell D, Head SR, Yates JR 3rd, Salomon DR. J Immunol. 2011 Sep 1;187(5):2233-43. doi: 10.4049/jimmunol.1101233.
+
 [http://nar.oxfordjournals.org/content/early/2011/11/27/nar.gkr1110.full Gene Array Analyzer: alternative usage of gene arrays to study alternative splicing events]. Pascal Gellert, Mizue Teranishi, Katharina Jenniches, Piera De Gaspari, David John, Karsten grosse Kreymborg, Thomas Braun and Shizuka Uchida. Nucl. Acids Res. (2011) doi: 10.1093/nar/gkr1110
 
 [http://www.nature.com/neuro/journal/vaop/ncurrent/full/nn.2959.html 5-hmC–mediated epigenetic dynamics during postnatal neurodevelopment and aging]. Keith E Szulwach, Xuekun Li, Yujing Li, Chun-Xiao Song, Hao Wu, Qing Dai, Hasan Irier, Anup K Upadhyay, Marla Gearing, Allan I Levey, Aparna Vasanthakumar, Lucy A Godley, Qiang Chang, Xiaodong Cheng, Chuan He & Peng Jin. Nature Neuroscience(2011) doi:10.1038/nn.2959 
