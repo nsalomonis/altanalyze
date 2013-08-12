@@ -1,30 +1,17 @@
 #summary Network Analysis and Visualization
 
+==Network Analysis and Visualization in AltAnalyze==
+
+In AltAnalyze version 2.0.8 and above, users can obtain automatically produced network visualization outputs from their analyses as well as perform custom network analyses using a variety of biological annotation resources. These network analyses consist of two functions:
+ # GO-Elite Enriched Gene-Term Associations
+ # NetPerspective hypothetical network generation
+
+==GO-Elite Enriched Gene-Term Associations==
+
+GO-Elite enrichment analysis produces a set of gene-sets and ontology terms pruned based on various statistical parameters. Given that genes or metabolites can often be shared between distinct enriched terms, visualizing the relationships can be important to determine functional redundancy. GO-Elite will output the relationships as automatically generated networks, visualized with up and downregulated genes (red and blue respectively) produced through AltAnalyze. 
+
+Custom input and denominator lists can also be analyzed using the "Additional Analyses" menu option, in which case, nodes will be colored yellow when no quantitative values are included (third column of the input files). 
+
 == NetPerspective: AltAnalyze Biological Network Analysis Tool ==
 
-NetPerspective is a new tool in AltAnalyze designed to visualize biological interactions between gene, proteins, RNAs, metabolites and drugs in a coherent and easy way. 
-
-[http://altanalyze.org/image/NetPerspective.jpg]
-
-Interactions can be based on:
- # Highly validated protein and metabolite interactions from annotated pathways (WikiPathways, KEGG, HMDB).
- # Experimentally derived protein-protein or protein-DNA interactions (BioGRID, Amadeus, Pazar).
- # Drug interactions (DrugBank).
- # Sequence predicted miRNA interactions. 
-
-Networks can be built from various sources including:
- # User supplied gene/metabolite ID files (e.g., AltAnalyze/[GOElite GO-Elite] produced).
- # Selected pathways/ontologies/gene-sets.
- # Existing interaction tables (e.g., SIF format).
-
-Multiple interaction algorithms can be used to identify:
- # Direct interacting nodes.
- # Nodes indirectly connecting through other genes/metabolites.
- # The shortest possible path between two or more genes/metabolites.
- # All available interactions.
-
-When loaded with a differential expression file in the AltAnalyze produced [GOElite GO-Elite] input file format, nodes will be colored as red or blue, depending on their assigned numerical value (positive or negative column #3). Additionally, IDs specifically in the input file can be used to augment a network (e.g., regulated protein expression in a metabolite network).
-
-*Using NetPerspective*
-
-NetPerspective can be run independent of the standard AltAnalyze workflows. To run, simply start AltAnalyze, select the appropriate species and ANY platform/vendor type (ignored for NetPerspective) and continue to the main analysis window. When presented, selected "Additional Analyses" then "Network Analysis". The above interface will be presented. Here you can select various options as outlined in the previous section. When providing a list of IDs, versus existing interactions, the input file type will need to be specified (option 2).
+NetPerspective is a new tool in AltAnalyze designed to visualize biological interactions between gene, proteins, RNAs, metabolites and drugs in a coherent and easy way. More information on this tool can be found [NetPerspective here].
