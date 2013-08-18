@@ -3,7 +3,9 @@
 
 === Articles Citing AltAnalyze ===
 
-[http://www.biomedcentral.com/1471-2164/14/478/abstract Deep brain stimulation modulates nonsense-mediated RNA decay in Parkinson's patients leukocytes.] Soreq L, Bergman H, Israel Z, Soreq H.
+[http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0071143 Sarcoptes scabiei Mites Modulate Gene Expression in Human Skin Equivalents]. Morgan MS, Arlian LG, Markey MP.PLoS One. 2013 Aug 5;8(8):e71143.
+
+[http://www.biomedcentral.com/1471-2164/14/478/abstract Deep brain stimulation modulates nonsense-mediated RNA decay in Parkinson's patients leukocytes]. Soreq L, Bergman H, Israel Z, Soreq H.
 BMC Genomics. 2013 Jul 16;14(1):478
 
 [http://www.ncbi.nlm.nih.gov/pubmed/23856522 Jmjd3 Controls Mesodermal and Cardiovascular Differentiation of Embryonic Stem Cells].
