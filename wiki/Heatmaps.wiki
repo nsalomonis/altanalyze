@@ -48,9 +48,9 @@ _*Transpose matrix*_: This option will transpose the columns and rows.
 
 _*Heatmap color contrast level*_: This option allows the user to adjust the intensity of the displayed plot.
 
-_*Select GeneSet/Ontology to filter*_: When loading a file containing IDs indicated in the Main Menu (Other IDs, platform specific or found in the AltAnalyze ExpressionOutput/Clustering folder), AltAnalyze can filter your list based on a large library of pathways, genesets and ontologies supported by GO-Elite. Hence, users can obtain pathway-specific cluster sets.
+_*Select Gene Set/Ontology to filter*_: When loading a file containing IDs indicated in the Main Menu (Other IDs, platform specific or found in the AltAnalyze ExpressionOutput/Clustering folder), AltAnalyze can filter your list based on a large library of pathways, genesets and ontologies supported by GO-Elite. Hence, users can obtain pathway-specific cluster sets.
 
-_*Select a specific GeneSet*_: Select a specific GeneSet or ontology term for the selected GO-Elite class indicated above.
+_*Select a specific Gene Set*_: Select a specific GeneSet or ontology term for the selected GO-Elite class indicated above.
 
 _*Type a pathway ID or Ontology ID*_: Alternatively enter pathway or ontology ID for quicker selection.
 
