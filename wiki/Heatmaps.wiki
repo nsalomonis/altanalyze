@@ -24,8 +24,34 @@ The three default plots for genes are:
 
 All of these plot the log2 fold changes relative to the row mean or comparison mean. The first of these clusters indicates how all samples compare to other samples, without considering specific user-comparisons (e.g., day 10 versus day 0). The second is for the same genes but with fold changes for each sample to the control group mean for any user-defined comparison (including control samples versus the control mean). The third is for any sample for any non-significant genes with a fold change greater than the user-defined fold threshold (default 2 fold) for a given sample versus the mean of all samples in that row.
 
-===Independent Analysis===
+===Customized Independent Analysis===
 
 In addition to running the workflow version of hierarchical clustering, users can select the *Additional Analyses* option to run hierarchical clustering any tab-delimited text file. This text file must have a header row of column annotations (e.g. sample names) and the first column with row annotations (e.g. gene names) and the remaining by positive and negative values. Multiple options for positive and negative gradients can be selected, along with clustering algorithms for rows and columns.
 
 [http://altanalyze.org/image/Clustering-pluri_small.jpg]
+
+*Menu and Formatting Options*
+
+_Biological Group Sample Visualization_: When sample columns are formatted to include the sample group name (e.g., cancer:sample1 - separated by a colon), these group assignments will be colored in the top color bar. When groups are not present in the sample names, the colors of distinct empirically derived clusters will be show instead. 
+
+_Clustering Metric_: This indicates the distance similarity metric used for clustering. These include a large number of algorithms available in the scipy statistical library. 
+
+_Clustering Method_: This indicates the methods for displaying the distance between elements of each cluster for linkage. In addition, the option hopach will automatically call the R environment, when present, install the hopach library locally within the AltAnalyze directory and call this function automatically.
+
+_Choose a color scheme_: A number of standard coloring options are provided for visualization (e.g., red-black-green). 
+
+_Clustering rows or columns_: Clustering of rows or columns can optionally be disabled, in which case the imported order will be displayed of rows or columns.
+
+_Normalize rows relative to_: If imported data is not normalized, it can be normalized relative to the mean of all samples or median. This function assumes the data is already log transformed.
+
+_Transpose matrix_: This option will transpose the columns and rows.
+
+_Heatmap color contrast level_: This option allows the user to adjust the intensity of the displayed plot.
+
+_Select GeneSet/Ontology to filter_: When loading a file containing IDs indicated in the Main Menu (Other IDs, platform specific or found in the AltAnalyze ExpressionOutput/Clustering folder), AltAnalyze can filter your list based on a large library of pathways, genesets and ontologies supported by GO-Elite. Hence, users can obtain pathway-specific cluster sets.
+
+_Select a specific GeneSet_: Select a specific GeneSet or ontology term for the selected GO-Elite class indicated above.
+
+_Type a pathway ID or Ontology ID_: Alternatively enter pathway or ontology ID for quicker selection.
+
+_Type a gene to get top correlated_: Display just those genes that are most correlated with a gene or identifier listed in the input expression file.
