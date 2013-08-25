@@ -7,7 +7,7 @@ Currently, AltAnalyze users can perform hierarchical clustering in one of two wa
  # Through analysis of raw array or RNA-Seq data (*Workflow Analysis*)
  # Immediate analysis of filtered fold files (*Independent Analysis*)
 
-For both approaches, a colored gene expression heatmap is produced with arrays clustered (columns) and genes clustered (rows) using basic methods found in other clustering programs, such as Cluster/TreeView. AltAnalyze makes this process extremely simple, with the user only needed to providing their transcriptome datasets.
+For both approaches, a colored gene expression heatmap is produced with arrays clustered (columns) and genes clustered (rows) using basic methods found in other clustering programs, such as [http://rana.lbl.gov/EisenSoftware.htm Cluster/TreeView]. AltAnalyze makes this process extremely simple, with the user only needed to providing their transcriptome datasets.
 
 *Visualization Support*
 
