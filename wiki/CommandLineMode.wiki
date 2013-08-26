@@ -1,8 +1,8 @@
 #summary FAQ-Command Line Mode
 
-===_Can I run AltAnalyze on a remote machine without using the graphical user interface?_===
+===_Running AltAnalyze from Command Line Interface_===
 
-_*Answer*_: Although the graphical user interface (GUI) is intended to be the primary way that a user establishes AltAnalyze parameters and creates group and comparison files, users will often want to run AltAnalyze jobs by command-line, locally or remotely. An example would be a job that is run for hundreds of arrays on a remote Linux server. AltAnalyze is intended to work just fine in such a scenario, given that the user knows the file paths of the directories containing input files, the output directory and has already created files containing the groups and comparisons for all samples analyzed. 
+Although the graphical user interface (GUI) is intended to be the primary way that a user establishes AltAnalyze parameters and creates group and comparison files, users will often want to run AltAnalyze jobs by command-line, locally or remotely. An example would be a job that is run for hundreds of arrays on a remote Linux server. AltAnalyze is intended to work just fine in such a scenario, given that the user knows the file paths of the directories containing input files, the output directory and has already created files containing the groups and comparisons for all samples analyzed. 
 
 Creating groups and comparison files is needed beforehand, but is fairly easy, in fact, just follow the directions listed [ManualGroupsCompsCreation here]. This can be done in an automated fashion as well, if the CEL files have a [PredictGroupsComps defined naming structure].
 
