@@ -8,7 +8,7 @@ One of these additional statistical measures is called a [http://www.nature.com/
 
 === Additional Analysis Considerations ===
 
-While the deviation value or DV is a useful statistic to consider, we recommend also running AltAnalyze with the [http://www.ncbi.nlm.nih.gov/pubmed/18573797 FIRMA] algorithm where available (Affymetrix data only), as this statistic is likely a more rigorous measure of overall significance at the gene-level for a single regulated exon.
+While the deviation value or DV is a useful statistic to consider, we recommend also running AltAnalyze with the [FIRMA] algorithm where available (Affymetrix data only), as this statistic is likely a more rigorous measure of overall significance at the gene-level for a single regulated exon.
 
 In addition to DV, additional parameters recommended by Yamashita et. al include:
 
