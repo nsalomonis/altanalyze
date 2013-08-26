@@ -1,0 +1,15 @@
+#summary FIRMA Analysis
+
+= FIRMA Analysis in AltAnalyze =
+
+FIRMA or [http://www.ncbi.nlm.nih.gov/pubmed/18573797 Finding Isoforms using Robust Multichip Analysis] is an alternative to the splicing-index approach, to calculate alternative splicing statistics. Rather than using the probe set expression values to determine differences in the relative expression of an exon for two or more conditions, FIRMA uses the residual values produced by the RMA algorithm for each probe, corresponding to a gene. The median of the residuals for each probe set, for each array sample is compared to the median absolute deviation for all residuals and samples for the gene.
+
+Although the core FIRMA methods are the same as the original implementation in R, AltAnalyze FIRMA differs in several important ways:
+
+ # The standard AltAnalyze core, extended, or full probe set definitions define the probe composition of each gene, rather than the Affymetrix transcript cluster definitions. Thus, each probe must correspond to a single Ensembl gene to be analyzed.
+ # While FIRMA scores for each sample and probe set are calculated, only summary statistics are reported in the standard AltAnalyze output files. This statistic is the average FIRMA score for all samples in the experimental group minus the average of the FIRMA scores in the designated baseline group. If no comparisons are specified, the two groups with the largest difference in scores are reported.  
+ # FIRMA scores are organized into groups for calculation of summary statistics (FIRMA fold change and t-test p-values). However, scores for each probe set and sample can be optionally exported.
+
+Users can define whether to use the AltAnalyze core, extended or full annotations in the program interface or using the --probetype flag in the command-line interface. An unique numerical ID corresponding to each Ensembl gene and all associated gene probe sets for FIRMA analysis are stored in a metaprobeset file in the array annotation directory (e.g., AltDatabase/EnsMart54/Hs/exon/Hs_exon_core.mps). This file is used to define gene level probe sets by the program APT. 
+
+Similar to splicing-index analysis of exon-tiling data, expression and DAGB filtering of probe set expression, FIRMA score p-value filtering and gene expression reporting/filtering based on either constitutive or all exon aligning probe sets. To export FIRMA scores for each probe set and sample, select the option “Export all normalized intensities” from the “Alternative Exon Analysis Parameters” window, or by using the flag --exportnormexp in the command-line interface.
