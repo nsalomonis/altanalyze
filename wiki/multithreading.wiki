@@ -6,7 +6,7 @@ AltAnalyze (version 2.0.8 and greater) has the built-in ability to use multiple 
  # RNA-Seq genomic coordinate exon/junction annotation/assignment (NPU = NPA*2)
  # GO-Elite standard enrichment analysis (NPU = 4)
  # GO-Elite parallel enrichment analysis (NPU = NPA*2)
- # GO-Elite based WikiPathway visualization (NPU = NPA*1.5)
+ # GO-Elite based WikiPathways visualization (NPU = NPA*1.5)
 
 _NPU = number of processes used_
 
