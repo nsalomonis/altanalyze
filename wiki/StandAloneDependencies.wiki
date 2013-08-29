@@ -60,6 +60,9 @@ Adding support for python applications call Tk is particularly challenging on Ub
  # *Install numpy*: {{{sudo apt-get install python-numpy}}}
  # *Install scipy*: {{{sudo apt-get install python-scipy}}}
  # *Install Imagetk*: {{{sudo apt-get install python-imaging python-imaging-tk}}}
+ # *Install patsy*: {{{sudo easy_install patsy}}}
+ # *Install pandas*: {{{sudo easy_install pandas}}}
+ # *Install fastcluster*: recommend install from source
 
 Note: Installing from source is necessary when apt-get or easy_install does not properly obtain all dependent libraries. To install from source use these commands:
  * python setup.py build
