@@ -13,7 +13,7 @@ Examples:
 _*Downloading and installing a species specific database (mouse)*_
 
 {{{
-python AltAnalyze.py --species Mm --update Official --version EnsMart62
+python AltAnalyze.py --species Mm --update Official --version EnsMart65
 }}}
 
 _*Analyzing RNA-Seq files – BED format exons and junction results using default options and GO-Elite*_
