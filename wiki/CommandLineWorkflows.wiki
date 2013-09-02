@@ -1,0 +1,61 @@
+#summary One-sentence summary of this page.
+
+= Workflow Command Lines in AltAnalyze =
+
+Full analysis pipelines can be run in AltAnalyze from the command line (source code and binary AltAnalyze versions). Below are example command line examples and detailed descriptions of available flags. For more information and links see: [http://code.google.com/p/altanalyze/wiki/CommandLineMode]
+
+
+===Workflow Examples===
+
+
+_*Analyzing  CEL files – Exon 1.0 array using default options*_
+
+{{{
+python AltAnalyze.py --species Mm --arraytype exon --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment"
+}}}
+
+_*Analyzing  CEL files – Exon 1.0 array using custom options*_
+
+{{{
+python AltAnalyze.py --species Hs --arraytype exon --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes ––noxhyb yes --analyzeAllGroups " all groups" ––GEcutoff 4 --probetype core --altp 0.001 --altmethod FIRMA ––altscore 8 --exportnormexp yes ––runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes
+}}}
+
+_*Analyzing Expression file – Gene 1.0 array using default options, without GO-Elite*_
+
+{{{
+python AltAnalyze.py --species Mm --arraytype gene --expdir "C:/CELFiles/ExpressionInput/exp.YourExperiment.txt" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --statdir "C:/CELFiles/ExpressionInput/stats.YourExperiment.txt" --output "C:/CELFiles"
+}}}
+
+_*Analyzing Filtered Expression file – Exon 1.0 array using default options*_
+
+{{{
+python AltAnalyze.py --species Hs --arraytype exon --filterdir "C:/CELFiles/Filtered/Hs_Exon_prostate_vs_lung.p5_average.txt" --output "C:/CELFiles"
+}}}
+
+_*Annotate External Probe set results – Exon 1.0 array using default options*_
+
+{{{
+python AltAnalyze.py --species Rn --arraytype exon --annotatedir "C:/JETTA_Results/Hs_tumor_progression.txt" --output "C:/JETTA_Results" --runGOElite yes
+}}}
+
+_*Return All AltAnalyze results with NO FILTERING – Exon 1.0 array using default options*_
+
+{{{
+python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment" --returnAll yes
+}}}
+
+_*Updating the database for a species*_
+
+{{{
+python AltAnalyze.py --species Mm --update Official --version EnsMart65
+}}}
+
+_*Operating System Example Folder Locations*_
+
+ * *PC*: "C:/CELFiles"
+
+ * *Mac OSX*: "/root/user/admin/CELFiles
+
+ * *Linux*: "/hd3/home/admin/CELFiles
+
+When the analysis is finished, the results will be stored just as with the GUI (e.g., alternative exon results in AltResults and gene expression results in ExpressionOutput).
