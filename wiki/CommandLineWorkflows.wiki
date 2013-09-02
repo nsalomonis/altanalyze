@@ -42,7 +42,8 @@ _*Analyzing CEL files – HJAY array using custom options*_
 python AltAnalyze.py --species Hs --arraytype junction --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes ––noxhyb yes --analyzeAllGroups "all groups" ––GEcutoff 4 --probetype core --altp 0.001 –altmethod "linearregres" ––altscore 8 --exportnormexp yes ––runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes --additionalAlgorithm FIRMA ––additionalScore 8
 }}}
 
-_*Analyzing Expression file – Gene 1.0 array using default options, without GO-Elite
+_*Analyzing Expression file – Gene 1.0 array using default options, without GO-Elite*_
+{{{
 python AltAnalyze.py --species Mm --arraytype gene --expdir "C:/CELFiles/ExpressionInput/exp.CancerCompendium.txt" --groupdir "C:/CELFiles/groups.CancerCompendium.txt" --compdir "C:/CELFiles/comps.CancerCompendium.txt" --statdir "C:/CELFiles/ExpressionInput/stats.CancerCompendium.txt" --output "C:/CELFiles"
 }}}
 
