@@ -11,7 +11,7 @@ Creating groups and comparison files is needed beforehand, but is fairly easy. J
 The command-line can be run from the source code or OS-specific binaries. The binaries are recommended since these already contain graphical, statistical and webservice dependencies that need to be separately installed for the source code (see more information [StandAloneDependencies here]). 
 
 When running with OS-specific binaries of AltAnalyze directly call the binary files themselves:
- * Windows OS _*{{{ AltAnalyze.exe }}}*_ (note: progress is hidden)
+ * Windows OS _*{{{ AltAnalyze.exe }}}*_
  * Mac OS X _*{{{ AltAnalyze.app/Contents/MacOS/AltAnalyze }}}*_
  * Ubuntu OS _*{{{ ./AltAnalyze }}}*_
  * Python source code _*{{{ python AltAnalyze.py }}}*_
