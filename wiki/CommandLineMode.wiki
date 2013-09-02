@@ -1,12 +1,20 @@
 #summary FAQ-Command Line Mode
 
-===_Running AltAnalyze from Command Line Interface_===
+==_Running AltAnalyze from Command Line Interface_==
 
-Although the graphical user interface (GUI) is intended to be the primary way that a user establishes AltAnalyze parameters and creates group and comparison files, users will often want to run AltAnalyze jobs by command-line, locally or remotely. An example would be a job that is run for hundreds of arrays on a remote Linux server. AltAnalyze is intended to work just fine in such a scenario, given that the user knows the file paths of the directories containing input files, the output directory and has already created files containing the groups and comparisons for all samples analyzed. 
+In addition to the graphical user interface (GUI), AltAnalyze can be easily run by command-line. This includes jobs run locallly, on a remote Linux server or cluster. This works fine given that the user knows the file paths of the directories containing input files, the output directory and has already created files containing the groups and comparisons for all samples analyzed. 
 
-Creating groups and comparison files is needed beforehand, but is fairly easy, in fact, just follow the directions listed [ManualGroupsCompsCreation here]. This can be done in an automated fashion as well, if the CEL files have a [PredictGroupsComps defined naming structure].
+*Creating Groups and Comparison Files* - 
+Creating groups and comparison files is needed beforehand, but is fairly easy. Just follow the directions listed [ManualGroupsCompsCreation here]. This can be done in an automated fashion as well, if input files have a [PredictGroupsComps defined naming structure].
 
-To run AltAnalyze from command-line, you will need to have installed the python source code version of AltAnalyze as opposed to the binary OS specific versions. When using this version, you will need to install other dependencies on your own as [StandAloneDependencies instructed here]. Before supplying the command-line argument to this program, you will need to open a command prompt and change to the directory with the AltAnalyze source code. 
+*Running Command Line from Source or Compiled Versions* - 
+The command-line can be run from the source code or OS-specific binaries. The binaries are recommended since these already contain graphical, statistical and webservice dependencies that need to be separately installed for the source code (see more information [StandAloneDependencies here]). 
+
+When running with OS-specific binaries of AltAnalyze directly call the binary files themselves:
+ * Windows OS _*{{{ AltAnalyze.exe }}}*_ (note: progress is hidden)
+ * Mac OS X _*{{{ AltAnalyze.app/Contents/MacOS/AltAnalyze }}}*_
+ * Ubuntu OS _*{{{ ./AltAnalyze }}}*_
+ * Python source code _*{{{ python AltAnalyze.py }}}*_
 
 Examples:
 
