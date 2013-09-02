@@ -40,7 +40,7 @@ python AltAnalyze.py --species Mm --platform "3'array" --celdir "C:/CELFiles" --
 
 Many more additional example workflow analysis options and detailed option descriptions for various AltAnalyze functions are provided in the below links.
 
-[CommandLineWorkflows Full AltAnalyze Workflows]
+[CommandLinesWorkflows Full AltAnalyze Workflows]
 
 [CommandLinesGOElite Pathway Enrichment Analysis and Visualization]
 
