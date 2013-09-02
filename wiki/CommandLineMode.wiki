@@ -16,25 +16,31 @@ When running with OS-specific binaries of AltAnalyze directly call the binary fi
  * Ubuntu OS _*{{{ ./AltAnalyze }}}*_
  * Python source code _*{{{ python AltAnalyze.py }}}*_
 
-Examples:
+===Options===
+
+Here you will find workflow examples, flags and additional information.
 
 _*Downloading and installing a species specific database (mouse)*_
 
 {{{
-python AltAnalyze.py --species Mm --update Official --version EnsMart65
+python AltAnalyze.py --species Mm --update Official --version EnsMart65 --additional all
 }}}
 
 _*Analyzing RNA-Seq files – BED format exons and junction results using default options and GO-Elite*_
 
 {{{
-python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups.YourExperiment.txt" --compdir "C:/BEDFiles/comps.YourExperiment.txt" --output "C:/BEDFiles" --expname "YourExperiment --runGOElite yes"
+python AltAnalyze.py --species Hs --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups.YourExperiment.txt" --compdir "C:/BEDFiles/comps.YourExperiment.txt" --output "C:/BEDFiles" --expname "YourExperiment --runGOElite yes" --returnPathways all
 }}}
 
 _*Analyzing CEL files – Affymetrix 3’ array using default options and GO-Elite*_
 
 {{{
-python AltAnalyze.py --species Mm --arraytype "3'array" --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment --runGOElite yes"
+python AltAnalyze.py --species Mm --platform "3'array" --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.YourExperiment.txt" --compdir "C:/CELFiles/comps.YourExperiment.txt" --output "C:/CELFiles" --expname "YourExperiment" --runGOElite yes --returnPathways all
 }}}
+
+[All Workflow examples and options]
+
+[]
 
 _*Analyzing  CEL files – Exon 1.0 array using default options*_
 
