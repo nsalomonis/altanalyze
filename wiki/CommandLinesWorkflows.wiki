@@ -1,0 +1,99 @@
+#summary One-sentence summary of this page.
+
+= Workflow Command Lines in AltAnalyze =
+
+Full analysis pipelines can be run in AltAnalyze from the command line (source code and binary AltAnalyze versions). Below are example command line examples and detailed descriptions of available flags. For more information and links see: [http://code.google.com/p/altanalyze/wiki/CommandLineMode]
+
+
+===Workflow Examples===
+
+_*Analyzing CEL files – Affymetrix 3’ array using default options and GO-Elite*_
+{{{
+python AltAnalyze.py --species Mm --arraytype "3'array" --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.CancerCompendium.txt" --compdir "C:/CELFiles/comps.CancerCompendium.txt" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite yes --returnPathways all
+}}}
+
+_*Analyzing RNA-Seq (RNASeq) data – BED files using default options*_
+{{{
+python AltAnalyze.py --species Mm --platform RNASeq --bedDir "C:/BEDFiles" --groupdir "C:/BEDFiles/groups.CancerCompendium.txt" --compdir "C:/BEDFiles/comps.CancerCompendium.txt" --output "C:/BEDFiles" --expname "CancerCompendium" 
+}}}
+
+_*Analyzing CEL files – Exon 1.0 array using default options*_
+{{{
+python AltAnalyze.py --species Mm --arraytype exon --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.CancerCompendium.txt" --compdir "C:/CELFiles/comps.CancerCompendium.txt" --output "C:/CELFiles" --expname "CancerCompendium"
+}}}
+
+_*Analyzing CEL files – Affymetrix 3’ array using default options and GO-Elite*_
+{{{
+python AltAnalyze.py --species Mm --arraytype "3'array" --celdir "C:/CELFiles" --groupdir "C:/CELFiles/groups.CancerCompendium.txt" --compdir "C:/CELFiles/comps.CancerCompendium.txt" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite yes --returnPathways all
+}}}
+
+_*Analyzing Filtered Expression file – RNA-Seq using custom options*_
+{{{
+python AltAnalyze.py --species Mm --platform RNASeq –-filterdir "C:/BEDFiles" --altpermutep 1 --altp 1 --altpermute yes --additionalAlgorithm none --altmethod linearregres --altscore 2 --removeIntronOnlyJunctions yes
+}}}
+
+_*Analyzing CEL files – Exon 1.0 array using custom options*_
+{{{
+python AltAnalyze.py --species Hs --arraytype exon --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes ––noxhyb yes --analyzeAllGroups "all groups" ––GEcutoff 4 --probetype core --altp 0.001 --altmethod FIRMA ––altscore 8 --exportnormexp yes ––runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes
+}}}
+
+_*Analyzing CEL files – HJAY array using custom options*_
+{{{
+python AltAnalyze.py --species Hs --arraytype junction --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes ––noxhyb yes --analyzeAllGroups "all groups" ––GEcutoff 4 --probetype core --altp 0.001 –altmethod "linearregres" ––altscore 8 --exportnormexp yes ––runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes --additionalAlgorithm FIRMA ––additionalScore 8
+}}}
+
+_*Analyzing Expression file – Gene 1.0 array using default options, without GO-Elite*_
+{{{
+python AltAnalyze.py --species Mm --arraytype gene --expdir "C:/CELFiles/ExpressionInput/exp.CancerCompendium.txt" --groupdir "C:/CELFiles/groups.CancerCompendium.txt" --compdir "C:/CELFiles/comps.CancerCompendium.txt" --statdir "C:/CELFiles/ExpressionInput/stats.CancerCompendium.txt" --output "C:/CELFiles"
+}}}
+
+_*Analyzing Filtered Expression file – Exon 1.0 array using default options*_
+{{{
+python AltAnalyze.py --species Hs --arraytype exon --filterdir "C:/CELFiles/Filtered/Hs_Exon_prostate_vs_lung.p5_average.txt" --output "C:/CELFiles"
+}}}
+
+_*Annotate External Probe set results – Exon 1.0 array using default options*_
+{{{
+python AltAnalyze.py --species Rn --arraytype exon --annotatedir "C:/JETTA_Results/Hs_tumor_progression.txt" --output "C:/JETTA_Results" --runGOElite yes
+}}}
+
+_*Filter AltAnalyze results with predefined IDs using default options*_
+{{{
+python AltAnalyze.py --species Mm --arraytype gene --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --returnAll yes
+}}}
+
+
+_*Operating System Example Folder Locations*_
+
+ * *PC*: "C:/CELFiles"
+
+ * *Mac OSX*: "/root/user/admin/CELFiles
+
+ * *Linux*: "/hd3/home/admin/CELFiles
+
+When the analysis is finished, the results will be stored just as with the GUI (e.g., alternative exon results in AltResults and gene expression results in ExpressionOutput).
+
+===Primary Analysis Variables===
+
+No default value for these variables is given and must be supplied by the user if running an analysis. For example, if analyzing CEL files directly in AltAnalyze, you must include the flags {{{ --species --arraytype --celdir --expname }}} and {{{--output }}}, with corresponding values. Likewise, when analyzing an existing expression file you must include the flags {{{--species --arraytype --expdir}}} and {{{---output}}}. Most of the variable values are file or folder locations.
+
+===Universally Required Variables===
+
+|| --platform --arraytype || Platform being analyzed (enter "3'array" if none of the below apply). Values include RNASeq, exon, gene, junction, AltMouse and “3'array”. This variable indicates the general array type correspond to the input CEL files or expression file. An example exon array is the Mouse Affymetrix Exon ST 1.0 array, an example gene array is the Mouse Affymetrix Gene ST 1.0 array and example 3’array is the Affymetrix Mouse 430 version 2.0 array. See the files ArrayFileInfo.txt and array.txt in AltAnalyze/Config/ for details.||
+|| --species || Species codes are provided for this variable (e.g., Hs, Mm, Rn). Additional species can be added through the graphic user interface.
+|| --output || Required for all analyses. This designates the directory which results will be saved to. ||
+
+Analysis Specific Required Variables||
+||{{{--expname}}} || Required when analyzing CEL files. This provides a name for your dataset. This name must match any existing groups and comps files that already exist. The groups and comps file indicate which arrays correspond to which biological groups and which to compare. These files must exist in the designated output directory in the folder “ExpressionInput” with the names “groups.*expname*.txt” and “comps.*expname*.txt” where expname is the variable defined in this flag. Alternatively, the user can name their CEL files such that AltAnalyze can directly determine which group they are (e.g., wildtype-1.CEL, cancer-1.CEL, cancer-2.CEL). Go [ManualGroupsCompsCreation here] for more info.||
+||{{{--celdir --bedDir }}} || Required when analyzing CEL files. This provides the path of the CEL files to analyze. These must all be in a single folder.||
+||{{{--expdir}}} || Required when analyzing a processed expression file. This provides the path of the expression file to analyze.||
+||{{{--statdir}}} || Optional when analyzing a processed expression file. This provides the path of the DABG p-value file for the designated expression file to analyze (see –expdir).||
+||{{{--filterdir}}} || Required when aalyzing an AltAnalyze filtered expression file. This provides the path of the AltAnalyze filtered expression file to analyze.||
+||{{{--cdfdir}}} || Required when directly processing some CEL file types. This variable corresponds to the location of the Affymetrix CDF or PGF annotation file for the analyzed array. If you are analyzing an exon, gene, junction, AltMouse or 3’arrays, AltAnalyze has default internet locations for which to download these files automatically, otherwise, you must download the compressed CDF file from the Affymetrix website (support), decompress it (e.g., WinZip) and reference it’s location on your hard-drive using this flag. If you are unsure whether AltAnalyze can automatically download this file, you can try to exclude this variable and see if annotations are included in your gene expression results file.||
+||{{{--csvdir}}} || Required when analyzing some expression files or CEL file types. This variable corresponds to the location of the Affymetrix CSV annotation file for the analyzed array. If you are analyzing an exon, gene, junction, AltMouse or 3’arrays, AltAnalyze has default internet locations for which to download these files automatically, otherwise, you must download the compressed CSV file from the Affymetrix website (support), decompress it (e.g., WinZip) and reference it’s location on your hard-drive using this flag. If you are unsure whether AltAnalyze can automatically download this file, you can try to exclude this variable and see if annotations are included in your gene expression results file.||
+||{{{--annotatedir}}} || Required when annotating a list regulated probe sets produced outside of AltAnalyze. This variable corresponds to the location of the directory containing one or more probe set files. These files can be in the standard JETTA export format, or otherwise need to have probe set IDs in the first column. Optionally, these files can have an associated fold change and p-value (2nd and 3rd columns), which will be reported in the results file.||
+||{{{--groupdir}}} || Location of an existing group file to be copied to the directory in which the expression file is located or will be saved to. ||
+||{{{--compdir}}} || Location of an existing comps file to be copied to the directory in which the expression file is located or will be saved to.||
+
+
+
