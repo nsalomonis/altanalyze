@@ -1,9 +1,8 @@
 #summary One-sentence summary of this page.
 
-= Workflow Command Lines in AltAnalyze =
+= Workflow Command Line Options in AltAnalyze =
 
 Full analysis pipelines can be run in AltAnalyze from the command line (source code and binary AltAnalyze versions). Below are example command line examples and detailed descriptions of available flags. For more information and links see: [http://code.google.com/p/altanalyze/wiki/CommandLineMode]
-
 
 ===Workflow Examples===
 
