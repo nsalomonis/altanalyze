@@ -11,7 +11,12 @@ Input IDs do not have to correspond to one of the above, but will if annotations
  # Metabolite annotation (e.g., name, KEGG, WikiPathways)
  # Sample classification (LineageProfiler)
  # Marker prediction (MarkerFinder)
+ # Quantile and batch-effects normalization
  # Hierarchical clustering 
  # 2D and 3D PCA
  # Basic sample QC visualization
  # Pathway enrichment analysis and visualization
+
+===Data Import===
+
+To import data, simple select the *Vendor/data-type* as *Other ID* and the appropriate ID system under the menu *Select platform*. Proceed with the default or customized options.
