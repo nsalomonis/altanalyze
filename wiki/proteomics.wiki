@@ -1,5 +1,22 @@
 #summary Proteomics Analysis in AltAnalyze
 
-= Proteomics Analysis in AltAnalyze =
+==Proteomics Analysis in AltAnalyze==
 
-Details coming soon.
+Proteomics experiments typically produce quantitative values associated with protein, peptide or gene identifiers. AltAnalyze supports import and analysis of proteomics data assuming:
+ * IDs correspond to any of the many supported input ID systems
+ * Quantitative values are non-zero (ideally log2)
+
+Input IDs do not have to correspond to one of the above, but will if annotations and enrichment analyses are desired in AltAnalyze. Supported analyses include:
+ # Differential protein expression statistics (e.g., moderated t-test)
+ # Protein/gene annotation (e.g., name, Pathways, Ontologies)
+ # Sample classification (LineageProfiler)
+ # Marker prediction (MarkerFinder)
+ # Quantile and batch-effects normalization
+ # Hierarchical clustering 
+ # 2D and 3D PCA
+ # Basic sample QC visualization
+ # Pathway enrichment analysis and visualization
+
+===Data Import===
+
+To import data, simple select the *Vendor/data-type* as *Other ID* and the appropriate ID system under the menu *Select platform*. Proceed with the default or customized options.
