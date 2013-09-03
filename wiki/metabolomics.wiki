@@ -8,7 +8,9 @@ Metabolomics experiments typically produce quantitative values associated with c
 
 Input IDs do not have to correspond to one of the above, but will if annotations and enrichment analyses are desired in AltAnalyze. Supported analyses include:
  # Differential metabolite expression statistics (e.g., moderated t-test)
- # Metabolite annotation (e.g., name, KEGG< WikiPathways)
+ # Metabolite annotation (e.g., name, KEGG, WikiPathways)
+ # Sample classification (LineageProfiler)
+ # Marker prediction (MarkerFinder)
  # Hierarchical clustering 
  # 2D and 3D PCA
  # Basic sample QC visualization
