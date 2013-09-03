@@ -109,9 +109,11 @@ No default value for these variables is given and must be supplied by the user i
    Location of an existing comps file to be copied to the directory in which the expression file is located or will be saved to.
 
 *Optional Analysis Variables*
+
 These variables are set as to default values when not selected. The default values are provided in the configurations text file in the Config directory of AltAnalyze (default-**.txt) and can be changed by editing in a spreadsheet program.
 
 *GO-Elite Analysis Variables*
+
 AltAnalyze can optionally subject differentially or alternatively expressed genes (AltAnalyze and user determined) to an over-representation analysis (ORA) along Gene Ontology (GO) and pathways (WikiPathways) using the program GO-Elite. GO-Elite is seamlessly integrated with AltAnalyze and thus can be run using default parameters either the graphic user interface or command line. To run GO-Elite using default parameters in command line mode, include the first flag below with the option yes.
 {{{--runGOElite}}}
  Default is no. Used to indicate whether to run GO-Elite analysis following AltAnalyze. Indicating yes would prompt GO-Elite to run.
