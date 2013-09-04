@@ -33,12 +33,12 @@ python AltAnalyze.py --species Mm --platform RNASeq –-filterdir "C:/BEDFiles" 
 
 _*Analyzing CEL files – Exon 1.0 array using custom options*_
 {{{
-python AltAnalyze.py --species Hs --arraytype exon --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes ––noxhyb yes --analyzeAllGroups "all groups" ––GEcutoff 4 --probetype core --altp 0.001 --altmethod FIRMA ––altscore 8 --exportnormexp yes ––runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes
+python AltAnalyze.py --species Hs --arraytype exon --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes --noxhyb yes --analyzeAllGroups "all groups" --GEcutoff 4 --probetype core --altp 0.001 --altmethod FIRMA --altscore 8 --exportnormexp yes --runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes
 }}}
 
 _*Analyzing CEL files – HJAY array using custom options*_
 {{{
-python AltAnalyze.py --species Hs --arraytype junction --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes ––noxhyb yes --analyzeAllGroups "all groups" ––GEcutoff 4 --probetype core --altp 0.001 –altmethod "linearregres" ––altscore 8 --exportnormexp yes ––runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes --additionalAlgorithm FIRMA ––additionalScore 8
+python AltAnalyze.py --species Hs --arraytype junction --celdir "C:/CELFiles" --output "C:/CELFiles" --expname "CancerCompendium" --runGOElite no --dabgp 0.01 --rawexp 100 --avgallss yes --noxhyb yes --analyzeAllGroups "all groups" --GEcutoff 4 --probetype core --altp 0.001 –altmethod "linearregres" --altscore 8 --exportnormexp yes --runMiDAS no --ASfilter yes --mirmethod "two or more" --calcNIp yes --additionalAlgorithm FIRMA --additionalScore 8
 }}}
 
 _*Analyzing Expression file – Gene 1.0 array using default options, without GO-Elite*_
@@ -138,7 +138,7 @@ AltAnalyze can optionally subject differentially or alternatively expressed gene
 {{{--GEelitefold}}}
  Default is 2. The minimum fold change threshold for differentially expressed genes required for analysis by GO-Elite. Applied to any group comparisons designated by the user.
 {{{--ORAstat}}}
- Default is Fisher Exact Test. When the value is set to “Permute p-value”, a permutation p-value will be calculated using the default of provided number of permutations ({{{--elitepermut). The adjusted p-value will be calculated from the selected type of ORAstat.
+ Default is Fisher Exact Test. When the value is set to “Permute p-value”, a permutation p-value will be calculated using the default of provided number of permutations ({{{--elitepermut}}}). The adjusted p-value will be calculated from the selected type of ORAstat.
 {{{--additional}}}
  Default is None. When the value is set to one of a valid resource or “all”, GO-Elite will download and incorporate that resource along with the default downloaded (WikiPathways and Gene Ontology). Additional resources include: “miRNA Targets”, ”GOSlim”, ”Disease Ontology”, ”Phenotype Ontology”, ”KEGG”, “Latest WikiPathways”, ”PathwayCommons”, ”Transcription Factor Targets”, ”Domains” and ”BioMarkers” (include quotes). 
 {{{--denom}}}
@@ -156,6 +156,8 @@ These variables are used to determine the format of the expression data being re
  Default is log for arrays and non-log for RNA-Seq. This is the format of the input expression data. If analyzing CEL files in AltAnalyze or in running RMA or GCRMA from another application, the output format of the expression data is log 2 intensity values. If analyzing MAS5 expression data, this is non-log.
 {{{--inclraw}}}
  Default is yes. When the value of this variable is no, all columns that contain the expression intensities for individual arrays are excluded from the results file. The remaining columns are calculated statistics (groups and comparison) and annotations.
+{{{--vendor}}}
+ Default is Affymetrix. This variable can be set to *"Other ID"* when analyzing data from proteomics, metabolomics or other data not explicitely listed in the vendor/data-type menu. When entering "Other ID", also include the {{{--platform}}} as the specific ID system (e.g., PubChem). 
 
 *RNASeq, Exon, Gene, Junction or AltMouse Platform Specific Variables*
 
@@ -261,3 +263,38 @@ In addition to the core AltAnalyze workflows (e.g., normalization, gene expressi
  Default is red_white_blue. Indicates the color gradient to be used for visualization as up-null-down. Other options include: red_black_sky, red_black_blue, red_black_green, yellow_black_blue, green_white_purple, coolwarm and seismic. 
 {{{--transpose}}}
  Default is False. Will transpose the matrix of columns and rows prior to clustering, when set to True.
+
+{{{--compendiumPlatform}}}
+{{{--compendiumType}}}
+{{{--exonMapFile}}}
+{{{--geneExp}}}
+{{{--labels}}}
+{{{--contrast}}}
+{{{--plotType}}}
+{{{--runMarkerFinder}}}
+{{{--update_interactions}}}
+{{{--includeExpIDs}}}
+{{{--degrees}}}
+{{{--genes}}}
+{{{--inputType}}}
+{{{--interactionDirs}}}
+{{{--GeneSetSelection}}}
+{{{--PathwaySelection}}}
+{{{--OntologyID}}}
+{{{--dataType}}}
+{{{--combat}}}
+{{{--channelToExtract}}}
+{{{--showIntrons}}}
+{{{--display}}}
+{{{--join}}}
+{{{--uniqueOnly}}}
+{{{--accessoryAnalysis}}}
+{{{--inputIDType}}}
+{{{--outputIDType}}}
+{{{--FEdir}}}
+{{{--channelToExtract}}}
+{{{--AltResultsDir}}}
+{{{--geneFileDir}}}
+{{{--modelSize}}}
+{{{--geneModel}}}
+{{{--reference}}}
