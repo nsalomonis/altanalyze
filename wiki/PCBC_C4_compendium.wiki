@@ -2,7 +2,12 @@
 
 == Overview of PCBC C4 Compendium Genomic Profiles in Synapse ==
 
-AltAnalyze was used to generate signature sets (differentially expressed genes) for a large number of pluripotency and iPS associated comparisons. This page describes the criterion used in AltAnalyze to generate these comparisons lists.
+Information on the NHLBI Progenitor Cell Biology Consortium (PCBC) can be found at:
+http://www.progenitorcells.org
+
+AltAnalyze was used to generate signature sets (differentially expressed genes) for a large number of pluripotency and iPS associated comparisons. These comparisons include human embryonic stem cells, derived differentiation products and control profiled cell types. The same data exists for a large number of induced pluripotent stem (iPS) cell lines, profiled at the level of mRNA-seq, miRNA-seq, copy-number variation and methylation based assays. The associated raw data will be posted for public access in the [http://sagebase.org/synapse-overview/ Sage Bionetworks] open data repository Synapse, following internal review. 
+
+This page describes the criterion used in AltAnalyze to generate automated comparisons lists, processed data, alternative exon results, lineage predictions, enrichment analysis results and associated graphical outputs.
 
 ===Version 1.0 Compendium Results===
 
