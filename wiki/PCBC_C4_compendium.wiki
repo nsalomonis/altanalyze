@@ -1,0 +1,9 @@
+#summary Overview of PCBC C4 Compendium Genomic Profiles
+
+= Overview of PCBC C4 Compendium Genomic Profiles in Synapse =
+
+AltAnalyze was used to generate signature sets (differentially expressed genes) for a large number of pluripotency and iPS associated comparisons. This page describes the criterion used in AltAnalyze to generate these comparisons lists.
+
+==Version 1.0 Compendium Results==
+
+The first version of comprehensive comparison analyses posted in Synapse were generated on 9/22/13 using AltAnalyze 2.0.8 version with the EnsMart72 database using default parameters in addition to the custom parameters --geneRPKM 3 (gene-level RPKM > 3) --GEcutoff 3 (maximum gene expression fold change of 3 for alternative exon analysis).
