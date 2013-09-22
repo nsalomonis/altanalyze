@@ -1,5 +1,7 @@
 #summary Overview of PCBC C4 Compendium Genomic Profiles
 
+http://altanalyze.org/graphics/pcbc.png
+
 == Overview of PCBC C4 Compendium Genomic Profiles in Synapse ==
 
 Information on the NHLBI Progenitor Cell Biology Consortium (PCBC) can be found at:
