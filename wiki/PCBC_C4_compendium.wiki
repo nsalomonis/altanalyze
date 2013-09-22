@@ -13,4 +13,11 @@ This page describes the criterion used in AltAnalyze to generate automated compa
 
 ===Version 1.0 Compendium Results===
 
-The first version of comprehensive comparison analyses posted in Synapse were generated on 9/22/13 using AltAnalyze 2.0.8 version with the EnsMart72 database using default parameters in addition to the custom parameters --geneRPKM 3 (gene-level RPKM > 3) --GEcutoff 3 (maximum gene expression fold change of 3 for alternative exon analysis).
+The first version of comprehensive comparison analyses posted in Synapse were generated on 9/22/13 using AltAnalyze version 2.0.8 using the human EnsMart72 database. 
+
+*Parameters*: All parameters were set to their defaults except for the following: 
+ # --geneRPKM 3 (gene-level RPKM > 3) 
+ # --GEcutoff 3 (maximum gene expression fold change of 3 for alternative exon analysis)
+ # --GEeliteptype adjp (BH adjusted, moderated t-test p-value for all comparisons)
+
+These defaults include a 2-fold gene expression cutoff.
