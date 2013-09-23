@@ -298,3 +298,5 @@ In addition to the core AltAnalyze workflows (e.g., normalization, gene expressi
 {{{--modelSize}}}
 {{{--geneModel}}}
 {{{--reference}}}
+
+{{{python AltAnalyze.py --expdir /MyExperiment/ExpressionInput/exp.tumors.txt --update markers --species Hs --platform RNASeq --genesToReport 200}}}
