@@ -8,7 +8,6 @@
  * Python graph-tool: http://projects.skewed.de/graph-tool/
  * iGraph
  * RNA-Seq isoform visualization (requires Matplotlib and PyML) : http://splicegrapher.sourceforge.net/
- * Graph, network and dendrogram output to SVG: http://igraph.sourceforge.net
  * Other: http://vermeulen.ca/python-graphics.html
  * Advanced table viewer: http://www.nemethi.de/tablelist/tablelist.html
  * Interactive heatmap, network and other in Orange: http://www.biolab.si/supp/bi-visprog/dicty/Heat%20Map.htm
@@ -16,19 +15,18 @@
 
 ===Data Analysis===
  * Exon expression extraction: http://code.google.com/p/bedtools/
- * Hierarchical and agglomerationexpressive clustering: http://docs.scipy.org/doc/scipy/reference/cluster.hierarchy.html
  * PCA and clustering: http://pyrorobotics.org/?page=PyroModuleAnalysis
- * RNA-Seq QC and visualization: http://code.google.com/p/ever-seq/
  * RNA-Seq QC and visualization: http://code.google.com/p/rseqc/
  * RNA-Seq QC and visualization: https://confluence.broadinstitute.org/display/CGATools/RNA-SeQC/
  * Evaluate [http://en.m.wikipedia.org/wiki/Independent_component_analysis#section_2 ICA] for LineageProfiler
- * Combat in python (depends on other packages): https://github.com/brentp/combat.py/blob/master/combat.py
-note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
+ * Genomic evaluation of qPCR primers: http://quwubin.cn/MFEprimer/
  * Databases for probe-level splicing anlayses: http://affymetrix2.bioinf.fbb.msu.ru/files.html
  * GEO data import: http://bcbio.wordpress.com/2010/01/02/automated-retrieval-of-expression-data-with-python-and-r/
  * Sweave for python: http://stackoverflow.com/questions/2161152/sweave-for-python
  * SplicingCompass in R: http://www.ichip.de/software/SplicingCompass.html
  * Pycogent for probabilist genomics: http://pycogent.org
+
+note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uci.edu/~gohlke/pythonlibs/
 
 = Visualization Software Installation Notes =
 
