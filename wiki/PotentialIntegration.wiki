@@ -28,6 +28,7 @@ note: Win32 and Win64 unofficial installers can be found here: http://www.lfd.uc
  * GEO data import: http://bcbio.wordpress.com/2010/01/02/automated-retrieval-of-expression-data-with-python-and-r/
  * Sweave for python: http://stackoverflow.com/questions/2161152/sweave-for-python
  * SplicingCompass in R: http://www.ichip.de/software/SplicingCompass.html
+ * Pycogent for probabilist genomics: http://pycogent.org
 
 = Visualization Software Installation Notes =
 
