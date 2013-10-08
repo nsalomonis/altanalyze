@@ -6,7 +6,6 @@
  * RNA-Seq analysis: https://rnaseqlib.readthedocs.org/en/latest/
  * Network visualization: http://code.google.com/p/python-graph/w/list
  * Python graph-tool: http://projects.skewed.de/graph-tool/
- * iGraph
  * RNA-Seq isoform visualization (requires Matplotlib and PyML) : http://splicegrapher.sourceforge.net/
  * Other: http://vermeulen.ca/python-graphics.html
  * Advanced table viewer: http://www.nemethi.de/tablelist/tablelist.html
