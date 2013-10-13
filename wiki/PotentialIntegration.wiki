@@ -13,6 +13,7 @@
  * Methylation-sequencing visualization: https://github.com/simonvh/fluff/blob/master/README.md
 
 ===Data Analysis===
+ * HTSeq: http://www-huber.embl.de/users/anders/HTSeq/doc/overview.html
  * Exon expression extraction: http://code.google.com/p/bedtools/
  * PCA and clustering: http://pyrorobotics.org/?page=PyroModuleAnalysis
  * RNA-Seq QC and visualization: http://code.google.com/p/rseqc/
