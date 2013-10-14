@@ -3,6 +3,12 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.sciencedirect.com/science/article/pii/S0022283613005111 Towards Precision Medicine: Advances in Computational Approaches for the Analysis of Human Variants]. Peterson TA, Doughty E, Kann MG. J Mol Biol. 2013 Nov 1;425(21):4047-4063. 
+
+[http://www.sciencedirect.com/science/article/pii/S0161589013004483 The zinc finger transcription factor ZXDC activates CCL2 gene expression by opposing BCL6-mediated repression]. Ramsey JE, Fontes JD. Mol Immunol. 2013 Dec 31;56(4):768-80.
+
+[http://www.jneurosci.org/content/33/37/14825.long The Pattern of Cortical Dysfunction in a Mouse Model of a Schizophrenia-Related Microdeletion]. Fénelon K, Xu B, Lai CS, Mukai J, Markx S, Stark KL, Hsu PK, Gan WB, Fischbach GD, Macdermott AB, Karayiorgou M, Gogos JA. J Neurosci. 2013 Sep 11;33(37):14825-14839.
+
 [http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0071143 Sarcoptes scabiei Mites Modulate Gene Expression in Human Skin Equivalents]. Morgan MS, Arlian LG, Markey MP.PLoS One. 2013 Aug 5;8(8):e71143.
 
 [http://www.biomedcentral.com/1471-2164/14/478/abstract Deep brain stimulation modulates nonsense-mediated RNA decay in Parkinson's patients leukocytes]. Soreq L, Bergman H, Israel Z, Soreq H.
