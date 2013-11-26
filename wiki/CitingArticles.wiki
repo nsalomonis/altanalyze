@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.ncbi.nlm.nih.gov/pubmed/24265543 Altered gene expression in dry age-related macular degeneration suggests early loss of choroidal endothelial cells]. Whitmore SS, Braun TA, Skeie JM, Haas CM, Sohn EH, Stone EM, Scheetz TE, Mullins RF.  Mol Vis. 2013 Nov 16;19:2274-2297.
+
 [http://www.sciencedirect.com/science/article/pii/S1574789113001440 An integrative framework identifies alternative splicing events in colorectal cancer development]. Andrea Bisognina, Silvia Pizzinib,Lisa Perillib, Giovanni Espositoc, Simone Mocellind, Donato Nittid, Paola Zanovellob, Stefania Bortoluzzia, Susanna Mandruzzato. Mol. Oncology. 2013. dx.doi.org/10.1016/j.molonc.2013.10.004
 
 [http://www.sciencedirect.com/science/article/pii/S0022283613005111 Towards Precision Medicine: Advances in Computational Approaches for the Analysis of Human Variants]. Peterson TA, Doughty E, Kann MG. J Mol Biol. 2013 Nov 1;425(21):4047-4063. 
