@@ -4,7 +4,7 @@
 
 RPKMs or reads per kilobase per million is calculated similar to other applications. An example is outlined below:
 
-RPKM = 1,000,000*(Num-Reads)/(All-Reads*Seq-Len)
+{{{RPKM = 1,000,000*(Num-Reads)/(All-Reads*Seq-Len)}}}
 
 For gene X for one sample, let's say you get an RPKM of 30.45. You sequenced a sample at a depth of 100 million reads, paired-end with 100nt reads. To get here, the following variables were calculated:
 
