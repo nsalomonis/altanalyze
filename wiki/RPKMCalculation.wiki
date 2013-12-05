@@ -2,7 +2,7 @@
 
 === How are RPKMs Calculated in AltAnalyze? ===
 
-RPKMs or reads per kilobase per million is calculated similar to other methods. An example is outlined below:
+RPKMs or reads per kilobase per million is calculated similar to other applications. An example is outlined below:
 
 RPKM = 1,000,000*(NumReads)/(AllReads*SeqLen)
 
