@@ -57,3 +57,9 @@ The reference file can be generated from in an automated manner or manually. It 
 ===Model File===
 
 The model file consists of rows of IDs that are subsets of the IDs found in the reference and expression files. If this file is not provided, all IDs present will be used for classification. However, the model file allows for different ID sets to be evaluated as potential prognostic markers, with the combined results from these models presented in the output file (see example [http://altanalyze.org/LineageProfiler/qPCR-PAM50_PMID-23035882.zip here]). The best performing models discovered in a training set can be obtained from the Command-Line LineageProfilerIterate tool.
+
+===Output===
+
+When evaluating multiple distinct sample classes (e.g., tumor types), a combined model score will be reported along with the number of models that indicate a particular disease class. Below is a graphical output of the number of models that indicate sample class for an independent test set from the PAM50 qPCR dataset (http://altanalyze.org/LineageProfiler/qPCR-PAM50_PMID-23035882.zip input data).
+
+[http://altanalyze.org/graphics/PAM50.jpg]
