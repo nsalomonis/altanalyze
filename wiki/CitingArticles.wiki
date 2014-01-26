@@ -3,6 +3,12 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.nature.com/nsmb/journal/vaop/ncurrent/full/nsmb.2756.html Splicing factor SRSF6 promotes hyperplasia of sensitized skin]. Jensen MA, Wilkinson JE, Krainer AR. Nat Struct Mol Biol. 2014 Jan 19.
+
+[http://www.humgenomics.com/content/8/1/3/abstract A survey of software for genome-wide discovery of differential splicing in RNA-Seq data]. Hooper JE. Human Genomics 2014, 8:3.
+
+[http://www.mcponline.org/content/early/2013/12/12/mcp.M113.030577.long The Identification of Novel Potential Injury Mechanisms and Candidate Biomarkers in Renal Allograft Rejection by Quantitative Proteomics]. Sigdel TK, Salomonis N, Nicora CD, Ryu S, He J, Dinh V, Orton DJ, Moore RJ, Hsieh SC, Dai H, Thien-Vu M, Xiao W, Smith RD, Qian WJ, Camp DG 2nd, Sarwal MM. Mol Cell Proteomics. 2013 Dec 12. 
+
 [http://orca.cf.ac.uk/47378/1/2013KNIGHTDJPhD.pdf PhD Thesis: Novel Schizophrenia Risk Genes and Gene Expression]. Deborah Knight. http://orca.cf.ac.uk/47378/1/2013KNIGHTDJPhD.pdf
 
 [http://www.ncbi.nlm.nih.gov/pubmed/24265543 Altered gene expression in dry age-related macular degeneration suggests early loss of choroidal endothelial cells]. Whitmore SS, Braun TA, Skeie JM, Haas CM, Sohn EH, Stone EM, Scheetz TE, Mullins RF.  Mol Vis. 2013 Nov 16;19:2274-2297.
