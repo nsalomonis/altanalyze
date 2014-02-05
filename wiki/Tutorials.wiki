@@ -17,7 +17,7 @@ Simple and fast single use research tools available via the *Additional Analyses
  * [Heatmaps Expression Clustering]
  * [GOElite  Gene-Set Enrichment Analysis]
  * [PathwayVisualizaton  Pathway Visualization]
- * [NetworkVisualization Network Analysis and Visualization]
+ * [NetPerspective Network Analysis and Visualization]
  * [AltExonViewer Alternative Exon Visualization]
  * [LineageProfiler Sample Classification]
  * [VennAnalysis Venn Diagram Creation]
