@@ -16,6 +16,8 @@ If you are not using pre-built criterion lists from AltAnalyze (see the folder G
 
 == Performing An Enrichment Analysis ==
 
+From the AltAnalyze main menu, select your species and platform. Instead of indicating the platform you can also select "Other ID" as the data type and the gene system you are analyzing as the "platform ID". Select *Continue* and then *Additional Analyses*. From here, select *Pathway Analysis* to see the options heatmap visualizaiton. 
+
 http://altanalyze.org/image/goelite.png
 
 To perform an enrichment analysis:
