@@ -10,15 +10,15 @@ Users can obtain visualized WikiPathways using either the *Pathway Analysis* men
 
 AltAnalyze will visualize WikiPathways using either pre-computed results or user provided datasets. In addition to gene IDs, protein IDs and metabolites can be visualized on these pathway maps. Input files are in the GO-Elite format which is automatically saved when you run a workflow analysis (GO-Elite/regulated folder). 
 
+http://altanalyze.org/image/WP.png
+
 == Preparing Your ID List ==
 
-If you are not using pre-built criterion lists from AltAnalyze (see the folder GO-Elite/regulated), you must create these files. This file should be created as a tab-delimited text file with the IDs of interest (column 1), the GO-Elite system-code (column 2) and an optional log2 fold change (column 3). If not fold change data is present, the nodes in the pathway will be colored yellow, otherwise, positive values will be colored red and the negative blue as shown below. The system code is a two letter code which indicates the ID system being applied. These codes are listed [http://www.genmapp.org/go_elite/help.htm#systemcodes here]. AltAnalyze can try to guess the system code if not present but this often does not work. Once finished, your file should look like this [http://www.altanalyze.org/help_files/image/GE.CP_vs_wt-fold2.0_rawp0.05.txt example].
+If you are not using pre-built criterion lists from AltAnalyze (see the folder GO-Elite/regulated), you must create these files. This file should be created as a tab-delimited text file with the IDs of interest (column 1), the GO-Elite system-code (column 2) and an optional log2 fold change (column 3). If not fold change data is present, the nodes in the pathway will be colored yellow, otherwise, positive values will be colored red and the negative blue as shown above. The system code is a two letter code which indicates the ID system being applied. These codes are listed [http://www.genmapp.org/go_elite/help.htm#systemcodes here]. AltAnalyze can try to guess the system code if not present but this often does not work. Once finished, your file should look like this [http://www.altanalyze.org/help_files/image/GE.CP_vs_wt-fold2.0_rawp0.05.txt example].
  
 || Source Identifier (REQUIRED) || SystemCode (RECOMMENDED) || Fold (OPTIONAL) || 
 || j05479_s_at || X || 3.2 || 
 || Msa.33069.0_s_at || X || -2.1 || 
-
-http://altanalyze.org/image/WP.png
 
 === Pathway Visualization Menu ===
 
