@@ -2,29 +2,19 @@
 
 == AltAnalyze Hierarchical Clustering Heatmaps ==
 
-Currently, AltAnalyze users can perform hierarchical clustering in one of two ways:
+Hierarchical clustering in AltAnalyze is a useful way to quickly visualize expression patterns from high-dimensional datasets, similiar to [http://rana.lbl.gov/EisenSoftware.htm Cluster/TreeView TreeView]. The input can be log2 expression values or ratios, with many options for coloring, clustering or filtering based on specific genes or pathways. For clustering, in addition to a large number of standard algorithms, the HOPACH method in R is available, simply if you already have R installed (must be registered in the system path on Windows). Hierarchical clustering can be run in one of two ways:
 
  # Through analysis of raw array or RNA-Seq data (*Workflow Analysis*)
- # Immediate analysis of filtered fold files (*Independent Analysis*)
+ # Immediate analysis of filtered fold files (*Additional Analyses*)
 
-For both approaches, a colored gene expression heatmap is produced with arrays clustered (columns) and genes clustered (rows) using basic methods found in other clustering programs, such as [http://rana.lbl.gov/EisenSoftware.htm Cluster/TreeView]. AltAnalyze makes this process extremely simple, with the user only needed to providing their transcriptome datasets.
+This method is limited in that you can not currently zoom in to the clusters or interactively navigate the heatmaps.
 
 *Visualization Support*
 
-Support for heatmap visualization and hierarchical clustering is provided through the Python libraries matplotlib and scipy. These libraries are included in the operating system included bundles of AltAnalyze (binary versions). When compiling direct from source code, these libraries and Numpy must be installed by the user. The library fastcluster is optional and may improve efficiency (included with the binaries). See 
+When using the AltAnalyze pre-compiled distributions, no additional software is needed. When running from the source code, support for heatmap visualization and hierarchical clustering is provided through the Python libraries matplotlib, scipy, numpy and optionally fastcluster (see [StandAloneDependencies here] for more detail].
 
-==Workflow Analysis==
 
-This analysis is the standard workflow for microarrays and RNA-Seq data (see [Tutorials tutorials]). In this workflow, differentially expressed or outlier genes (defined based on the user's statistical filtering options) are clustered using default coloring and distance algorithms. In addition to genes, cell-type predictions from the new method LineageProfiler are also clustered using this method (see LineageProfiler description for details). When finished with an analysis, the user will be presented with these plots in the interface and can be also be found in the folder *{{{ DataPlots }}}*. These input data matrices can also be re-clustered with different options following an analysis (*Additional Analyses* option - see below).
-
-The three default plots for genes are:
- # Significant regulated genes (relative to the *row mean*)
- # Significant regulated genes (relative to the *comparison group mean*)
- # Outlier regulated genes (relative to the *row mean*)
-
-All of these plot the log2 fold changes relative to the row mean or comparison mean. The first of these clusters indicates how all samples compare to other samples, without considering specific user-comparisons (e.g., day 10 versus day 0). The second is for the same genes but with fold changes for each sample to the control group mean for any user-defined comparison (including control samples versus the control mean). The third is for any sample for any non-significant genes with a fold change greater than the user-defined fold threshold (default 2 fold) for a given sample versus the mean of all samples in that row.
-
-==Customized Independent Analysis==
+==Customized Independent Analysis (Additional Analyses)==
 
 In addition to running the workflow version of hierarchical clustering, users can select the *Additional Analyses* option to run hierarchical clustering any tab-delimited text file. This text file must have a header row of column annotations (e.g. sample names) and the first column with row annotations (e.g. gene names) and the remaining by positive and negative values. Multiple options for positive and negative gradients can be selected, along with clustering algorithms for rows and columns.
 
@@ -57,3 +47,14 @@ _*Select a specific Gene Set*_: Select a specific GeneSet or ontology term for t
 _*Type a pathway ID or Ontology ID*_: Alternatively enter pathway or ontology ID for quicker selection.
 
 _*Type a gene to get top correlated*_: Display just those genes that are most correlated with a gene or identifier listed in the input expression file.
+
+==Workflow Analysis==
+
+This analysis is the standard workflow for microarrays and RNA-Seq data (see [Tutorials tutorials]). In this workflow, differentially expressed or outlier genes (defined based on the user's statistical filtering options) are clustered using default coloring and distance algorithms. In addition to genes, cell-type predictions from the new method LineageProfiler are also clustered using this method (see LineageProfiler description for details). When finished with an analysis, the user will be presented with these plots in the interface and can be also be found in the folder *{{{ DataPlots }}}*. These input data matrices can also be re-clustered with different options following an analysis (*Additional Analyses* option - see below).
+
+The three default plots for genes are:
+ # Significant regulated genes (relative to the *row mean*)
+ # Significant regulated genes (relative to the *comparison group mean*)
+ # Outlier regulated genes (relative to the *row mean*)
+
+All of these plot the log2 fold changes relative to the row mean or comparison mean. The first of these clusters indicates how all samples compare to other samples, without considering specific user-comparisons (e.g., day 10 versus day 0). The second is for the same genes but with fold changes for each sample to the control group mean for any user-defined comparison (including control samples versus the control mean). The third is for any sample for any non-significant genes with a fold change greater than the user-defined fold threshold (default 2 fold) for a given sample versus the mean of all samples in that row.
