@@ -18,7 +18,8 @@ When using the AltAnalyze pre-compiled distributions, no additional software is 
 
 In addition to running the workflow version of hierarchical clustering, users can select the *Additional Analyses* option to run hierarchical clustering any tab-delimited text file. This text file must have a header row of column annotations (e.g. sample names) and the first column with row annotations (e.g. gene names) and the remaining by positive and negative values. Multiple options for positive and negative gradients can be selected, along with clustering algorithms for rows and columns.
 
-[http://altanalyze.org/image/Clustering-pluri_small.jpg]
+[http://altanalyze.org/image/HeatmapViewer.png]
+[http://altanalyze.org/image/pluri.png]
 
 ===Menu and Formatting Options===
 
