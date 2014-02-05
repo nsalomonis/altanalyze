@@ -4,6 +4,8 @@
 
 In addition to visualization of alternative exons in the Cytoscape plugin DomainGraph, AltAnalyze contains a built in alternative exon viewer called AltExonViewer. This function allows users to display gene data in the form of a line graph depicting exons along the X-axis and exon-expression or splicing index fold change along the Y-axis. 
 
+[http://altanalyze.org/image/altexonviewer.png]
+
 === Analysis Details ===
 
 Expression values from each group are summarized as a single line color, with standard-error values included. One gene or multiple genes can be displayed at a time using a manual text entry field (e.g., SOX2 NANOG POU5F1 TCF7L1) or through a file selection option. Probed UTR regions and Introns can also be optionally displayed. 
