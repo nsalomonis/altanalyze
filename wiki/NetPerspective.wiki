@@ -25,6 +25,6 @@ Multiple interaction algorithms can be used to identify:
 
 When loaded with a differential expression file in the AltAnalyze produced [GOElite GO-Elite] input file format, nodes will be colored as red or blue, depending on their assigned numerical value (positive or negative column #3). Additionally, IDs specifically in the input file can be used to augment a network (e.g., regulated protein expression in a metabolite network).
 
-*Using NetPerspective*
+=== Using NetPerspective ===
 
 NetPerspective can be run independent of the standard AltAnalyze workflows. To run, simply start AltAnalyze, select the appropriate species and ANY platform/vendor type (ignored for NetPerspective) and continue to the main analysis window. When presented, selected "Additional Analyses" then "Network Analysis". The above interface will be presented. Here you can select various options as outlined in the previous section. When providing a list of IDs, versus existing interactions, the input file type will need to be specified (option 2).
