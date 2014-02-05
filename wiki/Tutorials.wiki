@@ -15,6 +15,7 @@ Proceed through the following tutorials to analyze data for the indicated platfo
 
 Simple and fast single use research tools available via the *Additional Analyses* menu:
  * [Heatmaps Expression Clustering]
+ * [PCA Principal Component Analysis]
  * [GOElite  Gene-Set Enrichment Analysis]
  * [PathwayVisualizaton  Pathway Visualization]
  * [NetPerspective Network Analysis and Visualization]
