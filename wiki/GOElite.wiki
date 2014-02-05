@@ -16,6 +16,8 @@ If you are not using pre-built criterion lists from AltAnalyze (see the folder G
 
 == Performing An Enrichment Analysis ==
 
+http://altanalyze.org/image/goelite.png
+
 To perform an enrichment analysis:
  # After creating your input file or files, save these to their own folder on your computer. If you have run an AltAnalyze workflow on unprocessed data, these files can be found in the folder GO-Elite or your input dataset files.
  # (OPTIONAL) Save a denominator file(s) in a separate directory. Multiple denominators can be used with different prefixes (e.g., "set1." "set2."), where your input files also have these same prefixes. 
@@ -23,8 +25,6 @@ To perform an enrichment analysis:
  # Select "Continue"
  # Next, you will be presented with the GO-Elite options menu. From here, you can update annotation resources or select individual resources for analysis. You can also optionally have the program generate colored WikiPathway images from your data and change the statistical methods and cutoffs used for enrichment.
  # Select "Continue" to run the analysis. When finished, you will be presented with a summary of the last biological category analyzed.
-
-http://altanalyze.org/image/goelite.png
 
 == Navigating the Results ==
 
@@ -36,6 +36,13 @@ There are several main result file types output by GO-Elite in the folder *GO-El
  * Clustered heatmaps comparing enrichment scores for all input ID lists (Heatmaps/DataPlots)
  * Gene colored networks of enriched biological categories illustrating the redundancy of different genes (networks).
  * Colored WikiPathways (WikiPathways).
+
+
+*Example Result of Transcription-Factor Target Heatmap Output*
+http://altanalyze.org/image/goelite_heatmap.png
+
+*Example Result of Transcription-Factor Target Network Output*
+http://altanalyze.org/image/goelite_network.png
 
 More details on each of these can be found in the GO-Elite online manual [http://www.genmapp.org/go_elite/help_main.htm here].
 
