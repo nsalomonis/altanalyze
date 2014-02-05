@@ -2,7 +2,7 @@
 
 = GO-Elite Analysis in AltAnalyze =
 
-AltAnlyze provides a powerful tool for performing enrichment analyses across a large array of biological categories to discover important functional relationships in your data as well as putative regulatory relationships (e.g., transcriptional, microRNA, cell-type interactions). This is done using the integrated software called [http://www.genmapp.org/goelite GO-Elite]. Several useful graphical outputs are produced from these analyses including heatmaps, networks and colored pathways based on these enriched terms and genes/metabolites. In addition to the default gene-set and metabolite categories, you can manually include your own relationships for enrichment in AltAnalyze.
+AltAnalyze provides a powerful tool for performing enrichment analyses across a large array of biological categories to discover important functional relationships in your data as well as putative regulatory relationships (e.g., transcriptional, microRNA, cell-type interactions). This is done using the integrated software called [http://www.genmapp.org/goelite GO-Elite]. Several useful graphical outputs are produced from these analyses including heatmaps, networks and colored pathways based on these enriched terms and genes/metabolites. In addition to the default gene-set and metabolite categories, you can manually include your own relationships for enrichment in AltAnalyze.
 
 These analyses are available through the default AltAnalyze workflows as well as by itself as an option from the *Additional Analyses* menu. 
 
