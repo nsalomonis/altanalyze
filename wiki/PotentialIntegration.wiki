@@ -11,6 +11,7 @@
  * Advanced table viewer: http://www.nemethi.de/tablelist/tablelist.html
  * Interactive heatmap, network and other in Orange: http://www.biolab.si/supp/bi-visprog/dicty/Heat%20Map.htm
  * Methylation-sequencing visualization: https://github.com/simonvh/fluff/blob/master/README.md
+ * Interactive visualization: http://bokeh.pydata.org/
 
 ===Data Analysis===
  * HTSeq: http://www-huber.embl.de/users/anders/HTSeq/doc/overview.html
