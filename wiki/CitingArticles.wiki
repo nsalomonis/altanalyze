@@ -3,6 +3,10 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.ncbi.nlm.nih.gov/pubmed/24621103 MAAMD: a workflow to standardize meta-analyses and comparison of affymetrix microarray data]. Gan Z, Wang J, Salomonis N, Stowe JC, Haddad GG, McCulloch AD, Altintas I, Zambon AC. BMC Bioinformatics. 2014 Mar 12;15:69. doi: 10.1186/1471-2105-15-69.
+
+[http://www.ncbi.nlm.nih.gov/pubmed/24651478Long non-coding RNA and alternative splicing modulations in Parkinson's leukocytes identified by RNA sequencing. Soreq L, Guffanti A, Salomonis N, Simchovitz A, Israel Z, Bergman H, Soreq H. PLoS Comput Biol. 2014 Mar 20;10(3):e1003517.
+
 [http://www.nature.com/nsmb/journal/vaop/ncurrent/full/nsmb.2756.html Splicing factor SRSF6 promotes hyperplasia of sensitized skin]. Jensen MA, Wilkinson JE, Krainer AR. Nat Struct Mol Biol. 2014 Jan 19.
 
 [http://www.humgenomics.com/content/8/1/3/abstract A survey of software for genome-wide discovery of differential splicing in RNA-Seq data]. Hooper JE. Human Genomics 2014, 8:3.
