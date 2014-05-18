@@ -31,6 +31,9 @@
 
 [http://www.jneurosci.org/content/33/37/14825.long The Pattern of Cortical Dysfunction in a Mouse Model of a Schizophrenia-Related Microdeletion]. Fénelon K, Xu B, Lai CS, Mukai J, Markx S, Stark KL, Hsu PK, Gan WB, Fischbach GD, Macdermott AB, Karayiorgou M, Gogos JA. J Neurosci. 2013 Sep 11;33(37):14825-14839.
 
+[http://www.ncbi.nlm.nih.gov/m/pubmed/23388157/ Ca2+/Calmodulin-dependent protein kinase II δ mediates myocardial ischemia/reperfusion injury through nuclear factor-κB]. Ling H, Gray CB, Zambon AC, Grimm M, Gu Y, Dalton N, Purcell NH, Peterson K, Brown JH.
+Circ Res. 2013 Mar 15;112(6):935-44. doi: 10.1161/CIRCRESAHA.112.276915. Epub 2013 Feb 6.
+
 [http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0071143 Sarcoptes scabiei Mites Modulate Gene Expression in Human Skin Equivalents]. Morgan MS, Arlian LG, Markey MP.PLoS One. 2013 Aug 5;8(8):e71143.
 
 [http://www.biomedcentral.com/1471-2164/14/478/abstract Deep brain stimulation modulates nonsense-mediated RNA decay in Parkinson's patients leukocytes]. Soreq L, Bergman H, Israel Z, Soreq H.
