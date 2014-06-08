@@ -5,6 +5,9 @@
 
 [http://www.ncbi.nlm.nih.gov/pubmed/24813856 Alternative Splicing of MBD2 Supports Self-Renewal in Human Pluripotent Stem Cells]. Lu Y, Loh YH, Li H, Cesana M, Ficarro SB, Parikh JR, Salomonis N, Toh CX, Andreadis ST, Luckey CJ, Collins JJ, Daley GQ, Marto JA. Cell Stem Cell. 2014 May 7
 
+[http://jmcb.oxfordjournals.org/content/early/2014/05/28/jmcb.mju026.full.pdf The conserved ubiquitin-like protein Hub1 plays a critical role in splicing in human cells]. Ammon, T., Mishra, S. K., Kowalska, K., Popowicz, G. M., Holak, T. A., & Jentsch, S. (2014).  Journal of molecular cell biology, mju026.
+Chicago	
+
 [http://nar.oxfordjournals.org/content/early/2014/05/13/nar.gku299.full Genome-wide characterization reveals complex interplay between TP53 and TP63 in response to genotoxic stress]. McDade1 SS, Patel D, Moran M, Campbell J, Fenwick K, Kozarewa, Orr NJ, Lord CJ, Ashworth AA, McCance DJ. Nucl. Acids Res. first published online May 13, 2014
 
 [http://www.ncbi.nlm.nih.gov/pubmed/24800817 Growth factor independence 1b (gfi1b) is important for the maturation of erythroid cells and the regulation of embryonic globin expression]. Vassen L, Beauchemin H, Lemsaddek W, Krongold J, Trudel M, Möröy T. PLoS One. 2014 May 6;9(5):e96636.
