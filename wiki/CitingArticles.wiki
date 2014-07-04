@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+[http://www.ncbi.nlm.nih.gov/m/pubmed/24937432/ Resident fibroblast lineages mediate pressure overload-induced cardiac fibrosis].  Moore-Morris T, Guimarães-Camboa N, Banerjee I, Zambon AC, Kisseleva T, Velayoudon A, Stallcup WB, Gu Y, Dalton ND, Cedenilla M, Gomez-Amaro R, Zhou B, Brenner DA, Peterson KL, Chen J, Evans SM. Journal Clin Invest. 2014 Jul 1;124(7):2921-34. doi: 10.1172/JCI74783. Epub 2014 Jun 17.
+
 [http://www.ncbi.nlm.nih.gov/pubmed/24813856 Alternative Splicing of MBD2 Supports Self-Renewal in Human Pluripotent Stem Cells]. Lu Y, Loh YH, Li H, Cesana M, Ficarro SB, Parikh JR, Salomonis N, Toh CX, Andreadis ST, Luckey CJ, Collins JJ, Daley GQ, Marto JA. Cell Stem Cell. 2014 May 7
 
 [http://jmcb.oxfordjournals.org/content/early/2014/05/28/jmcb.mju026.full.pdf The conserved ubiquitin-like protein Hub1 plays a critical role in splicing in human cells]. Ammon, T., Mishra, S. K., Kowalska, K., Popowicz, G. M., Holak, T. A., & Jentsch, S. (2014).  Journal of molecular cell biology, mju026.
