@@ -5,6 +5,11 @@
 
 [http://www.ncbi.nlm.nih.gov/pubmed/24964230 Systems-level perspective of sudden infant death syndrome]. Salomonis N. Pediatr Res. 2014 Jun 25. doi: 10.1038/pr.2014.90. 
 
+[http://www.ncbi.nlm.nih.gov/pubmed/25058891 Transcriptome analysis in cardiomyocyte-specific differentiation of murine embryonic stem cells reveals transcriptional regulation network]. Gan L, Schwengberg S, Denecke B.
+Gene Expr Patterns. 2014 Jul 21. pii: S1567-133X(14)00059-3. doi: 10.1016/j.gep.2014.07.002
+
+[http://www.ncbi.nlm.nih.gov/pubmed/24850901 Hypoxia Regulates Alternative Splicing of HIF and non-HIF Target Genes]. Sena JA, Wang L, Heasley LE, Hu CJ. Mol Cancer Res. 2014 May 21. pii: molcanres.0149.2014.
+
 [http://www.ncbi.nlm.nih.gov/m/pubmed/24937432/ Resident fibroblast lineages mediate pressure overload-induced cardiac fibrosis].  Moore-Morris T, Guimarães-Camboa N, Banerjee I, Zambon AC, Kisseleva T, Velayoudon A, Stallcup WB, Gu Y, Dalton ND, Cedenilla M, Gomez-Amaro R, Zhou B, Brenner DA, Peterson KL, Chen J, Evans SM. Journal Clin Invest. 2014 Jul 1;124(7):2921-34. doi: 10.1172/JCI74783. Epub 2014 Jun 17.
 
 [http://www.ncbi.nlm.nih.gov/pubmed/24813856 Alternative Splicing of MBD2 Supports Self-Renewal in Human Pluripotent Stem Cells]. Lu Y, Loh YH, Li H, Cesana M, Ficarro SB, Parikh JR, Salomonis N, Toh CX, Andreadis ST, Luckey CJ, Collins JJ, Daley GQ, Marto JA. Cell Stem Cell. 2014 May 7
