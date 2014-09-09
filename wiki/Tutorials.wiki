@@ -11,6 +11,8 @@ Proceed through the following tutorials to analyze data for the indicated platfo
 
 [Tutorial_AltExpression_RNASeq Tutorial 3 - Analyzing RNA-Seq Exons and Junctions]
 
+[Tutorial_DeNovo Tutorial 4 - De Novo Identification of Sample Groups]
+
 = AltAnalyze Independent Tools (GUI) =
 
 Simple and fast single use research tools available via the *Additional Analyses* menu:
