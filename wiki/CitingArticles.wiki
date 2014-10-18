@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+http://www.plosone.org/article/comments/info%3Adoi%2F10.1371%2Fjournal.pone.0109631
+
 [http://www.ncbi.nlm.nih.gov/pubmed/25122876 ABCG2pos Lung Mesenchymal Stem Cells are a Novel Pericyte Subpopulation that Contributes to Fibrotic Remodeling]. Marriott S, Baskir RS, Gaskill C, Menon S, Carrier EJ, Williams J, Talati M, Helm K, Alford CE, Kropski JA, Loyd J, Wheeler L, Johnson J, Austin E, Nozik-Grayck E, Meyrick BO, West JD, Klemm DJ, Majka SM. Am J Physiol Cell Physiol. 2014 Aug 13. pii: ajpcell.00114.2014.
 
 [http://www.ncbi.nlm.nih.gov/pubmed/24964230 Systems-level perspective of sudden infant death syndrome]. Salomonis N. Pediatr Res. 2014 Jun 25. doi: 10.1038/pr.2014.90. 
