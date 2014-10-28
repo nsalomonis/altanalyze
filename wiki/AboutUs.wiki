@@ -28,9 +28,9 @@ Proc Natl Acad Sci U S A. 2010 Jun 8;107(23):10514-9. Epub 2010 May 24.
 
 == Development Team ==
 ||_*Name*_||_*Role*_||_*Affiliation*_||
-||[NathanSalomonis Nathan Salomonis]||Lead Developer||Gladstone Institutes||
+||[NathanSalomonis Nathan Salomonis]||Principle Investigator||CCHMC||
 ||Dorothea Emig||Software Design||Max Planck Institute||
 ||Mario Albrecht||Software Design||Max Planck Institute||
 ||[KristinaHanspers Kristina Hanspers]||Software Design||Gladstone Institutes||
 ||[http://altanalyze.org/frames/alexpico_bio.html Alex Pico]||Software Design||Gladstone Institutes||
-||Bruce Conklin||Principle Investigator||Gladstone Institutes||
+||Bruce Conklin||Advisor||Gladstone Institutes||
