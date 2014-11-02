@@ -3,6 +3,8 @@
 
 === Articles Citing AltAnalyze ===
 
+http://www.ncbi.nlm.nih.gov/pubmed/24865429
+
 http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0110134
 
 http://link.springer.com/article/10.1007/s10048-014-0419-8
