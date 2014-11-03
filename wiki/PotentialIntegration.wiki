@@ -13,6 +13,8 @@
  * Methylation-sequencing visualization: https://github.com/simonvh/fluff/blob/master/README.md
  * Interactive visualization: http://bokeh.pydata.org/
  * Biclustering: http://scikit-learn.org/stable/auto_examples/bicluster/plot_spectral_biclustering.html
+ * Sircah:
+http://www.bork.embl.de/Sircah/gallery.html
 
 ===Data Analysis===
  * HTSeq: http://www-huber.embl.de/users/anders/HTSeq/doc/overview.html
