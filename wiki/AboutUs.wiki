@@ -3,9 +3,9 @@
 
 ==About Us==
 
-AltAnalyze is an open-source software project principally run by developers in the [http://www.conklinlab.org Bruce Conklin laboratory] at the J. David Gladstone Institutes and the University of California San Francisco. The goal of this project is to provide easy to use applications for biologists with little computational training as well as computational biologists for the analysis of microarray and ultimately RNA sequencing datasets. AltAnalyze is funded by an NIH RO1 grant (ARRA Suppl. GM080223-06S1).
+AltAnalyze is an open-source software project principally run by developers in the [http://www.cincinnatichildrens.org/bio/s/nathan-salomonis Nathan Salomonis laboratory] at Cincinnati Children's Hosptial Medical Center and the University of Cincinnati. This project began in the laboratory of [http://www.conklinlab.org  Bruce Conklin] at the Gladstone Institutes. The goal of this project is to provide easy to use applications for biologists with little computational training as well as computational biologists for the analysis of microarray and ultimately RNA sequencing datasets.
 
-Our hope, is that AltAnalyze and associated tools will help researchers to provide greater biological insight and uncover new mechanisms that regulate cellular biology. Thus, much of the focus of AltAnalyze is on functional interpretation of results rather than the development of new statistical methods. Examples include protein domain, microRNA binding site and pathway analysis. An ongoing goal of ours is to transition AltAnalyze to the Cytoscape environment, providing new tools for RNA sequencing and alternative splicing microarray analysis, sequence motif analysis, discovery of novel alternative exons and transcripts and associated data visualization. As a part of Cytoscape, AltAnalyze will be able to utilize many of the powerful tools built for this environment (e.g., expression clustering, visualization of multiple data types and complex network analyses). 
+Our hope, is that AltAnalyze and associated tools will help researchers to provide greater biological insight and uncover new mechanisms that regulate cellular biology. Thus, much of the focus of AltAnalyze is on functional interpretation of results in addition to the development of new analytical methods to evaluate alternative splicing and regulatory control.
 
 If you would like to contribute to AltAnalyze development or to the documentation on this site, we welcome your contributions. 
 
@@ -22,8 +22,6 @@ Proc Natl Acad Sci U S A. 2010 Jun 8;107(23):10514-9. Epub 2010 May 24.
 [http://www.ncbi.nlm.nih.gov/pubmed/19893621 Alternative splicing in the differentiation of human embryonic stem cells into cardiac precursors]. Salomonis N, Nelson B, Vranizan K, Pico AR, Hanspers K, Kuchinsky A, Ta L, Mercola M, Conklin BR. PLoS Comput Biol. 2009 Nov;5(11):e1000553. Epub 2009 Nov 6. 
 
 === Other Articles ===
-[http://gchelpdesk.ualberta.ca/news/15sep10/cbhd_news_15sep10.php#spotlight Canadian Bioinformatics News letter feature]
-
 [CitingArticles Articles Citing AltAnalyze]
 
 == Development Team ==
