@@ -1205,9 +1205,6 @@ def extractAndIntegrateAffyData(species,integrate_affy_associations,Parse_wikipa
     global affy_annotation_db; affy_annotation_db={}; global gene_annotation_db; gene_annotation_db = {}
     global parse_wikipathways; global meta; meta = {}; global ens_eg_db; ens_eg_db={}
     parse_wikipathways = Parse_wikipathways
-    if parse_wikipathways == 'yes':
-        try: importEntrezEnsemblRelationships(species) ### If meta gene relationships previously built (then don't need Affy files)
-        except Exception: null=[]
         
     program_type,database_dir = unique.whatProgramIsThis()
     if program_type == 'AltAnalyze': database_dir = '/AltDatabase/affymetrix'

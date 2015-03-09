@@ -360,11 +360,11 @@ def parseChrFASTA(filename,chr,chr_gene_locations,location_gene_db):
                 if terminate_chr_analysis == 'yes': break
     if ('/' in filename) or ('\\' in filename):
         print "Sequence for",len(genes_analyzed),"out of",len(genes_to_be_examined),"genes exported..." 
-
+        """
         for gene in genes_to_be_examined:
             if gene not in genes_analyzed:
                 print gene, genes_to_be_examined[gene]
-                sys.exit()
+                sys.exit()"""
     elif len(genes_analyzed) != len(genes_to_be_examined):
         print len(genes_to_be_examined)-len(genes_analyzed), 'not found for',chr
     
@@ -1357,7 +1357,7 @@ def getCurrentEnsemblGenomesSequences(version,dirtype,species):
 def storeSeqFTPDirs(ftp_server,species,subdir,dirtype):
     from ftplib import FTP
     ftp = FTP(ftp_server); ftp.login()
-    print subdir;sys.exit()
+    #print subdir;sys.exit()
     try: ftp.cwd(subdir)
     except Exception:
         subdir = string.replace(subdir,'/'+dirtype,'') ### Older version don't have this subdir 
@@ -1600,9 +1600,9 @@ if __name__ == '__main__':
     force = 'no'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
     print 'proceeding'
     
-    ensembl_version = '65'
+    ensembl_version = '72'
     species = 'Hs'
-    #getEnsemblTranscriptSequences(ensembl_version,species);sys.exit()
+    getEnsemblTranscriptSequences(ensembl_version,species);sys.exit()
     
     getFullGeneSequences('Bacteria18','bacteria_1_collection'); sys.exit()
     #for i in child_dirs: print child_dirs[i]

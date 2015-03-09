@@ -403,14 +403,24 @@ def remoteRun(fl,Species,Array_type,expression_threshold,filter_method_type,p_va
   
 if __name__ == '__main__':
   m = 'Mm'; h = 'Hs'
-  species = m
+  Species = h
   x = 'AltMouse'; y = 'exon'
-  array_type = y
+  Array_type = y
   l = 'log'; n = 'non-log'
-  exp_data_format = l  
-  p = 0.75
-  filter_method = 'average'
-  expression_threshold = 0
+  express_data_format = l  
+  p_val = 0.75
+  p_val = 0.05
+  filter_method_type = 'average'
+  expression_threshold = 30
+  avg_all_for_ss = 'yes'
+  
+  import UI
+  loc = '/Users/saljh8/Desktop/dataAnalysis/AltAnalyze/CP-GSE13297_RAW/'
+  fl = UI.ExpressionFileLocationData('','','',''); fl.setRootDir(loc)
+  altanalyze_file_list = ['Hs_Exon_CP_vs_wt.txt']
+  
+  remoteRun(fl,Species,Array_type,expression_threshold,filter_method_type,p_val,express_data_format,altanalyze_file_list,avg_all_for_ss)
+  sys.exit()
   
   print "Filter Data For:"
   print "1) Human 1.0 ST exon data\n2) AltMouse"

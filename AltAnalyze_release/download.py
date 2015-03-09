@@ -84,7 +84,7 @@ def unzipFiles(filename,dir):
 def download(url,dir,file_type):
     try: dp = download_protocol(url,dir,file_type); gz_filepath, status  = dp.getStatus()
     except Exception:
-        gz_filepath='failed'; status = "Internet connection not established. Re-establsih and try again."
+        gz_filepath='failed'; status = "Internet connection was not established. Re-establsih and try again."
 
     if status == 'remove':
         #print "\nRemoving zip file:",gz_filepath

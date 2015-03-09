@@ -70,7 +70,7 @@ def reorderArrayHeaders(data_headers,array_order,comp_group_list,array_linker_db
     #return expbuilder_value_db,group_count_list2,ranked_array_headers,raw_data_comps,raw_data_comp_headers
     return group_count_list2,raw_data_comp_headers
 
-def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type,norm,fl):
+def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_raw_data,array_type,norm,fl,logvalues=True):
     ###array_order gives the final level order sorted, followed by the original index order as a tuple                   
     expbuilder_value_db = {}; group_name_db = {}; summary_filtering_stats = {}; pval_summary_db= {}
     replicates = 'yes'
@@ -85,6 +85,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     except Exception: gene_exp_threshold = 0
     try: gene_rpkm_threshold = fl.RPKMThreshold()
     except Exception: gene_rpkm_threshold = 0
+    calculateAsNonLog=True
     
     ### Begin processing sample expression values according to the organized groups
     for row_id in data:
@@ -101,6 +102,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             try:
                 try: new_item = data[row_id][y]
                 except IndexError: print row_id,data[row_id],len(data[row_id]),y,len(array_order),array_order;kill
+                if logvalues==False and calculateAsNonLog and array_type == 'RNASeq':
+                    new_item = math.pow(2,new_item)
             except TypeError: new_item = ''  #this is for a spacer added in the above function
             try: grouped_ordered_array_list[group].append(new_item)
             except KeyError: grouped_ordered_array_list[group] = [new_item]
@@ -120,18 +123,24 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             avg1 = statistics.avg(data_list1)
             try: avg2 = statistics.avg(data_list2)
             except ValueError: print data_list2,row_id; forceError
-            log_fold = avg1 - avg2
-            fold = statistics.log_fold_conversion(log_fold)
+            if (logvalues == False and array_type != 'RNASeq') or (logvalues==False and calculateAsNonLog):
+                fold = avg1/avg2
+                log_fold = math.log(fold,2)
+                if fold<1: fold = -1.0/fold
+            else:
+                log_fold = avg1 - avg2
+                fold = statistics.log_fold_conversion(log_fold)
             try:
                 #t,df,tails = statistics.ttest(data_list1,data_list2,2,3) #unpaired student ttest, calls p_value function
                 #t = abs(t); df = round(df); p = str(statistics.t_probability(t,df))
                 p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
             except Exception: p = 1; sg = 1; N1=0; N2=0
             comp = group1,group2
-            if array_type == 'RNASeq':
+            if array_type == 'RNASeq': ### Also non-log but treated differently
                 if norm == 'RPKM': adj = 0
                 else: adj = 1
-                avg1 = math.pow(2,avg1)-adj; avg2 = math.pow(2,avg2)-adj
+                if calculateAsNonLog == False:
+                    avg1 = math.pow(2,avg1)-adj; avg2 = math.pow(2,avg2)-adj
                 if norm == 'RPKM':
                     if avg1 < gene_rpkm_threshold and avg2 < gene_rpkm_threshold:
                         log_fold = 'Insufficient Expression'
@@ -187,7 +196,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                     if array_type == 'RNASeq':
                         if norm == 'RPKM': adj = 0
                         else: adj = 1
-                        value = math.pow(2,value)-adj
+                        if calculateAsNonLog == False:
+                            value = math.pow(2,value)-adj
                     try: expbuilder_value_db[row_id].append(value)
                     except KeyError: expbuilder_value_db[row_id] = [value]
             if group_number in group_summary_results:

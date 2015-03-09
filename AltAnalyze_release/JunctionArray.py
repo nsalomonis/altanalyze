@@ -54,6 +54,13 @@ class ExonAnnotationData:
     def Probeset(self): return self._probeset
     def ProbesetName(self): return self._psr
     def ExonClusterID(self): return self._exon_cluster_id
+    def setGeneID(self, geneID): self.geneid = geneID
+    def GeneID(self): return self.geneid
+    def setTransSplicing(self): self.trans_splicing = 'yes'
+    def setSecondaryGeneID(self,secondary_geneid): self.secondary_geneid = secondary_geneid
+    def SecondaryGeneID(self): return self.secondary_geneid
+    def checkExonPosition(self,exon_pos): return 'left'
+    def TransSplicing(self): return self.trans_splicing
     def EnsemblGeneID(self):
         geneid = self._geneid
         if 'ENS' in self._geneid:
@@ -79,16 +86,27 @@ class ExonAnnotationData:
         return geneids
     def Symbol(self):
         try: symbols = string.split(self._symbols,',')
-        except Exception: print self._probeset,self._symbols;kill
+        except Exception: symbols = self._symbols
         return symbols
+    def setTranscriptClusterID(self,transcript_cluster): self._transcript_cluster = transcript_cluster
     def TranscriptCluster(self): return self._transcript_cluster
+    def setTranscripts(self, transcripts): self.transcripts = transcripts
+    def EnsemblTranscripts(self): return self.transcripts    
     def ProbesetType(self):
         ###e.g. Exon, junction, constitutive(gene)
         return self._probeset_type
+    def setStart(self, start): self.start = start
+    def setEnd(self, end): self.end = end
+    def Start(self): return self.start
+    def End(self): return self.end
+    def setChromosome(self,chr):
+        self._chromosome_info = chr
     def Chromosome(self):
         if len(self._chromosome_info)>0:
-            null,chr = string.split(self._chromosome_info,'=chr')
-            chromosome,null=string.split(chr,':')
+            try:
+                null,chr = string.split(self._chromosome_info,'=chr')
+                chromosome,null=string.split(chr,':')
+            except Exception: chromosome = self._chromosome_info
             if chromosome == 'chrM': chromosome = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
             if chromosome == 'M': chromosome = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
         else: chromosome = 'not-assinged'
@@ -109,10 +127,13 @@ class ExonAnnotationData:
     def Sequence(self): return string.lower(self._seq)
     def JunctionSequence(self): return string.replace(self.Sequence(),'|','')
     def JunctionSequences(self):
-        seq1, seq2 = string.split(self.Sequence(),'|')
+        try: seq1, seq2 = string.split(self.Sequence(),'|')
+        except Exception:
+            seq1 = self.Sequence()[:len(self.Sequence())/2]
+            seq2 = self.Sequence()[-1*len(self.Sequence())/2:]
         return seq1, seq2
     def Report(self):
-        output = self.Probeset()+'|'+self.ExternalGeneID()
+        output = self.Probeset()
         return output
     def __repr__(self): return self.Report()
 
@@ -161,8 +182,11 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
     ensembl_annotation_db = importGeneric(ensembl_annotations)
     
     extraction_type = 'Ensembl'
-    tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
 
+    tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
+    if 'HTA' in specific_array_type:
+        ens_trans_gene_db = importGenericReverse('AltDatabase/ensembl/Hs/Hs_Ensembl_transcript-annotations.txt')
+        
     ensembl_symbol_db={}; ensembl_gene_db={}
     for ens_geneid in ensembl_annotation_db:
         description, symbol = ensembl_annotation_db[ens_geneid]
@@ -180,8 +204,9 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
 
     for transcript_cluster_id in tc_ensembl_annotations:
         ti = tc_ensembl_annotations[transcript_cluster_id]
-        ti.Strand(); ti.Chromosome(); ti.Symbol(); ens_geneids={}; ens_geneid_ls=[]
-
+        try: ens_transcripts = ti.EnsemblTranscripts()
+        except Exception: ens_transcripts = []
+        ens_geneids={}; ens_geneid_ls=[]
         for gene in ti.EnsemblGeneIDs():
             if gene in ens_translation_db and gene not in ensembl_gene_db: ### This is the old lift over method where an old Ens in the annotation file is translated to a more recent ID
                 gene = ens_translation_db[gene] ### translate the old to new Ensembl
@@ -189,7 +214,16 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
                 try: ens_geneids[gene]+=1
                 except Exception: ens_geneids[gene]=1
                 ens_match+=1
-
+        if len(ti.EnsemblGeneIDs())>0:
+            for transcript in ens_transcripts:
+                try:
+                    gene = ens_trans_gene_db[transcript]
+                    try: ens_geneids[gene]+=1
+                    except Exception: ens_geneids[gene]=1
+                    ens_match+=1
+                except Exception: pass
+        #if transcript_cluster_id == 'TC01000626.hg.1':
+        #print ti.EnsemblGeneIDs(), ti.EnsemblTranscripts(); sys.exit()
         if transcript_cluster_id in ens_translation_db:
             gene = ens_translation_db[transcript_cluster_id] ### translate the TC to new Ensembl
             if gene in ensembl_gene_db:
@@ -221,13 +255,45 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
             gene_annotation_db[transcript_cluster_id]=[ei.Description(),ens_geneid,ei.Symbol(),'']
         else:
             missing_count+=1
-            if missing_count<20: print transcript_cluster_id,ti.EnsemblGeneIDs(),ti.Symbol()
+            #if missing_count<20: print transcript_cluster_id,ti.EnsemblGeneIDs(),ti.Symbol()
+            
+    if 'HTA' in specific_array_type:
+        ### Add TCs based on genomic overlap positions with Ensembl genes
+        coordinates_to_annotate={}; added_genes=0
+        for transcript_cluster_id in tc_ensembl_annotations:
+            ti = tc_ensembl_annotations[transcript_cluster_id]
+            if ti.Strand() == '-1': strand = '-'
+            else: strand = '+'
+            try: coordinates_to_annotate[ti.Chromosome(),strand].append([(ti.Start(),ti.End()),ti])
+            except Exception: coordinates_to_annotate[ti.Chromosome(),strand] = [[(ti.Start(),ti.End()),ti]]
+        import RNASeq
+        limit = 0
+        RNASeq.alignCoordinatesToGeneExternal(species,coordinates_to_annotate)
+        for transcript_cluster_id in tc_ensembl_annotations:
+            ti = tc_ensembl_annotations[transcript_cluster_id]
+            if transcript_cluster_id not in gene_annotation_db:
+                try:
+                    if 'ENSG' in ti.GeneID():
+                        gene_annotation_db[transcript_cluster_id]=['',ti.GeneID(),ti.Symbol()[0],'']
+                        try: ensembl_associations[transcript_cluster_id].append(ti.GeneID())
+                        except KeyError: ensembl_associations[transcript_cluster_id] = [ti.GeneID()]
+                        added_genes+=1
+                except Exception:
+                    if limit < 0:# set to 20 - missing are typically retired Ensembl IDs
+                        print transcript_cluster_id
+                    limit+=1
+            else:
+                try:
+                    if 'ENSG' in ti.GeneID(): added_genes+=1
+                except Exception: pass
+                
+
+    print added_genes
     exportDB(primary_gene_annotation_export,gene_annotation_db)
     ensembl_associations = eliminate_redundant_dict_values(ensembl_associations)
     print ens_match, 'direct Ensembl-Ensembl gene mapping and', sym_match, 'indirect Symbol-chromosome mapping'
     print len(tc_ensembl_annotations)-len(ensembl_associations),'unmapped transcript clusters'
     print len(gene_annotation_db), 'transcripts with associated valid Ensembl gene IDs'#; sys.exit()
-    
     """
     u=0 ### print transcript clusters without gene IDs
     for i in tc_ensembl_annotations:
@@ -240,16 +306,18 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
     return ensembl_associations
 
 def pickShortestExonIDDiff(exon_to_exon):
-    if '|' not in exon_to_exon:
+    if '|' in exon_to_exon: delim = '|'
+    else: delim = '///'
+    if delim not in exon_to_exon:
         try: five_exon,three_exon=string.split(exon_to_exon,'_to_')
         except Exception: print [exon_to_exon];sys.exit()
         return five_exon,three_exon
     else:
-        exon_comps = string.split(exon_to_exon,'|'); diff_list=[]
+        exon_comps = string.split(exon_to_exon,delim); diff_list=[]
         for exon_comp in exon_comps:
             five_exon,three_exon=string.split(exon_comp,'_to_')
             try: diff=abs(int(five_exon[5:])-int(three_exon[5:]))
-            except Exception: print five_exon, three_exon;kill
+            except Exception: diff=abs(int(five_exon[4:-3])-int(three_exon[4:-3])) #hta
             diff_list.append((diff,[five_exon,three_exon]))
         diff_list.sort()
         return diff_list[0][1]
@@ -260,6 +328,14 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
     filename = export_dir+string.lower(species[0])+'jay.r2.annotation_map'
     if 'lue' in specific_array_type: ### Grab an hGlue specific annotation file
         filename = export_dir+string.lower(species[0])+'Glue_3_0_v1.annotation_map_dt.v3.hg18.csv'
+    elif 'HTA' in specific_array_type:
+        psr_probeset_db = importGenericReverse(export_dir+'probeset-psr.txt')
+        if extraction_type == 'Ensembl':
+            filename = export_dir+'HTA-2_0.na33.hg19.transcript.csv'
+            type = 'TranscriptCluster'
+        else:
+            filename = export_dir+'HTA-2_0.na33.hg19.probeset.csv'
+            #filename = export_dir+'test.csv'
     verifyFile(filename,array_type) ### Check's to see if it is installed and if not, downloads or throws an error
     fn=filepath(filename)
 
@@ -270,6 +346,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
     probeset_translation_db={}; x=0; tc=0; j=0; p=0; k=0; tc_db=(); transcript_cluster_count={}; transcript_cluster_count2={}
     global probeset_db; global junction_comp_db; junction_comp_db={}; global junction_alinging_probesets
     ps_db={}; jc_db={}; left_ec={}; right_ec={}; psr_ec={}; probeset_db={}; junction_alinging_probesets={}; nonconstitutive_junctions={}
+    header_row = True; ct=0; probeset_types = {}
     for line in open(fn,'r').xreadlines():             
         #if 'PSR170003198' in line:
         if '.csv' in filename:
@@ -291,7 +368,99 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
         
         if x<5 or '#' == data[0]: x+=1
         elif x>2:
-            if len(t)==15: ###Transcript Cluster ID Lines
+            if 'HTA' in specific_array_type:
+                if extraction_type != 'Ensembl': type = 'PSR'
+                ### This is the probeset file which has a different structure and up-to-date genomic coordinates (as of hg19)
+                if header_row:
+                    psr_index = t.index('probeset_id'); si = t.index('strand'); sqi = t.index('seqname')
+                    starti = t.index('start'); endi = t.index('stop')
+                    if type == 'TranscriptCluster':
+                        ai = t.index('mrna_assignment'); gi = t.index('gene_assignment')
+                    else:
+                        pti = t.index('probeset_type'); jse = t.index('junction_start_edge'); jee = t.index('junction_stop_edge')
+                        jsi = t.index('junction_sequence'); tci = t.index('transcript_cluster_id'); xi = t.index('exon_id')
+                        csi = t.index('constituitive')
+                    
+                    header_row = False
+                else:
+                    #probeset_type = t[pti]
+                    #try: probeset_types[probeset_type]+=1
+                    #except Exception: probeset_types[probeset_type]=1
+                    #if probeset_type == 'main':
+                    psr = t[psr_index]
+                    try: probeset = psr_probeset_db[psr]
+                    except Exception: probeset = psr
+                    if type == 'TranscriptCluster':
+                        transcript_annotation = t[ai]; gene_annotation = t[gi]
+                        chr = t[sqi]
+                        strand = t[si]
+                        symbols=[]; ens_transcripts = []; geneids=[]
+                        gene_annotation = string.split(gene_annotation,' /// ')
+                        for ga in gene_annotation:
+                            try: ga = string.split(ga,' // '); symbols = ga[1]
+                            except Exception: pass
+                        if 'ENSG' in transcript_annotation:
+                            try:
+                                ta = string.split(transcript_annotation,'ENSG')[1]
+                                try: ta = string.split(ta,' ')[0]
+                                except Exception: pass
+                                geneids='ENSG'+ta
+                            except Exception: pass
+                        if 'ENST' in transcript_annotation:
+                            try:
+                                gene_annotation = string.split(transcript_annotation,'ENST')[1]
+                                try: gene_annotation = string.split(gene_annotation,' ')[0]
+                                except Exception: pass
+                                ens_transcripts = ['ENST'+gene_annotation]
+                            except Exception: pass
+                        #if probeset == 'TC04000084.hg.1':
+                        #print transcript_annotation;sys.exit()
+                        #print probeset, strand, geneids, ens_transcripts, symbols
+                        probeset = probeset[:-2] # remove the .1 or .0 at the end - doesn't match to the probeset annotations
+                        psri = PSRAnnotation(psr,probeset,'',probeset,strand,geneids,symbols,'','','',type)
+                        psri.setChromosome(chr)
+                        psri.setStart(int(t[starti]))
+                        psri.setEnd(int(t[endi]))
+                        psri.setTranscripts(ens_transcripts)
+                    elif 'JUC' in psr:
+                        type = 'Junction'
+                        exon_cluster = string.split(string.split(t[xi],'///')[0],'_to_') ### grab the first exonIDs
+                        constitutive = t[csi]
+                        transcript_cluster = string.split(t[tci],'///')[0]
+                        chr = t[sqi]; strand = t[si]
+                        if constitutive == 'Non-Constituitive': nonconstitutive_junctions[probeset]=[]
+                        try: five_exon,three_exon = pickShortestExonIDDiff(t[xi])
+                        except Exception:
+                            five_exon,three_exon = exon_cluster
+                        five_EC,three_EC = five_exon,three_exon ### NOT SURE THIS IS CORRECT
+                        junction_alinging_probesets[probeset] = [five_exon,five_exon], [three_exon,three_exon]
+                        seq = t[jsi]
+                        psri = PSRAnnotation(psr,probeset,'',transcript_cluster,strand,'','',exon_cluster,constitutive,seq,type)
+                        try: junction_start = int(t[jse]); junction_end = int(t[jee])
+                        except Exception: print t;sys.exit()
+                        if '-' in strand: junction_start, junction_end = junction_end,junction_start
+                        exon1s = junction_start-16; exon1e = junction_start
+                        exon2s = junction_end; exon2e = junction_end+16
+                        if '-' in strand:
+                            junction_start, junction_end = junction_end,junction_start
+                            exon1s = junction_start+16; exon1e = junction_start
+                            exon2s = junction_end; exon2e = junction_end-16
+                        psri.setTranscriptClusterID(transcript_cluster)
+                        psri.setChromosome(chr)
+                    elif 'PSR' in psr:
+                        type = 'Exon'
+                        exon_cluster = string.split(t[xi],'///')[0] ### grab the first exonIDs
+                        constitutive = t[csi]
+                        transcript_cluster = string.split(t[tci],'///')[0]
+                        chr = t[sqi]; strand = t[si]
+                        if constitutive == 'Non-Constituitive': nonconstitutive_junctions[probeset]=[]
+                        five_EC,three_EC = five_exon,three_exon ### NOT SURE THIS IS CORRECT
+                        psri = PSRAnnotation(psr,probeset,'',transcript_cluster,strand,'','',exon_cluster,constitutive,'',type)
+                        exon_start = int(t[starti]); exon_end = int(t[endi])
+                        if '-' in strand: exon_start, exon_end = exon_end,exon_start
+                        psri.setTranscriptClusterID(transcript_cluster)
+                        psri.setChromosome(chr)
+            elif len(t)==15: ###Transcript Cluster ID Lines
                 probeset, probeset_name, ucsclink, transcript_cluster, genome_pos, strand, transcripts, geneids, symbols, descriptions, TR_count, JUC_count, PSR_count, EXs_count, ECs_count = t
                 type = 'TranscriptCluster'; seq=''; exon_cluster=''; constitutive=''
                 if '|' in geneids: geneids = string.replace(geneids,'|',',')
@@ -341,7 +510,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
             elif extraction_type == 'sequence':
                 store = 'no'
                 if type == 'Exon' or type == 'Junction':
-                    transcript_cluster_count[psri.TranscriptCluster()]=[]
+                    transcript_cluster_count[psri.TranscriptCluster()]=[]                    
                     if psri.TranscriptCluster() in ensembl_associations:
                         ens_geneid = ensembl_associations[psri.TranscriptCluster()][0]
                         critical_junctions=''
@@ -350,10 +519,14 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
                             seq = psri.JunctionSequences()[0]; exon_id = probeset+'|5'
                             seq_data = ExonSeqData(exon_id,psri.TranscriptCluster(),psri.TranscriptCluster()+':'+exon_id,critical_junctions,seq)
                             try: probeset_db[ens_geneid].append(seq_data)
-                            except Exception: probeset_db[ens_geneid] = [seq_data]  
+                            except Exception: probeset_db[ens_geneid] = [seq_data]
+                            try: seq_data.setExonStart(exon1s); seq_data.setExonStop(exon1e) ### HTA
+                            except Exception: pass
                             
                             seq = psri.JunctionSequences()[1]; exon_id = probeset+'|3'
                             seq_data = ExonSeqData(exon_id,psri.TranscriptCluster(),psri.TranscriptCluster()+':'+exon_id,critical_junctions,seq)
+                            try: seq_data.setExonStart(exon2s); seq_data.setExonStop(exon2e) ### HTA
+                            except Exception: pass
                             try: probeset_db[ens_geneid].append(seq_data)
                             except Exception: probeset_db[ens_geneid] = [seq_data]
                             transcript_cluster_count2[psri.TranscriptCluster()]=[]
@@ -361,6 +534,8 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
                             dw.write(probeset+'\t'+psri.Sequence()+'\t\t\n')
                             seq = psri.Sequence(); exon_id = probeset
                             seq_data = ExonSeqData(exon_id,psri.TranscriptCluster(),psri.TranscriptCluster()+':'+exon_id,critical_junctions,seq)
+                            try: seq_data.setExonStart(exon_start); seq_data.setExonStop(exon_end) ### HTA
+                            except Exception: pass
                             try: probeset_db[ens_geneid].append(seq_data)
                             except Exception: probeset_db[ens_geneid] = [seq_data]
                             transcript_cluster_count2[psri.TranscriptCluster()]=[]
@@ -390,6 +565,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
             x+=1
     print 'TCs:',tc, 'Junctions:',j, 'Exons:',p, 'Total:',x; #sys.exit()
 
+
     #print 'JUC0900017373',probeset_db['JUC0900017373'].Sequence()
     #print 'JUC0900017385',probeset_db['JUC0900017385'].Sequence();kill
 
@@ -414,11 +590,15 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
         print 'len(junction_inclusion_db)',len(junction_inclusion_db)
         exportUpdatedJunctionComps(species,array_type)
     
-def exportUpdatedJunctionComps(species,array_type):
+def exportUpdatedJunctionComps(species,array_type,searchChr=None):
     db_version = unique.getCurrentGeneDatabaseVersion() ### Only need this since we are exporting to root_dir for RNASeq
     if array_type == 'RNASeq': species,root_dir=species
     else: root_dir = ''
-    probeset_junction_export = root_dir+'AltDatabase/'+db_version+'/'+ species + '/'+array_type+'/'+ species + '_junction_comps_updated.txt'; lines_exported=0
+    lines_exported=0
+    if searchChr !=None:
+        probeset_junction_export = root_dir+'AltDatabase/'+db_version+'/'+ species + '/'+array_type+'/comps/'+ species + '_junction_comps_updated.'+searchChr+'.txt'
+    else:
+        probeset_junction_export = root_dir+'AltDatabase/'+db_version+'/'+ species + '/'+array_type+'/'+ species + '_junction_comps_updated.txt'
     
     if array_type == 'RNASeq':
         data,status = RNASeq.AppendOrWrite(probeset_junction_export) ### Creates a new file or appends if already existing (import is chromosome by chromosome)
@@ -480,7 +660,9 @@ def identifyCompetitiveJunctions(exon_cluster_db,junction_type):
                     ### Using the ranked exon-cluster IDs
                     psri1 = probeset_db[junction1]; exon1a = psri1.ExternalExonClusterIDs()[0]; exon1b = psri1.ExternalExonClusterIDs()[-1]
                     psri2 = probeset_db[junction2]; exon2a = psri2.ExternalExonClusterIDs()[0]; exon2b = psri2.ExternalExonClusterIDs()[-1]
-                    diffX1 = abs(int(exon1a[5:])-int(exon1b[5:])); diffX2 = abs(int(exon2a[5:])-int(exon2b[5:]))
+                    try: diffX1 = abs(int(exon1a[5:])-int(exon1b[5:])); diffX2 = abs(int(exon2a[5:])-int(exon2b[5:]))
+                    except Exception:
+                        diffX1 = abs(int(exon1a[4:-4])-int(exon1b[4:-4])); diffX2 = abs(int(exon2a[4:-4])-int(exon2b[4:-4]))
                     junction1_exon_id = ed1.ExonID(); junction2_exon_id = ed2.ExonID()
                     if diffX1==0 or diffX2==0: null=[] ### splicing occurs within a single exon-cluster
                     elif diff1<diff2: ### Thus the first junction contains the critical exon
@@ -581,6 +763,15 @@ def importGenericAppend(filename,key_db):
         t = string.split(data,'\t')
         key_db[t[0]] = t[1:]
     return key_db
+
+def importGenericReverse(filename):
+    db={}
+    fn=filepath(filename)
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        db[t[-1]] = t[0]
+    return db
    
 def importGenericAppendDBList(filename,key_db):
     fn=filepath(filename)
@@ -1217,7 +1408,8 @@ def importArrayAnnotations(species,array_type):
 def exportDB(filename,db):
     fn=filepath(filename); data = open(fn,'w')
     for key in db:
-        values = string.join([key]+db[key],'\t')+'\n'; data.write(values)
+        try: values = string.join([key]+db[key],'\t')+'\n'; data.write(values)
+        except Exception: print key,db[key];sys.exit()
     data.close()
 
 def exportFiltered(db):
@@ -1258,7 +1450,11 @@ def exportCriticalExonLocations(species,array_type,critical_exon_seq_db):
                 values = [cd.ArrayGeneID(),cd.ExonID(),ens_geneid,cd.ExonStart(),cd.ExonStop(),cd.GeneStart(), cd.GeneStop(), cd.ExonSeq()]
                 values = string.join(values,'\t')+'\n'
                 data.write(values)
-            except AttributeError: null = []
+            except AttributeError:
+                #print cd.ArrayGeneID(), cd.ExonID()
+                #print cd.ExonStart(),cd.ExonStop(),cd.GeneStart(), cd.GeneStop(), cd.ExonSeq()
+                #sys.exit()
+                pass
     data.close()
     
 class ExonSeqData:
@@ -1270,8 +1466,12 @@ class ExonSeqData:
     def ExonID(self): return self._exon
     def CriticalJunctions(self): return self._critical_junctions
     def ExonSeq(self): return string.upper(self._critical_exon_seq)
-    def setExonStart(self,exon_start): self._exon_start = exon_start
-    def setExonStop(self,exon_stop): self._exon_stop = exon_stop
+    def setExonStart(self,exon_start):
+        try: self._exon_start = self._exon_start ### If it already is set from the input file, keep it
+        except Exception: self._exon_start = exon_start
+    def setExonStop(self,exon_stop):
+        try: self._exon_stop = self._exon_stop ### If it already is set from the input file, keep it
+        except Exception: self._exon_stop = exon_stop
     def setGeneStart(self,gene_start): self._gene_start = gene_start
     def setGeneStop(self,gene_stop): self._gene_stop = gene_stop
     def ExonStart(self): return str(self._exon_start)
@@ -1335,7 +1535,7 @@ def updateCriticalExonSequences(array_type, filename,ensembl_probeset_db):
     data.close()
     print exon_seq_db_filename, 'exported....'
 
-def inferJunctionComps(species,array_type):
+def inferJunctionComps(species,array_type,searchChr=None):
     if len(array_type) == 3:
         ### This indicates that the ensembl_probeset_db is already included
         array_type,ensembl_probeset_db,root_dir = array_type
@@ -1401,10 +1601,20 @@ def inferJunctionComps(species,array_type):
                             except KeyError: common_exon_blocks_exon[side,gene,block] = [[regionid,probeset]]
                     else:
                         ### Defines exon-intron and exon-exon reciprical junctions based on shared exon blocks
-                        if 'I' in exon_5prime: block = e2a3[0]; side = 'right'; critical_intron = exon_5prime_original
-                        else: block = e1a3[0]; side = 'left'; critical_intron = exon_3prime_original
+                        ### In 2.0.8 we expanded the search criterion here so that each side and exon-block are searched for matching junctions (needed for confirmatory novel exons)
+                        if 'I' in exon_5prime or 'I' in exon_5prime[0]: ### Can be a list with the first object being the exon annotation
+                            block = e2a3[0]; side = 'right'; critical_intron = exon_5prime_original
+                            alt_block = e1a3[0]; alt_side = 'left'
+                        else:
+                            block = e1a3[0]; side = 'left'; critical_intron = exon_3prime_original
+                            alt_block = e2a3[0]; alt_side = 'right'
+                        #if gene == 'ENSG00000112695':
+                        #print critical_intron,regionid,probeset, exon_5prime_original, exon_3prime_original, exon_5prime
                         try: common_exon_blocks_intron[side,gene,block].append([regionid,probeset,critical_intron])
                         except KeyError: common_exon_blocks_intron[side,gene,block] = [[regionid,probeset,critical_intron]]
+                        ### Below added in 2.0.8 to accomidate for a broader comparison of reciprocol splice junctions
+                        try: common_exon_blocks_intron[alt_side,gene,alt_block].append([regionid,probeset,critical_intron])
+                        except KeyError: common_exon_blocks_intron[alt_side,gene,alt_block] = [[regionid,probeset,critical_intron]]
         
     if array_type != 'RNASeq':               
         print count, 'probed junctions being compared to identify putative reciprocal junction comparisons'
@@ -1434,6 +1644,8 @@ def inferJunctionComps(species,array_type):
                 excl_junction=formatJunctions(excl_junction)
                 critical_exon=string.replace(formatJunctions(critical_exon),'-','|'); count+=1
                 ji=JunctionArrayEnsemblRules.JunctionInformation(gene,critical_exon,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source)
+                #if gene == 'ENSG00000112695':# and 'I' in critical_exon:
+                #print critical_exon,'\t', incl_junction,'\t',excl_junction_probeset,'\t',incl_junction_probeset
                 if (excl_junction_probeset,incl_junction_probeset) not in junction_inclusion_db:
                     try: junction_inclusion_db[excl_junction_probeset,incl_junction_probeset].append(ji)
                     except KeyError: junction_inclusion_db[excl_junction_probeset,incl_junction_probeset] = [ji]
@@ -1455,7 +1667,7 @@ def inferJunctionComps(species,array_type):
     ### Compare exon and intron blocks for intron alinging junctions
     junction_inclusion_db = annotateNovelIntronSplicingEvents(common_exon_blocks_intron,common_exon_blocks_exon,junction_inclusion_db)
 
-    if len(root_dir)>0: exportUpdatedJunctionComps((species,root_dir),array_type)
+    if len(root_dir)>0: exportUpdatedJunctionComps((species,root_dir),array_type,searchChr=searchChr)
     else: exportUpdatedJunctionComps(species,array_type)
     
     clearObjectsFromMemory(junction_inclusion_db); junction_inclusion_db=[]
@@ -1471,6 +1683,8 @@ def annotateNovelIntronSplicingEvents(common_exon_blocks_intron,common_exon_bloc
         if key in common_exon_blocks_exon:
             for (excl_junction,excl_junction_probeset) in common_exon_blocks_exon[key]:
                 for (incl_junction,incl_junction_probeset,critical_intron) in common_exon_blocks_intron[key]:
+                    #if gene == 'ENSG00000112695':# and 'E2.9-E3.1' in excl_junction_probeset:
+                    #print critical_intron,'\t', incl_junction,'\t',excl_junction_probeset,'\t',incl_junction_probeset,'\t',side,'\t',gene,block
                     ji=JunctionArrayEnsemblRules.JunctionInformation(gene,critical_intron,excl_junction,incl_junction,excl_junction_probeset,incl_junction_probeset,source)
                     if (excl_junction_probeset,incl_junction_probeset) not in junction_inclusion_db:
                         try: junction_inclusion_db[excl_junction_probeset,incl_junction_probeset].append(ji)
@@ -1530,7 +1744,24 @@ def getJunctionExonLocations(species,array_type,specific_array_type):
     ensembl_associations = importJunctionArrayAnnotations(species,array_type,specific_array_type)
     extraction_type = 'sequence'
     exon_seq_db=importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
+    if 'HTA' in specific_array_type:
+        exportImportedProbesetLocations(species,array_type,exon_seq_db,ensembl_associations)
     getLocations(species,array_type,exon_seq_db)
+
+def exportImportedProbesetLocations(species,array_type,critical_exon_seq_db,ensembl_associations):
+    location_db_filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical_exon_locations-original.txt'
+    fn=filepath(location_db_filename); data = open(fn,'w')
+    title = ['Affygene','ExonID','Ensembl','start','stop','gene-start','gene-stop','ExonSeq']; title = string.join(title,'\t')+'\n'
+    data.write(title)
+
+    for ens_geneid in critical_exon_seq_db:
+        for cd in critical_exon_seq_db[ens_geneid]:
+            try:
+                values = [cd.ArrayGeneID(),cd.ExonID(),ens_geneid,cd.ExonStart(),cd.ExonStop(),cd.GeneStart(), cd.GeneStop(), cd.ExonSeq()]
+                values = string.join(values,'\t')+'\n'
+                data.write(values)
+            except AttributeError: null = []
+    data.close()
     
 def identifyCriticalExonLocations(species,array_type):
     critical_exon_seq_db = importAnnotateCriticalExonSequences(species,array_type)

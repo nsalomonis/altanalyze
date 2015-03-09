@@ -191,17 +191,29 @@ def getProbesetAssociations(filename,ensembl_exon_db,ens_transcript_db,source_bi
 def getGenePositions(exon_db,call):
     chromosome_pos_db={}; chromosome_neg_db={}
     for key in exon_db:
+        t=[]
         strand = key[-1]; chr = key[1]; index1= 0; index2 = -1; indexa = 0; indexb = 1
         if strand == '-': index1= -1; index2 = 0; indexa = 1; indexb = 0
         if call == 'yes':
-            geneStart = exon_db[key][index1][1][indexa] #first sorted exon
-            geneStop = exon_db[key][index2][1][indexb]
+            ### For Ensembl exon coordinates - get Gene Coordinates
+            
+            ### Doesn't work for NKX2-5 in human for exon array - first exon spans the last exon (by AltAnalyze's definitions)
+            #geneStart = exon_db[key][index1][1][indexa] #first sorted exon
+            #geneStop = exon_db[key][index2][1][indexb]
+            for exon_data in exon_db[key]:
+                t.append(exon_data[1][0])
+                t.append(exon_data[1][1])
         else:
+            ### For transcript cluster data (slightly different format than above) - get Gene Coordinates
             chr = chr[3:]
             if '_' in chr: c = string.split(chr,'_'); chr=c[0] ###For _unknown chr from Affy's annotation file
-            geneStart = exon_db[key][index1][indexa] #first sorted exon
-            geneStop = exon_db[key][index2][indexb]
-        t=[]; t.append(geneStart); t.append(geneStop); t.sort()
+            #geneStart = exon_db[key][index1][indexa] #first sorted exon
+            #geneStop = exon_db[key][index2][indexb]
+            for exon_data in exon_db[key]:
+                t.append(exon_data[0])
+                t.append(exon_data[1])
+        #t=[]; t.append(geneStart); t.append(geneStop); t.sort()
+        t.sort(); t = [t[0],t[-1]]
         if strand == '-':
             if chr in chromosome_neg_db:
                 gene_position_db = chromosome_neg_db[chr]
@@ -882,9 +894,12 @@ def getDirectoryFiles(dir):
             if '.zip' not in affy_data_dir: probeset_annotation_file = affy_data_dir ###This file lets you grab the same info as in probeset_transcript_file, but along with mRNA associations
     return probeset_annotation_file
 
-def reimportEnsemblProbesets(filename):
+def reimportEnsemblProbesets(filename,probe_db=None,cs_db=None):
     fn=filepath(filename); x = 0
-    probe_association_db={}; constitutive_db={}; constitutive_original_db={}
+    if probe_db != None:
+        probe_association_db=probe_db; constitutive_db=cs_db; constitutive_original_db={} ### grab these from a separate file
+    else:
+        probe_association_db={}; constitutive_db={}; constitutive_original_db={}
     for line in open(fn,'rU').xreadlines():             
         data = cleanUpLine(line)
         if x == 0:
@@ -1008,13 +1023,13 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
     global test; global test_cluster; global filter_sgv_output; global arraytype
     export_probeset_mRNA_associations = 'no'; biotypes = ''
     if source_biotype == 'junction': arraytype = 'junction'; source_biotype = 'mRNA'
-    elif source_biotype == 'gene': arraytype = 'gene'; source_biotype = 'mRNA'
+    elif source_biotype == 'gene': arraytype = 'gene'; reimportEnsemblProbesetsForSeqExtraction = 'mRNA'
     elif 'RNASeq' in source_biotype: arraytype,database_root_dir = source_biotype; source_biotype = 'mRNA'
     else: arraytype = 'exon'
     filter_sgv_output = 'no'
     test = 'no'
     test_cluster = [3161519, 3161559, 3161561, 3161564, 3161566, 3161706, 3161710, 3161712, 2716656, 2475411]
-    test_cluster = [4037623]
+    test_cluster = [2887449]
     partial_process = 'no'; status = 'null'
     if process_from_scratch == 'yes':
         if partial_process == 'no':
@@ -1038,9 +1053,13 @@ def getAnnotations(process_from_scratch,x,source_biotype,Species):
                 probeset_db_mRNA={}; probeset_db_ncRNA={}
             else:
                 filename = 'AltDatabase/'+species+'/'+arraytype+'/'+species+'_Ensembl_probesets.txt'
-                if arraytype == 'RNASeq':
+                if arraytype != 'RNASeq':
+                    probeset_db,constitutive_db = reimportEnsemblProbesets(filename)
+                else:
+                    exon_standard_dir = string.replace(filename,'_probesets.txt','_exons.txt')
+                    probeset_db,constitutive_db = reimportEnsemblProbesets(exon_standard_dir)
                     filename = string.replace(database_root_dir+filename,'_probesets.txt','_junctions.txt')
-                probeset_db,constitutive_db = reimportEnsemblProbesets(filename)
+                    probeset_db,constitutive_db = reimportEnsemblProbesets(filename,probe_db=probeset_db,cs_db=constitutive_db) ### These only include exons and junctions detected from the experiment
             annotate_db = EnsemblImport.reimportEnsemblAnnotations(species)
             splicing_analysis_db = getSplicingAnalysisProbesets(probeset_db,constitutive_db,annotate_db)
             #print "Probeset database and Annotation database reimported"

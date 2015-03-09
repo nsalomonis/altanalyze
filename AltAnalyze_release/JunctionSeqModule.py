@@ -34,15 +34,13 @@ def importProbesetSeqeunces(filename,exon_db,species):
     fn=filepath(filename)
     probeset_seq_db={}; x = 0;count = 0
     for line in open(fn,'r').xreadlines():
-        if x==0: x=1
-        else:
-            data, newline = string.split(line,'\n'); t = string.split(data,'\t')
-            probeset = t[0]; sequence = t[-1]; sequence = string.upper(sequence)
-            try:
-                y = exon_db[probeset]; gene = y.GeneID(); y.SetExonSeq(sequence)
-                try: probeset_seq_db[gene].append(y)
-                except KeyError: probeset_seq_db[gene] = [y]
-            except KeyError: null=[] ### Occurs if there is no Ensembl for the critical exon or the sequence is too short to analyze
+        data, newline = string.split(line,'\n'); t = string.split(data,'\t')
+        probeset = t[0]; sequence = t[-1]; sequence = string.upper(sequence)
+        try:
+            y = exon_db[probeset]; gene = y.GeneID(); y.SetExonSeq(sequence)
+            try: probeset_seq_db[gene].append(y)
+            except KeyError: probeset_seq_db[gene] = [y]
+        except KeyError: null=[] ### Occurs if there is no Ensembl for the critical exon or the sequence is too short to analyze
     print len(probeset_seq_db), "length of gene - probeset sequence database"
     return probeset_seq_db
         
@@ -139,9 +137,11 @@ def runProgram(Species,Array_type,mir_source,stringency,Force):
         splice_event_db = getParametersAndExecute(probeset_seq_file,array_type,species,data_type)
         
     if process_microRNA_predictions == 'yes':
-        print 'stringency:',stringency 
-        ensembl_mirna_db = ExonSeqModule.importmiRNATargetPredictionsAdvanced(species)
-        ExonSeqModule.alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
+        print 'stringency:',stringency
+        try:
+            ensembl_mirna_db = ExonSeqModule.importmiRNATargetPredictionsAdvanced(species)
+            ExonSeqModule.alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,splice_event_db)
+        except Exception: pass
         
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'junction'

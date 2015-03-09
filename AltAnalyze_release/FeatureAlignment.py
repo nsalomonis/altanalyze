@@ -123,9 +123,10 @@ def findDomainsByGenomeCoordinates(species,array_type,Data_type):
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     first_last_exon_coord_db = importEnsExonStructureDataCustom(filename,species,{})
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
-    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
-    first_last_exon_coord_db = importEnsExonStructureDataCustom(filename,species,first_last_exon_coord_db)
- 
+    try: 
+        filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
+        first_last_exon_coord_db = importEnsExonStructureDataCustom(filename,species,first_last_exon_coord_db)
+    except Exception: pass
     if array_type == 'exon' or array_type == 'gene' or data_type == 'junction':
         ens_probeset_file = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"
         if array_type == 'RNASeq':

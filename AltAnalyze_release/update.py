@@ -101,7 +101,7 @@ def buildJunctionExonAnnotations(species,array_type,specific_array_type,force,ge
     ### Get UCSC associations (download databases if necessary)
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'; force='no'
     export_all_associations = 'no' ### YES only for protein prediction analysis
-    buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+    #buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
 
     ### Get genomic locations and initial annotations for exon sequences (exon pobesets and junctions)    
     import JunctionArray
@@ -188,7 +188,6 @@ def buildExonArrayExonAnnotations(species, array_type, force):
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'
     export_all_associations = 'no' ### YES only for protein prediction analysis
     buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
-
     import ExonArrayEnsemblRules; reload(ExonArrayEnsemblRules)
     process_from_scratch='yes'
     constitutive_source='default'
@@ -204,12 +203,14 @@ def getFTPData(ftp_server,subdir,filename_search):
     print 'Connecting to',ftp_server
     ftp = FTP(ftp_server); ftp.login()
     ftp.cwd(subdir)
-
+    
     ftpfilenames = []; ftp.dir(ftpfilenames.append); ftp.quit()
     matching=[]
+
     for line in ftpfilenames:
         line = string.split(line,' '); file_dir = line[-1]
         dir = 'ftp://'+ftp_server+subdir+'/'+file_dir
+        #print dir
         if filename_search in dir and '.md5' not in dir: matching.append(dir)
     if len(matching)==1:
         return matching[0]
@@ -422,6 +423,7 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
     dir = string.replace(dir,'hGlue','')  ### Used since the hGlue data is in a sub-directory
     filename = export.findFilename(filename)
     url = url_dir+secondary_dir+'/'+filename
+    print url
     file,status = download(url,dir,file_type); continue_analysis = 'yes'
     if 'Internet' in status and 'nnot' not in filename: ### Exclude for Affymetrix annotation files
         print_out = "File:\n"+url+"\ncould not be found on the server or an internet connection is unavailable."
@@ -531,7 +533,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
        
         import IdentifyAltIsoforms; run_seqcomp = 'no'
         IdentifyAltIsoforms.runProgram(species,array_type,'null',force,run_seqcomp)
-        import FeatureAlignment
+        import FeatureAlignment; import JunctionArray
         FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'null')
         
         if array_type == 'junction' or array_type == 'RNASeq':
@@ -539,14 +541,23 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,'single',force)
             IdentifyAltIsoforms.runProgram(species,array_type,'junction',force,run_seqcomp)
             FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'junction')
-            if array_type == 'junction' or array_type == 'RNASeq':
-                ### For exon probesets (and junction exons) align and assess alternative proteins - export to the folder 'exon'
-                IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
-                # FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
-                if array_type == 'RNASeq':
-                    import JunctionArray
-                    JunctionArray.combineExonJunctionAnnotations(species,array_type)
-
+            ### For exon probesets (and junction exons) align and assess alternative proteins - export to the folder 'exon'
+            IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
+            # FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
+            
+            """ Repeat above with CoordinateBasedMatching = True """ 
+            ### Peform coordinate based junction mapping to transcripts (requires certain sequence files built in IdentifyAltIosofmrs)
+            analysis_type = 'reciprocal'
+            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,analysis_type,force,CoordinateBasedMatching = True)
+            IdentifyAltIsoforms.runProgram(species,array_type,'null',force,run_seqcomp)
+            FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'null')
+            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,'single',force,CoordinateBasedMatching = True)
+            IdentifyAltIsoforms.runProgram(species,array_type,'junction',force,run_seqcomp)
+            FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'junction')
+            IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
+            if array_type == 'RNASeq':
+                JunctionArray.combineExonJunctionAnnotations(species,array_type)
+                
     if update_miRs == 'yes':
         if update_miR_seq == 'yes':
             import MatchMiRTargetPredictions; only_add_sequence_to_previous_results = 'no'
@@ -620,8 +631,10 @@ def temp(array_type,species):
 if __name__ == '__main__':
     
     dir = '/home/nsalomonis/software/AltAnalyze_v.2.0.5-Py/AltDatabase/EnsMart65/miRBS/'; filename = 'UTR_Sequences.txt.zip'
-    array_type = 'junction'; species = 'Hs'
+    array_type = 'gene'; species = 'Mm'
     filename = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset-probes.txt'
+    verifyFile(filename,array_type);sys.exit()
     temp(array_type,species); sys.exit()
     
     #unzipFiles(filename,dir); kill
