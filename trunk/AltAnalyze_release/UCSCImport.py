@@ -784,16 +784,19 @@ def runUCSCEnsemblAssociations(Species,mRNA_Type,export_All_associations,run_fro
     test_gene = ['ENSMUSG00000022194']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']
 
     counts = update.verifyFile('AltDatabase/ucsc/'+species +'/all_mrna.txt','counts') ### See if the file is already downloaded
+
     if force == 'yes' or counts <9:
         ### Download mRNA structure file from website
         import UI; species_names = UI.getSpeciesInfo()
         species_full = species_names[species]
         species_full = string.replace(species_full,' ','_')
-        ucsc_mRNA_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','all_mrna.txt.gz')
-        knownAlt_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','knownAlt.txt.gz')
         output_dir = 'AltDatabase/ucsc/'+species + '/'
-        downloadFiles(ucsc_mRNA_dir,output_dir); downloadFiles(knownAlt_dir,output_dir)
-   
+        ucsc_mRNA_dir = update.download_protocol('http://hgdownload.cse.ucsc.edu/goldenPath/currentGenomes/'+species_full+'/database/all_mrna.txt.gz',output_dir,'')
+        knownAlt_dir = update.download_protocol('http://hgdownload.cse.ucsc.edu/goldenPath/currentGenomes/'+species_full+'/database/knownAlt.txt.gz',output_dir,'')
+        #knownAlt_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','knownAlt.txt.gz')
+        #ucsc_mRNA_dir = update.getFTPData('hgdownload.cse.ucsc.edu','/goldenPath/currentGenomes/'+species_full+'/database','all_mrna.txt.gz')
+        #downloadFiles(ucsc_mRNA_dir,output_dir); downloadFiles(knownAlt_dir,output_dir)
+
     if run_from_scratch == 'yes':
         global ensembl_chr_coordinate_db
         export_all_associations = export_All_associations

@@ -69,13 +69,15 @@ class GrabFiles:
         
 def getDirectoryFiles(import_dir, search_term):
     exact_file = ''; exact_file_dir=''; all_matching=[]
+    if '.txt' in import_dir:
+        import_dir = export.findParentDir(import_dir)
     dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
     for data in dir_list:    #loop through each file in the directory to output results
         present = verifyFile(import_dir+'/'+data) ### Check to see if the file is present in formatting the full file_dir
         if present == True:
             affy_data_dir = import_dir+'/'+data
         else: affy_data_dir = import_dir[1:]+'/'+data
-        if search_term in affy_data_dir:
+        if search_term in affy_data_dir and '._' not in affy_data_dir:
             if 'version.txt' not in affy_data_dir: exact_file_dir = affy_data_dir; exact_file = data; all_matching.append(exact_file_dir)
     return all_matching, exact_file_dir,exact_file
 
@@ -238,7 +240,8 @@ def importGeneToOntologyData(species_code,mod,gotype,ontology_type):
         if gotype == 'nested' and x==0: x = 1
         else:
             if 'Ontology' not in line and 'ID' not in line: ### Header included in input from AP or BioMart
-                data = cleanUpLine(line)
+                #data = cleanUpLine(line)
+                data = line.strip()
                 t = string.split(data,'\t')
                 if len(t)>1:
                     try: gene = t[0]; goid = t[1]
@@ -261,12 +264,13 @@ def importGeneMAPPData(species_code,mod):
     geneMAPP_import_dir = '/'+database_dir+'/'+species_code+'/gene-mapp'
     gm = GrabFiles(); gm.setdirectory(geneMAPP_import_dir)
     filedir,file = gm.searchdirectory(mod) ### Identify gene files corresponding to a particular MOD
-    global gene_to_mapp; x = 0
+    global gene_to_mapp; x = True
     
     fn=filepath(filedir); gene_to_mapp={}
     for line in open(fn,'rU').xreadlines():             
-        data = cleanUpLine(line)
-        if x==0: x=1
+        #data = cleanUpLine(line)
+        data = line.strip()
+        if x: x=False
         else:
             t = string.split(data,'\t')
             gene = t[0]; mapp = t[2]
@@ -473,7 +477,8 @@ def importUidGeneSimple(species_code,mod_source):
     
     fn=filepath(filedir)
     for line in open(fn,'rU').xreadlines():             
-        data = cleanUpLine(line)
+        #data = cleanUpLine(line)
+        data = line.strip()
         if x==0: x=1
         else:
             t = string.split(data,'\t')
@@ -530,7 +535,8 @@ def importOntologyUIDGeneData(species_code,mod_source,gene_to_go,denominator_sou
     for line in open(fn,'rU').xreadlines(): count+=1
     original_increment = int(count/10); increment = original_increment
     for line in open(fn,'rU').xreadlines():           
-        data = cleanUpLine(line); x+=1
+        #data = cleanUpLine(line); x+=1
+        data = line.strip(); x+=1
         if program_type == 'GO-Elite':
             if x == increment: increment+=original_increment; print '*',
         t = string.split(data,'\t')
@@ -560,7 +566,8 @@ def importGeneSetUIDGeneData(species_code,mod_source,gene_to_mapp,denominator_so
     for line in open(fn,'rU').xreadlines(): count+=1
     original_increment = int(count/10); increment = original_increment
     for line in open(fn,'rU').xreadlines():           
-        data = cleanUpLine(line); x+=1
+        #data = cleanUpLine(line); x+=1
+        data = line.strip(); x+=1
         if program_type == 'GO-Elite':
             if x == increment: increment+=original_increment; print '*',
         t = string.split(data,'\t')
@@ -580,9 +587,11 @@ def eliminate_redundant_dict_values(database):
     for key in database: list = unique.unique(database[key]); list.sort(); db1[key] = list
     return db1
 
-def getGeneToUid(species_code,mod_source):
+def getGeneToUid(species_code,mod_source,display=True):
     if 'hide' in mod_source: show_progress, mod_source = mod_source
+    elif display==False: show_progress = 'no'
     else: show_progress = 'yes'
+
     program_type,database_dir = unique.whatProgramIsThis()
     import_dir = '/'+database_dir+'/'+species_code+'/uid-gene'
     ug = GrabFiles(); ug.setdirectory(import_dir)
@@ -620,7 +629,8 @@ def simpleExonImporter(species_code):
     filename = 'AltDatabase/'+species_code+'/exon/'+species_code+'_Ensembl_probesets.txt'
     fn=filepath(filename); probeset_db={}
     for line in open(fn,'rU').xreadlines():             
-        data = cleanUpLine(line)
+        #data = cleanUpLine(line)
+        data = line.strip()
         data = string.split(data,'\t')
         probeset_db[data[0]]=[]
     return probeset_db
@@ -628,7 +638,7 @@ def simpleExonImporter(species_code):
 def predictIDSource(id,system_codes):
     au = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
     nm = ['1','2','3','4','5','6','7','8','9']
-    affy_suffix = '_at'; ensembl_prefix = 'ENS'; source_data = ''; id_type = ''
+    affy_suffix = '_at'; ensembl_prefix = 'ENS'; source_data = ''; id_type = 'Symbol'; id_types={}
     if len(id)>3:
         if affy_suffix == id[-3:]: id_type = 'Affymetrix'
         elif ensembl_prefix == id[:3]: id_type = 'Ensembl'
@@ -640,11 +650,47 @@ def predictIDSource(id,system_codes):
                 if len(id) == 7: id_type = 'Affymetrix' ###All newer Affymetrix transcript_cluster_ids and probesets (can be mistaken for EntrezGene IDs)
                 else: id_type = 'EntrezGene'
             except ValueError: null = []
+            try: id_types[id_type]+=1
+            except Exception: id_types[id_type]=1
+
     ###If the user changes the names of the above id_types, we need to verify that the id_type is in the database
-    if len(id_type)>0:
-        for code in system_codes:
-            if system_codes[code] == id_type: source_data = id_type
+    if len(id_type)>0 and len(id_types)>0:
+        id_type_count=[]
+        for i in id_types:
+            id_type_count.append((id_types[i],i))
+        id_type_count.sort()
+        print id_type_count
+        id_type = id_type_count[-1][-1]
+    for code in system_codes:
+        if system_codes[code] == id_type: source_data = id_type
     return source_data
+
+def predictIDSourceSimple(id):
+    au = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+    nm = ['1','2','3','4','5','6','7','8','9']
+    affy_suffix = '_at'; ensembl_prefix = 'ENS'; source_data = ''; id_type = 'Sy'; id_types={}
+    if len(id)>3:
+        if affy_suffix == id[-3:]: id_type = 'X'
+        elif ensembl_prefix == id[:3]:
+            if ' ' in id:
+                id_type = 'En:Sy'
+            else:
+                id_type = 'En'
+        elif id[2] == '.': id_type = 'Ug'
+        #elif (id[0] in au and id[1] in nm) or '_' in id: id_type = 'S'
+        else:
+            try:
+                int_val = int(id)
+                if len(id) == 7: id_type = 'X' ###All newer Affymetrix transcript_cluster_ids and probesets (can be mistaken for EntrezGene IDs)
+                else: id_type = 'L'
+            except ValueError: null = []
+        if id_type != 'En' and ensembl_prefix in id and ':' in id:
+            prefix = string.split(id,':')[0]
+            if ensembl_prefix not in prefix and ' ' in id:
+                id_type = '$En:Sy'
+            else:
+                id_type = 'Ae'
+    return id_type
 
 def addNewCustomSystem(filedir,system,save_option,species_code):
     print 'Adding new custom system (be patient)' ### Print statement here forces the status window to appear quicker otherwise stalls
@@ -801,13 +847,22 @@ def importUIDsForMAPPFinderQuery(filedir,system_codes,return_uid_values):
                     for uid in uids:
                         source_data_read = predictIDSource(uid,system_codes)
                     if len(source_data_read)>0: source_data = source_data_read
-                if len(source_data_read)>0: source_data_db[source_data_read]=[]
+                try: source_data_db[source_data_read]+=1
+                except Exception: source_data_db[source_data_read]=1
     first_uid = string.replace(first_uid,'Worksheet','!!!!')
     filenames = string.split(filedir,'/'); filename = filenames[-1]
-    if '!!!!' in first_uid:
+    if x==1:
+        error = 'No results in input file:'+filename
+        print error
+    elif '!!!!' in first_uid:
         error = 'WARNING!!! There appears to be a formatting file issue with the file:\n"'+filename+'"\nPlease correct and re-run (should be tab-delimited text).'
     elif len(source_data_db)>1:
-        error = 'WARNING!!! There is more than one gene system (e.g., Ensembl and EntrezGene) in the file:\n"'+filename+'"\nPlease correct and re-run.'
+        #error = 'WARNING!!! There is more than one gene system (e.g., Ensembl and EntrezGene) in the file:\n"'+filename+'"\nPlease correct and re-run.'
+        sources = []
+        for s in source_data_db:
+            sources.append([source_data_db[s],s])
+        sources.sort(); source_data = sources[-1][1]
+        #print 'Using the system code:', source_data, "(multiple systems present)"
     elif source_data == '':
         error = 'WARNING!!! No System Code identified in:\n"'+filename+'"\nPlease provide in input text file and re-run.\n If System Code column present, the file format may be incorrect.'
         try: error +='Possible system code: '+system+' not recognized.'
@@ -848,7 +903,7 @@ def grabNestedGeneToOntologyAssociations(species_code,mod,source_data,system_cod
     except Exception:
         print "Warning...the MOD you have selected:",mod,ontology_type,"is missing the appropriate relationship files",
         print "necessary to run GO-Elite.  Either replace the missing files ("+database_dir+'/'+species_code+') or select a different MOD at runtime.'
-        print 'Exiting program.'; sys.exit()
+        print 'Exiting program.'; forceExit
     if source_data != mod:
         mod_source = mod+'-'+source_data+'.txt'
         uid_to_go,uid_system = importOntologyUIDGeneData(species_code,mod_source,gene_to_go,denominator_source_ids)
@@ -1020,7 +1075,8 @@ def filterGeneToUID(species_code,mod,source,filter_db):
     uid_system,gene_system = grabFileRelationships(filename)
 
     for line in open(fn,'rU').xreadlines():             
-        data = cleanUpLine(line)
+        #data = cleanUpLine(line)
+        data = line.strip()
         if x==0: x=1
         else:
             t = string.split(data,'\t')
@@ -1028,10 +1084,14 @@ def filterGeneToUID(species_code,mod,source,filter_db):
                 uid = t[1]; gene = t[0]
                 try: gene_to_uid[uid].append(gene)
                 except KeyError: gene_to_uid[uid] = [gene]
+            elif len(filter_db)==0:
+                uid = t[1]; gene = t[0]
+                try: gene_to_uid[uid].append(gene)
+                except KeyError: gene_to_uid[uid] = [gene]
     gene_to_uid = eliminate_redundant_dict_values(gene_to_uid)
     return gene_to_uid
 
-def lookupOntologyID(geneset_type,ontology_name):
+def lookupOntologyID(geneset_type,ontology_name,type='name'):
     if geneset_type == 'GeneOntology': geneset_type = 'go'
     filename = 'AltDatabase/goelite/OBO/builds/'+geneset_type+'_annotations.txt'
 
@@ -1041,10 +1101,15 @@ def lookupOntologyID(geneset_type,ontology_name):
     for line in open(fn,'rU').xreadlines():
         if i==0: i=1 ### Skip the header
         else:
-            data = cleanUpLine(line)
+            #data = cleanUpLine(line)
+            data = line.strip()
             t = string.split(data,'\t')
             geneset_category = t[1]
-            if geneset_category == ontology_name:
+            ontologyID = t[0]
+            if type=='ID':
+                if ontologyID == ontology_name:
+                    ontology_id = geneset_category; break
+            elif geneset_category == ontology_name:
                 ontology_id = t[0]; break
     return ontology_id
 
@@ -1254,7 +1319,8 @@ def swapAndExportSystems(species_code,system1,system2):
     
     fn=filepath(filedir)
     for line in open(fn,'rU').xreadlines():             
-        data = cleanUpLine(line)
+        #data = cleanUpLine(line)
+        data = line.strip()
         if x==0: x=1
         else:
             t = string.split(data,'\t')
@@ -1813,7 +1879,7 @@ def combineDBs(db1,db2):
         else: db2[id]=db1[id]
     return db2
 
-def IDconverter(filename,species_code,input_system_name, output_system_name):
+def IDconverter(filename,species_code,input_system_name, output_system_name,analysis=None):
     """ This is a function built to convert the IDs in an input file from one system to another while preserving the original members """
     
     if 'HMDB' in input_system_name or 'HMDB' in output_system_name: mod = 'HMDB'
@@ -1833,7 +1899,7 @@ def IDconverter(filename,species_code,input_system_name, output_system_name):
     else:
         gene_to_source1 = getGeneToUid(species_code,mod+'-'+input_system_name)
         source1_to_gene = OBO_import.swapKeyValues(gene_to_source1)
-
+    
     if output_system_name == mod: ### This is or MOD
         gene_to_source2={}
         gene_annotations = importGeneData(species_code,mod)
@@ -1857,25 +1923,29 @@ def IDconverter(filename,species_code,input_system_name, output_system_name):
             genes = string.join(genes,'|')
             converted+=1
         converted_ids[id] = secondary_ids, genes
-        
-    if '.txt' in filename:
-        filename = string.replace(filename,'.txt','-'+output_system_name+'.txt')
-    else:
-        filename = filename[:-4]+'-'+output_system_name+'.txt'
-    export_data = export.ExportFile(filename)
-    headers = string.join([output_system_name,mod+' IDs']+headers,'\t')+'\n'
-    export_data.write(headers)
-    for id in input_data_db:
-        secondary_ids, genes = converted_ids[id]
-        for t in input_data_db[id]:
-            export_values = string.join([secondary_ids,genes]+[id]+t,'\t')+'\n'
-            export_data.write(export_values)
-    export_data.close()
     
-    print ''
-    print converted, 'input',input_system_name,'IDs converted to',output_system_name,'out of',len(input_data_db)
-    filename = export.findFilename(filename)
-    return filename
+    if analysis != 'signature':
+        if '.txt' in filename:
+            filename = string.replace(filename,'.txt','-'+output_system_name+'.txt')
+        else:
+            filename = filename[:-4]+'-'+output_system_name+'.txt'
+        export_data = export.ExportFile(filename)
+        headers = string.join([output_system_name,mod+' IDs']+headers,'\t')+'\n'
+        export_data.write(headers)
+        for id in input_data_db:
+            secondary_ids, genes = converted_ids[id]
+            for t in input_data_db[id]:
+                export_values = string.join([secondary_ids,genes]+[id]+t,'\t')+'\n'
+                export_data.write(export_values)
+        export_data.close()
+        
+        print ''
+        print converted, 'input',input_system_name,'IDs converted to',output_system_name,'out of',len(input_data_db)
+        filename = export.findFilename(filename)
+        return filename
+    else:
+        print len(input_data_db), len(converted_ids)
+        return converted_ids, input_data_db
 
 if __name__ == '__main__':
     species_code = 'Hs'; mod = 'Ensembl'; gotype='nested'

@@ -114,6 +114,31 @@ def simpleSeqMatchProtocol(probeset_seq_data,mRNA_seq):
                 probesets_analyzed[probeset]=[]
     return results
 
+def matchTranscriptExonIDsToJunctionIDs(species,array_type,gene_junction_db):
+    """ Matches junctionIDs to precomputed transcript-level exonID strings - simpler and more accurate than importEnsemblTranscriptSequence"""
+    
+    output_file = 'AltDatabase/'+species+'/SequenceData/output/'+array_type+'_coordinte-mRNA_alignments.txt'
+    dataw = export.ExportFile(output_file)
+
+    filename = 'AltDatabase/ensembl/'+species+'/mRNA-ExonIDs.txt'
+    fn=filepath(filename)
+    x = 0
+    for line in open(fn,'rU').xreadlines():
+        data = line.strip()
+        gene,transcript,protein,exonIDs = string.split(data,'\t')
+        exonIDs += '|' ### such that the last exon is propperly searchable
+        if gene in gene_junction_db:
+            junctions_data = gene_junction_db[gene]
+            for jd in junctions_data:
+                junctionIDs = string.split(jd.Probeset()+'|',':')[-1]
+                junctionIDs = string.replace(junctionIDs,'-','|') ### this is the format of the transcript ExonID string
+                if x==0: x=1; print junctionIDs, exonIDs
+                if junctionIDs in exonIDs:
+                    dataw.write(string.join([jd.Probeset(),'1',transcript],'\t')+'\n')
+                else:
+                    dataw.write(string.join([jd.Probeset(),'0',transcript],'\t')+'\n')
+    dataw.close()
+
 def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
     global species; global array_type
     species = Species; array_type = Array_type
@@ -143,6 +168,7 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
                             genes_found[ensembl_id]=[]; seq_type = 'full-length'
                             probeset_seq_data = probeset_seq_db[ensembl_id]; cDNA_seq = sequence[1:]; mRNA_length = len(cDNA_seq)
                             results = simpleSeqMatchProtocol(probeset_seq_data,cDNA_seq)
+
                             for (call,probeset) in results:
                                 dataw.write(string.join([probeset,str(call),transid],'\t')+'\n')
                             ###Save all sequences to the disk rather than store these in memory. Just select the optimal sequences later. 
@@ -153,8 +179,9 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
                     t= string.split(data[1:],':'); sequence=''
                     transid_data = string.split(t[0],' '); transid = transid_data[0]; ensembl_id = t[-1]
                     ind=0
+                    #>ENST00000593546 cdna:known chromosome:GRCh37:HG27_PATCH:26597180:26600278:1 gene:ENSG00000268612 gene_biotype:protein_coding transcript_biotype:protein_coding
                     for item in t:
-                        if 'gene' in item:
+                        if 'gene' in item and 'gene_' not in item:
                             ensembl_id = string.split(t[ind+1],' ')[0] ### In the following field
                         ind+=1
                     """
@@ -174,6 +201,8 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
     print len(genes_found), 'genes associated with reciprocal Ensembl junctions'
     print len(gene_not_found), "genes not found in the reciprocol junction database (should be there unless conflict present - or few alternative genes predicted during junction array design)"
     print gene_not_found[0:10],'not found examples'
+    if len(genes_found) < 10:
+        print '\n\nWARNING!!!!! Ensembl appears to have changed the formatting of this file, preventing propper import!!!!!!\n\n'
     print "Ensembl transcript sequences analyzed in %d seconds" % time_diff
     
 def importUCSCTranscriptSequences(species,array_type,probeset_seq_db):
@@ -304,8 +333,11 @@ def importAllJunctionSequences(species,array_type):
         probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+'/'+species+"_Ensembl_junctions.txt"
     junction_db = importSplicingAnnotationDatabase(probeset_annotations_file)
 
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'  
-    probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
+    if coordinateBasedMatching and array_type == 'RNASeq':
+        probeset_seq_db = {}
+    else:
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'  
+        probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
 
     pairwise_probeset_combinations={}; probeset_gene_seq_db={}
     for probeset in junction_db:
@@ -317,7 +349,11 @@ def importAllJunctionSequences(species,array_type):
             try: probeset_gene_seq_db[pd.GeneID()].append(pd)
             except KeyError: probeset_gene_seq_db[pd.GeneID()] = [pd]
             pairwise_probeset_combinations[probeset,' ']=[]
-                       
+        elif coordinateBasedMatching and array_type == 'RNASeq': ### Coordinate matching as opposed to sequence
+            pd = junction_db[probeset]
+            try: probeset_gene_seq_db[pd.GeneID()].append(pd)
+            except KeyError: probeset_gene_seq_db[pd.GeneID()] = [pd]
+            pairwise_probeset_combinations[probeset,' ']=[]
     print len(probeset_gene_seq_db),"genes with probeset sequence associated"
     return probeset_gene_seq_db,pairwise_probeset_combinations
 
@@ -325,7 +361,7 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     """This function imports AffyGene-Ensembl relationships, junction probeset sequences, and recipricol junction comparisons.
     with data stored from this function, we can match probeset sequence to mRNAs and determine which combinations of probesets
     can be used as match-match or match-nulls."""
-
+    
     array_ens_db={}
     if array_type == 'AltMouse':
         ### Import AffyGene to Ensembl associations (e.g., AltMouse array)    
@@ -341,8 +377,11 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
                 except KeyError: array_ens_db[array_gene]=[ens_gene]
         print len(array_ens_db), 'Ensembl-AltMouse relationships imported.'
         
-    filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'    
-    probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
+    if array_type == 'RNASeq' and coordinateBasedMatching == True:
+        probeset_seq_db={}
+    else:
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'    
+        probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
     
     ###Import reciprocol junctions, so we can compare these directly instead of hits to nulls and combine with sequence data
     ###This short-cuts what we did in two function in ExonModule with exon level data
@@ -374,6 +413,14 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
                                     probe_data = JunctionDataSimple(probeset_id,array_gene)
                                     probe_data.SetExonSeq(probeset_seq)
                                     probe_data.SetJunctionSeq(junction_seq)
+                                    try: probeset_gene_seq_db[ensembl_gene_id].append(probe_data)
+                                    except KeyError: probeset_gene_seq_db[ensembl_gene_id] = [probe_data]
+                                    added_probesets[probeset_id]=[]
+                    elif array_type == 'RNASeq' and coordinateBasedMatching == True: ### Coordinate matching as opposed to sequence
+                        if biotype == 'gene':
+                            for ensembl_gene_id in ensembl_gene_ids:
+                                if probeset_id not in added_probesets:
+                                    probe_data = JunctionDataSimple(probeset_id,array_gene)
                                     try: probeset_gene_seq_db[ensembl_gene_id].append(probe_data)
                                     except KeyError: probeset_gene_seq_db[ensembl_gene_id] = [probe_data]
                                     added_probesets[probeset_id]=[]
@@ -484,8 +531,9 @@ def filterNullMatch(null_match,match):
         else: null_match = null_match[:19] ### Not ideal, but necessary to produce bloating
     return null_match
 
-def alignProbesetsToTranscripts(species,array_type,Analysis_type,Force):
+def alignProbesetsToTranscripts(species,array_type,Analysis_type,Force, CoordinateBasedMatching = False):
     global force; force = Force; global analysis_type; analysis_type = Analysis_type
+    global coordinateBasedMatching; coordinateBasedMatching = CoordinateBasedMatching
     """Match exon or junction probeset sequences to Ensembl and USCS mRNA transcripts"""
       
     if array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
@@ -509,10 +557,16 @@ def alignProbesetsToTranscripts(species,array_type,Analysis_type,Force):
         end_time = time.time(); time_diff = int(end_time-start_time)
         print "Analyses finished in %d seconds" % time_diff
 
-    ### Match probesets to mRNAs
-    importEnsemblTranscriptSequence(species,array_type,probeset_seq_db)
-    try: importUCSCTranscriptSequences(species,array_type,probeset_seq_db)
-    except Exception: null=[] ### If the species not supported by UCSC - the UCSC file is not written, but the other mRNA_alignments files should be available
+    ### Match probesets to mRNAs\=
+    import EnsemblImport
+    if coordinateBasedMatching == True and array_type == 'RNASeq':
+        EnsemblImport.exportTranscriptExonIDAssociations(species)
+        matchTranscriptExonIDsToJunctionIDs(species,array_type,probeset_seq_db) ### no sequences in probeset_seq_db, just junctionIDs
+    else:
+        #matchTranscriptExonIDsToJunctionIDs(species,array_type,probeset_seq_db) ### no sequences in probeset_seq_db, just junctionIDs
+        importEnsemblTranscriptSequence(species,array_type,probeset_seq_db)
+        try: mRNASeqAlign.importUCSCTranscriptSequences(species,array_type,probeset_seq_db)
+        except Exception: pass ### If the species not supported by UCSC - the UCSC file is not written, but the other mRNA_alignments files should be available
 
     probeset_seq_db={} ### Re-set db
 
@@ -525,6 +579,6 @@ def alignProbesetsToTranscripts(species,array_type,Analysis_type,Force):
         reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset_combinations)
 
 if __name__ == '__main__':
-    a = 'AltMouse'; b = 'exon'; array_type = a; force = 'no'
-    h = 'Hs'; m = 'Mm'; species = m; analysis_type = 'single'
-    alignProbesetsToTranscripts(species,array_type,analysis_type,force)
+    a = 'AltMouse'; b = 'exon'; array_type = 'RNASeq'; force = 'no'
+    h = 'Hs'; m = 'Mm'; species = h; analysis_type = 'reciprocal'; analysis_type = 'single'
+    alignProbesetsToTranscripts(species,array_type,analysis_type,force,CoordinateBasedMatching = True)

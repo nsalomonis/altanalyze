@@ -79,12 +79,18 @@ def cleanUpLine(line):
 
 def importPGF(dir,species,filename):
     fn=filepath(filename); probe_db = {}; x=0
+    psr_file = dir+'/'+species+'/'+array_type+'/'+species+'_probeset-psr.txt'
+    psr_file = string.replace(psr_file,'affymetrix/LibraryFiles/','')
+    try: eo = export.ExportFile(filepath(psr_file))
+    except Exception: eo = export.ExportFile(filepath(psr_file[1:]))
     for line in open(fn,'rU').xreadlines():
         if line[0] != '#':
             data = cleanUpLine(line); x+=1
             t = string.split(data,'\t')
             if len(t)==2 or len(t)==3:
-                if len(t[0])>0: probeset = t[0]; type = t[1]
+                if len(t[0])>0:
+                    probeset = t[0]; type = t[1]
+                    eo.write(probeset+'\t'+t[-1]+'\n') ### Used for HTA array where we need to have PSR to probeset IDs
             else:
                 try:
                     probe = t[2]
@@ -92,9 +98,9 @@ def importPGF(dir,species,filename):
                     try: probe_db[probeset].append(probe)
                     except KeyError: probe_db[probeset] = [probe]
                 except Exception: null=[]
-                
-    new_file = dir+'/'+species+'_probeset-probes.txt'
-    new_file = string.replace(new_file,'library/','')
+    eo.close() 
+    new_file = dir+'/'+species+'/'+array_type+'/'+species+'_probeset-probes.txt'
+    new_file = string.replace(new_file,'affymetrix/LibraryFiles/','')
     headers = 'probeset\t' + 'probe\n'; n=0
     try: data = export.ExportFile(filepath(new_file))
     except Exception: data = export.ExportFile(filepath(new_file[1:]))
@@ -114,5 +120,5 @@ if __name__ == '__main__':
     parent_dir = 'AltDatabase/'+species+'/'+array_type+'/library'
     parent_dir = '/AltDatabase/affymetrix/LibraryFiles'
     e = GrabFiles(); e.setdirectory(parent_dir)
-    pgf_dir,pgf_file = e.searchdirectory('.pgf')
+    pgf_dir,pgf_file = e.searchdirectory('HTA-2_0.r1.pgf')
     importPGF(parent_dir,species,pgf_dir)

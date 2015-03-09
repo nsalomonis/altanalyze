@@ -291,23 +291,31 @@ def sangerImport(parse_sequences):
         t = string.split(data,'\t')
         if x==0: x=1
         else:
+            ensembl_geneids=[]
             if species == 'Hs':
-                try: mir = t[1]; ens_transcript = t[2]; ensembl_geneid = t[17]; mir_sequences = string.upper(t[14])
+                try:
+                    mir = t[1]; ens_transcript = t[2]; ensembl_geneid = t[17]; mir_sequences = string.upper(t[14])
+                    ensembl_geneids.append(ensembl_geneid)
                 except IndexError: print line;kill
             elif species == 'Mm':
                 ens_transcript,mir,mir_sequences = t
-                if ens_transcript in ens_gene_to_transcript: ensembl_geneids = ens_gene_to_transcript[ens_transcript]; ensembl_geneid = ensembl_geneids[0]
-                else: ensembl_geneids=[]
+                if ens_transcript in ens_gene_to_transcript:
+                    ensembl_geneids = ens_gene_to_transcript[ens_transcript]; ensembl_geneid = ensembl_geneids[0]
             elif species == 'Rn':
                 ensembl_geneid,mir,mir_sequences = t
                 mir_sequences = string.lower(mir_sequences); mir = string.replace(mir,'hsa','rno'); mir = string.replace(mir,'mmu','rno')
                 ensembl_geneids=[ensembl_geneid]
             geneid_ls=[]
-            if ensembl_geneid in redundant_ensembl_by_build: ###Thus there are redundant geneids
-                geneid_ls = redundant_ensembl_by_build[ensembl_geneid]+[ensembl_geneid]
-            else: geneid_ls = [ensembl_geneid]
-            if species == 'Hs':
-                if ens_transcript in ens_gene_to_transcript: geneid_ls+= ens_gene_to_transcript[ens_transcript]
+            #mir_sequences = string.replace(mir_sequences,'-',''); mir_sequences = string.replace(mir_sequences,'=','')
+            #mir_sequences = string.upper(mir_sequences)
+            #if 'GGCTCCTGTCACCTGGGTCCGT' in mir_sequences:
+            #print ensembl_geneid, mir; sys.exit()
+            for ensembl_geneid in ensembl_geneids:
+                if ensembl_geneid in redundant_ensembl_by_build: ###Thus there are redundant geneids
+                    geneid_ls += redundant_ensembl_by_build[ensembl_geneid]+[ensembl_geneid]
+                else: geneid_ls += [ensembl_geneid]
+                if species == 'Hs':
+                    if ens_transcript in ens_gene_to_transcript: geneid_ls+= ens_gene_to_transcript[ens_transcript] 
             geneid_ls = unique.unique(geneid_ls)
             if len(geneid_ls) == 1 and geneid_ls[0]=='': null =[] ###not a valid gene
             elif prefix in mir:
@@ -422,9 +430,22 @@ def TargetScanImport(parse_sequences,force):
     for line in open(fn,'rU').xreadlines():         
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        if x==0: x=1
+        if x==0:
+            x=1
+            data = string.lower(data)
+            t = string.split(data,'\t')
+            i=0
+            for value in t:
+                if 'mir' in value: m = i
+                elif 'gene id' in value: g = i
+                elif 'gene symbol' in value: s = i
+                elif 'transcript' in value: r = i
+                elif 'species id' in value: txi = i
+                elif 'utr start' in value: us = i
+                elif 'utr end' in value: ue = i
+                i+=1
         else:
-            mir = t[0]; geneid = t[1]; gene_symbol = string.upper(t[2]); taxid = t[3]; utr_start = int(t[4]); utr_end  = int(t[5])
+            mir = t[m]; geneid = t[g]; gene_symbol = string.upper(t[s]); taxid = t[txi]; utr_start = int(t[us]); utr_end  = int(t[ue])
             ### Old format
             #mir = t[0]; gene_symbol = string.upper(t[1]); taxid = t[2]; utr_start = t[3]; utr_end = t[4]
             if '/' in mir:
@@ -435,6 +456,7 @@ def TargetScanImport(parse_sequences,force):
                     mir_list.append(mirid)
                 mir_list.append(mirs[0])
             else: mir_list = [mir]
+
             if taxid == tax: ###human
                 #target_scan_gene_utr_seq[symbol] = utr_seq_no_gaps
                 if gene_symbol in symbol_ensembl_current: ensembl_geneids = symbol_ensembl_current[gene_symbol]; proceed = 'yes'; k.append(gene_symbol)
@@ -488,6 +510,8 @@ def mirandaImport(parse_sequences,force):
             symbol = string.upper(t[3]); mir = t[1]; entrez_gene = t[2]; mir_sequences = string.upper(t[8])
             mir_sequences = string.replace(mir_sequences,'-',''); mir_sequences = string.replace(mir_sequences,'=','')
             mir_sequences = string.replace(mir_sequences,'U','T')
+            #if 'GGCTCCTGTCACCTGGGTCCGT' in mir_sequences:
+            #print symbol, mir; sys.exit()
             ensembl_gene_ids = []
             if symbol in symbol_ensembl_current:
                 ensembl_gene_ids = symbol_ensembl_current[symbol]
@@ -642,7 +666,7 @@ def exportCombinedMirResultSequences():
         combined_results[mir,gene] = []
         combined_results2[mir,gene] = sources
     microRNA_target_db = {}; mir_hit_db = {}
-    try: importmiRNAMap(parse_sequences)
+    try: importmiRNAMap(parse_sequences,Force)
     except Exception: null=[] ### occurs when species is not supported
     try: mirandaImport(parse_sequences,'yes')
     except Exception: null=[]
@@ -650,8 +674,10 @@ def exportCombinedMirResultSequences():
     except Exception: null=[]
     try: sangerImport(parse_sequences)
     except Exception: null=[]
-    added = pictarImport(parse_sequences,'pre-computed',{})
-    added = pictarImport(parse_sequences,'symbol-based',added)
+    try: added = pictarImport(parse_sequences,'pre-computed',{})
+    except Exception: null=[]
+    try: added = pictarImport(parse_sequences,'symbol-based',added)
+    except Exception: null=[]
     output_file = 'AltDatabase/'+species+'/SequenceData/'+'miRBS-combined_gene-target-sequences.txt'
     combined_results = eliminateRedundant(combined_results); fn=filepath(output_file);data = open(fn,'w')
     for (mir,gene) in combined_results:
@@ -662,18 +688,20 @@ def exportCombinedMirResultSequences():
         data.write(mir+'\t'+gene+'\t'+sequences+'\t'+sources+'\n')
     data.close()
 
-def importmiRNAMap(parse_sequences):
+def importmiRNAMap(parse_sequences,force):
     """ Added in AltAnalyze version 2.0, this database provides target sequences for several species and different databases, 
     including miRanda, RNAhybrid and TargetScan. For more information see: http://mirnamap.mbc.nctu.edu.tw/html/about.html"""
-    import UI; species_names = UI.getSpeciesInfo()
-    species_full = species_names[species]
-    species_full = string.replace(species_full,' ','_')
-    miRNAMap_dir = update.getFTPData('mirnamap.mbc.nctu.edu.tw','/miRNAMap2/miRNA_Targets/'+species_full,'.txt.tar.gz')
-    output_dir = 'AltDatabase/miRBS/'+species+'/'
-    gz_filepath, status = update.download(miRNAMap_dir,output_dir,'')
-    if status == 'not-removed':
-        try: os.remove(gz_filepath) ### Not sure why this works now and not before
-        except OSError: status = status
+    gz_filepath = verifyFileAdvanced('miRNA_targets_',species)
+    if force == 'yes' or len(gz_filepath)==0:
+        import UI; species_names = UI.getSpeciesInfo()
+        species_full = species_names[species]
+        species_full = string.replace(species_full,' ','_')
+        miRNAMap_dir = update.getFTPData('mirnamap.mbc.nctu.edu.tw','/miRNAMap2/miRNA_Targets/'+species_full,'.txt.tar.gz')
+        output_dir = 'AltDatabase/miRBS/'+species+'/'
+        gz_filepath, status = update.download(miRNAMap_dir,output_dir,'')
+        if status == 'not-removed':
+            try: os.remove(gz_filepath) ### Not sure why this works now and not before
+            except OSError: status = status 
 
     fn=filepath(string.replace(gz_filepath,'.tar.gz','')); x=0; count=0
     for line in open(fn,'rU').readlines():             
@@ -683,6 +711,12 @@ def importmiRNAMap(parse_sequences):
         else:
             try:
                 miRNA, ensembl_transcript_id, target_start, target_end, miRNA_seq, alignment, target_seq, algorithm, c1, c2, c3 = t
+                #if 'GGCTCCTGTCACCTGGGTCCGT'in target_seq:
+                #print 'a'; sys.exit()
+                #if 'TCF7L1' in symbol or 'TCF3' in symbol:
+                #if '-422a' in miRNA:
+                #print miRNA;sys.exit()
+                #print symbol, mir; sys.exit()
                 if ensembl_transcript_id in ens_gene_to_transcript:
                     geneids = ens_gene_to_transcript[ensembl_transcript_id]     
                     target_seq = string.upper(string.replace(target_seq,'-',''))
@@ -716,7 +750,8 @@ def exportMiRandaPredictionsOnly(Species,Force,Only_add_sequence_to_previous_res
         parse_sequences = 'coordinates'
         try: del symbol_ensembl['']
         except KeyError: null=[]
-        mirandaImport(parse_sequences,'no')
+        try: mirandaImport(parse_sequences,'no')
+        except Exception: pass
         
 def runProgram(Species,Force,Only_add_sequence_to_previous_results):
     global species; global only_add_sequence_to_previous_results; global symbol_ensembl; global force
@@ -734,19 +769,20 @@ def runProgram(Species,Force,Only_add_sequence_to_previous_results):
     if only_add_sequence_to_previous_results != 'yes':
         parse_sequences = 'no'
         try: del symbol_ensembl['']
-        except KeyError: null=[]
-      
-        try: TargetScanImport(parse_sequences,'yes')
-        except Exception: null=[]  
-        try: importmiRNAMap('no')
-        except Exception: null=[] ### occurs when species is not supported
-        try: mirandaImport(parse_sequences,'yes')
-        except Exception: null=[]
+        except KeyError: pass
+        
         try: sangerImport(parse_sequences)
-        except Exception: null=[]        
-
-        added = pictarImport(parse_sequences,'pre-computed',{})
-        added = pictarImport(parse_sequences,'symbol-based',added)
+        except Exception: print '\sangerImport import failed...\n'
+        try: TargetScanImport(parse_sequences,'yes')
+        except Exception,e: print e,'\nTargetScan import failed...\n'
+        try: importmiRNAMap('no',Force)
+        except Exception: print '\nmirMap import failed...\n'
+        try: mirandaImport(parse_sequences,'yes')
+        except Exception: print '\nmiranda import failed...\n'
+        try: added = pictarImport(parse_sequences,'pre-computed',{})
+        except Exception: print '\npictar pre-computed import failed...\n'
+        try: added = pictarImport(parse_sequences,'symbol-based',added)
+        except Exception: print '\npictar symbol-based import failed...\n'
         if compare_to_user_data == 'yes': importExpressionData(); mirHitImport()
         findMirTargetOverlaps(); exportCombinedMirResultSequences()
     else: exportCombinedMirResultSequences()
@@ -770,6 +806,13 @@ def verifyFile(filename,species_name):
     else:
         return counts
     
+def verifyFileAdvanced(fileprefix,species):
+    g = GrabFiles(); g.setdirectory('/AltDatabase/miRBS/'+species)
+    try: filename = g.searchdirectory(fileprefix)[0]
+    except Exception: filename=[]
+    if '.' not in filename: filename=[]
+    return filename
+
 def reformatGeneToMiR(species,type):
     ### Import and re-format the miRNA-gene annotation file for use with GO-Elite (too big to do in Excel)
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt'

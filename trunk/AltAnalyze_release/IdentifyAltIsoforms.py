@@ -217,8 +217,11 @@ def compareExonComposition(species,array_type):
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},{})
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
-    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
-    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,{})
+    try:
+        filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
+        ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,{})
+    except Exception:pass
+    
     ### Derive probeset to exon associations De Novo
     probeset_exon_coor_db = getProbesetExonCoordinates(probeset_coordinate_db,probeset_gene_db,ens_gene_exon_db)
 
@@ -362,9 +365,11 @@ def compareExonCompositionJunctionArray(species,array_type):
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},all_transcripts)
     ### Add UCSC transcript data to ens_transcript_exon_db and ens_gene_transcript_db
-    filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
-    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,all_transcripts)
-
+    try:
+        filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt' ### Use the non-filtered database to propperly analyze exon composition 
+        ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,all_transcripts)
+    except Exception: pass
+    
     print len(probeset_transcript_db), "probesets with multiple pairs of matching-matching or matching-null transcripts."
     ### Identifying isoforms containing and not containing the probeset
     global transcripts_not_found; marker = 5000; increment = 5000
@@ -493,8 +498,7 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
         fetchSeq(ac_list,'nucleotide',1)
         
     ###Import protein sequences
-    just_get_ids = 'yes'
-    seq_files, transcript_protein_db = importProteinSequences(species,just_get_ids)
+    seq_files, transcript_protein_db = importProteinSequences(species,just_get_ids=True)
     print len(unique_ens_transcripts)+len(unique_transcripts), 'examined transcripts.'
     print len(transcript_protein_db),'transcripts with associated protein sequence.'
     
@@ -513,7 +517,7 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
             missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
 
     fetchSeq(missing_gi_list,'nucleotide',len(seq_files)-2)
-    seq_files, transcript_protein_seq_db = importProteinSequences(species,'no')
+    seq_files, transcript_protein_seq_db = importProteinSequences(species)
     print len(unique_ens_transcripts)+len(unique_transcripts), 'examined transcripts.'
     print len(transcript_protein_seq_db),'transcripts with associated protein sequence.'
     return transcript_protein_seq_db
@@ -552,7 +556,7 @@ def convertTranscriptToProteinAssociations(probeset_transcript_db,transcript_pro
     
     return probeset_protein_db,protein_seq_db
             
-def importProteinSequences(species,just_get_ids):
+def importProteinSequences(species,just_get_ids=False):
     transcript_protein_seq_db={}
     import_dir = '/AltDatabase/'+species+'/SequenceData/output/sequences' ### Multi-species fiel
     g = GrabFiles(); g.setdirectory(import_dir)
@@ -562,8 +566,8 @@ def importProteinSequences(species,just_get_ids):
         for line in open(fn,'rU').xreadlines():             
             probeset_data = cleanUpLine(line)  #remove endline
             mRNA_AC,protein_AC,protein_seq = string.split(probeset_data,'\t')
-            if just_get_ids == 'yes':
-                transcript_protein_seq_db[mRNA_AC]=[]
+            if just_get_ids:
+                transcript_protein_seq_db[mRNA_AC]=protein_AC
             else: transcript_protein_seq_db[mRNA_AC] = protein_AC,protein_seq
     return seq_files, transcript_protein_seq_db
         
@@ -1280,6 +1284,11 @@ def runProgramTest(Species,Array_type,Data_type,translate_seq,run_seqcomp):
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'; data_type = 'exon'
     species = 'Hs'; array_type = 'RNASeq'; translate='yes'
-    species = 'Mm'; array_type = 'RNASeq'; translate='yes'
+    #species = 'Mm'; array_type = 'RNASeq'; translate='yes'
+    test='no'
+    
+    filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
+    ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},{})
+    print len(ens_transcript_exon_db), len(ens_gene_transcript_db), len(ens_gene_exon_db);sys.exit()
     #runProgramTest(species,array_type,data_type,translate,run_seqcomp)
     runProgram(species,array_type,data_type,translate,run_seqcomp)

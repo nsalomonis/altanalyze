@@ -53,7 +53,7 @@ try:
         import ImageTk
     except Exception:
         #print traceback.format_exc()
-        print 'Python Imaging Library not installed... using default PNG viewer'
+        #print 'Python Imaging Library not installed... using default PNG viewer'
         None
 
     try:
@@ -126,9 +126,9 @@ def identifyCELfiles(dir,array_type,vendor):
         original_file = file
         file_lower = string.lower(file); proceed = 'no'
         ### "._" indicates a mac alias
-        if '.cel' in file_lower[-4:] and '.cel.' not in file_lower and file_lower[:2] != '._':
+        if ('.cel' in file_lower[-4:] and '.cel.' not in file_lower) and file_lower[:2] != '._':
             proceed = 'yes'
-        elif '.bed' in file_lower[-4:] or '.tab' in file_lower and file_lower[:2] != '._':
+        elif ('.bed' in file_lower[-4:] or '.tab' in file_lower or '.junction_quantification.txt' in file_lower) and file_lower[:2] != '._':
             proceed = 'yes'
             datatype = 'RNASeq'
         elif array_type == "3'array" and '.cel' not in  file_lower[-4:] and '.txt' in file_lower[-4:] and vendor != 'Affymetrix':
@@ -158,7 +158,7 @@ def checkBEDFileFormat(bed_dir):
     dir_list = read_directory(bed_dir)
     condition_db={}
     for filename in dir_list:
-        if '.tab' in string.lower(filename) or '.bed' in string.lower(filename):
+        if '.tab' in string.lower(filename) or '.bed' in string.lower(filename) or '.junction_quantification.txt' in string.lower(filename):
             condition_db[filename]=[]
             
     ### Check to see if exon.bed and junction.bed file names are propper or faulty (which will result in downstream errors)
@@ -214,6 +214,7 @@ def identifyArrayType(full_dir_list):
                         if '.' in array_type: array_type,null = string.split(array_type,'.')
                         #array_type = string.join(re.findall(r"\w",array_type),'') ### should force only alphanumeric but doesn't seem to always work
                         arrays[array_type]=[]
+                        #print array_type+'\t'+filename
                         break
                     except Exception: null=[]
                 elif 'affymetrix-array-type' in data:
@@ -254,7 +255,8 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
             ###Check to see if the clf and bgp files are present in this directory 
             icf_list = string.split(input_cdf_file,'/'); parent_dir = string.join(icf_list[:-1],'/'); cdf_short = icf_list[-1]
             clf_short = string.replace(cdf_short,'.pgf','.clf')
-            if array_type == 'exon' or array_type == 'junction': bgp_short = string.replace(cdf_short,'.pgf','.antigenomic.bgp')
+            if array_type == 'exon' or array_type == 'junction':
+                bgp_short = string.replace(cdf_short,'.pgf','.antigenomic.bgp')
             else: bgp_short = string.replace(cdf_short,'.pgf','.bgp')
             try: dir_list = read_directory(parent_dir)
             except Exception: dir_list = read_directory('/'+parent_dir)
@@ -323,7 +325,9 @@ def getAffyFiles(array_name,species):#('AltDatabase/affymetrix/LibraryFiles/'+li
                 else:
                     for filename in filenames:
                         try: update.downloadCurrentVersionUI(filename,'AnnotationFiles','',Tk())
-                        except Exception: update.downloadCurrentVersion(filename,'AnnotationFiles',None)
+                        except Exception:
+                            try: update.downloadCurrentVersion(filename,'AnnotationFiles',None)
+                            except Exception: pass ### Don't actually need Affy's annotations in most cases - GO-Elite used instead
                 try: os.remove(filepath(filename)) ### Not sure why this works now and not before
                 except Exception: null=[]
         else: annotation_dir = ''
@@ -369,7 +373,7 @@ class StatusWindow:
             Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
 
             status = StringVarFile(statusVar,root) ### Captures the stdout (or print) to the GUI instead of to the terminal
-            original_sys_out = sys.stdout ### Save the original stdout mechanism
+            self.original_sys_out = sys.stdout ### Save the original stdout mechanism
             #ProgressBar('Download',self._parent)
         except Exception: None
         if analysis_type == 'download':
@@ -398,13 +402,13 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, self._parent))
             except Exception,e: createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose,contrast,None)
         if analysis_type == 'performPCA':
-            filename, pca_labels, transpose = info_list
-            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, transpose, self._parent))
-            except Exception,e: performPCA(filename, pca_labels, transpose, None)
+            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species = info_list
+            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species))
+            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species)
         if analysis_type == 'runLineageProfiler':
-            fl, filename, vendor, custom_markerFinder, geneModel_file = info_list
-            try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent))
-            except Exception,e: runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, None)
+            fl, filename, vendor, custom_markerFinder, geneModel_file, modelDiscovery = info_list
+            try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent, modelSize=modelDiscovery))
+            except Exception,e: runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, None, modelSize=modelDiscovery)
         if analysis_type == 'MergeFiles':
             files_to_merge, join_option, ID_option, output_merge_dir = info_list
             try: sys.stdout = status; root.after(100,MergeFiles(files_to_merge, join_option, ID_option, output_merge_dir, self._parent))
@@ -414,9 +418,9 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,vennDiagram(files_to_merge, output_venn_dir, self._parent))
             except Exception,e: vennDiagram(files_to_merge, output_venn_dir, None)
         if analysis_type == 'AltExonViewer':
-            species,platform,exp_file,gene = info_list
-            try: sys.stdout = status; root.after(100,altExonViewer(species,platform,exp_file,gene, self._parent))
-            except Exception,e: altExonViewer(species,platform,exp_file,gene, None)
+            species,platform,exp_file,gene,show_introns,analysisType = info_list
+            try: sys.stdout = status; root.after(100,altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,self._parent))
+            except Exception,e: altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,None)
         if analysis_type == 'network':
             inputDir,inputType,outputdir,interactionDirs,degrees,expressionFile,gsp = info_list
             try: sys.stdout = status; root.after(100,networkBuilder(inputDir,inputType,outputdir,interactionDirs,degrees,expressionFile,gsp, self._parent))
@@ -425,13 +429,21 @@ class StatusWindow:
             filename, species_code, input_source, output_source = info_list
             try: sys.stdout = status; root.after(100,IDconverter(filename, species_code, input_source, output_source, self._parent))
             except Exception,e: IDconverter(filename, species_code, input_source, output_source, None)
+        if analysis_type == 'predictGroups':
+            expFile, mlp_instance, gsp, reportOnly = info_list
+            try: sys.stdout = status; root.after(100,predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, self._parent))
+            except Exception,e: predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, None)
+        if analysis_type == 'preProcessRNASeq':
+            species,exp_file_location_db,dataset,mlp_instance  = info_list
+            sys.stdout = status; root.after(100,preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance, self._parent))
+
         try:
             self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
             self._parent.mainloop()
             self._parent.destroy()
-        except Exception: None
+        except Exception: None  ### This is what typically get's called
         try:
-            sys.stdout = original_sys_out ### Has to be last to work!!!
+            sys.stdout = self.original_sys_out ### Has to be last to work!!!
         except Exception: None
 
     def deleteWindow(self):
@@ -439,8 +451,150 @@ class StatusWindow:
         self._parent.destroy(); sys.exit()
     def quit(self):
         try: self._parent.destroy(); sys.exit() #self._parent.quit(); 
-        except Exception: sys.exit() #self._parent.quit(); 
- 
+        except Exception: sys.exit() #self._parent.quit();
+    def SysOut(self):
+        return self.original_sys_out
+    
+def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
+    if root == None: display=False
+    else: display=True
+    try:
+        import RNASeq, ExonArray
+        print 'Pre-processing input files'
+        expFile = fl.ExpFile()
+        count = verifyFileLength(expFile)
+        if count==0:
+            biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp_instance)
+        else:
+            biotypes = getBiotypes(expFile)
+        array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',array_type)
+        steady_state_export = expFile[:-4]+'-steady-state.txt'
+        normalize_feature_exp = fl.FeatureNormalization()
+        try: excludeLowExpressionExons = fl.excludeLowExpressionExons()
+        except Exception: excludeLowExpressionExons = True
+
+        if fl.useJunctionsForGeneExpression():
+            if 'junction' in biotypes:
+                feature = 'junction'
+            else:
+                feature = 'exon'
+        else:
+            ### Use all exons either way at this step since more specific parameters will apply to the next iteration
+            if 'exon' in biotypes:
+                feature = 'exon'
+            else:
+                feature = 'junction'
+        probeset_db = getAllKnownFeatures(feature)
+        print 'Calculating gene-level expression values from',feature+'s'
+        RNASeq.calculateGeneLevelStatistics(steady_state_export,species,probeset_db,normalize_feature_exp,array_names,fl,excludeLowExp=excludeLowExpressionExons,exportRPKMs=True)
+        
+        #if display == False: print print_out
+        #try: InfoWindow(print_out, 'Continue')
+        #except Exception: None
+        try: root.destroy()
+        except Exception: null=[]
+    except Exception:
+        error = traceback.format_exc()
+        try:
+            logfile = filepath(fl.RootDir()+'Error.log')
+            log_report = open(logfile,'a')
+            log_report.write(traceback.format_exc())
+        except Exception:
+            None
+        print_out = 'Expression quantification failed..\n',error
+        try: print print_out
+        except Exception: pass ### Windows issue with the Tk status window stalling after pylab.show is called
+        try: WarningWindow(print_out,'Continue')
+        except Exception: pass
+        try: root.destroy()
+        except Exception: null=[]
+
+def getBiotypes(filename):
+    biotypes={}
+    firstRow=True
+    if 'RawSpliceData' in filename: index = 2
+    else: index = 0
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines():
+            t = string.split(line,'\t')
+            if firstRow:
+                firstRow = False
+            else:
+                if '-' in t[index]:
+                    biotypes['junction']=[]
+                else:
+                    biotypes['exon']=[]
+    except Exception: pass
+    return biotypes
+
+def getAllKnownFeatures(feature):
+    ### Simple method to extract gene features of interest
+    import ExonArrayEnsemblRules
+
+    source_biotype = 'mRNA'
+    if array_type == 'gene': source_biotype = 'gene'
+    elif array_type == 'junction': source_biotype = 'junction'
+
+    if array_type == 'AltMouse':
+        import ExpressionBuilder
+        probeset_db,constitutive_gene_db = ExpressionBuilder.importAltMerge('full')
+        source_biotype = 'AltMouse'
+    elif vendor == 'Affymetrix' or array_type == 'RNASeq':
+        if array_type == 'RNASeq':
+            source_biotype = array_type, fl.RootDir()
+            
+    dbs = ExonArrayEnsemblRules.getAnnotations('no','Ensembl',source_biotype,species)
+    probeset_db = dbs[0]; del dbs
+    probeset_gene_db={}
+    for probeset in probeset_db:
+        probe_data = probeset_db[probeset]
+        gene = probe_data[0]; external_exonid = probe_data[-2]
+        if len(external_exonid)>2: ### These are known exon only (e.g., 'E' probesets)
+            proceed = True
+            if feature == 'exon': ### Restrict the analysis to exon RPKM or count data for constitutive calculation
+                if '-' in probeset and '_' not in probeset: proceed = False
+            else:
+                if '-' not in probeset and '_' not in probeset: proceed = False ### Use this option to override 
+            if proceed:
+                try: probeset_gene_db[gene].append(probeset)
+                except Exception: probeset_gene_db[gene] = [probeset]
+    return probeset_gene_db
+                        
+def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly,root):
+    global graphic_links; graphic_links=[]
+    if root == None: display=False
+    else: display=True
+    
+    import RNASeq,ExpressionBuilder
+    try:
+        if gsp.FeaturestoEvaluate() != 'AltExon':
+            graphic_links = RNASeq.singleCellRNASeqWorkflow(species, array_type, expFile, mlp_instance, parameters=gsp, reportOnly=reportOnly)
+        if gsp.FeaturestoEvaluate() != 'Genes':
+            graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),species,array_type,expFile=fl.CountsFile(),min_events=gsp.MinEvents(),med_events=gsp.MedEvents())
+            gsp.setCountsCutoff(0);gsp.setExpressionCutoff(0)  
+            graphic_links3 = RNASeq.singleCellRNASeqWorkflow(species, 'exons', cluster_input_file, mlp_instance, parameters=gsp, reportOnly=reportOnly)
+            graphic_links+=graphic_links2+graphic_links3
+        print_out  = 'Predicted sample groups saved.'
+        if len(graphic_links)==0:
+            print_out  = 'No predicted sample groups identified. Try different parameters.'
+        if display == False: print print_out
+        try: InfoWindow(print_out, 'Continue')
+        except Exception: None
+        try: root.destroy()
+        except Exception: null=[]
+    except Exception:
+        error = traceback.format_exc()
+        print_out = 'Predicted sample export failed..\n',error
+        try: print print_out
+        except Exception: pass ### Windows issue with the Tk status window stalling after pylab.show is called
+        try: WarningWindow(print_out,'Continue')
+        except Exception: pass
+        try: root.destroy()
+        except Exception: null=[]
+    try: print error
+    except Exception: pass
+        
 def openDirectory(output_dir):
     if os.name == 'nt':
         try: os.startfile('"'+output_dir+'"')
@@ -462,8 +616,10 @@ def networkBuilder(inputDir,inputType,outputdir,interactionDirs_short,degrees,ex
     secondarySet=[]
     print 'Species:',species, '| Algorithm:',degrees, ' | InputType:',inputType, ' | IncludeExpIDs:',IncludeExpIDs
     print 'Genes:',Genes
-    print 'OntologyID:',gsp.OntologyID(), gsp.PathwaySelect()
+    print 'OntologyID:',gsp.OntologyID(), gsp.PathwaySelect(), GeneSet
     print ''
+    if interactionDirs_short == None or len(interactionDirs_short)==0:
+        interactionDirs_short = ['WikiPathways']
     for i in interactionDirs_short:
         if i == None: None
         else:
@@ -482,26 +638,36 @@ def networkBuilder(inputDir,inputType,outputdir,interactionDirs_short,degrees,ex
                       geneSetType=GeneSet,PathwayFilter=PathwaySelect,OntologyID=OntologyID,directory=directory,expressionFile=expressionFile,
                       obligatorySet=obligatorySet,secondarySet=secondarySet,IncludeExpIDs=IncludeExpIDs)
         if output_filename==None:
-            print_out = 'Network creation/visualization failed..\nNo outputs produced... try different options.'
+            print_out = 'Network creation/visualization failed..\nNo outputs produced... try different options.\n'
+            print_out += traceback.format_exc()
             try: InfoWindow(print_out, 'Continue')
             except Exception: None
         else:
-            try: openDirectory(outputdir)
-            except Exception: None
-        GUI(root,'ViewPNG',[],output_filename) ### The last is default attributes (should be stored as defaults in the option_db var)
+            if root != None and root != '':
+                try: openDirectory(outputdir)
+                except Exception: None
+            else:
+                print 'Results saved to:',output_filename
+        if root != None and root != '':
+            GUI(root,'ViewPNG',[],output_filename) ### The last is default attributes (should be stored as defaults in the option_db var)
     except Exception:
         error = traceback.format_exc()
         if 'queryGeneError' in error:
             print_out = 'No valid gene IDs present in the input text search\n(valid IDs = FOXP1,SOX2,NANOG,TCF7L1)'
         else: print_out = 'Network creation/visualization failed..\n',error
-        try: InfoWindow(print_out, 'Continue')
-        except Exception: None
+        if root != None and root != '':
+            try: InfoWindow(print_out, 'Continue')
+            except Exception: None
     try: root.destroy()
     except Exception: None
     
 def vennDiagram(files_to_merge, output_venn_dir, root):
     import VennDiagram
-    try: VennDiagram.compareInputFiles(files_to_merge,output_venn_dir)
+    if root == None: display=False
+    else: display=True
+    try:
+        VennDiagram.compareInputFiles(files_to_merge,output_venn_dir,display=display)
+        if display == False: print 'VennDiagrams saved to:',output_venn_dir
     except Exception:
         error = traceback.format_exc()
         print_out = 'Venn Diagram export failed..\n',error
@@ -510,14 +676,16 @@ def vennDiagram(files_to_merge, output_venn_dir, root):
     try: root.destroy()
     except Exception: None
     
-def altExonViewer(species,platform,exp_file,gene,root):
+def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root):
     import QC
     transpose=True
-    try: QC.displayExpressionGraph(species,platform,exp_file,gene,transpose)
+    if root == None: display = False
+    else: display = True
+    try: QC.displayExpressionGraph(species,platform,exp_file,gene,transpose,display=display,showIntrons=show_introns,analysisType=analysisType)
     except Exception:
         error = traceback.format_exc()
         print_out = 'AltExon Viewer failed..\n',error
-        try: InfoWindow(print_out, 'Continue')
+        try: WarningWindow(print_out, 'Continue')
         except Exception: None
     try: root.destroy()
     except Exception: None
@@ -532,13 +700,14 @@ def MergeFiles(files_to_merge, join_option, ID_option, output_merge_dir, root):
         print_out = 'File merge failed due to:\n',error
     else:
         print_out = 'File merge complete. See the new file:\n'+outputfile
-    try: InfoWindow(print_out, 'Continue')
-    except Exception: None
-    try: root.destroy()
-    except Exception: None
-    if outputfile != 'failed': ### Open the folder
-        try: openDirectory(output_merge_dir)
+    if root != None and root!= '':
+        try: InfoWindow(print_out, 'Continue')
         except Exception: None
+        try: root.destroy()
+        except Exception: None
+        if outputfile != 'failed': ### Open the folder
+            try: openDirectory(output_merge_dir)
+            except Exception: None
     
 def IDconverter(filename, species_code, input_source, output_source, root):
     import gene_associations
@@ -548,20 +717,41 @@ def IDconverter(filename, species_code, input_source, output_source, root):
         error = traceback.format_exc()
     if outputfile == 'failed':
         print_out = 'Translation failed due to:\n',error
+        print print_out
     else:
         print_out = 'ID translation complete. See the new file:\n'+outputfile
-    try: InfoWindow(print_out, 'Continue')
-    except Exception: None
-    try: root.destroy()
-    except Exception: None
-    if outputfile != 'failed': ### Open the folder
-        try: openDirectory(export.findParentDir(filename))
+    if root != None and root!= '':
+        try: InfoWindow(print_out, 'Continue')
         except Exception: None
-    
-def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root):
-    
-    if geneModel == None:
+        try: root.destroy()
+        except Exception: None
+        if outputfile != 'failed': ### Open the folder
+            try: openDirectory(export.findParentDir(filename))
+            except Exception: None
+
+def remoteLP(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=None):
+    global species; global array_type
+    species = fl.Species()
+    array_type = fl.PlatformType()
+    runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=modelSize)
+
+def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=None):
+    if custom_markerFinder == '': custom_markerFinder = False
+    if modelSize != None and modelSize != 'no':
+        try: modelSize = int(modelSize)
+        except Exception: modelSize = 'optimize'
+
+    if (geneModel == None or geneModel == False) and (modelSize == None or modelSize == 'no'):
         import ExpressionBuilder
+        compendium_type = fl.CompendiumType()
+        compendium_platform = fl.CompendiumPlatform()
+        if 'exp.' in expr_input_dir:
+            ### Correct the input file to be the gene-expression version
+            if array_type != "3'array" and 'AltExon' not in compendium_type:
+                if 'steady' not in expr_input_dir:
+                    expr_input_dir = string.replace(expr_input_dir,'.txt','-steady-state.txt')
+    
+        print '\n****Running LineageProfiler****'
         graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder)
         if len(graphic_links)>0:
             print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
@@ -575,26 +765,34 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
             except Exception: None
     else:
         import LineageProfilerIterate
+        print '\n****Running LineageProfilerIterate****'
         codingtype = 'exon'; compendium_platform = 'exon'
         platform = array_type,'Affymetrix'
-        LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel)
+        try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel,modelSize=modelSize)
+        except Exception:
+            print_out = traceback.format_exc()
+            try: InfoWindow(print_out, 'Continue')
+            except Exception: None
         print_out = 'LineageProfiler classification results saved to the folder "SampleClassification".'
-        try: openDirectory(export.findParentDir(expr_input_dir)+'/SampleClassification')
-        except Exception: None
-        try: InfoWindow(print_out, 'Continue')
-        except Exception: None
+        if root!=None and root!='':
+            try: openDirectory(export.findParentDir(expr_input_dir)+'/SampleClassification')
+            except Exception: None
+            try: InfoWindow(print_out, 'Continue')
+            except Exception: None
+        else:
+            print print_out
 
     try: root.destroy()
     except Exception: None
     
-def performPCA(filename, pca_labels, transpose, root):
+def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None):
     import clustering
     graphics = []
-    if pca_labels=='yes': pca_labels=True
+    if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
     else: pca_labels=False
     
     try:
-        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels)
+        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels, plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName, species=species)
         try: print'Finished building PCA.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -613,11 +811,11 @@ def performPCA(filename, pca_labels, transpose, root):
     try: root.destroy()
     except Exception: null=[]
     
-def createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, root):
+def createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, root, display=True):
     graphics = []
     try:
         import clustering
-        clustering.runHCexplicit(filename, graphics, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast = contrast)
+        clustering.runHCexplicit(filename, graphics, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, contrast = contrast)
         print_out = 'Finished building heatmap.'
         try: print print_out
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
@@ -636,6 +834,8 @@ def createHeatMap(filename, row_method, row_metric, column_method, column_metric
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
         try: WarningWindow(print_out,'Continue')
         except Exception: None
+        try: root.destroy()
+        except Exception: null=[]
     
 def getAdditionalOnlineResources(species_code,additional_resources,root):
     if additional_resources[0] == 'customSet':
@@ -673,6 +873,8 @@ class StringVarFile:
         #except Exception: None ### Not sure why this occurs
     def set(self,s): self.__stringvar.set(s); self.__window.update()   
     def get(self): return self.__stringvar.get()
+    def flush(self): pass
+    
 
 ################# GUI #################
 
@@ -694,7 +896,161 @@ class ProgressBar:
 		self.progval.set(2)
 		self.c.after(10, self.update_progress)
 	
+class ImageFiles:
+    def __init__(self,shortname,fullpath,return_gif=False):
+        self.shortname = shortname
+        self.fullpath = fullpath
+        self.return_gif = return_gif
+    def ShortName(self): return self.shortname
+    def FullPath(self): return self.fullpath
+    def returnGIF(self): return self.return_gif
+    def Thumbnail(self):
+        if self.returnGIF():
+            gif_path = string.replace(self.FullPath(),'.png','.gif')
+            return gif_path
+        else:
+            png_path = string.replace(self.FullPath(),'.png','_small.png')
+            return png_path
+        
 class GUI:
+    def PredictGroups(self):
+        self.button_flag = True
+        self.graphic_link = {}
+        import Image
+        self.toplevel_list=[] ### Keep track to kill later
+        
+        self.filename_db={}
+        filenames=[]
+        i=1
+        for (name,file) in graphic_links:
+            self.filename_db['clusters '+str(i)]=file
+            filenames.append('clusters '+str(i))
+            i+=1
+        
+        self.title = 'Select cluster groups for further analysis'
+        self.option = 'group_select' ### choose a variable name here
+        self.options = filenames
+        self.default_option = 0
+        self.comboBox()
+        
+        # create a frame and pack it
+        frame1 = Tkinter.Frame(self.parent_type)
+        frame1.pack(side=Tkinter.TOP, fill=Tkinter.X)
+        
+        ### Convert PNG to GIF and re-size
+        assigned_index=1
+        for image_file in filenames:
+            file_dir = self.filename_db[image_file]
+            iF = ImageFiles(image_file,file_dir)
+            im = Image.open(file_dir) 
+            #im.save('Gfi1.gif')
+            size = 128, 128
+            im.thumbnail(size, Image.ANTIALIAS)
+            im.save(iF.Thumbnail()) ### write out the small gif file
+            option = 'imageView'
+            self.option=option
+            #photo1 = Tkinter.PhotoImage(file=iF.Thumbnail())
+            photo1 = ImageTk.PhotoImage(file=iF.Thumbnail()) ### specifically compatible with png files
+            # create the image button, image is above (top) the optional text
+            def view_FullImageOnClick(image_name):
+                tl = Toplevel() #### This is the critical location to allow multiple TopLevel instances that don't clash, that are created on demand (by click)
+                self.toplevel_list.append(tl)
+                self.graphic_link['WP'] = self.filename_db[image_name]
+                try: self.viewPNGFile(tl) ### ImageTK PNG viewer
+                except Exception:
+                    print traceback.format_exc()
+                    try: self.openPNGImage() ### OS default PNG viewer
+                    except Exception: pass
+            
+            if assigned_index == 1:
+                image_file1 = image_file; #tl1 = Toplevel() ### not good to create here if we have to destroy it, because then we can't re-invoke
+                button1 = Tkinter.Button(frame1, compound=Tkinter.TOP, image=photo1,
+                    text=image_file1, bg='green', command=lambda:view_FullImageOnClick(image_file1)) ### without lamda, the command is called before being clicked
+                button1.image = photo1; button1.pack(side=Tkinter.TOP, padx=2, pady=2)
+            elif assigned_index == 2:
+                image_file2 = image_file; #tl2 = Toplevel()
+                button2 = Tkinter.Button(frame1, compound=Tkinter.TOP, image=photo1,
+                    text=image_file2, bg='green', command=lambda:view_FullImageOnClick(image_file2))
+                button2.image = photo1; button2.pack(side=Tkinter.TOP, padx=2, pady=2)
+            elif assigned_index == 3:
+                image_file3 = image_file; #tl3 = Toplevel()
+                button3 = Tkinter.Button(frame1, compound=Tkinter.TOP, image=photo1,
+                    text=image_file3, bg='green', command=lambda:view_FullImageOnClick(image_file3))
+                button3.image = photo1; button3.pack(side=Tkinter.TOP, padx=2, pady=2)
+            elif assigned_index == 4:
+                image_file4 = image_file; #tl4 = Toplevel()
+                button4 = Tkinter.Button(frame1, compound=Tkinter.TOP, image=photo1,
+                    text=image_file4, bg='green', command=lambda:view_FullImageOnClick(image_file4))
+                button4.image = photo1; button4.pack(side=Tkinter.TOP, padx=2, pady=2)
+            elif assigned_index == 5:
+                image_file5 = image_file; #tl5 = Toplevel()
+                button5 = Tkinter.Button(frame1, compound=Tkinter.TOP, image=photo1,
+                    text=image_file5, bg='green', command=lambda:view_FullImageOnClick(image_file5))
+                button5.image = photo1; button5.pack(side=Tkinter.TOP, padx=2, pady=2)
+                
+            assigned_index+=1
+
+        # start the event loop
+        use_selected_button = Button(self._parent, text="Use Selected", command=self.UseSelected) 
+        use_selected_button.pack(side = 'right', padx =10, pady = 5)
+        
+        recluster_button = Button(self._parent, text="Re-Cluster", command=self.ReCluster) 
+        recluster_button.pack(side = 'right', padx =10, pady = 5)
+
+        quit_button = Button(self._parent, text="Quit", command=self.quit) 
+        quit_button.pack(side = 'right', padx =10, pady = 5)
+
+        try: help_button = Button(self._parent, text='Help', command=self.GetHelpTopLevel); help_button.pack(side = 'left', padx = 5, pady = 5)
+        except Exception: help_button = Button(self._parent, text='Help', command=self.linkout); help_button.pack(side = 'left', padx = 5, pady = 5)
+
+        self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
+        self._parent.mainloop()
+        
+    def UseSelected(self):
+        status = self.checkAllTopLevelInstances()
+        if status:
+            self.checkAllTopLevelInstances()
+            self._user_variables['next'] = 'UseSelected'
+            try: self._parent.quit(); self._parent.destroy()
+            except Exception: self._parent.quit()
+
+    def ReCluster(self):
+        status = self.checkAllTopLevelInstances()
+        if status:
+            self._user_variables['next'] = 'ReCluster'
+            try: self._parent.quit(); self._parent.destroy()
+            except Exception:
+                try: self._parent.destroy()
+                except Exception: pass
+
+    def checkAllTopLevelInstances(self):
+        ### Ideally, we would just kill any open toplevel instances, but this was causing a "ghost" process
+        ### to continue running even after all of the tls and roots were destroyed
+        if len(self.toplevel_list)>0:
+            removed=[]
+            for tl in self.toplevel_list:
+                try:
+                    if 'normal' == tl.state():
+                        InfoWindow('Please close all cluster windows before proceeding.', 'Continue')
+                        break
+                except Exception:
+                    removed.append(tl)
+            for tl in removed:
+                self.toplevel_list.remove(tl)
+        if len(self.toplevel_list)==0:
+            return True
+        else:
+            return False
+                
+    def killAllTopLevelInstances(self):
+        ### destroy's any live TopLevel instances
+        removed=[]
+        for tl in self.toplevel_list:
+            try: tl.quit(); tl.destroy(); removed.append(tl)
+            except Exception: pass
+        for tl in removed:
+            self.toplevel_list.remove(tl)
+        
     def ViewWikiPathways(self):
         """ Canvas is already drawn at this point from __init__ """
         global pathway_db
@@ -707,7 +1063,7 @@ class GUI:
         self.option = 'species_wp'
         self.options = ['---']+current_species_names #species_list
         self.default_option = 0
-        self.dropDown()
+        self.comboBox()
         
         ### Create a label that can be updated below the dropdown menu
         self.label_name = StringVar()
@@ -770,7 +1126,7 @@ class GUI:
             labelpos = 'w', label_text = self.title, items = self.options, command = comp_callback)
         if self.option == 'wp_id_selection':
             self.wp_dropdown = self.comp ### update this variable later (optional)
-        self.comp.pack(anchor = 'w', padx = 10, pady = 0)
+        self.comp.pack(anchor = 'w', padx = 10, pady = 0, fill = 'x')
         self.comp.invoke(self.default_option) ###Just pick the first option
 
     def comboBox(self):
@@ -785,15 +1141,17 @@ class GUI:
             labelpos = 'w', dropdown=1, label_text = self.title,
             unique = 0, history = 0,
             scrolledlist_items = self.options, selectioncommand = comp_callback)
-        
+
         try: self.comp.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.comp.invoke())
         except Exception: None ### Above is a slick way to force the entry field to be disabled and invoke the scrolledlist
         
         if self.option == 'wp_id_selection':
             self.wp_dropdown = self.comp ### update this variable later (optional)
         self.comp.pack(anchor = 'w', padx = 10, pady = 0)
-        self.comp.selectitem(self.default_option) ###Just pick the first option
-        self.callbackWP(self.options[0],self.option)  ### Explicitly, invoke first option (not automatic)
+        try: self.comp.selectitem(self.default_option) ###Just pick the first option
+        except Exception: pass
+        try: self.callbackWP(self.options[0],self.option)  ### Explicitly, invoke first option (not automatic)
+        except Exception: pass
         
     def invokeLabel(self):
         self.label_object = Label(self.parent_type, textvariable=self.label_name,fg="blue"); self.label_object.pack(padx = 10)
@@ -813,7 +1171,11 @@ class GUI:
         self.graphic_link={}
         self.graphic_link['WP'] = png_file
         self.graphic_link['quit']=None
-        try: self.viewPNGFile() ### ImageTK PNG viewer
+        try: tl = Toplevel()
+        except Exception:
+            import Tkinter
+            tl = Tkinter.Toplevel()
+        try: self.viewPNGFile(tl) ### ImageTK PNG viewer
         except Exception:
             try: self.openPNGImage() ### OS default PNG viewer
             except Exception:
@@ -841,7 +1203,8 @@ class GUI:
                 self.graphic_link = WikiPathways_webservice.visualizePathwayAssociations(filename,species_code,mod_type,wpid)
                 self.wp_status = 'Pathway images colored and saved to disk by webservice\n(see image title for location)'
                 self.label_status_name.set(self.wp_status)
-                try: self.viewPNGFile() ### ImageTK PNG viewer
+                tl = Toplevel()
+                try: self.viewPNGFile(tl) ### ImageTK PNG viewer
                 except Exception:
                     try: self.openPNGImage() ### OS default PNG viewer
                     except Exception:
@@ -885,6 +1248,11 @@ class GUI:
     def callbackWP(self, tag, option):
         #print 'Button',[option], tag,'was pressed.'
         self._user_variables[option] = tag
+        if option == 'group_select':
+            ### set group_select equal to the filename
+            self._user_variables[option] = self.filename_db[tag]                
+            #print option, tag
+            #print option, self._user_variables[option], self.filename_db[tag]
         if option == 'species_wp':
             ### Add additional menu options based on user selection
             if tag != '---':
@@ -964,13 +1332,12 @@ class GUI:
         imgplot = pylab.imshow(img)
         pylab.show()
         
-    def viewPNGFile(self):
+    def viewPNGFile(self,tl):
         """ View PNG file within a PMW Tkinter frame """
         import ImageTk ### HAVE TO CALL HERE TO TRIGGER AN ERROR - DON'T WANT THE TopLevel to open otherwise
         png_file_dir = self.graphic_link['WP']
         img = ImageTk.PhotoImage(file=png_file_dir)
         
-        tl = Toplevel()
         sf = PmwFreeze.ScrolledFrame(tl, labelpos = 'n', label_text = '',
                 usehullsize = 1, hull_width = 800, hull_height = 550)
         sf.pack(padx = 0, pady = 0, fill = 'both', expand = 1)
@@ -985,10 +1352,12 @@ class GUI:
         can.config(width=w, height=h)        
         can.create_image(2, 2, image=img, anchor=NW)
         if 'quit' in self.graphic_link:
+            tl.protocol("WM_DELETE_WINDOW", lambda: self.tldeleteWindow(tl))
             tl.mainloop()
-            #tl.destroy()
         else:
+            tl.protocol("WM_DELETE_WINDOW", lambda: self.tldeleteWindow(tl))
             tl.mainloop()
+
     def openPNGImage(self):
         png_file_dir = self.graphic_link['WP']
         if os.name == 'nt':
@@ -1019,10 +1388,16 @@ class GUI:
             filename = 'Config/aa_2.gif'; orient_type = 'top'
             if array_type == 'RNASeq': filename = 'Config/aa_2_rs.gif'
         if 'pathway_permutations' in option_list: filename = 'Config/goelite.gif'
+        if 'GeneSelectionPredict' in option_list:
+            filename = 'Config/aa_3.gif'
+            if array_type == 'RNASeq': filename = 'Config/aa_3_rs.gif'
         
         fn=filepath(filename); img = PhotoImage(file=fn)
-        can = Canvas(parent); can.pack(side='top'); can.config(width=img.width(), height=img.height())        
-        can.create_image(2, 2, image=img, anchor=NW)
+        self.can = Canvas(parent); self.can.pack(side='top'); self.can.config(width=img.width(), height=img.height())        
+        try: self.can.create_image(2, 2, image=img, anchor=NW)
+        except Exception:
+            try: self.can.delete("all")
+            except Exception: pass
         #except Exception: print filename; 'what?';kill
         self.pathdb={}; use_scroll = 'no'
 
@@ -1033,6 +1408,7 @@ class GUI:
                 notes = "For each file, type in a name for the group it belongs to\n(e.g., 24hrs, 48hrs, 4days, etc.)."
                 Label(self._parent,text=notes).pack(); label_text_str = 'AltAnalyze Group Names'
                 if len(option_list)<15: height = 320; width = 320
+
             elif defaults == 'batch':
                 notes = "For each file, type in a name for the BATCH it belongs to\n(e.g., batch1, batch2, batch3 etc.)."
                 Label(self._parent,text=notes).pack(); label_text_str = 'AltAnalyze Group Names'
@@ -1056,15 +1432,25 @@ class GUI:
                 label_text_str = "Network Analysis Parameters"
                 height = 430; width = 400; use_scroll = 'yes'
                 #if os.name != 'nt': width+=50
+            elif 'GeneSelectionPredict' in option_list:
+                notes = "Perform an unsupervised or supervised analysis to identify the\npredominant sample groups via expression clustering"
+                Label(self._parent,text=notes).pack()
+                label_text_str = "AltAnalyze Prediction Sample Group Parameters"
+                height = 310; width = 400; use_scroll = 'yes'
+            elif 'join_option' in option_list:
+                label_text_str = "AltAnalyze Merge Files Parameters"
+                height = 310; width = 400; use_scroll = 'yes'
             else:
                 label_text_str = "AltAnalyze Main Dataset Parameters"
                 height = 310; width = 400; use_scroll = 'yes'
                 
             if os.name != 'nt':height+=75; width+=150
             if os.name== 'nt':height+=25; width+=25
+            if 'linux' in sys.platform: offset = 25
+            else: offset=0
             self.sf = PmwFreeze.ScrolledFrame(self._parent,
                     labelpos = 'n', label_text = label_text_str,
-                    usehullsize = 1, hull_width = width, hull_height = height)
+                    usehullsize = 1, hull_width = width-offset, hull_height = height-offset)
             self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
             self.frame = self.sf.interior()
             if defaults == 'comps':
@@ -1096,8 +1482,11 @@ class GUI:
         if option_db == 'ViewWikiPathways':
             width = 520
             self.parent_type = self.sf.interior()
-        if option_db == 'ViewWikiPathways':
             self.ViewWikiPathways()
+        if option_db == 'PredictGroups':
+            width = 520
+            self.parent_type = self.sf.interior()
+            self.PredictGroups()
         for option in option_list:
           i+=1 ####Keep track of index - if options are deleted, count these to select the appropriate default from defaults
           if option in option_db:
@@ -1239,22 +1628,22 @@ class GUI:
                 #print option, dropdown_index
                 if 'species' in option:
                     if 'selected_species2' in option:
-                        self.speciescomp2 = self.comp; self.speciescomp2.pack(anchor = 'w', padx = 10, pady = 0)
+                        self.speciescomp2 = self.comp; self.speciescomp2.pack(anchor = 'e', padx = 10, pady = 0, expand = 1, fill = 'both')
                     elif 'selected_species3' in option:
-                        self.speciescomp3 = self.comp; self.speciescomp3.pack(anchor = 'w', padx = 10, pady = 0)
-                    else: self.speciescomp = self.comp; self.speciescomp.pack(anchor = 'w', padx = 10, pady = 0)
+                        self.speciescomp3 = self.comp; self.speciescomp3.pack(anchor = 'e', padx = 10, pady = 0, expand = 1, fill = 'both')
+                    else: self.speciescomp = self.comp; self.speciescomp.pack(anchor = 'e', padx = 10, pady = 0, expand = 1, fill = 'both')
                     self.speciescomp.invoke(selected_default) 
                 elif 'array_type' in option:
-                    self.arraycomp = self.comp; self.arraycomp.pack(anchor = 'w', padx = 10, pady = 0)
+                    self.arraycomp = self.comp; self.arraycomp.pack(anchor = 'e', padx = 10, pady = 0, expand = 1, fill = 'both')
                     self.arraycomp.invoke(selected_default)
                 elif 'manufacturer_selection' in option:
-                    self.vendorcomp = self.comp; self.vendorcomp.pack(anchor = 'w', padx = 10, pady = 0)
+                    self.vendorcomp = self.comp; self.vendorcomp.pack(anchor = 'e', padx = 10, pady = 0, expand = 1, fill = 'both')
                     self.vendorcomp.invoke(selected_default)
                 else:
                     if insert_into_group == 'no':
                         if 'version' in option: pady_int = 0
                         else: pady_int = 1
-                        self.comp.pack(anchor = 'w', padx = 10, pady = pady_int)
+                        self.comp.pack(anchor = 'w', padx = 10, pady = pady_int, expand = 1, fill = 'both')
                     elif dropdown_index == 1: comp1 = self.comp
                     elif dropdown_index == 2: comp2 = self.comp
                     elif dropdown_index == 3: comp3 = self.comp
@@ -1287,6 +1676,12 @@ class GUI:
 
                 self._option = option
                 self.default_option = self.display_options
+                
+                try: selected_default = od.DefaultOption()
+                except Exception:
+                    if len(defaults)>0: selected_default = defaults[i]
+                    else: selected_default = self.default_option[0] ###Just pick the first option
+                    
                 listbox_selectmode = 'single'
                 if 'multiple' in od.DisplayObject():
                     listbox_selectmode = 'multiple'
@@ -1295,7 +1690,12 @@ class GUI:
                     callback(tag,option)
                     
                 def mult_callback(tag,callback=self.callbackComboBox,option=option):
-                    tag = self.multcomp.getcurselection() ### get the multiple item selection
+                    if 'PathwaySelection' in option:
+                        tag = self.pathwayselect.getcurselection() ### there is a conflict otherwise with another multi-comboBox multcomp object
+                    elif 'HeatmapAdvanced' in option:
+                        tag = self.HeatmapAdvanced.getcurselection() ### there is a conflict otherwise with another multi-comboBox multcomp object
+                    else:
+                        tag = self.multcomp.getcurselection() ### get the multiple item selection
                     callback(tag,option)
                     
                 if 'selected_version' not in option_list: ### For clustering UI
@@ -1323,13 +1723,14 @@ class GUI:
                         scrolledlist_usehullsize=1,listbox_selectmode=listbox_selectmode,
                         scrolledlist_items = self.default_option,
                         selectioncommand = comp_callback1)
-      
+                if 'HeatmapAdvanced' in option:
+                    self.HeatmapAdvanced = self.multcomp
                 if 'PathwaySelection' in option or 'PathwaySelection_network' in option:
                     if 'network' in option:
                         geneset_param = 'GeneSetSelection_network' ### for network visualization
                     else:
                         geneset_param = 'GeneSetSelection' ### for heatmap visualization
-                    self.pathwayselect = self.comp; self.pathwayselect.pack(anchor = 'w', padx = 10, pady = 0)
+                    self.pathwayselect = self.multcomp; self.pathwayselect.pack(anchor = 'w', padx = 10, pady = 0)
                     try: self.pathwayselect.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.pathwayselect.invoke())
                     except Exception: None ### Above is a slick way to force the entry field to be disabled and invoke the scrolledlist
                     try:
@@ -1341,11 +1742,13 @@ class GUI:
                         #print 'loading pathways from memory A1'
                         #supported_genesets = listAllGeneSetCategories(species,tag,directory)
                         self.pathwayselect._list.setlist(supported_genesets)
-                        self.pathwayselect.selectitem(od.DefaultOption()) 
-                        self.callbackComboBox(od.DefaultOption(),option) 
+                        self.pathwayselect.selectitem(selected_default) 
+                        self.callbackComboBox(selected_default,option)
                     except Exception:
-                        self.pathwayselect.selectitem(self.default_option[0]) ###Just pick the first option
-                        self.callbackComboBox(self.default_option[0],option)
+                        try:
+                            self.pathwayselect.selectitem(self.default_option[-1]) ###Just pick the first option
+                            self.callbackComboBox(self.default_option[-1],option)
+                        except Exception: pass
                             
                 if 'species' in option:
                     if 'selected_species2' in option:
@@ -1353,8 +1756,8 @@ class GUI:
                         try: self.speciescomp2.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.speciescomp2.invoke())
                         except Exception: None ### Above is a slick way to force the entry field to be disabled and invoke the scrolledlist
                         try:
-                            self.speciescomp2.selectitem(od.DefaultOption()) 
-                            self.callbackComboBox(od.DefaultOption(),option) 
+                            self.speciescomp2.selectitem(selected_default) 
+                            self.callbackComboBox(selected_default,option) 
                         except Exception:
                             self.speciescomp2.selectitem(self.default_option[0]) ###Just pick the first option
                             self.callbackComboBox(self.default_option[0],option)
@@ -1363,8 +1766,8 @@ class GUI:
                         try: self.speciescomp3.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.speciescomp3.invoke())
                         except Exception: None ### Above is a slick way to force the entry field to be disabled and invoke the scrolledlist
                         try:
-                            self.speciescomp3.selectitem(od.DefaultOption()) ###Just pick the first option
-                            self.callbackComboBox(od.DefaultOption(),option) 
+                            self.speciescomp3.selectitem(selected_default) ###Just pick the first option
+                            self.callbackComboBox(selected_default,option) 
                         except Exception:
                             self.speciescomp3.selectitem(self.default_option[0])
                             self.callbackComboBox(self.default_option[0],option)
@@ -1373,11 +1776,31 @@ class GUI:
                         try: self.speciescomp.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.speciescomp.invoke())
                         except Exception: None ### Above is a slick way to force the entry field to be disabled and invoke the scrolledlist
                         try:
-                            self.speciescomp.selectitem(od.DefaultOption())
-                            self.callbackComboBox(od.DefaultOption(),option) 
+                            self.speciescomp.selectitem(selected_default)
+                            self.callbackComboBox(selected_default,option) 
                         except Exception:
                             self.speciescomp.selectitem(self.default_option[0])
                             self.callbackComboBox(self.default_option[0],option)
+                elif 'array_type' in option:
+                    self.arraycomp = self.comp; self.arraycomp.pack(anchor = 'w', padx = 10, pady = 0)
+                    try: self.arraycomp.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.arraycomp.invoke())
+                    except Exception: None ### Above is a slick way to force the entry field to be disabled and invoke the scrolledlist
+                    try:
+                        self.arraycomp.selectitem(selected_default)
+                        self.callbackComboBox(selected_default,option) 
+                    except Exception:
+                        self.arraycomp.selectitem(self.default_option[0])
+                        self.callbackComboBox(self.default_option[0],option)
+                elif 'manufacturer_selection' in option:
+                    self.vendorcomp = self.comp; self.vendorcomp.pack(anchor = 'w', padx = 10, pady = 0)
+                    try: self.vendorcomp.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.vendorcomp.invoke())
+                    except Exception: None ### Above is a slick way to force the entry field to be disabled and invoke the scrolledlist
+                    try:
+                        self.vendorcomp.selectitem(selected_default)
+                        self.callbackComboBox(selected_default,option) 
+                    except Exception:
+                        self.vendorcomp.selectitem(self.default_option[0])
+                        self.callbackComboBox(self.default_option[0],option)
                 else:
                     self.combo = self.comp ### has to be a unique combo box to refer to itself in the component call below
                     self.combo.pack(anchor = 'w', padx = 10, pady = 1)
@@ -1393,14 +1816,16 @@ class GUI:
                             #self.combo.selectitem(opt)
                             #self.callbackComboBox(opt,option)
                     """
+                    #print selected_default
                     try:
-                        if len(od.DefaultOption()[0])>1: ###Hence it is a list
-                            for opt in od.DefaultOption():
+                        if len(selected_default[0])>1: ###Hence it is a list
+                            for opt in selected_default:
                                 self.combo.selectitem(opt)
                                 self.callbackComboBox(opt,option); break
                         else:
-                            self.combo.selectitem(od.DefaultOption())
-                            self.callbackComboBox(od.DefaultOption(),option) 
+                            ### This is where the default for the combobox is actually selected for GeneSets
+                            self.combo.selectitem(selected_default)
+                            self.callbackComboBox(selected_default,option) 
                     except Exception:
                         try:
                             self.combo.selectitem(self.default_option[0])
@@ -1423,7 +1848,7 @@ class GUI:
                 if check_index == -1:
                     check_option = 'analyze_all_conditions'
                     def checkbuttoncallback(tag,state,checkbuttoncallback=self.checkbuttoncallback,option=check_option):
-                        print tag,state,option
+                        #print tag,state,option
                         checkbuttoncallback(tag,state,option)                
                     ### Create and pack a vertical RadioSelect widget, with checkbuttons.
                     self.checkbuttons = PmwFreeze.RadioSelect(self._parent,
@@ -1460,12 +1885,12 @@ class GUI:
                 else: self.default_option = self.display_options[0]
                 def enter_callback(tag,enter_callback=self.enter_callback,option=option):
                     enter_callback(tag,option)
-                self.title = self.title + '\t '
+                #self.title = self.title + '\t ' #entry_width=entrywidth
                 self.entry_field = PmwFreeze.EntryField(self.sf.interior(),
-                        labelpos = 'w', label_text = self.title,
+                        labelpos = 'e', label_text = self.title,
                         validate = enter_callback,
                         value = self.default_option
-                ); self.entry_field.pack(padx = 10, pady = 1)
+                ); self.entry_field.pack(anchor='w',padx = 10, pady = 1)
 
             if 'enter' in od.DisplayObject() and self.display_options != ['NA']:
                 if use_scroll == 'yes': parent_type = self.sf.interior()
@@ -1486,11 +1911,14 @@ class GUI:
                 if 'Genes_network' in option_list:
                     label_pos = 'e' ### Orients to the text left -> east
                     entrywidth = 20 ### Width of entry entry_width=entrywidth          
-                elif 'GeneSelection' in option_list: ### For clustering UI
+                elif 'GeneSelection' in option_list or 'GeneSelectionPredict' in option_list: ### For clustering UI
+                    label_pos = 'e' ### Orients to the text left -> east
+                    entrywidth = 20 ### Width of entry entry_width=entrywidth
+                elif 'JustShowTheseIDs' in option_list or 'JustShowTheseIDsPredict' in option_list: ### For clustering UI
                     label_pos = 'e' ### Orients to the text left -> east
                     entrywidth = 20 ### Width of entry entry_width=entrywidth
                 else:
-                    label_pos = 'w'
+                    label_pos = 'e'
                 try:
                     if float(self.default_option) <= 1: use_method = 'p'
                     else: use_method = 'i'
@@ -1511,7 +1939,7 @@ class GUI:
                 #if 'GeneSelection' in option_list:
                 #self.entry_field.component("entry").configure(width=5)
                 
-                if insert_into_group == 'no': self.entry_field.pack(fill = 'x', expand = 1, padx = 10, pady = 2)	
+                if insert_into_group == 'no': self.entry_field.pack(anchor = 'w', padx = 10, pady = 0)	
                 elif enter_index == 1: self.entry_field1 = self.entry_field
                 elif enter_index == 2: self.entry_field2 = self.entry_field
                 elif enter_index == 3: self.entry_field3 = self.entry_field
@@ -1542,12 +1970,13 @@ class GUI:
                         #if 'common-' not in text and 'all-' not in text:
                         #self.checkbuttons.invoke(text)
                 if len(notes)>0: Label(self._parent, text=notes).pack()
-                
+            
             if 'single-checkbox' in od.DisplayObject() and self.display_options != ['NA']:
                 if use_scroll == 'yes': parent_type = self.sf.interior()
                 else: parent_type = self._parent
                 if defaults == 'comps': parent_type = self._parent; orient_type = 'top'
                 if insert_into_group == 'yes': parent_type = custom_group.interior(); check_index+=1
+                if defaults == 'groups': parent_type = self.sf.interior(); orient_type = 'top'
                 
                 self._option = option
                 proceed = 'yes'
@@ -1564,7 +1993,7 @@ class GUI:
                         self.checkbuttons = PmwFreeze.RadioSelect(parent_type,
                                 buttontype = 'checkbutton', command = checkbuttoncallback)
                                 #hull_borderwidth = 2, hull_relief = 'ridge')
-                        if insert_into_group == 'no': self.checkbuttons.pack(side = orient_type, expand = 1, padx = 10, pady = 10)
+                        if insert_into_group == 'no': self.checkbuttons.pack(anchor = 'w',side = orient_type, padx = 10, pady = 1)
                         elif check_index == 1:  checkbuttons1 = self.checkbuttons
                         elif check_index == 2:  checkbuttons2 = self.checkbuttons
                         elif check_index == 3:  checkbuttons3 = self.checkbuttons
@@ -1584,13 +2013,13 @@ class GUI:
                 if 'run_goelite' in option_list: self.group_tag = 'Gene Expression Analysis Options'; pady_int = 1                
                 if 'microRNA_prediction_method' in option_list: self.group_tag = 'Advanced Options'; pady_int = 1; reorganize = 'yes'
 
-                try: checkbuttons1.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                try: checkbuttons1.pack(anchor = 'w', side = 'top', padx = 9, pady = 0)
                 except Exception: null=[]
-                try: checkbuttons2.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                try: checkbuttons2.pack(anchor = 'w', side = 'top', padx = 9, pady = 0)
                 except Exception: null=[]
-                try: checkbuttons3.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                try: checkbuttons3.pack(anchor = 'w', side = 'top', padx = 9, pady = 0)
                 except Exception: null=[]
-                try: checkbuttons4.pack(side = 'top', expand = 1, padx = 9, pady = 0)
+                try: checkbuttons4.pack(anchor = 'w', side = 'top', expand = 1, padx = 9, pady = 0)
                 except Exception: null=[]
                 try: radiobuttons2.pack(side = orient_type, expand = 1, padx = 10, pady = 5)
                 except Exception: null=[]
@@ -1602,15 +2031,15 @@ class GUI:
                 if reorganize == 'yes':
                     try: comp2.pack(anchor = 'w', padx = 10, pady = pady_int)
                     except Exception: null=[]
-                try: self.entry_field1.pack(fill = 'x', expand = 1, padx = 10, pady = 2)
+                try: self.entry_field1.pack(anchor = 'w', padx = 10, pady = 0)
                 except Exception: null=[]
-                try: self.entry_field2.pack(fill = 'x', expand = 1, padx = 10, pady = 2);
+                try: self.entry_field2.pack(anchor = 'w', padx = 10, pady = 0);
                 except Exception: null=[]
-                try: self.entry_field3.pack(fill = 'x', expand = 1, padx = 10, pady = 2)
+                try: self.entry_field3.pack(anchor = 'w', padx = 10, pady = 0)
                 except Exception: null=[]
-                try: self.entry_field4.pack(fill = 'x', expand = 1, padx = 10, pady = 2)
+                try: self.entry_field4.pack(anchor = 'w', padx = 10, pady = 0)
                 except Exception: null=[]
-                try: self.entry_field5.pack(fill = 'x', expand = 1, padx = 10, pady = 2)
+                try: self.entry_field5.pack(anchor = 'w', padx = 10, pady = 0)
                 except Exception: null=[]
                 if reorganize == 'no':
                     try: comp2.pack(anchor = 'w', padx = 10, pady = pady_int)
@@ -1653,9 +2082,13 @@ class GUI:
             if 'input_cdf_file' in option_list: ### For the CEL file selection window, provide a link to get Library files
                 button_text = 'Download Library Files'; d_url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
                 self.d_url = d_url; text_button = Button(self._parent, text=button_text, command=self.Dlinkout); text_button.pack(side = 'left', padx = 5, pady = 5)
-                
-            continue_to_next_win = Button(text = 'Continue', command = self._parent.destroy)
-            continue_to_next_win.pack(side = 'right', padx = 10, pady = 10)
+
+            if 'GeneSelectionPredict' in option_list:
+                run_button = Button(self._parent, text='Run Analysis', command=self.runPredictGroups)
+                run_button.pack(side = 'right', padx = 10, pady = 10)
+            else:
+                continue_to_next_win = Button(text = 'Continue', command = self._parent.destroy)
+                continue_to_next_win.pack(side = 'right', padx = 10, pady = 10) 
     
             if 'input_annotation_file' in option_list:
                 skip_win = Button(text = 'Skip', command = self._parent.destroy)
@@ -1673,14 +2106,35 @@ class GUI:
             
             try: help_button = Button(self._parent, text=button_text, command=self.GetHelpTopLevel); help_button.pack(side = 'left', padx = 5, pady = 5)
             except Exception: help_button = Button(self._parent, text=button_text, command=self.linkout); help_button.pack(side = 'left', padx = 5, pady = 5)
-    
-            if 'species' in option_list or 'selected_species1' in option_list:
+ 
+            if 'species' in option_list:
                 new_species_button = Button(self._parent, text='Add New Species', command=self.newSpecies)
                 new_species_button.pack(side = 'left', padx = 5, pady = 5)
     
+            def runPredictGroupsTest():
+                self.runPredictGroups(reportOnly=True)
+            
+            if 'GeneSelectionPredict' in option_list:
+                expFilePresent = self.verifyExpressionFile()
+                if expFilePresent:
+                    button_instance = Button(self._parent, text='Test Settings', command=runPredictGroupsTest)
+                    button_instance.pack(side = 'left', padx = 5, pady = 5)
+                
             self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
             self._parent.mainloop()
         
+    def verifyExpressionFile(self):
+        continue_analysis = False ### See if the input file is already present
+        try:
+            expFile = fl.ExpFile()
+            count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
+            if count>1: continue_analysis = True
+            else:
+                count = verifyFileLength(expFile)
+                if count>1: continue_analysis = True
+        except Exception: pass
+        return continue_analysis
+    
     def goBack(self):
         self._parent.destroy()
         selected_options = selected_parameters; selected_options2=[] ### If we don't do this we get variable errors
@@ -1700,6 +2154,66 @@ class GUI:
         self._user_variables['species'] = 'Add Species'
         self._parent.destroy()
         
+    def runPredictGroups(self,reportOnly=False):
+        column_metric = self.Results()['column_metric_predict']
+        column_method = self.Results()['column_method_predict']
+        GeneSetSelection = self.Results()['GeneSetSelectionPredict']
+        PathwaySelection = self.Results()['PathwaySelectionPredict']
+        GeneSelection = self.Results()['GeneSelectionPredict']
+        JustShowTheseIDs = self.Results()['JustShowTheseIDsPredict']
+        ExpressionCutoff = self.Results()['ExpressionCutoff']
+        CountsCutoff = self.Results()['CountsCutoff']
+        rho_cutoff = self.Results()['rho_cutoff']
+        FoldDiff = self.Results()['FoldDiff']
+        SamplesDiffering = self.Results()['SamplesDiffering']
+        try: featurestoEvaluate = self.Results()['featuresToEvaluate']
+        except Exception: featurestoEvaluate = 'Genes'
+        removeOutliers = self.Results()['removeOutliers']
+        restrictBy = self.Results()['restrictBy']
+        excludeCellCycle = self.Results()['excludeCellCycle']
+        gsp = GeneSelectionParameters(species,array_type,vendor)
+        gsp.setGeneSet(GeneSetSelection)
+        gsp.setPathwaySelect(PathwaySelection)
+        gsp.setGeneSelection(GeneSelection)
+        gsp.setJustShowTheseIDs(JustShowTheseIDs)
+        gsp.setNormalize('median')
+        gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,
+            removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff)
+        self._user_variables['gsp'] = gsp
+        
+        import RNASeq  
+        expFile = fl.ExpFile()
+        mlp_instance = fl.MLP()
+        count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
+        if count>1: expFile = expFile[:-4]+'-steady-state.txt'
+        
+        if reportOnly:
+            ### Only used to report back what the number of regulated genes are if the gene expression file is present
+            report = RNASeq.singleCellRNASeqWorkflow(species, array_type, expFile, mlp_instance, parameters=gsp, reportOnly=reportOnly)
+            try: InfoWindow(report, 'Continue')
+            except Exception: print report
+        else:
+            ### If the parameters look OK, or user wishes to run, collapse this GUI adn proceed (once exited it will run)
+            self._parent.quit()
+            self._parent.destroy()
+            """
+            values = expFile, mlp_instance, gsp, reportOnly
+            StatusWindow(values,'predictGroups') ### display an window with download status
+            root = Tk()
+            root.title('AltAnalyze: Evaluate Sampled Groupings')
+            gu = GUI(root,'PredictGroups',[],'')
+            nextStep = gu.Results()['next']
+            group_selected = gu.Results()['group_select']
+            if nextStep == 'UseSelected':
+                print group_selected;sys.exit()
+                group_selected = group_selected
+                ### When nothing returned here, the full analysis will run
+            else:
+                #print 're-initializing window'
+                AltAnalyze.AltAnalyzeSetup((selected_parameters,user_variables)); sys.exit()
+                
+            """
+            
     def GetHelpTopLevel(self):
         message = ''
         self.message = message; self.online_help = 'Online Documentation'; self.pdf_help = 'Local PDF File'
@@ -1755,6 +2269,10 @@ class GUI:
         #tkMessageBox.showwarning("Quit","Use 'Quit' button to end program!",parent=self._parent)
         self._parent.destroy(); sys.exit()
 
+    def tldeleteWindow(self,tl):
+        try: tl.quit(); tl.destroy()#; print 1
+        except Exception: tl.destroy()#; print 2
+    
     def quit(self):
         try: self._parent.quit(); self._parent.destroy(); sys.exit()
         except Exception: self._parent.quit(); sys.exit()
@@ -1918,12 +2436,24 @@ class GUI:
     def callbackComboBox(self, tag, option):
         """ Similiar to the above, callback, but ComboBox uses unique methods """
         #print 'Button',[option], tag,'was pressed.'
-        if option == 'interactionDirs': ### Allow multiple selections
+        if option == 'interactionDirs' or 'PathwaySelection' in option or 'HeatmapAdvanced' in option: ### Allow multiple selections
             if len(tag)==0:
                 self._user_variables[option] = None ### no options selected
-            if len(tag[0])==1: ### Hence, just one item selected
-                self._user_variables[option] = [tag]
-            else: self._user_variables[option] = list(tag)
+            else:
+                if isinstance(tag, tuple) or isinstance(tag, list):
+                    pass
+                else:
+                    try: tag = self._user_variables[option] ### This indicates that this option was previously set and in the new window was not explicitly set, suggesting we should re-apply the original settings
+                    except Exception: None
+                try: ### Occurs when no items selected
+                    if len(tag[0])==1: ### Hence, just one item selected
+                        self._user_variables[option] = [tag]
+                except Exception:
+                    pass
+                if len(list(tag)[0]) == 1:
+                    tag_list = [tag]
+                else: tag_list = list(tag)
+                self._user_variables[option] = tag_list
         else:
             self._user_variables[option] = tag
         if option == 'selected_version':
@@ -1952,14 +2482,37 @@ class GUI:
                 default = self.getBestDefaultSelection('selected_species3',current_species_names)
                 self.speciescomp3.selectitem(default)
             except Exception: None ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
-        elif 'GeneSetSelection' in option:
+        elif option == 'dbase_version':
+            ###Export new species info
+            exportDBversion(tag); change_var = 'all'
+            try: self.changeVendorSelection(); self.changeSpeciesSelection(); self.changeArraySelection()
+            except Exception: null=[]
+        elif option == 'species':
+            try: self.changeArraySelection()
+            except Exception: null=[]
+        elif option == 'manufacturer_selection':
+            try: self.changeSpeciesSelection(); self.changeArraySelection()
+            except Exception: null=[]
+        #elif option == 'array_type':
+            #self.checkSpeciesArraySelection(array_type)
+        elif option == 'analysis_method':
+            if tag == 'ASPIRE':
+                try: self.entry_field2.setentry('0.2')
+                except Exception: null=[]
+                self._user_variables['alt_exon_fold_cutoff'] = '0.2'
+            elif tag == 'linearregres':
+                try: self.entry_field2.setentry('2')
+                except Exception: null=[]
+                self._user_variables['alt_exon_fold_cutoff'] = '2'
+        elif 'GeneSetSelection' in option or 'GeneSetSelectionPredict' in option:
+            #print option,tag
             if 'network' in option: suffix='_network'
             else: suffix=''
             #species = self._user_variables['species']
             try:
                 if 'Ontology' in tag: directory = 'gene-go'
                 else: directory = 'gene-mapp'
-                if tag in self._user_variables:
+                if tag in self._user_variables and 'StoredGeneSets' not in tag: ### Want to reload StoredGeneSets each time
                     supported_genesets = self._user_variables[tag]
                     #print 'loading pathways from memory'
                 else:
@@ -1967,11 +2520,14 @@ class GUI:
                     supported_genesets = listAllGeneSetCategories(species,tag,directory)
                     self._user_variables[tag] = supported_genesets ### Store this so we don't waste time reloading it the next time
                 self.pathwayselect._list.setlist(supported_genesets)
-                self.pathwayselect.selectitem(supported_genesets[0])
-                self._user_variables['PathwaySelection'+suffix] = supported_genesets[0] ### store this default
+                ##### self.pathwayselect.selectitem(supported_genesets[0]) # This sets the default for multi- or single-combo boxes... DON'T SELECT UNLESS YOU WANT TO HAVE TO DE-SELECT IT
+                ##### self._user_variables['PathwaySelection'+suffix] = supported_genesets[0] ### store this default
+                ##### self._user_variables['PathwaySelectionPredict'+suffix] = supported_genesets[0] ### store this default
+                self.pathwayselect.selectitem(0,setentry = 1) # Select the item but then re-set the list to deselect it
+                self.pathwayselect._list.setlist(supported_genesets)
             except Exception, e:
                 #print e
-                null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+                pass ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
             
     def getBestDefaultSelection(self,option,option_list):
         default = option_list[0] ### set the default to the first option listed
@@ -1986,18 +2542,22 @@ class GUI:
     def changeSpeciesSelection(self):
         vendor = self._user_variables['manufacturer_selection'] ### Get vendor (stored as global)
         current_species_names = getSpeciesList(vendor) ### Need to change species, manufacturers and array_type
-        try: self.speciescomp.setitems(current_species_names)
-        except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
         for i in self._option_list:
             if 'species' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
                 last_selected_species = self._user_variables[i]
                 if last_selected_species not in current_species_names:
                     try: self._user_variables[i] = current_species_names[0]
                     except Exception: null = []
+                    try:
+                        self.speciescomp._list.setlist(current_species_names)
+                        self.speciescomp.selectitem(current_species_names[0]) 
+                    except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
 
     def checkSpeciesArraySelection(self,array_type):
         current_species_names = getSpeciesForArray(array_type)
-        try: self.speciescomp.setitems(current_species_names)
+        try:
+            self.speciescomp._list.setlist(current_species_names)
+            self.speciescomp.selectitem(current_species_names[0])
         except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
         for i in self._option_list:
             if 'species' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
@@ -2010,9 +2570,12 @@ class GUI:
         species = species_codes[species_name].SpeciesCode()
         current_array_types, manufacturer_list = getArraysAndVendors(species,vendor)
         if 'Other ID'==vendor: ### Populate the current_array_types as all Ensembl linked systems
-            current_array_types = getSupportedGeneSystems(species,'uid-gene')
-        try: self.arraycomp.setitems(current_array_types)
-        except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+            current_array_types = getSupportedGeneSystems(species,'uid-gene')         
+        try:
+            self.arraycomp._list.setlist(current_array_types)
+            self.arraycomp.selectitem(current_array_types[0])
+        except Exception:
+            pass ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
         for i in self._option_list:
             if 'array_type' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
                 if self._user_variables[i] not in current_array_types: ### If the current array type is supported by the new species selection, keep it the same
@@ -2023,7 +2586,9 @@ class GUI:
         species_name = self._user_variables['species'] ### Get species (stored as global)
         vendor = self._user_variables['manufacturer_selection']
         current_array_types, manufacturer_list = getArraysAndVendors(species,'')
-        try: self.vendorcomp.setitems(manufacturer_list)
+        try:
+            self.vendorcomp._list.setlist(manufacturer_list)
+            self.vendorcomp.selectitem(manufacturer_list[0])
         except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
         for i in self._option_list:
             if 'manufacturer_selection' in i: ### Necessary if the user changes dbase_version and selects continue to accept the displayed species name (since it's note directly invoked)
@@ -2134,6 +2699,17 @@ def importResourceList():
         resource_list.append(resource)
     return resource_list
 
+def importGeneList(filename):
+    gene_list=[]
+    fn=filepath(filename); resource_list=[]
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        gene = string.split(data,'\t')[0]
+        if gene not in gene_list and gene != 'GeneID' and gene != 'UID':
+            gene_list.append(gene)
+    gene_list = string.join(gene_list,',')
+    return gene_list
+
 def importConfigFile():
     #print "importing config file"
     filename = 'Config/config.txt'
@@ -2198,7 +2774,12 @@ def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,u
     if Cytoscape_found == 'no':
         fln,status = update.download(goelite_url+'Cytoscape/cytoscape.tar.gz','','')
         if 'Internet' not in status: print "Cytoscape program folder downloaded."
-  
+        
+    count = verifyFileLength('AltDatabase/TreeView/TreeView.jar')
+    if count==0:
+        fln,status = update.download(goelite_url+'TreeView.zip','AltDatabase/NoVersion','')
+        if 'Internet' not in status: print "TreeView program downloaded."
+        
     fln,status = update.download(goelite_url+'Databases/'+db_version+'Plus/OBO.zip','AltDatabase/goelite/','')
     if 'Internet' not in status: print "Gene Ontology structure files downloaded."
     
@@ -2407,6 +2988,7 @@ def importArrayGroupsSimple(expr_group_dir,cel_files):
     for line in open(fn,'rU').xreadlines():             
         data = cleanUpLine(line)
         array_header,group,group_name = string.split(data,'\t')
+        if group_name == 'NA': group_name = 'None'
         #print [array_header],cel_files
         if (array_header in cel_files) or len(cel_files)==0: ### restrict import to array files listed in the groups file
             try: group = int(group); group_db[group]=group_name
@@ -2415,7 +2997,7 @@ def importArrayGroupsSimple(expr_group_dir,cel_files):
             array_group_list.append(agd)
     if len(cel_files)>0:
         if len(cel_files)!=len(array_group_list):
-            print len(cel_files),len(array_group_list)
+            #print len(cel_files),len(array_group_list)
             #print cel_files
             array_group_list2=[]
             for i in array_group_list:
@@ -2660,7 +3242,9 @@ def importUserOptions(array_type,vendor=None):
                 data = string.replace(data,' (required)','')
 
         t = string.split(data,'\t')
-        option,mac_displayed_title,pc_displayed_title,pc_display2,linux_displayed_title,display_object,group,notes,description,global_default = t[:10]
+        #option,mac_displayed_title,pc_displayed_title,pc_display2,linux_displayed_title,display_object,group,notes,description,global_default = t[:10]
+        option,displayed_title,display_object,group,notes,description,global_default = t[:7]
+        """
         if os.name == 'nt':
             import platform
             if '64' in platform.machine(): displayed_title = pc_display2
@@ -2670,6 +3254,7 @@ def importUserOptions(array_type,vendor=None):
         elif 'darwin' in sys.platform: displayed_title = mac_displayed_title
         elif 'linux' in sys.platform: displayed_title = linux_displayed_title
         else: displayed_title = linux_displayed_title
+        """
         if 'junction' in displayed_title: displayed_title+=' '
         """if array_type == 'RNASeq':
             if option == 'dabg_p': ### substitute the text for the alternatitve text in notes
@@ -2699,7 +3284,9 @@ class SummaryResults:
             webbrowser.open(LINKS[idx])
         LINKS=('http://www.altanalyze.org','')
         self.LINKS = LINKS
-        tl = Toplevel(); tl.title('AltAnalyze')
+        try: tl = Toplevel()
+        except Exception: tl = Tkinter.Toplevel()
+        tl.title('AltAnalyze')
         
         filename = 'Config/icon.gif'
         fn=filepath(filename); img = PhotoImage(file=fn)
@@ -2851,7 +3438,8 @@ class WarningWindow:
         try: tkMessageBox.showerror(window_name, warning)
         except Exception:
             print warning
-            print window_name; sys.exit()
+            #print window_name; sys.exit()
+            kill
 
 class InfoWindow:
     def __init__(self,dialogue,header):
@@ -3006,7 +3594,15 @@ def predictGroupsAndComps(cel_files,output_dir,exp_name):
 
 def formatArrayGroupsForGUI(array_group_list, category = 'GroupArrays'):
         ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
-        option_db={}; option_list={}; 
+        option_db={}; option_list={}
+        
+        if category != 'BatchArrays':
+            ### Add a checkbox at the top to allow for automatic assignment of groups (e.g., Single Cell Data)
+            option='PredictGroups';displayed_title='Predict Groups from Unknown Sample Types';display_object='single-checkbox';notes='';array_options=['---']
+            od = OptionData(option,displayed_title,display_object,notes,array_options,'')
+            option_db[option] = od
+            option_list[category] = [option]
+
         for agd in array_group_list:
             option = agd.Array(); array_options = [agd.GroupName()]; displayed_title=option; display_object='simple_entry'; notes=''
             od = OptionData(option,displayed_title,display_object,notes,array_options,'')
@@ -3043,9 +3639,15 @@ class ExpressionFileLocationData:
         self.normalize_gene_data = 'NA'
     def ExpFile(self): return self._exp_file
     def StatsFile(self): return self._stats_file
+    def CountsFile(self):
+        counts_file = string.replace(self.ExpFile(),'exp.','counts.')
+        file_length = AltAnalyze.verifyFileLength(counts_file)
+        if file_length>0:
+            return counts_file
+        else:
+            return self.ExpFile()
     def GroupsFile(self): return self._groups_file
     def CompsFile(self): return self._comps_file
-    def StatsFile(self): return self._stats_file
     def setArchitecture(self,architecture): self.architecture = architecture
     def setAPTLocation(self,apt_location): self._apt_location = osfilepath(apt_location)
     def setInputCDFFile(self,cdf_file): self._cdf_file = osfilepath(cdf_file)
@@ -3053,6 +3655,7 @@ class ExpressionFileLocationData:
     def setBGPFile(self,bgp_file): self._bgp_file = osfilepath(bgp_file)
     def setCELFileDir(self,cel_file_dir): self._cel_file_dir = osfilepath(cel_file_dir)
     def setFeatureNormalization(self,normalize_feature_exp): self.normalize_feature_exp = normalize_feature_exp
+    def setExcludeLowExpressionExons(self, excludeNonExpExons): self.excludeNonExpExons = excludeNonExpExons
     def setNormMatrix(self,normalize_gene_data): self.normalize_gene_data = normalize_gene_data
     def setProbabilityStatistic(self,probability_statistic): self.probability_statistic = probability_statistic
     def setBatchEffectRemoval(self,batch_effects): self.batch_effects = batch_effects
@@ -3060,8 +3663,12 @@ class ExpressionFileLocationData:
     def setPerformLineageProfiler(self, run_lineage_profiler): self.run_lineage_profiler = run_lineage_profiler
     def setCompendiumType(self,compendiumType): self.compendiumType = compendiumType
     def setCompendiumPlatform(self,compendiumPlatform): self.compendiumPlatform = compendiumPlatform
+    def setMultiThreading(self, multithreading): self.multithreading = multithreading
     def setVendor(self,vendor): self.vendor = vendor
+    def setPredictGroups(self, predictGroups): self.predictGroups = predictGroups
+    def setPredictGroupsParams(self, predictGroupsObjects): self.predictGroupsObjects = predictGroupsObjects
     def setGraphicLinks(self,graphic_links): self.graphic_links = graphic_links ### file location of image files
+    def setSTDOUT(self, stdout): self.stdout = stdout
     def setExonExpThreshold(self,exon_exp_threshold):
         try: exon_exp_threshold = float(exon_exp_threshold)
         except Exception: exon_exp_threshold = exon_exp_threshold
@@ -3083,9 +3690,13 @@ class ExpressionFileLocationData:
         except Exception: rpkm_threshold = rpkm_threshold
         self.rpkm_threshold = rpkm_threshold
     def setMarkerFinder(self,marker_finder): self.marker_finder = marker_finder
+    def multiThreading(self): return self.multithreading
+    def STDOUT(self): return self.stdout
     def ExonExpThreshold(self): return self.exon_exp_threshold
     def BatchEffectRemoval(self): return self.batch_effects
     def MarkerFinder(self): return self.marker_finder
+    def PredictGroups(self): self.predictGroups
+    def PredictGroupsObjects(self): self.predictGroupsObjects
     def ExonRPKMThreshold(self): return self.exon_rpkm_threshold
     def GeneExpThreshold(self): return self.gene_exp_threshold
     def JunctionExpThreshold(self): return self.junction_exp_threshold
@@ -3111,6 +3722,11 @@ class ExpressionFileLocationData:
     def ExonBedBuildStatus(self): return self.bed_build_status
     def ChannelToExtract(self): return self.channel_to_extract
     def FeatureNormalization(self): return self.normalize_feature_exp
+    def setUseJunctionsForGeneExpression(self, use_junctions_for_geneexpression): self.use_junctions_for_geneexpression = use_junctions_for_geneexpression
+    def useJunctionsForGeneExpression(self):
+        try: return self.use_junctions_for_geneexpression
+        except Exception: return False
+    def excludeLowExpressionExons(self): return self.excludeNonExpExons
     def NormMatrix(self): return self.normalize_gene_data
     def RootDir(self): return self._root_dir
     def APTLocation(self): return self._apt_location
@@ -3122,10 +3738,16 @@ class ExpressionFileLocationData:
     def ArrayType(self): return self._array_type
     def OutputDir(self): return self._output_dir
     def Vendor(self): return self.vendor
+    def setSpecies(self, species): self.species = species
+    def Species(self): return self.species
     def setPlatformType(self, platformType): self.platformType = platformType
     def setAnalysisMode(self, analysis_mode): self.analysis_mode = analysis_mode
+    def setMLP(self,mlpr): self.mlp = mlpr
     def setExonMapFile(self, exonMapFile): self.exonMapFile = exonMapFile
     def ExonMapFile(self): return self.exonMapFile
+    def setCorrelationDirection(self, correlationDirection): self.correlationDirection = correlationDirection
+    def CorrelationDirection(self): return self.correlationDirection
+    def MLP(self): return self.mlp
     def PlatformType(self): return self.platformType
     def AnalysisMode(self): return self.analysis_mode
     def DatasetFile(self):
@@ -3284,9 +3906,10 @@ def getUpdatedParameters(array_type,species,run_from_scratch,file_dirs):
         if ORA_algorithm == 'Fisher Exact Test':
             pathway_permutations = 'FisherExactTest'
         goelite_var = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,''
-        GO_Elite.remoteAnalysis(goelite_var,'UI')
+        GO_Elite.remoteAnalysis(goelite_var,'UI',Multi=mlp)
         AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
-    except ZeroDivisionError:
+    except Exception:
+        print traceback.format_exc()
         print_out = "Unexpected error encountered. Please see log file."
         IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
    
@@ -3403,47 +4026,48 @@ def verifyLineageProfilerDatabases(species,run_mode):
     download_species = species
     try: gene_database = unique.getCurrentGeneDatabaseVersion()
     except Exception: gene_database='00'
-    if int(gene_database[-2:]) < 62:
-        print_out = 'LineageProfiler is not supported in this database version (EnsMart62 and higher required).'
-        print print_out
-        return False
-    else:
-        if species == 'Hs':
-            source_file = 'AltDatabase/ensembl/'+species+'/'+species+'_exon_tissue-specific_protein_coding.txt'
-            download_species = 'Hs'
-        elif species == 'Mm':
-            source_file = 'AltDatabase/ensembl/'+species+'/'+species+'_gene_tissue-specific_protein_coding.txt'
-            download_species = 'Mm'
-        else: ### Use the mouse version instead - less variable data
-            source_file = 'AltDatabase/ensembl/'+species+'/'+species+'_gene_tissue-specific_protein_coding.txt'
-            download_species = 'Mm'
-        file_length = AltAnalyze.verifyFileLength(source_file)
-        if file_length>0:
-            installed = True
+    try:
+        if int(gene_database[-2:]) < 62:
+            print_out = 'LineageProfiler is not supported in this database version (EnsMart62 and higher required).'
+            print print_out
+            return False
         else:
-            print_out = 'To perform a LineageProfiler analysis AltAnalyze must\nfirst download the appropriate database.'
-            if run_mode == 'GUI':
-                IndicatorWindow(print_out,'Download')
-            else:
-                print print_out  ### Occurs in command-line mode
-            filename = 'AltDatabase/ensembl/'+download_species+'_LineageProfiler.zip'
-            dir = 'AltDatabase/updated/'+gene_database ### Directory at altanalyze.org
-            var_list = filename,dir
-            if debug_mode == 'no' and run_mode == 'GUI': StatusWindow(var_list,'download')
-            else: update.downloadCurrentVersion(filename,dir,None)
+            if species == 'Hs':
+                source_file = 'AltDatabase/ensembl/'+species+'/'+species+'_exon_tissue-specific_protein_coding.txt'
+                download_species = 'Hs'
+            elif species == 'Mm':
+                source_file = 'AltDatabase/ensembl/'+species+'/'+species+'_gene_tissue-specific_protein_coding.txt'
+                download_species = 'Mm'
+            else: ### Use the mouse version instead - less variable data
+                source_file = 'AltDatabase/ensembl/'+species+'/'+species+'_gene_tissue-specific_protein_coding.txt'
+                download_species = 'Mm'
             file_length = AltAnalyze.verifyFileLength(source_file)
-            if file_length>0: installed = True
+            if file_length>0:
+                installed = True
             else:
-                try:
-                    import GeneSetDownloader
-                    GeneSetDownloader.translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species)
-                except Exception:
-                    None
+                print_out = 'To perform a LineageProfiler analysis AltAnalyze must\nfirst download the appropriate database.'
+                if run_mode == 'GUI':
+                    IndicatorWindow(print_out,'Download')
+                else:
+                    print print_out  ### Occurs in command-line mode
+                filename = 'AltDatabase/ensembl/'+download_species+'_LineageProfiler.zip'
+                dir = 'AltDatabase/updated/'+gene_database ### Directory at altanalyze.org
+                var_list = filename,dir
+                if debug_mode == 'no' and run_mode == 'GUI': StatusWindow(var_list,'download')
+                else: update.downloadCurrentVersion(filename,dir,None)
+                file_length = AltAnalyze.verifyFileLength(source_file)
+                if file_length>0: installed = True
+                else:
+                    try:
+                        import GeneSetDownloader
+                        GeneSetDownloader.translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species)
+                    except Exception:
+                        None
+    except Exception: installed = False
     return installed
 
 def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
     specific_arraytype = string.lower(specific_arraytype) ### Full array name
-    
     if array_type == 'junction' or array_type == 'RNASeq':
         try: gene_database = unique.getCurrentGeneDatabaseVersion()
         except Exception: gene_database='00'
@@ -3469,9 +4093,11 @@ def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
                 else: print print_out  ### Occurs in command-line mode
                 if array_type == 'RNASeq': filename = 'AltDatabase/'+species+'_'+array_type+'.zip'
                 elif 'glue' in specific_arraytype: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'_Glue.zip'
+                elif 'hta 2.0' in specific_arraytype: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'_HTA-2_0.zip'
                 else: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'.zip'
                 dir = 'AltDatabase/updated/'+gene_database; var_list = filename,dir
-                if debug_mode == 'no' and run_mode == 'GUI': StatusWindow(var_list,'download')
+                if debug_mode == 'no' and run_mode == 'GUI':
+                    StatusWindow(var_list,'download')
                 else: update.downloadCurrentVersion(filename,dir,None)
             try: dirs = read_directory('/AltDatabase/'+species)
             except Exception: dirs=[]
@@ -3485,10 +4111,20 @@ def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
                     specific_platform = determinePlatform('AltDatabase/'+species+'/'+array_type+'/platform.txt')
                     if 'glue' in specific_arraytype and 'Glue' not in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
                     elif 'glue' not in specific_arraytype and 'Glue' in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
+                    elif 'hta 2.0' in specific_arraytype and 'HTA-2_0' not in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
+                    elif 'hta 2.0' not in specific_arraytype and 'HTA-2_0' in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
                     #print [specific_arraytype], [specific_platform], wrong_junction_db, downloaded_junction_db
-                    
-def getUserParameters(run_parameter):
-    global AltAnalyze; import AltAnalyze
+      
+def exportGeneList(gene_list,outputFolder):
+    filename = string.join(gene_list,' ')[:25]
+    eo = export.ExportFile(outputFolder+'/GO-Elite_input/'+filename+'.txt')
+    eo.write('Symbol\tSytemCode\n')
+    for i in gene_list:
+        eo.write(i+'\tSy\n')
+    return outputFolder+'/GO-Elite_input'
+
+def getUserParameters(run_parameter,Multi=None):
+    global AltAnalyze; import AltAnalyze; global mlp; mlp=Multi ### multiprocessing support
     if run_parameter == 'yes':
         try: MainMenu()
         except Exception:
@@ -3517,10 +4153,10 @@ def getUserParameters(run_parameter):
                 elif 'linux' in sys.platform: os.system('xdg-open "'+log_file+'/"')   
             except Exception: None
             sys.exit()
-    global species; species=''; global user_variables; user_variables={}; global analysis_method; global array_type
+    global species; species=''; global user_variables; user_variables={}; global analysis_method; global array_type; global vendor
     global PathDir; global PathFile; global file_location_defaults; global integrate_online_species; integrate_online_species = 'no'
     global option_db; global option_list; global analysis_status; analysis_status = 'continue'; global selected_parameters; selected_parameters=[]
-    global backSelect
+    global backSelect; global fl; predictGroups = False
     
     ### Get default options for ExpressionBuilder and AltAnalyze
 
@@ -3532,7 +4168,7 @@ def getUserParameters(run_parameter):
     run_MiDAS=no; analyze_functional_attributes=no; microRNA_prediction_method=na
     gene_expression_cutoff=na; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
     remove_intronic_junctions=na; build_exon_bedfile=no; input_cdf_file = na; bgp_file = na
-    clf_file = na; remove_xhyb = na
+    clf_file = na; remove_xhyb = na; multiThreading = True
     
     compendiumType = 'protein_coding'; compendiumPlatform = 'gene'
     calculate_splicing_index_p=no; run_goelite=no; ge_ptype = 'rawp'; probability_algorithm = na
@@ -3635,7 +4271,7 @@ def getUserParameters(run_parameter):
         except Exception:
             None ### Occurs if this directory is missing (possible in future versions)
 
-        if run_parameter == 'Add Species': species_full = 'Homo sapiens'; species = 'Hs'; vendor = 'Affymetrix'; specific_array = 'Exon ST array'
+        if run_parameter == 'Add Species': species_full = 'Homo sapiens'; species = 'Hs'; vendor = 'Affymetrix'; specific_array = 'Exon 1.0 ST array'
         if backSelect == 'yes' and 'array_type' in old_options: null=[]
         elif 'Homo sapiens' in current_species_names: species_full = 'Homo sapiens'; species = 'Hs'; vendor = default_vendor; specific_array = default_specific_array
         elif 'Mus musculus' in current_species_names: species_full = 'Mus musculus'; species = 'Mm'; vendor = default_vendor; specific_array = default_specific_array
@@ -3674,8 +4310,22 @@ def getUserParameters(run_parameter):
                 gu = GUI(root,option_db,option_list['ArrayType'],'')
             else: gu = PreviousResults(old_options)
             species_full = gu.Results()['species']
+        
+        new_analysis_options=[]
+        try: update_dbs = gu.Results()['update_dbs']
+        except Exception: update_dbs = 'no'
+        
+        try:
+            selected_parameters[-1]
+        except Exception:
+            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+            
+        if update_dbs == 'yes' or species_full == 'Add Species' or 'NewSpecies' == selected_parameters[-1]:
+            integrate_online_species = 'yes'
+            addOnlineSpeciesDatabases(backSelect)
+            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
 
-        if species_full == 'Add Species' or 'NewSpecies' == selected_parameters[-1]:
+        elif species_full == 'Add Species' or 'NewSpecies' == selected_parameters[-1]: ### outdated code - bypassed by the above
             species_added = 'no'
             option_db['new_manufacturer'].setArrayOptions(manufacturer_list_all_possible)
             while species_added == 'no':
@@ -3711,7 +4361,6 @@ def getUserParameters(run_parameter):
                     print_out = "Valid species data was not added. You must\nindicate a two letter species code and full species name."
                     IndicatorWindow(print_out,'Continue')  
         else: species = species_codes[species_full].SpeciesCode()    
-        update_dbs = gu.Results()['update_dbs']
         array_full = gu.Results()['array_type']
         vendor = gu.Results()['manufacturer_selection']
         try: array_type = array_codes[array_full].ArrayCode()
@@ -3719,13 +4368,10 @@ def getUserParameters(run_parameter):
             ### An error occurs because this is a system name for the Other ID option
             array_type = "3'array"
             vendor = 'other:'+array_full ### Ensembl linked system name
-
-        if update_dbs == 'yes':
-            integrate_online_species = 'yes'
-            addOnlineSpeciesDatabases(backSelect)
-            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
-        new_analysis_options=[]
-
+        if array_full == 'Normalized externally':
+            array_type = "3'array"
+            vendor = 'other:'+array_full ### Ensembl linked system name
+        
         if array_type == 'gene':
             try: gene_database = unique.getCurrentGeneDatabaseVersion()
             except Exception: gene_database='00'
@@ -3746,6 +4392,7 @@ def getUserParameters(run_parameter):
         option_list,option_db = importUserOptions(array_type,vendor=vendor)  ##Initially used to just get the info for species and array_type
 
         if array_type == "3'array":
+            if species == 'Hs': compendiumPlatform = "3'array"
             for i in option_db['run_from_scratch'].ArrayOptions():
                 if 'AltAnalyze' not in i:
                     if array_type == "3'array":
@@ -3778,8 +4425,10 @@ def getUserParameters(run_parameter):
 
             if backSelect == 'no' or 'Additional Analyses' == selected_parameters[-1]:
                 selected_parameters.append('Additional Analyses'); backSelect = 'no'
-                root = Tk(); root.title('AltAnalyze: Additional Analysis Options')
+                root = Tk()
+                root.title('AltAnalyze: Additional Analysis Options')
                 gu = GUI(root,option_db,option_list['Additional Analyses'],'')
+                ### Venn Diagram Error here with _tkinter.TclError: image "pyimage36" doesn't exist
             else: gu = PreviousResults(old_options)
             additional_analyses = gu.Results()['additional_analyses']
 
@@ -3795,8 +4444,18 @@ def getUserParameters(run_parameter):
                     except KeyError: criterion_input_folder = '' ### Leave this blank so that the default directory is used
                     try: criterion_denom_folder = gu.Results()['criterion_denom_folder']
                     except KeyError: criterion_denom_folder = '' ### Leave this blank so that the default directory is used
-
-                    if len(criterion_input_folder)>0 and len(criterion_denom_folder)>0:
+                    try:
+                        try: main_output_folder = gu.Results()['main_output_folder']
+                        except KeyError: main_output_folder = 'GO-Elite/input/' ### Leave this blank so that the default directory is
+                        inputIDs = gu.Results()['inputIDs']
+                        if len(inputIDs)>0:
+                            inputIDs = string.replace(inputIDs, '\r',' ')
+                            inputIDs = string.replace(inputIDs, '\n',' ')
+                            inputIDs = string.split(inputIDs, ' ')
+                            criterion_input_folder = exportGeneList(inputIDs,main_output_folder)
+                    except Exception: inputIDs=[]
+                    
+                    if len(criterion_input_folder)>0:# and len(criterion_denom_folder)>0:
                         try: main_output_folder = gu.Results()['main_output_folder']
                         except KeyError: main_output_folder = '' ### Leave this blank so that the default directory is
                         if len(main_output_folder)<1:
@@ -3809,6 +4468,7 @@ def getUserParameters(run_parameter):
                         IndicatorWindow(print_out,'Continue')
                         
                 file_dirs = criterion_input_folder, criterion_denom_folder, main_output_folder
+                print file_dirs
                 ### Get GO-Elite Input Parameters
                 getUpdatedParameters(array_type,species,'Prefiltered',file_dirs)
 
@@ -3912,7 +4572,12 @@ def getUserParameters(run_parameter):
                     gu = GUI(root,option_db,option_list['AltExonViewer'],'')
                     altanalyze_results_folder = gu.Results()['altanalyze_results_folder']
                     data_type = gu.Results()['data_type']
+                    show_introns = gu.Results()['show_introns']
                     gene_symbol = gu.Results()['gene_symbol']
+                    altgenes_file = gu.Results()['altgenes_file']
+                    analysisType = gu.Results()['analysisType']
+                    if len(altgenes_file)>0:
+                        gene_symbol = importGeneList(altgenes_file) ### list of gene IDs or symbols
                     if data_type == 'raw expression': ### Switch directories if expression
                         altanalyze_results_folder = string.replace(altanalyze_results_folder,'AltResults','ExpressionInput')
                         exp_file = getValidExpFile(altanalyze_results_folder)
@@ -3924,7 +4589,7 @@ def getUserParameters(run_parameter):
                             IndicatorWindow(print_out,'Continue')
                     if len(exp_file)>0 and len(gene_symbol)>0:
                         analysis = 'AltExonViewer'
-                        values = species,array_type,exp_file,gene_symbol
+                        values = species,array_type,exp_file,gene_symbol,show_introns,analysisType
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -3978,7 +4643,7 @@ def getUserParameters(run_parameter):
                     expressionFile_network = gu.Results()['elite_exp_file']
                     outputDir_network = gu.Results()['output_net_folder']
                     includeExpIDs_network = gu.Results()['includeExpIDs_network']
-                    
+
                     ### Set the below variables to the appropriate object types
                     if update_interactions == 'yes': update_interactions = True
                     else: update_interactions = False
@@ -4018,6 +4683,7 @@ def getUserParameters(run_parameter):
                 supported_geneset_types += getSupportedGeneSetTypes(species,'gene-go')
                 option_db['GeneSetSelection'].setArrayOptions(['None Selected']+supported_geneset_types)
                 option_db['PathwaySelection'].setArrayOptions(['None Selected'])
+                option_db['ClusterGOElite'].setArrayOptions(['None Selected','all']+supported_geneset_types)
                 #option_db['PathwaySelection'].setArrayOptions(supported_genesets)
                 
                 status = 'repeat'
@@ -4037,20 +4703,49 @@ def getUserParameters(run_parameter):
                     GeneSetSelection = gu.Results()['GeneSetSelection']
                     PathwaySelection = gu.Results()['PathwaySelection']
                     GeneSelection = gu.Results()['GeneSelection']
+                    ClusterGOElite = gu.Results()['ClusterGOElite']
+                    HeatmapAdvanced = gu.Results()['HeatmapAdvanced']
+                    JustShowTheseIDs = gu.Results()['JustShowTheseIDs']
+                    geneSetName = gu.Results()['heatmapGeneSets']
+                    try: CorrelationCutoff = float(gu.Results()['CorrelationCutoff'])
+                    except Exception: CorrelationCutoff=None
                     OntologyID = gu.Results()['OntologyID']
                     transpose = gu.Results()['transpose']
                     normalization = gu.Results()['normalization']
                     contrast = gu.Results()['contrast']
                     if transpose == 'yes': transpose = True
                     else: transpose = False
-                    if GeneSetSelection != 'None Selected' or GeneSelection != '' or normalization != 'NA':
+                    translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Interative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly'}
+                    try:
+                        if 'None Selected' in HeatmapAdvanced: pass
+                    except Exception: HeatmapAdvanced = ('None Selected')
+                    if ('None Selected' in HeatmapAdvanced and len(HeatmapAdvanced)==1) or 'None Selected' == HeatmapAdvanced: pass
+                    else:
+                        try:
+                            GeneSelection += ' '+string.join(list(HeatmapAdvanced),' ')
+                            for name in translate:
+                                GeneSelection = string.replace(GeneSelection,name,translate[name])
+                            GeneSelection = string.replace(GeneSelection,'  ',' ')
+                            if 'top' in GeneSelection or 'driver' in GeneSelection or 'excludeCellCycle' in GeneSelection or 'positive' in GeneSelection or 'IntraCorrelatedOnly' in GeneSelection:
+                                GeneSelection+=' amplify'
+                        except Exception: pass
+
+                    GeneSetSelection = string.replace(GeneSetSelection,'\n',' ')
+                    GeneSetSelection = string.replace(GeneSetSelection,'\r',' ')
+                    if GeneSetSelection != 'None Selected' or GeneSelection != '' or normalization != 'NA' or JustShowTheseIDs != '' or JustShowTheseIDs != 'None Selected':
                         gsp = GeneSelectionParameters(species,array_type,vendor)
+                        if CorrelationCutoff!=None: #len(GeneSelection)>0 and 
+                            gsp.setRhoCutoff(CorrelationCutoff)
+                            GeneSelection = 'amplify '+GeneSelection
                         gsp.setGeneSet(GeneSetSelection)
                         gsp.setPathwaySelect(PathwaySelection)
                         gsp.setGeneSelection(GeneSelection)
                         gsp.setOntologyID(OntologyID)
                         gsp.setTranspose(transpose)
                         gsp.setNormalize(normalization)
+                        gsp.setJustShowTheseIDs(JustShowTheseIDs)
+                        gsp.setClusterGOElite(ClusterGOElite)
+                        gsp.setStoreGeneSetName(geneSetName)
                         transpose = gsp ### this allows methods that don't transmit this object to also work
                     if len(input_cluster_file)>0:
                         analysis = 'createHeatMap'
@@ -4073,13 +4768,18 @@ def getUserParameters(run_parameter):
                     gu = GUI(root,option_db,option_list['PCA'],'')
                     try: input_cluster_file = gu.Results()['input_cluster_file']
                     except Exception: input_cluster_file = ''
+                    dimensions = gu.Results()['dimensions']
                     pca_labels = gu.Results()['pca_labels']
+                    pca_algorithm = gu.Results()['pca_algorithm']
                     transpose = gu.Results()['transpose']
+                    geneSetName = gu.Results()['pcaGeneSets']
+                    if len(geneSetName)==0:
+                        geneSetName = None
                     if len(input_cluster_file)>0:
                         analysis = 'performPCA'
                         if transpose == 'yes': transpose = True
                         else: transpose = False
-                        values = input_cluster_file, pca_labels, transpose
+                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -4104,13 +4804,15 @@ def getUserParameters(run_parameter):
                     compendiumType = gu.Results()['compendiumType']
                     markerFinder_file = gu.Results()['markerFinder_file']
                     geneModel_file = gu.Results()['geneModel_file']
+                    modelDiscovery = gu.Results()['modelDiscovery']
                     if len(geneModel_file) == 0: geneModel_file = None
+                    if len(modelDiscovery) == 0: modelDiscovery = None
                     if len(input_exp_file)>0:
                         analysis = 'runLineageProfiler'
                         fl = ExpressionFileLocationData('','','','') ### Create this object to store additional parameters for LineageProfiler
                         fl.setCompendiumType(compendiumType)
                         fl.setCompendiumPlatform(compendiumPlatform)
-                        values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file
+                        values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file, modelDiscovery
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -4134,7 +4836,15 @@ def getUserParameters(run_parameter):
                 dataset_name = gu.Results()['dataset_name']
                 try: remove_xhyb = gu.Results()['remove_xhyb']
                 except KeyError: remove_xhyb = 'no'
-                try: build_exon_bedfile = gu.Results()['build_exon_bedfile']
+                try:
+                    multiThreading = gu.Results()['multithreading']
+                    if multiThreading == 'yes': multiThreading = True
+                    else: multiThreading = False
+                except KeyError: multiThreading = True
+                try:
+                    build_exon_bedfile = gu.Results()['build_exon_bedfile']
+                    try: normalize_feature_exp = 'RPKM'
+                    except Exception: pass
                 except KeyError: build_exon_bedfile = 'no'
                 try: channel_to_extract = gu.Results()['channel_to_extract']
                 except Exception: channel_to_extract = 'no'
@@ -4382,6 +5092,7 @@ def getUserParameters(run_parameter):
             if vendor == 'Affymetrix' or vendor == 'RNASeq':
                 option_db['normalize_gene_data'].setArrayOptions(['NA']) ### Only use this option when processing Feature Extraction files or non-Affy non-RNA-Seq data
             if vendor == 'Agilent' and 'Feature Extraction' in run_from_scratch:
+                option_db['normalize_gene_data'].setDefaultOption('quantile')
                 option_db['normalize_gene_data'].setArrayOptions(['quantile']) ### Only set this as a default when performing Feature Extraction for Agilent data
             if run_from_scratch != 'Process AltAnalyze filtered' and run_from_scratch != 'Annotate External Results':
                 proceed = 'no'
@@ -4425,7 +5136,13 @@ def getUserParameters(run_parameter):
                         else: perform_alt_analysis = 'both'
                         try: avg_all_for_ss = gu.Results()['avg_all_for_ss']
                         except Exception: avg_all_for_ss = 'no'
-                        if 'all exon aligning' in avg_all_for_ss or 'known exons' in avg_all_for_ss: avg_all_for_ss = 'yes'
+                        excludeNonExpExons = True
+                        if 'all exon aligning' in avg_all_for_ss or 'known' in avg_all_for_ss or 'expressed exons' in avg_all_for_ss:
+                            if 'known exons' in avg_all_for_ss and array_type == 'RNASeq': excludeNonExpExons = False
+                            if 'known junctions' in avg_all_for_ss and array_type == 'RNASeq':
+                                fl.setUseJunctionsForGeneExpression(True)
+                                excludeNonExpExons = False
+                            avg_all_for_ss = 'yes'
                         else: avg_all_for_ss = 'no'
                     expression_data_format = gu.Results()['expression_data_format']
                     try: normalize_feature_exp = gu.Results()['normalize_feature_exp']
@@ -4474,7 +5191,8 @@ def getUserParameters(run_parameter):
                     if visualize_results == 'yes':
                         try:
                             ### Tests to make sure these are installed - required for visualization
-                            from matplotlib import mpl
+                            try: import matplotlib as mpl
+                            except Exception: from matplotlib import mpl
                             from numpy import array
                             from scipy import rand
                         except Exception:
@@ -4596,10 +5314,12 @@ def getUserParameters(run_parameter):
                     except KeyError: probability_algorithm = probability_algorithm
                     try:
                         avg_all_for_ss = gu.Results()['avg_all_for_ss']
-                        if 'all exon aligning' in avg_all_for_ss or 'known exons' in avg_all_for_ss or 'core' in avg_all_for_ss: avg_all_for_ss = 'yes'
+                        if 'all exon aligning' in avg_all_for_ss or 'known' in avg_all_for_ss or 'core' in avg_all_for_ss or 'expressed exons' in avg_all_for_ss:
+                            avg_all_for_ss = 'yes'
                         else: avg_all_for_ss = 'no'
-                    except Exception: avg_all_for_ss = 'no'
-                        
+                    except Exception:
+                        try: avg_all_for_ss = avg_all_for_ss
+                        except Exception: avg_all_for_ss = 'no'
                     if 'immediately' in run_goelite: run_goelite = 'yes'
                     else: run_goelite = 'no'
                     try: calculate_splicing_index_p = gu.Results()['calculate_splicing_index_p']
@@ -4637,7 +5357,7 @@ def getUserParameters(run_parameter):
                 option_db['get_additional'].setDefaultOption('---')
             
                 ### Populate variables based on the existing imported data
-                default_resources = option_db['resources_to_analyze'].ArrayOptions() ### Include lternative ontologies and gene-lists
+                default_resources = option_db['resources_to_analyze'].ArrayOptions() ### Include alternative ontologies and gene-lists
                 import_dir1 = '/AltDatabase/goelite/'+species+'/gene-mapp'
                 import_dir2 = '/AltDatabase/goelite/'+species+'/gene-go'
                 try:
@@ -4697,6 +5417,7 @@ def getUserParameters(run_parameter):
 
         if run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or 'Feature Extraction' in run_from_scratch:
             if 'exp.' not in dataset_name: dataset_name = 'exp.'+dataset_name+'.txt'
+            
             groups_name = string.replace(dataset_name,'exp.','groups.')
             comps_name = string.replace(dataset_name,'exp.','comps.')
             batch_name = string.replace(groups_name,'groups.','batch.') ### may not apply
@@ -4713,7 +5434,7 @@ def getUserParameters(run_parameter):
             fl = ExpressionFileLocationData(exp_file_dir,stats_file_dir,groups_file_dir,comps_file_dir)
             exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
             parent_dir = output_dir  ### interchangable terms (parent_dir used with expression file import)
-            
+            print groups_file_dir
         if run_from_scratch == 'Process Expression file':
             if len(input_exp_file)>0:
                 if len(input_stats_file)>1: ###Make sure the files have the same arrays and order first
@@ -4761,7 +5482,7 @@ def getUserParameters(run_parameter):
                     agd = ArrayGroupData(cel_file,batch,batch_name); array_batch_list.append(agd); batch_db=[]
         elif run_from_scratch == 'buildExonExportFiles':
                 fl = ExpressionFileLocationData('','','',''); fl.setExonBedBuildStatus('yes'); fl.setFeatureNormalization('none')
-                fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
+                fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir); fl.setMultiThreading(multiThreading)
                 exp_file_location_db={}; exp_file_location_db[dataset_name]=fl; parent_dir = output_dir
                 perform_alt_analysis = 'expression'
         elif groups_name in dir_files:
@@ -4799,6 +5520,7 @@ def getUserParameters(run_parameter):
                 agd = ArrayGroupData(cel_file,group,group_name); array_group_list.append(agd)
         
         if len(array_group_list)>0: ### Thus we are not analyzing the default (ExpressionInput) directory of expression, group and comp data.
+            original_option_db,original_option_list = option_db,option_list
             option_db,option_list = formatArrayGroupsForGUI(array_group_list)
             ###Force this GUI to repeat until the user fills in each entry, but record what they did add
             user_variables_long={}
@@ -4809,18 +5531,22 @@ def getUserParameters(run_parameter):
                     #import copy; user_variables_original = copy.deepcopy(user_variables); user_variables={}
                     gu = GUI(root,option_db,option_list['GroupArrays'],'groups')
                 else: gu = PreviousResults(old_options)
+                try: predictGroups = gu.Results()['PredictGroups']
+                except Exception: predictGroups = False
                 for option in user_variables: ### By default, all arrays will be assigned a group of ''
                     try:
                         if len(user_variables[option])>0 and 'batch' not in option:
                             if option in option_db: user_variables_long[option]=[]
                     except Exception: null=[]
+                
                 ###Store the group names and assign group numbers
                 group_name_db={}; group_name_list = []; group_number = 1
                 for cel_file in option_list['GroupArrays']: ### start we these CEL files, since they are ordered according to their order in the expression dataset
                     group_name = gu.Results()[cel_file]
                     if group_name not in group_name_db:
-                        group_name_db[group_name]=group_number; group_number+=1
-                        group_name_list.append(group_name)
+                        if group_name != 'yes' and group_name !='no': ### Results for PredictGroups
+                            group_name_db[group_name]=group_number; group_number+=1
+                            group_name_list.append(group_name)
                 if len(group_name_db)==2: analyze_all_conditions = 'pairwise' ### Don't allow multiple comparison analysis if only two conditions present
                 
                 ###Store the group names and numbers with each array_id in memory   
@@ -4829,137 +5555,142 @@ def getUserParameters(run_parameter):
                     group_name = gu.Results()[cel_file] ###Lookup the new group assignment entered by the user
                     group_number = group_name_db[group_name]
                     agd.setGroupName(group_name); agd.setGroup(group_number)
-                if (len(user_variables_long) != len(option_db)) or len(group_name_db)<2:
+                if predictGroups == 'yes':
+                    predictGroups = True; break
+                elif predictGroups == 'no': predictGroups = False
+                elif (len(user_variables_long) != len(option_db)) or len(group_name_db)<2:
                     if len(group_name_db)<2:
                         print_out = "At least two array groups must be established\nbefore proceeding."
                     else:
                         print_out = "Not all arrays have been assigned a group. Please\nassign to a group before proceeding (required)."
                     IndicatorWindow(print_out,'Continue')   
                     option_db,option_list = formatArrayGroupsForGUI(array_group_list) ### array_group_list at this point will be updated with any changes made in the GUI by the user
-
-            exported = 0 ### Export Groups file
-            while exported == 0:
-                try:
-                    fl = exp_file_location_db[dataset_name]; groups_file = fl.GroupsFile()
-                    exportGroups(exp_file_location_db,array_group_list)
-                    exported = 1
-                except Exception:                 
-                    print_out = "The file:\n"+groups_file+"\nis still open. This file must be closed before proceeding"
-                    IndicatorWindow(print_out,'Continue')                 
-            exported = 0
-            
-            if batch_effects == 'yes':
-                option_db,option_list = formatArrayGroupsForGUI(array_batch_list, category = 'BatchArrays')
-                ###Force this GUI to repeat until the user fills in each entry, but record what they did add
-                user_variables_long={}
-                while len(user_variables_long) != len(option_db):
-                    if backSelect == 'no' or 'BatchArrays' == selected_parameters[-1]:
-                        selected_parameters.append('BatchArrays'); backSelect = 'no'
-                        root = Tk(); root.title('AltAnalyze: Indicate Which Batch a File is From'); user_variables_long={}
-                        #import copy; user_variables_original = copy.deepcopy(user_variables); user_variables={}
-                        gu = GUI(root,option_db,option_list['BatchArrays'],'batch')
-                    else: gu = PreviousResults(old_options)
-                    for option in user_variables: ### By default, all arrays will be assigned a batch of ''
-                        try:
-                            if len(user_variables[option])>0 and 'batch' in option:
-                                if option[0] in option_db: user_variables_long[option]=[]
-                        except Exception: null=[]
-                    ###Store the batch names and assign batch numbers
-                    batch_name_db={}; batch_name_list = []; batch_number = 1
-                    for cel_file in option_list['BatchArrays']: ### start we these CEL files, since they are ordered according to their order in the expression dataset
-                        batch_name = gu.Results()[cel_file,'batch']
-                        if batch_name not in batch_name_db:
-                            batch_name_db[batch_name]=batch_number; batch_number+=1
-                            batch_name_list.append(batch_name)
-                    if len(batch_name_db)==2: analyze_all_conditions = 'pairwise' ### Don't allow multiple comparison analysis if only two conditions present
-                    
-                    ###Store the batch names and numbers with each array_id in memory   
-                    for agd in array_batch_list:
-                        cel_file = agd.Array()
-                        batch_name = gu.Results()[cel_file,'batch'] ###Lookup the new batch assignment entered by the user
-                        batch_number = batch_name_db[batch_name]
-                        agd.setGroupName(batch_name); agd.setGroup(batch_number)
-                    if (len(user_variables_long) != len(option_db)) or len(batch_name_db)<2:
-                        if len(batch_name_db)<2:
-                            print_out = "At least two sample batchs must be established\nbefore proceeding."
-                        else:
-                            print_out = "Not all arrays have been assigned a batch. Please\nassign to a batch before proceeding (required)."
-                        IndicatorWindow(print_out,'Continue')   
-                        option_db,option_list = formatArrayGroupsForGUI(array_batch_list, category = 'BatchArrays') ### array_batch_list at this point will be updated with any changes made in the GUI by the user
-
-                exported = 0 ### Export Batch file
+            if predictGroups == False:
+                exported = 0 ### Export Groups file
                 while exported == 0:
                     try:
-                        fl = exp_file_location_db[dataset_name]
-                        exportGroups(exp_file_location_db,array_batch_list,filetype='Batch')
+                        fl = exp_file_location_db[dataset_name]; groups_file = fl.GroupsFile()
+                        exportGroups(exp_file_location_db,array_group_list)
                         exported = 1
                     except Exception:                 
-                        print_out = "The file:\n"+batch_file_dir+"\nis still open. This file must be closed before proceeding"
+                        print_out = "The file:\n"+groups_file+"\nis still open. This file must be closed before proceeding"
                         IndicatorWindow(print_out,'Continue')                 
                 exported = 0
-            i=2; px=0 ###Determine the number of possible comparisons based on the number of groups
-            while i<=len(group_name_list): px = px + i - 1; i+=1
-            group_name_list.reverse(); group_name_list.append(''); group_name_list.reverse() ### add a null entry first
-            if px > 100: px = 100 ### With very large datasets, AltAnalyze stalls
-            possible_comps = px
-        
-            ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
-            category = 'SetupComps'; option_db={}; option_list={}; cn = 0 #; user_variables={}
-            while cn < px:
-                try: group1,group2 = original_comp_group_list[cn]
-                except IndexError: group1='';group2=''
-                cn+=1; option = 'comparison '+str(cn); array_options = group_name_list; displayed_title=option; display_object='pulldown_comps'; notes=[group1,group2]
-                od = OptionData(option,displayed_title,display_object,notes,array_options,'')
-                option_db[option] = od
-                try: option_list[category].append(option) ###group is the name of the GUI menu group
-                except KeyError: option_list[category] = [option]
- 
-            proceed = 'no'
-            while proceed == 'no' and analyze_all_conditions != 'all groups':
-                identical_groups = 'no'; comp_groups_db={}; proceed = 'no'
-                if (backSelect == 'no' or 'SetupComps' == selected_parameters[-1]):
-                    selected_parameters.append('SetupComps'); backSelect = 'no'
-                    root = Tk(); root.title('AltAnalyze: Establish All Pairwise Comparisons')
-                    gu = GUI(root,option_db,option_list['SetupComps'],'comps')
-                else: gu = PreviousResults(old_options)
-                ### Sort comparisons from user for export
-                for comparison in gu.Results():
-                    try:
-                        group_name = gu.Results()[comparison]
-                        if len(group_name)>0 and 'comparison' in comparison: ### Group_names are by default blank
-                            cn_main,cn_minor = string.split(comparison[11:],'-') ### e.g. 1-1 and 1-2
-                            try:
-                                null = int(cn_main); null = int(cn_minor)
-                                try: comp_groups_db[cn_main].append([cn_minor,group_name])
-                                except KeyError: comp_groups_db[cn_main]=[[cn_minor,group_name]]
-                            except Exception: null=[]
-                    except Exception: null=[]
-                print_out = "You must pick at least one comparison group before proceeding."
-                if len(comp_groups_db)>0:
-                    try:
-                        comp_group_list=[]
-                        for cn_main in comp_groups_db:
-                            cg = comp_groups_db[cn_main]
-                            cg.sort()
-                            comp_group_list.append([cn_main,[group_name_db[cg[0][1]],group_name_db[cg[1][1]]]])
-                            if cg[0][1] == cg[1][1]: identical_groups = 'yes' ### Thus the two groups in the comparisons are identical, flag
-                        comp_group_list.sort()                    
-                        proceed = 'yes'
-                    except Exception:
-                        print traceback.format_exc()
-                        print_out = "You must pick at least two groups for each comparison."
-                if identical_groups == 'yes': proceed = 'no'; print_out = "The same group is listed as both the experimental and\ncontrol group in a comparison. Fix before proceeding."
-                if proceed == 'no': IndicatorWindow(print_out,'Continue')   
                 
-            ### Export user modified comps files
-            while exported == 0:
-                try:
-                    fl = exp_file_location_db[dataset_name]; comps_file = fl.CompsFile()
-                    if analyze_all_conditions != 'all groups': exportComps(exp_file_location_db,comp_group_list)
-                    exported = 1
-                except Exception:
-                    print_out = "The file:\n"+comps_file+"\nis still open. This file must be closed before proceeding"
-                    IndicatorWindow(print_out,'Continue')
+                if batch_effects == 'yes':
+                    option_db,option_list = formatArrayGroupsForGUI(array_batch_list, category = 'BatchArrays')
+                    ###Force this GUI to repeat until the user fills in each entry, but record what they did add
+                    user_variables_long={}
+                    while len(user_variables_long) != len(option_db):
+                        if backSelect == 'no' or 'BatchArrays' == selected_parameters[-1]:
+                            selected_parameters.append('BatchArrays'); backSelect = 'no'
+                            root = Tk(); root.title('AltAnalyze: Indicate Which Batch a File is From'); user_variables_long={}
+                            #import copy; user_variables_original = copy.deepcopy(user_variables); user_variables={}
+                            gu = GUI(root,option_db,option_list['BatchArrays'],'batch')
+                        else: gu = PreviousResults(old_options)
+                        for option in user_variables: ### By default, all arrays will be assigned a batch of ''
+                            try:
+                                if len(user_variables[option])>0 and 'batch' in option:
+                                    if option[0] in option_db: user_variables_long[option]=[]
+                            except Exception: null=[]
+                        ###Store the batch names and assign batch numbers
+                        batch_name_db={}; batch_name_list = []; batch_number = 1
+                        print option_list['BatchArrays']
+                        for cel_file in option_list['BatchArrays']: ### start we these CEL files, since they are ordered according to their order in the expression dataset
+                            batch_name = gu.Results()[cel_file,'batch']
+                            if batch_name not in batch_name_db:
+                                batch_name_db[batch_name]=batch_number; batch_number+=1
+                                batch_name_list.append(batch_name)
+                        if len(batch_name_db)==2: analyze_all_conditions = 'pairwise' ### Don't allow multiple comparison analysis if only two conditions present
+                        
+                        ###Store the batch names and numbers with each array_id in memory   
+                        for agd in array_batch_list:
+                            cel_file = agd.Array()
+                            batch_name = gu.Results()[cel_file,'batch'] ###Lookup the new batch assignment entered by the user
+                            batch_number = batch_name_db[batch_name]
+                            agd.setGroupName(batch_name); agd.setGroup(batch_number)
+                        if (len(user_variables_long) != len(option_db)) or len(batch_name_db)<2:
+                            if len(batch_name_db)<2:
+                                print_out = "At least two sample batchs must be established\nbefore proceeding."
+                            else:
+                                print_out = "Not all arrays have been assigned a batch. Please\nassign to a batch before proceeding (required)."
+                            IndicatorWindow(print_out,'Continue')   
+                            option_db,option_list = formatArrayGroupsForGUI(array_batch_list, category = 'BatchArrays') ### array_batch_list at this point will be updated with any changes made in the GUI by the user
+    
+                    exported = 0 ### Export Batch file
+                    while exported == 0:
+                        try:
+                            fl = exp_file_location_db[dataset_name]
+                            exportGroups(exp_file_location_db,array_batch_list,filetype='Batch')
+                            exported = 1
+                        except Exception:                 
+                            print_out = "The file:\n"+batch_file_dir+"\nis still open. This file must be closed before proceeding"
+                            IndicatorWindow(print_out,'Continue')                 
+                    exported = 0
+                i=2; px=0 ###Determine the number of possible comparisons based on the number of groups
+                while i<=len(group_name_list): px = px + i - 1; i+=1
+                group_name_list.reverse(); group_name_list.append(''); group_name_list.reverse() ### add a null entry first
+                if px > 150: px = 150 ### With very large datasets, AltAnalyze stalls
+                possible_comps = px
+            
+                ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
+                category = 'SetupComps'; option_db={}; option_list={}; cn = 0 #; user_variables={}
+                while cn < px:
+                    try: group1,group2 = original_comp_group_list[cn]
+                    except IndexError: group1='';group2=''
+                    cn+=1; option = 'comparison '+str(cn); array_options = group_name_list; displayed_title=option; display_object='pulldown_comps'; notes=[group1,group2]
+                    od = OptionData(option,displayed_title,display_object,notes,array_options,'')
+                    option_db[option] = od
+                    try: option_list[category].append(option) ###group is the name of the GUI menu group
+                    except KeyError: option_list[category] = [option]
+     
+                proceed = 'no'
+                while proceed == 'no' and analyze_all_conditions != 'all groups':
+                    identical_groups = 'no'; comp_groups_db={}; proceed = 'no'
+                    if (backSelect == 'no' or 'SetupComps' == selected_parameters[-1]):
+                        selected_parameters.append('SetupComps'); backSelect = 'no'
+                        root = Tk(); root.title('AltAnalyze: Establish All Pairwise Comparisons')
+                        gu = GUI(root,option_db,option_list['SetupComps'],'comps')
+                    else: gu = PreviousResults(old_options)
+                    ### Sort comparisons from user for export
+                    for comparison in gu.Results():
+                        try:
+                            group_name = gu.Results()[comparison]
+                            if len(group_name)>0 and 'comparison' in comparison: ### Group_names are by default blank
+                                cn_main,cn_minor = string.split(comparison[11:],'-') ### e.g. 1-1 and 1-2
+                                try:
+                                    null = int(cn_main); null = int(cn_minor)
+                                    try: comp_groups_db[cn_main].append([cn_minor,group_name])
+                                    except KeyError: comp_groups_db[cn_main]=[[cn_minor,group_name]]
+                                except Exception: null=[]
+                        except Exception: null=[]
+                    print_out = "You must pick at least one comparison group before proceeding."
+                    if len(comp_groups_db)>0:
+                        try:
+                            comp_group_list=[]
+                            for cn_main in comp_groups_db:
+                                cg = comp_groups_db[cn_main]
+                                cg.sort()
+                                comp_group_list.append([cn_main,[group_name_db[cg[0][1]],group_name_db[cg[1][1]]]])
+                                if cg[0][1] == cg[1][1]: identical_groups = 'yes' ### Thus the two groups in the comparisons are identical, flag
+                            comp_group_list.sort()                    
+                            proceed = 'yes'
+                        except Exception:
+                            print traceback.format_exc()
+                            print_out = "You must pick at least two groups for each comparison."
+                    if identical_groups == 'yes': proceed = 'no'; print_out = "The same group is listed as both the experimental and\ncontrol group in a comparison. Fix before proceeding."
+                    if proceed == 'no': IndicatorWindow(print_out,'Continue')   
+                    
+                ### Export user modified comps files
+                while exported == 0:
+                    try:
+                        fl = exp_file_location_db[dataset_name]; comps_file = fl.CompsFile()
+                        if analyze_all_conditions != 'all groups': exportComps(exp_file_location_db,comp_group_list)
+                        exported = 1
+                    except Exception:
+                        print_out = "The file:\n"+comps_file+"\nis still open. This file must be closed before proceeding"
+                        IndicatorWindow(print_out,'Continue')
+
         ### See if there are any Affymetrix annotation files for this species
         import_dir = '/AltDatabase/affymetrix/'+species
         try: dir_list = read_directory(import_dir); fn_dir = filepath(import_dir[1:]); species_dir_found = 'yes'
@@ -5007,6 +5738,8 @@ def getUserParameters(run_parameter):
             fl.setChannelToExtract(channel_to_extract)
         elif run_from_scratch == 'Process RNA-seq reads':
             fl.setCELFileDir(cel_file_dir); fl.setOutputDir(output_dir); fl.setExonBedBuildStatus(build_exon_bedfile)
+        if array_type != 'gene' and array_type != "3'array":
+            compendiumPlatform = 'exon'
         fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
         fl.setFeatureNormalization(normalize_feature_exp)
         fl.setNormMatrix(normalize_gene_data)
@@ -5018,6 +5751,13 @@ def getUserParameters(run_parameter):
         fl.setCompendiumType(compendiumType)
         fl.setCompendiumPlatform(compendiumPlatform)
         fl.setVendor(vendor)
+        try: fl.setExcludeLowExpressionExons(excludeNonExpExons)
+        except Exception: fl.setExcludeLowExpressionExons(True)
+        try: fl.setPredictGroups(predictGroups)
+        except Exception: fl.setPredictGroups(False)
+        try: fl.setPredictGroupsParams(gsp)
+        except Exception: pass
+        fl.setMultiThreading(multiThreading)
         if run_from_scratch == 'Process Expression file':
             fl.setRootDir(output_dir) ### When the data is not primary array data files, allow for option selection of the output directory
             fl.setOutputDir(output_dir)
@@ -5027,7 +5767,62 @@ def getUserParameters(run_parameter):
         fl.setGeneExpThreshold(gene_exp_threshold)
         fl.setExonRPKMThreshold(exon_rpkm_threshold)
         fl.setJunctionExpThreshold(expression_threshold)
+    try: fl.setMLP(mlp)
+    except Exception: pass
+
+    if predictGroups:
+        ### Single-Cell Analysis Parameters
+        try: option_db,option_list=original_option_db,original_option_list ### was re-set above... needed to get the propper data from the last loop
+        except Exception: option_list,option_db = importUserOptions(array_type,vendor=vendor)
+        selected_parameters.append('PredictGroups')
+        supported_geneset_types = getSupportedGeneSetTypes(species,'gene-mapp')
+        supported_geneset_types += getSupportedGeneSetTypes(species,'gene-go')
+        option_db['GeneSetSelectionPredict'].setArrayOptions(['None Selected']+supported_geneset_types)
+        option_db['PathwaySelectionPredict'].setArrayOptions(['None Selected'])
+        #option_db['PathwaySelection'].setArrayOptions(supported_genesets)
         
+        status = 'repeat'
+        while status == 'repeat':
+            root = Tk()
+            root.title('AltAnalyze: Predict Sample Groups')
+            ### Run in GUI and wait to be executed
+            gu = GUI(root,option_db,option_list['PredictGroups'],'')
+            ### Permission to run full analsyis is granted, proceed
+            gsp = gu.Results()['gsp']
+            status = 'continue'
+
+        import RNASeq  
+        expFile = fl.ExpFile()
+        mlp_instance = fl.MLP()
+        
+        count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
+        if count>1:
+            expFile = expFile[:-4]+'-steady-state.txt'
+        elif array_type=='RNASeq':
+            ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
+            values = species,exp_file_location_db,dataset,mlp_instance
+            StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
+            expFile = expFile[:-4]+'-steady-state.txt'
+            
+        values = expFile, mlp_instance, gsp, False
+        StatusWindow(values,'predictGroups') ### proceed to run the full discovery analysis here!!!
+        if len(graphic_links)>0:
+            root = Tk()
+            root.title('AltAnalyze: Evaluate Sampled Groupings')
+            ### Review results in custom GUI for predicting groups
+            gu = GUI(root,'PredictGroups',[],'')
+            nextStep = gu.Results()['next']
+            group_selected = gu.Results()['group_select']
+            if nextStep == 'UseSelected':
+                group_selected = group_selected[:-4]+'.txt'
+                RNASeq.exportGroupsFromClusters(group_selected,fl.ExpFile(),array_type)
+                run_from_scratch = 'Process Expression file'
+            else:
+                #print 're-initializing window'
+                AltAnalyze.AltAnalyzeSetup((selected_parameters,user_variables)); sys.exit()
+        else:
+            AltAnalyze.AltAnalyzeSetup((selected_parameters,user_variables)); sys.exit()
+                                    
     expr_var = species,array_type,vendor,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,remove_intronic_junctions,permute_p_threshold, perform_permutation_analysis, export_splice_index_values, analyze_all_conditions
     additional_var = calculate_splicing_index_p, run_MiDAS, analyze_functional_attributes, microRNA_prediction_method, filter_for_AS, additional_algorithms
@@ -5088,11 +5883,48 @@ class GeneSelectionParameters:
     def Platform(self): return self._platform
     def Vendor(self): return self._vendor
     def setGeneSet(self,gene_set): self._GeneSet = gene_set
-    def GeneSet(self): return self._GeneSet
+    def GeneSet(self):
+        if isinstance(self._GeneSet, tuple) or isinstance(self._GeneSet, list):
+            return tuple(self._GeneSet)
+        else:
+            return self._GeneSet
     def setPathwaySelect(self,pathway): self._PathwaySelect = pathway
-    def PathwaySelect(self): return self._PathwaySelect
+    def setJustShowTheseIDs(self, justShowTheseIDs): self.justShowTheseIDs = justShowTheseIDs
+    def setClusterGOElite(self, clusterGOElite): self.clusterGOElite = clusterGOElite
+    def setStoreGeneSetName(self, geneSetName): self.geneSetName = geneSetName
+    def StoreGeneSetName(self): return self.geneSetName
+    def ClusterGOElite(self):
+        if isinstance(self.clusterGOElite, tuple) or isinstance(self.clusterGOElite, list):
+            self.clusterGOElite = list(self.clusterGOElite)
+            if 'None Selected' in self.clusterGOElite: self.clusterGOElite.remove('None Selected')
+            return self.clusterGOElite
+        else:
+            self.clusterGOElite = string.replace(self.clusterGOElite,'None Selected','')
+            return [self.clusterGOElite]
+    def PathwaySelect(self):
+        if isinstance(self._PathwaySelect, tuple) or isinstance(self._PathwaySelect, list):
+            return tuple(self._PathwaySelect)
+        else:
+            return self._PathwaySelect
     def setGeneSelection(self,gene): self._gene = gene
-    def GeneSelection(self): return self._gene
+    def GeneSelection(self):
+        try:
+            genes = self._gene
+            genes = string.replace(genes,'\r', ' ')
+            genes = string.replace(genes,'\n', ' ') 
+        except Exception:
+            genes = self._gene
+        return genes
+    def JustShowTheseIDs(self):
+        if 'None Selected' in self.justShowTheseIDs:
+            return ''
+        else:
+            justShowTheseIDs = string.replace(self.justShowTheseIDs,'\r',' ')
+            justShowTheseIDs = string.replace(justShowTheseIDs,'\n',' ')
+            justShowTheseIDs = string.split(justShowTheseIDs,' ')
+            try: justShowTheseIDs.remove('')
+            except Exception: pass
+            return justShowTheseIDs
     def GetGeneCorrelations(self):
         if len(self._gene)>0: return True
         else: return False
@@ -5100,15 +5932,80 @@ class GeneSelectionParameters:
         if self._GeneSet != 'None Selected': return True
         else: return False
     def setTranspose(self,transpose): self._transpose = transpose
-    def Transpose(self): return self._transpose
+    def Transpose(self):
+        try: return self._transpose
+        except Exception: return False
     def setOntologyID(self,OntologyID): self._OntologyID = OntologyID
-    def OntologyID(self): return self._OntologyID
+    def OntologyID(self):
+        try:
+            return self._OntologyID
+        except Exception: return ''
     def setIncludeExpIDs(self,IncludeExpIDs): self._IncludeExpIDs = IncludeExpIDs
     def IncludeExpIDs(self): return self._IncludeExpIDs
     def setNormalize(self,Normalize):
         if Normalize == 'NA': Normalize = False
         self._Normalize = Normalize
     def Normalize(self): return self._Normalize
+    def setSampleDiscoveryParameters(self,ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,
+                removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff):
+        ### For single-cell RNA-Seq data
+        self.expressionCutoff = ExpressionCutoff
+        self.countsCutoff = CountsCutoff
+        self.rho_cutoff = rho_cutoff
+        self.foldDiff = FoldDiff
+        self.samplesDiffering = SamplesDiffering
+        self.featurestoEvaluate = featurestoEvaluate
+        self.restrictBy = restrictBy
+        self.excludeCellCycle = excludeCellCycle
+        self.column_metric = column_metric
+        self.column_method = column_method
+        self.removeOutliers = removeOutliers
+        if len(self._gene)>0:
+            self._gene = self._gene + ' amplify' ### always amplify the selected genes if any
+    def setExpressionCutoff(self,expressionCutoff):self.expressionCutoff = expressionCutoff
+    def setCountsCutoff(self,countsCutoff):self.countsCutoff = countsCutoff
+    def ExpressionCutoff(self):
+        try: return float(self.expressionCutoff)
+        except Exception: return False
+    def setRhoCutoff(self,rho):
+        self.rho_cutoff = rho
+    def RhoCutoff(self):
+        return float(self.rho_cutoff)
+    def CountsCutoff(self):
+        try: return int(float(self.countsCutoff))
+        except Exception: return False
+    def FoldDiff(self):
+        try: return float(self.foldDiff)
+        except Exception: return False
+    def SamplesDiffering(self):
+        try: return int(float(self.samplesDiffering))
+        except Exception: return False
+    def amplifyGenes(self):
+        if (self.FilterByPathways() != '' and self.FilterByPathways() !=False) or (self.GeneSelection() != '' and self.GeneSelection() != ' amplify'):
+            return True
+        else: return False
+    def FeaturestoEvaluate(self): return self.featurestoEvaluate
+    def RestrictBy(self):
+        if self.restrictBy == True or self.restrictBy == 'yes':
+            return 'protein_coding'
+        else:
+            return None
+    def RemoveOutliers(self):
+        if self.removeOutliers == True or self.removeOutliers == 'yes':
+            return True
+        else:
+            return False
+    def ExcludeCellCycle(self):
+        if self.excludeCellCycle == True or self.excludeCellCycle == 'yes':
+            return True
+        else:
+            return False
+    def ColumnMetric(self): return self.column_metric
+    def ColumnMethod(self): return self.column_method
+    def MinEvents(self):
+        return self.SamplesDiffering()-1
+    def MedEvents(self):
+        return (self.SamplesDiffering()-1)*2
     
 def getSupportedGeneSetTypes(species,directory):
     try:
@@ -5169,7 +6066,7 @@ def getValidExpFile(altanalyze_rawexp_dir):
     dir_files = read_directory(altanalyze_rawexp_dir)
     valid_file = ''
     for file in dir_files:
-        if 'exp.' in file and 'state.txt' not in file:
+        if 'exp.' in file and 'state.txt' not in file and 'highExp' not in file:
             valid_file = altanalyze_rawexp_dir+'/'+file
             break
     return valid_file
@@ -5203,6 +6100,13 @@ def downloadInteractionDBs(species,windowType):
     StatusWindow(values,analysis,windowType=windowType) ### open in a TopLevel TK window (don't close current option selection menu)
     
 if __name__ == '__main__':
-    #getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)
+    try:
+        import multiprocessing as mlp
+        mlp.freeze_support()
+    except Exception:
+        print 'Note: Multiprocessing not supported for this verison python.'
+        mlp=None
+
+    #getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)    
     a = getUserParameters('yes'); print a; sys.exit()
     

@@ -344,11 +344,16 @@ def eliminate_redundant_dict_values(database):
 def importmiRNATargetPredictionsAdvanced(species):
     filename = 'AltDatabase/'+species+'/SequenceData/miRBS-combined_gene-target-sequences.txt'
     print 'importing', filename; count = 0
+    source_db={} ### collect stats on the input file sources
     fn=filepath(filename); ensembl_mirna_db={}; unigene_ids={}; x = 4000; z=0; nulls={}
     for line in open(fn,'r').xreadlines():
         line = string.replace(line,"'",''); line = string.replace(line,'"','')
         data, newline = string.split(line,'\n')
         microrna,ensembl,three_prime_utr_anchor_site_seq,sources = string.split(data,'\t')
+        sources_list = string.split(sources,'|')
+        for source in sources_list:
+            try: source_db[source]+=1
+            except Exception: source_db[source]=1
         y = MicroRNAData(ensembl,microrna,three_prime_utr_anchor_site_seq,sources)
         count+=1
         #y = microrna,three_prime_utr_anchor_site_seq,sources
@@ -356,6 +361,9 @@ def importmiRNATargetPredictionsAdvanced(species):
         except KeyError: ensembl_mirna_db[ensembl] = [y]
     ensembl_mirna_db = eliminate_redundant_dict_values(ensembl_mirna_db)
     print count, "microRNA to target relationships imported"
+    for source in source_db:
+        print source,':',source_db[source],
+    print ''
     return ensembl_mirna_db
 
 def importmiRNATargetPredictions(species):
@@ -442,16 +450,16 @@ def alignmiRNAData(array_type,mir_source,species,stringency,ensembl_mirna_db,spl
                     proceed = 'no'; hit = 'no'
                     if len(miRNA_seq)>0 and len(probeset_seq)>0:
                         miRNA_seqs = string.split(miRNA_seq,'|') ### Can be multiples
-                        for miRNA_seq in miRNA_seqs:
-                            if miRNA_seq in probeset_seq:
+                        for mseq in miRNA_seqs:
+                            if mseq in probeset_seq:
                                 hit = 'yes'
                                 if stringency == 'strict':
                                     if '|' in sources:  proceed='yes'
                                 else: proceed='yes'
                         if proceed == 'yes' and hit == 'yes':
-                            getMicroRNAGenomicCoordinates(ed,y) ### Add's genomic coordinate information to these objects
-                            try: probeset_miRNA_db[probeset].append(y)
-                            except KeyError: probeset_miRNA_db[probeset] = [y]
+                            yc = getMicroRNAGenomicCoordinates(ed,y) ### Add's genomic coordinate information to these objects
+                            try: probeset_miRNA_db[probeset].append(yc)
+                            except KeyError: probeset_miRNA_db[probeset] = [yc]
     if mir_source == 'pictar': data.close()
     
     probeset_miRNA_db = eliminate_redundant_dict_values(probeset_miRNA_db)
@@ -485,16 +493,12 @@ def getMicroRNAGenomicCoordinates(ed,y):
     else:
         genomic_start = ps_end-mi_start
         genomic_end = ps_end-mi_end
-    y.setCoordinates(chr,strand,genomic_start,genomic_end)
-    y.setEnsExons(ed.ExternalExonIDList())
-    """
-    if miRNA == 'hsa-miR-31' and ed.Probeset()=='147198|5':
-        print ed.Probeset()
-        print probeset_seq
-        print ed.ExternalExonIDList()
-        print miRNA,miRNA_seq,chr,strand,genomic_start,genomic_end
-        print mi_start, mi_end, ps_start, ps_end"""
-        
+    yc = copy.deepcopy(y) ### Multiple sites for the same miRNA can exist per gene
+    yc.setCoordinates(chr,strand,genomic_start,genomic_end)
+    yc.setEnsExons(ed.ExternalExonIDList())
+
+    return yc
+
 def checkProbesetSequenceFile(species):
     """ Check to see if the probeset sequence file is present and otherwise download AltAnalyze hosted version"""
     probeset_seq_file = getProbesetSequenceFile(species)
@@ -538,10 +542,11 @@ if __name__ == '__main__':
     species = 'Hs'; array_type = 'exon'
     process_microRNA_predictions = 'yes'
     mir_source = 'multiple'; stringency = 'strict'
-    runProgram(species,process_microRNA_predictions,mir_source,stringency)
+    print array_type
+    runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
 
     stringency = 'lax'
-    runProgram(species,process_microRNA_predictions,mir_sourc,stringency); sys.exit()
+    runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency); sys.exit()
     
     print "******Select Species*******"
     print "1) Human"

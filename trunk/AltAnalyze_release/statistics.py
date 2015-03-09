@@ -534,6 +534,7 @@ def neg_folds_to_fractions(array):
     return new_array
 
 def median(array):
+    array = list(array) ### If we don't do this we can modify the distribution of the original list object with sort!!!
     array.sort()
     len_float = float(len(array))
     len_int = int(len(array))
@@ -802,19 +803,22 @@ def Ftest(arrays):
 def runComparisonStatistic(data_list1,data_list2,probability_statistic):
     ### This function uses the salstat_stats module from the SalStat statistics package http://salstat.sourceforge.net/
     ### This module is pure python and does not require other external libraries
-    if probability_statistic == 'unpaired t-test' or 'moderated' in probability_statistic:
-        p = OneWayANOVA([data_list1,data_list2]) ### faster implementation of unpaired equal variance t-test
+    if len(data_list1) == 1 or len(data_list2)==1: ### will return a p-value if one has multiple, but shouldn't
+        return 1
     else:
-        tst = salstat_stats.TwoSampleTests(data_list1,data_list2)
-        # options = unpaired t-test|paired t-test|Kolmogorov Smirnov|Mann Whitney U|Rank Sums
-        if probability_statistic == 'paired t-test': p = tst.TTestPaired()
-        elif probability_statistic == 'Kolmogorov Smirnov': p = tst.KolmogorovSmirnov()
-        elif probability_statistic == 'Mann Whitney U': p = tst.MannWhitneyU()
-        elif probability_statistic == 'Rank Sums': p = tst.RankSums()
-        elif probability_statistic == 'unpaired t-test' or 'moderated' in probability_statistic:
-            ### Typically not run except during testing
-            p = tst.TTestUnpaired()
-    return p
+        if probability_statistic == 'unpaired t-test' or 'moderated' in probability_statistic:
+            p = OneWayANOVA([data_list1,data_list2]) ### faster implementation of unpaired equal variance t-test
+        else:
+            tst = salstat_stats.TwoSampleTests(data_list1,data_list2)
+            # options = unpaired t-test|paired t-test|Kolmogorov Smirnov|Mann Whitney U|Rank Sums
+            if probability_statistic == 'paired t-test': p = tst.TTestPaired()
+            elif probability_statistic == 'Kolmogorov Smirnov': p = tst.KolmogorovSmirnov()
+            elif probability_statistic == 'Mann Whitney U': p = tst.MannWhitneyU()
+            elif probability_statistic == 'Rank Sums': p = tst.RankSums()
+            elif probability_statistic == 'unpaired t-test' or 'moderated' in probability_statistic:
+                ### Typically not run except during testing
+                p = tst.TTestUnpaired()
+        return p
     
 ###########Below Code Curtosey of Distribution functions and probabilities module
 """
@@ -902,10 +906,101 @@ def testModeratedStatistics():
 
     gs.setAdditionalWelchStats(wt,dgt_ko) ### Assuming unequal variance
     ModeratedWelchTest(gs,d0,s0_squared)
+
+def matrixImport(filename):
+    matrix={}
+    original_data={}
+    headerRow=True
+    for line in open(filename,'rU').xreadlines():
+        original_line = line
+        data = line.rstrip()
+        values = string.split(data,'\t')
+        if headerRow:
+            group_db={}
+            groups=[]
+            group_sample_list = map(lambda x: string.split(x,':'),values[1:])
+            index=1
+            for (g,s) in group_sample_list:
+                try: group_db[g].append(index)
+                except Exception: group_db[g] = [index]
+                index+=1
+                if g not in groups: groups.append(g)
+            headerRow = False
+            grouped_values=[]
+            original_data['header'] = original_line
+        else:
+            key = values[0]
+            grouped_floats=[]
+            float_values = []
+            for g in groups: ### string values
+                gvalues_list=[]
+                for i in group_db[g]:
+                    try: gvalues_list.append(float(values[i]))
+                    except Exception: pass
+                grouped_floats.append(gvalues_list)
+            matrix[key] = grouped_floats
+            if '\n' not in original_line:
+                original_line+='\n'
+            original_data[key] = original_line
+            last_line = line
+    return matrix,original_data
+
+def runANOVA(matrix):
+    matrix_pvalues={}
+    matrix_pvalues_list=[]
+    useAdjusted=True
+    for key in matrix:
+        filtered_groups = []
+        for group in matrix[key]:
+            if len(group)>2:
+                filtered_groups.append(group)
+        try:
+            p = OneWayANOVA(filtered_groups)
+            if useAdjusted == False:
+                if p < 0.01:
+                    matrix_pvalues[key]=p
+                    matrix_pvalues_list.append((p,key))
+            else:
+                matrix_pvalues[key]=[p,p]
+                matrix_pvalues_list.append((p,key))
+        except Exception: pass ### not enough values present or groups
+    if useAdjusted:
+        adjustPermuteStats(matrix_pvalues)
+        adj_matrix_pvalues = copy.deepcopy(matrix_pvalues)
+        matrix_pvalues={}
+        for key in adj_matrix_pvalues:
+            p,adjp = adj_matrix_pvalues[key]
+            if p < 0.05:
+                matrix_pvalues[key] = adj_matrix_pvalues[key][1]
+    else:
+        matrix_pvalues_list.sort()
+    print len(matrix_pvalues)
+    return matrix_pvalues
+
+def returnANOVAFiltered(original_data,matrix_pvalues):
+    import export
+    eo = export.ExportFile(filename[:-4]+'-ANOVA.txt')
+    eo.write(original_data['header'])
+    for key in matrix_pvalues:
+        eo.write(original_data[key])
+        last_line = original_data[key]
+    eo.close()
     
 if __name__ == '__main__':
     dirfile = unique
-    
+    filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
+    filename = '/Volumes/SEQ-DATA/Jared/AltResults/Unbiased/junctions/top_alt_junctions-renamed.txt'
+    filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/AltResults/Unbiased/junctions/top_alt_junctions_grouped.txt'
+    matrix,original_data = matrixImport(filename); matrix_pvalues=runANOVA(matrix); returnANOVAFiltered(original_data,matrix_pvalues); sys.exit()
+    a = range(3, 18)
+    k=[]
+    for i in a:
+        y = choose(17,i)
+        k.append(y)
+        
+    print sum(k)
+    print choose(17,12)
+    sys.exit()
     r=1749
     n=2536
     R=9858

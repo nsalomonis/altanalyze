@@ -200,7 +200,8 @@ def importOBONew(filedir,path,specific_type,rank):
         for ontology_id in ontology_annotations:
             ontology_annotations[ontology_id].setOntologyType(specific_type)
     if root_node == None:
-        print 'NO ROOT NODE IDENTIFIED... SHOULD BE:', specific_type; kill
+        print 'NO ROOT NODE IDENTIFIED... SHOULD BE:', specific_type
+        print filedir; kill
     
     if len(path)==0: path.append(0); path_ontology_db[tuple(path)] = root_node; return_path = list(path); #print [tuple(path)]
     else: path = [path[0]+1]; path_ontology_db[tuple(path)] = root_node; return_path = list(path); #print [tuple(path)]
@@ -241,7 +242,7 @@ def swapKeyValues(db):
     swapped = eliminate_redundant_dict_values(swapped)
     return swapped
 
-def exportCurrentOntologyBuild(path_ontology_db,ontology_annotations,ontology_type):
+def exportCurrentOntologyBuild(path_ontology_db,ontology_annotations,ontology_type, display=False):
     program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
     if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
     new_file = parent_dir+'OBO/builds/built_'+ontology_type+'_paths.txt'
@@ -286,7 +287,7 @@ def importPreviousOntologyAnnotations(target_ontology_type):
             ontology_annotations[ontology_id] = s
     return ontology_annotations
 
-def importPreviousOntologyBuild(ontology_type):
+def importPreviousOntologyBuild(ontology_type,display=True):
     program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
     if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
     if ontology_type == 'GeneOntology': ontology_type = 'go'
@@ -307,7 +308,7 @@ def importPreviousOntologyBuild(ontology_type):
         if x==0: x+=1 ###Skip the title line
         else:
             x+=1
-            if x == increment: increment+=original_increment; print '*',    
+            if x == increment and display: increment+=original_increment; print '*',    
             data = cleanUpLine(line)
             path,ontology_id = string.split(data,'\t')
             path = tuple(map(int,string.split(path,'.')))
@@ -397,7 +398,7 @@ def remoteImportOntologyTree(ontology_type):
     importPreviousOntologyBuild(ontology_type)
     return built_ontology_paths, path_ontology_db, path_dictionary
     
-def buildNestedOntologyTree(mappfinder):
+def buildNestedOntologyTree(mappfinder,display=True):
     program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
     if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
     
@@ -413,25 +414,28 @@ def buildNestedOntologyTree(mappfinder):
     ontology_type = ''
     #print file_dirs
     for file_dir in file_dirs:
-        if '.obo' in file_dir or '.ontology' in file_dir:
-            if 'gene_ontology' in file_dir or 'goslim' in file_dir:
-                ontology_type = 'GeneOntology'
-                if 'goslim' in file_dir: ontology_type = 'GOSlim'
-                ###Import the 3 main Ontology files and index them so that the first path corresponds to the Ontology type - Software checks the date before parsing
-                path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'biological_process',rank)
-                try: path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'molecular_function',rank)
-                except Exception: null=[] ### Sometimes missing from GO-Slim
-                path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'cellular_component',rank)
+        try:
+            if '.obo' in file_dir or '.ontology' in file_dir:
+                if 'gene_ontology' in file_dir or 'goslim' in file_dir:
+                    ontology_type = 'GeneOntology'
+                    if 'goslim' in file_dir: ontology_type = 'GOSlim'
+                    ###Import the 3 main Ontology files and index them so that the first path corresponds to the Ontology type - Software checks the date before parsing
+                    path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'biological_process',rank)
+                    try: path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'molecular_function',rank)
+                    except Exception: null=[] ### Sometimes missing from GO-Slim
+                    path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'cellular_component',rank)
+                else:
+                    ontology_type = getOntologyType(file_dir)
+                    path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'',rank)
+                deleteNestedOntologyFiles(ontology_type) ### Necessary to trigger an update for all species
             else:
-                ontology_type = getOntologyType(file_dir)
-                path_ontology_db,built_ontology_paths,ontology_annotations,path_dictionary,path,rank = importOBONew(file_dir,path,'',rank)
-            deleteNestedOntologyFiles(ontology_type) ### Necessary to trigger an update for all species
-        else:
-            print 'The ontology format present in',file_dir,'is no longer supported.'
-        exportCurrentOntologyBuild(path_ontology_db,ontology_annotations,ontology_type)
+                if display: print 'The ontology format present in',file_dir,'is no longer supported.'
+            exportCurrentOntologyBuild(path_ontology_db,ontology_annotations,ontology_type,display=display)
+        except Exception:
+            pass ### If an Ontology file fails download, it still may create an empty file that will screw up the processing of other obo files - just skip it
     end_time = time.time(); time_diff = int(end_time-start_time)
     
-    print "Ontology categories imported and nested in %d seconds" % time_diff
+    if display: print "Ontology categories imported and nested in %d seconds" % time_diff
         
 def getOntologyType(file_dir):
     ontology_type = string.split(file_dir,'/')[-1]
@@ -491,21 +495,20 @@ def findAvailableOntologies(species,mod_types):
     avaialble_ontologies = unique.unique(avaialble_ontologies)
     return avaialble_ontologies
 
-def moveOntologyToArchiveDir():
+def moveOntologyToArchiveDir(display=True):
     ### Move any existing OBO files to an archived directory as to not combine new with old annotations
-    c = GrabFiles()
-    c.setdirectory('/OBO')
-    file_dirs = c.searchdirectory('.ontology')+c.searchdirectory('.obo')
-
     program_type,database_dir = unique.whatProgramIsThis(); parent_dir = ''
     if program_type == 'AltAnalyze': parent_dir = 'AltDatabase/goelite/'
+    c = GrabFiles()
+    c.setdirectory('/'+parent_dir+'OBO')
+    file_dirs = c.searchdirectory('.ontology')+c.searchdirectory('.obo')
     
     for file_dir in file_dirs:
         new_file_dir = string.replace(file_dir,parent_dir+'OBO/',parent_dir+'OBO/archive/')
-        print 'Moving:',file_dir,'to:',new_file_dir
+        if display: print 'Moving:',file_dir,'to:',new_file_dir
         export.customFileMove(file_dir,new_file_dir)
                 
-def buildNestedOntologyAssociations(species,mod_types,target_ontology_type):
+def buildNestedOntologyAssociations(species,mod_types,target_ontology_type,display=True):
     global species_code; species_code = species; global verified_nested
     global path_dictionary; path_dictionary={}
     global built_ontology_paths; built_ontology_paths={}
@@ -516,7 +519,7 @@ def buildNestedOntologyAssociations(species,mod_types,target_ontology_type):
     else: mappfinder_db_input_dir = '/'+species_code+'/nested/'
             
     buildNestedOntologyTree('yes') ### Checks the OBO directory to process new ontology files (if there)
-    moveOntologyToArchiveDir() ### Move any new read ontology files to
+    moveOntologyToArchiveDir(display=display) ### Move any new read ontology files to
 
     avaialble_ontologies = findAvailableOntologies(species,mod_types)
 
@@ -526,9 +529,9 @@ def buildNestedOntologyAssociations(species,mod_types,target_ontology_type):
         verified_nested = verifyNestedFileCreation(species,mod_types,ontology_type) 
         verified_nested_db[ontology_type] = verified_nested
     verified_nested = verified_nested_db[target_ontology_type]
-    importPreviousOntologyBuild(target_ontology_type) ### populates the global variables we return below
+    importPreviousOntologyBuild(target_ontology_type,display=display) ### populates the global variables we return below
     if verified_nested == 'no':  ### modified this code such that any version change warrants a rebuild and if reset by BuildEntrezAffymetrixAssociations or other, that it triggers a rebuild
-        print 'Building %s Ontology nested gene association files for %s' % (target_ontology_type,species_code)
+        if display: print 'Building %s Ontology nested gene association files for %s' % (target_ontology_type,species_code)
         ###Build Gene to Ontology associations for all MODs and export these for re-import by the MAPPFinder module
         global nested_ontology_tree
         nested_ontology_tree = grabNestedOntologyIDs()
@@ -541,7 +544,7 @@ def buildNestedOntologyAssociations(species,mod_types,target_ontology_type):
                 nested_ontology_mod = linkGenesToNestedOntology(ontology_to_mod)
                 exportOntologyRelationships(nested_ontology_mod,{},mod,'',target_ontology_type)
                 end_time = time.time(); time_diff = int(end_time-start_time)
-                print "Ontology Nested Lists Process/Created in %d seconds" % time_diff
+                if display: print "Ontology Nested Lists Process/Created in %d seconds" % time_diff
             except Exception:
                 if mod != 'HMDB':
                     None ### optionally indicate if a MOD doesn't have local files supporting the creation of a nested set

@@ -23,6 +23,15 @@ except Exception: None
 command = '.libPaths("'+r_package_path+'")'; r(command) ### doesn't work with %s for some reason
 #print_out = r('.libPaths()');print print_out; sys.exit()
 
+def remoteMonocle(input_file,expPercent,pval,numGroups):
+    #input_file="Altanalyze" 
+    setWorkingDirectory(findParentDir(input_file)[:-1])
+    try: os.mkdir(findParentDir(input_file)[:-1])
+    except Exception: None
+    z = RScripts(input_file)
+    setWorkingDirectory(input_file)
+    z.Monocle(input_file,expPercent,pval,numGroups)
+    
 def remoteHopach(input_file,cluster_method,metric_gene,metric_array):
     """ Run Hopach via a call from an external clustering and visualizaiton module """
     #input_file = input_file[1:] #not sure why, but the '\' needs to be there while reading initally but not while accessing the file late
@@ -57,19 +66,24 @@ def checkForDuplicateIDs(input_file):
     key_db={}
     key_list=[]
     fn=filepath(input_file)
-
+    offset=0
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if first_row == True:
-            headers = line
+            if 'row_clusters-flat' in t:
+                headers = string.join(['uid']+t[2:],'\t')+'\n'
+                offset = 1
+            else:
+                headers = line
             first_row = False
         else:
             key = t[0]
-            key_list.append(key)
-            key_db[key]=t
+            if key!='column_clusters-flat':
+                key_list.append(key)
+                key_db[key]=t
     
-    if len(key_db) != len(key_list):
+    if len(key_db) != len(key_list) or offset>0:
         print 'Duplicate IDs present... writing a cleaned-up version of the input file:'
         ### Duplicate IDs present
         input_file = input_file[:-4]+'-clean.txt'
@@ -77,6 +91,8 @@ def checkForDuplicateIDs(input_file):
         export_text.write(headers) ### Header is the same for each file
         for key in key_db:
             t = key_db[key]
+            if offset > 0:
+                t = [t[0]]+t[1+offset:]
             export_text.write(string.join(t,'\t')+'\n') ### Write z-score values and row names
         export_text.close()
         print 'File written...'
@@ -87,15 +103,53 @@ def importHopachOutput(filename):
     db={} ### Used to store the cluster data
     hopach_clusters=[]
     cluster_level=[]
-    x=0
+    cluster_level2=[]
+    hopach_db={}
+    cluster_db={}
+    level2_level1={}
+    firstLine = True
     fn=filepath(filename)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        if x==0: x=1
+        if firstLine: firstLine = False
         else:
             index, uid, cluster_number, cluster_label, cluster_level_order, final_label, final_level_order = string.split(data,'\t')
+            try: l2 = str(int(round(float(cluster_label),0)))[:2]
+            except Exception: l2 = int(cluster_label[0])
             hopach_clusters.append((int(final_level_order),int(index)-1)) ### Need to order according to the original index, sorted by the clustered order
             cluster_level.append(int(cluster_label[0])) ### This is the root cluster number
+            cluster_level2.append(l2) ### Additional cluster levels
+            hopach_db[uid] = cluster_label
+            level2_level1[l2] = int(cluster_label[0])
+            try: cluster_db[int(float(cluster_label[0]))].append(uid)
+            except Exception: cluster_db[int(cluster_label[0])] = [uid]
+            try: cluster_db[l2].append(uid)
+            except Exception: cluster_db[l2] = [uid]
+           
+    split_cluster=[] 
+    for cluster in cluster_db:
+        if len(cluster_db[cluster])>100 and (float(len(cluster_db[cluster]))/len(hopach_db))>0.3:
+            if cluster<10:
+                split_cluster.append(cluster)
+    import unique
+    levels1 = unique.unique(cluster_level)
+    if len(split_cluster)>0:
+        print 'Splitting large hopach clusters:',split_cluster
+        i=0
+        for l2 in cluster_level2:
+            l1 = level2_level1[l2]
+            if l1 in split_cluster:
+                cluster_level[i] = l2
+            i+=1
+        
+    else:
+        if len(cluster_level) > 50: ### Decide to use different hopach levels
+            if len(levels1)<3:
+                cluster_level = cluster_level2
+        if len(cluster_level) > 200:
+            if len(levels1)<4:
+                cluster_level = cluster_level2
+                
     hopach_clusters.sort()
     hopach_clusters = map(lambda x: x[1], hopach_clusters) ### Store the original file indexes in order based the cluster final order
     db['leaves'] = hopach_clusters ### This mimics Scipy's cluster output data structure
@@ -115,6 +169,86 @@ class RScripts:
         filename = self.format_value_for_R(filename)
         #root_dir = string.join(filename_list[:-1],'/')
         return filename
+    
+    def Monocle(self,samplelogfile,expPercent,p_val,numGroups):
+        #samplelogfile='C:/Users/venz6v/Documents/Altanalyze R/data.txt' 
+        #grp_list="C:/Users/venz6v/Documents/Altanalyze R/grous.txt"
+        #gene_list="C:/Users/venz6v/Documents/Altanalyze R/gene.txt"
+        filename=self.File()
+        samplelogfile=findParentDir(filename)+'/data.txt'
+        grp_list=findParentDir(filename)+'/sample.txt'
+        gene_list=findParentDir(filename)+'/gene.txt'
+        try: os.mkdir(findParentDir(samplelogfile)) ### create "hopach" dir if not present
+        except Exception: None
+        try: os.mkdir(findParentDir(grp_list)) ### create "hopach" dir if not present
+        except Exception: None
+        try: os.mkdir(findParentDir(gene_list)) ### create "hopach" dir if not present
+        except Exception: None
+        self._file = samplelogfile
+        samplelogfile = self.File()
+        self._file = grp_list
+        grp_list = self.File()
+        self._file = gene_list
+        gene_list = self.File()
+        
+        print 'Loading monocle package in R'
+        print_out = r('library("monocle")')
+        if "Error" in print_out:
+            print 'Installing the R package "affy" in Config/R'
+            print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("monocle")')
+            print print_out
+        print_out = r('library("monocle")')
+        if "Error" in print_out: print 'unable to download the package "monocle"'; forceError 
+        print_out = r('library("monocle")')
+        print "Reading Monocle data..."
+        data_import = 'fpkm_matrix<-read.delim(%s,row.names=1)' % samplelogfile
+        print [data_import]
+        print_out = r(data_import);
+        print print_out
+    
+        data_import = 'sample_sheet<-read.delim(%s,row.names=1)' % grp_list
+        print [data_import]
+        print_out = r(data_import);
+        print print_out
+        data_import = 'gene_ann<-read.delim(%s,row.names=1)' % gene_list
+        print [data_import]
+        print_out = r(data_import);
+        print print_out
+        print_out= r('pd <- new("AnnotatedDataFrame",data=sample_sheet)');
+        print_out=r('fd <- new("AnnotatedDataFrame",data=gene_ann)');
+        print_out=r('URMM <- new("CellDataSet",exprs = as.matrix(fpkm_matrix),phenoData = pd,featureData =fd)');
+        print print_out
+        print_out=r('URMM<- detectGenes(URMM, min_expr = 3)')
+        gene_exp='expressed_genes <- row.names(subset(fData(URMM), num_cells_expressed >=%s ))'% expPercent
+        print [gene_exp]
+        try:print_out = r(gene_exp)
+        except Exception:
+                    print "expression genes"
+        print_out=r('length(expressed_genes)')
+        print print_out
+
+        # specify the grouping column for finding differential genes 
+        print_out=r('diff_test_res <- differentialGeneTest(URMM[expressed_genes, ], fullModelFormulaStr = "expression~Group",cores=16)')
+        print print_out
+        gene_ord='ordering_genes <- row.names(subset(diff_test_res, pval < %s))' %p_val
+        print_out=r('write.table(ordering_genes,file="ordering_genes.txt")')  ### Writing out the informative genes used
+        print print_out
+        print_out=r(gene_ord); print print_out
+        print_out=r('length(ordering_genes)'); print print_out
+        
+        print_out=r('ordering_genes <- intersect(ordering_genes, expressed_genes)'); print print_out
+        print_out=r('URMM <- setOrderingFilter(URMM, ordering_genes)'); print print_out
+        print_out=r('URMM <- reduceDimension(URMM, use_irlba = F)'); print print_out
+        span='URMM <- orderCells(URMM, num_paths = %s, reverse = F)'% numGroups
+        print_out=r(span); print print_out
+        print_out=r('pdf("Rpl.pdf")'); print print_out
+        print_out=r('plot_spanning_tree(URMM)'); print print_out
+        print_out=r('dev.off()')
+        print_out=r('write.table(pData(URMM),file="grpdata.txt")')
+        print_out=r('pdf("Rplots.pdf")')
+        print print_out
+        print " completed"
+    
     def AffyNormalization(self,normalization_method,probe_level,batch_effects):
         print 'Loading affy package in R'
         print_out = r('library("affy")')
@@ -284,7 +418,7 @@ class RScripts:
                 try: hopach_run = r['hopg']
                 except Exception:
                     print print_out1
-                    print print_out2; sys.exit()
+                    print print_out2
                 hopg = 'hopg'
                 distmatg = 'distmatg'
                 gene_output = self.HopachGeneOutputFilename(metric_gene,str(force_gene))
@@ -411,14 +545,15 @@ def checklinelengths(filename):
     fn=filepath(filename); first_row='yes'; line_number=0
     for line in open(fn,'rU').xreadlines():
         try: data = cleanUpLine(line)
-        except Exception: print 'error parsing the line:',[line], line_number;sys.exit()
+        except Exception: print 'error parsing the line:',[line], line_number
         t = string.split(data,'\t')
         if first_row == 'yes':
             elements = len(t)
             first_row = 'no'
         else:
             if len(t) != elements:
-                print "Line number", line_number, "contains",len(t),"elements, when",elements,"expected...kill program"; kill
+                print "Line number", line_number, "contains",len(t),"elements, when",elements,"expected...kill program"
+                print filename; kill
         line_number+=1
         
 def converttolist(dictionary):
@@ -485,15 +620,161 @@ def read_directory(sub_dir):
     for entry in dir_list: #add in code to prevent folder names from being included
         if entry[-4:] == ".txt" or entry[-4:] == ".csv": dir_list2.append(entry)
     return dir_list2
+    
+def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
+    try:
+        import gene_associations
+        gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+    except Exception: gene_to_symbol={}
+        
+    #Create the files for Monocle
+    setWorkingDirectory(findParentDir(filename)[:-1])
+    try: os.mkdir(findParentDir(filename)[:-1])
+    except Exception: None     
+    #filename=self.File() 
+    x = 0
+    data_name=findParentDir(filename)+'/data.txt'
+    gene_name=findParentDir(filename)+'/gene.txt'
+    sample_name=findParentDir(filename)+'/sample.txt'
+    gene_names = [];
+    gene_list=[];
+    dat=[];
+
+    export_cdt = open(sample_name,'w')
+    export_gene=open(gene_name,'w')
+    for line in open(filename,'rU').xreadlines():      
+      data = cleanUpLine(line)
+      headers = string.split(data,'\t')
+      dat.append(line)
+      if data[0] != '#':
+        if x == 1:
+             gen=headers[0];
+             gen=(gen.split(" "));
+             ge_lt=gen[0];
+             gene=string.join(gen,'\t')
+             gene_names.append(gene)
+             gene_list.append(ge_lt)
+        if x == 0: 
+            array_names = []; array_linker_db = {}; d = 0
+            for entry in headers[1:]:
+                if '::' in entry:
+                    a = (entry.split("::"))
+                else:
+                    a = (entry.split(":"))
+                a = reversed(a)
+                ent=string.join(a,'\t');
+                if(ent[0].isdigit()):
+                    ent='X'+ent[0:]
+                    #print j
+                array_names.append(ent);
+            x = 1
+            
+    i=0
+    eheader = string.join(['']+['Group'],'\t')+'\n' ### format column-flat-clusters for export
+    export_cdt.write(eheader)
+    for row in array_names:
+        export_cdt.write(row +'\n')
+        i+=1
+    export_cdt.close()
+    gheader = string.join(['']+ ['gene_short_name'],'\t')+'\n' ### format column-flat-clusters for export
+    export_gene.write(gheader)
+    
+    export_object = open(data_name,'w')
+    """
+    for row in array_names:
+        group=string.split(row,'\t')
+        export_object.write('\t'+group[0])
+        #print group[0]
+    export_object.write('\n')
+    """
+    firstRow=True
+    for line in open(rawExpressionFile,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        id = t[0]; nid=id
+        proceed = False
+        if firstRow:
+            new_headers=[]
+            headers = t[1:]
+            for i in headers:
+                i = string.replace(i,':','-')
+                new_headers.append(i)
+            export_object.write(string.join(['UID']+new_headers,'\t')+'\n')
+            firstRow=False
+        else:
+            if id in gene_list:
+                proceed = True
+            else:
+                if id in gene_to_symbol:
+                    symbol = gene_to_symbol[id][0]
+                    if symbol in gene_list:
+                        nid = symbol
+                        proceed = True
+                if proceed:
+                    k=gene_list.index(nid)
+                    export_object.write(line)
+                    export_gene.write(id+'\n')
+                    #export_gene.write(gene_list[k]+'\n')
+    export_object.close() 
+    export_gene.close()
+    
 ############ IMPORT FILES END ############
+    
+def reformatHeatmapFile(input_file):
+    import unique
+    export_file=string.replace(input_file,'Clustering-','Input-')
+    eo = export.ExportFile(export_file)
+    first_row = True
+    fn=filepath(input_file)
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if first_row == True:
+            if 'column_clusters-flat' not in t:
+                array_names = []
+                for i in t[2:]:
+                    array_names.append(string.replace(i,':','-'))
+                    #array_names.append(i)
+            elif 'column_clusters-flat' in t:
+                array_clusters = t[2:]
+                unique_clusters = unique.unique(array_clusters)
+                ind=0; headers=[]
+                for c in array_clusters:
+                    headers.append(c+'::'+array_names[ind])
+                    ind+=1
+                headers = string.join(['uid']+headers,'\t')+'\n'
+                eo.write(headers)
+                first_row = False
+        else:
+            values = string.join([t[0]]+t[2:],'\t')+'\n'
+            eo.write(values)
+    return export_file, len(unique_clusters)
+
+def performMonocleAnalysisFromHeatmap(species,heatmap_output_dir,rawExpressionFile):
+    if 'Clustering-' in heatmap_output_dir:
+        export_file,numGroups = reformatHeatmapFile(heatmap_output_dir)
+    else:
+        export_file = heatmap_output_dir; numGroups=5
+    CreateFilesMonocle(export_file,rawExpressionFile,species=species)
+    print 'Looking for',numGroups, 'Monocle groups in the input expression file.'
+    remoteMonocle(export_file,expPercent=5,pval=0.01,numGroups=numGroups)
     
 if __name__ == '__main__':
     errors = []
     cluster_method='array';metric_gene="";force_gene='';metric_array="euclid";force_array=''
     analysis_method='hopach'; multtest_type = 'f'
-
-    filepath = '/Users/nsalomonis/Downloads/GSE9440_RAW/ExpressionInput/exp.differentiation.txt'
-    remoteAffyNormalization(filepath,'rma',True,'remove'); sys.exit()
+    #Sample log File
+    filename = "/Volumes/SEQ-DATA/Eric/embryonic_singlecell_kidney/ExpressionOutput/Clustering/SampleLogFolds-Kidney.txt"
+    filename = "/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewCardiacMarkers1/FullDataset/ExpressionOutput/Clustering/SampleLogFolds-CM.txt"
+    rawExpressionFile = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewCardiacMarkers1/FullDataset/ExpressionInput/exp.CM-steady-state.txt'
+    #filename = '/Users/saljh8/Desktop/Stanford/ExpressionInput/amplify/DataPlots/Clustering-exp.EB-SingleCell-GPCR-hierarchical_cosine_correlation.txt'
+    #rawExpressionFile = '/Users/saljh8/Desktop/Stanford/ExpressionInput/exp.EB-SingleCell.txt'
+    performMonocleAnalysisFromHeatmap('Hs',filename,rawExpressionFile);sys.exit()
+    CreateFilesMonocle(filename,rawExpressionFile)
+    remoteMonocle(filename,expPercent=5,pval=0.01,numGroups=5);sys.exit()
+    
+    filename = '/Users/nsalomonis/Downloads/GSE9440_RAW/ExpressionInput/exp.differentiation.txt'
+    remoteAffyNormalization(filename,'rma',True,'remove'); sys.exit()
     
     print "******Analysis Method*******"
     print "Options:"

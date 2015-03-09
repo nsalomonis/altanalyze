@@ -277,6 +277,7 @@ def deleteFolder(dir):
     except OSError: return 'failed'
 
 if __name__ == '__main__':
+    customFileCopy('/Volumes/SEQ-DATA/IlluminaBodyMap/pooled/pooled/Thyroid-ERR030872__exons.bed','/Volumes/SEQ-DATA/IlluminaBodyMap/pooled/Thyroid-ERR030872__exons.bed');sys.exit()
     createExportFolder('Databases/null/null'); sys.exit()
     createExportDir('C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/RNASeq/hESC-NP/TopHat-hESC_differentiation/AltExpression/pre-filtered/counts/a.txt','C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/RNASeq/hESC-NP/TopHat-hESC_differentiation/AltExpression/pre-filtered/counts'); sys.exit()
     deleteFolder('BuildDBs/Entrez/Gene2GO');kill
