@@ -21,12 +21,17 @@ From the AltAnalyze main menu, select your species and platform. Instead of indi
 
 The input tab-delimited text file must have a header row of column annotations (e.g. sample names) and the first column with row annotations (e.g. gene names) and the remaining by positive and negative values. Multiple options for positive and negative gradients can be selected, along with clustering algorithms for rows and columns.
 
-[http://altanalyze.org/image/ClusterInterface.png]
-[http://altanalyze.org/image/pluri.png]
+[http://altanalyze.org/image/ClusterResults.png]
+
+Figure: Single cell expression clustering via driver gene analysis. Parameters, PCA stored derived gene-set, positive, top correlated genes (rho>0.4) with driver identification and BioMarker enrichment analysis.
 
 ===Menu and Formatting Options===
 
 The below options are present in the program and can also be programmatically controlled using the command-line interface.
+
+[http://altanalyze.org/image/ClusterInterface.png]
+
+Figure: Heatmap interface.
 
 _*Biological Group Sample Visualization*_: When sample columns are formatted to include the sample group name (e.g., cancer:sample1 - separated by a colon), these group assignments will be colored in the top color bar. When groups are not present in the sample names, the colors of distinct empirically derived clusters will be show instead. 
 
@@ -38,19 +43,36 @@ _*Choose a color scheme*_: A number of standard coloring options are provided fo
 
 _*Clustering rows or columns*_: Clustering of rows or columns can optionally be disabled, in which case the imported order will be displayed of rows or columns.
 
-_*Normalize rows relative to*_: If imported data is not normalized, it can be normalized relative to the mean of all samples or median. This function assumes the data is already log transformed.
+_*Normalize rows relative to*_: If imported data is not normalized, it can be normalized relative to the mean of all samples or median. If the data is not log2 transformed, AltAnalyze will determine this and log transform
 
 _*Transpose matrix*_: This option will transpose the columns and rows.
 
 _*Heatmap color contrast level*_: This option allows the user to adjust the intensity of the displayed plot.
 
-_*Select Gene Set/Ontology to filter*_: When loading a file containing IDs indicated in the Main Menu (Other IDs, platform specific or found in the AltAnalyze ExpressionOutput/Clustering folder), AltAnalyze can filter your list based on a large library of pathways, genesets and ontologies supported by GO-Elite. Hence, users can obtain pathway-specific cluster sets.
+_*Select Gene Set/Ontology to filter*_: When loading a file containing IDs indicated in the Main Menu (Other IDs, platform specific or found in the AltAnalyze ExpressionOutput/Clustering folder), AltAnalyze can filter your list based on a large library of pathways, genesets and ontologies supported by GO-Elite. This can included signatures you store in the last option in this menu or from PCA (StoredGeneSets). Hence, users can obtain pathway-specific cluster sets.
 
-_*Select a specific Gene Set*_: Select a specific GeneSet or ontology term for the selected GO-Elite class indicated above.
+_*Select a specific Gene Set*_: Select a specific GeneSet or ontology term for the selected GO-Elite class indicated above. Displayed genes are hyperlinked to additional annotations on the web.
 
 _*Type a pathway ID or Ontology ID*_: Alternatively enter pathway or ontology ID for quicker selection.
 
-_*Type a gene to get top correlated*_: Display just those genes that are most correlated with a gene or identifier listed in the input expression file.
+_*Type a gene to get top correlated*_: Retreive just those genes that are most correlated with a gene or identifier listed in the input expression file. Displayed genes are hyperlinked to additional annotations on the web.
+
+_*Display only selected gene IDs*_: Display just those genes entered. Displayed genes are hyperlinked to additional annotations on the web.
+
+_*Get all correlated genes with rho >*_: For any entered genes or pathways, get all genes correlated to these with the indicated correlation cutoff (must be a value between -1.0 and 1.0).
+
+_*Additional correlation option*_: Advanced options for gene filtering and correlation analysis. Options include:
+ # *Top Correlated Only*: Only report correlated genes from the original pathway or genes provided, where they correlate to at least 4 other genes.
+ # *Intra-Correlated Only*: Only report correlated genes within the filtered pathway or gene set.
+ # *Positive Correlations Only*: Only report positively correlated genes within the filtered pathway or gene set.
+ # *Exclude Cell Cycle Effects*: Removes correlated gene clusters with more than one cell cycle gene (used only with Perform Iterative Discovery). 
+ # *Perform Iterative Discovery*: Performs to rounds of clustering and analysis to identify central genes for each expression cluster (round 1) and then return genes only correlated to these (driver genes, round 2). Driver genes are displayed on the right and are preferentially transcription factors.
+
+_*Perform GeneSet cluster enrichment*_: Performs a gene set enrichment analysis (GO-Elite) on gene clusters (best with HOPACH). Displays the GO-Elite results for each cluster on the left. Selection of the terms will bring up gene lists with hyperlinks to external information and a network image of the relationship of genes and gene-sets for that cluster. Selected terms will automatically copy the gene list to your clipboard.
+
+_*Store filtered genes for later*_: If you give a name to your analysis, the associated genes will be stored for re-analysis later using the StoredGeneSets option in *Select GeneSet/Ontology to filter* option. 
+
+Note: Many of these same options are provided in the *Predict Groups* interface as well.
 
 ==Workflow Analysis==
 
