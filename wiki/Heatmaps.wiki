@@ -6,7 +6,7 @@ Hierarchical clustering in AltAnalyze is a useful way to quickly visualize expre
 
  # Through analysis of raw array or RNA-Seq data (*Workflow Analysis*)
  # Immediate analysis of filtered fold files (*Additional Analyses*)
- # Through the Predict Groups function (*[Tutorial_De_Novo_SampleAnalysis See Tutorial]
+ # Through the Predict Groups function (*[Tutorial_De_Novo_SampleAnalysis See Tutorial])
 
 This method is limited in that you can not currently zoom in to the clusters or interactively navigate the heatmaps.
 
@@ -21,7 +21,7 @@ From the AltAnalyze main menu, select your species and platform. Instead of indi
 
 The input tab-delimited text file must have a header row of column annotations (e.g. sample names) and the first column with row annotations (e.g. gene names) and the remaining by positive and negative values. Multiple options for positive and negative gradients can be selected, along with clustering algorithms for rows and columns.
 
-[http://altanalyze.org/image/HeatmapViewer.png]
+[http://altanalyze.org/image/ClusterInterface.png]
 [http://altanalyze.org/image/pluri.png]
 
 ===Menu and Formatting Options===
