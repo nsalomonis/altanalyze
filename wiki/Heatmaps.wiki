@@ -2,10 +2,11 @@
 
 == AltAnalyze Hierarchical Clustering Heatmaps ==
 
-Hierarchical clustering in AltAnalyze is a useful way to quickly visualize expression patterns from high-dimensional datasets, similiar to [http://rana.lbl.gov/EisenSoftware.htm Cluster/TreeView TreeView]. The input can be log2 expression values or ratios, with many options for coloring, clustering or filtering based on specific genes or pathways. For clustering, in addition to a large number of standard algorithms, the HOPACH method in R is available, simply if you already have R installed (must be registered in the system path on Windows). Hierarchical clustering can be run in one of two ways:
+Hierarchical clustering in AltAnalyze is a useful way to quickly visualize expression patterns from high-dimensional datasets, similar to [http://rana.lbl.gov/EisenSoftware.htm Cluster/TreeView TreeView]. In fact, AltAnalyze can call TreeView. Similar to other tools, there are many options for coloring, clustering algorithms available and normalization options. However, there are a number of unique and powerful options in this tool. These include filtering on specific genes or pathways, getting correlated genes and finding optimized clusters for single cell analysis. For clustering, the HOPACH method in R optionally available, simply if you already have R and bioinconductor installed (must be registered in the [SetRPath system path on Windows]). Hierarchical clustering can be run in one of two ways:
 
  # Through analysis of raw array or RNA-Seq data (*Workflow Analysis*)
  # Immediate analysis of filtered fold files (*Additional Analyses*)
+ # Through the Predict Groups function (*[Tutorial_De_Novo_SampleAnalysis See Tutorial]
 
 This method is limited in that you can not currently zoom in to the clusters or interactively navigate the heatmaps.
 
