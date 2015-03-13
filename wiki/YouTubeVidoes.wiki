@@ -1,0 +1,11 @@
+#summary One-sentence summary of this page.
+
+= Bulk and Single-Cell RNA-Seq Analysis =
+
+Video illustrating how easy it is to analyze transcriptome datasets in AltAnalyze. Here we analyze a published single-cell gene expression dataset, supplied as a supplemental table, according to known biological groups and using a de novo group discovery workflow.
+
+== Part 1 ==
+<wiki:video url="https://www.youtube.com/watch?v=npz34x0oILE"/> 
+
+== Part 2 ==
+<wiki:video url="https://www.youtube.com/watch?v=WySm7cQ13mw"/>
