@@ -1,6 +1,10 @@
 #summary AltAnalyze Tutorials
 #labels Featured
 
+= Tutorial Videos ==
+
+https://youtu.be/npz34x0oILE
+
 = AltAnalyze Workflow Tutorials (GUI) =
 
 Proceed through the following tutorials to analyze data for the indicated platform
