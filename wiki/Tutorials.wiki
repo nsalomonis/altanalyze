@@ -1,9 +1,9 @@
 #summary AltAnalyze Tutorials
 #labels Featured
 
-= Tutorial Videos ==
+= AltAnalyze Tutorial Videos ==
 
-https://youtu.be/npz34x0oILE
+[See all videos]
 
 = AltAnalyze Workflow Tutorials (GUI) =
 
