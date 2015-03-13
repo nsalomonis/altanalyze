@@ -9,3 +9,7 @@ Video illustrating how easy it is to analyze transcriptome datasets in AltAnalyz
 
 == Part 2 ==
 <wiki:video url="https://www.youtube.com/watch?v=WySm7cQ13mw"/>
+
+= How to Create a Pathway for WikiPathways in PathVisio =
+
+<wiki:video url="https://www.youtube.com/watch?v=GRtaLihkTGM"/>
