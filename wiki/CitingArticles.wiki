@@ -15,17 +15,17 @@ http://omicsonline.org/open-access/mucin-family-genes-are-downregulated-in-color
 
 http://www.sciencedirect.com/science/article/pii/S2213596014001226
 
-http://www.biomedcentral.com/1755-8794/7/63/abstract
+[http://www.biomedcentral.com/1755-8794/7/63/abstract Integrated differential transcriptome maps of Acute Megakaryoblastic Leukemia (AMKL) in children with or without Down Syndrome (DS)]. Pelleri M, Piovesan A, Caracausi M, Berardi A, Vitale L, Strippoli P. BMC Med Genomics. 2014 Dec 5;7(1):63.
 
-http://m.pnas.org/content/early/2014/11/19/1412172111.short?view=short&uritype=cgi
+[http://m.pnas.org/content/early/2014/11/19/1412172111.short?view=short&uritype=cgi ELAVL1 regulates alternative splicing of eIF4E transporter to promote postnatal angiogenesis]. Chang SH, Elemento O, Zhang J, Zhuang ZW, Simons M, Hla T.Proc Natl Acad Sci U S A. 2014 Dec 23;111(51):18309-14.
 
-http://www.ncbi.nlm.nih.gov/pubmed/24865429
+[http://www.ncbi.nlm.nih.gov/pubmed/24865429 Splicing regulator SLU7 is essential for maintaining liver homeostasis]. Elizalde M, Urtasun R, Azkona M, Latasa MU, Goñi S, García-Irigoyen O, Uriarte I, Segura V, Collantes M, Di Scala M, Lujambio A, Prieto J, Ávila MA, Berasain C.J Clin Invest. 2014 Jul;124(7):2909-20. 
 
-http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0110134
+[http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0110134 Integrated exon level expression analysis of driver genes explain their role in colorectal cancer]. Aziz MA, Periyasamy S, Al Yousef Z, AlAbdulkarim I, Al Otaibi M, Alfahed A, Alasiri G.PLoS One. 2014 Oct 21;9(10):e110134.
 
-http://link.springer.com/article/10.1007/s10048-014-0419-8
+[http://link.springer.com/article/10.1007/s10048-014-0419-8 A quantitative transcriptome reference map of the normal human brain]. Caracausi M, Vitale L, Pelleri MC, Piovesan A, Bruno S, Strippoli P.Neurogenetics. 2014 Oct;15(4):267-87.
 
-http://www.plosone.org/article/comments/info%3Adoi%2F10.1371%2Fjournal.pone.0109631
+[http://www.plosone.org/article/comments/info%3Adoi%2F10.1371%2Fjournal.pone.0109631 Urinary exosomes: a novel means to non-invasively assess changes in renal gene and protein expression]. Spanu S, van Roeyen CR, Denecke B, Floege J, Mühlfeld AS.PLoS One. 2014 Oct 13;9(10):e109631. 
 
 [http://www.ncbi.nlm.nih.gov/pubmed/25122876 ABCG2pos Lung Mesenchymal Stem Cells are a Novel Pericyte Subpopulation that Contributes to Fibrotic Remodeling]. Marriott S, Baskir RS, Gaskill C, Menon S, Carrier EJ, Williams J, Talati M, Helm K, Alford CE, Kropski JA, Loyd J, Wheeler L, Johnson J, Austin E, Nozik-Grayck E, Meyrick BO, West JD, Klemm DJ, Majka SM. Am J Physiol Cell Physiol. 2014 Aug 13. pii: ajpcell.00114.2014.
 
