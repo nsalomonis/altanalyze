@@ -3,17 +3,14 @@
 
 === Articles Citing AltAnalyze ===
 
-http://www.ncbi.nlm.nih.gov/m/pubmed/25590811/
+[http://www.ncbi.nlm.nih.gov/m/pubmed/25590811/ Reactive oxygen species-mediated therapeutic response and resistance in glioblastoma]. Singer E, Judkins J, Salomonis N, Matlaf L, Soteropoulos P, McAllister S, Soroceanu L.Cell Death Dis. 2015 Jan 15;6:e1601.
 
-http://m.bio.biologists.org/content/early/2015/01/23/bio.20149969.full
+[http://m.bio.biologists.org/content/early/2015/01/23/bio.20149969.full Identification of novel radiation-induced p53-dependent transcripts extensively regulated during mouse brain development]. Quintens R, Verreet T, Janssen A, Neefs M, Leysen L, Michaux A, Verslegers M, Samari N, Pani G, Verheyde J, Baatout S, Benotmane MA.Biol Open. 2015 Feb 13;4(3):331-44.
 
-http://www.biomedcentral.com/1756-0500/7/934/abstract
+[http://www.biomedcentral.com/1756-0500/7/934/abstract Computational extraction of a neural molecular network through alternative splicing]. Alam S, Phan HT, Okazaki M, Takagi M, Kawahara K, Tsukahara T, Suzuki H.BMC Res Notes. 2014 Dec 19;7:934. 
+http://www.ncbi.nlm.nih.gov/pubmed/25590302
 
-http://www.mdpi.com/1422-0067/16/1/1755/pdf
-
-http://omicsonline.org/open-access/mucin-family-genes-are-downregulated-in-colorectal-cancer-patients-2157-2518-S10-009.pdf
-
-http://www.sciencedirect.com/science/article/pii/S2213596014001226
+[http://www.ncbi.nlm.nih.gov/pubmed/25590302Novel transcription factor variants through RNA-sequencing: the importance of being "alternative"]. Scarpato M, Federico A, Ciccodicola A, Costa V.Int J Mol Sci. 2015 Jan 13;16(1):1755-71.
 
 [http://www.biomedcentral.com/1755-8794/7/63/abstract Integrated differential transcriptome maps of Acute Megakaryoblastic Leukemia (AMKL) in children with or without Down Syndrome (DS)]. Pelleri M, Piovesan A, Caracausi M, Berardi A, Vitale L, Strippoli P. BMC Med Genomics. 2014 Dec 5;7(1):63.
 
