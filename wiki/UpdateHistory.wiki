@@ -5,6 +5,43 @@
 
 _note:_ For further details and explanation, see the associated sections in the full [http://www.altanalyze.org/help_main.htm online AltAnalyze documentation].
 
+===Version 2.0.9 Updates===
+In this version, we have added a number of new analysis methods to support comprehensive automated gene-expression, splicing, network and single-cell analyses. See the latest included software documentation for more details. Changes include:
+ # Multiple independent tools and workflows for single-cell gene expression and splicing analyses (Iterative Clustering and Driver Selection or ICDS).
+ # Support for junction count expression files provided by the Cancer Genome Atlas (TCGA).
+ # Support for the Affymetrix Human Transcriptome 2.0 (HTA2.0) array (gene expression and splicing analyses).
+ # [http://code.google.com/p/altanalyze/wiki/Heatmaps Heatmap] pathway enrichment analysis and linkouts to gene annotations, TreeView, associated pathway gene-sets and networks.
+ # PCA on all genes not just differentially expressed produced (fast with implementation of SVD). 
+ # Heatmap viewer allows for amplification of GeneSets or Ontology terms associated genes, via correlation analyses or restricted intra-correlation filtering or automated driver gene selection. Support for pasting lists of genes from Excel into this and other menus.
+ # Handling of zero non-log values in the input file (e.g., FPKMs).
+ # Gene Biotypes (e.g., TFs, kinases) added to go-elite, heatmap enrichment and other places.
+ # GO-Elite can be run by just pasting in genes.
+ # TreeView is downloaded with AltAnalyze and can be called from any heatmap with a button click for your results.
+ # Top represented genes from GO-Elite listed on the left of the heatmap.
+ # Annotation of the amount of variance explained by each PCA component and associated top PCA component genes (correlated and anti-correlated) identified.
+ # Optionally store gene signatures from PCA or heatmap analyses for later application elsewhere.
+ # If few hopach clusters are produced it actually will use the second level hopach results (e.g., for label 1000 and 1100, they will be considered 10 and 11 rather than 1).
+ # Novel reciprocal isoform percent spliced in (Ri-PSI) algorithm for getting high confidence alternative splicing events.
+ # Interactive Venn Diagram gene-set selection.
+ # Automatic visualization of the top 50 alternatively spliced genes with the AltExon viewer.
+ # Automatic gene interaction network visualization for all differentially expressed genes.
+ # Directory descriptor files added to all major result directories.
+ # Improved results viewer with additional graphs.
+ # Combination of all compendium LineageProfiler results with top term summaries.
+ # Online video [Tutorials tutorials] and individual tutorials for each Additional Analyses features.
+
+Bug fixes include: 
+ # Various issues with the heatmap viewer and pathway enrichment and gene visualization fixed.
+ # Error with Venn Diagram maker and other visualization methods crashing after trying to use a second time.
+ # Ontology analysis (issue with GO-Slim corrected).
+ # Combat included libraries (fixed by the patsy developers)
+ # Issue with batch effects menu corrected (stuck in a loop)
+ # LineageProfiler should work better
+ # AltExon viewer bugs fixed
+ # Pasting in genes should remove carriage returns (network visualization and clustering).
+ # Errors with TFTarget import are fixed.
+ # MarkerFinder errors with non-workflow generated input datasets.
+
 ===Version 2.0.7 Updates===
 In this version, we have added a number of new analysis methods to support comprehensive automated gene-expression analysis as well as improved RNA-Seq analysis and filtering. Changes include:
  # [http://code.google.com/p/altanalyze/wiki/Heatmaps Heatmap] visualization of hierarchically clustered genes (significant and outlier).
