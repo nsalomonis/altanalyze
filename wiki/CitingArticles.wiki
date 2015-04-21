@@ -5,6 +5,10 @@
 
 http://www.nature.com/ncomms/2015/150330/ncomms7410/full/ncomms7410.html
 
+http://www.nature.com/nm/journal/vaop/ncurrent/full/nm.3848.html
+
+http://bio.biologists.org/content/early/2015/01/23/bio.20149969.full
+
 [http://www.ncbi.nlm.nih.gov/pubmed/25579607 Identification of rod- and cone-specific expression signatures to identify candidate genes for retinal disease]. Holt R, Brown L, Broadgate S, Butler R, Jagannath A, Downes S, Peirson S, Halford S.Exp Eye Res. 2015 Mar;132:161-73.
 
 [http://www.ncbi.nlm.nih.gov/pubmed/25720307 SplicingTypesAnno: Annotating and quantifying alternative splicing events for RNA-Seq data]. Sun X, Zuo F, Ru Y, Guo J, Yan X, Sablok G.Comput Methods Programs Biomed. 2015 Apr;119(1):53-62.
