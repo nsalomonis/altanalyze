@@ -14,6 +14,7 @@
  * Interactive visualization: http://bokeh.pydata.org/
  * Biclustering: http://scikit-learn.org/stable/auto_examples/bicluster/plot_spectral_biclustering.html
  * Sircah: http://www.bork.embl.de/Sircah/gallery.html
+ * Sub-pathway based python GSEA DiffPath: https://github.com/aditi9783/DiffPath
 
 ===Data Analysis===
  * HTSeq: http://www-huber.embl.de/users/anders/HTSeq/doc/overview.html
