@@ -15,11 +15,9 @@ http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4408580/
 
 http://www.nature.com/ncomms/2015/150330/ncomms7410/full/ncomms7410.html
 
-[http://www.nature.com/nm/journal/vaop/ncurrent/full/nm.3848.html]. Reciprocal cellular cross-talk within the tumor microenvironment promotes oncolytic virus activity.
-Ilkow CS, Marguerie M, Batenchuk C, Mayer J, Ben Neriah D, Cousineau S, Falls T, Jennings VA, Boileau M, Bellamy D, Bastin D, de Souza CT, Alkayyal A, Zhang J, Le Boeuf F, Arulanandam R, Stubbert L, Sampath P, Thorne SH, Paramanthan P, Chatterjee A, Strieter RM, Burdick M, Addison CL, Stojdl DF, Atkins HL, Auer RC, Diallo JS, Lichty BD, Bell JC. Nat Med. 2015 May;21(5):530-6. doi: 10.1038/nm.3848. Epub 2015 Apr 20.
+[http://www.nature.com/nm/journal/vaop/ncurrent/full/nm.3848.html]. Reciprocal cellular cross-talk within the tumor microenvironment promotes oncolytic virus activity]. Ilkow CS, Marguerie M, Batenchuk C, Mayer J, Ben Neriah D, Cousineau S, Falls T, Jennings VA, Boileau M, Bellamy D, Bastin D, de Souza CT, Alkayyal A, Zhang J, Le Boeuf F, Arulanandam R, Stubbert L, Sampath P, Thorne SH, Paramanthan P, Chatterjee A, Strieter RM, Burdick M, Addison CL, Stojdl DF, Atkins HL, Auer RC, Diallo JS, Lichty BD, Bell JC. Nat Med. 2015 May;21(5):530-6. doi: 10.1038/nm.3848. Epub 2015 Apr 20.
 
-[http://bio.biologists.org/content/early/2015/01/23/bio.20149969.full]. Identification of novel radiation-induced p53-dependent transcripts extensively regulated during mouse brain development.
-Quintens R, Verreet T, Janssen A, Neefs M, Leysen L, Michaux A, Verslegers M, Samari N, Pani G, Verheyde J, Baatout S, Benotmane MA. Biol Open. 2015 Feb 13;4(3):331-44. doi: 10.1242/bio.20149969.
+[http://bio.biologists.org/content/early/2015/01/23/bio.20149969.full. Identification of novel radiation-induced p53-dependent transcripts extensively regulated during mouse brain development]. Quintens R, Verreet T, Janssen A, Neefs M, Leysen L, Michaux A, Verslegers M, Samari N, Pani G, Verheyde J, Baatout S, Benotmane MA. Biol Open. 2015 Feb 13;4(3):331-44. doi: 10.1242/bio.20149969.
 
 [http://www.ncbi.nlm.nih.gov/pubmed/25579607 Identification of rod- and cone-specific expression signatures to identify candidate genes for retinal disease]. Holt R, Brown L, Broadgate S, Butler R, Jagannath A, Downes S, Peirson S, Halford S.Exp Eye Res. 2015 Mar;132:161-73.
 
