@@ -1064,8 +1064,8 @@ def exportGeneSetsFromCombined(filename):
 if __name__ == '__main__':
     ################  Comand-line arguments ################
     #buildAdditionalMirTargetGeneSets();sys.exit()
-    filename = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/Reprogramming/CombinedResults/allTopGenes.txt'
-    exportGeneSetsFromCombined(filename);sys.exit()
+    #filename = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/Reprogramming/CombinedResults/allTopGenes.txt'
+    #exportGeneSetsFromCombined(filename);sys.exit()
     
     platform='RNASeq'
     species='Hs'
