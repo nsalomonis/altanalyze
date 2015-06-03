@@ -31,7 +31,8 @@ try:
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
         import matplotlib
-        matplotlib.use('TkAgg')
+        try: matplotlib.use('TkAgg')
+        except Exception: pass
         if commandLine==False:
             try: matplotlib.rcParams['backend'] = 'TkAgg'
             except Exception: pass
@@ -48,8 +49,10 @@ try:
             mpl.rcParams['font.family'] = 'sans-serif'
             mpl.rcParams['font.sans-serif'] = 'Arial'
         except Exception:
+            print traceback.format_exc()
             print 'Matplotlib support not enabled'
         import scipy
+        from scipy.sparse.csgraph import _validation
         from scipy.linalg import svd
         import scipy.cluster.hierarchy as sch
         import scipy.spatial.distance as dist
