@@ -1393,8 +1393,10 @@ def runGOElite(mod):
       ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedOntologyTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
       print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to genmapp@gladstone.ucsf.edu."
       if root != None:
-        try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy()
-        except Exception: print print_out
+        program,program_dir = unique.whatProgramIsThis()
+        if program!= 'AltAnalyze':
+            try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy()
+            except Exception: print print_out
       """
       if os.name == 'nt':
             try: os.startfile('"'+log_file+'"')
@@ -2748,8 +2750,10 @@ if __name__ == '__main__':
                 
                 print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to genmapp@gladstone.ucsf.edu."
                 if use_Tkinter == 'yes':
-                    try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy()
-                    except Exception: print print_out
+                    program,program_dir = unique.whatProgramIsThis()
+                    if program!= 'AltAnalyze':
+                        try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy()
+                        except Exception: print print_out
                 else: print print_out
                 log_report.close()
                 if len(log_file)>0:

@@ -142,7 +142,11 @@ def rhoCalculation(data_list1,tissue_template):
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
-            rho,p = stats.pearsonr(data_list1,tissue_template)
+            try: rho,p = stats.pearsonr(data_list1,tissue_template)
+            except Exception:
+                #data_list_alt = [0 if x==None else x for x in data_list1]
+                #rho,p = stats.pearsonr(data_list1,tissue_template)
+                kill
     except Exception:
         rho = pearson(data_list1,tissue_template)
     return rho
@@ -751,7 +755,9 @@ def identifyMarkers(filename,cluster_comps):
                         #print max(exp_values), RPKM_threshold;sys.exit()
                 else:
                     if 'exp.' in filename:
-                        PearsonCorrelationAnalysis((probeset,symbol),exp_values,tissue_template_db)
+                        try: PearsonCorrelationAnalysis((probeset,symbol),exp_values,tissue_template_db)
+                        except Exception: ### For missing values
+                            advancedPearsonCorrelationAnalysis((probeset,symbol),exp_values,tissue_template_db)
                     else:
                         advancedPearsonCorrelationAnalysis((probeset,symbol),exp_values,tissue_template_db)
                 x+=1
@@ -1826,7 +1832,8 @@ def importAndAverageStatsData(expr_input,compendium_filename,platform):
                     ### Convert to log2 RPKM values - or counts
                     values = map(lambda x: math.log(float(x),2), t[1:])
                 else:
-                    values = map(float,t[1:])
+                    try: values = map(float,t[1:])
+                    except Exception: values = logTransformWithNAs(t[1:])
                 avg_z=[]
                 for group_name in group_index_db:
                     group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
@@ -1835,6 +1842,14 @@ def importAndAverageStatsData(expr_input,compendium_filename,platform):
                 export_data.write(string.join(compendium_annotation_db[uid]+avg_z,'\t')+'\n')
     export_data.close()
     return export_path
+
+def logTransformWithNAs(values):
+    values2=[]
+    for x in values:
+        try: values2.append(math.log(float(x),2))
+        except Exception:
+            values2.append(0.00001)
+    return values2
 
 def importAndAverageExport(expr_input,platform,annotationDB=None,annotationHeader=None,customExportPath=None):
     """ More simple custom used function to convert a exp. or stats. file from sample values to group means """
@@ -1900,7 +1915,8 @@ def importAndAverageExport(expr_input,platform,annotationDB=None,annotationHeade
             row_number=1
         else:
             uid = t[0]
-            values = map(float,t[1:])
+            try: values = map(float,t[1:])
+            except Exception: values = logTransformWithNAs(t[1:])
             avg_z=[]
             for group_name in group_index_db:
                 group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples

@@ -224,16 +224,16 @@ class RScripts:
         if "Error" in print_out: print 'unable to download the package "monocle"';  
         print_out = r('library("monocle")')
         print "Reading Monocle data..."
-        data_import = 'fpkm_matrix<-read.delim(%s,row.names=1)' % samplelogfile
+        data_import = 'fpkm_matrix<-read.delim(%s,row.names=1,check.names=FALSE)' % samplelogfile
         print [data_import]
         print_out = r(data_import);
         print print_out
     
-        data_import = 'sample_sheet<-read.delim(%s,row.names=1)' % grp_list
+        data_import = 'sample_sheet<-read.delim(%s,row.names=1,check.names=FALSE)' % grp_list
         print [data_import]
         print_out = r(data_import);
         print print_out
-        data_import = 'gene_ann<-read.delim(%s,row.names=1)' % gene_list
+        data_import = 'gene_ann<-read.delim(%s,row.names=1,check.names=FALSE)' % gene_list
         print [data_import]
         print_out = r(data_import);
         print print_out
@@ -242,7 +242,7 @@ class RScripts:
         print_out=r('URMM <- newCellDataSet(as.matrix(fpkm_matrix),phenoData = pd,featureData =fd)');
         print print_out
         #colname(a) == colname(b)
-        print_out=r('URMM<- detectGenes(URMM, min_expr = 3)')
+        print_out=r('URMM<- detectGenes(URMM, min_expr = 0)')
         gene_exp='expressed_genes <- row.names(subset(fData(URMM), num_cells_expressed >=%s ))'% expPercent
         print [gene_exp]
         try:print_out = r(gene_exp)
@@ -277,6 +277,8 @@ class RScripts:
                 break
         
         print_out=r('pdf("Monocle/monoclePseudotime.pdf")');
+        print print_out
+        print_out=r('png("Monocle/monoclePseudotime.png")');
         print print_out
         print_out=r('plot_spanning_tree(URMM)'); print print_out
         print_out=r('dev.off()')
@@ -696,7 +698,8 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
                 headers = string.join(t[2:],'\t')+'\n'
                 offset = 1
             else:
-                headers = line
+                headers = string.join(t[1:],'\t')+'\n'
+                
             first_row = False
         else:
             key = t[0]
@@ -737,17 +740,23 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
     
     array_names = []; array_linker_db = {}; d = 0
     for entry in headers.split('\t'):
+                
                 entry=cleanUpLine(entry)
                 if '::' in entry:
                     a = (entry.split("::"))
                 else:
                     a = (entry.split(":"))
                 
-                entry=string.join(a,'.')
+                #entry=string.join(a,'.')
               
                 ent=entry+'\t'+a[0];
-                if(ent[0].isdigit()):
-                    ent='X'+ent[0:]
+                #if(ent[0].isdigit()):
+                #    ent='X'+ent[0:]
+                
+                #if '-' in ent:
+                 #   ent=string.replace(ent,'-','.')
+                #if '+' in ent:
+                 #   ent=string.replace(ent,'+','.')
                     #print j
                 array_names.append(ent);
     i=0
@@ -823,8 +832,9 @@ if __name__ == '__main__':
     cluster_method='array';metric_gene="";force_gene='';metric_array="euclid";force_array=''
     analysis_method='hopach'; multtest_type = 'f'
     #Sample log File
-    filename='/Users/saljh8/Desktop/Grimes/monocle/test/test.txt'
-    rawExpressionFile = '/Users/saljh8/Desktop/Grimes/monocle/test/test.txt'
+    #Input-exp.MixedEffectsThanneer-DPF3%20DMRT3%20FOXA1%20SMAD6%20TBX3%20amplify%20monocle-hierarchical_cosine_correlated.txt
+    filename='/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/ExpressionInput/amplify/DataPlots/Clustering-exp.MixedEffectsThanneer-SC-SERPINA1 AK311497 ZNF208 ZNF560 amplify-hierarchical_cosine_correlated.txt'
+    rawExpressionFile = filename
     #filename = "/Volumes/SEQ-DATA/Eric/embryonic_singlecell_kidney/ExpressionOutput/Clustering/SampleLogFolds-Kidney.txt"
     #filename = "/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewCardiacMarkers1/FullDataset/ExpressionOutput/Clustering/SampleLogFolds-CM.txt"
     #rawExpressionFile = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewCardiacMarkers1/FullDataset/ExpressionInput/exp.CM-steady-state.txt'

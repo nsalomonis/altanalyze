@@ -130,6 +130,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("hopach")')
                 if "Error" in print_out: print 'unable to download the package "hopach"'; forceError
         except Exception,e:
+            print 'Failed to install hopach'
             row_method = 'average'; column_method = 'average'
         if len(column_header)==2: column_method = 'average'
         if len(row_header)==2: row_method = 'average'
@@ -451,11 +452,24 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     filename = 'Clustering-%s-hierarchical_%s_%s.pdf' % (dataset_name,column_metric,row_metric)
 
     elite_dir, cdt_file = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,display)
+
+    def ViewPNG(png_file_dir):
+        if os.name == 'nt':
+            try: os.startfile('"'+png_file_dir+'"')
+            except Exception:  os.system('open "'+png_file_dir+'"')
+        elif 'darwin' in sys.platform: os.system('open "'+png_file_dir+'"')
+        elif 'linux' in sys.platform: os.system('xdg-open "'+png_file_dir+'"')
+        
+    try:
+        if 'monocle' in justShowTheseIDs:
+            import R_interface
+            R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',cdt_file[:-3]+'txt')
+            png_file_dir = root_dir+'/Monocle/monoclePseudotime.png'
+            print png_file_dir
+            ViewPNG(png_file_dir)
+    except Exception:
+        print traceback.format_exc()
     
-    """
-    import R_interface
-    R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',originalFilename)
-    """
     cluster_elite_terms={}; ge_fontsize=12; top_genes=[]; proceed=True
     try:
         try:
@@ -620,7 +634,6 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             elif 'linux' in sys.platform: os.system('xdg-open "'+png_file_dir+'"')   
             
             #print cluster_elite_terms[text.get_text()]
-            
             
     fig.canvas.mpl_connect('pick_event', onpick1)
             
@@ -2238,7 +2251,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
             alt_targetGene = string.replace(alt_targetGene,' ','')  
         except Exception:
             alt_targetGene = ''
-        if getGeneCorrelations and targetGene != 'driver' and targetGene !='excludeCellCycle' and targetGene !='top' and targetGene !='positive' and len(alt_targetGene)>0: ###Restrict analyses to only genes that correlate with the target gene of interest
+        if getGeneCorrelations and targetGene != 'driver' and targetGene !='excludeCellCycle' and targetGene !='top' and targetGene != 'monocle' and targetGene !='positive' and len(alt_targetGene)>0: ###Restrict analyses to only genes that correlate with the target gene of interest
             allowAxisCompression = False
             if transpose and transpose_update == False: transpose_update = False ### If filterByPathways selected
             elif transpose and transpose_update: transpose_update = True ### If filterByPathways not selected
@@ -2252,8 +2265,8 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
             else:
                 inputFilename = string.replace(newInput,'.txt','_'+targetGene+'.txt') ### update the pathway reference for HOPACH
                 dataset_name += '-'+targetGene
-            inputFilename = string.replace(inputFilename,'|',' ')
-            inputFilename = string.replace(inputFilename,':',' ')
+            inputFilename = root_dir+'/'+string.replace(findFilename(inputFilename),'|',' ')
+            inputFilename = root_dir+'/'+string.replace(findFilename(inputFilename),':',' ') ### need to be careful of C://
             dataset_name = string.replace(dataset_name,'|',' ')
             dataset_name = string.replace(dataset_name,':',' ')
             try:
@@ -3424,14 +3437,49 @@ def simpleTranspose(filename):
     for i in matrix:
         ea.write(string.join(i,'\t')+'\n')
     ea.close()
-    
+ 
 def CorrdinateToBed(filename):
+    fn = filepath(filename)
+    matrix = []
+    translation={}
+    multiExon={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        data = string.replace(data,' ','')
+        t = string.split(data,'\t')
+        if '.gtf' in filename:
+            if 'chr' not in t[0]: chr = 'chr'+t[0]
+            else: chr = t[0]
+            start = t[3]; end = t[4]; strand = t[6]; annotation = t[8]
+            annotation = string.replace(annotation,'gene_id','')
+            annotation = string.replace(annotation,'transcript_id','')
+            annotation = string.replace(annotation,'gene_name','')
+            geneIDs = string.split(annotation,';')
+            geneID = geneIDs[0]; symbol = geneIDs[3]
+        else:
+            chr = t[4]; strand = t[5]; start = t[6]; end = t[7]
+        #if 'ENS' not in annotation:
+        t = [chr,start,end,geneID,'0',strand]
+        #matrix.append(t)
+        translation[geneID] = symbol
+        try: multiExon[geneID]+=1
+        except Exception: multiExon[geneID]=1
+    filename = filename[:-4]+'-new.bed'
+    ea = export.ExportFile(filename)
+    for i in translation:
+        #ea.write(string.join(i,'\t')+'\n')
+        ea.write(i+'\t'+translation[i]+'\t'+str(multiExon[i])+'\n')
+    ea.close()
+    
+def SimpleCorrdinateToBed(filename):
     fn = filepath(filename)
     matrix = []
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         data = string.replace(data,' ','')
         t = string.split(data,'\t')
+        if '.bed' in filename:
+            print t;sys.exit()
         chr = t[4]; strand = t[5]; start = t[6]; end = t[7]
         if 'ENS' in t[0]:
             t = [chr,start,end,t[0],'0',strand]
@@ -3457,13 +3505,47 @@ def simpleIntegrityCheck(filename):
     for i in matrix:
         ea.write(string.join(i,'\t')+'\n')
     ea.close()
+
+def simpleFilter(filename):
+    fn = filepath(filename)
+    matrix = []
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        data = string.replace(data,' ','')
+        t = string.split(data,'\t')
+        if t[1] != '-':
+            matrix.append(t)
+
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    for i in matrix:
+        ea.write(string.join(i,'\t')+'\n')
+    ea.close()
+    
+def test(filename):
+    fn = filepath(filename)
+    for line in open(fn,'rU').xreadlines():
+        print [line];sys.exit()
+        data = cleanUpLine(line)
+        data = string.replace(data,' ','')
+        t = string.split(data,'\t')
+        if t[1] != '-':
+            matrix.append(t)
+
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    for i in matrix:
+        ea.write(string.join(i,'\t')+'\n')
+    ea.close()
+    
     
 if __name__ == '__main__':
     import UI
-    folder = '/Users/saljh8/Documents/1-manuscripts/Churko/Reprogramming/SRSF2/coordinates'
+    folder = 'clustering.py'
+    test(folder);sys.exit()
     files = UI.read_directory(folder)
     for file in files:
-        CorrdinateToBed(folder+'/'+file)
+        SimpleCorrdinateToBed(folder+'/'+file)
     filename = '/Users/saljh8/Desktop/bed/RREs0.5_exons_unique.txt'
     #simpleIntegrityCheck(filename);sys.exit()
     gene_list = ['Cx3cr1','Csf1r','Flt3','Dnmt3a','Gfi1']

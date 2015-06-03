@@ -3994,7 +3994,7 @@ def addOnlineSpeciesDatabases(backSelect):
             selected_parameters.append('OnlineDatabases'); backSelect = 'no'
             root = Tk(); root.title('AltAnalyze: Species Databases Available for Download')
             gu = GUI(root,option_db,option_list['OnlineDatabases'],'')
-        else: gu = PreviousResults(old_options)
+        else: gu = PreviousResults(old_options); print 'alpha'
         db_version = gu.Results()['selected_version']
         exportDBversion(db_version)
         try: species1 = gu.Results()['selected_species1']
@@ -4007,8 +4007,7 @@ def addOnlineSpeciesDatabases(backSelect):
         except Exception: species_full = ''
         try: update_goelite_resources = gu.Results()['update_goelite_resources']
         except Exception: update_goelite_resources = ''
-        if species_full == 'Add Species':
-            AltAnalyze.AltAnalyzeSetup(species_full); sys.exit()
+        #if species_full == 'Add Species': AltAnalyze.AltAnalyzeSetup(species_full); sys.exit()
         new_species_list = [species1,species2,species3]; new_species_codes={}
         for species in new_species_list:
             if '---' not in species:
@@ -4771,7 +4770,7 @@ def getUserParameters(run_parameter,Multi=None):
                     contrast = gu.Results()['contrast']
                     if transpose == 'yes': transpose = True
                     else: transpose = False
-                    translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Iterative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly'}
+                    translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Iterative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly', 'Perform Monocle':'monocle'}
                     try:
                         if 'None Selected' in HeatmapAdvanced: pass
                     except Exception: HeatmapAdvanced = ('None Selected')

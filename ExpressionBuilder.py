@@ -103,7 +103,11 @@ def checkExpressionFileFormat(expFile):
         else:
             try: uid, coordinates = string.split(key,'=')
             except Exception: uid = key
-            values = map(lambda x: float(x), t[1:])
+            if '' in t[1:]:
+                values = [0 if x=='' else x for x in values]
+            else:
+                values = t[1:]
+            values = map(lambda x: float(x), values)
             if max(values)>inputMax: inputMax = max(values)
             if min(values)<inputMin: inputMin = min(values)
             
@@ -469,7 +473,20 @@ def exportDataForGenMAPP(headers,input_type):
     genmapp.write(genmapp_title)
 
     for probeset in array_folds:
-        data_val = probeset+'\t'+system_code
+        if 'ENS' in probeset and (' ' in probeset or '_' in probeset or ':' in probeset or '-' in probeset):
+            system_code = 'En'
+            ensembl_gene = 'ENS'+string.split(probeset,'ENS')[1]
+            if ' ' in ensembl_gene:
+                ensembl_gene = string.split(ensembl_gene,' ')[0]
+            if '_' in ensembl_gene:
+                ensembl_gene = string.split(ensembl_gene,'_')[0]
+            if ':' in ensembl_gene:
+                ensembl_gene = string.split(ensembl_gene,':')[0]
+            if '-' in ensembl_gene:
+                ensembl_gene = string.split(ensembl_gene,'-')[0]
+            data_val = ensembl_gene+'\t'+system_code
+        else:
+            data_val = probeset+'\t'+system_code
         for value in array_folds[probeset]: data_val += '\t'+ str(value)
         gs = summary_filtering_stats[probeset]
         data_val += '\t'+ str(gs.Pval()) +'\t'+ str(gs.AdjP()) +'\t'+ str(gs.LogFold()) +'\n'
@@ -608,6 +625,22 @@ def exportGOEliteInput(headers,system_code):
         goelite_title = ['GeneID','SystemCode']
         goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
         for probeset in denominator_geneids:
+            try:
+                if 'ENS' in probeset and (' ' in probeset or '_' in probeset or ':' in probeset or '-' in probeset):
+                    system_code = 'En'
+                    ensembl_gene = 'ENS'+string.split(probeset,'ENS')[1]
+                    if ' ' in ensembl_gene:
+                        ensembl_gene = string.split(ensembl_gene,' ')[0]
+                    if '_' in ensembl_gene:
+                            ensembl_gene = string.split(ensembl_gene,'_')[0]
+                    if ':' in ensembl_gene:
+                        ensembl_gene = string.split(ensembl_gene,':')[0]
+                    if '-' in ensembl_gene:
+                        ensembl_gene = string.split(ensembl_gene,'-')[0]
+                    probeset = ensembl_gene 
+            except Exception:
+                pass
+
             values = string.join([probeset,system_code],'\t')+'\n'; goelite.write(values)
         goelite.close()
 
@@ -623,6 +656,21 @@ def exportGOEliteInput(headers,system_code):
             goelite_title = ['GeneID'+stat_filters,'SystemCode',criterion_name+'-log_fold',criterion_name+'-p_value']
             goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
             for (probeset,log_fold,p_value) in criterion_db[criterion_name]:
+                try:
+                    if 'ENS' in probeset and (' ' in probeset or '_' in probeset or ':' in probeset or '-' in probeset):
+                        system_code = 'En'
+                        ensembl_gene = 'ENS'+string.split(probeset,'ENS')[1]
+                        if ' ' in ensembl_gene:
+                            ensembl_gene = string.split(ensembl_gene,' ')[0]
+                        if '_' in ensembl_gene:
+                            ensembl_gene = string.split(ensembl_gene,'_')[0]
+                        if ':' in ensembl_gene:
+                            ensembl_gene = string.split(ensembl_gene,':')[0]
+                        if '-' in ensembl_gene:
+                            ensembl_gene = string.split(ensembl_gene,'-')[0]
+                        probeset = ensembl_gene
+                except Exception:
+                    pass
                 values = string.join([probeset,system_code,str(log_fold),str(p_value)],'\t')+'\n'
                 goelite.write(values)
             goelite.close()
@@ -925,20 +973,31 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                     ### Convert to log2 RPKM values - or counts
                     try: values = map(lambda x: math.log(float(x)+increment,2), t[1:])
                     except Exception:
-                        print [increment], t[1:]
-                        kill
+                        logTransformWithNAs(t[1:],increment)
                 else:
-                    values = map(float,t[1:])
+                    try: values = map(float,t[1:])
+                    except Exception:
+                        logTransformWithNAs(t[1:],increment)
                 
                 ### Calculate log-fold values relative to the mean of all sample expression values
                 values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
                 avg = statistics.avg(values)
                 if convertNonLogToLog and platform != 'RNASeq':
                     ### Rather than convert the values to log, and perform mean subtraction to derive folds, calculate in non-log space and then convert the folds to log
-                    log_folds = map(lambda x: math.log(((x+increment/(avg+1))),2), values)
+                    try: log_folds = map(lambda x: math.log(((x+increment/(avg+1))),2), values)
+                    except Exception:
+                        log_folds=[]
+                        for x in values:
+                            try: log_folds.append(math.log(((x+increment/(avg+1))),2))
+                            except Exception: log_folds.append('')
+                        
                 else:
-                    log_folds = map(lambda x: (x-avg), values)
-                                
+                    try: log_folds = map(lambda x: (x-avg), values)
+                    except Exception: 
+                        log_folds=[]
+                        for x in values:
+                            try: log_folds.append(x-avg)
+                            except Exception: log_folds.append('')
                 if gene in genes_to_import:
                     ### Genes regulated in any user-indicated comparison according to the fold and pvalue cutoffs provided
                     log_folds = map(lambda x: str(x), log_folds)
@@ -967,7 +1026,14 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                                     if convertNonLogToLog and platform != 'RNASeq':
                                         relative_log_folds += map(lambda x: str(math.log(((x+increment)/(con_avg+increment)),2)), group_values) ### calculate log-folds and convert to strings
                                     else:
-                                        relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
+                                        try:
+                                            relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
+                                        except Exception:
+                                            relative_log_folds=[]
+                                            for x in group_values:
+                                                try: relative_log_folds.append(str(x-con_avg))
+                                                except Exception: relative_log_folds.append('')
+                            
                                     if relative_headers_exported == False:
                                         exp_sample_names = group_name_sample_db[group_name]
                                         relative_column_names += map(lambda x: (x+' vs '+control_group_name), exp_sample_names) ### add column names indicating the comparison
@@ -984,6 +1050,7 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                     try: gene = gene+' '+probeset_symbol[gene]
                     except Exception: gene = gene
                     ### These are defaults we may allow the user to control later
+                    log_folds = [0 if x=='' else x for x in log_folds] ### using list comprehension, replace '' with 0
                     if max([max(log_folds),abs(min(log_folds))])>1:
                         proceed = True
                         if platform == 'RNASeq':
@@ -997,6 +1064,14 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
         export_data.close()
         if exportOutliers: export_outliers.close()
         if exportRelative: export_relative.close()
+
+def logTransformWithNAs(values,increment):
+    values2=[]
+    for x in values:
+        try: values2.append(math.log(float(x)+increment,2))
+        except Exception:
+            values2.append('')
+    return values2
 
 def importAndOrganizeLineageOutputs(expr_input,filename,platform):
     """ This function takes LineageProfiler z-scores and organizes the samples into groups

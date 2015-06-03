@@ -54,7 +54,8 @@ except Exception:
 
 try:
     from PIL import Image as PIL_Image
-    import ImageTk
+    try: import ImageTk
+    except Exception: from PIL import ImageTk
 except Exception:
     None #print 'Python Imaging Library not installed... using default PNG viewer'
     
@@ -5442,6 +5443,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     output_dir = markerFinder.getAverageExpressionValues(input_exp_file,array_type) ### Either way, make an average annotated file from the DATASET file
                 except Exception:
                     print "Unknown MarkerFinder failure (possible filename issue or data incompatibility)..."
+                    print traceback.format_exc()
                     continue
                 if 'DATASET' in input_exp_file:
                     group_exp_file = string.replace(input_exp_file,'DATASET','AVERAGE')
@@ -6145,7 +6147,11 @@ def commandLineRun():
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
             try: array_type = array_type
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
-            try: cel_file_dir = cel_file_dir
+            try:
+                cel_file_dir = cel_file_dir
+                values = species,exp_file_location_db,dataset,mlp_instance
+                StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
+            
             except Exception:
                 try: input_exp_file = input_exp_file
                 except Exception: 'Please indicate a source folder or expression file (e.g., --expdir /dataset/singleCells.txt)'
@@ -6200,7 +6206,9 @@ def commandLineRun():
                 elif opt == '--removeOutliers':removeOutliers=arg
                 elif opt == '--featurestoEvaluate':featurestoEvaluate=arg
                 elif opt == '--restrictBy':restrictBy=arg
-                elif opt == '--excludeCellCycle':excludeCellCycle=arg
+                elif opt == '--excludeCellCycle':
+                    excludeCellCycle=arg
+                    if excludeCellCycle == 'False': excludeCellCycle = False
                 elif opt == '--contrast':
                     try: contrast=float(arg)
                     except Exception: print '--contrast not a valid float';sys.exit()
@@ -6335,7 +6343,7 @@ def commandLineRun():
             PathwaySelection = ''
             GeneSetSelection = 'None Selected'
             rho = None
-            
+
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 if opt == '--row_method':
                     row_method=arg
@@ -6906,6 +6914,7 @@ def commandLineRun():
             #python AltAnalyze.py --update markers --platform gene --expdir "/home/socr/c/users2/salomoni/other/boxer/normalization/Mm_Gene-TissueAtlas/AltResults/RawSpliceData/Mm/splicing-index/meta.txt"
             #python AltAnalyze.py --update markers --platform "3'array" --expdir "/home/socr/c/users2/salomoni/other/boxer/normalization/U133/ExpressionOutput/DATASET-meta.txt"
             #python AltAnalyze.py --update markers --compendiumType ncRNA --platform "exon" --expdir "/home/socr/c/users2/salomoni/conklin/nsalomonis/normalization/Hs_Exon-TissueAtlas/ExpressionOutput/DATASET-meta.txt"
+            #python AltAnalyze.py --update markers --platform RNASeq --species Mm --geneRPKM 1 --expdir /Users/saljh8/Desktop/Grimes/MergedRSEM/DN-Analysis/ExpressionInput/exp.DN.txt --genesToReport 200
             """The markerFinder module:
             1) takes an input ExpressionOutput file (DATASET.YourExperimentName.txt)
             2) extracts group average expression and saves to AVERAGE.YourExperimentName.txt to the ExpressionOutput directory

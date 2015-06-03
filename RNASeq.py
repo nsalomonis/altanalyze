@@ -2708,7 +2708,11 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     print len(expressed_uids), 'expressed genes by RPKM (%d) and counts (%d)' % (rpkm_threshold,exp_threshold)
     #"""
     
-    biological_categories = importBiologicalRelationships(species)
+    try: biological_categories = importBiologicalRelationships(species)
+    except Exception:
+        restrictBy = None
+        biological_categories={}
+        print 'Missing annotation file in:','AltDatabase/uniprot/'+species+'/custom_annotations.txt !!!!!'
     if restrictBy !=None:
         genes = biological_categories['protein_coding']
     else:
@@ -3013,6 +3017,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         writeFilteredFile(filtered_file,platform,headers,{},expressed_values,[])
         if len(expressed_values)<800:
             row_method = 'hopach'; row_metric = 'correlation'
+        if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         cc_graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
         cell_cycle_id_list = genericRowIDImport(string.replace(cc_graphic_links[0][-1],'.png','.txt'))
         expressed_values2 = {}
@@ -3033,6 +3038,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         row_method = 'average'; row_metric = 'weighted'
     if amplifyGenes:
         transpose = parameters
+        if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
         return graphic_links
     
@@ -3244,6 +3250,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
             import clustering
             if platform == 'exons': color_gradient = 'yellow_black_blue'
             transpose = False
+            if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
             graphic_links = clustering.runHCexplicit(results_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
             if len(graphic_links)==0:
                 graphic_links = clustering.runHCexplicit(results_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
@@ -3259,7 +3266,8 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     except Exception: print traceback.format_exc()
         
     row_metric = 'correlation'; row_method = 'hopach'
-    column_method = 'hopach'; column_metric = 'cosine'
+    column_metric = 'cosine'
+    #column_method = 'hopach'
 
     try:
         newDriverGenes1 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle)
@@ -3267,6 +3275,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         parameters.setGeneSelection(newDriverGenes1_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
         parameters.setPathwaySelect('None Selected')
+        if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         
         newDriverGenes2 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle)
