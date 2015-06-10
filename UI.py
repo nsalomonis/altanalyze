@@ -802,7 +802,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     except Exception: None
     
 def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None):
-    import clustering
+    import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
     else: pca_labels=False
@@ -830,7 +830,7 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
 def createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, root, display=True):
     graphics = []
     try:
-        import clustering
+        import clustering; reload(clustering)
         clustering.runHCexplicit(filename, graphics, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, contrast = contrast)
         print_out = 'Finished building heatmap.'
         try: print print_out

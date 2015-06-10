@@ -10,9 +10,11 @@ try:
     from rpy import r
     print "\n---------Using RPY---------\n"
 except Exception:
-    from pyper import *
-    print "\n---------Using PypeR---------\n"
-    r = R(use_numpy=True)
+    try:
+        from pyper import *
+        print "\n---------Using PypeR---------\n"
+        r = R(use_numpy=True)
+    except Exception: pass
 
 ### Create a Directory for R packages in the AltAnalyze program directory (in non-existant)
 r_package_path = string.replace(os.getcwd()+'/Config/R','\\','/') ### R doesn't link \\
@@ -276,10 +278,12 @@ class RScripts:
                 print print_out
                 break
         
+        print_out=r('png("Monocle/monoclePseudotime.png")');
+        print print_out
+        print_out=r('plot_spanning_tree(URMM)'); print print_out
+        print_out=r('dev.off()')
         print_out=r('pdf("Monocle/monoclePseudotime.pdf")');
         print print_out
-        #print_out=r('png("Monocle/monoclePseudotime.png")');
-        #print print_out
         print_out=r('plot_spanning_tree(URMM)'); print print_out
         print_out=r('dev.off()')
         print_out=r('write.table(pData(URMM),file="Monocle/monoclePseudotime.txt")') 

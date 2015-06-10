@@ -52,7 +52,8 @@ try:
             print traceback.format_exc()
             print 'Matplotlib support not enabled'
         import scipy
-        from scipy.sparse.csgraph import _validation
+        try: from scipy.sparse.csgraph import _validation
+        except Exception: pass
         from scipy.linalg import svd
         import scipy.cluster.hierarchy as sch
         import scipy.spatial.distance as dist
@@ -464,7 +465,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         elif 'linux' in sys.platform: os.system('xdg-open "'+png_file_dir+'"')
         
     try:
-        if 'monocle' in justShowTheseIDs:
+        if 'monocle' in justShowTheseIDs and 'driver' not in justShowTheseIDs:
             import R_interface
             R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',cdt_file[:-3]+'txt')
             png_file_dir = root_dir+'/Monocle/monoclePseudotime.png'
@@ -981,8 +982,9 @@ def mergePDFs(pdf1,pdf2,outPdf):
     output.write(outputStream)
     outputStream.close()    
 
+"""
 def merge_horizontal(out_filename, left_filename, right_filename):
-    """ Merge the first page of two PDFs side-to-side """
+    #Merge the first page of two PDFs side-to-side
     import pyPdf
     # open the PDF files to be merged
     with open(left_filename) as left_file, open(right_filename) as right_file, open(out_filename, 'w') as output_file:
@@ -1006,7 +1008,7 @@ def merge_horizontal(out_filename, left_filename, right_filename):
 
         # write to file
         output.write(output_file)
-        
+"""     
 def inverseDist(value):
     if value == 0: value = 1
     return math.log(value,2)
@@ -2253,10 +2255,12 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
             alt_targetGene = string.replace(alt_targetGene,'driver','')
             alt_targetGene = string.replace(alt_targetGene,'top','')
             alt_targetGene = string.replace(alt_targetGene,'positive','')
+            alt_targetGene = string.replace(alt_targetGene,'excludeCellCycle','')
+            alt_targetGene = string.replace(alt_targetGene,'monocle','')
             alt_targetGene = string.replace(alt_targetGene,' ','')  
         except Exception:
             alt_targetGene = ''
-        if getGeneCorrelations and targetGene != 'driver' and targetGene !='excludeCellCycle' and targetGene !='top' and targetGene != 'monocle' and targetGene !='positive' and len(alt_targetGene)>0: ###Restrict analyses to only genes that correlate with the target gene of interest
+        if getGeneCorrelations and targetGene != 'driver' and targetGene !='excludeCellCycle' and targetGene !='top' and targetGene != ' monocle' and targetGene !='positive' and len(alt_targetGene)>0: ###Restrict analyses to only genes that correlate with the target gene of interest
             allowAxisCompression = False
             if transpose and transpose_update == False: transpose_update = False ### If filterByPathways selected
             elif transpose and transpose_update: transpose_update = True ### If filterByPathways not selected
@@ -2302,7 +2306,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
         if 'excludeCellCycle' in targetGene: excludeCellCycle = True
         else: excludeCellCycle = False
         print 'excludeCellCycle',excludeCellCycle
-        targetGene = RNASeq.remoteGetDriverGenes(species,platform,input_file,excludeCellCycle=excludeCellCycle)
+        targetGene = RNASeq.remoteGetDriverGenes(species,platform,input_file,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
         extra_params.setGeneSelection(targetGene) ### force correlation to these
         extra_params.setGeneSet('None Selected') ### silence this
         graphic_link= runHCexplicit(filename, graphic_link, row_method, row_metric, column_method, column_metric, color_gradient,

@@ -2699,7 +2699,8 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     except Exception: expressed_uids_counts=expressed_uids_rpkm
     
     if len(expressed_uids_counts) > 0:
-        expressed_uids = expressed_uids_rpkm.viewkeys() & expressed_uids_counts.viewkeys() ### common
+        try: expressed_uids = expressed_uids_rpkm.viewkeys() & expressed_uids_counts.viewkeys() ### common
+        except Exception: expressed_uids = getOverlappingKeys(expressed_uids_rpkm,expressed_uids_counts)
     else:
         expressed_uids = expressed_uids_rpkm
     print 'Genes filtered by counts:',len(expressed_uids_counts)
@@ -2734,7 +2735,8 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
             geneID = string.split(geneID,' ')[-1]
             if geneID in genes: expressed_uids.append(uid)
     else:
-        expressed_uids = genes.viewkeys() & expressed_uids_db.viewkeys() ### common
+        try: expressed_uids = genes.viewkeys() & expressed_uids_db.viewkeys() ### common
+        except Exception: expressed_uids = getOverlappingKeys(genes,expressed_uids_db)
 
         #print len(expressed_uids)
         expressed_uids_db2={}
@@ -2743,7 +2745,8 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         if drivers != False:
             driver_genes = getDrivers(drivers)
             if onlyIncludeDrivers:
-                expressed_uids = driver_genes.viewkeys() & expressed_uids_db2.viewkeys() ### common
+                try: expressed_uids = driver_genes.viewkeys() & expressed_uids_db2.viewkeys() ### common
+                except Exception: expressed_uids = getOverlappingKeys(driver_genes,expressed_uids_db2)
 
     if len(expressed_uids)==0:
         expressed_uids=[]
@@ -2753,6 +2756,13 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     #sys.exit()
     print_out = findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_genes,mlp,parameters=parameters,reportOnly=reportOnly)
     return print_out
+
+def getOverlappingKeys(db1,db2):
+    db3=[]
+    for key in db1:
+        if key in db2:
+            db3.append(key)
+    return db3
 
 def getDrivers(filename):
     fn = filepath(filename)
@@ -3262,7 +3272,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     #graphic_links = [(1,'/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/SamplePrediction/DataPlots/Clustering-CombinedSingleCell_March_15_2015-CORRELATED-FEATURES-hierarchical_cosine_euclidean.png')]
     #graphic_links = [(1,'/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/SamplePrediction/DataPlots/DataPlots/Clustering-E15.5_Adult_IRI Data-output-CORRELATED-FEATURES-clean-hierarchical_cosine_correlation.png')]
 
-    try: graphic_links,new_results_file = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,graphics=graphic_links)
+    try: graphic_links,new_results_file = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,graphics=graphic_links,ColumnMethod=column_method)
     except Exception: print traceback.format_exc()
         
     row_metric = 'correlation'; row_method = 'hopach'
@@ -3270,7 +3280,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     #column_method = 'hopach'
 
     try:
-        newDriverGenes1 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle)
+        newDriverGenes1 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
         newDriverGenes1_str = string.join(newDriverGenes1.keys(),' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes1_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
@@ -3278,7 +3288,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         
-        newDriverGenes2 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle)
+        newDriverGenes2 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
         newDriverGenes2_str = string.join(newDriverGenes2.keys(),' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes2_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
@@ -3425,14 +3435,14 @@ def writeFilteredFile(results_file,platform,headers,gene_to_symbol_db,expressed_
         e+=1
     eo.close()
 
-def remoteGetDriverGenes(Species,platform,results_file,numSamplesClustered=3,excludeCellCycle=False):
+def remoteGetDriverGenes(Species,platform,results_file,numSamplesClustered=3,excludeCellCycle=False,ColumnMethod='hopach'):
     global species
     species = Species
-    driverGenes = correlateClusteredGenes(platform,results_file,stringency='strict',excludeCellCycle=excludeCellCycle)
+    driverGenes = correlateClusteredGenes(platform,results_file,stringency='strict',excludeCellCycle=excludeCellCycle,ColumnMethod=ColumnMethod)
     driverGenes = string.join(driverGenes.keys(),' ')+' amplify positive'
     return driverGenes
     
-def correlateClusteredGenes(platform,results_file,stringency='medium',numSamplesClustered=3,excludeCellCycle=False,graphics=[]):
+def correlateClusteredGenes(platform,results_file,stringency='medium',numSamplesClustered=3,excludeCellCycle=False,graphics=[],ColumnMethod='hopach'):
     
     if numSamplesClustered<1: numSamplesClustered=1
         ### Get all highly variably but low complexity differences, typically one or two samples that are really different
@@ -3478,8 +3488,12 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
     cluster = True
     if cluster == True:
         import clustering
-        row_method = 'hopach'
-        column_method = 'hopach'
+        if ColumnMethod == 'hopach':
+            row_method = 'hopach'
+            column_method = 'hopach'
+        else:
+            column_method = ColumnMethod
+            row_method = 'average'
         row_metric = 'correlation'
         column_metric = 'cosine'
         color_gradient = 'yellow_black_blue'

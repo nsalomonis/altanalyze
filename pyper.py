@@ -133,6 +133,10 @@ else:
 
 	try:
 		import subprocess
+		import _subprocess
+		#try: info.dwFlags |= s
+		
+		#except Exception: import _subprocess as subprocess
 		_has_subp = True
 		Popen, PIPE, _STDOUT = subprocess.Popen, subprocess.PIPE, subprocess.STDOUT
 	except: # Python 2.3 or older
@@ -433,8 +437,10 @@ class R: # (object):
 			if arg not in RCMD: RCMD.append(arg)
 		if _has_subp and hasattr(subprocess, 'STARTUPINFO'):
 			info = subprocess.STARTUPINFO()
-			info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-			info.wShowWindow = subprocess.SW_HIDE
+			try: info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+			except Exception: info.dwFlags |= _subprocess.STARTF_USESHOWWINDOW
+			try: info.wShowWindow = subprocess.SW_HIDE
+			except Exception: info.wShowWindow = _subprocess.SW_HIDE
 		else: info = None
 		self.__dict__.update({
 			'prog' : Popen(RCMD, stdin=PIPE, stdout=PIPE, stderr=return_err and _STDOUT or None, startupinfo=info), 
