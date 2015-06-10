@@ -6044,7 +6044,8 @@ def commandLineRun():
                                                          'direction=','analysisType=','algorithm=','rho=',
                                                          'clusterGOElite=','geneSetName=','runICDS=','IDtype=',
                                                          'CountsCutoff=','FoldDiff=','SamplesDiffering=','removeOutliers='
-                                                         'featurestoEvaluate=','restrictBy=','ExpressionCutoff='])
+                                                         'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
+                                                         'excludeCellCycle='])
     
     except Exception:
         print traceback.format_exc()
@@ -6208,7 +6209,8 @@ def commandLineRun():
                 elif opt == '--restrictBy':restrictBy=arg
                 elif opt == '--excludeCellCycle':
                     excludeCellCycle=arg
-                    if excludeCellCycle == 'False': excludeCellCycle = False
+                    if excludeCellCycle == 'False' or excludeCellCycle == 'no': excludeCellCycle = False
+                    elif excludeCellCycle == 'True' or excludeCellCycle == 'yes' or excludeCellCycle == 'conservative': excludeCellCycle = True
                 elif opt == '--contrast':
                     try: contrast=float(arg)
                     except Exception: print '--contrast not a valid float';sys.exit()
@@ -6245,12 +6247,13 @@ def commandLineRun():
                     expFile = root_dir+'/ExpressionInput/exp.'+export.findFilename(expdir2)
                     export.copyFile(input_exp_file, expFile)
                     
-            global logfile
+            global log_file
             root_dir = export.findParentDir(expFile)
             root_dir = string.replace(root_dir,'/ExpressionInput','')
             time_stamp = timestamp()    
-            logfile = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
-            
+            log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
+            log_report = open(log_file,'w'); log_report.close()
+            sys.stdout = Logger('')
             count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'

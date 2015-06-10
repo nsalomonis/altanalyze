@@ -6057,10 +6057,13 @@ class GeneSelectionParameters:
         else:
             return False
     def ExcludeCellCycle(self):
-        if self.excludeCellCycle == True or self.excludeCellCycle == 'yes':
+        if self.excludeCellCycle == 'stringent' or self.excludeCellCycle == 'strict':
+            return 'strict'  ### Also includes removing drivers correlated to any cell cycle genes, not just in the training set
+        elif self.excludeCellCycle == True or self.excludeCellCycle != 'no':
             return True
         else:
             return False
+        
     def ColumnMetric(self): return self.column_metric
     def ColumnMethod(self): return self.column_method
     def MinEvents(self):

@@ -471,7 +471,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             print png_file_dir
             ViewPNG(png_file_dir)
     except Exception:
-        print traceback.format_exc()
+        #print traceback.format_exc()
+        pass
     
     cluster_elite_terms={}; ge_fontsize=12; top_genes=[]; proceed=True
     try:
@@ -1623,8 +1624,9 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     correlated_genes4 = map(lambda i: row_header[i],idx4[:200])
     anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-200:])
     
-    print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
-    exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
+    filename = root_dir+'Clustering-%s-PCA.txt' % dataset_name
+    print 'exporting PCA driver genes to:',filename
+    exportData = export.ExportFile(filename)
     allGenes={}
     for gene in correlated_genes: exportData.write(gene+'\tcorrelated-PC1\n'); allGenes[gene]=[]
     for gene in anticorrelated_genes: exportData.write(gene+'\tanticorrelated-PC1\n'); allGenes[gene]=[]
@@ -1908,7 +1910,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
         except Exception:
             color = 'r'; label=None
 
-        ax.plot([scores[0][i]],[scores[1][i]],[scores[2][i]],color=color,marker='o',markersize=7,label=label,markeredgewidth=0.1) #markeredgecolor=color
+        ax.plot([scores[0][i]],[scores[1][i]],[scores[2][i]],color=color,marker='o',markersize=10,label=label,markeredgewidth=0.1) #markeredgecolor=color
         if showLabels:
             #try: sample_name = '   '+string.split(sample_name,':')[1]
             #except Exception: pass
@@ -3526,25 +3528,50 @@ def simpleFilter(filename):
     ea.close()
     
 def test(filename):
+    symbols2={}
+    firstLine=True
     fn = filepath(filename)
-    for line in open(fn,'rU').xreadlines():
-        print [line];sys.exit()
-        data = cleanUpLine(line)
-        data = string.replace(data,' ','')
-        t = string.split(data,'\t')
-        if t[1] != '-':
-            matrix.append(t)
-
     filename = filename[:-4]+'-new.txt'
     ea = export.ExportFile(filename)
-    for i in matrix:
-        ea.write(string.join(i,'\t')+'\n')
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if firstLine: firstLine=False
+        else:
+            t = string.split(data,'\t')
+            uniprot = t[0]
+            symbols = string.replace(t[-1],';;',';')
+            symbols = string.split(symbols,';')
+            for s in symbols:
+                if len(s)>0:
+                    symbols2[string.upper(s),uniprot]=[]
+    for (s,u) in symbols2:
+        ea.write(string.join([s,u],'\t')+'\n')    
     ea.close()
-    
-    
+        
+def combine(filename):
+    symbols2={}
+    firstLine=True
+    fn = filepath(filename)
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if firstLine: firstLine=False
+        else:
+            t = string.split(data,'\t')
+            uniprot = t[0]
+            symbols = string.replace(t[-1],';;',';')
+            symbols = string.split(symbols,';')
+            for s in symbols:
+                if len(s)>0:
+                    symbols2[string.upper(s),uniprot]=[]
+    for (s,u) in symbols2:
+        ea.write(string.join([s,u],'\t')+'\n')    
+    ea.close()
+        
 if __name__ == '__main__':
     import UI
-    folder = 'clustering.py'
+    folder = '/Users/saljh8/Downloads/BLASTX2_Gecko.tab'
     test(folder);sys.exit()
     files = UI.read_directory(folder)
     for file in files:

@@ -3007,7 +3007,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)
 
     areYouSure=False
-    if excludeCellCycle and areYouSure:
+    if (excludeCellCycle == 'strict' or excludeCellCycle == True) and areYouSure:
         cc_param = copy.deepcopy(parameters)
         cc_param.setPathwaySelect('cell cycle')
         cc_param.setGeneSet('GeneOntology')
@@ -3518,7 +3518,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
             gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
             symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)            
             TFs = importGeneSets('Biotypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
-            if excludeCellCycle:
+            if excludeCellCycle == True or excludeCellCycle == 'strict':
                 cell_cycle = importGeneSets('KEGG',filterType='Cell cycle:',geneAnnotations=gene_to_symbol_db)
                 cell_cycle_go = importGeneSets('GeneOntology',filterType='GO:0022402',geneAnnotations=gene_to_symbol_db)
                 for i in cell_cycle_go:
@@ -3591,19 +3591,22 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 #block_db[b]= [corr_counts_gene[-1][-1]] ### save just the selected gene indexes
         
         ### Additional filter to remove drivers that will bring in cell cycle genes (the more drivers the more likely)
-        if excludeCellCycle:
+        if excludeCellCycle == 'strict':
             #print 'drivers',len(driverGenes)
             driverCorrelated = numpyCorrelationMatrixGeneAlt(matrix,row_header,driverGenes,gene_to_symbol_db,rho_cutoff)
             driverGenes={}
+            addition_cell_cycle_associated=[]
             for gene in driverCorrelated:
                 cell_cycle_count=[]
                 for corr_gene in driverCorrelated[gene]:
                     if corr_gene in cell_cycle: cell_cycle_count.append(corr_gene)
                 if (len(cell_cycle_count)>1) or (len(driverCorrelated[gene])<4 and (len(cell_cycle_count)>0)):
-                    #print gene, cell_cycle_count
+                    print gene, cell_cycle_count
+                    addition_cell_cycle_associated.append(gene)
                     pass
                 else:
                     driverGenes[gene]=[]
+            print 'additional Cell Cycle drivers removed:',addition_cell_cycle_associated
         print len(driverGenes), 'novel driver genes discovered:', driverGenes.keys()
         return driverGenes
         
@@ -3953,19 +3956,19 @@ def compareExonAndJunctionResults(species,array_type,summary_results_db,root_dir
     try:
         input_dir = string.split(results_dir,'AltResults')[0]+'GO-Elite/AltExonConfirmed/'
         cluster_file, rows_in_file = ExpressionBuilder.buildAltExonClusterInputs(input_dir,species,array_type,dataType='AltExonConfirmed')
-        if rows_in_file > 8000: useHOPACH = False
+        if rows_in_file > 5000: useHOPACH = False
         else: useHOPACH = True
         if rows_in_file < 12000:
-            graphics = ExpressionBuilder.exportHeatmap(cluster_file)
+            graphics = ExpressionBuilder.exportHeatmap(cluster_file,useHOPACH=useHOPACH)
     except Exception: pass
     
     try:
         input_dir = string.split(results_dir,'AltResults')[0]+'GO-Elite/AltExon/'
         cluster_file, rows_in_file = ExpressionBuilder.buildAltExonClusterInputs(input_dir,species,array_type,dataType='AltExon')
-        if rows_in_file > 8000: useHOPACH = False
+        if rows_in_file > 5000: useHOPACH = False
         else: useHOPACH = True
         if rows_in_file < 12000:
-            graphics2 = ExpressionBuilder.exportHeatmap(cluster_file)
+            graphics2 = ExpressionBuilder.exportHeatmap(cluster_file,useHOPACH=useHOPACH)
     except Exception: pass
     return graphics+graphics2
 

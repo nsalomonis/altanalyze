@@ -72,7 +72,7 @@ def checkForDuplicateIDs(input_file):
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if first_row == True:
-            if 'row_clusters-flat' in t:
+            if 'row_clusters-flat' in t and 'row_clusters-flat' not in t[0]:
                 headers = string.join(['uid']+t[2:],'\t')+'\n'
                 offset = 1
             else:
@@ -278,8 +278,8 @@ class RScripts:
         
         print_out=r('pdf("Monocle/monoclePseudotime.pdf")');
         print print_out
-        print_out=r('png("Monocle/monoclePseudotime.png")');
-        print print_out
+        #print_out=r('png("Monocle/monoclePseudotime.png")');
+        #print print_out
         print_out=r('plot_spanning_tree(URMM)'); print print_out
         print_out=r('dev.off()')
         print_out=r('write.table(pData(URMM),file="Monocle/monoclePseudotime.txt")') 
@@ -694,7 +694,7 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if first_row == True:
-            if 'row_clusters-flat' in t:
+            if 'row_clusters-flat' in t and 'row_clusters-flat' not in t[0]:
                 headers = string.join(t[2:],'\t')+'\n'
                 offset = 1
             else:
@@ -833,7 +833,7 @@ if __name__ == '__main__':
     analysis_method='hopach'; multtest_type = 'f'
     #Sample log File
     #Input-exp.MixedEffectsThanneer-DPF3%20DMRT3%20FOXA1%20SMAD6%20TBX3%20amplify%20monocle-hierarchical_cosine_correlated.txt
-    filename='/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/ExpressionInput/amplify/DataPlots/Clustering-exp.MixedEffectsThanneer-SC-SERPINA1 AK311497 ZNF208 ZNF560 amplify-hierarchical_cosine_correlated.txt'
+    filename='/Users/saljh8/Desktop/Grimes/KashishNormalization/6-5-2015/DataPlots/MarkerFinder/DataPlots/test.txt'
     rawExpressionFile = filename
     #filename = "/Volumes/SEQ-DATA/Eric/embryonic_singlecell_kidney/ExpressionOutput/Clustering/SampleLogFolds-Kidney.txt"
     #filename = "/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewCardiacMarkers1/FullDataset/ExpressionOutput/Clustering/SampleLogFolds-CM.txt"

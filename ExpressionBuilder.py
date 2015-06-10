@@ -2070,7 +2070,7 @@ def buildAltExonClusterInputs(input_folder,species,platform,dataType='AltExonCon
     export_data.close()
     return export_dir, exported_IDs
                     
-def exportHeatmap(filename,useHOPACH=True, color_gradient='red_black_sky',normalize=False,columnMethod=None,size=0):
+def exportHeatmap(filename,useHOPACH=True, color_gradient='red_black_sky',normalize=False,columnMethod='average',size=0):
     import clustering
     graphics = []; row_method = 'weighted'; row_metric = 'cosine'; column_method = 'average'; column_metric = 'euclidean'; transpose = False
     if useHOPACH:
@@ -2082,7 +2082,7 @@ def exportHeatmap(filename,useHOPACH=True, color_gradient='red_black_sky',normal
                 print 'Installing the R package "hopach" in Config/R'
                 print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("hopach")')
                 if "Error" in print_out: print 'unable to download the package "hopach"'; forceError
-            row_method = 'hopach'; column_method = None ### Use HOPACH if installed
+            row_method = 'hopach'; column_method = 'hopach' ### Use HOPACH if installed
         except Exception,e: pass
     if size>3000:
         row_method = 'average'
