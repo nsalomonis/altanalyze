@@ -6,10 +6,10 @@ The compiled versions of AltAnalyze (Windows, Mac OSX and Ubuntu) should run imm
 
  # Required: Python version 2.3 or greater
  # Graphical User Interface requirement: Tkinter
- # WikiPathways API visualization: suds
+ # WikiPathways API visualization: lxml
  # Faster Fisher Exact Test: Scipy
  # Visualization output files: Matplotlib, Numpy, Scipy
- # PNG viewing in the GUI: Python Imaging Library
+ # PNG viewing in the GUI: Python Imaging Library (PIL) ImageTk
  # Statistical libraries for Combat: Patsy and Pandas
  # Network visualization in igraph: igraph and cairo
 
