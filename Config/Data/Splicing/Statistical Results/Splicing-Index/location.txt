@@ -1,0 +1,2 @@
+AltResults/AlternativeOutput/Search:splicing-index-exon-inclusion
+Restriction:.txt

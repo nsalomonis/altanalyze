@@ -154,7 +154,7 @@ def createExportDirAlt(new_file,dir):
             try:pfn = filepath(parent_dir); os.mkdir(pfn)  
             except OSError: continue
         createExportFile(new_file,dir)
-    else: print "Parent directory not found locally for", dir_ls; sys.exit()
+    else: print "Parent directory not found locally for", dir_ls
 
 def createExportDir(new_file,dir):
     ### New method for creating a directory path that is not present
@@ -177,7 +177,7 @@ def createExportDir(new_file,dir):
             fn=filepath(new_file)
             file_var = open(fn,mode)
         except Exception:
-            print "Parent directory not found locally for", [dir,new_file]; sys.exit()
+            print "Parent directory not found locally for", [dir,new_file]
     #else: print "Parent directory not found locally for", [dir,new_file]; sys.exit()
     
 def createDirPath(dir):
@@ -226,7 +226,7 @@ def createExportFolder(dir):
                 #print "Can not write this dir"
                 #break
                 continue
-    else: print "Parent directory not found locally for", dir_ls; sys.exit()    
+    else: print "Parent directory not found locally for", dir_ls
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')

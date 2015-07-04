@@ -1,0 +1,2 @@
+AltResults/AlternativeOutput/Search:linearregres-exon-inclusion
+Restriction:.txt

@@ -1,5 +1,5 @@
 import sys,string
-import os
+import os, re
 import unique
 import export
 import math
@@ -83,6 +83,9 @@ def prepareComparisonData(input_file,diffStateQuery,CovariateQuery,uniqueDonors,
                     unique_donor_index = index
                 if 'ublic' in h: publicIndex = index
                 if 'C4 Karyotype Result' in h: karyotypeIndex = index
+                if 'Donor Life Stage' in h: donorStageIndex = index
+                if 'Other Conditions During Reprogramming' in h: otherConditionIndex = index
+                if 'Small Molecules' in h: smallMoleculeIndex = index
                 if CovariateQuery == h: covariateIndex = index
                 if 'UID' == h: uidIndexAlt = index 
                 index+=1
@@ -264,6 +267,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,sample_met
     group_avg_exp_db={}
     export_object_db={}
     rootdir=export.findParentDir(input_file)
+    #print rootdir;sys.exit()
     
     try:
         gene_to_symbol,system_code = getAnnotations(species,platform)
@@ -1036,30 +1040,35 @@ def exportGeneSetsFromCombined(filename):
             comparison = string.replace(comparison,'GE.','')
             prefix = string.split(comparison,':')[0]
             state = string.split(prefix,'-')[0]
+            if state=='NA': state = 'All'
             comparison = file[:-4]+'-'+string.split(comparison,':')[1]
             comparison = string.replace(comparison,'allTopGenes-','')[:-4]
             c1,c2 = string.split(comparison,'_vs_')
+            c1 = re.sub('[^0-9a-zA-Z]+', '', c1)
+            c2 = re.sub('[^0-9a-zA-Z]+', '', c2)
+            comparison = c1+'_vs_'+c2
             #comparison = string.replace(comparison,':','-')
             log_fold = float(up_logfold)
-            if reverse:
+            #print c1,c2,reverse,log_fold
+            if c1>c2:
                 comparison = c2+'_vs_'+c1
                 log_fold = log_fold *-1
             if log_fold<0:
                 if synapse_format:
-                    comparison+='_down'
+                    comparison+='__down'
                 else:
                     comparison = c2+'_vs_'+c1 ### reverse the regulation direction
             else:
                 if synapse_format:
-                    comparison+='_up'
+                    comparison+='__up'
             if synapse_format:
                 if len(symbol) == 0: symbol = gene
                 gene = symbol
-                comparison = string.replace(comparison,'_vs_','_')
-                comparison = string.replace(comparison,'NA','Not_Applicable')
-                comparison = string.replace(comparison,'MESO-5','MESO-EARLY')
+                #comparison = string.replace(comparison,'_vs_','_')
+                comparison = string.replace(comparison,'NA','NotApplicable')
+                #comparison = string.replace(comparison,'MESO-5','MESO-EARLY')
                 comparison = string.replace(comparison,' ','_')
-                if state == 'MESO': state = 'MESO-EARLY'
+                #if state == 'MESO': state = 'MESOEARLY'
             if 'ENS' in gene:
                 SystemCode = 'En'
                 if ':' in gene:
@@ -1080,8 +1089,8 @@ def exportGeneSetsFromCombined(filename):
                         try: comparison_to_gene[comparison].append([g,log_fold])
                         except Exception: comparison_to_gene[comparison] = [[g,log_fold]]
                     else:
-                        try: comparison_to_gene[state+'_'+comparison].append([g,log_fold])
-                        except Exception: comparison_to_gene[state+'_'+comparison] = [[g,log_fold]]
+                        try: comparison_to_gene[state+'__'+comparison].append([g,log_fold])
+                        except Exception: comparison_to_gene[state+'__'+comparison] = [[g,log_fold]]
                 elif simple_format:
                     try: comparison_to_gene[comparison].append([g,log_fold])
                     except Exception: comparison_to_gene[comparison] = [[g,log_fold]]
@@ -1103,8 +1112,8 @@ def exportGeneSetsFromCombined(filename):
 if __name__ == '__main__':
     ################  Comand-line arguments ################
     #buildAdditionalMirTargetGeneSets();sys.exit()
-    filename = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/Reprogramming/CombinedResults/allTopGenes.txt' #DiffStateComps
-    #exportGeneSetsFromCombined(filename);sys.exit()
+    filename = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/CombinedResults/allTopGenes.txt' #DiffStateComps Reprogramming
+    exportGeneSetsFromCombined(filename);sys.exit()
     
     platform='RNASeq'
     species='Hs'
@@ -1130,8 +1139,9 @@ if __name__ == '__main__':
     restricted_gene_denominator={}
     global_adjp_db={}
     covariate_set = ['Cell Type of Origin Combined', 'Cell Type of Origin', 'Cell Line Type','Reprogramming Vector Type']
-    covariate_set+= ['Reprogramming Gene Combination','Gender','originating lab','XIST Level']
-
+    covariate_set+= ['Reprogramming Gene Combination','Gender','originating lab','Donor Life Stage','Culture_Conditions','C4 Karyotype Result','Small Molecules','Other Conditions During Reprogramming','XIST Level']
+    #covariate_set = ['Donor Life Stage','Other Conditions During Reprogramming','C4 Karyotype Result','Small Molecules','Other Conditions During Reprogramming']
+    #covariate_set = ['Cell Line Type']
     diffState_set = ['SC','ECTO','DE','MESO-5','EB','MESO-15','MESO-30']
     import getopt
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
@@ -1199,7 +1209,7 @@ if __name__ == '__main__':
             try:include_only = downloadSynapseFile(include_only,output_dir)
             except Exception:
                 print 'Is the destination file %s already open?' % include_only;sys.exit()
-    
+
         if len(platforms)>0: platform = platforms[0]
         if platform == 'exon' or platform == 'methylation':
             logfold_threshold=math.log(1.1892,2) ### equivalent to a 0.25 dPSI or 0.25 beta differences

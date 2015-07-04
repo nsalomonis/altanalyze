@@ -1,0 +1,2 @@
+AltResults/AlternativeOutput/Search:FIRMA-exon-inclusion
+Restriction:.txt

@@ -1,0 +1,14 @@
+All Resources
+Phenotype Ontology
+Disease Ontology
+GOSlim
+Latest WikiPathways
+PathwayCommons
+KEGG
+Transcription Factor Targets
+miRNA Targets
+Domains
+BioMarkers
+RVista Transcription Factor Sites
+DrugBank
+BioGRID

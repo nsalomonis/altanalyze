@@ -1,0 +1,3 @@
+GO-Elite/upregulated/GO-Elite_results/Heatmaps/DataPlots/
+Search:Clustering-
+Restriction:.png,.txt

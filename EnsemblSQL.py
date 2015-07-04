@@ -179,12 +179,12 @@ def getEnsemblTranscriptSequences(ensembl_version,species):
         ensembl_version = 'release-'+ensembl_version
         
     dirtype = 'fasta/'+ens_species+'/pep'
-    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version:
+    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version or 'Fungi' in ensembl_version:
         ensembl_protseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
     else:
         ensembl_protseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
     dirtype = 'fasta/'+ens_species+'/cdna'
-    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version:
+    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version or 'Fungi' in ensembl_version:
         ensembl_cdnaseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
     else:
         ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
@@ -216,7 +216,7 @@ def getFullGeneSequences(ensembl_version,species):
         ensembl_version = 'release-'+ensembl_version
         
     dirtype = 'fasta/'+ens_species+'/dna'
-    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version:
+    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version or 'Fungi' in ensembl_version:
         ensembl_dnaseq_dirs = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
     else:
         ensembl_dnaseq_dirs = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
@@ -1310,13 +1310,13 @@ def getCurrentEnsemblSpecies(version):
         version = string.replace(version,'Plus','')
     if 'Plant' in version:
         version = string.replace(version,'Plant','')
+    if 'Fungi' in version:
+        version = string.replace(version,'Fungi','')
     if 'Bacteria' in version:
         version = string.replace(version,'Bacteria','')
     if 'release' not in version and 'current' not in version:
         version = 'release-'+version
-    if 'Plant' in original_version:
-        ftp_server = 'ftp.ensemblgenomes.org'
-    elif 'Bacteria' in original_version:
+    if 'Plant' in original_version or 'Bacteria' in original_version or 'Fungi' in original_version:
         ftp_server = 'ftp.ensemblgenomes.org'
     else:
         ftp_server = 'ftp.ensembl.org'
@@ -1326,6 +1326,8 @@ def getCurrentEnsemblSpecies(version):
         subdir = '/pub/plants/'+version+'/mysql'
     elif 'Bacteria' in original_version:
         subdir = '/pub/'+version+'/bacteria/mysql'
+    elif 'Fungi' in original_version:
+        subdir = '/pub/'+version+'/fungi/mysql'
     else:
         subdir = '/pub/'+version+'/mysql'
     dirtype = '_core_'

@@ -1,0 +1,2 @@
+GO-Elite/AltExonConfirmed/GO-Elite_results/networks/
+Restriction:.png

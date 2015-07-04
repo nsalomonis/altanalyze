@@ -82,6 +82,12 @@ def checkForDuplicateIDs(input_file):
             first_row = False
         else:
             key = t[0]
+            try:
+                k1,k2string.split(key,' ')
+                print [k1, k2],
+                if k1==k2: key = k1
+                print key
+            except Exception: pass
             if key!='column_clusters-flat':
                 key_list.append(key)
                 

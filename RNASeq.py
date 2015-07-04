@@ -526,7 +526,8 @@ def checkBEDFileFormat(bed_dir,root_dir):
 def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,searchChr=None,getBiotype=None,testImport=False):
     dir_list = read_directory(bed_dir)
     begin_time = time.time()
-    
+    if 'chr' not in searchChr:
+        searchChr = 'chr'+searchChr
     condition_count_db={}; neg_count=0; pos_count=0; junction_db={}; biotypes={}; algorithms={}; exon_len_db={}
 
     if testImport == 'yes': print "Reading user RNA-seq input data files"
@@ -572,6 +573,8 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                         if ':' in t[0]:
                             chr = string.split(t[0],':')[0]
                         else: chr = t[0]
+                        if 'chr' not in chr:
+                            chr = 'chr'+chr
                         if searchChr == chr or ('BioScope' in algorithm and searchChr == t[1]): proceed = 'yes'
                         elif searchChr == 'chrMT' and ('BioScope' not in algorithm):
                             if 'M' in chr: proceed = 'yes'
@@ -589,6 +592,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                             if 'BioScope' in algorithm:
                                 if algorithm == 'BioScope-exon': ### Not BED format
                                     chr,source,data_type,start,end,reads,strand,null,gene_info=t[:9]
+                                    if 'chr' not in chr: chr = 'chr'+chr
                                     if data_type == 'exon': ### Can also be CDS
                                         gene_info,test,rpkm_info,null = string.split(gene_info,';')
                                         symbol = string.split(gene_info,' ')[-1]
@@ -603,6 +607,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                         seq_length = abs(exon1_stop-exon2_start)
                                 if algorithm == 'BioScope-junction':
                                     chr = t[1]; strand = t[2]; exon1_stop = int(t[4]); exon2_start = int(t[8]); count_paired = t[17]; count_single = t[19]; score=t[21]
+                                    if 'chr' not in chr: chr = 'chr'+chr
                                     try: exon1_start = int(t[3]); exon2_stop = int(t[9])
                                     except Exception: null=[] ### If missing, these are not assigned
                                     reads = str(int(float(count_paired))+int(float(count_single))) ### Users will either have paired or single read (this uses either)
@@ -616,6 +621,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     try: chr,pos1,strand = string.split(coordinates[0],':')
                                     except Exception: print t;sys.exit()
                                     chr,pos2,strand = string.split(coordinates[1],':')
+                                    if 'chr' not in chr: chr = 'chr'+chr
                                     pos2 = str(int(pos2)-1) ### This is the bed format conversion with exons of 0 length
                                     exon1_start, exon2_stop = pos1, pos2
                                     reads = t[junction_position+1]
@@ -624,6 +630,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                 else:
                                     ### Applies to BED format Junction input
                                     chr, exon1_start, exon2_stop, junction_id, reads, strand, null, null, null, null, lengths, null = t
+                                    if 'chr' not in chr: chr = 'chr'+chr
                                     exon1_len,exon2_len=string.split(lengths,',')[:2]; exon1_len = int(exon1_len); exon2_len = int(exon2_len)
                                 exon1_start = int(exon1_start); exon2_stop = int(exon2_stop)
                                 biotype = 'junction'; biotypes[biotype]=[]
@@ -650,6 +657,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                 except Exception:
                                     print 'The file',fn,'does not appear to be propperly formatted as input.'
                                     print t; force_exception
+                                if 'chr' not in chr: chr = 'chr'+chr
                                 algorithm = 'TopHat-exon'; biotype = 'exon'; biotypes[biotype]=[]
                                 exon1_stop,exon2_start = int(start),int(end); junction_id=exon_id; seq_length = float(bp_total)
                                 if seq_length == 0:
@@ -2875,7 +2883,10 @@ def checkExpressionFileFormat(expFile,platform):
                 for value in t[1:]:
                     try: values.append(float(value))
                     except Exception:pass
-            if max(values)>inputMax: inputMax = max(values)
+            try:
+                if max(values)>inputMax: inputMax = max(values)
+            except Exception:
+                pass
                 
     if inputMax>100: ### Thus, not log values
         platform = 'RNASeq'
@@ -3285,6 +3296,8 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         parameters.setGeneSelection(newDriverGenes1_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
         parameters.setPathwaySelect('None Selected')
+        try: parameters.setClusterGOElite('BioMarkers')
+        except Exception: pass
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         
@@ -3301,8 +3314,27 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     except Exception:
         print traceback.format_exc()
 
+    try: copyICGSfiles(expFile,graphic_links)
+    except Exception: pass
     return graphic_links
-    
+
+def copyICGSfiles(expFile,graphic_links):
+    root_dir = string.split(expFile,'ExpressionInput')[0]
+    import shutil
+    destination_folder = root_dir+'/ICGS'
+    try: os.mkdir(destination_folder)
+    except Exception: pass
+    for (order,png) in graphic_links:
+        file = export.findFilename(png)
+        txt = string.replace(file,'.png','.txt')
+        pdf = string.replace(file,'.png','.pdf')
+        dest_png = destination_folder+'/'+file
+        dest_txt = destination_folder+'/'+txt
+        dest_pdf = destination_folder+'/'+pdf
+        shutil.copy(png, dest_png)
+        shutil.copy(png[:-4]+'.txt', dest_txt)
+        shutil.copy(png[:-4]+'.pdf', dest_pdf)
+
 def pearsonCorrelations(ref_gene_exp,exp_value_db):
     correlated=[]
     for gene in exp_value_db:
@@ -4349,7 +4381,187 @@ def importAltAnalyzeExonResults(dir_list,novel_exon_junction_db,results_dir):
     #print '!!!!Within comparison evidence'
     #returnLargeGlobalVars()
         
+def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=False):
+    #print 'Running Kallisto...please be patient'
+    import subprocess
+    #if '/bin' in kallisto_dir: kallisto_file = kallisto_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
+    kallisto_dir= 'AltDatabase/kallisto/0.42.1/'
+    if os.name == 'nt':
+        if '32bit' in architecture: kallisto_file = kallisto_dir + '32bit/PC/bin/kallisto'; plat = 'Windows'
+        elif '64bit' in architecture: kallisto_file = kallisto_dir + '64bit/PC/bin/kallisto'; plat = 'Windows'
+    elif 'darwin' in sys.platform: kallisto_file = kallisto_dir + 'Mac/bin/kallisto'; plat = 'MacOSX'
+    elif 'linux' in sys.platform: kallisto_file = kallisto_dir + '/Linux/bin/kallisto'; plat = 'linux'
+    kallisto_file = filepath(kallisto_file)
+    kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
+    fn = filepath(kallisto_file)
+    output_dir=root_dir+'ExpressionInput/kallisto/'
+    try: os.mkdir(root_dir+'ExpressionInput')
+    except Exception: pass
+    try: os.mkdir(root_dir+'ExpressionInput/kallisto')
+    except Exception: pass
+    fastq_folder += '/'
+    dir_list = read_directory(fastq_folder)
+    fastq_paths = []
+    for file in dir_list:
+        if 'fastq' in file:
+            fastq_paths.append(fastq_folder+file)
+    fastq_paths,paired = findPairs(fastq_paths)
+    if returnSampleNames:
+        return fastq_paths
+    
+    indexFile =  kallisto_root+species
+    indexStatus = os.path.isfile(indexFile)
+    if indexStatus == False:
+        fasta_file = getFASTAFile(species)
+        if fasta_file==None:
+            ###download Ensembl fasta file to the above directory
+            import EnsemblSQL
+            EnsemblSQL.importTranscriptFasta(species)
+            fasta_file = getFASTAFile(species)
+        if fasta_file!=None:
+            print 'Building kallisto index file...'
+            retcode = subprocess.call([kallisto_file, "index","-i", kallisto_root+species, fasta_file])
+    kallisto_folders=[]
+    expMatrix={}
+    headers=['UID']
+    for n in fastq_paths:
+        output_path = output_dir+n
+        kallisto_folders.append(output_path)
+        begin_time = time.time()
+        print 'Running kallisto on:',n,
+        p=fastq_paths[n]
+        retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "--o", output_path]+p)
+        if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
+        input_path = output_path+'/abundance.txt'
+        try:
+            expMatrix=importTPMs(input_path,expMatrix)
+            headers.append(n)
+        except Exception:
+            print n, 'TPM expression import failed'
+    dataset_name = string.replace(dataset_name,'exp.','')
+    to = export.ExportFile(root_dir+'ExpressionInput/transcript.'+dataset_name+'.txt')
+    go = export.ExportFile(root_dir+'ExpressionInput/exp.'+dataset_name+'.txt')
+    exportMatrix(to,headers,expMatrix) ### Export transcript expression matrix
+    geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
+    exportMatrix(go,headers,geneMatrix) ### export gene expression matrix
+    
+def calculateGeneTPMs(species,expMatrix):
+    import gene_associations
+    try: gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
+    except Exception:
+        import GeneSetDownloader
+        GeneSetDownloader.downloadEnsemblTranscriptAssociations(species)
+        gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
+    import OBO_import
+    transcript_to_gene_db = OBO_import.swapKeyValues(gene_to_transcript_db)
+    
+    gene_matrix = {}
+    present_gene_transcripts={}
+    for transcript in expMatrix:
+        if transcript in transcript_to_gene_db:
+            gene = transcript_to_gene_db[transcript][0]
+            try: present_gene_transcripts[gene].append(transcript)
+            except Exception: present_gene_transcripts[gene] = [transcript]
+        else: pass ### could keep track of the missing transcripts
+    for gene in present_gene_transcripts:
+        gene_values = []
+        for transcript in present_gene_transcripts[gene]:
+            gene_values.append(map(float,expMatrix[transcript]))
+        gene_tpms = [sum(value) for value in zip(*gene_values)] ### sum of all transcript tmp's per sample
+        gene_tpms = map(str,gene_tpms)
+        gene_matrix[gene] = gene_tpms
+    return gene_matrix
+    
+def exportMatrix(eo,headers,matrix):
+    eo.write(string.join(headers,'\t')+'\n')
+    for gene in matrix:
+        eo.write(string.join([gene]+matrix[gene],'\t')+'\n')
+    eo.close()
+
+def importTPMs(input_path,expMatrix):
+    firstLine=True
+    for line in open(input_path,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if firstLine:
+            firstLine=False
+            header = string.split(data,'\t')
+        else:
+            target_id,length,eff_length,est_counts,tpm = string.split(data,'\t')
+            try: expMatrix[target_id].append(tpm)
+            except Exception: expMatrix[target_id]=[tpm]
+    return expMatrix
+
+def findPairs(fastq_paths):
+    #fastq_paths = ['/Volumes/test/run0718_lane12_read1_index701=Kopan_RBP_02_14999.fastq.gz','/Volumes/run0718_lane12_read2_index701=Kopan_RBP_02_14999.fastq.gz']
+    import export
+    read_notation=0
+    under_suffix_notation=0
+    suffix_notation=0
+    equal_notation=0
+    for i in fastq_paths:
+        if 'read1' in i or 'read2' in i or 'pair1' in i or 'pair2':
+            read_notation+=1
+        name = string.split(i,'fastq')[0]
+        if '_1.' in name or '_2.' in name:
+            under_suffix_notation+=1
+        elif '1.' in name or '2.' in name:
+            suffix_notation+=1
+        if '=' in name:
+            equal_notation+=1
+    if read_notation==0 and suffix_notation==0 and under_suffix_notation==0:
+        new_names={}
+        for i in fastq_paths:
+            if '/' in i or '\\' in i:
+                n = export.findFilename(i)
+            if '=' in n:
+                n = string.split(n,'=')[1]
+            new_names[n] = [i]
+        ### likely single-end samples
+        return new_names, 'single'
+    else:
+        new_names={}
+        if equal_notation==0:
+            for i in fastq_paths:
+                name = string.split(i,'=')[-1]
+                name = string.replace(name,'.fastq.gz','')
+                name = string.replace(name,'.fastq','')
+                if '/' in name or '\\' in name:
+                    name = export.findFilename(name)
+                if '=' in name:
+                    name = string.split(name,'=')[1]
+                try: new_names[name].append(i)
+                except Exception: new_names[name]=[i]
+        else:
+            for i in fastq_paths:
+                if suffix_notation>0:
+                    pairs = ['1.','2.']
+                else:
+                    pairs = ['read1','read2','pair1','pair2','_1.','_2.']
+                n=str(i)
+                n = string.replace(n,'.fastq.gz','')
+                n = string.replace(n,'.fastq','')
+                for p in pairs: n = string.replace(n,p,'')
+                if '/' in n or '\\' in n:
+                    n = export.findFilename(n)
+                if '=' in n:
+                    n = string.split(n,'=')[1]
+                try: new_names[n].append(i)
+                except Exception: new_names[n]=[i]
+        return new_names, 'paired'
+            
+def getFASTAFile(species):
+    fasta_file=None
+    fasta_folder = 'AltDatabase/'+species+'/fasta/'
+    dir_list = read_directory(filepath(fasta_folder))
+    for file in dir_list:
+        if 'fa.gz' in file: fasta_file = filepath(fasta_folder+file)
+    return fasta_file
+
 if __name__ == '__main__':
+    filename = '/Volumes/SEQ-DATA/AML-TCGA/MDS-AML-combined/counts.AML-MDS.txt'
+    fastRPKMCalculate(filename);sys.exit()
+    copyICGSfiles('','');sys.exit()
+    runKallisto('Mm','test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

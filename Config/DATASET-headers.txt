@@ -1,0 +1,1 @@
+Ensembl_gene	Definition	Symbol	Select Cellular Compartments	Select Protein Classes	Chromosome	Strand	Genomic Gene Corrdinates	GO-Biological Process	GO-Molecular Function	GO-Cellular Component	WikiPathways	ANOVA-rawp	ANOVA-adjp	largest fold	maximum sample read count

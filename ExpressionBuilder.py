@@ -95,6 +95,7 @@ def checkExpressionFileFormat(expFile):
     inputMax=0; inputMin=10000; increment=0
     expressed_values={}
     for line in open(expFile,'rU').xreadlines():
+        line = cleanUpLine(line)
         key = string.split(line,'\t')[0]
         t = string.split(line,'\t')
         if firstLine:
@@ -107,7 +108,9 @@ def checkExpressionFileFormat(expFile):
                 values = [0 if x=='' else x for x in values]
             else:
                 values = t[1:]
-            values = map(lambda x: float(x), values)
+            try: values = map(lambda x: float(x), values)
+            except Exception: print values;sys.exit()
+            
             if max(values)>inputMax: inputMax = max(values)
             if min(values)<inputMin: inputMin = min(values)
             
@@ -140,6 +143,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
       data = cleanUpLine(line)
       if data[0] != '#':
         fold_data = string.split(data,'\t'); arrayid = fold_data[0]
+        if arrayid[0]== ' ': arrayid = arrayid[1:] ### Cufflinks issue
         #if 'counts.' in expr_input_dir: arrayid,coordinates = string.split(arrayid,'=') ### needed for exon-level analyses only
         ### differentiate data from column headers
         if x == 1:
@@ -637,7 +641,10 @@ def exportGOEliteInput(headers,system_code):
                         ensembl_gene = string.split(ensembl_gene,':')[0]
                     if '-' in ensembl_gene:
                         ensembl_gene = string.split(ensembl_gene,'-')[0]
-                    probeset = ensembl_gene 
+                    probeset = ensembl_gene
+                elif ':' in probeset:
+                    probeset = string.split(probeset,':')[0]
+                    system_code = 'Sy'
             except Exception:
                 pass
 
@@ -669,6 +676,9 @@ def exportGOEliteInput(headers,system_code):
                         if '-' in ensembl_gene:
                             ensembl_gene = string.split(ensembl_gene,'-')[0]
                         probeset = ensembl_gene
+                    elif ':' in probeset:
+                        probeset = string.split(probeset,':')[0]
+                        system_code = 'Sy'
                 except Exception:
                     pass
                 values = string.join([probeset,system_code,str(log_fold),str(p_value)],'\t')+'\n'
@@ -1421,7 +1431,7 @@ def parse_custom_annotations(filename):
     print len(custom_array_db), "custom array entries process"
     return custom_array_db
 
-def remoteLineageProfiler(params,expr_input_dir,ArrayType,Species,Vendor,customMarkers=False):
+def remoteLineageProfiler(params,expr_input_dir,ArrayType,Species,Vendor,customMarkers=False,specificPlatform=False):
     global species
     global array_type
     global vendor
@@ -1449,10 +1459,10 @@ def remoteLineageProfiler(params,expr_input_dir,ArrayType,Species,Vendor,customM
         #print traceback.format_exc()
         None
     
-    graphic_links = performLineageProfiler(expr_input_dir,graphics_links,customMarkers)
+    graphic_links = performLineageProfiler(expr_input_dir,graphics_links,customMarkers,specificPlatform=specificPlatform)
     return graphic_links
     
-def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False):
+def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False,specificPlatform=False):
     try:
         import WikiPathways_webservice
         import LineageProfiler
@@ -1474,6 +1484,8 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False):
             array_type_data = vendor, array_type
             exp_output = export.findParentDir(expr_input_dir)+'/LineageCorrelations-'+export.findFilename(expr_input_dir)
         
+        if specificPlatform == False:
+            compendium_platform = 'exon'
         status = False
         compareToAll=False
         """
@@ -1486,7 +1498,7 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False):
         print customMarkers
         """
         try:
-            zscore_output_dir1 = LineageProfiler.runLineageProfiler(species,array_type_data,expr_input_dir, exp_output,compendium_type,'gene',customMarkers); status = True
+            zscore_output_dir1 = LineageProfiler.runLineageProfiler(species,array_type_data,expr_input_dir, exp_output,compendium_type,compendium_platform,customMarkers); status = True
             #zscore_output_dir1 = None
         except Exception:
             print traceback.format_exc(),'\n'
@@ -1589,7 +1601,7 @@ def combineLPResultFiles(input_files):
         o.close()
     except Exception: pass
     
-    returnRowHeaderForMaxEntry(output_file,5)
+    returnRowHeaderForMaxEntry(output_file,10)
     return output_file
 
 def visualizeQCPlots(expr_input_dir):
@@ -1788,7 +1800,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         probeset_db,annotate_db,constitutive_gene_db,splicing_analysis_db = ExonArrayEnsemblRules.getAnnotations('no',constitutive_source,source_biotype,species)
         expr_input_dir = expr_input_dir[:-4]+'-steady-state.txt'
         """
-        if norm == 'RPKM':
+        if norm == 'RPKM' and array_type == 'RNASeq':
             ### Separately analyze steady-state counts first, to replace fold changes
             counts_expr_dir = string.replace(expr_input_dir,'exp.','counts.')
             if 'counts.' not in counts_expr_dir: counts_expr_dir = 'counts.'+counts_expr_dir ### Occurs if 'exp.' not in the filename
@@ -3438,6 +3450,7 @@ def returnRowHeaderForMaxEntry(filename,top):
         max_vals.reverse()
         term = column_header[list(row).index(max_vals[0])]
         term+= '('+str(max_vals[0])[:4]+')|'
+        
         if top>1:
             term+= column_header[list(row).index(max_vals[1])]
             term+= '('+str(max_vals[1])[:4]+')|'
@@ -3446,11 +3459,29 @@ def returnRowHeaderForMaxEntry(filename,top):
             term+= '('+str(max_vals[2])[:4]+')|'
         if top>3:
             term+= column_header[list(row).index(max_vals[3])]
-            term+= '('+str(max_vals[2])[:4]+')|'
+            term+= '('+str(max_vals[3])[:4]+')|'
         if top>4:
             term+= column_header[list(row).index(max_vals[4])]
-            term+= '('+str(max_vals[2])[:4]+')|'
-            
+            term+= '('+str(max_vals[4])[:4]+')|'
+        if top>5:
+            term+= column_header[list(row).index(max_vals[5])]
+            term+= '('+str(max_vals[5])[:4]+')|'
+        if top>6:
+            term+= column_header[list(row).index(max_vals[6])]
+            term+= '('+str(max_vals[6])[:4]+')|'
+        if top>7:
+            term+= column_header[list(row).index(max_vals[7])]
+            term+= '('+str(max_vals[7])[:4]+')|'
+        if top>8:
+            term+= column_header[list(row).index(max_vals[8])]
+            term+= '('+str(max_vals[8])[:4]+')|'
+        if top>9:
+            term+= column_header[list(row).index(max_vals[9])]
+            term+= '('+str(max_vals[9])[:4]+')|'
+        if top>10:
+            term+= column_header[list(row).index(max_vals[10])]
+            term+= '('+str(max_vals[10])[:4]+')|'
+    
         #print comparison, term
         export_object.write(comparison+'\t'+term+'\n')
         x+=1

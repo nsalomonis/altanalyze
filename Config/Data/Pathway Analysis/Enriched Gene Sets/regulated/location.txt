@@ -1,0 +1,2 @@
+GO-Elite/regulated/GO-Elite_results/Search:pruned
+Restriction:.txt

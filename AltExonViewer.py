@@ -628,6 +628,7 @@ def buildAltExonDatabases(species,platform):
     alignAllDomainsToTranscripts(species,platform)
     
 if __name__ == '__main__':
+    isoformViewer();sys.exit()
     species = 'Hs'; type = 'exon'; platform = 'RNASeq'
     #importAllTranscriptData(species); sys.exit()
     #getCodingGenomicCoordinates(species)

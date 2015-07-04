@@ -198,7 +198,7 @@ def Indexing(counts,inputpsi,output):
 	    
 		    if jj != p[0]:
 		        if jj in index_read:
-		           print jj
+
 		           chrom,start_l,end_l,a,ch1= write_index(gene_label[i],index_read[jj])
   
 

@@ -1,0 +1,3 @@
+AltResults/Clustering/
+Search:Combined-junction-exon-evidence
+Restriction:.txt

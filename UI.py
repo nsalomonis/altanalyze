@@ -466,7 +466,15 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         expFile = fl.ExpFile()
         count = verifyFileLength(expFile)
         if count==0:
-            biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp_instance)
+            try: biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp_instance)
+            except Exception:
+                try:
+                    fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
+                    fastq_folder = fl.RunKallisto()
+                    RNASeq.runKallisto(species,dataset,fl.RootDir(),fastq_folder,returnSampleNames=False)   
+                except Exception:
+                    print 'Kallisto failed due to:',traceback.format_exc() 
+
         else:
             biotypes = getBiotypes(expFile)
         array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',array_type)
@@ -768,7 +776,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
                     expr_input_dir = string.replace(expr_input_dir,'.txt','-steady-state.txt')
     
         print '\n****Running LineageProfiler****'
-        graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder)
+        graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder,specificPlatform=True)
         if len(graphic_links)>0:
             print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
             try: InfoWindow(print_out, 'Continue')
@@ -1451,12 +1459,12 @@ class GUI:
             if defaults == 'groups':
                 notes = "For each file, type in a name for the group it belongs to\n(e.g., 24hrs, 48hrs, 4days, etc.)."
                 Label(self._parent,text=notes).pack(); label_text_str = 'AltAnalyze Group Names'
-                if len(option_list)<15: height = 320; width = 320
+                if len(option_list)<15: height = 320; width = 400
 
             elif defaults == 'batch':
                 notes = "For each file, type in a name for the BATCH it belongs to\n(e.g., batch1, batch2, batch3 etc.)."
                 Label(self._parent,text=notes).pack(); label_text_str = 'AltAnalyze Group Names'
-                if len(option_list)<15: height = 320; width = 320
+                if len(option_list)<15: height = 320; width = 400
             elif defaults == 'comps':
                 notes = "Experimental Group\t\t\tBaseline Group     "
                 label_text_str = 'AltAnalyze Pairwise Group Comparisons'
@@ -1464,14 +1472,14 @@ class GUI:
             elif 'filter_for_AS' in option_list:
                 label_text_str = 'AltAnalyze Alternative Exon Analysis Parameters'
                 height = 350; width = 400; use_scroll = 'yes'
-                if os.name != 'nt': width+=50
+                if os.name != 'nt': width+=100
             elif 'pathway_permutations' in option_list:
                 label_text_str = 'GO-Elite Parameters'
                 height = 350; width = 425; use_scroll = 'yes'
             elif 'expression_data_format' in option_list:
                 label_text_str = "AltAnalyze Expression Dataset Parameters"
                 height = 350; width = 400; use_scroll = 'yes'
-                if os.name != 'nt': width+=50
+                if os.name != 'nt': width+=100
             elif 'Genes_network' in option_list:
                 label_text_str = "Network Analysis Parameters"
                 height = 350; width = 400; use_scroll = 'yes'
@@ -1489,7 +1497,7 @@ class GUI:
                 height = 310; width = 400; use_scroll = 'yes'
                 
             if os.name != 'nt':height+=75; width+=150
-            if os.name== 'nt':height+=25; width+=25
+            if os.name== 'nt':height+=25; width+=50
             if 'linux' in sys.platform: offset = 25
             else: offset=0
             self.sf = PmwFreeze.ScrolledFrame(self._parent,
@@ -3268,6 +3276,7 @@ class OptionData:
                 global_default = string.split(global_default,'|') ### store as a list
             self._default_option = global_default
     def Option(self): return self._option
+    def VariableName(self): return self._option
     def Display(self): return self._displayed_title
     def setDisplay(self,display_title): self._displayed_title = display_title
     def DisplayObject(self): return self._display_object
@@ -3278,6 +3287,7 @@ class OptionData:
     def setNotes(self,notes): self._notes = notes
     def ArrayOptions(self): return self._array_options
     def setArrayOptions(self,array_options): self._array_options = array_options
+    def Options(self): return self._array_options
     def __repr__(self): return self.Option()+'|'+self.Display()
 
 def importUserOptions(array_type,vendor=None):
@@ -3652,7 +3662,7 @@ def formatArrayGroupsForGUI(array_group_list, category = 'GroupArrays'):
         
         if category != 'BatchArrays':
             ### Add a checkbox at the top to allow for automatic assignment of groups (e.g., Single Cell Data)
-            option='PredictGroups';displayed_title='Predict Groups from Unknown Sample Types';display_object='single-checkbox';notes='';array_options=['---']
+            option='PredictGroups';displayed_title='Run de novo cluster prediction (ICGS) to discover groups, instead';display_object='single-checkbox';notes='';array_options=['---']
             od = OptionData(option,displayed_title,display_object,notes,array_options,'')
             option_db[option] = od
             option_list[category] = [option]
@@ -3691,6 +3701,7 @@ class ExpressionFileLocationData:
         import platform; self.architecture = platform.architecture()[0]
         self.normalize_feature_exp = 'NA'
         self.normalize_gene_data = 'NA'
+        self.runKallisto =''
     def setExpFile(self, exp_file):self._exp_file=exp_file
     def ExpFile(self): return self._exp_file
     def StatsFile(self): return self._stats_file
@@ -3774,6 +3785,8 @@ class ExpressionFileLocationData:
     def setXHybRemoval(self,xhyb): self._xhyb = xhyb
     def XHybRemoval(self): return self._xhyb
     def setExonBedBuildStatus(self,bed_build_status): self.bed_build_status = bed_build_status
+    def setRunKallisto(self, runKallisto): self.runKallisto = runKallisto
+    def RunKallisto(self): return self.runKallisto
     def setChannelToExtract(self,channel_to_extract): self.channel_to_extract = channel_to_extract
     def ExonBedBuildStatus(self): return self.bed_build_status
     def ChannelToExtract(self): return self.channel_to_extract
@@ -4223,7 +4236,7 @@ def getUserParameters(run_parameter,Multi=None):
     run_MiDAS=no; analyze_functional_attributes=no; microRNA_prediction_method=na
     gene_expression_cutoff=na; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
     remove_intronic_junctions=na; build_exon_bedfile=no; input_cdf_file = na; bgp_file = na
-    clf_file = na; remove_xhyb = na; multiThreading = True
+    clf_file = na; remove_xhyb = na; multiThreading = True; input_fastq_dir = ''
     
     compendiumType = 'protein_coding'; compendiumPlatform = 'gene'
     calculate_splicing_index_p=no; run_goelite=no; ge_ptype = 'rawp'; probability_algorithm = na
@@ -4476,6 +4489,9 @@ def getUserParameters(run_parameter,Multi=None):
                 try: option_db[option].setDefaultOption(old_options[option])
                 except Exception: null=[]
                 
+        if run_from_scratch == 'Interactive Result Viewer':
+            AltAnalyze.AltAnalyzeSetup('remoteViewer');sys.exit()
+            
         if run_from_scratch == 'Additional Analyses':
 
             if backSelect == 'no' or 'Additional Analyses' == selected_parameters[-1]:
@@ -4901,6 +4917,9 @@ def getUserParameters(run_parameter,Multi=None):
                     try: normalize_feature_exp = 'RPKM'
                     except Exception: pass
                 except KeyError: build_exon_bedfile = 'no'
+                try:
+                    input_fastq_dir = gu.Results()['input_fastq_dir']
+                except Exception: pass
                 try: channel_to_extract = gu.Results()['channel_to_extract']
                 except Exception: channel_to_extract = 'no'
                 if build_exon_bedfile == 'yes':
@@ -4910,21 +4929,31 @@ def getUserParameters(run_parameter,Multi=None):
                 if len(dataset_name)<1:
                     print_out = "Please provide a name for the dataset before proceeding."
                     IndicatorWindow(print_out,'Continue')
-                elif 'input_cel_dir' in gu.Results():
-                    cel_file_dir = gu.Results()['input_cel_dir']
-                    cel_files,cel_files_fn=identifyCELfiles(cel_file_dir,array_type,vendor)
-                    try: output_dir = gu.Results()['output_CEL_dir']
-                    except KeyError: output_dir = cel_file_dir
-                    if len(output_dir)==0: output_dir = cel_file_dir
-                    if len(cel_files)>0: assinged = 'yes' ### CEL files are present in this directory
+                elif 'input_cel_dir' in gu.Results() or 'input_fastq_dir' in gu.Results():
+                    if len(input_fastq_dir)>0:
+                        import RNASeq
+                        cel_files = RNASeq.runKallisto(species,'',input_fastq_dir,input_fastq_dir,returnSampleNames=True)
+                        try: output_dir = gu.Results()['output_CEL_dir']
+                        except KeyError: output_dir = input_fastq_dir
+                        option_db['perform_alt_analysis'].setArrayOptions(['NA'])
+                        assinged = 'yes'
+
                     else:
-                        print_out = "No valid "+import_file+" files were found in the directory\n"+cel_file_dir+"\nPlease verify and try again."
-                        IndicatorWindow(print_out,'Continue')
+                        cel_file_dir = gu.Results()['input_cel_dir']
+                        cel_files,cel_files_fn=identifyCELfiles(cel_file_dir,array_type,vendor)
+                        try: output_dir = gu.Results()['output_CEL_dir']
+                        except KeyError: output_dir = cel_file_dir
+                        if len(output_dir)==0: output_dir = cel_file_dir
+                        if len(cel_files)>0: assinged = 'yes' ### CEL files are present in this directory
+                        else:
+                            print_out = "No valid "+import_file+" files were found in the directory\n"+cel_file_dir+"\nPlease verify and try again."
+                            IndicatorWindow(print_out,'Continue')
+                    
                 else:
                     print_out = "The directory containing "+import_file+" files has not\nbeen assigned! Select a directory before proceeding."
                     IndicatorWindow(print_out,'Continue')
                     
-            if array_type != 'RNASeq' and vendor != 'Agilent':
+            if array_type != 'RNASeq' and vendor != 'Agilent' and len(input_fastq_dir)==0:
                 ### Specific to Affymetrix CEL files
                 cel_file_list_dir = exportCELFileList(cel_files_fn,cel_file_dir)
                 """Determine if Library and Annotations for the array exist, if not, download or prompt for selection"""
@@ -5184,7 +5213,8 @@ def getUserParameters(run_parameter,Multi=None):
                         except Exception:
                             if array_type == 'RNASeq': expression_threshold = 0
                             else: expression_threshold = 'NA'
-                        perform_alt_analysis = gu.Results()['perform_alt_analysis']
+                        try: perform_alt_analysis = gu.Results()['perform_alt_analysis']
+                        except Exception: perform_alt_analysis = 'just expression'
                         try: analyze_as_groups = gu.Results()['analyze_as_groups']
                         except Exception: analyze_as_groups = ''
                         if perform_alt_analysis == 'just expression': perform_alt_analysis = 'expression'
@@ -5762,6 +5792,10 @@ def getUserParameters(run_parameter,Multi=None):
             button_text = 'Download Annotations'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
             IndicatorLinkOutWindow(print_out,button_text,url)
             """
+            
+    if len(input_fastq_dir)>0:
+        array_type = "3'array"
+        vendor = 'other:Ensembl' ### Ensembl linked system name
     if microRNA_prediction_method == 'two or more': microRNA_prediction_method = 'multiple'
     else: microRNA_prediction_method = 'any'
 
@@ -5793,6 +5827,7 @@ def getUserParameters(run_parameter,Multi=None):
             fl.setChannelToExtract(channel_to_extract)
         elif run_from_scratch == 'Process RNA-seq reads':
             fl.setCELFileDir(cel_file_dir); fl.setOutputDir(output_dir); fl.setExonBedBuildStatus(build_exon_bedfile)
+            fl.setRunKallisto(input_fastq_dir);
         if array_type != 'gene' and array_type != "3'array":
             compendiumPlatform = 'exon'
         fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
@@ -6164,6 +6199,15 @@ def downloadInteractionDBs(species,windowType):
     StatusWindow(values,analysis,windowType=windowType) ### open in a TopLevel TK window (don't close current option selection menu)
     
 if __name__ == '__main__':
+    root = Tk()
+    import Config.RemoteViewer as cr
+    currentDirectory = str(os.getcwd())
+    os.chdir(currentDirectory+'/Config') 
+    app = wx.PySimpleApp(False)
+    fr = cr.Main(parent=None,id=1)
+    fr.Show()
+    app.MainLoop()
+    os.chdir(currentDirectory)
     try:
         import multiprocessing as mlp
         mlp.freeze_support()
@@ -6172,5 +6216,6 @@ if __name__ == '__main__':
         mlp=None
 
     #getUpdatedParameters(array_type,species,run_from_scratch,file_dirs)    
-    a = getUserParameters('yes'); print a; sys.exit()
+    a = getUserParameters('yes')
+
     

@@ -1,0 +1,2 @@
+DataPlots/Search:hierarchical
+Restriction:.txt,.png,interactive

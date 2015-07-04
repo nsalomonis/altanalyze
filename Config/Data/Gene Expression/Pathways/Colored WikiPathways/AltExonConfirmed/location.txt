@@ -1,0 +1,3 @@
+GO-Elite/AltExonConfirmed/WikiPathways 
+Search:WP
+Restriction:.png

@@ -46,12 +46,17 @@ pyinstaller_adj = '/AltAnalyze.app/Contents/MacOS'
 py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj,pyinstaller_adj]
 py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
+for i in py2app_aa_dirs:
+    i = string.replace(i,'AltAnalyze.app','Config/AltAnalyzeViewer.app')
+    py2app_dirs.append(i)
+
 if ('linux' in sys.platform or 'posix' in sys.platform) and getattr(sys, 'frozen', False): ### For PyInstaller
     application_path = os.path.dirname(sys.executable)
     #application_path = sys._MEIPASS  ### should be the same as the above
 else:
     application_path = os.path.dirname(__file__)
     
+
 if 'AltAnalyze?' in application_path:
     application_path = string.replace(application_path,'//','/')
     application_path = string.replace(application_path,'\\','/') ### If /// present
@@ -141,7 +146,7 @@ def correctGeneDatabaseDir(fn):
         if 'EnsMart' in fn: proceed = 'no'
         if proceed == 'yes':
             fn = string.replace(fn,'Databases','Databases/'+gene_database_dir)
-            if 'AltDatabase/affymetrix' not in fn and 'NoVersion' not in fn and 'AltDatabase/primer3' not in fn and 'AltDatabase/TreeView' not in fn:
+            if 'AltDatabase/affymetrix' not in fn and 'NoVersion' not in fn and 'AltDatabase/primer3' not in fn and 'AltDatabase/TreeView' not in fn and 'AltDatabase/kallisto' not in fn:
                 if 'AltDatabase' in fn:
                     fn = string.replace(fn,'AltDatabase','AltDatabase/'+gene_database_dir)
         fn = string.replace(fn,'NoVersion','') ### When the text 'NoVersion' is in a filepath, is tells the program to ignore it for adding the database version

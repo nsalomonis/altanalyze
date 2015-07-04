@@ -5069,9 +5069,34 @@ def timestamp():
     time_stamp = today+'-'+time_stamp[3]
     return time_stamp
 
+def callWXPython():
+    print 'hello'
+    import wx
+    import Config.RemoteViewer
+    Config.RemoteViewer.remoteViewer()
+
 def AltAnalyzeSetup(skip_intro):
     global apt_location; global root_dir;global log_file; global summary_data_db; summary_data_db={}; reload(UI)
     global probability_statistic; global commandLineMode; commandLineMode = 'no'
+    if 'remoteViewer' == skip_intro:
+        currentDirectory = str(os.getcwd())
+        os.chdir(currentDirectory+'/Config') 
+        os.system('python remoteViewer6.py');sys.exit()
+        
+        import threading
+        import wx
+        app = wx.PySimpleApp()
+        t = threading.Thread(target=callWXPython)
+        t.setDaemon(1)
+        t.start()
+        """
+        s = 1
+        queue = mlp.Queue()
+        proc = mlp.Process(target=callWXPython) ### passing sys.stdout unfortunately doesn't work to pass the Tk string
+        proc.start()
+        sys.exit()
+        """
+        
     expr_var, alt_var, additional_var, goelite_var, exp_file_location_db = UI.getUserParameters(skip_intro,Multi=mlp)
     """except Exception:
         if 'SystemExit' not in str(traceback.format_exc()):
@@ -5374,13 +5399,22 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             except Exception:
                 print print_out; sys.exit()
         reload(ProcessAgilentArrays)
-        
+
   if run_from_scratch == 'Process RNA-seq reads' or run_from_scratch == 'buildExonExportFiles':
       import RNASeq; reload(RNASeq); import RNASeq
       for dataset in exp_file_location_db: fl = exp_file_location_db[dataset]
       ### The below function aligns splice-junction coordinates to Ensembl exons from BED Files and
       ### exports AltAnalyze specific databases that are unique to this dataset to the output directory
-      biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp)
+      fastq_folder = fl.RunKallisto()
+      try: fastq_folder = fl.RunKallisto()
+      except Exception: print traceback.format_exc()
+      if len(fastq_folder)>0:
+          try:
+              RNASeq.runKallisto(species,dataset,root_dir,fastq_folder,returnSampleNames=False)
+              biotypes = 'ran'
+          except Exception: biotypes='failed'
+      else:
+          biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp)
       
       if biotypes == 'failed':
           print_out = 'No valid chromosomal positions in the input BED or BioScope files. Exiting AltAnalyze.'
@@ -7733,6 +7767,7 @@ if __name__ == '__main__':
 
     #testResultsPanel()
     skip_intro = 'yes'; #sys.exit()
+    #skip_intro = 'remoteViewer'
     runCommandLineVersion()
     if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)
 

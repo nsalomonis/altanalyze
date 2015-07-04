@@ -1,0 +1,2 @@
+GO-Elite/regulated/WikiPathwaysSearch:WP
+Restriction:.png
