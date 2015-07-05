@@ -1,18 +1,22 @@
-#summary Tutorial 4 - De Novo Identification of Sample Groups
+#summary Tutorial 4 - De Novo Cluster Prediction (ICGS)
 
-= Tutorial 4 - De Novo Identification of Sample Groups =
+= Tutorial 4 - De Novo Identification of Genes and Sample Groups =
 
 A challenging bioinformatics challenge is the unbiased identification of both major and sub-populations of bulk or single-cell transcriptomes where no obvious reference gene or splice signatures exist. In addition, while transcriptome samples are often annotated as belonging to one or more groups, miss-classified samples or other unexpected covariants may also result in atypical variation that is difficult to characterize. A new set of algorithms have been implemented in AltAnalyze to identify the most coherent gene and sample expression signatures, prior to group comparison analyses. These new methods become particularly important when considering unknown single-cell RNA-Seq profiles and tumor subtype classification. In addition to gene expression, the software allows for the highly accurate and unbiased identification of highly similar alternative splicing signatures.
 
 == Algorithms ==
 
 There are currently two major methods implemented in the de novo sample discovery workflow:
- * Unsupervised: Correlation-based and expression filtering with outlier-removal
- * Supervised: Gene or gene-set (e.g., pathway) correlation-based
+ * [Unsupervised ICGS]
+ * Supervised ICGS
 
-Both workflows initially exclude genes with low overall expression, low differential expression and ncRNAs. The expression thresholds are used defined. Differential expression is carried out between a set of the lowest and highest expressed measurements for a gene across samples (user defined cut point). The unsupervised workflow allows for the additional removal of cell-cycle associated gene-signatures. The unsupervised workflow only retains genes that are highly correlated to 10 or more genes, where the correlations in the gene-set are not driven exclusively by a single sample (unless single sample differences are examined). The supervised workflow accepts a single gene, multiple genes, or gene sets available from GO-Elite (e.g., disease ontologies, gene ontology, pathways, cell-type specific genes). When used, all genes in the supplied gene set are queried against the above described filter set, then correlated against all other genes to identify coherent signatures in the data. This analysis uses the user supplied correlation cutoffs and can be driven by outlier effects.
+Following both ICGS analyses, the user will be presented with the option to select one of the clustered outputs for the standard pairwise comparison workflow (all possible sample cluster in comparisons). Both workflows can optionally exclude genes with low overall expression, low differential expression and ncRNAs. The expression thresholds are used defined. Differential expression is carried out between a set of the lowest and highest expressed measurements for a gene across samples (user defined cut point). Both allow for the additional removal of cell-cycle associated gene-signatures using either a stringent or method or conservative method. 
 
-When supervised or unsupervised gene sets are identified, hierarchical clustering is performed to identify the major groups. A heatmap is returned by the software to evalute which grouping should be selected for group pairwise comparisons. The clustering algorithm to use can be selected from the main De Novo Sample Prediction Analysis interface.
+=== Unsupervised ICGS ===
+Details on the unsupervised ICGS workflow can be found [ICGS here]. This analysis performs iterative rounds of filtering and clustering to obtain novel supervising genes to pull in the highly correlated genes sets for clustering discovery. Different thresholds will likely be required (see below).
+
+=== Supervised ICGS ===
+The supervised workflow accepts a single gene, multiple genes, or gene sets available from GO-Elite (e.g., disease ontologies, gene ontology, pathways, cell-type specific genes) or prior signatures stored by the user (Additional Analyses > heatmap or PCA analyses). The workflow is identical to the unsupervised workflow, except following the Pioneering Round ([ICGS Step 1]), the initially filtered dataset (RPKM, gene counts and fold change) is further filtered for any genes in the supplied gene set.
 
 == Input Data Formats ==
 
