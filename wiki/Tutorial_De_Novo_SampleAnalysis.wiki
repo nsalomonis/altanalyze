@@ -23,7 +23,7 @@ The supervised workflow accepts a single gene, multiple genes, or gene sets avai
 
 These analyses are compatible with all regular supported file formats in AltAnalyze (e.g., RNA-Seq bed, Affymetrix CEL, Agilent feature extraction, FPKM/TPM/RPKM txt files). For RNA-Seq we recommend using either junction.bed files directly (TopHat, SpliceMap), TCGA junction_expression.txt files and/or BedTools produced exon.bed files. Already normalized FPKM/TPM/RPKM files, can be loaded as the "vendor" "Other ID" and "platform" corresponding to the associated gene identifier (e.g., Ensembl, Symbol). For more information on these inputs, go http://code.google.com/p/altanalyze/wiki/Tutorial_AltExpression_RNASeq here].
 
-== Running the De Novo Analysis ==
+== Running ICGS in the Graphical Interface ==
 
 The instructions for running the de novo analysis are identical to all other workflow analyses in AltAnalyze (see [https://code.google.com/p/altanalyze/wiki/Tutorials tutorials]), however, an additional step allows the user to discover groups by clustering.
 
@@ -37,7 +37,7 @@ The instructions for running the de novo analysis are identical to all other wor
 
 _*Note*_: For HOPACH clustering analyses, you must have the R programming environment installed. On Windows, R must also be registered in your system path. Once R is registered by your system, AltAnalyze can install any necessary packages locally in the AltAnalyze Config directory automatically.
 
-=== Running by Command-Line ===
+== Running ICGS by Command-Line ==
 
 *Unsupervised ICGS from FPKM/TPM/RPKM tab-delimited text file*
 {{{
