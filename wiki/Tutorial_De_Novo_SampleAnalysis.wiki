@@ -1,4 +1,5 @@
 #summary Tutorial 4 - De Novo Cluster Prediction (ICGS)
+#labels Featured
 
 = Tutorial 4 - De Novo Identification of Gene-Sample Clusters =
 
