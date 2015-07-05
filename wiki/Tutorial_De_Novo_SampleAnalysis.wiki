@@ -1,6 +1,6 @@
 #summary Tutorial 4 - De Novo Cluster Prediction (ICGS)
 
-= Tutorial 4 - De Novo Identification of Sample and Gene Clusters =
+= Tutorial 4 - De Novo Identification of Gene-Sample Clusters =
 
 A challenging bioinformatics challenge is the unbiased identification of both major and sub-populations of bulk or single-cell transcriptomes where no obvious reference gene or splice signatures exist. In addition, while transcriptome samples are often annotated as belonging to one or more groups, miss-classified samples or other unexpected covariants may also result in atypical variation that is difficult to characterize. A new set of algorithms have been implemented in AltAnalyze to identify the most coherent gene and sample expression signatures, prior to group comparison analyses. These new methods become particularly important when considering unknown single-cell RNA-Seq profiles and tumor subtype classification. In addition to gene expression, the software allows for the highly accurate and unbiased identification of highly similar alternative splicing signatures.
 
