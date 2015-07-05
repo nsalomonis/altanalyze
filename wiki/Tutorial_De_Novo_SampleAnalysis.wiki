@@ -36,3 +36,16 @@ The instructions for running the de novo analysis are identical to all other wor
     * Re-run the analysis when prompted using different gene sets,  different filtering parameters or different clustering options (e.g., HOPACH) to select the most informative sample groupings.
 
 _*Note*_: For HOPACH clustering analyses, you must have the R programming environment installed. On Windows, R must also be registered in your system path. Once R is registered by your system, AltAnalyze can install any necessary packages locally in the AltAnalyze Config directory automatically.
+
+=== Running by Command-Line ===
+
+*Unsupervised ICGS from FPKM/TPM/RPKM tab-delimited text file*
+{{{
+python AltAnalyze.py --runICGS yes --expdir "/Users/SingleCell/Myoblast/myoblast.txt" --platform RNASeq --species Hs --GeneSetSelection BioMarkers --PathwaySelection Heart --column_method hopach --rho 0.4 --ExpressionCutoff 4 --FoldDiff 4 --SamplesDiffering 3 --excludeCellCycle conservative
+}}}
+
+
+*Supervised ICGS from FPKM/TPM/RPKM tab-delimited text file*
+{{{
+python AltAnalyze.py --runICGS yes --expdir "/Users/SingleCell/Myoblast/myoblast.txt" --platform RNASeq --species Hs --GeneSetSelection BioMarkers --PathwaySelection Myotube --PathwaySelection "Mesenchymal Stem Cells" --column_method hopach --rho 0.4 --ExpressionCutoff 4 --justShowTheseIDs "NKX2-5 T TBX5 NANOG SOX9" --FoldDiff 4 --SamplesDiffering 3 --excludeCellCycle conservative
+}}}
