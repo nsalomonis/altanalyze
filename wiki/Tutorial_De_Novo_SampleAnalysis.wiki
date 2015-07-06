@@ -41,7 +41,7 @@ _*Note*_: For HOPACH clustering analyses, you must have the R programming enviro
 
 *Unsupervised ICGS from FPKM/TPM/RPKM tab-delimited text file*
 {{{
-python AltAnalyze.py --runICGS yes --expdir "/Users/SingleCell/Myoblast/myoblast.txt" --platform RNASeq --species Hs --GeneSetSelection BioMarkers --PathwaySelection Heart --column_method hopach --rho 0.4 --ExpressionCutoff 4 --FoldDiff 4 --SamplesDiffering 3 --excludeCellCycle conservative
+python AltAnalyze.py --runICGS yes --expdir "/Users/SingleCell/Myoblast/myoblast.txt" --platform RNASeq --species Hs --column_method hopach --rho 0.4 --ExpressionCutoff 4 --FoldDiff 4 --SamplesDiffering 3 --excludeCellCycle conservative
 }}}
 
 
