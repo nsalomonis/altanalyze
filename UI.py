@@ -51,7 +51,8 @@ try:
             print 'WikiPathways visualization not supported (requires installation of suds)'
     try:
         from PIL import Image as PIL_Image
-        import ImageTk
+        try: import ImageTk
+        except Exception: from PIL import ImageTk
     except Exception:
         #print traceback.format_exc()
         #print 'Python Imaging Library not installed... using default PNG viewer'

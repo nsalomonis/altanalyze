@@ -5405,7 +5405,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       for dataset in exp_file_location_db: fl = exp_file_location_db[dataset]
       ### The below function aligns splice-junction coordinates to Ensembl exons from BED Files and
       ### exports AltAnalyze specific databases that are unique to this dataset to the output directory
-      fastq_folder = fl.RunKallisto()
+
       try: fastq_folder = fl.RunKallisto()
       except Exception: print traceback.format_exc()
       if len(fastq_folder)>0:
@@ -6019,8 +6019,9 @@ def commandLineRun():
     genesToReport = 60
     correlateAll = True
     expression_data_format='log'
-    runICDS=False
+    runICGS=False
     IDtype=None
+    runKallisto = False
 
     original_arguments = sys.argv
     arguments=[]
@@ -6076,10 +6077,10 @@ def commandLineRun():
                                                          'multiThreading=','multiProcessing=','genesToReport=',
                                                          'correlateAll=','normalization=','justShowTheseIDs=',
                                                          'direction=','analysisType=','algorithm=','rho=',
-                                                         'clusterGOElite=','geneSetName=','runICDS=','IDtype=',
+                                                         'clusterGOElite=','geneSetName=','runICGS=','IDtype=',
                                                          'CountsCutoff=','FoldDiff=','SamplesDiffering=','removeOutliers='
                                                          'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
-                                                         'excludeCellCycle='])
+                                                         'excludeCellCycle=','runKallisto=','fastq_dir='])
     
     except Exception:
         print traceback.format_exc()
@@ -6109,7 +6110,7 @@ def commandLineRun():
         elif opt == '--expname': exp_name=arg
         elif opt == '--output': output_dir=arg
         elif opt == '--vendor': manufacturer=arg
-        elif opt == '--runICDS': runICDS=True
+        elif opt == '--runICGS': runICGS=True
         elif opt == '--IDtype': IDtype=arg
         elif opt == '--ignoreBuiltSpecies': ignore_built_species=arg
         elif opt == '--platform':
@@ -6124,6 +6125,11 @@ def commandLineRun():
         elif opt == '--image': image_export.append(arg)
         elif opt == '--wpid': wpid=arg
         elif opt == '--mod': mod=arg
+        elif opt == '--runKallisto':
+            if arg == 'yes' or string.lower(arg) == 'true':
+                runKallisto = True
+        elif opt == '--fastq_dir':
+            input_fastq_dir = arg
         elif opt == '--additional':
             if additional_resources[0] == None:
                 additional_resources=[]
@@ -6176,8 +6182,8 @@ def commandLineRun():
         ### Will need to check here to see if the platform is supported (local or online files) OR wait until an error is encountered later
         
     ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
-    if len(image_export) > 0 or len(accessoryAnalysis)>0 or runICDS:
-        if runICDS:
+    if len(image_export) > 0 or len(accessoryAnalysis)>0 or runICGS:
+        if runICGS:
             try: species = species
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
             try: array_type = array_type
@@ -6197,7 +6203,7 @@ def commandLineRun():
                 if IDtype == None: IDtype = manufacturer
         
             row_method = 'weighted'
-            column_method = 'hopach'
+            column_method = 'average'
             row_metric = 'cosine'
             column_metric = 'cosine'
             color_gradient = 'yellow_black_blue'
@@ -6216,7 +6222,7 @@ def commandLineRun():
             SamplesDiffering = 3
             JustShowTheseIDs=''
             removeOutliers = False
-            
+            PathwaySelection=[]
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 if opt == '--row_method':
                     row_method=arg
@@ -6228,7 +6234,7 @@ def commandLineRun():
                 elif opt == '--column_metric': column_metric=arg
                 elif opt == '--color_gradient': color_gradient=arg
                 elif opt == '--GeneSetSelection': GeneSetSelection=arg
-                elif opt == '--PathwaySelection': PathwaySelection=arg
+                elif opt == '--PathwaySelection': PathwaySelection.append(arg)
                 elif opt == '--genes': GeneSelection=arg
                 elif opt == '--ExpressionCutoff': ExpressionCutoff=arg
                 elif opt == '--normalization': normalization=arg
@@ -6256,7 +6262,7 @@ def commandLineRun():
                         display=True
                     else:
                         display=False
-
+            if len(PathwaySelection)==0: PathwaySelection=''
             if len(GeneSetSelection)>0 or GeneSelection != '':
                 gsp = UI.GeneSelectionParameters(species,array_type,vendor)
                 gsp.setGeneSet(GeneSetSelection)
@@ -7067,12 +7073,14 @@ def commandLineRun():
         exp_name = ief_list[-1]
 
 
-    if len(cel_file_dir)>0:
+    if len(cel_file_dir)>0 or runKallisto == True:
         if exp_name == None:
             print "No experiment name defined. Please sumbit a name (e.g., --expname CancerComp) before proceeding."; sys.exit()
         else:
             dataset_name = 'exp.'+exp_name+'.txt'; exp_file_dir = filepath(output_dir+'/ExpressionInput/'+dataset_name)
-        if run_from_scratch!= 'Process Feature Extraction files':
+        if runKallisto:
+            run_from_scratch == 'Process RNA-seq reads'
+        elif run_from_scratch!= 'Process Feature Extraction files':
             run_from_scratch = 'Process CEL files'; proceed='yes'
             if array_type == 'RNASeq': file_ext = '.BED'
             else: file_ext = '.CEL'
@@ -7590,7 +7598,8 @@ def commandLineRun():
                 UI.exportGroups(exp_file_location_db,array_group_list)
                 print len(group_db), 'groups found'
                 if len(group_db) == 2: analyze_all_conditions = 'pairwise'
-
+            try: fl.setRunKallisto(input_fastq_dir)
+            except Exception: pass
         elif run_from_scratch == 'Process AltAnalyze filtered':
             if '.txt' in input_filtered_dir: ### Occurs if the user tries to load a specific file
                 dirs = string.split(input_filtered_dir,'/')
