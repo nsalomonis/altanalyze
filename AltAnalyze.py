@@ -5414,6 +5414,22 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
               biotypes = 'ran'
           except Exception: biotypes='failed'
       else:
+          analyzeBAMs = False; bedFilesPresent = False
+          dir_list = unique.read_directory(fl.BEDFileDir())
+          for file in dir_list:
+            if '.bam' in string.lower(file):
+                analyzeBAMs=True
+            if '.bed' in string.lower(file):
+                bedFilesPresent=True
+          if analyzeBAMs and bedFilesPresent==False:
+            import multiBAMtoBED
+            bam_dir = fl.BEDFileDir()
+            refExonCoordinateFile = filepath('AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt')
+            outputExonCoordinateRefBEDfile = bam_dir+'/BedRef/'+species+'_'+string.replace(dataset,'exp.','')
+            analysisType = ['exon','junction','reference']
+            #analysisType = ['junction']
+            multiBAMtoBED.parallelBAMProcessing(bam_dir,refExonCoordinateFile,outputExonCoordinateRefBEDfile,analysisType=analysisType,useMultiProcessing=fl.multiThreading(),MLP=mlp)
+    
           biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp)
       
       if biotypes == 'failed':
@@ -5692,6 +5708,11 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       try:
           graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
                     species,array_type,expFile=fl.CountsFile(),min_events=0,med_events=1)
+          inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI-clust.txt'
+          ### Calculate ANOVA p-value stats based on groups
+          matrix,original_data = statistics.matrixImport(inputpsi)
+          matrix_pvalues=statistics.runANOVA(matrix)
+          topGenes = statistics.returnANOVAFiltered(original_data,matrix_pvalues)
       except Exception: print traceback.format_exc()
       
       import RNASeq
@@ -5721,6 +5742,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                   if 'AltExonConfirmed' in file:
                       gene_dir = splicing_results_root+'/'+file
                       genes = UI.importGeneList(gene_dir,limit=50) ### list of gene IDs or symbols
+                      try: isoform_dir = UI.exportJunctionList(gene_dir,limit=50) ### list of gene IDs or symbols
+                      except Exception: pass
                       gene_string = gene_string+','+genes
                       print 'Imported genes from',file,'\n'
                       show_introns=False
@@ -5730,7 +5753,23 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None)    
       except Exception:
         print traceback.format_exc()
-      #"""                 
+
+      try:
+        top_PSI_junction = inputpsi[:-4]+'-ANOVA.txt'
+        try: isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
+        except Exception: pass
+      except Exception:
+        pass
+      try:
+          ### Create sashimi plot index
+          import SashimiIndex
+          SashimiIndex.remoteIndexing(species,fl)
+          import SashimiPlot
+          SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
+          SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
+      except Exception:
+        print traceback.format_exc()
+        
   try:
       clearObjectsFromMemory(exon_db); clearObjectsFromMemory(constitutive_probeset_db)
       clearObjectsFromMemory(go_annotations); clearObjectsFromMemory(original_microRNA_z_score_data)
@@ -6184,6 +6223,7 @@ def commandLineRun():
     ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
     if len(image_export) > 0 or len(accessoryAnalysis)>0 or runICGS:
         if runICGS:
+            #python AltAnalyze.py --runICGS yes --expdir "/Users/saljh8/Desktop/demo/Myoblast/ExpressionInput/exp.myoblast.txt" --platform "3'array" --species Hs --GeneSetSelection BioMarkers --PathwaySelection Heart --column_method hopach --rho 0.4 --ExpressionCutoff 200 --justShowTheseIDs "NKX2-5 T TBX5" --FoldDiff 10 --SamplesDiffering 3 --excludeCellCycle conservative
             try: species = species
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
             try: array_type = array_type
@@ -6792,7 +6832,7 @@ def commandLineRun():
                             print 'update_domain',update_domain
                             print 'update_miRs',update_miRs
                             update.executeParameters(specific_species,platform_name,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version)
-                        else: print 'ignoring',specific_species
+                        else: print 'ignoring',specific_species 
             sys.exit()
             
     if 'package' in update_method:
@@ -7074,6 +7114,7 @@ def commandLineRun():
 
 
     if len(cel_file_dir)>0 or runKallisto == True:
+        # python AltAnalyze.py --species Mm --platform RNASeq --runKallisto yes --expname test
         if exp_name == None:
             print "No experiment name defined. Please sumbit a name (e.g., --expname CancerComp) before proceeding."; sys.exit()
         else:

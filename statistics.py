@@ -918,13 +918,28 @@ def matrixImport(filename):
         if headerRow:
             group_db={}
             groups=[]
-            group_sample_list = map(lambda x: string.split(x,':'),values[1:])
-            index=1
-            for (g,s) in group_sample_list:
-                try: group_db[g].append(index)
-                except Exception: group_db[g] = [index]
-                index+=1
-                if g not in groups: groups.append(g)
+            if ':' in data:
+                group_sample_list = map(lambda x: string.split(x,':'),values[1:])
+                index=1
+                for (g,s) in group_sample_list:
+                    try: group_db[g].append(index)
+                    except Exception: group_db[g] = [index]
+                    index+=1
+                    if g not in groups: groups.append(g)
+            else:
+                import ExpressionBuilder
+                search_dir = string.split(filename,'AltResults')[0]+'ExpressionInput'
+                files = unique.read_directory(search_dir)
+                for file in files:
+                    if 'groups.' in file:
+                        sample_group_db = ExpressionBuilder.simplerGroupImport(search_dir+'/'+file)
+                index=0
+                for s in values[1:]:
+                    g = sample_group_db[s]
+                    try: group_db[g].append(index)
+                    except Exception: group_db[g] = [index]
+                    index+=1
+                    if g not in groups: groups.append(g)
             headerRow = False
             grouped_values=[]
             original_data['header'] = original_line
@@ -935,8 +950,12 @@ def matrixImport(filename):
             for g in groups: ### string values
                 gvalues_list=[]
                 for i in group_db[g]:
-                    try: gvalues_list.append(float(values[i]))
-                    except Exception: pass
+                    if values[i] != '0':
+                        try: gvalues_list.append(float(values[i]))
+                        except Exception: pass
+                    else:
+                        try: gvalues_list.append('') ### Thus are missing values
+                        except Exception: pass
                 grouped_floats.append(gvalues_list)
             matrix[key] = grouped_floats
             if '\n' not in original_line:
@@ -952,12 +971,12 @@ def runANOVA(matrix):
     for key in matrix:
         filtered_groups = []
         for group in matrix[key]:
-            if len(group)>2:
+            if len(group)>1:
                 filtered_groups.append(group)
         try:
             p = OneWayANOVA(filtered_groups)
             if useAdjusted == False:
-                if p < 0.01:
+                if p < 0.05:
                     matrix_pvalues[key]=p
                     matrix_pvalues_list.append((p,key))
             else:
@@ -991,8 +1010,10 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
     filename = '/Volumes/SEQ-DATA/Jared/AltResults/Unbiased/junctions/top_alt_junctions-renamed.txt'
     filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/AltResults/Unbiased/junctions/top_alt_junctions_grouped.txt'
-    filename = '/Users/saljh8/Documents/1-dataAnalysis/MattCardiac/RNASeq/top_alt_junctions_annot-Symbol2.txt'
-    matrix,original_data = matrixImport(filename); matrix_pvalues=runANOVA(matrix); returnANOVAFiltered(original_data,matrix_pvalues); sys.exit()
+    filename = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
+    matrix,original_data = matrixImport(filename)
+    matrix_pvalues=runANOVA(matrix)
+    returnANOVAFiltered(original_data,matrix_pvalues); sys.exit()
     a = range(3, 18)
     k=[]
     for i in a:

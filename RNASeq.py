@@ -3036,7 +3036,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         transpose = cc_param
         filtered_file = export.findParentDir(expFile)+'/amplify/'+export.findFilename(expFile)
         writeFilteredFile(filtered_file,platform,headers,{},expressed_values,[])
-        if len(expressed_values)<800:
+        if len(expressed_values)<2000:
             row_method = 'hopach'; row_metric = 'correlation'
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         cc_graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
@@ -3053,16 +3053,28 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     
     filtered_file = export.findParentDir(expFile)+'/amplify/'+export.findFilename(expFile)
     writeFilteredFile(filtered_file,platform,headers,{},expressed_values,[])
-    if len(expressed_values)<800:
+    if len(expressed_values)<2000 and column_method == 'hopach':
         row_method = 'hopach'; row_metric = 'correlation'
     else:
-        row_method = 'average'; row_metric = 'weighted'
+        row_method = 'weighted'; row_metric = 'cosine'
     if amplifyGenes:
         transpose = parameters
+        parameters.setGeneSelection(parameters.GeneSelection()+' IntraCorrelatedOnly amplify')
+        print 'Finding intra-correlated genes from the input geneset(s)...'
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
-        return graphic_links
-    
+        #return graphic_links
+        import clustering
+        matrix, column_header, row_header, dataset_name, group_db = clustering.importData(graphic_links[-1][-1][:-4]+'.txt')
+        headers = ['UID']+column_header
+        expressed_values2={}
+        for i in row_header: ### Filter the expressed values for the intra-correlated queried gene set and replace
+            try: expressed_values2[i]=expressed_values[i]
+            except Exception:
+                e = symbol_to_gene[i][0]
+                expressed_values2[e]=expressed_values[e]
+        expressed_values = expressed_values2
+        
     print 'Looking for common gene expression profiles for class assignment...',
     begin_time = time.time()
 
@@ -3236,11 +3248,11 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     
     
     results_file = string.replace(expFile[:-4]+'-CORRELATED-FEATURES.txt','exp.','/SamplePrediction/')
-    
-    if len(expressed_values)<800:
+
+    if len(atleast_10)<1500 and column_method == 'hopach':
         row_method = 'hopach'; row_metric = 'correlation'
     else:
-        row_method = 'average'; row_metric = 'weighted'
+        row_method = 'weighted'; row_metric = 'cosine'
     print row_method, row_metric
     correlateByArrayDirectly = False
     if correlateByArrayDirectly:
@@ -3265,7 +3277,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
                     linked_lists+=correlated_arrays[k]
                 linked_lists = unique.unique(linked_lists)
                 linked_lists.sort()
-                print len(linked_lists), linked_lists
+               # print len(linked_lists), linked_lists
     else:
         try:
             import clustering
@@ -3296,8 +3308,6 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         parameters.setGeneSelection(newDriverGenes1_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
         parameters.setPathwaySelect('None Selected')
-        try: parameters.setClusterGOElite('BioMarkers')
-        except Exception: pass
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         
@@ -3310,6 +3320,8 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         newDriverGenes3 = unique.unique(newDriverGenes1.keys()+newDriverGenes2.keys())
         newDriverGenes3_str = string.join(newDriverGenes3,' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes3_str)
+        try: parameters.setClusterGOElite('BioMarkers')
+        except Exception: pass
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
     except Exception:
         print traceback.format_exc()
@@ -3442,6 +3454,10 @@ def genericRowIDImport(filename):
 
 def writeFilteredFile(results_file,platform,headers,gene_to_symbol_db,expressed_values,atleast_10,excludeGenes=[]):
     eo = export.ExportFile(results_file)
+    try: headers = string.replace(headers,'row_clusters-flat','UID')
+    except Exception:
+        headers = string.join(headers,'\t')+'\n'
+        headers = string.replace(headers,'row_clusters-flat','UID')
     eo.write(headers)
     keep=[]
     e=0
@@ -3510,7 +3526,12 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
             driverGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,restrictTFs=True)
         return driverGenes
     #B4galt6, Prom1
-    eo.write(string.join(column_header,'\t')+'\n')
+    for tuple_ls in combined_results:
+        data_length = len(tuple_ls);break
+    if data_length == len(column_header):
+        eo.write(string.join(column_header,'\t')+'\n')
+    else:
+        eo.write(string.join(['UID']+column_header,'\t')+'\n')
     
     #combined_results = highVarHighComplexity
     for tuple_ls in combined_results:
@@ -4420,7 +4441,10 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             fasta_file = getFASTAFile(species)
         if fasta_file!=None:
             print 'Building kallisto index file...'
-            retcode = subprocess.call([kallisto_file, "index","-i", kallisto_root+species, fasta_file])
+            try: retcode = subprocess.call([kallisto_file, "index","-i", kallisto_root+species, fasta_file])
+            except Exception:
+                ### If installed globally
+                retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
     kallisto_folders=[]
     expMatrix={}
     headers=['UID']
@@ -4430,7 +4454,9 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         begin_time = time.time()
         print 'Running kallisto on:',n,
         p=fastq_paths[n]
-        retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "--o", output_path]+p)
+        try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "--o", output_path]+p)
+        except Exception:
+            retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "--o", output_path]+p)
         if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
         input_path = output_path+'/abundance.txt'
         try:

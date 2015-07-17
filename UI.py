@@ -124,13 +124,14 @@ def returnFilesNoReplace(dir):
 def identifyCELfiles(dir,array_type,vendor):
     dir_list = read_directory(dir); dir_list2=[]; full_dir_list=[]
     datatype = 'arrays'
+    types={}
     for file in dir_list:
         original_file = file
         file_lower = string.lower(file); proceed = 'no'
         ### "._" indicates a mac alias
         if ('.cel' in file_lower[-4:] and '.cel.' not in file_lower) and file_lower[:2] != '._':
             proceed = 'yes'
-        elif ('.bed' in file_lower[-4:] or '.tab' in file_lower or '.junction_quantification.txt' in file_lower) and file_lower[:2] != '._':
+        elif ('.bed' in file_lower[-4:] or '.tab' in file_lower or '.junction_quantification.txt' in file_lower or '.bam' in file_lower) and file_lower[:2] != '._' and '.bai' not in file_lower:
             proceed = 'yes'
             datatype = 'RNASeq'
         elif array_type == "3'array" and '.cel' not in  file_lower[-4:] and '.txt' in file_lower[-4:] and vendor != 'Affymetrix':
@@ -152,6 +153,20 @@ def identifyCELfiles(dir,array_type,vendor):
     
     if datatype == 'RNASeq':
         checkBEDFileFormat(dir) ### Make sure the names are wonky
+        dir_list3=[]
+        c = string.lower(string.join(dir_list2,''))
+        if '.bam' in c and '.bed' in c: #If bed present use bed and not bam
+            for i in dir_list2:
+                if '.bam' not in i:
+                    dir_list3.append(i)
+            dir_list2 = dir_list3
+        elif '.bam' in c:
+            for i in dir_list2:
+                if '.bam' in i:
+                    dir_list3.append(string.replace(i,'.bam','.bed'))
+                elif '.BAM' in i:
+                    dir_list3.append(string.replace(i,'.BAM','.bed'))
+            dir_list2 = dir_list3         
         
     return dir_list2,full_dir_list
 
@@ -162,7 +177,12 @@ def checkBEDFileFormat(bed_dir):
     for filename in dir_list:
         if '.tab' in string.lower(filename) or '.bed' in string.lower(filename) or '.junction_quantification.txt' in string.lower(filename):
             condition_db[filename]=[]
-            
+
+    if len(condition_db)==0: ### Occurs if BAMs present but not .bed files
+        for filename in dir_list:
+            if '.bam' in string.lower(filename):
+                condition_db[filename]=[]
+                 
     ### Check to see if exon.bed and junction.bed file names are propper or faulty (which will result in downstream errors)
     double_underscores=[]
     no_doubles=[]
@@ -705,6 +725,17 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
     transpose=True
     if root == None: display = False
     else: display = True
+    if analysisType == 'Sashimi-Plot':
+        try:
+            ### Create sashimi plot index
+            import SashimiIndex
+            SashimiIndex.remoteIndexing(species,exp_file)
+            import SashimiPlot
+            SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,isoform_dir) ### assuming the bam files are in the root-dir
+            SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,isoform_dir2) ### assuming the bam files are in the root-dir
+        except Exception:
+            print traceback.format_exc()
+        
     try: QC.displayExpressionGraph(species,platform,exp_file,gene,transpose,display=display,showIntrons=show_introns,analysisType=analysisType)
     except Exception:
         error = traceback.format_exc()
@@ -2773,6 +2804,36 @@ def importGeneList(filename,limit=None):
     gene_list = string.join(gene_list,',')
     return gene_list
 
+def exportJunctionList(filename,limit=None):
+    ### Optionally limit the number of results imported
+    export_file = filename[:-4]+'-top-'+str(limit)+'.txt'
+    eo = export.ExportFile(export_file)
+    fn=filepath(filename); count=0; firstLine=True
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstLine:
+            firstLine = False
+        elif '-' in t[0]:
+            junctions = string.split(data,'\t')[0]
+            junctions = string.replace(junctions,'|',' ')
+            junctions = string.join(string.split(junctions,':')[1:],':')
+            eo.write(junctions+'\n')
+            count+=1
+            if limit==count: break
+        else:
+            junctions = string.split(data,'\t')[1] #Atg9a:ENSMUSG00000033124:E1.1-E3.1|ENSMUSG00000033124:E1.1-E3.2	
+            junctions = string.split(junctions,'|') #ENSMUSG00000032314:I11.1_55475101-E13.1-ENSMUSG00000032314:E11.1-E13.1|ENSMUSG00000032314:I11.1_55475153;I11.1_55475101
+            for junction_pair in junctions:
+                if '-' in junction_pair:
+                    a,b = string.split(junction_pair,'-ENS')
+                    b = 'ENS'+b
+                    eo.write(a+' '+b+'\n')
+                    count+=1
+                    if limit==count: break  
+    eo.close()
+    return gene_list
+
 def importConfigFile():
     #print "importing config file"
     filename = 'Config/config.txt'
@@ -3300,7 +3361,7 @@ def importUserOptions(array_type,vendor=None):
         if array_type == 'RNASeq':
             data = string.replace(data,'probeset','junction')
             data = string.replace(data,'probe set','junction')
-            data = string.replace(data,'CEL file','BED file')
+            data = string.replace(data,'CEL file','BED, BAM, TAB or TCGA junction file')
         if vendor == 'Agilent':
             if 'CEL file' in data:
                 data = string.replace(data,'CEL file','Feature Extraction file')
@@ -4653,6 +4714,9 @@ def getUserParameters(run_parameter,Multi=None):
                     if data_type == 'raw expression': ### Switch directories if expression
                         altanalyze_results_folder = string.replace(altanalyze_results_folder,'AltResults','ExpressionInput')
                         exp_file = getValidExpFile(altanalyze_results_folder)
+                    elif analysisType == 'Sashimi-Plot':
+                        altanalyze_results_folder = string.split(altanalyze_results_folder,'AltResults')[0]
+                        gene_symbol = altgenes_file
                     else:
                         altanalyze_results_folder += '/RawSpliceData/'+species
                         try: exp_file = getValidSplicingScoreFile(altanalyze_results_folder)
@@ -4900,7 +4964,7 @@ def getUserParameters(run_parameter,Multi=None):
                 if backSelect == 'no' or 'InputCELFiles' == selected_parameters[-1]:
                     selected_parameters.append('InputCELFiles'); backSelect = 'no'
                     root = Tk()
-                    if array_type == 'RNASeq': root.title('AltAnalyze: Select Exon and/or Junction files to analyze'); import_file = '.bed or .tab'
+                    if array_type == 'RNASeq': root.title('AltAnalyze: Select Exon and/or Junction files to analyze'); import_file = 'BED, BAM, TAB or TCGA'
                     elif vendor == 'Agilent': root.title('AltAnalyze: Select Agilent Feature Extraction text files to analyze'); import_file = '.txt'
                     else: root.title('AltAnalyze: Select CEL files for APT'); import_file = '.CEL'
                     gu = GUI(root,option_db,option_list['InputCELFiles'],'')

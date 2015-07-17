@@ -870,7 +870,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     filename = filename[:-3]+'png'
     pylab.savefig(root_dir + filename, dpi=100) #,dpi=200
     
-    includeBackground=True
+    includeBackground=False
     try:
         if 'TkAgg' != matplotlib.rcParams['backend']:
             includeBackground = False
@@ -2929,7 +2929,10 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
         if plotType == '3D':
-            PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
+            try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
+            except Exception:
+                PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
+ 
         else:
             PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
     return graphic_link
