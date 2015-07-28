@@ -5403,6 +5403,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   if run_from_scratch == 'Process RNA-seq reads' or run_from_scratch == 'buildExonExportFiles':
       import RNASeq; reload(RNASeq); import RNASeq
       for dataset in exp_file_location_db: fl = exp_file_location_db[dataset]
+
       ### The below function aligns splice-junction coordinates to Ensembl exons from BED Files and
       ### exports AltAnalyze specific databases that are unique to this dataset to the output directory
 
@@ -5652,7 +5653,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       elif array_type == 'AltMouse': probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+'MASTER-probeset-transcript.txt'
       else: probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_probesets.txt'
 
-      #"""
+      """
       if analysis_method != 'none':
           analysis_summary = RunAltAnalyze() ### Only run if analysis methods is specified (only available for RNA-Seq and junction analyses)
       else: analysis_summary = None
@@ -5667,7 +5668,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       else:
           ### Occurs for RNASeq when no junctions are present
           summary_data_db2={}
-          
+       
       if array_type == 'junction' or array_type == 'RNASeq':
           #Reanalyze junction array data separately for individual probests rather than recipricol junctions
           if array_type == 'junction': explicit_data_type = 'exon'
@@ -5694,11 +5695,16 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
               except Exception:
                 print traceback.format_exc() 
                 None
-      
+      """ 
       ### Perform dPSI Analysis
       try:
         if 'counts.' in fl.CountsFile(): pass
-        else: kill
+        else:
+            dir_list = read_directory(fl.RootDir()+'ExpressionInput')
+            for file in dir_list:
+                if 'exp.' in file and 'steady-state' not in file:
+                    fl.setExpFile(fl.RootDir()+'ExpressionInput/'+file)
+                    #print [fl.RootDir()+'ExpressionInput/'+file]
       except Exception:
             search_dir = fl.RootDir()+'/ExpressionInput'
             files = unique.read_directory(fl.RootDir()+'/ExpressionInput')
@@ -5706,13 +5712,18 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                 if 'exp.' in file and 'steady-state.txt' not in file:
                     fl.setExpFile(search_dir+'/'+file)
       try:
-          graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
+          """
+          try:
+             graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
                     species,array_type,expFile=fl.CountsFile(),min_events=0,med_events=1)
+          except Exception: pass
+          """
           inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI-clust.txt'
+          
           ### Calculate ANOVA p-value stats based on groups
           matrix,original_data = statistics.matrixImport(inputpsi)
           matrix_pvalues=statistics.runANOVA(matrix)
-          topGenes = statistics.returnANOVAFiltered(original_data,matrix_pvalues)
+          topGenes = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
       except Exception: print traceback.format_exc()
       
       import RNASeq
@@ -5724,7 +5735,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
         print traceback.format_exc()
     
       #""" 
-      ### Export the top 50 spliced genes
+      ### Export the top 15 spliced genes
       try:
             altresult_dir = fl.RootDir()+'/AltResults/'
             splicing_results_root = altresult_dir+'/Clustering/'
@@ -5737,36 +5748,42 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       
             try: altresult_dir = UI.getValidSplicingScoreFile(altanalyze_results_folder)
             except Exception,e:
-                  pass
+                  print traceback.format_exc()
             for file in dir_list:
                   if 'AltExonConfirmed' in file:
                       gene_dir = splicing_results_root+'/'+file
                       genes = UI.importGeneList(gene_dir,limit=50) ### list of gene IDs or symbols
-                      try: isoform_dir = UI.exportJunctionList(gene_dir,limit=50) ### list of gene IDs or symbols
-                      except Exception: pass
                       gene_string = gene_string+','+genes
                       print 'Imported genes from',file,'\n'
                       show_introns=False
                       analysisType='plot'
-                      
-            UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None)
-            UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None)    
+            for file in dir_list:
+                  if 'Combined-junction-exon-evidence' in file and 'top' not in file:
+                      gene_dir = splicing_results_root+'/'+file
+                      try: isoform_dir = UI.exportJunctionList(gene_dir,limit=50) ### list of gene IDs or symbols
+                      except Exception: print traceback.format_exc()
+
+            #UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None); print 'completed'
+            #UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
       except Exception:
         print traceback.format_exc()
 
       try:
         top_PSI_junction = inputpsi[:-4]+'-ANOVA.txt'
-        try: isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
-        except Exception: pass
+        isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
       except Exception:
-        pass
+        print traceback.format_exc()
       try:
           ### Create sashimi plot index
           import SashimiIndex
           SashimiIndex.remoteIndexing(species,fl)
           import SashimiPlot
-          SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
+          print 'Exporting Sashimi Plots for the top-predicted splicing events... be patient'
+          try: SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
+          except Exception: pass
+          print 'completed'
           SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
+          print 'completed'
       except Exception:
         print traceback.format_exc()
         

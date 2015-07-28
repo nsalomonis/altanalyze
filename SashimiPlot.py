@@ -73,13 +73,13 @@ def update_plot_settings(bamdir,list1,list2,samp):
   
     for i in range(len(list1)):
         g=samp[list1[i]].replace('.bed','.bam')
-	print i
+	#print i
         if i==len(list1)-1 and len(list2)==0:
             export_pl.write('"'+g+'"]')
         else:
             export_pl.write('"'+g+'",')      
     for j in range(len(list2)):
-	print j
+	#print j
         g=samp[list2[j]].replace('.bed','.bam')
         export_pl.write('"'+g+'"')
         if j==len(list2)-1:
@@ -139,12 +139,12 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
     else:
     
      li=cleanUpLine(li)
-     print li
+     #print li
      
     #dem[0]=['ENSG00000132424:I10.1 ENSG00000132424:E10.1-E11.1','ENSG00000146147:E10.3-E11.1 ENSG00000146147:E9.3-E15.1']
      de=string.split(li,'\t')
      dem[0]=de
-     print dem[0]
+     #print dem[0]
      for key in dem:
       for i in range(len(dem[key])):
 	list1=[]
@@ -153,19 +153,14 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 	    k=gene_label.index(dem[key][i])
 	    flag=1
 	    lt=cleanUpLine(lines[k])
-	
 	    t=string.split(lt,'\t')
-	    print t
-	
+	    #print t
 	    t=t[11:]
-	    print t
-	
-    
+	    #print t
             #list3=[]
             #ind=[]
-        
 	    for x in range(len(t)):
-                print x,t[x]
+                #print x,t[x]
                 if(t[x]!=''):
                     if float(t[x]) < 0.8:
                         list1.append(x)
@@ -183,7 +178,7 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
                 list1=list1[1:5]
 	    if len(list2)>5:
                 list2=list2[1:5]
-	    print len(list1),len(list2)
+	    #print len(list1),len(list2)
 	except Exception:
 	    
 	    for ij in range(len(samp)):
@@ -210,7 +205,7 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
     try:
 	ssp.plot_event(ch1,event,setting,outputdir)
     except Exception:
-	 print "error2"
+	 #print "error2"
 	 continue
   #outputdir=findParentDir(inputpsi)+"sashimiplots" 
   for filename in os.listdir(outputdir):
@@ -284,6 +279,10 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
     outputdir = root_dir+'/SashimiPlots'
     try: os.mkdir(unique.filepath(outputdir))
     except Exception: pass
+    #print bamdir
+    #print countinp
+    #print inputpsi
+    #print genelis
     Sashimiplottting(bamdir,countinp,inputpsi,genelis)
 
     gene_label,gene_sym=genelist(inputpsi)
@@ -304,7 +303,9 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
 		continue
 
 if __name__ == '__main__':
-    root_dir = '/Users/saljh8/Desktop/Grimes/GEC14074/'
-    genelis = '/Users/saljh8/Desktop/Grimes/GEC14074/AltResults/AlternativeOutput/test.txt'
-    remoteSashimiPlot('Mm',root_dir,root_dir,genelis)
+    root_dir = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new'
+    genelis = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/AlternativeOutput/Rn_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
+    genelis = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
+    bamdir = '/Volumes/salomonis1/projects/Bex1-RIP/Input/bams'
+    remoteSashimiPlot('Rn',root_dir,bamdir,genelis)
     sys.exit()

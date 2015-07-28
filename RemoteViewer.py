@@ -46,7 +46,7 @@ class Main(wx.Frame):
         wx.Frame.__init__(self, parent, id,'AltAnalyze Results Viewer', size=(1500,810))
  
         self.heatmap_translation = {}
-	self.heatmap_run = {}
+        self.heatmap_run = {}
                       
         self.SetBackgroundColour((230, 230, 230))
         self.species=''
@@ -336,20 +336,37 @@ class Main(wx.Frame):
         self.GridRowEvent = event.GetRow()       
         
         # only do this part the first time so the events are only bound once 
-        if not hasattr(self, "popupID2"):
+        if not hasattr(self, "popupID3"):
             self.popupID1 = wx.NewId()
             self.popupID2 = wx.NewId()
+            self.popupID3 = wx.NewId()
             self.Bind(wx.EVT_MENU, self.CellGraph, id=self.popupID1)
             self.Bind(wx.EVT_MENU, self.PrintGraphVariables, id=self.popupID2)
+            self.Bind(wx.EVT_MENU, self.ExonViewInitiate, id=self.popupID3)
  
         # build the menu
         menu = wx.Menu()
-        itemOne = menu.Append(self.popupID1, "Plot")
+        itemOne = menu.Append(self.popupID1, "Gene Plot")
         itemTwo = menu.Append(self.popupID2, "Print Variables")
+        itemThree = menu.Append(self.popupID3, "Splice Plot")
  
         # show the popup menu
         self.PopupMenu(menu)
         menu.Destroy()
+
+    def ExonViewInitiate(self, event):
+        os.chdir(parentDirectory)
+        t = os.getcwd()
+        self.control.write(str(os.listdir(t)) + "\n")
+        R = self.myGrid.GetCellValue(self.GridRowEvent, 0)
+        #R = R[7:]
+        #R = "ENSG" + R
+        self.control.write("Plotting... " + R + "\n")
+        import ExPlot
+        reload(ExPlot)
+        ExPlot.remoteGene(R)
+        #Q = subprocess.Popen(['python', 'ExPlot13.py', str(R)])
+        #os.chdir(currentDirectory)
                                     
     def CellGraph(self, event):
         Wikipathway_Flag = 0

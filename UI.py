@@ -2806,7 +2806,10 @@ def importGeneList(filename,limit=None):
 
 def exportJunctionList(filename,limit=None):
     ### Optionally limit the number of results imported
-    export_file = filename[:-4]+'-top-'+str(limit)+'.txt'
+    parent = export.findParentDir(filename)
+    file = export.findFilename(filename)
+    export_file = parent+'/top'+str(limit)+'/'+file
+    #export_file = filename[:-4]+'-top-'+str(limit)+'.txt'
     eo = export.ExportFile(export_file)
     fn=filepath(filename); count=0; firstLine=True
     for line in open(fn,'rU').readlines():             
@@ -2822,7 +2825,7 @@ def exportJunctionList(filename,limit=None):
             count+=1
             if limit==count: break
         else:
-            junctions = string.split(data,'\t')[1] #Atg9a:ENSMUSG00000033124:E1.1-E3.1|ENSMUSG00000033124:E1.1-E3.2	
+            junctions = t[1] #Atg9a:ENSMUSG00000033124:E1.1-E3.1|ENSMUSG00000033124:E1.1-E3.2	
             junctions = string.split(junctions,'|') #ENSMUSG00000032314:I11.1_55475101-E13.1-ENSMUSG00000032314:E11.1-E13.1|ENSMUSG00000032314:I11.1_55475153;I11.1_55475101
             for junction_pair in junctions:
                 if '-' in junction_pair:
@@ -2832,7 +2835,7 @@ def exportJunctionList(filename,limit=None):
                     count+=1
                     if limit==count: break  
     eo.close()
-    return gene_list
+    return export_file
 
 def importConfigFile():
     #print "importing config file"
@@ -6264,6 +6267,9 @@ def downloadInteractionDBs(species,windowType):
     StatusWindow(values,analysis,windowType=windowType) ### open in a TopLevel TK window (don't close current option selection menu)
     
 if __name__ == '__main__':
+    dir = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/AlternativeOutput/Rn_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
+    a = exportJunctionList(dir,limit=50)
+    print a;sys.exit()
     root = Tk()
     import Config.RemoteViewer as cr
     currentDirectory = str(os.getcwd())

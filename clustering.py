@@ -3789,6 +3789,30 @@ def coincentIncedenceTest(exp_file,TFs):
         ea.write(string.join([comparison_alt]+all_percents+[pop,str(z)],'\t')+'\n')    
     ea.close()
 
+def getlastexon(filename):
+    filename2 = filename[:-4]+'-last-exon.txt'
+    ea = export.ExportFile(filename2)    
+    firstLine=True
+    fn = filepath(filename)
+    last_gene = 'null'; last_exon=''
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstLine:
+            firstLine=False
+        else:
+            gene = t[2]
+            if gene != last_gene:
+                if ':E' in last_exon:
+                    gene,exon = last_exon = string.split(':E')
+                    block,region = string.split(exon,'.')
+                    try: ea.write(last_exon+'\n')
+                    except: pass
+            last_gene = gene
+            last_exon = t[0]
+    ea.close()
+
+
 def coincidentIncedence(filename,genes):
     exportPairs=False
     gene_data=[]
@@ -3858,7 +3882,9 @@ if __name__ == '__main__':
     import UI
     #simpleFilter('/Volumes/SEQ-DATA/AML-TCGA/ExpressionInput/counts.LAML1.txt');sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/genes.tpm_tracking-ordered.txt'
+    filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart65/Mm/RNASeq/Mm_Ensembl_exons.txt'
     #filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/6-5-2015/ExpressionInput/amplify/exp.All-wt-output.txt'
+    getlastexon(filename);sys.exit()
     TFs = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/TF-by-gene_matrix/all-TFs.txt'
     folder = '/Users/saljh8/Downloads/BLASTX2_Gecko.tab'
     genes = ['Cebpe','Gfi1']

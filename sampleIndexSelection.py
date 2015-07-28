@@ -23,9 +23,15 @@ def filterFile(input_file,output_file,filter_names):
             if data[0]!='#':
                 sample_index_list = map(lambda x: values.index(x), filter_names)
                 firstLine = False   
-
+                header = values
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
-        except Exception: print values[0]; print sample_index_list; print values; print len(values); print len(prior_values);kill
+        except Exception:
+            ### For PSI files with missing values at the end of each line, often
+            if len(header) != len(values):
+                diff = len(header)-len(values)
+                values+=diff*['']
+            filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
+            #print values[0]; print sample_index_list; print values; print len(values); print len(prior_values);kill
         prior_values=values
         export_object.write(string.join([values[0]]+filtered_values,'\t')+'\n')
     export_object.close()

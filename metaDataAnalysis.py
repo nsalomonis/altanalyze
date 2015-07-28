@@ -4,6 +4,7 @@ import unique
 import export
 import math
 import statistics
+import traceback
 
 """
     This script takes existing formatted metadata (C4 PCBC approved fields) and filters them to determine unique and non-unique
@@ -288,6 +289,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,sample_met
         data = line.rstrip()
         values = string.split(data,'\t')
         if firstLine:
+            header = values
             for group in groups_db:
                 samplesToEvaluate = groups_db[group]
                 try: sample_index_list = map(lambda x: values.index(x), samplesToEvaluate)
@@ -330,16 +332,21 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,sample_met
                 if platform != 'exon':
                     filtered_values = map(lambda x: float(values[x]), sample_index_list) ### simple and fast way to reorganize the samples
                 else: ### for splice-event comparisons
+                    if len(header) != len(values):
+                        diff = len(header)-len(values)
+                        values+=diff*['']
                     initial_filtered=[] ### the blanks can cause problems here so we loop through each entry and catch exceptions
                     unfiltered=[]
                     for x in sample_index_list:
-                        try: initial_filtered.append(values[x])
-                        except Exception: pass
+                        initial_filtered.append(values[x])
                     filtered_values=[]
                     for x in initial_filtered:
                         if x != '':
                             filtered_values.append(float(x))
                         unfiltered.append(x)
+                    for x in initial_filtered:
+                        if x != '':
+                            filtered_values.append(float(x))
                 if platform == 'exon':
                     original_group[group]=unfiltered
                 else:
@@ -568,15 +575,17 @@ def importExpressionData(species,platform,expression_file,cell_line_db,common_li
         if firstLine:
             samplesToEvaluate = map(lambda x: cell_line_db[x], common_lines)
             sample_index_list = map(lambda x: values.index(x), samplesToEvaluate)
+            header = values
             #print len(samplesToEvaluate),platform, samplesToEvaluate
             firstLine = False
         else:
             try: filtered_values = map(lambda x: float(values[x]), sample_index_list) ### simple and fast way to reorganize the samples
             except Exception: ### for splice-event comparisons
+                if len(header) != len(values):
+                    diff = len(header)-len(values)
+                    values+=diff*['']
                 initial_filtered=[] ### the blanks can cause problems here so we loop through each entry and catch exceptions
-                for x in sample_index_list:
-                    try: initial_filtered.append(values[x])
-                    except Exception: pass
+                initial_filtered = map(lambda x: values[x], sample_index_list)
                 filtered_values=[]
                 for x in initial_filtered:
                     if x != '': filtered_values.append(float(x))
@@ -887,9 +896,11 @@ def identifyCommonGenes(resultsDirectory):
                             ng_adjp = float(gs.AdjP())
                             values+=[str(ng_adjp)]
                         
-                            if platform == 'miRSeq' or platform == 'exon':
+                            if platform == 'miRSeq' or platform == 'exon' and use_adjusted_p == False:
                                 ng_adjp = float(ug.Rawp())
-                        except Exception: pass
+                        except Exception:
+                            if platform == 'miRSeq' or platform == 'exon' and use_adjusted_p == False:
+                                ng_adjp = float(ug.Rawp())
                     else:
                         ng_adjp = float(ug.Rawp())
                     values = string.join(values,'\t')+'\n'
@@ -1113,7 +1124,7 @@ if __name__ == '__main__':
     ################  Comand-line arguments ################
     #buildAdditionalMirTargetGeneSets();sys.exit()
     filename = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/CombinedResults/allTopGenes.txt' #DiffStateComps Reprogramming
-    exportGeneSetsFromCombined(filename);sys.exit()
+    #exportGeneSetsFromCombined(filename);sys.exit()
     
     platform='RNASeq'
     species='Hs'
@@ -1213,7 +1224,7 @@ if __name__ == '__main__':
         if len(platforms)>0: platform = platforms[0]
         if platform == 'exon' or platform == 'methylation':
             logfold_threshold=math.log(1.1892,2) ### equivalent to a 0.25 dPSI or 0.25 beta differences
-        if platform == 'exon':
+        if platform == '1exon':
             use_adjusted_p = False ### Too many drop-outs with lowdepth seq that adjusting will inherently exclude any significant changes
         if platform == 'methylation':
             use_adjusted_p = True
@@ -1237,14 +1248,19 @@ if __name__ == '__main__':
             if 'XIST' in CovariateQuery: gender_restricted='female'
             
             genderRestricted = gender_restricted
-            sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
-            performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,diffStateQuery+'-'+CovariateQuery,uniqueDonors)
+            try:
+                sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
+                performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,diffStateQuery+'-'+CovariateQuery,uniqueDonors)
+            except Exception:
+                print traceback.format_exc()
             if runAgain:
                 uniqueDonors=True
                 use_adjusted_p = False
-                sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
-                performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,diffStateQuery+'-'+CovariateQuery,uniqueDonors)
-                uniqueDonors=False; use_adjusted_p = True
+                try:
+                    sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
+                    performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,diffStateQuery+'-'+CovariateQuery,uniqueDonors)
+                except Exception:
+                    uniqueDonors=False; use_adjusted_p = True
                 if platform == 'miRSeq' or platform == 'exon': use_adjusted_p = False
             
         if runAgain:

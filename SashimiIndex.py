@@ -48,10 +48,9 @@ def indexdic(fname):
     return index_read
 
 def writegene(chrom,start_l,end_l,a,ch1):
-    export_in.write(chrom+'\t'+'SE'+'\t'+'gene'+'\t'+start_l+'\t'+end_l+'\t'+'.'+'\t'+a+'\t'+'.'+'\t'+'ID='+ch1+';'+'Name='+ch1+';'+'\n')
-    export_in.write(chrom+'\t'+'SE'+'\t'+'mRNA'+'\t'+start_l+'\t'+end_l+'\t'+'.'+'\t'+a+'\t'+'.'+'\t'+'ID='+ch1+'.A;'+'Parent='+ch1+';'+'\n')
-    
-
+    if 'M' not in chrom:
+	export_in.write(chrom+'\t'+'SE'+'\t'+'gene'+'\t'+start_l+'\t'+end_l+'\t'+'.'+'\t'+a+'\t'+'.'+'\t'+'ID='+ch1+';'+'Name='+ch1+';'+'\n')
+	export_in.write(chrom+'\t'+'SE'+'\t'+'mRNA'+'\t'+start_l+'\t'+end_l+'\t'+'.'+'\t'+a+'\t'+'.'+'\t'+'ID='+ch1+'.A;'+'Parent='+ch1+';'+'\n')
 
 def genelist(fname):
     fname = unique.filepath(fname)
@@ -161,7 +160,8 @@ def write_index(gene_n,new_lis):
 		    valid=1
 		if valid==1:
 		       #print chrom,start_l,end_l,a,ch1
-		       export_in.write(chrom+'\t'+'SE'+'\t'+'exon'+'\t'+str(start_e)+'\t'+str(end_e)+'\t'+'.'+'\t'+a+'\t'+'.'+'\t'+'ID='+q[0]+';'+'Parent='+ch1+'.A;'+'\n') 
+		       if 'M' not in chrom:
+			export_in.write(chrom+'\t'+'SE'+'\t'+'exon'+'\t'+str(start_e)+'\t'+str(end_e)+'\t'+'.'+'\t'+a+'\t'+'.'+'\t'+'ID='+q[0]+';'+'Parent='+ch1+'.A;'+'\n') 
 	    else:
 		continue
 		#export_in.write(chrom+'\t'+'SE'+'\t'+'exon'+'\t'+start_l+'\t'+end_l+'\t'+'.'+'\t'+a+'\t'+'.'+'\t'+'ID='+q[0]+'Parent='+ch[1]+'.A;'+'\n')

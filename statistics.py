@@ -996,7 +996,7 @@ def runANOVA(matrix):
     print len(matrix_pvalues)
     return matrix_pvalues
 
-def returnANOVAFiltered(original_data,matrix_pvalues):
+def returnANOVAFiltered(filename,original_data,matrix_pvalues):
     import export
     eo = export.ExportFile(filename[:-4]+'-ANOVA.txt')
     eo.write(original_data['header'])

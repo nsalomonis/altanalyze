@@ -32,6 +32,7 @@ import subprocess
 import BAMtoJunctionBED
 import BAMtoExonBED
 import getopt
+from pysam import TabProxies
     
 ################# General data import methods #################
 

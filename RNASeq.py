@@ -4585,12 +4585,12 @@ def getFASTAFile(species):
 
 if __name__ == '__main__':
     filename = '/Volumes/SEQ-DATA/AML-TCGA/MDS-AML-combined/counts.AML-MDS.txt'
-    fastRPKMCalculate(filename);sys.exit()
-    copyICGSfiles('','');sys.exit()
-    runKallisto('Mm','test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/');sys.exit()
+    #fastRPKMCalculate(filename);sys.exit()
+    #copyICGSfiles('','');sys.exit()
+    #runKallisto('Mm','test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/');sys.exit()
     import multiprocessing as mlp
     import UI
-    species='Mm'; platform = "3'array"; vendor = 'Ensembl'
+    species='Hs'; platform = "3'array"; vendor = 'Ensembl'
     gsp = UI.GeneSelectionParameters(species,platform,vendor)
     gsp.setGeneSet('None Selected')
     gsp.setPathwaySelect('')
@@ -4609,7 +4609,7 @@ if __name__ == '__main__':
     expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
     expFile = '/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/exp.E15.5_Adult_IRI Data-output.txt'
     expFile = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/temp/C4Meth450-filtered-SC-3_regulated.txt'
-    #singleCellRNASeqWorkflow('Mm', "3'array", expFile, mlp, exp_threshold=1, rpkm_threshold=1, parameters=gsp);sys.exit()
+    singleCellRNASeqWorkflow('Hs', "3'array", expFile, mlp, exp_threshold=1, rpkm_threshold=1, parameters=gsp);sys.exit()
     
     #expFile = '/Users/saljh8/Desktop/Grimes/AltSplice/Gmp-cluster-filter.txt'
     #singleCellRNASeqWorkflow('Mm', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()

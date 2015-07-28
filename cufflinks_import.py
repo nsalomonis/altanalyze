@@ -124,9 +124,7 @@ def importCufflinksDir(directory):
         for sample in samples:
             fpkm = sample_FPKM_db[sample][transcript]
             fpkm_list.append(fpkm)
-    
-    
-        
+
 def readFPKMs(path):
     f=gzip.open(path,'rb')
     file_content=f.read()
