@@ -97,6 +97,8 @@ def getEnsemblSQLDir(ensembl_version):
         ensembl_version = string.replace(ensembl_version, 'Plant','')
     if 'Bacteria' in ensembl_version:
         ensembl_version = string.replace(ensembl_version, 'Bacteria','')
+    if 'Fungi' in ensembl_version:
+        ensembl_version = string.replace(ensembl_version, 'Fungi','')
     try:
         check = int(ensembl_version)    
         import UI; UI.exportDBversion('EnsMart'+ensembl_version)
@@ -169,7 +171,7 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
             ### Download Transcript seqeunces
             getEnsemblTranscriptSequences(original_version,species)
      
-def getEnsemblTranscriptSequences(ensembl_version,species):
+def getEnsemblTranscriptSequences(ensembl_version,species,restrictTo=None):
     ### Download Seqeunce data
     import UI; species_names = UI.getSpeciesInfo()
     species_full = species_names[species]
@@ -177,29 +179,32 @@ def getEnsemblTranscriptSequences(ensembl_version,species):
     
     if 'release-' not in ensembl_version:
         ensembl_version = 'release-'+ensembl_version
-        
-    dirtype = 'fasta/'+ens_species+'/pep'
-    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version or 'Fungi' in ensembl_version:
-        ensembl_protseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
-    else:
-        ensembl_protseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
-    dirtype = 'fasta/'+ens_species+'/cdna'
-    if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version or 'Fungi' in ensembl_version:
-        ensembl_cdnaseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
-    else:
-        ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
-        
-    output_dir = 'AltDatabase/ensembl/'+species + '/'
-    gz_filepath, status = update.download(ensembl_protseq_dir,output_dir,'')
-    if status == 'not-removed':
-        try: os.remove(gz_filepath) ### Not sure why this works now and not before
-        except OSError: status = status
+    
+    if restrictTo == None or restrictTo == 'protein':
+        dirtype = 'fasta/'+ens_species+'/pep'
+        if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version or 'Fungi' in ensembl_version:
+            ensembl_protseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
+        else:
+            ensembl_protseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
 
-    output_dir = 'AltDatabase/'+species + '/SequenceData/'
-    gz_filepath, status = update.download(ensembl_cdnaseq_dir,output_dir,'')
-    if status == 'not-removed':
-        try: os.remove(gz_filepath) ### Not sure why this works now and not before
-        except OSError: status = status
+        output_dir = 'AltDatabase/ensembl/'+species + '/'
+        gz_filepath, status = update.download(ensembl_protseq_dir,output_dir,'')
+        if status == 'not-removed':
+            try: os.remove(gz_filepath) ### Not sure why this works now and not before
+            except OSError: status = status
+
+    if restrictTo == None or restrictTo == 'cDNA':
+        dirtype = 'fasta/'+ens_species+'/cdna'
+        if 'Plant' in ensembl_version or 'Bacteria' in ensembl_version or 'Fungi' in ensembl_version:
+            ensembl_cdnaseq_dir = getCurrentEnsemblGenomesSequences(ensembl_version,dirtype,ens_species)
+        else:
+            ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
+            
+        output_dir = 'AltDatabase/'+species + '/SequenceData/'
+        gz_filepath, status = update.download(ensembl_cdnaseq_dir,output_dir,'')
+        if status == 'not-removed':
+            try: os.remove(gz_filepath) ### Not sure why this works now and not before
+            except OSError: status = status
                 
 def getFullGeneSequences(ensembl_version,species):
     import UI; species_names = UI.getSpeciesInfo()
@@ -1343,7 +1348,9 @@ def getCurrentEnsemblSequences(version,dirtype,species):
     return seq_dir
 
 def getCurrentEnsemblGenomesSequences(version,dirtype,species):
-    original_version = version
+    original_version = version    
+    if 'Fungi' in version:
+        version = string.replace(version,'Fungi','')
     if 'Plant' in version:
         version = string.replace(version,'Plant','')
     if 'Bacteria' in version:
@@ -1352,6 +1359,8 @@ def getCurrentEnsemblGenomesSequences(version,dirtype,species):
     if version == 'current': subdir = '/pub/current_'+dirtype
     elif 'Bacteria' in original_version:
         subdir = '/pub/'+version+'/bacteria/'+dirtype
+    elif 'Fungi' in original_version:
+        subdir = '/pub/'+version+'/fungi/'+dirtype
     else: subdir = '/pub/plants/'+version+'/'+dirtype
     seq_dir = storeSeqFTPDirs(ftp_server,species,subdir,dirtype)
     return seq_dir
@@ -1604,7 +1613,11 @@ if __name__ == '__main__':
     
     ensembl_version = '72'
     species = 'Hs'
-    getEnsemblTranscriptSequences(ensembl_version,species);sys.exit()
+    
+    #ensembl_version = 'Fungi27'
+    #species = 'Nc'
+    print string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','');sys.exit()
+    getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA');sys.exit()
     
     getFullGeneSequences('Bacteria18','bacteria_1_collection'); sys.exit()
     #for i in child_dirs: print child_dirs[i]

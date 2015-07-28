@@ -4408,10 +4408,11 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     #if '/bin' in kallisto_dir: kallisto_file = kallisto_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
     kallisto_dir= 'AltDatabase/kallisto/0.42.1/'
     if os.name == 'nt':
-        if '32bit' in architecture: kallisto_file = kallisto_dir + '32bit/PC/bin/kallisto'; plat = 'Windows'
-        elif '64bit' in architecture: kallisto_file = kallisto_dir + '64bit/PC/bin/kallisto'; plat = 'Windows'
-    elif 'darwin' in sys.platform: kallisto_file = kallisto_dir + 'Mac/bin/kallisto'; plat = 'MacOSX'
-    elif 'linux' in sys.platform: kallisto_file = kallisto_dir + '/Linux/bin/kallisto'; plat = 'linux'
+        kallisto_file = kallisto_dir + 'PC/bin/kallisto.exe'; plat = 'Windows'
+    elif 'darwin' in sys.platform:
+        kallisto_file = kallisto_dir + 'Mac/bin/kallisto'; plat = 'MacOSX'
+    elif 'linux' in sys.platform:
+        kallisto_file = kallisto_dir + '/Linux/bin/kallisto'; plat = 'linux'
     kallisto_file = filepath(kallisto_file)
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
     fn = filepath(kallisto_file)
@@ -4437,7 +4438,8 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         if fasta_file==None:
             ###download Ensembl fasta file to the above directory
             import EnsemblSQL
-            EnsemblSQL.importTranscriptFasta(species)
+            ensembl_version = string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','')
+            EnsemblSQL.getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA')
             fasta_file = getFASTAFile(species)
         if fasta_file!=None:
             print 'Building kallisto index file...'
@@ -4577,7 +4579,7 @@ def findPairs(fastq_paths):
             
 def getFASTAFile(species):
     fasta_file=None
-    fasta_folder = 'AltDatabase/'+species+'/fasta/'
+    fasta_folder = 'AltDatabase/'+species+'/SequenceData/'
     dir_list = read_directory(filepath(fasta_folder))
     for file in dir_list:
         if 'fa.gz' in file: fasta_file = filepath(fasta_folder+file)

@@ -2203,6 +2203,11 @@ class GUI:
                 if expFilePresent:
                     button_instance = Button(self._parent, text='Test Settings', command=runPredictGroupsTest)
                     button_instance.pack(side = 'left', padx = 5, pady = 5)
+                    
+            if 'build_exon_bedfile' in option_list and array_type == 'RNASeq':
+                self.pdf_help_file = filepath('AltDatabase/kallisto/license.txt')
+                button_instance = Button(self._parent, text='Kallisto License', command=self.openPDFHelp)
+                button_instance.pack(side = 'left', padx = 5, pady = 5)
                 
             self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
             self._parent.mainloop()
@@ -2331,8 +2336,10 @@ class GUI:
             try: os.startfile('"'+self.pdf_help_file+'"')
             except Exception:  os.system('open "'+self.pdf_help_file+'"')
         elif 'darwin' in sys.platform: os.system('open "'+self.pdf_help_file+'"')
-        elif 'linux' in sys.platform: os.system('xdg-open "'+self.pdf_help_file+'"')   
-        self._tl.destroy()
+        elif 'linux' in sys.platform: os.system('xdg-open "'+self.pdf_help_file+'"')
+        if 'license' not in self.pdf_help_file:
+            try: self._tl.destroy()
+            except Exception: pass
 
     def openOnlineHelp(self):
         try: webbrowser.open(self.url)
