@@ -15,18 +15,15 @@
 
 [http://www.biomedcentral.com/content/pdf/s40478-015-0202-6.pdf FUS/TLS deficiency causes behavioral and pathological abnormalities distinct from amyotrophic lateral sclerosis]. Kino Y, Washizu C, Kurosawa M, Yamada M, Miyazaki H, Akagi T, Hashikawa T, Doi H, Takumi T, Hicks GG, Hattori N, Shimogori T, Nukina N. Acta Neuropathol Commun. 2015 Apr 25;3:24. doi: 10.1186/s40478-015-0202-6.
 
-http://link.springer.com/protocol/10.1007/7651_2015_245
+[http://link.springer.com/protocol/10.1007/7651_2015_245 Microarray Analysis in Glioblastoma]. Bhawe KM, Aghi MK. Methods in Molecular Biology 2015. Date: 26 Jun 2015
 
-http://www.sciencedirect.com/science/article/pii/S1534580715002853
+[http://www.sciencedirect.com/science/article/pii/S1534580715002853 HIF1α Represses Cell Stress Pathways to Allow Proliferation of Hypoxic Fetal Cardiomyocytes]. Guimarães-Camboa N, Stowe J, Aneas I, Sakabe N, Cattaneo P, Henderson L, Kilberg MS, Johnson RS, Chen J, McCulloch AD, Nobrega MA, Evans SM, Zambon AC. Dev Cell. 2015 Jun 8;33(5):507-21. doi: 10.1016/j.devcel.2015.04.021.
 
-http://onlinelibrary.wiley.com/doi/10.1002/hipo.22483/abstract
+[http://www.sciencedirect.com/science/article/pii/S1424390315005761 Serum levels of unique miR-551-5p and endothelial-specific miR-126a-5p allow discrimination of patients in the early phase of acute pancreatitis]. Kuśnierz-Cabala B, Nowak E, Sporek M, Kowalik A, Kuźniewski M, Enguita FJ, Stępień E. Pancreatology. 2015 Jul-Aug;15(4):344-51. doi: 10.1016/j.pan.2015.05.475.
 
-http://www.sciencedirect.com/science/article/pii/S1424390315005761
-
-http://www.sciencedirect.com/science/article/pii/S0142961215004809
+[http://www.sciencedirect.com/science/article/pii/S0142961215004809 Surface topography enhances differentiation of mesenchymal stem cells towards osteogenic and adipogenic lineages]. Abagnale G, Steger M, Nguyen VH, Hersch N, Sechi A, Joussen S, Denecke B, Merkel R, Hoffmann B, Dreser A, Schnakenberg U, Gillner A, Wagner W. Biomaterials. 2015 Aug;61:316-26. doi: 10.1016/j.biomaterials.2015.05.030.
 
 http://m.reproduction-online.org/content/149/6/625.short
-
 
 http://www.actaneurocomms.org/content/3/1/24
 
