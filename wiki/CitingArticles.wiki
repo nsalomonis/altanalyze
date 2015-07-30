@@ -3,6 +3,20 @@
 
 === Articles Citing AltAnalyze ===
 
+http://www.jci.org/articles/view/68257
+
+http://www.nature.com/ncomms/2015/150330/ncomms7410/full/ncomms7410.html?WT.ec_id=NCOMMS-20150405
+
+http://www.nature.com/srep/2015/150721/srep12292/fig_tab/srep12292_F8.html
+
+http://www.nature.com/neuro/journal/v18/n8/full/nn.4065.html
+
+http://onlinelibrary.wiley.com/doi/10.1002/hipo.22483/abstract;jsessionid=E45C920F7EF70BB724D19D9389CE2621.f04t02?userIsAuthenticated=false&deniedAccessCustomisedMessage=
+
+http://www.biomedcentral.com/content/pdf/s40478-015-0202-6.pdf
+
+http://link.springer.com/protocol/10.1007/7651_2015_245
+
 http://www.sciencedirect.com/science/article/pii/S1534580715002853
 
 http://onlinelibrary.wiley.com/doi/10.1002/hipo.22483/abstract
@@ -12,6 +26,7 @@ http://www.sciencedirect.com/science/article/pii/S1424390315005761
 http://www.sciencedirect.com/science/article/pii/S0142961215004809
 
 http://m.reproduction-online.org/content/149/6/625.short
+
 
 http://www.actaneurocomms.org/content/3/1/24
 
