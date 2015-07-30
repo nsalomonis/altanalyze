@@ -3,17 +3,17 @@
 
 === Articles Citing AltAnalyze ===
 
-http://www.jci.org/articles/view/68257
+[http://www.jci.org/articles/view/68257 Transcription factor ISL1 is essential for pacemaker development and function]. Liang X, Zhang Q, Cattaneo P, Zhuang S, Gong X, Spann NJ, Jiang C, Cao X, Zhao X, Zhang X, Bu L, Wang G, Chen HS, Zhuang T, Yan J, Geng P, Luo L, Banerjee I, Chen Y, Glass CK, Zambon AC, Chen J, Sun Y, Evans SM. J Clin Invest. 2015 Jul 20. pii: 68257. doi: 10.1172/JCI68257
 
-http://www.nature.com/ncomms/2015/150330/ncomms7410/full/ncomms7410.html?WT.ec_id=NCOMMS-20150405
+[http://www.nature.com/ncomms/2015/150330/ncomms7410/full/ncomms7410.html?WT.ec_id=NCOMMS-20150405 Reciprocal cellular cross-talk within the tumor microenvironment promotes oncolytic virus activity]. Ilkow CS, Marguerie M, Batenchuk C, Mayer J, Ben Neriah D, Cousineau S, Falls T, Jennings VA, Boileau M, Bellamy D, Bastin D, de Souza CT, Alkayyal A, Zhang J, Le Boeuf F, Arulanandam R, Stubbert L, Sampath P, Thorne SH, Paramanthan P, Chatterjee A, Strieter RM, Burdick M, Addison CL, Stojdl DF, Atkins HL, Auer RC, Diallo JS, Lichty BD, Bell JC. Nat Med. 2015 May;21(5):530-6. doi: 10.1038/nm.3848. Epub 2015 Apr 20.
 
-http://www.nature.com/srep/2015/150721/srep12292/fig_tab/srep12292_F8.html
+[http://www.nature.com/srep/2015/150721/srep12292/full/srep12292.html Hyperosmotic stress activates the expression of members of the miR-15/107 family and induces downregulation of anti-apoptotic genes in rat liver]. Santosa D, Castoldi M, Paluschinski M, Sommerfeld A, Häussinger D. Sci Rep. 2015 Jul 21;5:12292. doi: 10.1038/srep12292.
 
-http://www.nature.com/neuro/journal/v18/n8/full/nn.4065.html
+[http://www.nature.com/neuro/journal/v18/n8/full/nn.4065.html Distinct brain transcriptome profiles in C9orf72-associated and sporadic ALS]. Prudencio M, Belzil VV, Batra R, Ross CA, Gendron TF, Pregent LJ, Murray ME, Overstreet KK, Piazza-Johnston AE, Desaro P, Bieniek KF, DeTure M, Lee WC, Biendarra SM, Davis MD, Baker MC, Perkerson RB, van Blitterswijk M, Stetler CT, Rademakers R, Link CD, Dickson DW, Boylan KB, Li H, Petrucelli L. Nat Neurosci. 2015 Aug;18(8):1175-82. doi: 10.1038/nn.4065. 
 
-http://onlinelibrary.wiley.com/doi/10.1002/hipo.22483/abstract;jsessionid=E45C920F7EF70BB724D19D9389CE2621.f04t02?userIsAuthenticated=false&deniedAccessCustomisedMessage=
+[http://onlinelibrary.wiley.com/doi/10.1002/hipo.22483/abstract;jsessionid=E45C920F7EF70BB724D19D9389CE2621.f04t02?userIsAuthenticated=false&deniedAccessCustomisedMessage= A quantitative transcriptome reference map of the normal human hippocampus]. Caracausi M, Rigon V, Piovesan A, Strippoli P, Vitale L, Pelleri MC. Hippocampus. 2015 Jun 25. doi: 10.1002/hipo.22483. 
 
-http://www.biomedcentral.com/content/pdf/s40478-015-0202-6.pdf
+[http://www.biomedcentral.com/content/pdf/s40478-015-0202-6.pdf FUS/TLS deficiency causes behavioral and pathological abnormalities distinct from amyotrophic lateral sclerosis]. Kino Y, Washizu C, Kurosawa M, Yamada M, Miyazaki H, Akagi T, Hashikawa T, Doi H, Takumi T, Hicks GG, Hattori N, Shimogori T, Nukina N. Acta Neuropathol Commun. 2015 Apr 25;3:24. doi: 10.1186/s40478-015-0202-6.
 
 http://link.springer.com/protocol/10.1007/7651_2015_245
 
