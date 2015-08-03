@@ -251,6 +251,13 @@ def downloadRvistaDatabases(species):
     fln = string.replace(fln,'.zip','.txt')
     return fln
 
+def remoteDownloadEnsemblTranscriptAssocations(species):
+    global program_dir
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze':
+        program_dir = database_dir
+    downloadEnsemblTranscriptAssociations(species)
+    
 def downloadEnsemblTranscriptAssociations(species):
     url = 'http://www.genmapp.org/go_elite/Databases/ExternalSystems/Transcripts/'+species+'/Ensembl-EnsTranscript.txt'
     ### These files should be updated on a regular basis

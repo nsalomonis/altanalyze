@@ -3812,7 +3812,27 @@ def getlastexon(filename):
             last_exon = t[0]
     ea.close()
 
-
+def replaceWithBinary(filename):
+    filename2 = filename[:-4]+'-binary.txt'
+    ea = export.ExportFile(filename2)    
+    firstLine=True
+    fn = filepath(filename)
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstLine:
+            ea.write(line)
+            firstLine=False
+        else:
+            try: values = map(float,t[1:])
+            except Exception: print t[1:];sys.exit()
+            values2=[]
+            for v in values:
+                if v == 0: values2.append('0')
+                else: values2.append('1')
+            ea.write(string.join([t[0]]+values2,'\t')+'\n')
+    ea.close()
+    
 def coincidentIncedence(filename,genes):
     exportPairs=False
     gene_data=[]
@@ -3880,6 +3900,7 @@ def coincidentIncedence(filename,genes):
     
 if __name__ == '__main__':
     import UI
+    replaceWithBinary('/Users/saljh8/Downloads/Neg_Bi_wholegenome.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA/AML-TCGA/ExpressionInput/counts.LAML1.txt');sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart65/Mm/RNASeq/Mm_Ensembl_exons.txt'

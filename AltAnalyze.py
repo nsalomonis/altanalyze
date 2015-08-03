@@ -5096,7 +5096,7 @@ def AltAnalyzeSetup(skip_intro):
         proc.start()
         sys.exit()
         """
-        
+    reload(UI)
     expr_var, alt_var, additional_var, goelite_var, exp_file_location_db = UI.getUserParameters(skip_intro,Multi=mlp)
     """except Exception:
         if 'SystemExit' not in str(traceback.format_exc()):

@@ -168,6 +168,14 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                     #if fold=='Insufficient Expression':
                     #print [norm, avg1, avg2, fold, comp, gene_exp_threshold, gene_rpkm_threshold, row_id]
                     #5.96999111075 7.72930768675 Insufficient Expression (3, 1) 1.0 ENSG00000085514
+            if gene_rpkm_threshold!=0 and calculateAsNonLog: ### Any other data
+                a1 = nonLogAvg(data_list1)
+                a2 = nonLogAvg(data_list2)
+                #print [a1,a2,gene_rpkm_threshold]
+                if a1<gene_rpkm_threshold and a2<gene_rpkm_threshold:
+                    log_fold = 'Insufficient Expression'
+                    fold = 'Insufficient Expression'
+                #print log_fold;kill
             try:
                 gs = statistics.GroupStats(log_fold,fold,p)
                 stat_results[comp] = groups_name,gs,group2_name
@@ -319,6 +327,9 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     pval_summary_db=[]            
     ###Finished re-ordering lists and adding statistics to expbuilder_value_db
     return expbuilder_value_db, array_fold_headers, summary_filtering_stats, raw_data_comp_headers
+
+def nonLogAvg(data_list):
+    return statistics.avg(map(lambda x: math.pow(2,x)-1,data_list))
 
 if __name__ == '__main__':
     print array_cluster_final

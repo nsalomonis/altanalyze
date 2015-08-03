@@ -2727,6 +2727,127 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                 junction_locations[uid] = pos,location
                 probeset_gene_db[uid]=gene
                 
+    def filterByLocalJunctionExp(gene,features):
+        try: symbol,description = gene_annotations[gene]
+        except Exception: symbol='';description=''
+        
+        begin_time = time.time()
+        junctions_to_compare={}
+        overlapping_junctions_exp={}
+        overlapping_junctions={}
+        for feature in feature_exp_db:
+            feature_exp = feature_exp_db[feature]
+            if '-' in feature:
+                pos1,pos2 = junction_locations[feature][0]
+                for f2 in feature_exp_db:
+                    if f2!=feature:
+                        f2_exp = feature_exp_db[f2]
+                        alt_pos1,alt_pos2 = junction_locations[f2][0]
+                        positions = [pos1,pos2,alt_pos1,alt_pos2]
+                        positions.sort()
+                        diff = positions.index(pos2)-positions.index(pos1)
+                        if diff!=1:
+                            #try: junctions_to_compare[feature].append(f2)
+                            #except Exception: junctions_to_compare[feature] = [f2]
+                            try: overlapping_junctions_exp[feature].append([f2_exp,f2])
+                            except Exception: overlapping_junctions_exp[feature] = [[f2_exp,f2]]
+
+                        else:
+                            diff = positions.index(alt_pos2)-positions.index(alt_pos1)
+                            if diff!=1:
+                                try: overlapping_junctions_exp[feature].append([f2_exp,f2])
+                                except Exception: overlapping_junctions_exp[feature] = [[f2_exp,f2]]
+                            
+        """       
+        for feature in feature_exp_db:
+            if '-' in feature:
+                pos1,pos2 = junction_locations[feature][0]
+                positions.append((pos1,pos2))
+                positions.append((pos2,pos1))      
+        
+        
+        overlapping_features=[]; junctions_to_compare={}; loc_db={}; feature_pos=[]
+        for feature in features:
+            pos1,pos2 = junction_locations[feature][0]
+            feature_pos.append(pos1); feature_pos.append(pos2)
+            try:loc_db[pos1].append(feature)
+            except Exception: loc_db[pos1] = [feature]
+            try:loc_db[pos2].append(feature)
+            except Exception: loc_db[pos2] = [feature]
+            
+        for feature in features: ### e.g., some junction
+            try:
+                pos1,pos2 = junction_locations[feature][0] ### coordinates of that junction
+                i1 = feature_pos.index(pos1) ### index position of the junctions
+                i2 = feature_pos.index(pos2)
+                #print feature, i1, i2, pos1, pos2
+                if (i1-i2) != 1:
+                    overlapping_features.append(feature)
+            except Exception:
+                pass
+        for feature in overlapping_features:
+                #if feature not in features_examined: ### Remove this to allow for other reasonable junction or junction intron pairs that were not significant above
+                ### get overlapping feature pairs
+                pos1,pos2 = junction_locations[feature][0]
+                i1 = feature_pos.index(pos1)
+                i2 = feature_pos.index(pos2)
+                for i in range(i1+1,i2):
+                    overlapping = loc_db[feature_pos[i]]
+                    for o in overlapping:
+                        if o not in features_examined and '-' in o and '-' in feature and platform != 'junction':
+                            try: junctions_to_compare[feature].append(o)
+                            except Exception: junctions_to_compare[feature] = [o]
+        """
+        #duration = time.time() - begin_time
+
+        #print duration, 'seconds'
+        expressed_junctions=[]
+        for feature in overlapping_junctions_exp:
+            counts = map(lambda x: x[0], overlapping_junctions_exp[feature])
+            combined = [sum(value) for value in zip(*counts)]
+            #if feature == 'ENSG00000002586:E1.5-E4.1':
+            #print feature
+            #print combined
+            #print overlapping_junctions_exp[feature][0];sys.exit()
+            #dpsi_values = [ratio(value) for value in zip(*[overlapping_junctions_exp[feature][0],combined])]
+            #print feature
+            #print overlapping_junctions[feature]
+            #print overlapping_junctions_exp[feature]
+            #print combined;sys.exit()
+            exclusion_id = feature+'|exclusion'
+            feature_exp_db[exclusion_id] = combined
+            max_ratio,num_incl_events,num_excl_events,dpsi,rho,max_all_psi,proceed = junctionComparisonMethod(feature,exclusion_id)
+            if proceed:
+                fe1,fe2 = string.split(feature,'-')
+                if '_' in fe1 and '_' in fe2: pass
+                else:
+                    #"""
+                    top_excl_junction=[]
+                    for (exp_ls,f2) in overlapping_junctions_exp[feature]:
+                        top_excl_junction.append([statistics.avg(exp_ls),f2])
+                    top_excl_junction.sort()
+                    #print top_excl_junction[-8:]
+                    #print statistics.avg(feature_exp_db[feature])
+                    top_excl_junction = top_excl_junction[-1][-1]
+                    t1,t2 = string.split(top_excl_junction,'-')
+                    altexons = []
+                    if t1!=fe1: altexons.append(fe1)
+                    if t2!=fe2: altexons.append(gene+':'+fe2)
+                    altexons = string.join(altexons,'|')
+                    reg_pos,reg_loc = junction_locations[feature]
+                    ref_pos,ref_loc = junction_locations[top_excl_junction]
+                    #print [feature, dpsi,rho]
+                    #top_excl_junctions = map(lambda x: x[-1], top_excl_junction[-5:])
+                    #print top_excl_junctions;sys.exit()
+                    #for i in top_excl_junctions: max_ratio,num_incl_events,num_excl_events,dpsi,rho,max_all_psi,proceed = junctionComparisonMethod(feature,i); print i, dpsi,rho
+                    values = psi_db[feature,exclusion_id]
+                    max_incl_psi = str(getMax(values))
+                    export_data.write(string.join([symbol,description,feature,top_excl_junction,altexons,str(max_ratio),str(dpsi),str(rho),max_incl_psi,reg_loc+'|'+ref_loc,'junctions']+values,'\t')+'\n')
+                    avg = averageWithNulls(values)
+                    values_imputed = map(lambda x: replaceNulls(x,avg), values)
+                    clust_export_data.write(string.join([symbol+':'+feature+'|'+top_excl_junction]+values_imputed,'\t')+'\n')
+        #sys.exit()
+        
     gene_annotations = getGeneAnnotations(species)
     firstLine = True
     feature_exp_db={}
@@ -2734,6 +2855,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
     regulated_junctions = {}
     genes_examined=0; gene_increment=1000
     prior_gene = None
+    gene = None
     for line in open(expFile,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -2766,24 +2888,28 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                 if platform == 'junction' or platform == 'AltMouse':
                     counts = map(lambda x: int(math.pow(2,x)), counts)  #log transform these instead, to make like junction counts
                 if '-' in uid or uid in junction_locations:
-                    try: gene_junction_denom[gene].append(counts)
-                    except Exception: gene_junction_denom[gene] = [counts]
+                    #try: gene_junction_denom[gene].append(counts)
+                    #except Exception: gene_junction_denom[gene] = [counts]
+                    pass
                 if genes_examined==gene_increment:
                     gene_increment+=1000
                     print '*',
                 if gene != prior_gene and prior_gene !=None:
                     genes_examined+=1
-                    if len(gene_junction_denom)>0:
-                        try: gene_junction_denom[prior_gene] = [max(value) for value in zip(*gene_junction_denom[prior_gene])] # sum the junction counts for all junctions across the gene
-                        except Exception: pass
-                    compareJunctionExpression(prior_gene)
+                    #if len(gene_junction_denom)>0:
+                    if prior_gene == '!ENSG00000198001':
+                        filterByLocalJunctionExp(prior_gene,feature_exp_db)
+                        #try: gene_junction_denom[prior_gene] = [max(value) for value in zip(*gene_junction_denom[prior_gene])] # sum the junction counts for all junctions across the gene
+                        #except Exception: pass
+                    #compareJunctionExpression(prior_gene)
+                    filterByLocalJunctionExp(prior_gene,feature_exp_db)
                     feature_exp_db={}
                     gene_junction_denom={}
                 if max(counts)>4:
                     feature_exp_db[uid] = counts
                 prior_gene = gene
                     
-    compareJunctionExpression(gene)
+    #compareJunctionExpression(gene)
     export_data.close()
     clust_export_data.close()
     graphic_links=[]
@@ -2797,6 +2923,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
             except Exception: graphic_links=[]
     print len(exported)/2,'junctions exported and',len(retained_introns)/2, 'retained introns exported...'
     return graphic_links, clust_export_dir
+            
 
 def getGeneAnnotations(species):
     gene_annotations={}
@@ -2828,8 +2955,12 @@ def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_
     agglomerate_inclusion_probesets = 'no'
     probeset_type = 'core'
     import JunctionArray; import AltAnalyze
-    exon_db, constitutive_probeset_db = AltAnalyze.importSplicingAnnotations(platform,species,probeset_type,avg_all_for_SS,root_dir)
-    alt_junction_db,critical_exon_db,exon_dbase,exon_inclusion_db,exon_db = JunctionArray.getPutativeSpliceEvents(species,platform,exon_db,agglomerate_inclusion_probesets,root_dir)
+    buildFromDeNovoJunctionsOnly=True
+    if buildFromDeNovoJunctionsOnly:
+        alt_junction_db={}
+    else:
+        exon_db, constitutive_probeset_db = AltAnalyze.importSplicingAnnotations(platform,species,probeset_type,avg_all_for_SS,root_dir)
+        alt_junction_db,critical_exon_db,exon_dbase,exon_inclusion_db,exon_db = JunctionArray.getPutativeSpliceEvents(species,platform,exon_db,agglomerate_inclusion_probesets,root_dir)
     print 'Number of Genes with Examined Splice Events:',len(alt_junction_db)
     
     if platform == 'junction':
@@ -3149,6 +3280,12 @@ def matchAndCorrelate(prime, secondary, output_dir, rho_cutoff):
                     export_object.write(gene+'\t'+probe_id+'\t'+str(rho)+'\n')
     export_object.close()
     
+def getMax(values):
+    values2=[]
+    for i in values:
+        try: values2.append(float(i))
+        except Exception: pass
+    return max(values2)
 
 def replaceNulls(x,avg):
         if x=='':
@@ -3643,7 +3780,7 @@ if __name__ == '__main__':
         #export_dir = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/Lattice/Full/AltResults/Unbiased/DataPlots/Clustering-myeloblast-hierarchical_euclidean_euclidean.txt'
         #export_dir = '/Volumes/SEQ-DATA/SingleCell-Churko/AltResults/Unbiased/DataPlots/Clustering-CM-hierarchical_euclidean_euclidean.txt'
         #calculateNormalizedIntensities(directory, species, array_type, analysis_type = 'raw', expFile = additional)
-        var = unbiasedComparisonSpliceProfiles(directory,species,array_type,expFile=additional)
+        var = unbiasedComparisonSpliceProfiles(directory,species,array_type,expFile=additional,min_events=4,med_events=9)
         #export_dir, exported_IDs = var
         #print export_dir
         #RNASeq.correlateClusteredGenes(export_dir)

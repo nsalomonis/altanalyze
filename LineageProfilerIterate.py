@@ -1771,12 +1771,15 @@ def crossValidationAnalysis(species,platform,exp_input,exp_output,codingtype,com
                         modelSize,geneModels,permute, useMulti, finalNumberSetsToOutput):
 
     inputTwoThirdsFiles, inputOneThirdFiles, referenceFiles = crossValidation(exp_input,setsToOutput=1,outputName=None) ### This is the set to validate
+    #inputTwoThirdsFiles = '/Users/saljh8/Desktop/Sarwal-New/UCRM_bx-transposed-train8.txt'
+    #inputOneThirdFiles = '/Users/saljh8/Desktop/Sarwal-New/UCRM_bx-transposed-test_most.txt'
+    #referenceFiles = ['/Users/saljh8/Desktop/Sarwal-New/manual-ref.txt']
     inputTwoThirdsFile = inputTwoThirdsFiles[0]; inputOneThirdFile = inputOneThirdFiles[0]; reference = referenceFiles[0]
     
     exp_input = string.replace(exp_input,'.txt','_training.txt')
 
     inputTwoThirdsFiles, inputOneThirdFiles, referenceFiles = crossValidation(exp_input,setsToOutput=finalNumberSetsToOutput) ### This is the set to validate
-
+    #referenceFiles = ['/Users/saljh8/Desktop/Sarwal-New/manual-ref.txt']*len(referenceFiles)
     index = 0
     comparison_db={} ### store all of the 1/3rd validation results
     all_models={}
@@ -1888,9 +1891,77 @@ def modelScores(results_dir):
     oe.close()
     sys.exit()
 
+def allPairwiseSampleCorrelation(fn):
+    import numpy
+    firstLine = True
+    group_list=[]
+    control_set={}
+    exp_set={}
+    all_samples_names=[]
+    all_sample_values=[]
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstLine:
+            firstLine=False
+        else:
+            values = map(float,t[1:])
+            group = string.split(t[0],':')[0]
+            if 'no' in group:
+                #control_set[t[0]] = []
+                s = 0 ### control
+            else:
+                #exp_set[t[0]] = []
+                s = 1 ### experiment
+            all_samples_names.append((s,t[0]))
+            all_sample_values.append(values)
+    all_sample_values = numpy.array(all_sample_values)
 
+    ### calculate all pairwise comparisons and store exp and control correlations in two separate dictionaries
+    D1 = numpy.ma.corrcoef(all_sample_values)
+    i=0
+    for score_ls in D1:
+        scores = []
+        s,sample = all_samples_names[i]
+        if s==0: control_set[sample] = score_ls
+        if s==1: exp_set[sample] = score_ls
+        i+=1
+        k=0
+        #for rho in score_ls: sample2 = all_samples_names[k]; k+=1
+        
+    def subtract(values):
+        return values[0]-values[1]
+    
+    import statistics
+    results=[]
+    n = len(all_samples_names)
+    e = len(exp_set)
+    c = len(control_set)
+    for cs in control_set:
+        ccor = control_set[cs] ### all sample correlations for the control
+        for es in exp_set:
+            ecor = exp_set[es] ### all sample correlations for the exp
+            diff_corr = [subtract(value) for value in zip(*[ecor,ccor])]
+            k=0
+            score=0; sensitivity=0; specificity=0
+            for diff in diff_corr:
+                s,sample = all_samples_names[k]; k+=1
+                if s==1 and diff>0: score+=1; sensitivity+=1
+                elif s==0 and diff<0: score+=1; specificity+=1
+            sens = float(sensitivity)/e
+            spec = float(specificity)/c
+            accuracy = float(score)/n
+            avg_accuracy = statistics.avg([sens,spec])
+            results.append([avg_accuracy,accuracy,sens,spec,es,cs])
+    results.sort()
+    results.reverse()
+    for i in results[:20]:
+        #if i[1]>.70: print i
+        print i
+        
 if __name__ == '__main__':
-    #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/OHSU_Selah/Training/SampleClassification')
+    #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()
+    #allPairwiseSampleCorrelation('/Users/saljh8/Desktop/Sarwal-New/UCRM_bx.txt');sys.exit()
 
     try:
         import multiprocessing as mlp

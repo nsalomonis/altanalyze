@@ -1038,10 +1038,10 @@ def permute_p(null_list,true_value):
 
 def FishersExactTest(r,n,R,N):
     """
-    N is the total number of genes measured (Ensembl linked from denom)
-    R is the total number of genes meeting the criterion (Ensembl linked from input)
-    n is the total number of genes in this specific MAPP (Ensembl denom in MAPP)
-    r is the number of genes meeting the criterion in this MAPP (Ensembl input in MAPP)
+    N is the total number of genes measured (Ensembl linked from denom) (total number of ) (number of exons evaluated)
+    R is the total number of genes meeting the criterion (Ensembl linked from input) (number of exonic/intronic regions overlaping with any CLIP peeks)
+    n is the total number of genes in this specific MAPP (Ensembl denom in MAPP) (number of exonic/intronic regions associated with the SF)
+    r is the number of genes meeting the criterion in this MAPP (Ensembl input in MAPP) (number of exonic/intronic regions with peeks overlapping with the SF)
     
     With these values, we must create a 2x2 contingency table for a Fisher's Exact Test
     that reports:

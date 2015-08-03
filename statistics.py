@@ -178,10 +178,10 @@ def moderateTestStats(pval_db,probability_statistic):
         """
         
 def zscore(associated_in_group,in_static_interval,total,in_flexible_interval):               
-    r = float(associated_in_group)       #number of genes with this domain regulated (in one direction)
-    _n = float(in_static_interval)       #measured genes in genomic interval - !!from chr_info!!
-    N = float(total)                     #measured genes in the genome - total_count
-    R = float(in_flexible_interval)      #genes in the hopach interval(not measured) - !!subtract max-min or from hopach_order
+    r = float(associated_in_group)       #number of genes with this domain regulated (in one direction) (# genes regulated in pathway) (#peeks for the SF)
+    _n = float(in_static_interval)       #measured genes in genomic interval - !!from chr_info!! (# genes regulated) (# of peaks for the CLIP)
+    N = float(total)                     #measured genes in the genome - total_count (#all genes evaluated on pathways) (# of peaks for CLIP that overlap )
+    R = float(in_flexible_interval)      #genes in the hopach interval(not measured) - !!subtract max-min or from hopach_order (#genes in pathway)
     if (R-N) == 0: return 0
     elif r==0 and _n == 0: return 0
     else:

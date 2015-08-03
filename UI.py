@@ -479,20 +479,22 @@ class StatusWindow:
         return self.original_sys_out
     
 def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
+    for dataset in exp_file_location_db:
+        flx = exp_file_location_db[dataset]
     if root == None: display=False
     else: display=True
     try:
         import RNASeq, ExonArray
         print 'Pre-processing input files'
-        expFile = fl.ExpFile()
+        expFile = flx.ExpFile()
         count = verifyFileLength(expFile)
         if count==0:
             try: biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp_instance)
             except Exception:
                 try:
-                    fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
-                    fastq_folder = fl.RunKallisto()
-                    RNASeq.runKallisto(species,dataset,fl.RootDir(),fastq_folder,returnSampleNames=False)   
+                    flx = exp_file_location_db[dataset]; flx.setRootDir(parent_dir)
+                    fastq_folder = flx.RunKallisto()
+                    RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False)   
                 except Exception:
                     print 'Kallisto failed due to:',traceback.format_exc() 
 
@@ -500,11 +502,11 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             biotypes = getBiotypes(expFile)
         array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',array_type)
         steady_state_export = expFile[:-4]+'-steady-state.txt'
-        normalize_feature_exp = fl.FeatureNormalization()
-        try: excludeLowExpressionExons = fl.excludeLowExpressionExons()
+        normalize_feature_exp = flx.FeatureNormalization()
+        try: excludeLowExpressionExons = flx.excludeLowExpressionExons()
         except Exception: excludeLowExpressionExons = True
 
-        if fl.useJunctionsForGeneExpression():
+        if flx.useJunctionsForGeneExpression():
             if 'junction' in biotypes:
                 feature = 'junction'
             else:
@@ -1550,7 +1552,12 @@ class GUI:
                 self.group_tag = 'Exon/Junction Filtering Options'
                 od = option_db['expression_threshold']
                 if od.ArrayOptions() == ['NA']: create_group = 'no'
-            elif 'expression_data_format' in option_list:
+                if 'rpkm_threshold' in option_list and create_group== 'no':
+                    create_group='yes'
+                    self.group_tag = 'Gene Expression Filtering Options'
+                    od = option_db['rpkm_threshold']
+                    if od.ArrayOptions() == ['NA']: create_group = 'no'
+            elif 'expression_data_format' in option_list and 'rpkm_threshold' not in option_list:
                 self.group_tag = 'Gene Expression Analysis Options'
             if 'filter_probe_types' in option_list:
                 self.group_tag = 'Primary Alternative Exon Parameters'
@@ -2088,6 +2095,13 @@ class GUI:
                         else: self._user_variables[option] = 'no'
 
             custom_group_endpoints = ['ge_ptype', 'get_additional', 'expression_threshold', 'run_goelite', 'gene_expression_cutoff', 'microRNA_prediction_method']
+            try:
+                eod = option_db['expression_threshold']
+                if eod.ArrayOptions() == ['NA']:
+                    custom_group_endpoints.append('rpkm_threshold') ### Ensures that if analyzing pre-compiled gene expression values, only certain items are shown and in a frame
+                    custom_group_endpoints.remove('expression_threshold')
+                    #insert_into_group = 'yes'
+            except Exception:  pass 
             if option in custom_group_endpoints and insert_into_group == 'yes':
                 ### This is employed when we want to place several items into a group frame together.
                 ### Since this is a generic class, we need to setup special cases to do this, however,
@@ -2151,7 +2165,7 @@ class GUI:
                 try: comp13.pack(anchor = 'w', padx = 10, pady = pady_int)
                 except Exception: null=[]
                 enter_index=0; radio_index=0; dropdown_index=0
-                if 'ge_ptype' in option or 'expression_threshold' in option or 'gene_expression_cutoff' in option:
+                if 'ge_ptype' in option or 'expression_threshold' in option or 'gene_expression_cutoff' in option or 'rpkm_threshold' in option:
                     custom_group = PmwFreeze.Group(self.sf.interior(),tag_text = self.group_tag)
                     custom_group.pack(fill = 'both', expand = 1, padx = 10, pady = 10)
                     insert_into_group = 'yes'
@@ -4531,6 +4545,7 @@ def getUserParameters(run_parameter,Multi=None):
 
         option_list,option_db = importUserOptions(array_type,vendor=vendor)  ##Initially used to just get the info for species and array_type
 
+
         if array_type == "3'array":
             if species == 'Hs': compendiumPlatform = "3'array"
             for i in option_db['run_from_scratch'].ArrayOptions():
@@ -5011,8 +5026,11 @@ def getUserParameters(run_parameter,Multi=None):
                         try: output_dir = gu.Results()['output_CEL_dir']
                         except KeyError: output_dir = input_fastq_dir
                         option_db['perform_alt_analysis'].setArrayOptions(['NA'])
+                        option_db['exon_exp_threshold'].setArrayOptions(['NA'])
+                        option_db['exon_rpkm_threshold'].setArrayOptions(['NA'])
+                        option_db['expression_threshold'].setArrayOptions(['NA'])
+                        option_db['gene_exp_threshold'].setArrayOptions(['NA'])
                         assinged = 'yes'
-
                     else:
                         cel_file_dir = gu.Results()['input_cel_dir']
                         cel_files,cel_files_fn=identifyCELfiles(cel_file_dir,array_type,vendor)
@@ -5027,7 +5045,7 @@ def getUserParameters(run_parameter,Multi=None):
                 else:
                     print_out = "The directory containing "+import_file+" files has not\nbeen assigned! Select a directory before proceeding."
                     IndicatorWindow(print_out,'Continue')
-                    
+
             if array_type != 'RNASeq' and vendor != 'Agilent' and len(input_fastq_dir)==0:
                 ### Specific to Affymetrix CEL files
                 cel_file_list_dir = exportCELFileList(cel_files_fn,cel_file_dir)
@@ -5190,6 +5208,25 @@ def getUserParameters(run_parameter,Multi=None):
                                     except Exception: continue ### Occurs if the file is open... not critical to worry about       
 
         if run_from_scratch == 'Process Expression file':
+            if array_type != 'RNASeq':
+                ### This is the new option for expression filtering of non-RNASeq classified data
+                try:
+                    print option_db['rpkm_threshold'].DefaultOption()
+                    if 'rpkm_threshold' in option_db:
+                        option_db['rpkm_threshold'].setArrayOptions('0')
+                        if option_db['rpkm_threshold'].DefaultOption() == ['NA']:
+                            option_db['rpkm_threshold'].setDefaultOption('0')
+                        option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')
+                    else:
+                        option_db['rpkm_threshold'].setArrayOptions('0')
+                        option_db['rpkm_threshold'].setDefaultOption('0')
+                        option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')                     
+                except Exception:
+                    option_db['rpkm_threshold'].setArrayOptions('0')
+                    option_db['rpkm_threshold'].setDefaultOption('0')
+                    option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)') 
+
+                
             status = 'repeat'
             while status == 'repeat':
                 if backSelect == 'no' or 'InputExpFiles' == selected_parameters[-1]:
@@ -5262,6 +5299,11 @@ def getUserParameters(run_parameter,Multi=None):
                         root = Tk(); root.title('AltAnalyze: Expression Analysis Parameters')
                         gu = GUI(root,option_db,option_list['GeneExpression'],expr_defaults)
                     else: gu = PreviousResults(old_options)
+                    try: rpkm_threshold = float(gu.Results()['rpkm_threshold'])
+                    except Exception:
+                        if array_type == 'RNASeq': rpkm_threshold = 1
+                        else: rpkm_threshold = 'NA'
+                    print [rpkm_threshold]
                     if array_type != "3'array":          
                         try: dabg_p = gu.Results()['dabg_p']
                         except Exception:
@@ -5279,10 +5321,6 @@ def getUserParameters(run_parameter,Multi=None):
                         except Exception:
                             if array_type == 'RNASeq': exon_exp_threshold = 1
                             else: exon_exp_threshold = 'NA'
-                        try: rpkm_threshold = gu.Results()['rpkm_threshold']
-                        except Exception:
-                            if array_type == 'RNASeq': rpkm_threshold = 1
-                            else: rpkm_threshold = 'NA'
                         run_from_scratch = gu.Results()['run_from_scratch']
                         try: expression_threshold = gu.Results()['expression_threshold']
                         except Exception:
@@ -5328,8 +5366,10 @@ def getUserParameters(run_parameter,Multi=None):
                         except Exception: passed = 'no'; print_out+= 'DABG p-value cutoff '
                     if array_type != "3'array":   
                         try:
-                            expression_threshold = float(expression_threshold)
-                            if expression_threshold<1: passed = 'no'; print_out+= 'expression threshold '
+                            try: rpkm_threshold = float(rpkm_threshold)
+                            except Exception:
+                                expression_threshold = float(expression_threshold)
+                                if expression_threshold<1: passed = 'no'; print_out+= 'expression threshold '
                         except Exception: passed = 'no'; print_out+= 'expression threshold '   
                     if array_type == 'RNASeq':
                         try:
@@ -5926,6 +5966,10 @@ def getUserParameters(run_parameter,Multi=None):
         if run_from_scratch == 'Process Expression file':
             fl.setRootDir(output_dir) ### When the data is not primary array data files, allow for option selection of the output directory
             fl.setOutputDir(output_dir)
+        try: fl.setRPKMThreshold(rpkm_threshold)
+        except Exception: pass
+        try: fl.setGeneExpThreshold(gene_exp_threshold)
+        except Exception: pass
     if array_type == 'RNASeq': ### Post version 2.0, add variables in fl rather than below
         fl.setRPKMThreshold(rpkm_threshold)
         fl.setExonExpThreshold(exon_exp_threshold)

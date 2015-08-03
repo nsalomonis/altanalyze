@@ -603,7 +603,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                         exon1_stop,exon2_start = int(start),int(end); junction_id=''
                                         ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
                                         exon1_stop+=1; exon2_start-=1
-                                        if float(reads)>0: proceed = 'yes'
+                                        if float(reads)>4: proceed = 'yes' ### Added in version 2.0.9 to remove rare novel isoforms
                                         seq_length = abs(exon1_stop-exon2_start)
                                 if algorithm == 'BioScope-junction':
                                     chr = t[1]; strand = t[2]; exon1_stop = int(t[4]); exon2_start = int(t[8]); count_paired = t[17]; count_single = t[19]; score=t[21]
@@ -612,7 +612,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     except Exception: null=[] ### If missing, these are not assigned
                                     reads = str(int(float(count_paired))+int(float(count_single))) ### Users will either have paired or single read (this uses either)
                                     biotype = 'junction'; biotypes[biotype]=[]; junction_id=''
-                                    if float(reads)>0: proceed = 'yes'
+                                    if float(reads)>4: proceed = 'yes' ### Added in version 2.0.9 to remove rare novel isoforms
                                     seq_length = abs(float(exon1_stop-exon2_start))
                         else:
                             try:
@@ -664,7 +664,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     seq_length = abs(float(exon1_stop-exon2_start))
                                 ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
                                 exon1_stop+=1; exon2_start-=1
-                                if float(reads)>0:
+                                if float(reads)>4: ### Added in version 2.0.9 to remove rare novel isoforms
                                     proceed = 'yes'
                                 else: proceed = 'no'
 
@@ -2931,7 +2931,7 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
                     expressed_values[uid] = values
                 #if uid == 'ENSMUSG00000062825': print (vs[-1*samplesDiffering]-vs[samplesDiffering]),math.log(fold,2);sys.exit()
 
-    #print len(expressed_values), len(expressed_uids);sys.exit()
+    print len(expressed_values), len(expressed_uids)
     if len(expressed_uids)==0 or len(expressed_values)==0:
         print options_result_in_no_genes
     elif len(expressed_uids) < 50 and len(expressed_values)>0:
@@ -3009,6 +3009,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         platform = checkExpressionFileFormat(expFile,platform)
     else:
         fold = math.pow(2,0.5)
+        fold = 1.5
     #"""
     if use_CV:
         expressed_values, fold, samplesDiffering, headers = CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGenes=driver_genes)
@@ -4434,7 +4435,8 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     indexFile =  kallisto_root+species
     indexStatus = os.path.isfile(indexFile)
     if indexStatus == False:
-        fasta_file = getFASTAFile(species)
+        try: fasta_file = getFASTAFile(species)
+        except Exception: fasta_file = None
         if fasta_file==None:
             ###download Ensembl fasta file to the above directory
             import EnsemblSQL
@@ -4445,8 +4447,10 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             print 'Building kallisto index file...'
             try: retcode = subprocess.call([kallisto_file, "index","-i", kallisto_root+species, fasta_file])
             except Exception:
+                print traceback.format_exc();sys.exit()
                 ### If installed globally
                 retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
+                
     kallisto_folders=[]
     expMatrix={}
     headers=['UID']
@@ -4460,11 +4464,16 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         except Exception:
             retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "--o", output_path]+p)
         if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
+        else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
         input_path = output_path+'/abundance.txt'
         try:
-            expMatrix=importTPMs(input_path,expMatrix)
+            try: expMatrix=importTPMs(input_path,expMatrix)
+            except Exception:
+                input_path = output_path+'/abundance.tsv'
+                expMatrix=importTPMs(input_path,expMatrix)
             headers.append(n)
         except Exception:
+            print traceback.format_exc();sys.exit()
             print n, 'TPM expression import failed'
     dataset_name = string.replace(dataset_name,'exp.','')
     to = export.ExportFile(root_dir+'ExpressionInput/transcript.'+dataset_name+'.txt')
@@ -4478,7 +4487,8 @@ def calculateGeneTPMs(species,expMatrix):
     try: gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
     except Exception:
         import GeneSetDownloader
-        GeneSetDownloader.downloadEnsemblTranscriptAssociations(species)
+        print 'Ensembl-EnsTranscripts required for gene conversion... downloading from the web...'
+        GeneSetDownloader.remoteDownloadEnsemblTranscriptAssocations(species)
         gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
     import OBO_import
     transcript_to_gene_db = OBO_import.swapKeyValues(gene_to_transcript_db)
@@ -4582,14 +4592,14 @@ def getFASTAFile(species):
     fasta_folder = 'AltDatabase/'+species+'/SequenceData/'
     dir_list = read_directory(filepath(fasta_folder))
     for file in dir_list:
-        if 'fa.gz' in file: fasta_file = filepath(fasta_folder+file)
+        if '.fa' in file: fasta_file = filepath(fasta_folder+file)
     return fasta_file
 
 if __name__ == '__main__':
     filename = '/Volumes/SEQ-DATA/AML-TCGA/MDS-AML-combined/counts.AML-MDS.txt'
     #fastRPKMCalculate(filename);sys.exit()
     #copyICGSfiles('','');sys.exit()
-    #runKallisto('Mm','test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/');sys.exit()
+    #runKallisto('Mm','test','C:\\Users\Nathan Salomonis\\Desktop\\testKallistoData\\','C:\\Users\Nathan Salomonis\\Desktop\\testKallistoData\\');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Hs'; platform = "3'array"; vendor = 'Ensembl'
@@ -4599,10 +4609,10 @@ if __name__ == '__main__':
     gsp.setGeneSelection('')
     gsp.setJustShowTheseIDs('')
     gsp.setNormalize('median')
-    gsp.setSampleDiscoveryParameters(5,50,10,3,
-        True,'AltExon','protein_coding',False,'cosine','hopach',0.4)
+    gsp.setSampleDiscoveryParameters(0,0,0,6,
+        True,'AltExon','protein_coding',False,'cosine','hopach',0.45)
     #gsp.setSampleDiscoveryParameters(5,5,4,4, True,'Gene','protein_coding',False,'cosine','hopach',0.4)
-    filename = '/Volumes/SEQ-DATA/PCBC/SingleCellCombined/BodyMapCombined/counts.Ultra.txt'
+    filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     #calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
     #fastRPKMCalculate(filename);sys.exit()
     results_file = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/ExpressionInput/DataPlots/400 fold for at least 4 samples/Clustering-myeloblast-steady-state-correlated-features-hierarchical_euclidean_cosine-hopach.txt'
@@ -4611,7 +4621,9 @@ if __name__ == '__main__':
     expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
     expFile = '/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/exp.E15.5_Adult_IRI Data-output.txt'
     expFile = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/temp/C4Meth450-filtered-SC-3_regulated.txt'
-    singleCellRNASeqWorkflow('Hs', "3'array", expFile, mlp, exp_threshold=1, rpkm_threshold=1, parameters=gsp);sys.exit()
+    expFile = '/Volumes/SEQ-DATA 1/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+
+    singleCellRNASeqWorkflow('Hs', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
     
     #expFile = '/Users/saljh8/Desktop/Grimes/AltSplice/Gmp-cluster-filter.txt'
     #singleCellRNASeqWorkflow('Mm', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()

@@ -288,10 +288,11 @@ def simpleUIDImport(filename):
         uid_db[string.split(data,'\t')[0]]=[]
     return uid_db
         
-def importGeneExpressionValues(filename,tissue_specific_db,translation_db):
+def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog=False):
     ### Import gene-level expression raw values           
     fn=filepath(filename); x=0; genes_added={}; gene_expression_db={}
     dataset_name = export.findFilename(filename)
+    max_val=0
     print 'importing:',dataset_name
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -322,13 +323,21 @@ def importGeneExpressionValues(filename,tissue_specific_db,translation_db):
                 try:
                     exp_vals = map(float, t[1:])
                     if platform == 'RNASeq':
+                        if max(exp_vals)>max_val: max_val = max(exp_vals)
                         #if max(exp_vals)<3: proceed=False
-                        exp_vals = map(lambda x: math.log(x+1,2),exp_vals)
+                        if useLog==False:
+                            exp_vals = map(lambda x: math.log(x+1,2),exp_vals)
                     if value_type == 'calls': ### Hence, this is a DABG or RNA-Seq expression
                         exp_vals = produceDetectionCalls(exp_vals,targetPlatform) ### 0 or 1 calls
                     if proceed:
                         gene_expression_db[gene] = [index,exp_vals]
                 except Exception:
+                    print 'Non-numeric values detected:'
+                    x = 5
+                    print t[:x]
+                    while x < t:
+                        t[x:x+5]
+                        x+=5
                     print 'Formatting error encountered in:',dataset_name; forceError
 
     print len(gene_expression_db), 'matching genes in the dataset and tissue compendium database'
@@ -339,6 +348,9 @@ def importGeneExpressionValues(filename,tissue_specific_db,translation_db):
     #print len(expession_subset);sys.exit()
     expession_subset.sort() ### This order now matches that of 
     gene_expression_db=[]
+    
+    if max_val<20 and platform == 'RNASeq':
+        importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog=True)
 
 def produceDetectionCalls(values,Platform):
     # Platform can be the compendium platform (targetPlatform) or analyzed data platform (platform or array_type)
