@@ -1,0 +1,2 @@
+Class-Path: . nanoxml-2.1.jar GIFEncoder.jar
+Main-Class: edu.stanford.genetics.treeview.app.LinkedViewApp
