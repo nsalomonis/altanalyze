@@ -3009,7 +3009,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         platform = checkExpressionFileFormat(expFile,platform)
     else:
         fold = math.pow(2,0.5)
-        fold = 1.5
+        fold = 1.4
     #"""
     if use_CV:
         expressed_values, fold, samplesDiffering, headers = CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGenes=driver_genes)
@@ -3098,9 +3098,15 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
             geneID = row_ids[i]
             k=0
             for v in score_ls:
+                if 'exons' == platform or 'AltExon' == platform:
+                    refgene = string.split(geneID,':')[0]
                 if v>rho_cutoff:# #or v<negative_rho:
                     #scores.append((v,row_ids[k]))
-                    correlated.append(row_ids[k])
+                    if 'exons' != platform and 'AltExon' != platform:
+                        correlated.append(row_ids[k])
+                    else:
+                        if refgene not in row_ids[k]:
+                            correlated.append(row_ids[k])
                 k+=1
             #scores.sort()
             correlated_genes[geneID] = correlated
@@ -3146,7 +3152,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     #print 'len(correlated_genes)',len(correlated_genes),connections
     numb_corr=[]
     for i in correlated_genes:
-        if i == 'ENSG00000016082': print 'ISL1',len(correlated_genes[i])
+        #if i == 'ENSG00000016082': print 'ISL1',len(correlated_genes[i])
         if len(correlated_genes[i])>connections:
             numb_corr.append([len(correlated_genes[i]),i])
             atleast_10[i]=correlated_genes[i] ### if atleast 10 genes apart of this pattern
@@ -4610,7 +4616,7 @@ if __name__ == '__main__':
     gsp.setJustShowTheseIDs('')
     gsp.setNormalize('median')
     gsp.setSampleDiscoveryParameters(0,0,0,6,
-        True,'AltExon','protein_coding',False,'cosine','hopach',0.45)
+        True,'AltExon','protein_coding',False,'cosine','hopach',0.4)
     #gsp.setSampleDiscoveryParameters(5,5,4,4, True,'Gene','protein_coding',False,'cosine','hopach',0.4)
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     #calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
@@ -4621,7 +4627,7 @@ if __name__ == '__main__':
     expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
     expFile = '/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/exp.E15.5_Adult_IRI Data-output.txt'
     expFile = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/temp/C4Meth450-filtered-SC-3_regulated.txt'
-    expFile = '/Volumes/SEQ-DATA 1/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    expFile = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
 
     singleCellRNASeqWorkflow('Hs', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
     

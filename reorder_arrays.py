@@ -92,6 +92,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     except Exception: gene_exp_threshold = 0
     try: gene_rpkm_threshold = fl.RPKMThreshold()
     except Exception: gene_rpkm_threshold = 0
+    try: FDR_statistic = fl.FDRStatistic()
+    except Exception: FDR_statistic = 'Benjamini-Hochberg'
     calculateAsNonLog=True
     
     ### Begin processing sample expression values according to the organized groups
@@ -308,6 +310,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             if comp == compid:
                 gs = pval_summary_db[(rowid,comp)]
                 pval_db[rowid] = gs
+
         if 'moderated' in probability_statistic and replicates == 'yes':
             ### Moderates the original reported test p-value prior to adjusting
             try: statistics.moderateTestStats(pval_db,probability_statistic)
@@ -317,7 +320,16 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
                         print 'Moderated test failed due to issue with mpmpath or out-of-range values\n   ... using unmoderated unpaired test instead!'
                 null=[] ### Occurs when not enough replicates
             round+=1
-        statistics.adjustPermuteStats(pval_db)
+            
+        if FDR_statistic == 'Benjamini-Hochberg':
+            statistics.adjustPermuteStats(pval_db)
+        else:
+            ### Calculate a qvalue (https://github.com/nfusi/qvalue)
+            import numpy; import qvalue; pvals = []; keys = []
+            for key in pval_db: pvals.append(pval_db[key].Pval()); keys.append(key)
+            pvals = qvalue(numpy.array(pvals))
+            for i in range(len(pvals)): pval_db[keys[i]].SetAdjP(pvals[i])
+            
         for rowid in pval_db:
             gs = pval_db[rowid]
             expbuilder_value_db[rowid][gs.AdjIndex()] = gs.AdjP() ### set the place holder to the calculated value

@@ -3334,9 +3334,9 @@ def importDefaultInfo(filename,array_type):
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
         if '-expr' in filename:
-            array_abrev, dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_algorithm, batch_effects, marker_finder, visualize_results, run_lineage_profiler, run_goelite = string.split(data,'\t')
+            array_abrev, dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_algorithm, FDR_statistic, batch_effects, marker_finder, visualize_results, run_lineage_profiler, run_goelite = string.split(data,'\t')
             if array_type == array_abrev:
-                return dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_algorithm, batch_effects, marker_finder, visualize_results, run_lineage_profiler, run_goelite
+                return dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_algorithm, FDR_statistic, batch_effects, marker_finder, visualize_results, run_lineage_profiler, run_goelite
             
         if '-alt' in filename:
             array_abrev, analysis_method, additional_algorithms, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, additional_score, permute_p_threshold, gene_expression_cutoff, remove_intronic_junctions, perform_permutation_analysis, export_splice_index_values, run_MiDAS, calculate_splicing_index_p, filter_for_AS = string.split(data,'\t')
@@ -3811,6 +3811,7 @@ class ExpressionFileLocationData:
     def setExcludeLowExpressionExons(self, excludeNonExpExons): self.excludeNonExpExons = excludeNonExpExons
     def setNormMatrix(self,normalize_gene_data): self.normalize_gene_data = normalize_gene_data
     def setProbabilityStatistic(self,probability_statistic): self.probability_statistic = probability_statistic
+    def setFDRStatistic(self, FDR_statistic): self.FDR_statistic = FDR_statistic
     def setBatchEffectRemoval(self,batch_effects): self.batch_effects = batch_effects
     def setProducePlots(self,visualize_results): self.visualize_results = visualize_results
     def setPerformLineageProfiler(self, run_lineage_profiler): self.run_lineage_profiler = run_lineage_profiler
@@ -3843,6 +3844,7 @@ class ExpressionFileLocationData:
         except Exception: rpkm_threshold = rpkm_threshold
         self.rpkm_threshold = rpkm_threshold
     def setMarkerFinder(self,marker_finder): self.marker_finder = marker_finder
+    def FDRStatistic(self): return self.FDR_statistic
     def multiThreading(self): return self.multithreading
     def STDOUT(self): return self.stdout
     def ExonExpThreshold(self): return self.exon_exp_threshold
@@ -5352,6 +5354,8 @@ def getUserParameters(run_parameter,Multi=None):
                     visualize_results = gu.Results()['visualize_results']
                     run_lineage_profiler = gu.Results()['run_lineage_profiler']
                     probability_algorithm = gu.Results()['probability_algorithm']
+                    try: FDR_statistic = gu.Results()['FDR_statistic']
+                    except Exception: pass
                     try: batch_effects = gu.Results()['batch_effects']
                     except Exception: batch_effects = 'NA'
                     try: marker_finder = gu.Results()['marker_finder']
@@ -5956,6 +5960,8 @@ def getUserParameters(run_parameter,Multi=None):
         fl.setCompendiumType(compendiumType)
         fl.setCompendiumPlatform(compendiumPlatform)
         fl.setVendor(vendor)
+        try: fl.setFDRStatistic(FDR_statistic)
+        except Exception: pass
         try: fl.setExcludeLowExpressionExons(excludeNonExpExons)
         except Exception: fl.setExcludeLowExpressionExons(True)
         try: fl.setPredictGroups(predictGroups)

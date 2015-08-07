@@ -6136,7 +6136,7 @@ def commandLineRun():
                                                          'clusterGOElite=','geneSetName=','runICGS=','IDtype=',
                                                          'CountsCutoff=','FoldDiff=','SamplesDiffering=','removeOutliers='
                                                          'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
-                                                         'excludeCellCycle=','runKallisto=','fastq_dir='])
+                                                         'excludeCellCycle=','runKallisto=','fastq_dir=','FDR='])
     
     except Exception:
         print traceback.format_exc()
@@ -7248,7 +7248,7 @@ def commandLineRun():
         ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, filter_method, z_threshold, p_val_threshold, change_threshold, ORA_algorithm, resources_to_analyze, goelite_permutations, mod, returnPathways, NA = goelite_defaults
         use_direct_domain_alignments_only,microRNA_prediction_method = functional_analysis_defaults
         analysis_method, additional_algorithms, filter_probeset_types, analyze_all_conditions, p_threshold, alt_exon_fold_variable, additional_score, permute_p_threshold, gene_expression_cutoff, remove_intronic_junctions, perform_permutation_analysis, export_NI_values, run_MiDAS, calculate_normIntensity_p, filter_for_AS = alt_exon_defaults
-        dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_statistic, batch_effects, marker_finder, visualize_qc_results, run_lineage_profiler, null = expr_defaults
+        dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_statistic, FDR_statistic, batch_effects, marker_finder, visualize_qc_results, run_lineage_profiler, null = expr_defaults
     elif denom_file_dir != None and species != None:
         proceed = 'yes' ### Only run GO-Elite
         expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = UI.importDefaults('RNASeq',species) ### platform not relevant
@@ -7276,6 +7276,7 @@ def commandLineRun():
         elif opt == '--ORAstat': ORA_algorithm=arg
         elif opt == '--returnPathways': returnPathways=arg
         
+        elif opt == '--FDR': FDR_statistic=arg
         elif opt == '--dabgp': dabg_p=arg
         elif opt == '--rawexp': expression_threshold=arg
         elif opt == '--geneRPKM': rpkm_threshold=arg
@@ -7692,6 +7693,8 @@ def commandLineRun():
             fl.setCompendiumType(compendiumType)
             fl.setCompendiumPlatform(compendiumPlatform)
             fl.setVendor(manufacturer)
+            try: fl.setFDRStatistic(FDR_statistic)
+            except Exception: pass
             fl.setAnalysisMode('commandline')
             fl.setBatchEffectRemoval(batch_effects)
             fl.setChannelToExtract(channel_to_extract)

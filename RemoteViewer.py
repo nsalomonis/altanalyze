@@ -1811,6 +1811,8 @@ class Main(wx.Frame):
 		    ### occurs when automatically running the heatmap
 		    column_method = None
 		    row_method = None
+		    color_gradient = 'yellow_black_blue'
+		    normalization = 'median'
             
                 translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Iterative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly', 'Perform Monocle':'monocle'}
                 try:
@@ -1882,6 +1884,7 @@ class Main(wx.Frame):
                 else:
                     plotType = '2D'
                 display = True
+		include_labels = 'no'
                 UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, plotType=plotType, display=display)
                 os.chdir(currentDirectory)
             self.InteractivePanelUpdate(event)                                                                                                                                                                     

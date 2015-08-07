@@ -3687,7 +3687,7 @@ def exportSorted(filename, sort_col, excludeHeader=True):
 if __name__ == '__main__':
     test=False
     if test:
-        directory = '/Users/saljh8/Desktop/dataAnalysis/HTA2.0 Files/'
+        directory = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/'
         dir_list = read_directory(directory)
         for file in dir_list:
           if 'PSI-clust' in file: 
