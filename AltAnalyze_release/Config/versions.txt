@@ -1,3 +1,0 @@
-Homo sapiens	EnsMart49|EnsMart52|EnsMart54
-Mus musculus	EnsMart49|EnsMart52|EnsMart54
-Rattus norvegicus	EnsMart49|EnsMart52|EnsMart54
