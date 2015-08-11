@@ -344,9 +344,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,sample_met
                         if x != '':
                             filtered_values.append(float(x))
                         unfiltered.append(x)
-                    for x in initial_filtered:
-                        if x != '':
-                            filtered_values.append(float(x))
+                    #if geneID == 'ENSG00000105321:E3.2-E4.2 ENSG00000105321:E2.3-E4.2' and 'inner cell mass' in group:
+                    #print filtered_values;sys.exit()
                 if platform == 'exon':
                     original_group[group]=unfiltered
                 else:
@@ -386,8 +385,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,sample_met
                     #if 'lentivirus' in group1 and geneID == 'ENSG00000184470':
                     #print groups,log_fold, p, avg1,avg2, max_avg, original_group[group1],original_group[group2]
 
-                    #if geneID == 'hsa-mir-128-1_hsa-miR-128-3p' and 'blood' in groups and 'inner cell mass' in groups:
-                    #print groups,log_fold, p, avg1,avg2, max_avg, original_group[group1],original_group[group2]
+                    if geneID == 'ENSG00000140416:I1.2-E6.4 ENSG00000140416:E3.6-E6.4' and 'male' in groups and 'female' in groups:
+                        print groups,log_fold, p, avg1,avg2, max_avg, original_group[group1],original_group[group2],data_list1,data_list2
                     group_avg_exp_db[group1][geneID] = avg1 ### store the group expression values
                     group_avg_exp_db[group2][geneID] = avg2 ### store the group expression values
                     #if geneID == 'ENSG00000213973': print log_fold
@@ -472,7 +471,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,sample_met
                     if symbol not in restricted_gene_denominator:
                         proceed = False
 
-            #if geneID == 'ENSG00000149531': print groups, gs.LogFold(), logfold_threshold, pval, pval_threshold, gs.Pval(), gs.AdjP(), symbol
+            if geneID == 'ENSG00000105321:E3.2-E4.2 ENSG00000105321:E2.3-E4.2' and 'fibroblast' in groups and 'inner cell mass' in groups:
+                print groups, gs.LogFold(), logfold_threshold, pval, pval_threshold, gs.Pval(), gs.AdjP(), symbol#;sys.exit()
             if 'Insufficient Expression' != gs.LogFold() and proceed:
                 #if geneID == 'hsa-mir-512-1_hsa-miR-512-3p' and 'CD34+ cells' in groups and 'mononuclear' in groups:
                 #print groups, gs.LogFold()
@@ -1129,6 +1129,7 @@ if __name__ == '__main__':
     platform='RNASeq'
     species='Hs'
     probability_statistic = 'moderated t-test'
+    probability_statistic = 'unpaired t-test'
     minRPKM=-1000
     logfold_threshold=math.log(1.3,2)
     pval_threshold=0.05
@@ -1224,7 +1225,8 @@ if __name__ == '__main__':
         if len(platforms)>0: platform = platforms[0]
         if platform == 'exon' or platform == 'methylation':
             logfold_threshold=math.log(1.1892,2) ### equivalent to a 0.25 dPSI or 0.25 beta differences
-        if platform == '1exon':
+        if platform == 'exon':
+            logfold_threshold=math.log(1,2)
             use_adjusted_p = False ### Too many drop-outs with lowdepth seq that adjusting will inherently exclude any significant changes
         if platform == 'methylation':
             use_adjusted_p = True
@@ -1244,7 +1246,7 @@ if __name__ == '__main__':
         
         for CovariateQuery in covariate_set:
           for diffStateQuery in diffState_set:
-            print 'Analyzing the covariate:',CovariateQuery, 'and diffState:',diffStateQuery
+            print 'Analyzing the covariate:',CovariateQuery, 'and diffState:',diffStateQuery, 'unique donor analysis:',uniqueDonors
             if 'XIST' in CovariateQuery: gender_restricted='female'
             
             genderRestricted = gender_restricted
@@ -1256,11 +1258,12 @@ if __name__ == '__main__':
             if runAgain:
                 uniqueDonors=True
                 use_adjusted_p = False
+                print 'Analyzing the covariate:',CovariateQuery, 'and diffState:',diffStateQuery, 'unique donor analysis:',uniqueDonors
                 try:
                     sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
                     performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,diffStateQuery+'-'+CovariateQuery,uniqueDonors)
-                except Exception:
-                    uniqueDonors=False; use_adjusted_p = True
+                except Exception: pass
+                uniqueDonors=False; use_adjusted_p = True
                 if platform == 'miRSeq' or platform == 'exon': use_adjusted_p = False
             
         if runAgain:

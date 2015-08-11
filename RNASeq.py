@@ -3103,12 +3103,14 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
                 if v>rho_cutoff:# #or v<negative_rho:
                     #scores.append((v,row_ids[k]))
                     if 'exons' != platform and 'AltExon' != platform:
-                        correlated.append(row_ids[k])
+                        correlated.append((v,row_ids[k]))
                     else:
                         if refgene not in row_ids[k]:
-                            correlated.append(row_ids[k])
+                            correlated.append((v,row_ids[k]))
                 k+=1
-            #scores.sort()
+            correlated.sort()
+            correlated.reverse()
+            correlated = map(lambda x:x[1],correlated)
             correlated_genes[geneID] = correlated
             
             #if geneID == 'ENSG00000016082':
@@ -3153,11 +3155,14 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     numb_corr=[]
     for i in correlated_genes:
         #if i == 'ENSG00000016082': print 'ISL1',len(correlated_genes[i])
+        if i=='Gfi1':
+            print 'Gfi1',len(correlated_genes[i]),correlated_genes[i]
         if len(correlated_genes[i])>connections:
             numb_corr.append([len(correlated_genes[i]),i])
             atleast_10[i]=correlated_genes[i] ### if atleast 10 genes apart of this pattern
             x=0
             for k in correlated_genes[i]:
+                if k=='Gfi1': print 'Gfi1 connected',i,x
                 if x<30: ### cap it at 30
                     atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
                 x+=1
@@ -3203,9 +3208,11 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
                 try: avg_corr = numpyCorrelationMatrix(temp_corr_matrix,rows,gene)
                 except Exception: avg_corr = 0
                 #if gene_to_symbol_db[gene][0] == 'ISL1' or gene_to_symbol_db[gene][0] == 'CD10' or gene_to_symbol_db[gene][0] == 'POU3F2':
+
                 if len(correlated_hits)>0:
                     if (float(len(correlated_hits))+1)/len(correlated_genes[gene])<0.5 or avg_corr<(rho_cutoff-0.1):
                         #exclude_corr.append(key)
+                        #if gene == 'XXX': print len(correlated_hits),len(correlated_genes[gene]), avg_corr, rho_cutoff-0.1
                         pass
                     else:
                         numb_corr2.append([len(correlated_hits),gene])
@@ -3674,7 +3681,8 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 cell_cycle_count=[]
                 for corr_gene in driverCorrelated[gene]:
                     if corr_gene in cell_cycle: cell_cycle_count.append(corr_gene)
-                if (len(cell_cycle_count)>1) or (len(driverCorrelated[gene])<4 and (len(cell_cycle_count)>0)):
+                #print gene, len(cell_cycle_count),len(driverCorrelated[gene])
+                if (float(len(cell_cycle_count))/len(driverCorrelated[gene]))>.15 or (len(driverCorrelated[gene])<4 and (len(cell_cycle_count)>0)):
                     print gene, cell_cycle_count
                     addition_cell_cycle_associated.append(gene)
                     pass

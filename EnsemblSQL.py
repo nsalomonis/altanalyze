@@ -1608,22 +1608,22 @@ if __name__ == '__main__':
     
     #getChrGeneOnly('Hs','Basic','EnsMart65','yes');sys.exit()
     analysisType = 'GeneAndExternal'; externalDBName_list = ['AFFY_Zebrafish']
-    force = 'no'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
+    force = 'yes'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
     print 'proceeding'
     
-    ensembl_version = '72'
+    ensembl_version = '27'
     species = 'Hs'
     
-    #ensembl_version = 'Fungi27'
-    #species = 'Nc'
-    print string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','');sys.exit()
-    getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA');sys.exit()
+    ensembl_version = 'Fungi27'
+    species = 'Nc'
+    #print string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','');sys.exit()
+    #getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA');sys.exit()
     
-    getFullGeneSequences('Bacteria18','bacteria_1_collection'); sys.exit()
+    #getFullGeneSequences('Bacteria18','bacteria_1_collection'); sys.exit()
     #for i in child_dirs: print child_dirs[i]
     #"""
     ### WON'T WORK FOR MORE THAN ONE EXTERNAL DATABASE -- WHEN RUN WITHIN THIS MOD
-    species_full = 'Danio rerio'; genus,species = string.split(species_full,' '); species = genus[0]+species[0]
+    species_full = 'Neurospora crassa'; genus,species = string.split(species_full,' '); species = genus[0]+species[0]
     ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
     rewrite_existing = 'no'
     for externalDBName in externalDBName_list:

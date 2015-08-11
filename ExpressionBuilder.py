@@ -2740,23 +2740,24 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
             if '-' in feature:
                 pos1,pos2 = junction_locations[feature][0]
                 for f2 in feature_exp_db:
-                    if f2!=feature:
-                        f2_exp = feature_exp_db[f2]
-                        alt_pos1,alt_pos2 = junction_locations[f2][0]
-                        positions = [pos1,pos2,alt_pos1,alt_pos2]
-                        positions.sort()
-                        diff = positions.index(pos2)-positions.index(pos1)
-                        if diff!=1:
-                            #try: junctions_to_compare[feature].append(f2)
-                            #except Exception: junctions_to_compare[feature] = [f2]
-                            try: overlapping_junctions_exp[feature].append([f2_exp,f2])
-                            except Exception: overlapping_junctions_exp[feature] = [[f2_exp,f2]]
-
-                        else:
-                            diff = positions.index(alt_pos2)-positions.index(alt_pos1)
+                    if '-' in f2:
+                        if f2!=feature:
+                            f2_exp = feature_exp_db[f2]
+                            alt_pos1,alt_pos2 = junction_locations[f2][0]
+                            positions = [pos1,pos2,alt_pos1,alt_pos2]
+                            positions.sort()
+                            diff = positions.index(pos2)-positions.index(pos1)
                             if diff!=1:
+                                #try: junctions_to_compare[feature].append(f2)
+                                #except Exception: junctions_to_compare[feature] = [f2]
                                 try: overlapping_junctions_exp[feature].append([f2_exp,f2])
                                 except Exception: overlapping_junctions_exp[feature] = [[f2_exp,f2]]
+    
+                            else:
+                                diff = positions.index(alt_pos2)-positions.index(alt_pos1)
+                                if diff!=1:
+                                    try: overlapping_junctions_exp[feature].append([f2_exp,f2])
+                                    except Exception: overlapping_junctions_exp[feature] = [[f2_exp,f2]]
                             
         """       
         for feature in feature_exp_db:
@@ -2829,6 +2830,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                     #print top_excl_junction[-8:]
                     #print statistics.avg(feature_exp_db[feature])
                     top_excl_junction = top_excl_junction[-1][-1]
+                    
                     t1,t2 = string.split(top_excl_junction,'-')
                     altexons = []
                     if t1!=fe1: altexons.append(fe1)
@@ -2846,6 +2848,8 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                     avg = averageWithNulls(values)
                     values_imputed = map(lambda x: replaceNulls(x,avg), values)
                     clust_export_data.write(string.join([symbol+':'+feature+'|'+top_excl_junction]+values_imputed,'\t')+'\n')
+                    exported.append(feature)
+                    exported.append(top_excl_junction)
         #sys.exit()
         
     gene_annotations = getGeneAnnotations(species)

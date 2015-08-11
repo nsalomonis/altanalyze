@@ -5653,7 +5653,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       elif array_type == 'AltMouse': probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+'MASTER-probeset-transcript.txt'
       else: probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_probesets.txt'
 
-      """
+      #"""
       if analysis_method != 'none':
           analysis_summary = RunAltAnalyze() ### Only run if analysis methods is specified (only available for RNA-Seq and junction analyses)
       else: analysis_summary = None
@@ -5695,7 +5695,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
               except Exception:
                 print traceback.format_exc() 
                 None
-      """ 
+      #""" 
       ### Perform dPSI Analysis
       try:
         if 'counts.' in fl.CountsFile(): pass
@@ -5712,12 +5712,12 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                 if 'exp.' in file and 'steady-state.txt' not in file:
                     fl.setExpFile(search_dir+'/'+file)
       try:
-          """
+          #"""
           try:
              graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
                     species,array_type,expFile=fl.CountsFile(),min_events=0,med_events=1)
           except Exception: pass
-          """
+          #"""
           inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI-clust.txt'
           
           ### Calculate ANOVA p-value stats based on groups
@@ -5763,8 +5763,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                       try: isoform_dir = UI.exportJunctionList(gene_dir,limit=50) ### list of gene IDs or symbols
                       except Exception: print traceback.format_exc()
 
-            #UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None); print 'completed'
-            #UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
+            UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None); print 'completed'
+            UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
       except Exception:
         print traceback.format_exc()
 
@@ -5774,16 +5774,24 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       except Exception:
         print traceback.format_exc()
       try:
-          ### Create sashimi plot index
-          import SashimiIndex
-          SashimiIndex.remoteIndexing(species,fl)
-          import SashimiPlot
-          print 'Exporting Sashimi Plots for the top-predicted splicing events... be patient'
-          try: SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
-          except Exception: pass
-          print 'completed'
-          SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
-          print 'completed'
+          analyzeBAMs = False
+          dir_list = unique.read_directory(fl.RootDir())
+          for file in dir_list:
+            if '.bam' in string.lower(file):
+                analyzeBAMs=True
+          if analyzeBAMs:
+            ### Create sashimi plot index
+            import SashimiIndex
+            SashimiIndex.remoteIndexing(species,fl)
+            import SashimiPlot
+            print 'Exporting Sashimi Plots for the top-predicted splicing events... be patient'
+            try: SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
+            except Exception: pass
+            print 'completed'
+            SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
+            print 'completed'
+          else:
+            print 'No BAM files present in the root directory... skipping SashimiPlot analysis...'
       except Exception:
         print traceback.format_exc()
         
@@ -6245,14 +6253,13 @@ def commandLineRun():
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
             try: array_type = array_type
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
-            try:
-                cel_file_dir = cel_file_dir
+            if len(cel_file_dir)>0:
                 values = species,exp_file_location_db,dataset,mlp_instance
                 StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
             
-            except Exception:
-                try: input_exp_file = input_exp_file
-                except Exception: 'Please indicate a source folder or expression file (e.g., --expdir /dataset/singleCells.txt)'
+            else:
+                if len(input_exp_file) > 0: pass
+                else: 'Please indicate a source folder or expression file (e.g., --expdir /dataset/singleCells.txt)'
             if array_type == 'Other' or 'Other' in array_type:
                 if ':' in array_type:
                     array_type, IDtype = string.split(array_type)
@@ -6359,7 +6366,7 @@ def commandLineRun():
                 values = species,exp_file_location_db,dataset,mlp_instance
                 StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
                 expFile = expFile[:-4]+'-steady-state.txt'
-                
+            print [excludeCellCycle]
             UI.RemotePredictSampleExpGroups(expFile, mlp_instance, gsp,(species,array_type)) ### proceed to run the full discovery analysis here!!!
             sys.exit()
             

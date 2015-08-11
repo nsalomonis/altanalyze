@@ -160,7 +160,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             """
             
             import R_interface
-    
+            reload(R_interface)
             if row_method == 'hopach' and column_method == 'hopach': cluster_method = 'both'
             elif row_method == 'hopach': cluster_method = 'gene'
             else: cluster_method = 'array'

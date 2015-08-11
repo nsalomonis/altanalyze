@@ -12,7 +12,7 @@ try:
 except Exception:
     try:
         from pyper import *
-        print "\n---------Using PypeR---------\n"
+        #print "\n---------Using PypeR---------\n"
         r = R(use_numpy=True)
     except Exception: pass
 
@@ -157,7 +157,9 @@ def importHopachOutput(filename):
            
     split_cluster=[] 
     for cluster in cluster_db:
+        #print cluster,len(cluster_db[cluster]),(float(len(cluster_db[cluster]))/len(hopach_db))
         if len(cluster_db[cluster])>100 and (float(len(cluster_db[cluster]))/len(hopach_db))>0.3:
+            #print cluster
             if cluster<10:
                 split_cluster.append(cluster)
     import unique
