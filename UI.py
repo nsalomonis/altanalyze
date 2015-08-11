@@ -2850,11 +2850,15 @@ def exportJunctionList(filename,limit=None):
             junctions = string.split(junctions,'|') #ENSMUSG00000032314:I11.1_55475101-E13.1-ENSMUSG00000032314:E11.1-E13.1|ENSMUSG00000032314:I11.1_55475153;I11.1_55475101
             for junction_pair in junctions:
                 if '-' in junction_pair:
-                    a,b = string.split(junction_pair,'-ENS')
-                    b = 'ENS'+b
-                    eo.write(a+' '+b+'\n')
-                    count+=1
-                    if limit==count: break  
+                    try:
+                        a,b = string.split(junction_pair,'-ENS')
+                        b = 'ENS'+b
+                        eo.write(a+' '+b+'\n')
+                        count+=1
+                        if limit==count: break      
+                    except Exception:
+                        pass
+
     eo.close()
     return export_file
 
@@ -6324,7 +6328,7 @@ def downloadInteractionDBs(species,windowType):
     StatusWindow(values,analysis,windowType=windowType) ### open in a TopLevel TK window (don't close current option selection menu)
     
 if __name__ == '__main__':
-    dir = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/AlternativeOutput/Rn_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
+    dir = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/Clustering/Combined-junction-exon-evidence.txt'
     a = exportJunctionList(dir,limit=50)
     print a;sys.exit()
     root = Tk()
