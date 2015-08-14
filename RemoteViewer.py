@@ -3,24 +3,28 @@ import os.path, sys, shutil
 import wx.lib.scrolledpanel
 import wx.grid as gridlib
 import os
-import Tkinter
 import string, re
 import wx
 import subprocess
-from wx import *
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
+from wx.lib.pdfviewer import pdfViewer, pdfButtonPanel
 #matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 from matplotlib.figure import Figure
+import unique
+import traceback
 
-currentDirectory = str(os.getcwd()) + "/" + "Config" ### NS-91615 alternative to __file__
+rootDirectory = unique.filepath(str(os.getcwd()))
+currentDirectory = unique.filepath(str(os.getcwd())) + "/" + "Config/" ### NS-91615 alternative to __file__
+currentDirectory = string.replace(currentDirectory,'AltAnalyzeViewer.app/Contents/Resources','')
 os.chdir(currentDirectory)
 parentDirectory = str(os.getcwd())  ### NS-91615 gives the parent AltAnalyze directory
 sys.path.insert(1,parentDirectory)  ### NS-91615 adds the AltAnalyze modules to the system path to import clustering and others
 import UI
 
+#These classes set up the "tab" feature in the program, allowing you to switch the viewer to different modes.
 class PageTwo(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
@@ -43,25 +47,36 @@ class PageFive(wx.Panel):
 
 class Main(wx.Frame):
     def __init__(self,parent,id):
-        wx.Frame.__init__(self, parent, id,'AltAnalyze Results Viewer', size=(1500,810))
- 
+        wx.Frame.__init__(self, parent, id,'AltAnalyze Results Viewer', size=(900,610))
+        self.Show()
+        self.Maximize(True) #### This allows the frame to resize to the host machine's max size
+        
         self.heatmap_translation = {}
         self.heatmap_run = {}
+        self.species = 'Hs'
+        self.geneset_type = 'WikiPathways'
+        self.runPCA = False
                       
         self.SetBackgroundColour((230, 230, 230))
         self.species=''
         #PANELS & WIDGETS              
+        #self.panel is one of the TOP PANELS. These are used for title display, the open project button, and sort & filter buttons.
         self.panel = wx.Panel(self, id=2, pos=(200,0), size=(600,45), style=wx.RAISED_BORDER)       
         self.panel.SetBackgroundColour((110, 150, 250))
-        #self.panel2 = wx.lib.scrolledpanel.ScrolledPanel(self, id=3, size=(1400,605), pos=(200,50), style=wx.RAISED_BORDER)
+
+        #Panel 2 is the main view panel.
         self.panel2 = wx.Panel(self, id=3, pos=(200,50), size=(1400,605), style=wx.RAISED_BORDER)
-        #self.panel2.SetupScrolling()
         self.panel2.SetBackgroundColour((218, 218, 218))
+
+        #Panel 3 contains the pseudo-directory tree.
         self.panel3 = wx.Panel(self, id=4, pos=(0,50), size=(200,625), style=wx.RAISED_BORDER)
         self.panel3.SetBackgroundColour("white")
+
+
         self.panel4 = wx.Panel(self, id=5, pos=(200,650), size=(1400,150), style=wx.RAISED_BORDER)
         self.panel4.SetBackgroundColour("black")
 
+        #These are the other top panels.
         self.panel_left = wx.Panel(self, id=12, pos=(0,0), size=(200,45), style=wx.RAISED_BORDER)
         self.panel_left.SetBackgroundColour((218, 218, 218))
         self.panel_right = wx.Panel(self, id=11, pos=(1100,0), size=(200,45), style=wx.RAISED_BORDER)
@@ -70,7 +85,8 @@ class Main(wx.Frame):
         self.panel_right2.SetBackgroundColour((218, 218, 218))
         
         self.panel_right2.SetMaxSize([300, 45])        
-        
+
+        #Lines 81-93 set up the user input box for the "sort" function (used on the table).
         self.sortbox = wx.TextCtrl(self.panel_right2, id=7, pos=(55,10), size=(40,25))
         wx.Button(self.panel_right2, id=8, label="Sort", pos=(5, 12), size=(40, 10))
         self.Bind(wx.EVT_BUTTON, self.SortTablefromButton, id=8)
@@ -78,49 +94,54 @@ class Main(wx.Frame):
         self.AscendingRadio = wx.RadioButton(self.panel_right2, id=17, label="Sort", pos=(100, 3), size=(12, 12))
         self.DescendingRadio = wx.RadioButton(self.panel_right2, id=18, label="Sort", pos=(100, 23), size=(12, 12))
 
-        font = wx.Font(10, wx.DECORATIVE, wx.BOLD, wx.NORMAL)
+        font = wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD)
         self.AscendingOpt = wx.StaticText(self.panel_right2, label="Ascending", pos=(115, 1))
         self.AscendingOpt.SetFont(font)
         self.DescendingOpt = wx.StaticText(self.panel_right2, label="Descending", pos=(115, 21))
         self.DescendingOpt.SetFont(font)
 
+        #Lines 96-98 set up the user input box for the "filter" function (used on the table).
         self.filterbox = wx.TextCtrl(self.panel_right, id=9, pos=(60,10), size=(125,25))
         wx.Button(self.panel_right, id=10, label="Filter", pos=(0, 12), size=(50, 10))
         self.Bind(wx.EVT_BUTTON, self.FilterTablefromButton, id=10)        
-                        
+
+        #Lines 101-103 set up the in-program log.                              
         self.control = wx.TextCtrl(self.panel4, id=6, pos=(1,1), size=(1400,150), style=wx.TE_MULTILINE)
         self.control.write("Welcome to AltAnalyze Results Viewer!" + "\n")
         self.Show(True)                
 
-        self.input_stream = ""
+        self.main_results_directory = ""
 
-        self.browser = wx.TreeCtrl(self.panel3, id=2000, pos=(0,0), size=(200,325)) 
+        #self.browser is the "directory tree" where groups of files are instantiated in self.browser2.
+        self.browser = wx.TreeCtrl(self.panel3, id=2000, pos=(0,0), size=(200,325))
+        #self.browser2 is the "file group" where groups of files are accessed, respective to the directory selected in self.browser.
         self.browser2 = wx.TreeCtrl(self.panel3, id=2001, pos=(0,325), size=(200,325))
         self.tree = self.browser                                           
 
-        #DICTIONARY
+        #self.sortdict groups the table headers to integers---this works with sort function.
         self.sortdict = {"A" : 0, "B" : 1, "C" : 2, "D" : 3, "E" : 4, "F" : 5, "G" : 6, "H" : 7, "I" : 8, "J" : 9, "K" : 10, "L" : 11, "M" : 12, "N" : 13, "O" : 14, "P" : 15, "Q" : 16, "R" : 17, "S" : 18, "T" : 19, "U" : 20, "V" : 21, "W" : 22, "X" : 23, "Y" : 24, "Z" : 25, "AA" : 26, "AB" : 27, "AC" : 28, "AD" : 29, "AE" : 30, "AF" : 31, "AG" : 32, "AH" : 33, "AI" : 34, "AJ" : 35, "AK" : 36, "AL" : 37, "AM" : 38, "AN" : 39, "AO" : 40, "AP" : 41, "AQ" : 42, "AR" : 43, "AS" : 44, "AT" : 45, "AU" : 46, "AV" : 47, "AW" : 48, "AX" : 49, "AY" : 50, "AZ" : 51}
 
-        #SIZER
+        #SIZER--main sizer for the program.
         ver = wx.BoxSizer(wx.VERTICAL)
         verpan2 = wx.BoxSizer(wx.VERTICAL)
         hpan1 = wx.BoxSizer(wx.HORIZONTAL)
         hpan2 = wx.BoxSizer(wx.HORIZONTAL)
         hpan3 = wx.BoxSizer(wx.HORIZONTAL)
-        verpan2.Add(self.panel2, 8, wx.ALL|EXPAND, 2)  
-        hpan1.Add(self.panel_left, 5, wx.ALL|EXPAND, 2)
-        hpan1.Add(self.panel, 24, wx.ALL|EXPAND, 2)
-        hpan1.Add(self.panel_right, 3, wx.ALL|EXPAND, 2)
-        hpan1.Add(self.panel_right2, 3, wx.ALL|EXPAND, 2)
-        hpan2.Add(self.panel3, 1, wx.ALL|EXPAND, 2)
-        hpan2.Add(verpan2, 7, wx.ALL|EXPAND, 2)
-        hpan3.Add(self.panel4, 1, wx.ALL|EXPAND, 2)
+        verpan2.Add(self.panel2, 8, wx.ALL|wx.EXPAND, 2)  
+        hpan1.Add(self.panel_left, 5, wx.ALL|wx.EXPAND, 2)
+        hpan1.Add(self.panel, 24, wx.ALL|wx.EXPAND, 2)
+        hpan1.Add(self.panel_right, 3, wx.ALL|wx.EXPAND, 2)
+        hpan1.Add(self.panel_right2, 3, wx.ALL|wx.EXPAND, 2)
+        hpan2.Add(self.panel3, 1, wx.ALL|wx.EXPAND, 2)
+        hpan2.Add(verpan2, 7, wx.ALL|wx.EXPAND, 2)
+        hpan3.Add(self.panel4, 1, wx.ALL|wx.EXPAND, 2)
         ver.Add(hpan1, 1, wx.EXPAND)
         ver.Add(hpan2, 18, wx.EXPAND) 
         ver.Add(hpan3, 4, wx.EXPAND)
         self.browser.SetSize(self.panel3.GetSize())
         self.SetSizer(ver)  
 
+        #TABS: lines 137-159 instantiate the tabs for the main viewing panel.
         self.nb = wx.Notebook(self.panel2, id=7829, style = wx.NB_BOTTOM)
         self.page1 = wx.ScrolledWindow(self.nb, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.HSCROLL|wx.VSCROLL )
         self.page1.SetScrollRate( 5, 5 )
@@ -145,9 +166,10 @@ class Main(wx.Frame):
         self.page2.SetSizer(gridsizer)
         self.page2.Layout()
 
+        #In the event that the interactive tab is chosen, a function must immediately run.
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.InteractiveTabChoose, id=7829)
 
-	#INTERACTIVE PANEL LAYOUT
+	#INTERACTIVE PANEL LAYOUT: lines 167-212
         #Pca Setup
         
         self.RunButton1 = wx.Button(self.page3, id=43, label="Run", pos=(275, 150), size=(120, 10))
@@ -197,12 +219,6 @@ class Main(wx.Frame):
         self.RunButton1.Hide()
         self.Divider1.Hide()
         
-        #self.Heatmap_CCMetricLabel = wx.StaticText(self.page3, label="Select the column clustering metric", pos=(150, 75))
-        #self.Heatmap_CCMethodLabel = wx.StaticText(self.page3, label="Select the column clustering method", pos=(150, 100))
-
-        #self.Heatmap_CCMetricUI = wx.ComboBox(self.page3, 500, '', (10, 75), (120,25), phasesList, wx.CB_DROPDOWN)
-        #self.Heatmap_CCMethodUI = wx.ComboBox(self.page3, 501, '', (10, 100), (120,25), phasesList, wx.CB_DROPDOWN)
-
         #TERMINAL SETUP
 
         TxtBox = wx.BoxSizer(wx.VERTICAL)   
@@ -242,7 +258,7 @@ class Main(wx.Frame):
         OpenSizer.Add(ButtonMan, 1, wx.EXPAND)
         self.panel_left.SetSizer(OpenSizer)
 
-        #STATUS BAR CREATE             
+        #STATUS BAR CREATE --- not all of these are currently functional. The "edit" menu still needs to be implemented.             
         status = self.CreateStatusBar()
         menubar = wx.MenuBar()
                 
@@ -319,6 +335,7 @@ class Main(wx.Frame):
             return
 
     def GridRowColor(self, event):
+        #This colors any row that has been selected and resets it accordingly: may be removed in future versions.
         if len(self.HighlightedCells) > 0:
             for i in self.HighlightedCells:
                 self.myGrid.SetCellBackgroundColour(i[0], i[1], (255, 255, 255)) 
@@ -330,9 +347,7 @@ class Main(wx.Frame):
           
             
     def GridRightClick(self, event):
-        """
-        Create and show a Context Menu
-        """
+        #Pop-up menu instantiation for a right click on the table.
         self.GridRowEvent = event.GetRow()       
         
         # only do this part the first time so the events are only bound once 
@@ -340,9 +355,9 @@ class Main(wx.Frame):
             self.popupID1 = wx.NewId()
             self.popupID2 = wx.NewId()
             self.popupID3 = wx.NewId()
-            self.Bind(wx.EVT_MENU, self.CellGraph, id=self.popupID1)
+            self.Bind(wx.EVT_MENU, self.GeneExpressionSummaryPlot, id=self.popupID1)
             self.Bind(wx.EVT_MENU, self.PrintGraphVariables, id=self.popupID2)
-            self.Bind(wx.EVT_MENU, self.ExonViewInitiate, id=self.popupID3)
+            self.Bind(wx.EVT_MENU, self.AltExonViewInitiate, id=self.popupID3)
  
         # build the menu
         menu = wx.Menu()
@@ -354,7 +369,23 @@ class Main(wx.Frame):
         self.PopupMenu(menu)
         menu.Destroy()
 
+    def AltExonViewInitiate(self, event):
+        ### Temporary option for exon visualization until the main tool is complete and database can be bundled with the program
+        gene = str(self.myGrid.GetCellValue(self.GridRowEvent, 0))
+        datasetDir = self.main_results_directory
+        print datasetDir
+        self.control.write("Plotting... " + gene + "\n")
+        data_type = 'raw expression'
+        show_introns = 'no'
+        analysisType = 'graph-plot'
+        exp_dir = unique.filepath(datasetDir+'/ExpressionInput')
+        print exp_dir
+        exp_file = UI.getValidExpFile(exp_dir)
+        print exp_file
+        UI.altExonViewer(self.species,self.platform,exp_file,gene,show_introns,analysisType,'')
+        
     def ExonViewInitiate(self, event):
+        #This function is a part of the pop-up menu for the table: it plots a gene and protein level view.
         os.chdir(parentDirectory)
         t = os.getcwd()
         self.control.write(str(os.listdir(t)) + "\n")
@@ -368,7 +399,8 @@ class Main(wx.Frame):
         #Q = subprocess.Popen(['python', 'ExPlot13.py', str(R)])
         #os.chdir(currentDirectory)
                                     
-    def CellGraph(self, event):
+    def GeneExpressionSummaryPlot(self, event):
+        #This function is a part of the pop-up menu for the table: it plots expression levels.
         Wikipathway_Flag = 0
         Protein_Flag = 0
         VarGridSet = []
@@ -406,6 +438,7 @@ class Main(wx.Frame):
                 if(q < 0):
                     break
                 q = q - 1   
+                #Regular expression is needed to find the appropriate columns to match from.
                 FLAG_log_fold = re.findall("log_fold",VarGridSet[q])
                 FLAG_adjp = re.findall("adjp",VarGridSet[q])
                 FLAG_rawp = re.findall("rawp",VarGridSet[q])
@@ -444,7 +477,8 @@ class Main(wx.Frame):
             Output_std_err.append(std_err)                
             
         n_groups = len(Output_Values_List)
-        
+
+        #PLOTTING STARTS --
         means_men = Output_Values_List
         
         fig, ax = plt.subplots()
@@ -469,8 +503,10 @@ class Main(wx.Frame):
         
         plt.tight_layout()
         plt.show()
+        #-- PLOTTING STOPS
 
     def PrintGraphVariables(self, event):
+        #This function is a part of the pop-up menu for the table: it prints the variables for the expression levels. Used for testing mainly.
         Wikipathway_Flag = 0
         Protein_Flag = 0
         VarGridSet = []
@@ -534,7 +570,9 @@ class Main(wx.Frame):
                 
                                 
     def InteractiveTabChoose(self, event):
+        #If the interactive tab is chosen, a plot will immediately appear with the default variables.
         try:
+            #The PCA and Heatmap flags are set; a different UI will appear for each of them.
             PCA_RegEx = re.findall("PCA", self.DirFile)
             Heatmap_RegEx = re.findall("hierarchical", self.DirFile)
             if(self.nb.GetSelection() == 2):
@@ -545,26 +583,42 @@ class Main(wx.Frame):
         
     def getDatasetVariables(self):
         
-        for file in os.listdir(self.input_stream):
+        for file in os.listdir(self.main_results_directory):
             if 'AltAnalyze_report' in file and '.log' in file:
-                log_file = self.input_stream+'/'+file
+                log_file = unique.filepath(self.main_results_directory+'/'+file)
                 log_contents = open(log_file, "rU")
                 species = '	species: '
                 platform = '	method: '
                 for line in log_contents:
+                    line = line.rstrip()
                     if species in line:
                         self.species = string.split(line,species)[1]
                     if platform in line:
                         self.platform = string.split(line,platform)[1]
+                try:
+                    self.supported_genesets = UI.listAllGeneSetCategories(self.species,'WikiPathways','gene-mapp')
+                    self.geneset_type = 'WikiPathways'
+                except Exception:
+                    try:
+                        self.supported_genesets = UI.listAllGeneSetCategories(self.species,'GeneOntology','gene-mapp')
+                        self.geneset_type = 'GeneOntology'
+                    except Exception:
+                        self.supported_genesets = []
+                        self.geneset_type = 'None Selected'
+
+                print 'Using',self.geneset_type, len(self.supported_genesets),'pathways'
+                break
 
     def OnOpen(self, event):
+        #Bound to the open tab from the menu and the "Open Project" button. 
         openFileDialog = wx.DirDialog(None, "Choose project", "", wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)  
         if openFileDialog.ShowModal() == wx.ID_CANCEL:
             return 
-        self.input_stream = openFileDialog.GetPath()
-        if (len(self.input_stream) > 0):
-            
-            self.getDatasetVariables()
+        #self.input stream is the path of our project's main directory.
+        self.main_results_directory = openFileDialog.GetPath()
+        if (len(self.main_results_directory) > 0):
+            if self.species == '':
+                self.getDatasetVariables()
             self.SearchArray = []
             self.SearchArrayFiltered = []
 
@@ -572,32 +626,36 @@ class Main(wx.Frame):
 
             #FLAG COLLECT
             root = 'Data'
+            
             for (dirpath, dirnames, filenames) in os.walk(root):
                 for dirname in dirnames:
-                    fullpath = os.path.join(dirpath, dirname)
+                    #fullpath = os.path.join(dirpath, dirname)
+                    fullpath = currentDirectory+'/'+dirpath+'/'+dirname
                 for filename in sorted(filenames):
                     if filename == "location.txt":
-                        file_fullpath = os.path.join(dirpath, filename)
-                        #self.control.write(str(file_fullpath) + "\n")
+                        #file_fullpath = unique.filepath(os.path.join(dirpath, filename))
+                        file_fullpath = currentDirectory+'/'+dirpath+'/'+filename
                         file_location = open(file_fullpath, "r")
                         fl_array = []
                         for line in file_location:
                             line = line.rstrip(); line = string.replace(line,'"','')
                             line = line.split("\r")
+                            
                             if len(line) > 1:
                                 fl_array.append(line[0])
                                 fl_array.append(line[1])
                             else:
                                 fl_array.append(line[0])
-                        #self.control.write(str(fl_array) + "\n")
                         file_location.close()
+                        if dirname == 'ExonGraph':
+                            print fl_array
                         if(len(fl_array) == 3):
                             fl_array.append(dirpath)
                             self.SearchArray.append(fl_array)
                                    
                                                             
-            self.control.write("Opening project at: " + self.input_stream + "\n")
-            print self.input_stream  
+            self.control.write("Opening project at: " + self.main_results_directory + "\n")
+            print self.main_results_directory  
             self.browser2.DeleteAllItems()
 
             
@@ -608,7 +666,7 @@ class Main(wx.Frame):
                 if(FLAG[0][-1] != "/"):
                     SearchingFlag = FLAG[0] + "/"
                 SearchingFlag = FLAG[0]
-                SearchingFlagPath = self.input_stream + "/" + SearchingFlag
+                SearchingFlagPath = self.main_results_directory + "/" + SearchingFlag
                 try:
                     SFP_Contents = os.listdir(SearchingFlagPath)
                     for filename in SFP_Contents:
@@ -670,7 +728,9 @@ class Main(wx.Frame):
             self.ids = {root : self.tree.AddRoot(root)}
             for (dirpath, dirnames, filenames) in os.walk(root):
                 for dirname in dirnames:
+                    #print dirpath, dirname
                     fullpath = os.path.join(dirpath, dirname)
+                    #print currentDirectory+'/'+dirpath
                     self.ids[fullpath] = self.tree.AppendItem(self.ids[dirpath], dirname)
                     DisplayColor = [255, 255, 255]
                     DisplayColor[0] = color_root[0] - len(dirpath)
@@ -705,15 +765,37 @@ class Main(wx.Frame):
             self.control.write("Resetting grid..." + "\n")
             self.control.write("Currently displaying: " + "SUMMARY" + "\n")
             self.myGrid.ClearGrid()
-            opening_display_folder = self.input_stream + "/ExpressionOutput"
+            if 'ExpressionInput' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'ExpressionInput')[0]
+            if 'AltResults' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'AltResults')[0]
+            if 'ExpressionOutput' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'ExpressionOutput')[0]
+            if 'GO-Elite' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'GO-Elite')[0]
+            if 'ICGS' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'ICGS')[0]
+            if 'DataPlots' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'DataPlots')[0]
+            if 'AltExpression' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'AltExpression')[0]
+            if 'AltDatabase' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'AltDatabase')[0]
+            if 'ExonPlots' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'ExonPlots')[0]
+            if 'SashimiPlots' in self.main_results_directory:
+                self.main_results_directory = string.split(self.main_results_directory,'SashimiPlots')[0]
+            opening_display_folder = self.main_results_directory + "/ExpressionOutput"
+            
             list_contents = os.listdir(opening_display_folder)
             target_file = ""
             for file in list_contents:
                 candidate = re.findall("SUMMARY", file)
                 if len(candidate) > 0:
                     target_file = file
-                    break 
-            target_file = opening_display_folder + "/" + target_file
+                    break
+
+            target_file = unique.filepath(opening_display_folder + "/" + target_file)
             opened_target_file = open(target_file, "r")
             opened_target_file_contents = []
             for line in opened_target_file:
@@ -741,10 +823,12 @@ class Main(wx.Frame):
                 if(colsize > 200):
                     self.myGrid.SetColSize(i, 200)
             self.page2.Layout()     
-            
-            self.nb.SetSelection(0)                                                                                                                                                                                                                                                                                  
 
+            #This line always sets the opening display to the "Table" tab.
+            self.nb.SetSelection(0)                                                                                                                                                                                                                                                                                  
+            
     def OnOpenSingleFile(self, event):
+        #Opens only one file as opposed to the whole project; possibly unstable and needs further testing.
         openFileDialog = wx.FileDialog(self, "", "", "", "", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
 
         if openFileDialog.ShowModal() == wx.ID_CANCEL:
@@ -795,15 +879,19 @@ class Main(wx.Frame):
             imgsizer_v.Add(self.LOGO, proportion=0, flag=wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL)
             self.page1.SetSizer(imgsizer_v)
             self.page1.Layout()        
-        
+        if single_input_stream[-4:] == ".pdf":
+            #http://wxpython.org/Phoenix/docs/html/lib.pdfviewer.html
+            pass
 
     def OnSave(self, event):
+        #Save function is currently not implemented but is a priority for future updates.
         saveFileDialog = wx.FileDialog(self, "", "", "", "", wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)        
         if saveFileDialog.ShowModal() == wx.ID_CANCEL:
             return
              
                 
     def OnSearch(self, event):
+        #This handles the search prompt pop-up box when using "search -> table" from the status bar menu.
         popup = wx.TextEntryDialog(None, "Enter filter for results.", "Search", "Enter search here.")
         if popup.ShowModal()==wx.ID_OK:
             answer=popup.GetValue()
@@ -813,6 +901,7 @@ class Main(wx.Frame):
             return
     
     def TreeSearch(self, event):
+        #Search tree function: searches the tree for a given phrase and opens the tree to that object.
         popup = wx.TextEntryDialog(None, "Search the browser tree for directories and files.", "Search", "Enter search here.")
         if popup.ShowModal()==wx.ID_OK:
             answer=popup.GetValue()
@@ -859,6 +948,7 @@ class Main(wx.Frame):
             return
 
     def GridSearch(self, event):
+        #Search table function: this searchs the table and highlights the search query in the table; also zooms to the nearest match.
         popup = wx.TextEntryDialog(None, "Search the table.", "Search", "Enter search here.")
         if popup.ShowModal()==wx.ID_OK:
             PageDownFound = "False"
@@ -887,6 +977,7 @@ class Main(wx.Frame):
                         self.myGrid.SetCellBackgroundColour(y_count, x_count, (255, 255, 125))
                     x_count = x_count + 1
                 y_count = y_count + 1
+            #"MakeCellVisible" zooms to the given coordinates.
             self.myGrid.MakeCellVisible(PageScrollY, PageScrollX)
             terminal_list = []
             for cell in self.ColoredCellList:
@@ -902,6 +993,7 @@ class Main(wx.Frame):
             return
 
     def FilterTable(self, event):
+        #The filter function displays ONLY the rows that have matches for the given search. Does not delete the filtered out data---table data is still fully functional and usable.
         popup = wx.TextEntryDialog(None, "Filter the table.", "Search", "Enter filter phrase.")
         if popup.ShowModal()==wx.ID_OK:
             self.myGrid.ClearGrid()
@@ -943,6 +1035,7 @@ class Main(wx.Frame):
             self.nb.SetSelection(0)   
             
     def SortTable(self, event):
+        #The sort function re-writes the table sorting by either descending or ascending values in a given column.
         popup = wx.TextEntryDialog(None, "Sort the table.", "Sort", "Which column to sort from?")
         if popup.ShowModal()==wx.ID_OK:
             self.myGrid.ClearGrid()
@@ -1050,7 +1143,9 @@ class Main(wx.Frame):
             self.nb.SetSelection(0) 
 
     def FilterTablefromButton(self, event):
+            #Same filter function as before, but this function is bound to the button in the top-right corner of the main GUI.
             self.myGrid.ClearGrid()
+            #In single line text boxes, you must always set 0 to the GetLineText value; 0 represents the first and only line.
             answer = self.filterbox.GetLineText(0)            
             try:
                 try:
@@ -1100,6 +1195,7 @@ class Main(wx.Frame):
                     
                                                             
     def SortTablefromButton(self, event):
+            #Same sort function as before, but this function is bound to the button in the top-right corner of the main GUI.
             answer = self.sortbox.GetLineText(0)
             self.myGrid.ClearGrid()
             answer = answer.upper()
@@ -1210,6 +1306,7 @@ class Main(wx.Frame):
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     def SelectedTopTreeID(self, event):
+        #This handles the selection of an item in the TOP tree browser.
         item = event.GetItem()
         itemObject = self.tree.GetItemData(item).GetData()        
         SearchObject = itemObject.split(";")
@@ -1225,8 +1322,8 @@ class Main(wx.Frame):
         ID_Strings = []
         self.TopSelectList = []
         self.TopID = SearchSuffix
-        root = self.input_stream + "/" + SearchPath
-        root_display = self.input_stream + "/" + SearchPath
+        root = self.main_results_directory + "/" + SearchPath
+        root_display = self.main_results_directory + "/" + SearchPath
         root_contents = os.listdir(root)
         root_contents_display = os.listdir(root)
         for obj in root_contents:
@@ -1286,7 +1383,7 @@ class Main(wx.Frame):
         if(root_display[-1] != "/"):
             root_display = root_display + "/"
         for possible in root_contents_display:
-            total_filepath = root_display + possible 
+            total_filepath = unique.filepath(root_display + possible)
             if(possible[-4:] == ".txt"):
                 self.control.write("Displaying file: " + str(total_filepath) + "\n")
                 display_file_selected = total_filepath
@@ -1308,11 +1405,11 @@ class Main(wx.Frame):
         Pitch = os.listdir(root)
         PitchSelect = Pitch[0]
         #self.control.write(str(PitchSelect) + " " + root_display + "\n")                
-        self.DirFile = root_display + PitchSelect
+        self.DirFile = unique.filepath(root_display + PitchSelect)
         self.IntFileTxt.Clear()
         self.IntFileTxt.write(self.DirFile)
-        self.DirFileTxt = root_display + PitchSelect + ".txt"       
-        DirFilePng = root_display + PitchSelect + ".png"        
+        self.DirFileTxt = unique.filepath(root_display + PitchSelect + ".txt")     
+        DirFilePng = unique.filepath(root_display + PitchSelect + ".png")       
         self.myGrid.ClearGrid()
         title_name = PitchSelect
         try:
@@ -1323,7 +1420,7 @@ class Main(wx.Frame):
             self.PanelTitle.Destroy()
         except:
             pass    
-        font = wx.Font(18, wx.DECORATIVE, wx.BOLD, wx.NORMAL)
+        font = wx.Font(16, wx.SWISS, wx.NORMAL, wx.BOLD)
         self.PanelTitle = wx.StaticText(self.panel, label=title_name, pos=(5, 7))
         self.PanelTitle.SetFont(font)
 
@@ -1428,6 +1525,7 @@ class Main(wx.Frame):
             self.page1.Layout()
 
     def SelectedBottomTreeID(self, event):
+        #This handles the selection of an item in the BOTTOM tree browser; represents a file most of the time.
         item = event.GetItem()
         itemObject = self.browser2.GetItemData(item).GetData()
         Parameters = itemObject.split("|")
@@ -1441,13 +1539,12 @@ class Main(wx.Frame):
             i = i.replace("'", "")
             i = i.replace(" ", "")
             file_exts.append(i)
-            #self.control.write(str(i) + "\n")
         for i in file_exts:
             if(i == ".txt"):
                 TXT_FLAG = 1
             if(i == ".png"):
                 PNG_FLAG = 1
-        DirPath = self.input_stream + "/" + Parameters[2]
+        DirPath = self.main_results_directory + "/" + Parameters[2]
         if(DirPath[-1] != "/"):
             DirPath = DirPath + "/"
         DirFile = DirPath + Parameters[0]
@@ -1455,7 +1552,7 @@ class Main(wx.Frame):
         title_name = DirFile.split("/")
         title_name = title_name[-1]
         
-        self.DirFile = DirFile
+        self.DirFile = unique.filepath(DirFile)
         self.IntFileTxt.Clear()
         self.IntFileTxt.write(self.DirFile)
         self.DirFileTxt = DirFile + ".txt"
@@ -1469,11 +1566,11 @@ class Main(wx.Frame):
             self.PanelTitle.Destroy()
         except:
             pass    
-        font = wx.Font(18, wx.DECORATIVE, wx.BOLD, wx.NORMAL)
+        font = wx.Font(16, wx.SWISS, wx.NORMAL, wx.BOLD)
         self.PanelTitle = wx.StaticText(self.panel, label=title_name, pos=(5, 7))
         self.PanelTitle.SetFont(font)
 
-      
+        #PNG_FLAG and TXT_FLAG are flags that sense the presence of an image or text file.
         if(PNG_FLAG == 1):
             try:
                 open(DirFilePng, "r")
@@ -1654,6 +1751,8 @@ class Main(wx.Frame):
             self.page1.Layout()
 
     def InteractivePanelUpdate(self, event):
+        #Both the PCA UI and Heatmap UI share the same panel, so buttons and text boxes (as well as other GUI) will have to be destroyed/hidden
+        #whenever a new type of interactivity is selected.
         self.IntFileTxt.Hide()
         self.InteractiveFileLabel.Hide()
         self.Yes1Label.Hide()
@@ -1703,14 +1802,15 @@ class Main(wx.Frame):
         if(len(Heatmap_RegEx) > 0):
             #Heatmap Setup
             os.chdir(parentDirectory)
-            options_open = open(currentDirectory+"/options.txt", "rU")
+            options_open = open(unique.filepath(currentDirectory+"/options.txt"), "rU")
             heatmap_array = []
             self.heatmap_ids = {}
             self.heatmap_translation = {}
-            
             supported_geneset_types = UI.getSupportedGeneSetTypes(self.species,'gene-mapp')
             supported_geneset_types += UI.getSupportedGeneSetTypes(self.species,'gene-go')
-            print supported_geneset_types
+            supported_geneset_types_alt = [self.geneset_type]
+            supported_genesets = self.supported_genesets
+            
             for line in options_open:
                 line = line.split("\t")
                 variable_name,displayed_title,display_object,group,notes,description,global_default,options = line[:8]
@@ -1720,12 +1820,17 @@ class Main(wx.Frame):
                         continue                    
                     od = UI.OptionData(variable_name,displayed_title,display_object,notes,options,global_default)
                     od.setDefaultOption(global_default)
-                    if group == 'ClusterGOElite':
+                    #"""
+                    if variable_name == 'ClusterGOElite':
                         od.setArrayOptions(['None Selected','all']+supported_geneset_types)
-                    if group == 'GeneSetSelection':
-                        od.setArrayOptions(['None Selected']+supported_geneset_types)
-                    if group == 'PathwaySelection':
-                        od.setArrayOptions(['None Selected']+supported_geneset_types)
+                    elif variable_name == 'GeneSetSelection':
+                        od.setArrayOptions(['None Selected']+supported_geneset_types_alt)
+                    elif variable_name == 'PathwaySelection':
+                        od.setArrayOptions(['None Selected']+supported_genesets)
+                    elif od.DefaultOption() == '':
+                        od.setDefaultOption(od.Options()[0])
+                    if od.DefaultOption() == '---':
+                        od.setDefaultOption('')#"""
                     heatmap_array.append(od)
                     #heatmap_array.append((line[1], line[2], line[7], line[6]))           
             os.chdir(currentDirectory)
@@ -1736,12 +1841,14 @@ class Main(wx.Frame):
             for od in heatmap_array:
                 #od.VariableName()
                 id = wx.NewId()
+                #print od.VariableName(),od.Options()
                 self.heatmap_translation[od.VariableName()] = self.root_widget_id
                 self.heatmap_ids[self.root_widget_text] = wx.StaticText(self.page3, self.root_widget_text, label=od.Display(), pos=(150, root_widget_y_pos))
                 if(od.DisplayObject() == "comboBox" or od.DisplayObject() == "multiple-comboBox"):
                     self.heatmap_ids[self.root_widget_id] = wx.ComboBox(self.page3, self.root_widget_id, od.DefaultOption(), (10, root_widget_y_pos), (120,25), od.Options(), wx.CB_DROPDOWN)
                 else:
-                    self.heatmap_ids[self.root_widget_id] = wx.TextCtrl(self.page3, self.root_widget_id, "", (10, root_widget_y_pos), (120,25))
+                    self.heatmap_ids[self.root_widget_id] = wx.TextCtrl(self.page3, self.root_widget_id, od.DefaultOption(), (10, root_widget_y_pos), (120,25))
+                
                 self.root_widget_id = self.root_widget_id + 1
                 self.root_widget_text = self.root_widget_text + 1
                 root_widget_y_pos = root_widget_y_pos + 25
@@ -1756,6 +1863,7 @@ class Main(wx.Frame):
             self.InteractiveDefaultMessage.Show() 
 
     def ClearVisualPanel(self, event):
+        #Deletes the current image on the viewing panel. Unstable and mostly broken; may be removed from future versions.
         popup = wx.MessageDialog(None, "Are you sure you want to clear the visual panel?", "Warning", wx.YES_NO)
         popup_answer = popup.ShowModal()
         if(popup_answer == 5103):
@@ -1775,90 +1883,146 @@ class Main(wx.Frame):
             return                            
 
     def InteractiveRun(self, event):                        
+            #This function is bound to the "Run" button on the interactive tab GUI. Generates an interactive plot.
+            #Currently updates on the panel are a priority and many changes may come with it.
             RegExHeat = re.findall("hierarchical", self.DirFile)
-            
+            print 'A'
             if(len(RegExHeat) > 0):
-                #print self.heatmap_translation
+                print 'B'
                 for VariableName in self.heatmap_translation:
-                    self.control.write(str(self.heatmap_ids[self.heatmap_translation[VariableName]].GetValue()) + " " + str(VariableName) + " " + str(self.heatmap_ids[self.heatmap_translation[VariableName]]) + "\n")
-                    self.heatmap_translation[VariableName] = self.heatmap_ids[self.heatmap_translation[VariableName]].GetValue()
-                self.control.write(self.DirFile + "\n")
-                input_file_dir = self.DirFile + ".txt"
-                column_metric = self.heatmap_translation['column_metric']; #self.control.write(column_metric + "\n")
-                column_method = self.heatmap_translation['column_method']; #self.control.write(column_method + "\n")
-                row_metric = self.heatmap_translation['row_metric']; #self.control.write(row_metric + "\n")
-                row_method = self.heatmap_translation['row_method']; #self.control.write(row_method+ "\n") 
-                color_gradient = self.heatmap_translation['color_selection']; #self.control.write(color_gradient + "\n")
-                cluster_rows = self.heatmap_translation['cluster_rows']; #self.control.write(cluster_rows + "\n")
-                cluster_columns = self.heatmap_translation['cluster_columns']; #self.control.write(cluster_columns + "\n")
-                normalization = self.heatmap_translation['normalization']; #self.control.write(normalization + "\n")
-                contrast = self.heatmap_translation['contrast']; #self.control.write(contrast + "\n")
-                transpose = self.heatmap_translation['transpose']; #self.control.write(transpose + "\n")
-                GeneSetSelection = self.heatmap_translation['GeneSetSelection']; #self.control.write(GeneSetSelection + "\n")
-                PathwaySelection = self.heatmap_translation['PathwaySelection']; #self.control.write(PathwaySelection + "\n")
-                OntologyID = self.heatmap_translation['OntologyID']; #self.control.write(OntologyID + "\n")
-                GeneSelection = self.heatmap_translation['GeneSelection']; #self.control.write(GeneSelection + "\n")
-                JustShowTheseIDs = self.heatmap_translation['JustShowTheseIDs']; #self.control.write(JustShowTheseIDs + "\n")
-                CorrelationCutoff = self.heatmap_translation['CorrelationCutoff']; #self.control.write(CorrelationCutoff + "\n")
-                HeatmapAdvanced = self.heatmap_translation['HeatmapAdvanced']; #self.control.write(HeatmapAdvanced + "\n")
-                ClusterGOElite = self.heatmap_translation['ClusterGOElite']; #self.control.write(ClusterGOElite + "\n")
-                heatmapGeneSets = self.heatmap_translation['heatmapGeneSets']; #self.control.write(heatmapGeneSets + "\n")
-		if cluster_rows == 'no': row_method = None
-		if cluster_columns == 'no': column_method = None
-		
-		if self.DirFile not in self.heatmap_run:
-		    self.heatmap_run[self.DirFile]=None
-		    ### occurs when automatically running the heatmap
-		    column_method = None
-		    row_method = None
-		    color_gradient = 'yellow_black_blue'
-		    normalization = 'median'
-            
-                translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Iterative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly', 'Perform Monocle':'monocle'}
-                try:
-                    if 'None Selected' in HeatmapAdvanced: pass
-                except Exception: HeatmapAdvanced = ('None Selected')
-                if ('None Selected' in HeatmapAdvanced and len(HeatmapAdvanced)==1) or 'None Selected' == HeatmapAdvanced: pass
-                else:
+                    #self.control.write(str(self.heatmap_ids[self.heatmap_translation[VariableName]].GetValue()) + " " + str(VariableName) + " " + str(self.heatmap_ids[self.heatmap_translation[VariableName]]) + "\n")
                     try:
-                        GeneSelection += ' '+string.join(list(HeatmapAdvanced),' ')
-                        for name in translate:
-                            GeneSelection = string.replace(GeneSelection,name,translate[name])
-                        GeneSelection = string.replace(GeneSelection,'  ',' ')
-                        if 'top' in GeneSelection or 'driver' in GeneSelection or 'excludeCellCycle' in GeneSelection or 'positive' in GeneSelection or 'IntraCorrelatedOnly' in GeneSelection:
-                            GeneSelection+=' amplify'
+                        self.heatmap_translation[VariableName] = str(self.heatmap_ids[self.heatmap_translation[VariableName]].GetValue())
+                        #print self.heatmap_translation[VariableName]
                     except Exception: pass
-                GeneSetSelection = string.replace(GeneSetSelection,'\n',' ')
-                GeneSetSelection = string.replace(GeneSetSelection,'\r',' ')
-                        
-                try: CorrelationCutoff = float(gu.Results()['CorrelationCutoff'])
-                except Exception: CorrelationCutoff=None
-                if transpose == 'yes': transpose = True
-                else: transpose = False
-        
-                vendor = 'RNASeq'
-                color_gradient = string.replace(color_gradient,'-','_')
-                if len(GeneSetSelection)>0 or GeneSelection != '':
-                    gsp = UI.GeneSelectionParameters(self.species,self.platform,vendor)
-                    gsp.setGeneSet(GeneSetSelection)
-                    gsp.setPathwaySelect(PathwaySelection)
-                    gsp.setGeneSelection(GeneSelection)
-                    gsp.setOntologyID(OntologyID)
-                    gsp.setTranspose(transpose)
-                    gsp.setNormalize(normalization)
-                    gsp.setJustShowTheseIDs(justShowTheseIDs)
-                    try: gsp.setClusterGOElite(clusterGOElite)
-                    except Exception: pass
-                    if rho!=None:
+                try:
+                    self.control.write(self.DirFile + "\n")
+                    input_file_dir = self.DirFile + ".txt"
+                    column_metric = self.heatmap_translation['column_metric']; #self.control.write(column_metric + "\n")
+                    column_method = self.heatmap_translation['column_method']; #self.control.write(column_method + "\n")
+                    row_metric = self.heatmap_translation['row_metric']; #self.control.write(row_metric + "\n")
+                    row_method = self.heatmap_translation['row_method']; #self.control.write(row_method+ "\n") 
+                    color_gradient = self.heatmap_translation['color_selection']; #self.control.write(color_gradient + "\n")
+                    cluster_rows = self.heatmap_translation['cluster_rows']; #self.control.write(cluster_rows + "\n")
+                    cluster_columns = self.heatmap_translation['cluster_columns']; #self.control.write(cluster_columns + "\n")
+                    normalization = self.heatmap_translation['normalization']; #self.control.write(normalization + "\n")
+                    contrast = self.heatmap_translation['contrast']; #self.control.write(contrast + "\n")
+                    transpose = self.heatmap_translation['transpose']; #self.control.write(transpose + "\n")
+                    GeneSetSelection = self.heatmap_translation['GeneSetSelection']; #self.control.write(GeneSetSelection + "\n")
+                    PathwaySelection = self.heatmap_translation['PathwaySelection']; #self.control.write(PathwaySelection + "\n")
+                    OntologyID = self.heatmap_translation['OntologyID']; #self.control.write(OntologyID + "\n")
+                    GeneSelection = self.heatmap_translation['GeneSelection']; #self.control.write(GeneSelection + "\n")
+                    justShowTheseIDs = self.heatmap_translation['JustShowTheseIDs']; #self.control.write(JustShowTheseIDs + "\n")
+                    HeatmapAdvanced = self.heatmap_translation['HeatmapAdvanced']; #self.control.write(HeatmapAdvanced + "\n")
+                    clusterGOElite = self.heatmap_translation['ClusterGOElite']; #self.control.write(ClusterGOElite + "\n")
+                    heatmapGeneSets = self.heatmap_translation['heatmapGeneSets']; #self.control.write(heatmapGeneSets + "\n")
+                    if cluster_rows == 'no': row_method = None
+                    if cluster_columns == 'no': column_method = None
+                    
+                    HeatmapAdvanced = (HeatmapAdvanced,)
+                    #print ['JustShowTheseIDs',justShowTheseIDs]
+                    if self.DirFile not in self.heatmap_run:
+                        self.heatmap_run[self.DirFile]=None
+                        ### occurs when automatically running the heatmap
+                        column_method = None
+                        row_method = None
+                        color_gradient = 'yellow_black_blue'
+                        normalization = 'median'
+                    print 'C'
+                    translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Iterative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly', 'Perform Monocle':'monocle'}
+                    try:
+                        if 'None Selected' in HeatmapAdvanced: ('None Selected')
+                    except Exception: HeatmapAdvanced = ('None Selected')
+                    if ('None Selected' in HeatmapAdvanced and len(HeatmapAdvanced)==1) or 'None Selected' == HeatmapAdvanced: pass
+                    else:
+                        print HeatmapAdvanced,'kill'
                         try:
-                            float(rho)
-                            gsp.setRhoCutoff(rho)
-                        except Exception: print 'Must enter a valid Pearson correlation cutoff (float)'
-                    transpose = gsp ### this allows methods that don't transmit this object to also work
-                if row_method == 'no': row_method = None
-                if column_method == 'no': column_method = None
-    
-                UI.createHeatMap(input_file_dir, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, None, display=True)
+                            GeneSelection += ' '+string.join(list(HeatmapAdvanced),' ')
+                            for name in translate:
+                                GeneSelection = string.replace(GeneSelection,name,translate[name])
+                            GeneSelection = string.replace(GeneSelection,'  ',' ')
+                            if 'top' in GeneSelection or 'driver' in GeneSelection or 'excludeCellCycle' in GeneSelection or 'positive' in GeneSelection or 'IntraCorrelatedOnly' in GeneSelection:
+                                GeneSelection+=' amplify'
+                        except Exception: pass
+                    GeneSetSelection = string.replace(GeneSetSelection,'\n',' ')
+                    GeneSetSelection = string.replace(GeneSetSelection,'\r',' ')
+
+                    if justShowTheseIDs == '':  justShowTheseIDs = 'None Selected'
+
+                    try: rho = float(self.heatmap_translation['CorrelationCutoff'])
+                    except Exception: rho=None
+                    if transpose == 'yes': transpose = True
+                    else: transpose = False
+                    print 'D'
+                    vendor = 'RNASeq'
+                    color_gradient = string.replace(color_gradient,'-','_')
+                    if GeneSetSelection != 'None Selected' or GeneSelection != '' or normalization != 'NA' or JustShowTheseIDs != '' or JustShowTheseIDs != 'None Selected':
+                        gsp = UI.GeneSelectionParameters(self.species,self.platform,vendor)
+                        if rho!=None:
+                            try:
+                                gsp.setRhoCutoff(rho)
+                                GeneSelection = 'amplify '+GeneSelection
+                            except Exception: print 'Must enter a valid Pearson correlation cutoff (float)',traceback.format_exc()
+                        gsp.setGeneSet(GeneSetSelection)
+                        gsp.setPathwaySelect(PathwaySelection)
+                        gsp.setGeneSelection(GeneSelection)
+                        gsp.setOntologyID(OntologyID)
+                        gsp.setTranspose(transpose)
+                        gsp.setNormalize(normalization)
+                        gsp.setJustShowTheseIDs(justShowTheseIDs)
+                        gsp.setClusterGOElite(clusterGOElite)
+                        transpose = gsp ### this allows methods that don't transmit this object to also work
+                    if row_method == 'no': row_method = None
+                    if column_method == 'no': column_method = None
+                    print 'E'
+                    remoteCallToAltAnalyze = False
+                    try: print [gsp.ClusterGOElite()]
+                    except Exception: print 'dog', traceback.format_exc()
+                except Exception:
+                    print traceback.format_exc()
+                if remoteCallToAltAnalyze == False:
+                    try: UI.createHeatMap(input_file_dir, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, None, display=True)
+                    except Exception: print traceback.format_exc()
+                else:  
+                    try:
+                        command = ['--image', 'hierarchical','--species', self.species,'--platform',self.platform,'--input',input_file_dir, '--display', 'True']
+                        command += ['--column_method',str(column_method),'--column_metric',column_metric]
+                        command += ['--row_method',str(row_method),'--row_metric',row_metric]
+                        command += ['--normalization',normalization,'--transpose',str(transpose),'--contrast',contrast,'--color_gradient',color_gradient]
+                        print command
+                        command_str = string.join(['']+command,' ')
+                        #print command
+                        package_path = unique.filepath('python')
+                        mac_package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/AltAnalyze')
+                        #os.system(mac_package_path+command_str);sys.exit()
+                        import subprocess
+                        #subprocess.call([mac_package_path, 'C:\\test.txt'])
+                        
+                        usePopen = True
+                        if os.name == 'nt':
+                            command = [mac_package_path]+command
+                            DETACHED_PROCESS = 0x00000008
+                            pid = subprocess.Popen(command, creationflags=DETACHED_PROCESS).pid
+                        else:
+                            command = [mac_package_path]+command
+                            print command
+                            if usePopen:
+                                alt_command = ["start"]+command
+                                alt_command = ["start",mac_package_path]
+                                subprocess.call(command) #works but runs in back of the application, detatched
+                            if usePopen==False:
+                                ### sampe issue as subprocess.Popen
+                                pid = os.fork() 
+                                if pid ==0:
+                                    os.execv(mac_package_path,command) ### Kills the parent app
+                                    os._exit(0)
+                        """
+                        retcode = subprocess.call([
+                            apt_file, "-d", cdf_file, "--kill-list", kill_list_dir, "-a", algorithm, "-o", output_dir,
+                            "--cel-files", cel_dir, "-a", "pm-mm,mas5-detect.calls=1.pairs=1"])"""
+                    except Exception:
+                        print traceback.format_exc()
+
                     
             else:
                 os.chdir(parentDirectory)
@@ -1879,28 +2043,33 @@ class Main(wx.Frame):
                     include_labels= 'no'    
                 pca_algorithm = 'SVD'
                 transpose = False
+                if self.runPCA == False:
+                    include_labels = 'no'
                 if(self.D_3DRadio.GetValue() == True):
                     plotType = '3D'
                 else:
                     plotType = '2D'
                 display = True
-		include_labels = 'no'
+                self.runPCA = True
                 UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, plotType=plotType, display=display)
                 os.chdir(currentDirectory)
             self.InteractivePanelUpdate(event)                                                                                                                                                                     
         
 
     def OnAbout(self, event):
+        #Brings up the developer information. Non-functional currently but will be updated eventually.
         dial = wx.MessageDialog(None, 'AltAnalyze Results Viewer\nVersion 0.5\n2015', 'About', wx.OK)
         dial.ShowModal()
 
     def OnHelp(self, event):
+        #Brings up the tutorial and dorumentation. Will be updated to a .pdf in the future.
         os.chdir(parentDirectory)
-        ManualPath = str(os.getcwd()) + "/Documentation/Source_files/ViewerManual.doc"
+        ManualPath = rootDirectory + "/Documentation/ViewerManual.pdf"
         subprocess.Popen(['open', ManualPath])
         os.chdir(currentDirectory)        
                         
 class ImageFrame(wx.Frame):
+    #Obsolete code, will be removed almost certainly.
     title = "Image"
 
     def __init__(self):

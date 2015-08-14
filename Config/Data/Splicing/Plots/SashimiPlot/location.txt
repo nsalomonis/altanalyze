@@ -1,0 +1,2 @@
+SashimiPlotsSearch:*
+Restriction:.png

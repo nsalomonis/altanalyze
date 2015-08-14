@@ -72,7 +72,7 @@ except Exception:
     None
 
 command_args = string.join(sys.argv,' ')
-if len(sys.argv[1:])>1 and '-' in command_args: null=[]
+if len(sys.argv[1:])>1 and '-' in command_args and '--GUI' not in command_args: null=[]
 else:
     try:
         import Tkinter 
@@ -731,22 +731,35 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
         try:
             ### Create sashimi plot index
             import SashimiIndex
+            print 'Indexing splicing-events'
             SashimiIndex.remoteIndexing(species,exp_file)
             import SashimiPlot
-            SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,isoform_dir) ### assuming the bam files are in the root-dir
-            SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,isoform_dir2) ### assuming the bam files are in the root-dir
+            #reload(SashimiPlot)
+            print 'Running Sashimi-Plot...'
+            SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,gene) ### assuming the bam files are in the root-dir
+            if root != None and root != '':
+                print_out = 'Sashimi-Plot results saved to:\n'+exp_file+'SashimiPlots'
+                try: InfoWindow(print_out, 'Continue')
+                except Exception: None
         except Exception:
-            print traceback.format_exc()
-        
-    try: QC.displayExpressionGraph(species,platform,exp_file,gene,transpose,display=display,showIntrons=show_introns,analysisType=analysisType)
-    except Exception:
-        error = traceback.format_exc()
-        print_out = 'AltExon Viewer failed..\n',error
-        if root != None and root != '':
-            try: WarningWindow(print_out, 'Continue')
-            except Exception: None
-    try: root.destroy()
-    except Exception: None
+            error = traceback.format_exc()
+            print_out = 'AltExon Viewer failed..\n',error
+            if root != None and root != '':
+                try: WarningWindow(print_out, 'Continue')
+                except Exception: None
+        try: root.destroy()
+        except Exception: None
+    else:
+        #print [analysisType, species,platform,exp_file,gene,transpose,display,show_introns]
+        try: QC.displayExpressionGraph(species,platform,exp_file,gene,transpose,display=display,showIntrons=show_introns,analysisType=analysisType)
+        except Exception:
+            error = traceback.format_exc()
+            print_out = 'AltExon Viewer failed..\n',error
+            if root != None and root != '':
+                try: WarningWindow(print_out, 'Continue')
+                except Exception: None
+        try: root.destroy()
+        except Exception: None
     
 def MergeFiles(files_to_merge, join_option, ID_option, output_merge_dir, root):
     import mergeFiles
@@ -4231,7 +4244,7 @@ def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
     if array_type == 'junction' or array_type == 'RNASeq':
         try: gene_database = unique.getCurrentGeneDatabaseVersion()
         except Exception: gene_database='00'
-        if int(gene_database[-2:]) < 55:
+        if int(gene_database[-2:]) < 0:
             print_out = 'The AltAnalyze database indicated for '+array_type+' analysis\n is not supported for alternative exon analysis.\nPlease update to EnsMart55 or greater before\nproceeding.'
             if run_mode == 'GUI': IndicatorWindow(print_out,'Continue')
             else: print print_out ### Occurs in command-line mode
@@ -4288,6 +4301,7 @@ def getUserParameters(run_parameter,Multi=None):
     if run_parameter == 'yes':
         try: MainMenu()
         except Exception:
+            print traceback.format_exc()
             print_out = "\nCritical error encountered!!! This machine does not have either:\n"
             print_out += "1) Have the required Tcl/Tk components installed.\n"
             print_out += "2) Is being run from a compiled version that has critical incompatibilities your OS or hardware or\n"
@@ -4632,7 +4646,7 @@ def getUserParameters(run_parameter,Multi=None):
                         IndicatorWindow(print_out,'Continue')
                         
                 file_dirs = criterion_input_folder, criterion_denom_folder, main_output_folder
-                print file_dirs
+                #print file_dirs
                 ### Get GO-Elite Input Parameters
                 getUpdatedParameters(array_type,species,'Prefiltered',file_dirs)
 
@@ -4742,23 +4756,42 @@ def getUserParameters(run_parameter,Multi=None):
                     analysisType = gu.Results()['analysisType']
                     if len(altgenes_file)>0:
                         gene_symbol = importGeneList(altgenes_file) ### list of gene IDs or symbols
-                    if data_type == 'raw expression': ### Switch directories if expression
+                    if analysisType == 'Sashimi-Plot':
+                        altanalyze_results_folder = string.split(altanalyze_results_folder,'AltResults')[0]
+                        exp_file = altanalyze_results_folder
+                        gene_symbol = altgenes_file
+                    elif data_type == 'raw expression': ### Switch directories if expression
                         altanalyze_results_folder = string.replace(altanalyze_results_folder,'AltResults','ExpressionInput')
                         exp_file = getValidExpFile(altanalyze_results_folder)
-                    elif analysisType == 'Sashimi-Plot':
-                        altanalyze_results_folder = string.split(altanalyze_results_folder,'AltResults')[0]
-                        gene_symbol = altgenes_file
                     else:
                         altanalyze_results_folder += '/RawSpliceData/'+species
                         try: exp_file = getValidSplicingScoreFile(altanalyze_results_folder)
                         except Exception,e:
                             print_out = "No files found in: "+altanalyze_results_folder
                             IndicatorWindow(print_out,'Continue')
+
                     if len(exp_file)>0 and len(gene_symbol)>0:
                         analysis = 'AltExonViewer'
                         values = species,array_type,exp_file,gene_symbol,show_introns,analysisType
                         StatusWindow(values,analysis) ### display an window with download status
-                        AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                        if len(altgenes_file)>0 or ' ' in gene_symbol:
+                            ### Typically have a Tkinter related error
+                            if os.name == 'posix':
+                                try:
+                                    package_path = filepath('python')
+                                    mac_package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/AltAnalyze')
+                                    kill
+                                    os.system(mac_package_path+' --GUI yes');sys.exit()
+                                except Exception:   
+                                    package_path = filepath('python')
+                                    print package_path
+                                    mac_package_path = string.replace(package_path,'python','AltAnalyze.py')
+                                    mac_package_path = 'python '+mac_package_path
+                                    os.system(mac_package_path+' --GUI yes');sys.exit()
+                            else:
+                                AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                        else:
+                            AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
                         print_out = "Either no gene or no AltResults folder selected."
                         IndicatorWindow(print_out,'Continue')
@@ -4899,6 +4932,7 @@ def getUserParameters(run_parameter,Multi=None):
 
                     GeneSetSelection = string.replace(GeneSetSelection,'\n',' ')
                     GeneSetSelection = string.replace(GeneSetSelection,'\r',' ')
+                    print [GeneSetSelection, JustShowTheseIDs, GeneSelection,ClusterGOElite,normalization]
                     if GeneSetSelection != 'None Selected' or GeneSelection != '' or normalization != 'NA' or JustShowTheseIDs != '' or JustShowTheseIDs != 'None Selected':
                         gsp = GeneSelectionParameters(species,array_type,vendor)
                         if CorrelationCutoff!=None: #len(GeneSelection)>0 and 
@@ -5217,7 +5251,7 @@ def getUserParameters(run_parameter,Multi=None):
             if array_type != 'RNASeq':
                 ### This is the new option for expression filtering of non-RNASeq classified data
                 try:
-                    print option_db['rpkm_threshold'].DefaultOption()
+                    #print option_db['rpkm_threshold'].DefaultOption()
                     if 'rpkm_threshold' in option_db:
                         option_db['rpkm_threshold'].setArrayOptions('0')
                         if option_db['rpkm_threshold'].DefaultOption() == ['NA']:

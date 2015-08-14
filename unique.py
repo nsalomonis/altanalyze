@@ -47,7 +47,7 @@ py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2a
 py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
 for i in py2app_aa_dirs:
-    i = string.replace(i,'AltAnalyze.app','Config/AltAnalyzeViewer.app')
+    i = string.replace(i,'AltAnalyze.app','AltAnalyzeViewer.app')
     py2app_dirs.append(i)
 
 if ('linux' in sys.platform or 'posix' in sys.platform) and getattr(sys, 'frozen', False): ### For PyInstaller

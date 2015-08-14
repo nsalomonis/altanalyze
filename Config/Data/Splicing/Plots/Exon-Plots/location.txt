@@ -1,2 +1,0 @@
-AltResults/Clustering/DataPlotsSearch:
-Restriction:.png

@@ -993,17 +993,19 @@ def runANOVA(matrix):
                 matrix_pvalues[key] = adj_matrix_pvalues[key][1]
     else:
         matrix_pvalues_list.sort()
-    print len(matrix_pvalues)
+    print len(matrix_pvalues), 'ANOVA significant reciprocal PSI-junctions...'
     return matrix_pvalues
 
 def returnANOVAFiltered(filename,original_data,matrix_pvalues):
     import export
+    altExonFile = filename[:-4]+'-ANOVA.txt'
     eo = export.ExportFile(filename[:-4]+'-ANOVA.txt')
     eo.write(original_data['header'])
     for key in matrix_pvalues:
         eo.write(original_data[key])
         last_line = original_data[key]
     eo.close()
+    return altExonFile
     
 if __name__ == '__main__':
     dirfile = unique

@@ -12,5 +12,6 @@ Ac	Anolis carolinensis
 Dm	Drosophila melanogaster	
 Xl	Test	
 Zm	Zea mays	
-Sc	Saccharomyces cerevisiae	
+Sc	Saccharomyces cerevisiae
+Nc	Neurospora crassa	
 Dr	Danio rerio	

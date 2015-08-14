@@ -14,7 +14,7 @@ _authorEmail = 'nsalomonis@gmail.com'
 _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
-excludes = [] #["wxPython"] #"numpy","scipy","matplotlib"
+excludes = ['wx','sklearn'] #["wxPython"] #"numpy","scipy","matplotlib"
 includes = ["suds", "mpmath", "numpy"]
 """ By default, suds will be installed in site-packages as a .egg file (zip compressed). Make a duplicate, change to .zip and extract
 here to allow it to be recognized by py2exe (must be a directory) """

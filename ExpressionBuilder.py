@@ -2082,9 +2082,9 @@ def buildAltExonClusterInputs(input_folder,species,platform,dataType='AltExonCon
     export_data.close()
     return export_dir, exported_IDs
                     
-def exportHeatmap(filename,useHOPACH=True, color_gradient='red_black_sky',normalize=False,columnMethod='average',size=0):
+def exportHeatmap(filename,useHOPACH=True, color_gradient='red_black_sky',normalize=False,columnMethod='average',size=0,graphics=[]):
     import clustering
-    graphics = []; row_method = 'weighted'; row_metric = 'cosine'; column_method = 'average'; column_metric = 'euclidean'; transpose = False
+    row_method = 'weighted'; row_metric = 'cosine'; column_method = 'average'; column_metric = 'euclidean'; transpose = False
     if useHOPACH:
         try:
             from pyper import R
@@ -3002,7 +3002,7 @@ def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_
 
     if expFile != None:
         graphic_links, cluster_input = compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expFile,min_events=min_events,med_events=med_events)
-        print 'finished in',int(time.time()-begin_time)
+        print 'finished in',int(time.time()-begin_time), 'seconds'
         return graphic_links, cluster_input
     ### Determine the location of the gene expression file
     input_folder = root_dir+'AltResults/RawSpliceDataTemp/'+species+'/splicing-index/'

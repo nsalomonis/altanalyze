@@ -933,8 +933,8 @@ def displayExpressionGraph(species,Platform,exp_file,gene,transpose,display=True
                 gene = annotate_db[gene].GeneID()
             gene_db[gene]=gene_symbol
         except Exception:
-            if len(gene)>0:
-                print [gene], 'not in database'
+            #if len(gene)>0: print gene, 'not in database'
+            pass
         
     if len(gene_db)==0:
         force_no_gene_found_error

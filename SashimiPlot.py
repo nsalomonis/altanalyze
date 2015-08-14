@@ -129,94 +129,131 @@ def update_plot_settings(bamdir,list1,list2,samp):
     export_pl.write('bar_color = "b" \nbf_thresholds = [0, 1, 2, 5, 10, 20]')
     export_pl.close()
         
+
 def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
-  line=fname.readlines()
-  fname.close()
-  for li in line:
-    if ":U" in li or "-U" in li:
-	
-	continue
-    else:
+    splicing_events=[]
+    type = None
+    firstLine = True
+    for line in open(fname,'rU').xreadlines():
+	line = cleanUpLine(line)
+	t = string.split(line,'\t')
+	if firstLine:
+	    if 'junctionID-1' in t:
+		j1i = t.index('junctionID-1')
+		j2i = t.index('junctionID-2')
+		type='ASPIRE'
+	    if 'ANOVA' in t:
+		type='PSI'
+	    elif 'independent confirmation' in t:
+		type=='confirmed'
+	    firstLine=False
+	if ' ' in t[0] and ':' in t[0]:
+	    splicing_events.append(t[0])
+	elif type=='ASPIRE':
+	    splicing_events.append(t[j1i] +' '+ t[j2i])
+	elif type=='PSI':
+	    try:
+		j1,j2 = string.split(t[0],'|')
+		a,b,c = string.split(j1,':')
+		j1 = b+':'+c
+		splicing_events.append(j1 +' '+ j2)
+	    except Exception: pass
+	elif type=='confirmed':
+	    try:
+		event_pair1 = string.split(t[1],'|')[0]
+		a,b,c,d = string.split(event_pair1,'-')
+		splicing_events.append(a+'-'+b +' '+ c+'-'+d)
+	    except Exception: pass
+
+    if len(splicing_events)==0:
+	forceNoCompatibleEventsInFile
     
-     li=cleanUpLine(li)
-     #print li
-     
-    #dem[0]=['ENSG00000132424:I10.1 ENSG00000132424:E10.1-E11.1','ENSG00000146147:E10.3-E11.1 ENSG00000146147:E9.3-E15.1']
-     de=string.split(li,'\t')
-     dem[0]=de
-     #print dem[0]
-     for key in dem:
-      for i in range(len(dem[key])):
-	list1=[]
-        list2=[]
-        try:
-	    k=gene_label.index(dem[key][i])
-	    flag=1
-	    lt=cleanUpLine(lines[k])
-	    t=string.split(lt,'\t')
-	    #print t
-	    t=t[11:]
-	    #print t
-            #list3=[]
-            #ind=[]
-	    for x in range(len(t)):
-                #print x,t[x]
-                if(t[x]!=''):
-                    if float(t[x]) < 0.8:
-                        list1.append(x)
-			#print x
-                        #print 'list1:'+str(x)
-                    else:
-                        list2.append(x)
-			#print x
-                       # print str(x)
-                 
-                else:
-                    continue
-	
-	    if len(list1)>5:
-                list1=list1[1:5]
-	    if len(list2)>5:
-                list2=list2[1:5]
-	    #print len(list1),len(list2)
-	except Exception:
+    print 'Exporting plots',
+    for li in splicing_events:
+	if ":U" in li or "-U" in li:
 	    
-	    for ij in range(len(samp)):
-		list1.append(ij)
-	
-	update_plot_settings(bamdir,list1,list2,samp)
-	
-	a=string.split(dem[key][i]," ")
-	if '-' in a[1]:
-                
-                ch1=a[1]
-                f=string.split(a[0],':')
+	    continue
 	else:
-        	ch1=a[0]
-                f=string.split(a[1],':')
-        event=findParentDir(inputpsi)
-        event=event+"trial_index/"
-        setting =unique.filepath("Config/sashimi_plot_settings.txt")
-        name=ch1
-	#outputdir=findParentDir(inputpsi)+"sashimiplots"
-	try: os.makedirs(outputdir)
-	except Exception: pass
 	
-    try:
-	ssp.plot_event(ch1,event,setting,outputdir)
-    except Exception:
-	 #print "error2"
-	 continue
-  #outputdir=findParentDir(inputpsi)+"sashimiplots" 
-  for filename in os.listdir(outputdir):
-    newname=string.split(filename,'/')
-    #print newname[0]
-    if newname[0] in gene_sym:
-	new_path = gene_sym[newname[0]]+'-'+filename
-	#new_path = string.replace()
-	os.rename(filename,new_path)
-    else:
-	continue
+	 li=cleanUpLine(li)
+	 #print li
+	 
+	#dem[0]=['ENSG00000132424:I10.1 ENSG00000132424:E10.1-E11.1','ENSG00000146147:E10.3-E11.1 ENSG00000146147:E9.3-E15.1']
+	 de=string.split(li,'\t')
+	 dem[0]=de
+	 #print dem[0]
+	 for key in dem:
+	  for i in range(len(dem[key])):
+	    list1=[]
+	    list2=[]
+	    try:
+		k=gene_label.index(dem[key][i])
+		flag=1
+		lt=cleanUpLine(lines[k])
+		t=string.split(lt,'\t')
+		#print t
+		t=t[11:]
+		#print t
+		#list3=[]
+		#ind=[]
+		for x in range(len(t)):
+		    #print x,t[x]
+		    if(t[x]!=''):
+			if float(t[x]) < 0.8:
+			    list1.append(x)
+			    #print x
+			    #print 'list1:'+str(x)
+			else:
+			    list2.append(x)
+			    #print x
+			   # print str(x)
+		     
+		    else:
+			continue
+	    
+		if len(list1)>5:
+		    list1=list1[1:5]
+		if len(list2)>5:
+		    list2=list2[1:5]
+		#print len(list1),len(list2)
+	    except Exception:
+		
+		for ij in range(len(samp)):
+		    list1.append(ij)
+	    
+	    update_plot_settings(bamdir,list1,list2,samp)
+	    
+	    a=string.split(dem[key][i]," ")
+	    if '-' in a[1]:
+		    
+		    ch1=a[1]
+		    f=string.split(a[0],':')
+	    else:
+		    ch1=a[0]
+		    f=string.split(a[1],':')
+	    event=findParentDir(inputpsi)
+	    event=event+"trial_index/"
+	    setting =unique.filepath("Config/sashimi_plot_settings.txt")
+	    name=ch1
+	    #outputdir=findParentDir(inputpsi)+"sashimiplots"
+	    try: os.makedirs(outputdir)
+	    except Exception: pass
+	    
+	try:
+	    ssp.plot_event(ch1,event,setting,outputdir)
+	except Exception:
+	     #print "error2"
+	     continue
+    #outputdir=findParentDir(inputpsi)+"sashimiplots" 
+    for filename in os.listdir(outputdir):
+	newname=string.split(filename,'/')
+	#print newname[0]
+	if newname[0] in gene_sym:
+	    new_path = gene_sym[newname[0]]+'-'+filename
+	    #new_path = string.replace()
+	    os.rename(filename,new_path)
+	else:
+	    continue
 
   
 def findParentDir(filename):
@@ -254,9 +291,8 @@ def Sashimiplottting(bamdir,countsin,inputpsi,genelis):
           #print samp[i],sample_read[samp[i]]
 
     genelis = unique.filepath(genelis)
-    gene_file=open(genelis,'rU')
 
-    sashmi_plot_list(bamdir,gene_file,gene_label,lines,samp,gene_sym)
+    sashmi_plot_list(bamdir,genelis,gene_label,lines,samp,gene_sym)
 
 def remoteSashimiPlot(species,fl,bamdir,genelis):
     global inputpsi
@@ -273,7 +309,6 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
                     countinp = search_dir+'/'+file
 		    
     inputpsi = root_dir+'/AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI.txt'
-
     #outputdir=findParentDir(inputpsi)+"sashimiplots"
     outputdir = root_dir+'/ExonPlots'
     outputdir = root_dir+'/SashimiPlots'

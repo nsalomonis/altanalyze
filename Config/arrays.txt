@@ -4,7 +4,7 @@ RNASeq	Normalized externally	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm|Ma
 AltMouse	Junction AltMouse array	Affymetrix	Ensembl	Mm
 junction	Junction JAY array	Affymetrix	Ensembl	Mm|Hs
 exon	Exon 1.0 ST array	Affymetrix	Ensembl	Mm|Hs|Rn
-RNASeq	Aligned read counts	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm|Ma
+RNASeq	Aligned read counts	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm|Ma|Nc
 3'array	Affymetrix expression array	Affymetrix	Affymetrix	Mm|Hs|Rn|Dm|Bt|Dr|Sc|Ce|Gg|Zm|At|Xl|Ma
 3'array	Codelink expression array	Codelink	Codelink	Hs|Mm|Rn
 gene	Gene 1.0 ST array	Affymetrix	Ensembl	Mm|Hs|Rn

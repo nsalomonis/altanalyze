@@ -2835,12 +2835,10 @@ def CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGen
     x=0
     for (cv,uid) in cv_list:
         x+=1
+        """
         if uid == 'ENSMUSG00000003882':
             print x, 'ilr7'
-        if uid == 'ENSMUSG00000041515':
-            print x, 'irf8'
-        if uid == 'ENSMUSG00000029275':
-            print x, 'gfi1'
+        """
 
     for (cv,uid) in cv_list[:5000]:
         expressed_values_filtered[uid] = expressed_values[uid]
@@ -3155,14 +3153,13 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     numb_corr=[]
     for i in correlated_genes:
         #if i == 'ENSG00000016082': print 'ISL1',len(correlated_genes[i])
-        if i=='Gfi1':
-            print 'Gfi1',len(correlated_genes[i]),correlated_genes[i]
+        #if i=='Gfi1': print 'Gfi1',len(correlated_genes[i]),correlated_genes[i]
         if len(correlated_genes[i])>connections:
             numb_corr.append([len(correlated_genes[i]),i])
             atleast_10[i]=correlated_genes[i] ### if atleast 10 genes apart of this pattern
             x=0
             for k in correlated_genes[i]:
-                if k=='Gfi1': print 'Gfi1 connected',i,x
+                #if k=='Gfi1': print 'Gfi1 connected',i,x
                 if x<30: ### cap it at 30
                     atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
                 x+=1

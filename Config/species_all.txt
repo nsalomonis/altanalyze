@@ -33,6 +33,7 @@ Mi	Microcebus murinus
 Ml	Myotis lucifugus
 Mm	Mus musculus
 Mg	Meleagris gallopavo
+Nc	Neurospora crassa
 Oa	Ornithorhynchus anatinus
 Oc	Oryctolagus cuniculus
 Og	Otolemur garnettii
@@ -52,7 +53,7 @@ Sa	Sorex araneus
 Sc	Saccharomyces cerevisiae
 Sl	Solanum lycopersicum
 Ss	Sus scrofa
-Nc	Neurospora crassa
+Nc	species.txt
 St	Spermophilus tridecemlineatus
 Su	Staphylococcus aureus
 Ta	Triticum aestivum

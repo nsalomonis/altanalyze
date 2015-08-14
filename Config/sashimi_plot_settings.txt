@@ -1,0 +1,24 @@
+[data]
+bam_prefix = /Users/saljh8/Desktop/Grimes/GEC14074/
+bam_files =["Grimes_September_23_Cell_12.bam","Grimes_September_23_Cell_1.bam"]
+[plotting]
+fig_width = 7 
+fig_height = 7 
+intron_scale = 30 
+exon_scale = 4 
+logged = False
+font_size = 6 
+bar_posteriors = False 
+nyticks = 4 
+nxticks = 4 
+show_ylabel = False 
+show_xlabel = True 
+show_posteriors = False 
+number_junctions = True 
+resolution = .5 
+posterior_bins = 40 
+gene_posterior_ratio = 5 
+colors =["red","red"]
+coverages =[6634906,3610383]
+bar_color = "b" 
+bf_thresholds = [0, 1, 2, 5, 10, 20]

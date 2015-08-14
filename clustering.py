@@ -303,7 +303,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     ax2_w = axc_w
 
     # axcb - placement of the color legend
-    [axcb_x, axcb_y, axcb_w, axcb_h] = [0.02,0.93,0.17,0.025] ### Last one controls the hight [0.07,0.88,0.18,0.076]
+    [axcb_x, axcb_y, axcb_w, axcb_h] = [0.02,0.938,0.17,0.025] ### Last one controls the hight [0.07,0.88,0.18,0.076]
     
     # axcc - placement of the colum colormap legend colormap (distinct map)
     [axcc_x, axcc_y, axcc_w, axcc_h] = [0.02,0.12,0.17,0.025] ### Last one controls the hight [0.07,0.88,0.18,0.076]
@@ -650,7 +650,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         text = event.artist
         print('onpick1 text:', text.get_text())
         if '(c' not in text.get_text():
-            webbrowser.open('http://www.genecards.org/cgi-bin/carddisp.pl?gene='+text.get_text())
+            webbrowser.open('http://www.genecards.org/cgi-bin/carddisp.pl?gene='+string.replace(text.get_text(),' ',''))
         elif 'TreeView' in text.get_text():
             try: openTreeView(cdt_file)
             except Exception: print 'Failed to open TreeView'
@@ -911,7 +911,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
 def openTreeView(filename):
     import subprocess
     fn = filepath("AltDatabase/TreeView/TreeView.jar")
-    retcode = subprocess.call(['java', "-Xmx500m", '-jar', fn, "-r", filename])
+    retcode = subprocess.Popen(['java', "-Xmx500m", '-jar', fn, "-r", filename])
 
 def remoteGOElite(elite_dir):
     mod = 'Ensembl'
@@ -2562,7 +2562,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
         #import OBO_import; symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
     except Exception:
-        pass
+        print 'No Ensembl-Symbol database available for',species
     
     if platform == "3'array":
         ### IDs thus won't be Ensembl - need to translate
@@ -2586,6 +2586,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     matrix_db={} ### Used to optionally sort according to the original order
     multipleGenes = False
     i=0
+        
     ### If multiple genes entered, just display these
     if ' ' in targetGene or ',' in targetGene or '|' in targetGene or '\n' in targetGene or '\r' in targetGene:
         multipleGenes = True
@@ -2596,27 +2597,27 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         if '\r' in targetGene: delim = '\r'
 
         targetGenes = string.split(targetGene,delim)
+
         if row_method != None: targetGenes.sort()
         for row_id in row_header:
             original_rowid = row_id
             if ':' in row_id:
                 a,b = string.split(row_id,':')[:2]
-                if 'ENS' in a:
+                if 'ENS' in a or len(a)==17:
                     try:
                         row_id = a
                         symbol = gene_to_symbol[row_id][0]
                     except Exception: symbol =''
-                elif 'ENS' not in b:
+                elif 'ENS' not in b and len(a)!=17:
                     row_id = b
             try: row_id,symbol = string.split(row_id,' ')[:2] ### standard ID convention is ID space symbol
             except Exception:
                 try: symbol = gene_to_symbol[row_id][0]
                 except Exception:
                     row_id, symbol = row_id, row_id
-            if 'ENS' not in original_rowid:
+            if 'ENS' not in original_rowid and len(original_rowid)!=17:
                 if original_rowid != symbol:
                     symbol = original_rowid+' '+symbol
-
             for gene in targetGenes:
                 if string.lower(gene) == string.lower(row_id) or string.lower(gene) == string.lower(symbol) or string.lower(original_rowid)==string.lower(gene):
                     matrix2.append(matrix[i]) ### Values for the row
@@ -2931,6 +2932,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         if plotType == '3D':
             try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
             except Exception:
+                print traceback.format_exc()
                 PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
  
         else:

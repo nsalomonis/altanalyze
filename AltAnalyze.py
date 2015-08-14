@@ -5072,24 +5072,26 @@ def timestamp():
 def callWXPython():
     print 'hello'
     import wx
-    import Config.RemoteViewer
-    Config.RemoteViewer.remoteViewer()
+    import RemoteViewer
+    RemoteViewer.remoteViewer()
 
 def AltAnalyzeSetup(skip_intro):
     global apt_location; global root_dir;global log_file; global summary_data_db; summary_data_db={}; reload(UI)
     global probability_statistic; global commandLineMode; commandLineMode = 'no'
     if 'remoteViewer' == skip_intro:
-        currentDirectory = str(os.getcwd())
-        os.chdir(currentDirectory+'/Config') 
-        os.system('python remoteViewer6.py');sys.exit()
-        
+        package_path = filepath('python')
+        #mac_package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/python')
+        #os.system(mac_package_path+' RemoteViewer.py');sys.exit()
+        mac_package_path = string.replace(package_path,'python','AltAnalyzeViewer.app/Contents/MacOS/AltAnalyzeViewer')
+        os.system(mac_package_path);sys.exit()
+        """
         import threading
         import wx
         app = wx.PySimpleApp()
         t = threading.Thread(target=callWXPython)
         t.setDaemon(1)
         t.start()
-        """
+
         s = 1
         queue = mlp.Queue()
         proc = mlp.Process(target=callWXPython) ### passing sys.stdout unfortunately doesn't work to pass the Tk string
@@ -5723,7 +5725,10 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           ### Calculate ANOVA p-value stats based on groups
           matrix,original_data = statistics.matrixImport(inputpsi)
           matrix_pvalues=statistics.runANOVA(matrix)
-          topGenes = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
+          anovaFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
+          graphic_link1 = ExpressionBuilder.exportHeatmap(anovaFilteredDir)
+          try: summary_data_db2['QC']+=graphic_link1
+          except Exception: summary_data_db2['QC']=graphic_link1
       except Exception: print traceback.format_exc()
       
       import RNASeq
@@ -7756,6 +7761,8 @@ def runCommandLineVersion():
     #except Exception: null=[]
     #print [command_args];sys.exit()
     if len(sys.argv[1:])>0 and '--' in command_args:
+        if '--GUI' in command_args:
+            AltAnalyzeSetup('no') ### a trick to get back to the main page of the GUI (if AltAnalyze has Tkinter conflict)
         try:
             commandLineRun()
         except Exception:
@@ -7865,7 +7872,7 @@ if __name__ == '__main__':
     13) (done) Support additional ID types for initial import (ID select option and pulldown - Other)
     14) Proper FDR p-value for alt.exon analyses (include all computed p-values)
     15) Add all major clustering and LineageProfiler options to UI along with stats filtering by default
-    16) Make GO-Elite analysis the default
+    16) (done) Make GO-Elite analysis the default
     17) Support R check (and response that they need it) along with GUI gcrma, agilent array, hopach, combat
     18) Probe-level annotations from Ensembl (partial code in place) and probe-level RMA in R (or possibly APT) - google pgf for U133 array
     19) (done) Include various gene databases for LineageProfiler in download and allow for custom databases to be used (markerFinder based)
