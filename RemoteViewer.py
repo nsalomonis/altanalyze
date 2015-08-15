@@ -9,13 +9,15 @@ import subprocess
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
-from wx.lib.pdfviewer import pdfViewer, pdfButtonPanel
 #matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 from matplotlib.figure import Figure
 import unique
 import traceback
 
+if os.name == 'nt': bheight=20
+else: bheight=10
+        
 rootDirectory = unique.filepath(str(os.getcwd()))
 currentDirectory = unique.filepath(str(os.getcwd())) + "/" + "Config/" ### NS-91615 alternative to __file__
 currentDirectory = string.replace(currentDirectory,'AltAnalyzeViewer.app/Contents/Resources','')
@@ -54,7 +56,9 @@ class Main(wx.Frame):
         self.heatmap_translation = {}
         self.heatmap_run = {}
         self.species = 'Hs'
+        self.platform = 'RNASeq'
         self.geneset_type = 'WikiPathways'
+        self.supported_genesets = []
         self.runPCA = False
                       
         self.SetBackgroundColour((230, 230, 230))
@@ -88,7 +92,9 @@ class Main(wx.Frame):
 
         #Lines 81-93 set up the user input box for the "sort" function (used on the table).
         self.sortbox = wx.TextCtrl(self.panel_right2, id=7, pos=(55,10), size=(40,25))
-        wx.Button(self.panel_right2, id=8, label="Sort", pos=(5, 12), size=(40, 10))
+
+
+        wx.Button(self.panel_right2, id=8, label="Sort", pos=(5, 12), size=(40, bheight))
         self.Bind(wx.EVT_BUTTON, self.SortTablefromButton, id=8)
 
         self.AscendingRadio = wx.RadioButton(self.panel_right2, id=17, label="Sort", pos=(100, 3), size=(12, 12))
@@ -102,7 +108,7 @@ class Main(wx.Frame):
 
         #Lines 96-98 set up the user input box for the "filter" function (used on the table).
         self.filterbox = wx.TextCtrl(self.panel_right, id=9, pos=(60,10), size=(125,25))
-        wx.Button(self.panel_right, id=10, label="Filter", pos=(0, 12), size=(50, 10))
+        wx.Button(self.panel_right, id=10, label="Filter", pos=(0, 12), size=(50, bheight))
         self.Bind(wx.EVT_BUTTON, self.FilterTablefromButton, id=10)        
 
         #Lines 101-103 set up the in-program log.                              
@@ -169,10 +175,10 @@ class Main(wx.Frame):
         #In the event that the interactive tab is chosen, a function must immediately run.
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.InteractiveTabChoose, id=7829)
 
-	#INTERACTIVE PANEL LAYOUT: lines 167-212
+        #INTERACTIVE PANEL LAYOUT: lines 167-212
         #Pca Setup
         
-        self.RunButton1 = wx.Button(self.page3, id=43, label="Run", pos=(275, 150), size=(120, 10))
+        self.RunButton1 = wx.Button(self.page3, id=43, label="Run", pos=(275, 150), size=(120, bheight))
         self.Bind(wx.EVT_BUTTON, self.InteractiveRun, id=43) 
 
         self.Divider1 = self.ln = wx.StaticLine(self.page3, pos=(5,100))
@@ -373,15 +379,15 @@ class Main(wx.Frame):
         ### Temporary option for exon visualization until the main tool is complete and database can be bundled with the program
         gene = str(self.myGrid.GetCellValue(self.GridRowEvent, 0))
         datasetDir = self.main_results_directory
-        print datasetDir
+        #print datasetDir
         self.control.write("Plotting... " + gene + "\n")
         data_type = 'raw expression'
         show_introns = 'no'
         analysisType = 'graph-plot'
         exp_dir = unique.filepath(datasetDir+'/ExpressionInput')
-        print exp_dir
+        #print exp_dir
         exp_file = UI.getValidExpFile(exp_dir)
-        print exp_file
+        #print print exp_file
         UI.altExonViewer(self.species,self.platform,exp_file,gene,show_introns,analysisType,'')
         
     def ExonViewInitiate(self, event):
@@ -647,23 +653,22 @@ class Main(wx.Frame):
                             else:
                                 fl_array.append(line[0])
                         file_location.close()
-                        if dirname == 'ExonGraph':
-                            print fl_array
+                        #if dirname == 'ExonGraph': print fl_array
                         if(len(fl_array) == 3):
                             fl_array.append(dirpath)
                             self.SearchArray.append(fl_array)
-                                   
-                                                            
+                                                    
             self.control.write("Opening project at: " + self.main_results_directory + "\n")
-            print self.main_results_directory  
+
             self.browser2.DeleteAllItems()
 
             
 
             #SEARCH USING FLAGS
             count = 0
+
             for FLAG in self.SearchArray:
-                if(FLAG[0][-1] != "/"):
+                if((FLAG[0][-1] != "/") and (FLAG[0][-1] != "\\")):
                     SearchingFlag = FLAG[0] + "/"
                 SearchingFlag = FLAG[0]
                 SearchingFlagPath = self.main_results_directory + "/" + SearchingFlag
@@ -705,7 +710,12 @@ class Main(wx.Frame):
             
             for i in self.SearchArrayFiltered:
                     AvailablePath = "Available" + i[3]
-                    Path_List = AvailablePath.split("/")
+                    if '\\' in AvailablePath: ### Windows
+                        AvailablePath = string.replace(AvailablePath,'/','\\')
+                    if '/' in AvailablePath:
+                        Path_List = AvailablePath.split("/")
+                    else:
+                        Path_List = AvailablePath.split("\\")
                     Created_Directory = ""
                     for directorynum in range(len(Path_List)):
                         if directorynum == 0:
@@ -726,7 +736,9 @@ class Main(wx.Frame):
             color_root = [253, 253, 253]
             self.tree.DeleteAllItems()
             self.ids = {root : self.tree.AddRoot(root)}
+
             for (dirpath, dirnames, filenames) in os.walk(root):
+                #print 'x',[dirpath, dirnames, filenames];sys.exit()
                 for dirname in dirnames:
                     #print dirpath, dirname
                     fullpath = os.path.join(dirpath, dirname)
@@ -749,14 +761,17 @@ class Main(wx.Frame):
                             self.tree.SetItemBackgroundColour(self.ids[fullpath], DisplayColor)
             self.tree.SetItemBackgroundColour(self.ids[root], [100, 140, 240])
             self.tree.Expand(self.ids[root])
-            self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.SelectedTopTreeID, self.tree)                        
+                                              
+            try: self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.SelectedTopTreeID, self.tree)
+            except Exception: pass
                                     
             #OPENING DISPLAY
             try:
                 self.LOGO.Destroy()
             except:
-                pass        
-            self.png = wx.Image("no-image-available.png", wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+                pass
+
+            self.png = wx.Image(rootDirectory+"/Config/no-image-available.png", wx.BITMAP_TYPE_ANY).ConvertToBitmap()
             self.LOGO = wx.StaticBitmap(self.page1, -1, self.png, (0,0), (self.png.GetWidth(), self.png.GetHeight()), style=wx.ALIGN_CENTER)
             imgsizer_v = wx.BoxSizer(wx.VERTICAL)
             imgsizer_v.Add(self.LOGO, proportion=0, flag=wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL)
@@ -1306,6 +1321,7 @@ class Main(wx.Frame):
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     def SelectedTopTreeID(self, event):
+      try:  
         #This handles the selection of an item in the TOP tree browser.
         item = event.GetItem()
         itemObject = self.tree.GetItemData(item).GetData()        
@@ -1523,7 +1539,8 @@ class Main(wx.Frame):
             self.nb.SetSelection(1)
             self.Layout()
             self.page1.Layout()
-
+      except Exception: pass
+      
     def SelectedBottomTreeID(self, event):
         #This handles the selection of an item in the BOTTOM tree browser; represents a file most of the time.
         item = event.GetItem()
@@ -1856,7 +1873,7 @@ class Main(wx.Frame):
             self.rwtend = self.root_widget_text
             self.root_widget_end = self.root_widget_id       
     
-            self.RunButton2 = wx.Button(self.page3, id=599, label="Run", pos=(175, (self.root_widget_end + 10)), size=(120, 10))
+            self.RunButton2 = wx.Button(self.page3, id=599, label="Run", pos=(175, (self.root_widget_end + 10)), size=(120, bheight))
             self.Bind(wx.EVT_BUTTON, self.InteractiveRun, id=599) 
         
         if(len(PCA_RegEx) == 0 and len(Heatmap_RegEx) == 0):
@@ -1948,7 +1965,9 @@ class Main(wx.Frame):
                     GeneSetSelection = string.replace(GeneSetSelection,'\r',' ')
 
                     if justShowTheseIDs == '':  justShowTheseIDs = 'None Selected'
-
+                    if GeneSetSelection== '': GeneSetSelection = 'None Selected'
+                    if PathwaySelection== '': PathwaySelection = 'None Selected'
+                    
                     try: rho = float(self.heatmap_translation['CorrelationCutoff'])
                     except Exception: rho=None
                     if transpose == 'yes': transpose = True
@@ -1974,6 +1993,7 @@ class Main(wx.Frame):
                         transpose = gsp ### this allows methods that don't transmit this object to also work
                     if row_method == 'no': row_method = None
                     if column_method == 'no': column_method = None
+                    print [GeneSetSelection, PathwaySelection,OntologyID]
                     print 'E'
                     remoteCallToAltAnalyze = False
                     try: print [gsp.ClusterGOElite()]
@@ -1989,7 +2009,7 @@ class Main(wx.Frame):
                         command += ['--column_method',str(column_method),'--column_metric',column_metric]
                         command += ['--row_method',str(row_method),'--row_metric',row_metric]
                         command += ['--normalization',normalization,'--transpose',str(transpose),'--contrast',contrast,'--color_gradient',color_gradient]
-                        print command
+                        #print command
                         command_str = string.join(['']+command,' ')
                         #print command
                         package_path = unique.filepath('python')
@@ -2051,10 +2071,27 @@ class Main(wx.Frame):
                     plotType = '2D'
                 display = True
                 self.runPCA = True
-                UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, plotType=plotType, display=display)
+                count,columns = self.verifyFileLength(input_file_dir)
+                if columns == 3: plotType = '2D' ### only 2 components possible for 2 samples
+                if count>0:
+                    UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, plotType=plotType, display=display)
+                else:
+                    self.control.write('PCA input file not present: '+input_file_dir+'\n') 
+                    
                 os.chdir(currentDirectory)
             self.InteractivePanelUpdate(event)                                                                                                                                                                     
         
+    def verifyFileLength(self,filename):
+        count = 0; columns=0
+        try:
+            fn=unique.filepath(filename)
+            for line in open(fn,'rU').xreadlines():
+                t = string.split(line,'\t')
+                columns = len(t)
+                count+=1
+                if count>9: break
+        except Exception: null=[]
+        return count,columns
 
     def OnAbout(self, event):
         #Brings up the developer information. Non-functional currently but will be updated eventually.

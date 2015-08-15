@@ -43,10 +43,15 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False):
             #chr = '12'; start = '6998470'; stop = '6998522'
             for alignedread in bamfile.fetch(chr, int(start),int(stop)):
                 proceed = True
-                if alignedread.cigarstring == None: pass
+                try: cigarstring = alignedread.cigarstring
+                except Exception:
+                    codes = map(lambda x: x[0],alignedread.cigar)
+                    if 3 in codes: cigarstring = 'N'
+                    else: cigarstring = None
+                if cigarstring == None: pass
                 else:
                     ### Exclude junction reads ("N")
-                    if 'N' in alignedread.cigarstring:
+                    if 'N' in cigarstring:
                         X=int(alignedread.pos)
                         Y=int(alignedread.pos+alignedread.alen)
                         start= int(start)

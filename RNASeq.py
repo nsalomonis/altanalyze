@@ -4464,6 +4464,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 
     kallisto_folders=[]
     expMatrix={}
+    countMatrix={}
     headers=['UID']
     for n in fastq_paths:
         output_path = output_dir+n
@@ -4478,10 +4479,10 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
         input_path = output_path+'/abundance.txt'
         try:
-            try: expMatrix=importTPMs(input_path,expMatrix)
+            try: expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
             except Exception:
                 input_path = output_path+'/abundance.tsv'
-                expMatrix=importTPMs(input_path,expMatrix)
+                expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
             headers.append(n)
         except Exception:
             print traceback.format_exc();sys.exit()
@@ -4489,9 +4490,11 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     dataset_name = string.replace(dataset_name,'exp.','')
     to = export.ExportFile(root_dir+'ExpressionInput/transcript.'+dataset_name+'.txt')
     go = export.ExportFile(root_dir+'ExpressionInput/exp.'+dataset_name+'.txt')
+    so = export.ExportFile(root_dir+'ExpressionInput/summary.'+dataset_name+'.txt')
     exportMatrix(to,headers,expMatrix) ### Export transcript expression matrix
     geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
     exportMatrix(go,headers,geneMatrix) ### export gene expression matrix
+    exportMatrix(so,['SampleID','Estimated Counts'],countMatrix) ### export gene expression matrix
     
 def calculateGeneTPMs(species,expMatrix):
     import gene_associations
@@ -4524,10 +4527,11 @@ def calculateGeneTPMs(species,expMatrix):
 def exportMatrix(eo,headers,matrix):
     eo.write(string.join(headers,'\t')+'\n')
     for gene in matrix:
-        eo.write(string.join([gene]+matrix[gene],'\t')+'\n')
+        try: eo.write(string.join([gene]+matrix[gene],'\t')+'\n')
+        except Exception: eo.write(string.join([gene,str(matrix[gene])],'\t')+'\n')
     eo.close()
 
-def importTPMs(input_path,expMatrix):
+def importTPMs(sample,input_path,expMatrix,countMatrix):
     firstLine=True
     for line in open(input_path,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -4538,7 +4542,9 @@ def importTPMs(input_path,expMatrix):
             target_id,length,eff_length,est_counts,tpm = string.split(data,'\t')
             try: expMatrix[target_id].append(tpm)
             except Exception: expMatrix[target_id]=[tpm]
-    return expMatrix
+            try: countMatrix[sample]+=float(est_counts)
+            except Exception: countMatrix[sample]=float(est_counts)
+    return expMatrix,countMatrix
 
 def findPairs(fastq_paths):
     #fastq_paths = ['/Volumes/test/run0718_lane12_read1_index701=Kopan_RBP_02_14999.fastq.gz','/Volumes/run0718_lane12_read2_index701=Kopan_RBP_02_14999.fastq.gz']

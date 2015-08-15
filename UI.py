@@ -5343,7 +5343,7 @@ def getUserParameters(run_parameter,Multi=None):
                     except Exception:
                         if array_type == 'RNASeq': rpkm_threshold = 1
                         else: rpkm_threshold = 'NA'
-                    print [rpkm_threshold]
+
                     if array_type != "3'array":          
                         try: dabg_p = gu.Results()['dabg_p']
                         except Exception:

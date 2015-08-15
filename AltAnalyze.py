@@ -5070,20 +5070,28 @@ def timestamp():
     return time_stamp
 
 def callWXPython():
-    print 'hello'
     import wx
     import RemoteViewer
-    RemoteViewer.remoteViewer()
-
+    app = wx.App(False)
+    RemoteViewer.remoteViewer(app)
+    
 def AltAnalyzeSetup(skip_intro):
     global apt_location; global root_dir;global log_file; global summary_data_db; summary_data_db={}; reload(UI)
     global probability_statistic; global commandLineMode; commandLineMode = 'no'
     if 'remoteViewer' == skip_intro:
-        package_path = filepath('python')
-        #mac_package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/python')
-        #os.system(mac_package_path+' RemoteViewer.py');sys.exit()
-        mac_package_path = string.replace(package_path,'python','AltAnalyzeViewer.app/Contents/MacOS/AltAnalyzeViewer')
-        os.system(mac_package_path);sys.exit()
+        if os.name == 'nt':
+            callWXPython()
+        elif os.name == 'ntX':
+            package_path = filepath('python')
+            win_package_path = string.replace(package_path,'python','AltAnalyzeViewer.exe')
+            import subprocess
+            subprocess.call([win_package_path]);sys.exit()
+        elif os.name == 'posix':
+            package_path = filepath('python')
+            #mac_package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/python')
+            #os.system(mac_package_path+' RemoteViewer.py');sys.exit()
+            mac_package_path = string.replace(package_path,'python','AltAnalyzeViewer.app/Contents/MacOS/AltAnalyzeViewer')
+            os.system();sys.exit()
         """
         import threading
         import wx

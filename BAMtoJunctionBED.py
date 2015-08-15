@@ -70,8 +70,13 @@ def parseJunctionEntries(bam_dir,multi=False):
     o.write('track name=junctions description="TopHat junctions"\n')
     outlier_start = 0; outlier_end = 0; read_count = 0
     for entry in bamf.fetch():
-      if entry.cigarstring != None:
-        if 'N' in entry.cigarstring: ### Hence a junction
+      try: cigarstring = entry.cigarstring
+      except Exception:
+          codes = map(lambda x: x[0],entry.cigar)
+          if 3 in codes: cigarstring = 'N'
+          else: cigarstring = None
+      if cigarstring != None:
+        if 'N' in cigarstring: ### Hence a junction
             if prior_jc_start == 0: pass
             elif (entry.pos-prior_jc_start) > 5000 or bamf.getrname( entry.rname ) != chromosome: ### New chr or far from prior reads
                 writeJunctionBedFile(junction_db,jid,o)
@@ -116,6 +121,6 @@ if __name__ == "__main__":
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
             
     try: parseJunctionEntries(bam_dir)
-    except Exception:
+    except ZeroDivisionError:
         print [sys.argv[1:]],'error'; error
 

@@ -15,7 +15,7 @@ _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
 excludes = ['wx','sklearn'] #["wxPython"] #"numpy","scipy","matplotlib"
-includes = ["suds", "mpmath", "numpy"]
+includes = ["mpmath", "numpy"]
 """ By default, suds will be installed in site-packages as a .egg file (zip compressed). Make a duplicate, change to .zip and extract
 here to allow it to be recognized by py2exe (must be a directory) """
 
@@ -38,7 +38,7 @@ if sys.platform.startswith("darwin"):
         ### example command: python setup.py py2app
         from distutils.core import setup
         import py2app
-	import lxml
+        import lxml
         includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath"] #"xml.sax.drivers2.drv_pyexpat"
         """
         resources = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
@@ -79,12 +79,13 @@ if sys.platform.startswith("win"):
         import numpy
         import matplotlib
         import unique
-	import lxml
+        import lxml
         import sys
         import six ### relates to a date-time dependency in matplotlib
         #sys.path.append(unique.filepath("Config\DLLs")) ### This is added, but DLLs still require addition to DLL python dir
         from distutils.filelist import findall
         import os
+        excludes = ['sklearn']
         
         data_files=matplotlib.get_py2exe_datafiles()
         
@@ -99,9 +100,9 @@ if sys.platform.startswith("win"):
         options={'py2exe':
                         {
                         "includes": 'suds',
-			"includes": 'lxml',
-			'includes': 'lxml.etree',
-			'includes': 'lxml._elementpath',
+                        "includes": 'lxml',
+                        'includes': 'lxml.etree',
+                        'includes': 'lxml._elementpath',
                         "includes": 'matplotlib',
                         "includes": 'mpl_toolkits',
                         "includes": 'matplotlib.backends.backend_tkagg',

@@ -327,7 +327,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             ### Calculate a qvalue (https://github.com/nfusi/qvalue)
             import numpy; import qvalue; pvals = []; keys = []
             for key in pval_db: pvals.append(pval_db[key].Pval()); keys.append(key)
-            pvals = qvalue(numpy.array(pvals))
+            pvals = numpy.array(pvals)
+            pvals = qvalue.estimate(pvals)
             for i in range(len(pvals)): pval_db[keys[i]].SetAdjP(pvals[i])
             
         for rowid in pval_db:

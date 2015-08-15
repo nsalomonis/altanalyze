@@ -2,7 +2,7 @@
 
 import sys
 
-_script = 'RemoteViewer.py'
+_script = 'AltAnalyzeViewer.py'
 _appName = "AltAnalyzeViewer"
 _appVersion = '1.0.0.1'
 _appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to take RNASeq or "
@@ -40,7 +40,7 @@ if sys.platform.startswith("darwin"):
         ### example command: python setup.py py2app
         from distutils.core import setup
         import py2app
-	#import lxml
+        #import lxml
         includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath"] #"xml.sax.drivers2.drv_pyexpat"
         """
         resources = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
@@ -60,7 +60,7 @@ if sys.platform.startswith("darwin"):
                      #"frameworks": frameworks,
                      #"resources": resources,
                      "argv_emulation": True,
-		     'arch': 'i386', ## for wx 
+                     'arch': 'i386', ## for wx 
                      "iconfile": "altanalyze.icns"}
         }
         setup(name=_appName,

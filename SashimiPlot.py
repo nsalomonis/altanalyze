@@ -16,6 +16,7 @@ from pyPdf import PdfFileReader, PdfFileWriter
 import argparse
 import math
 import unique
+import traceback
 count_sum_array=[];
 dem=dict()
 sample_read=dict()
@@ -242,8 +243,9 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 	try:
 	    ssp.plot_event(ch1,event,setting,outputdir)
 	except Exception:
-	     #print "error2"
-	     continue
+	    #print traceback.format_exc()
+	    #print "error2"
+	    continue
     #outputdir=findParentDir(inputpsi)+"sashimiplots" 
     for filename in os.listdir(outputdir):
 	newname=string.split(filename,'/')
