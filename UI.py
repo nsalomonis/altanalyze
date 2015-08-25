@@ -378,7 +378,7 @@ class StatusWindow:
             else:
                 root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.0.9 beta')
+            root.title('AltAnalyze version 2.0.9.2 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 300; width = 700
@@ -492,11 +492,17 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             try: biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp_instance)
             except Exception:
                 try:
+                    parent_dir = export.findParentDir(expFile)
                     flx = exp_file_location_db[dataset]; flx.setRootDir(parent_dir)
                     fastq_folder = flx.RunKallisto()
                     RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False)   
                 except Exception:
-                    print 'Kallisto failed due to:',traceback.format_exc() 
+                    print 'Kallisto failed due to:',traceback.format_exc()
+                    
+            try: root.destroy()
+            except Exception: null=[]
+            return None
+            biotypes = getBiotypes(expFile)
 
         else:
             biotypes = getBiotypes(expFile)
@@ -2871,7 +2877,8 @@ def exportJunctionList(filename,limit=None):
                         if limit==count: break      
                     except Exception:
                         pass
-
+            if count>limit: break
+        if count>limit: break
     eo.close()
     return export_file
 
@@ -3672,7 +3679,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.0.9 beta.\n')
+        txt.insert(END, 'AltAnalyze version 2.0.9.2 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
@@ -4932,7 +4939,7 @@ def getUserParameters(run_parameter,Multi=None):
 
                     GeneSetSelection = string.replace(GeneSetSelection,'\n',' ')
                     GeneSetSelection = string.replace(GeneSetSelection,'\r',' ')
-                    print [GeneSetSelection, JustShowTheseIDs, GeneSelection,ClusterGOElite,normalization]
+                    #print [GeneSetSelection, JustShowTheseIDs, GeneSelection,ClusterGOElite,normalization]
                     if GeneSetSelection != 'None Selected' or GeneSelection != '' or normalization != 'NA' or JustShowTheseIDs != '' or JustShowTheseIDs != 'None Selected':
                         gsp = GeneSelectionParameters(species,array_type,vendor)
                         if CorrelationCutoff!=None: #len(GeneSelection)>0 and 
@@ -6055,13 +6062,19 @@ def getUserParameters(run_parameter,Multi=None):
         logfile = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
         
         count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
+
         if count>1:
             expFile = expFile[:-4]+'-steady-state.txt'
-        elif array_type=='RNASeq':
+        elif array_type=='RNASeq' or len(input_fastq_dir)>0:
             ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
             values = species,exp_file_location_db,dataset,mlp_instance
             StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
-            expFile = expFile[:-4]+'-steady-state.txt'
+            if array_type=='RNASeq':
+                expFile = expFile[:-4]+'-steady-state.txt'
+        else:
+            print_out = 'WARNING... Prior to running ICGS, you must first run AltAnalyze\nusing assigned groups for this array type.'
+            IndicatorWindow(print_out,'Continue')
+            AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
             
         values = expFile, mlp_instance, gsp, False
         StatusWindow(values,'predictGroups') ### proceed to run the full discovery analysis here!!!
@@ -6257,6 +6270,8 @@ class GeneSelectionParameters:
     def ExcludeCellCycle(self):
         if self.excludeCellCycle == 'stringent' or self.excludeCellCycle == 'strict':
             return 'strict'  ### Also includes removing drivers correlated to any cell cycle genes, not just in the training set
+        elif self.excludeCellCycle == False:
+            return False
         elif self.excludeCellCycle == True or self.excludeCellCycle != 'no':
             return True
         else:
@@ -6366,7 +6381,7 @@ if __name__ == '__main__':
     a = exportJunctionList(dir,limit=50)
     print a;sys.exit()
     root = Tk()
-    import Config.RemoteViewer as cr
+    import Config.AltAnalyzeViewer as cr
     currentDirectory = str(os.getcwd())
     os.chdir(currentDirectory+'/Config') 
     app = wx.PySimpleApp(False)

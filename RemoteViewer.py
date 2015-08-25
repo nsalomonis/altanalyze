@@ -163,7 +163,7 @@ class Main(wx.Frame):
         self.panel2.SetSizer(sizer)
         self.page1.SetBackgroundColour("white")
         self.myGrid = gridlib.Grid(self.page2, id=1002)
-        self.myGrid.CreateGrid(100, 100)
+        self.myGrid.CreateGrid(100, 400) ### Sets this at 400 columns rather than 100
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.GridRightClick, id=1002)
         self.Bind(gridlib.EVT_GRID_CELL_LEFT_DCLICK, self.GridRowColor, id=1002)
         self.HighlightedCells = []
@@ -1616,8 +1616,10 @@ class Main(wx.Frame):
                     column_lengths.append(len(line))
                     table_file_contents.append((line))
                 
-                self.max_column_length = max(column_lengths)     
+                self.max_column_length = max(column_lengths)
+
                 self.table_length = len(table_file_contents)
+
                 if(self.table_length > 100 and self.table_length < 5000):
                     self.AppendTotal = self.table_length - 100
                     self.myGrid.AppendRows(self.AppendTotal, True)
@@ -1631,7 +1633,12 @@ class Main(wx.Frame):
                 for item_list in table_file_contents:
                     y_count = 0
                     for item in item_list:
-                        self.myGrid.SetCellValue(x_count, y_count, item)
+                        try: self.myGrid.SetCellValue(x_count, y_count, item) ###Here
+                        except Exception:
+                            ### Unclear why this is throwing an error
+                            #print traceback.format_exc()
+                            #print x_count, y_count, item;sys.exit()
+                            pass
                         if(x_count == 0):
                             self.myGrid.SetCellFont(x_count, y_count, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
                         y_count = y_count + 1
@@ -1643,8 +1650,9 @@ class Main(wx.Frame):
                         self.myGrid.SetColSize(i, 200)
                 self.page2.Layout()             
             except:
+                print traceback.format_exc()
                 TXT_FLAG = 0
-                self.control.write("Unable to open txt." + "\n")
+                self.control.write("Unable2 to open txt." + "\n")
             DATASET_FIND_FLAG = re.findall("DATASET", self.DirFileTxt)
             if(len(DATASET_FIND_FLAG) > 0):
                 try:

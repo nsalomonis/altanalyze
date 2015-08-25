@@ -32,7 +32,6 @@ import subprocess
 import BAMtoJunctionBED
 import BAMtoExonBED
 import getopt
-from pysam import TabProxies
     
 ################# General data import methods #################
 
@@ -189,9 +188,8 @@ def getChrFormat(directory):
                         break
             break
     return chr_status
-
+            
 def augmentExonReferences(directory,refExonCoordinateFile,outputExonCoordinateRefBEDfile):
-    
     print 'Building reference bed file from all junction.bed files'
     splicesite_db={} ### reference splice-site database (we only want to add novel splice-sites to our reference)
     real_splicesites={}

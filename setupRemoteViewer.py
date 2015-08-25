@@ -14,7 +14,7 @@ _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
 excludes = ["igraph","patsy","pandas","suds","lxml","cairo","cairo2","ImageTk","PIL","Pillow","mpmath",'pysam','Bio']
-excludes = ['sklearn',"igraph","patsy","pandas","suds","lxml","cairo","cairo2","mpmath",'virtualenv','Tkinter','matplotlib.tests',"Pillow"]
+excludes = ["igraph","patsy","pandas","suds","lxml","cairo","cairo2","mpmath",'virtualenv','Tkinter','matplotlib.tests',"Pillow"]
 #excludes = []
 includes = ["wx"] #["suds", "mpmath", "numpy"]
 includes = ["mpmath", "numpy"]
@@ -89,12 +89,12 @@ if sys.platform.startswith("darwin"):
 if sys.platform.startswith("win"):
         ### example command: python setup.py py2exe
         from distutils.core import setup
-        #import py2exe
+        import py2exe
         import suds
         import numpy
-        #import matplotlib
+        import matplotlib
         import unique
-	#import lxml
+        import lxml
         import sys
         import six ### relates to a date-time dependency in matplotlib
         #sys.path.append(unique.filepath("Config\DLLs")) ### This is added, but DLLs still require addition to DLL python dir

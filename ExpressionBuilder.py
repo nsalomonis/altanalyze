@@ -109,7 +109,9 @@ def checkExpressionFileFormat(expFile):
             else:
                 values = t[1:]
             try: values = map(lambda x: float(x), values)
-            except Exception: print values;sys.exit()
+            except Exception:
+                print values
+                print traceback.format_exc()
             
             if max(values)>inputMax: inputMax = max(values)
             if min(values)<inputMin: inputMin = min(values)

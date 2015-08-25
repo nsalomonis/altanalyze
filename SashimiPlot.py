@@ -235,6 +235,8 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 	    event=findParentDir(inputpsi)
 	    event=event+"trial_index/"
 	    setting =unique.filepath("Config/sashimi_plot_settings.txt")
+	    try: ch1=string.replace(ch1,':','_')
+	    except Exception: pass
 	    name=ch1
 	    #outputdir=findParentDir(inputpsi)+"sashimiplots"
 	    try: os.makedirs(outputdir)

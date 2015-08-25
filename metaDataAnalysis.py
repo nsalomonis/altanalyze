@@ -16,7 +16,7 @@ def BatchCheck(sample_id,nonpreferential_batchs,preferential_samples,platform):
     for batch in nonpreferential_batchs:
         if batch in sample_id:
             priority=1
-    if platform == 'RNASeq':
+    if platform == 'RNASeq' or platform == 'exon':
         if sample_id not in preferential_samples: priority = 1
         elif sample_id in preferential_samples: priority = 0
     return priority
@@ -44,8 +44,9 @@ def prepareComparisonData(input_file,diffStateQuery,CovariateQuery,uniqueDonors,
     notation_db={}; donor_sex_db={}
     failed_QC = ['FAIL','bad','EXCLUDE']
     nonpreferential_batchs = ['.144.7.','.144.6.','.219.2','.219.5','H9'] ### used when removing non-unique donors
-    preferential_samples = ['SC11-004A.133.1.7', 'SC11-008A.149.3.13', 'SC11-008B.149.3.14', 'SC11-010A.149.5.16', 'SC11-010B.149.5.18', 'SC11-012A.149.5.19', 'SC11-012B.149.5.20', 'SC11-013A.149.5.21', 'SC11-013B.149.5.22', 'SC12-002A.154.1.4', 'SC12-005A.144.7.19', 'SC12-005B.144.7.21', 'SC12-007.181.7.1', 'SC12-039.219.6.21', 'SC13-043.420.12.3', 'SC13-044.219.2.9', 'SC13-045.219.5.10', 'SC14-066.558.12.18', 'SC14-067.558.12.19', 'SC14-069.569.12.25', 'IPS18-4-1.102.2.2', 'IPS18-4-2.102.2.4', 'SC11-005B.119.5.9', 'SC11-006A.119.1.4', 'SC11-006B.119.1.10', 'SC11-007A.119.3.5', 'SC11-007B.119.3.1', 'SC11-014A.133.1.13', 'SC11-014B.133.2.4', 'SC11-015A.133.1.14', 'SC11-015B.133.2.5', 'SC11-016A.133.1.8', 'SC11-016B.133.2.15', 'SC11-017A.144.6.16', 'SC11-017B.154.1.2', 'SC11-018A.144.6.18', 'SC11-018B.154.1.3', 'SC12-006A.144.7.22', 'SC12-006B.144.7.23', 'SC12-019.181.7.2', 'SC12-020.181.7.3', 'SC12-022A.172.5.8', 'SC12-024.219.2.7', 'SC12-025A.172.5.9', 'SC12-028.181.7.5', 'SC12-029.181.7.6', 'SC12-030.181.7.4', 'SC12-031.181.7.7', 'SC12-034.182.1.7', 'SC12-035.569.12.16', 'SC12-036.182.2.20', 'SC12-037.182.1.12', 'SC12-038.420.12.1', 'SC13-049.219.2.8']
+    preferential_samples = ['SC11-004A.133.1.7', 'SC11-008B.149.3.14', 'SC11-010A.149.5.16', 'SC11-010B.149.5.18', 'SC11-012A.149.5.19', 'SC11-012B.149.5.20', 'SC11-013A.149.5.21', 'SC11-013B.149.5.22', 'SC12-002A.154.1.4', 'SC12-005A.144.7.19', 'SC12-005B.144.7.21', 'SC12-007.181.7.1', 'SC13-043.420.12.3', 'SC13-044.219.2.9', 'SC13-045.219.5.10', 'SC14-066.558.12.18', 'SC14-067.558.12.19', 'SC14-069.569.12.25', 'IPS18-4-1.102.2.2', 'IPS18-4-2.102.2.4', 'SC11-005B.119.5.9', 'SC11-006A.119.1.4', 'SC11-006B.119.1.10', 'SC11-007A.119.3.5', 'SC11-007B.119.3.1', 'SC11-014A.133.1.13', 'SC11-014B.133.2.4', 'SC11-015A.133.1.14', 'SC11-015B.133.2.5', 'SC11-016A.133.1.8', 'SC11-016B.133.2.15', 'SC11-017A.144.6.16', 'SC11-017B.154.1.2', 'SC11-018A.144.6.18', 'SC11-018B.154.1.3', 'SC12-006A.144.7.22', 'SC12-006B.144.7.23', 'SC12-019.181.7.2', 'SC12-020.181.7.3', 'SC12-022A.172.5.8', 'SC12-024.219.2.7', 'SC12-025A.172.5.9', 'SC12-028.181.7.5', 'SC12-029.181.7.6', 'SC12-030.181.7.4', 'SC12-031.181.7.7', 'SC12-034.182.1.7', 'SC12-035.569.12.16', 'SC12-036.182.2.20', 'SC12-037.182.1.12', 'SC12-038.420.12.1', 'SC13-049.219.2.8']
     preferential_samples += ['SC11-010BEB.144.6.6', 'SC13-045EB.219.6.11', 'SC12-005EB.585.2.13', 'SC11-013EB.558.12.7', 'SC13-043BEB.419.12.13', 'SC14-067EB.558.12.1', 'SC13-044EB.219.6.10', 'SC11-012BEB.144.6.7', 'SC14-066EB.585.2.14'] # variable XIST 'SC11-009A.133.3.5', 'SC11-009A.149.5.15'
+    preferential_samples += ['H9.119.3.7']
     unique_covariate_samples={}
     covariate_samples={}
     sample_metadata={}
@@ -256,8 +257,8 @@ def prepareComparisonData(input_file,diffStateQuery,CovariateQuery,uniqueDonors,
     for covariateType in covariates_to_consider:
         groups_db[covariateType] = covariate_samples[covariateType]
         ### print out the associated unique donor samples
-        #for i in covariate_samples[covariateType]: print i
-    
+        for i in covariate_samples[covariateType]: print covariateType,i
+    #sys.exit()
     return sample_metadata,groups_db,comps_db
     
 def performDifferentialExpressionAnalysis(species,platform,input_file,sample_metadata,groups_db,comps_db,CovariateQuery,uniqueDonors):

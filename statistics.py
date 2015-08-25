@@ -945,6 +945,7 @@ def matrixImport(filename):
             original_data['header'] = original_line
         else:
             key = values[0]
+            values=values[1:]
             grouped_floats=[]
             float_values = []
             for g in groups: ### string values
@@ -967,7 +968,7 @@ def matrixImport(filename):
 def runANOVA(matrix):
     matrix_pvalues={}
     matrix_pvalues_list=[]
-    useAdjusted=True
+    useAdjusted=False
     for key in matrix:
         filtered_groups = []
         for group in matrix[key]:
@@ -982,6 +983,7 @@ def runANOVA(matrix):
             else:
                 matrix_pvalues[key]=[p,p]
                 matrix_pvalues_list.append((p,key))
+            #if 'CAMK2D' in key: print filtered_groups; print key, p
         except Exception: pass ### not enough values present or groups
     if useAdjusted:
         adjustPermuteStats(matrix_pvalues)
@@ -989,10 +991,10 @@ def runANOVA(matrix):
         matrix_pvalues={}
         for key in adj_matrix_pvalues:
             p,adjp = adj_matrix_pvalues[key]
-            if p < 0.05:
+            if adj_matrix_pvalues[key][1] < 0.05:
                 matrix_pvalues[key] = adj_matrix_pvalues[key][1]
-    else:
-        matrix_pvalues_list.sort()
+                matrix_pvalues_list.append((adj_matrix_pvalues[key][1],key))
+    matrix_pvalues_list.sort()
     print len(matrix_pvalues), 'ANOVA significant reciprocal PSI-junctions...'
     return matrix_pvalues
 
@@ -1012,10 +1014,10 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
     filename = '/Volumes/SEQ-DATA/Jared/AltResults/Unbiased/junctions/top_alt_junctions-renamed.txt'
     filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/AltResults/Unbiased/junctions/top_alt_junctions_grouped.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Volumes/SEQ-DATA/Ichi/Ichi-new/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     matrix,original_data = matrixImport(filename)
     matrix_pvalues=runANOVA(matrix)
-    returnANOVAFiltered(original_data,matrix_pvalues); sys.exit()
+    returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()
     a = range(3, 18)
     k=[]
     for i in a:

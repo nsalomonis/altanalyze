@@ -21,6 +21,22 @@ def importFPKMFile(input_file):
         if i not in added_key:
             fpkm_db[i].append('0.00')
     
+def importCufflinksFPKMFileEXCEL(filename):
+    from xlrd import open_workbook
+    print filename
+    wb = open_workbook(filename)
+    for w in wb.sheets():
+        print w.name;sys.exit()
+    sys.exit()
+    rows=[]
+    for row in range(worksheet.nrows):
+        print row
+        values = []
+        for col in range(worksheet.ncols):
+            try: values.append(str(s.cell(row,col).value))
+            except Exception: pass
+        rows.append(values)
+
 def getFiles(sub_dir,directories=True):
     dir_list = unique.read_directory(sub_dir); dir_list2 = []
     for entry in dir_list:
@@ -41,6 +57,11 @@ def combineCufflinks(root_dir):
         if ('.genes.results' in file and '.gz' not in file) or ('.txt' in file and '.gz' not in file and 'RSEM.txt' not in file):
             importFPKMFile(filename)
             headers.append(file)
+        if '.xls' in file:
+            importCufflinksFPKMFileEXCEL(filename)
+            headers.append(file)
+
+                
                 
     for i in fpkm_db:
         fpkm_db[i]=[]

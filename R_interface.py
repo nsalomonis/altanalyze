@@ -181,6 +181,16 @@ def importHopachOutput(filename):
             if len(levels1)<4:
                 cluster_level = cluster_level2
                 
+    cluster_level2 = [] ### The cluster colors don't segregate unless the cluster numbers are on the same scale (same string length)
+    max_clust_len = max(map(lambda x: len(str(x)),cluster_level))
+    for i in cluster_level:
+        i = str(i)
+        if len(i)!=max_clust_len:
+            i+=(max_clust_len-len(i))*'0'
+            cluster_level2.append(i)
+        else: cluster_level2.append(i)
+    cluster_level = cluster_level2
+    
     hopach_clusters.sort()
     hopach_clusters = map(lambda x: x[1], hopach_clusters) ### Store the original file indexes in order based the cluster final order
     db['leaves'] = hopach_clusters ### This mimics Scipy's cluster output data structure
@@ -235,16 +245,16 @@ class RScripts:
         print_out = r('library("monocle")')
         print "Reading Monocle data..."
         data_import = 'fpkm_matrix<-read.delim(%s,row.names=1,check.names=FALSE)' % samplelogfile
-        print [data_import]
+        #print [data_import]
         print_out = r(data_import);
         print print_out
     
         data_import = 'sample_sheet<-read.delim(%s,row.names=1,check.names=FALSE)' % grp_list
-        print [data_import]
+        #print [data_import]
         print_out = r(data_import);
         print print_out
         data_import = 'gene_ann<-read.delim(%s,row.names=1,check.names=FALSE)' % gene_list
-        print [data_import]
+        #print [data_import]
         print_out = r(data_import);
         print print_out
         print_out= r('pd <- new("AnnotatedDataFrame",data=sample_sheet)');
@@ -254,15 +264,18 @@ class RScripts:
         #colname(a) == colname(b)
         print_out=r('URMM<- detectGenes(URMM, min_expr = 0)')
         gene_exp='expressed_genes <- row.names(subset(fData(URMM), num_cells_expressed >=%s ))'% expPercent
-        print [gene_exp]
+        #print [gene_exp]
         try:print_out = r(gene_exp)
         except Exception:
                     print "expression genes"
         print_out=r('length(expressed_genes)')
         print print_out
 
-        # specify the grouping column for finding differential genes 
-        print_out=r('diff_test_res <- differentialGeneTest(URMM[expressed_genes, ], fullModelFormulaStr = "expression~Group",cores=16)')
+        # specify the grouping column for finding differential genes
+        import multiprocessing
+        cores = str(multiprocessing.cpu_count()/2)
+        
+        print_out=r('diff_test_res <- differentialGeneTest(URMM[expressed_genes, ], fullModelFormulaStr = "expression~Group",cores=%s)') % cores
         print print_out
         gene_ord='ordering_genes <- row.names(subset(diff_test_res, pval < %s))' %p_val
        
@@ -722,8 +735,8 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
                 except Exception:
                     nonNumericsPresent=True
                 key_db[key]=t
-    
-   
+            else:
+                clusters = map(str,t[offset+1:])
     for key in key_list:
             t = key_db[key]
             s=[key]
@@ -750,15 +763,16 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
     #return input_file
 
     
-    array_names = []; array_linker_db = {}; d = 0
+    array_names = []; array_linker_db = {}; d = 0; i = 0
     for entry in headers.split('\t'):
                 
                 entry=cleanUpLine(entry)
                 if '::' in entry:
                     a = (entry.split("::"))
-                else:
+                elif ':' in entry:
                     a = (entry.split(":"))
-                
+                else:
+                    a = (clusters[i],entry)
                 #entry=string.join(a,'.')
               
                 ent=entry+'\t'+a[0];
@@ -771,6 +785,8 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
                  #   ent=string.replace(ent,'+','.')
                     #print j
                 array_names.append(ent);
+                i+=1
+        
     i=0
     eheader = string.join(['']+['Group'],'\t')+'\n' ### format column-flat-clusters for export
     export_cdt.write(eheader)
@@ -798,7 +814,6 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
     export_object.close() 
     export_gene.close()
 
-    
 def reformatHeatmapFile(input_file):
     import unique
     export_file=string.replace(input_file,'Clustering-','Input-')
@@ -830,7 +845,7 @@ def reformatHeatmapFile(input_file):
     return export_file, len(unique_clusters)
 
 def performMonocleAnalysisFromHeatmap(species,heatmap_output_dir,rawExpressionFile):
-    numGroups=4
+    numGroups=10
     if 'Clustering-' in heatmap_output_dir:
         export_file,numGroups = reformatHeatmapFile(heatmap_output_dir)
     #else:

@@ -43,7 +43,8 @@ py2app_adj4 = '/AltAnalyze.app/Contents/Resources/lib/python2.7/site-packages.zi
 py2exe_adj = '\\library.zip' ###py2exe
 cx_Freeze_adj = '/library.zip'
 pyinstaller_adj = '/AltAnalyze.app/Contents/MacOS'
-py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj,pyinstaller_adj]
+pyinstaller_adj2 = '/AltAnalyze.app/Contents/Resources'
+py2app_aa_dirs = [py2app_adj,py2app_adj1,py2exe_adj,py2app_adj2,py2app_adj3,py2app_adj4,cx_Freeze_adj,pyinstaller_adj,pyinstaller_adj2]
 py2app_dirs = py2app_ge_dirs + py2app_aa_dirs
 
 for i in py2app_aa_dirs:

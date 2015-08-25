@@ -560,6 +560,11 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         else:
             radj = len(row_header)*0.005
         cluster = str(ind1[i])
+        if cluster == 'NA':
+            new_index = i
+            try: cluster = 'cluster-'+string.split(row_header[new_index],':')[0]
+            except Exception: pass
+
         if cluster != last_cluster:
             ci=0
             increment=0
@@ -618,7 +623,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                     if symbol in justShowTheseIDs:
                         axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
             except Exception: pass
-            
+                    
         if cluster in cluster_elite_terms:
                 if cluster != last_cluster:
                     cluster_intialized = False
@@ -626,9 +631,15 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                     increment+=1
                     #print [increment,interval,cluster],cluster_elite_terms[cluster][ci][1];sys.exit()
                     #if increment == interval or (
+                    #print increment,interval,len(row_header),cluster_intialized
                     if (increment == interval) or (len(row_header)>200 and increment == (interval-9) and cluster_intialized==False): ### second argument brings the label down
                         cluster_intialized=True
-                        if (len(row_header)>200 and str(ind1[i+9])!=cluster): continue ### prevents the last label in a cluster from overlapping with the first in the next cluster
+                        atypical_cluster = False
+                        if ind1[i+9] == 'NA': ### This occurs for custom cluster, such MarkerFinder (not cluster numbers)
+                            atypical_cluster = True
+                            cluster9 = 'cluster-'+string.split(row_header[new_index+9],':')[0]
+                            if (len(row_header)>200 and str(cluster9)!=cluster): continue
+                        elif (len(row_header)>200 and str(ind1[i+9])!=cluster): continue ### prevents the last label in a cluster from overlapping with the first in the next cluster
                         pvalue,original_term = cluster_elite_terms[cluster][ci]
                         term = original_term
                         if 'GO:' in term:
@@ -637,19 +648,22 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                             term = string.split(term, ':WP')[0]
                         pvalue = formatpval(str(pvalue))
                         term += ' p='+pvalue
-                        term += ' (c'+str(cluster)+')'
+                        if atypical_cluster == False:
+                            term += ' (c'+str(cluster)+')'
                         try: cluster_elite_terms[term] = cluster_elite_terms[cluster,original_term]  ### store the new term name with the associated genes
                         except Exception: pass
                         axm.text(label_pos, i-radj, term,horizontalalignment='right',fontsize=ge_fontsize, picker=True, color = 'blue')
                         increment=0
                         ci+=1
-                except Exception,e: increment=0
+                except Exception,e:
+                    #print traceback.format_exc();sys.exit()
+                    increment=0
         last_cluster = cluster
     
     def onpick1(event):
         text = event.artist
         print('onpick1 text:', text.get_text())
-        if '(c' not in text.get_text():
+        if '(c' not in text.get_text() and 'cluster' not in text.get_text():
             webbrowser.open('http://www.genecards.org/cgi-bin/carddisp.pl?gene='+string.replace(text.get_text(),' ',''))
         elif 'TreeView' in text.get_text():
             try: openTreeView(cdt_file)
@@ -744,6 +758,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     group_name_list=[]
     ind1_clust,ind2_clust = ind1,ind2
     ind1,ind2,group_name_list,cb_status = updateColorBarData(ind1,ind2,new_column_header,new_row_header,row_method)
+
     if (column_method != None or 'column' in cb_status) and show_color_bars == True:
         axc = fig.add_axes([axc_x, axc_y, axc_w, axc_h])  # axes for column side colorbar
         cmap_c = mpl.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
@@ -760,6 +775,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                     cmap_c = mpl.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
         elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
             cmap_c = pylab.cm.gist_rainbow
+
         dc = numpy.array(ind2, dtype=int)
         dc.shape = (1,len(ind2)) 
         im_c = axc.matshow(dc, aspect='auto', origin='lower', cmap=cmap_c)
@@ -962,7 +978,9 @@ def importGOEliteResults(elite_dir):
             except Exception: pass
             try:
                 eliteGeneSet = string.split(values[0][1:],'-')[1][:-4]
-                cluster = str(int(float(string.split(values[0][1:],'-')[0])))
+                try: cluster = str(int(float(string.split(values[0][1:],'-')[0])))
+                except Exception:
+                    cluster = string.join(string.split(values[0],'-')[:-1],'-')
                 term = values[2]
                 all_term_length.append(len(term))
                 pval = float(values[9])
@@ -1143,9 +1161,17 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
             cluster = 'cluster-'+string.split(id,':')[0]
         else:
             cluster = 'c'+str(ind1[i])
-        try: cluster_db[cluster].append(new_row_header[i])
-        except Exception: cluster_db[cluster] = [new_row_header[i]]
-        export_lines.append(string.join([new_row_header[i],str(ind1[i])]+map(str, row),'\t')+'\n')
+        try:
+            if 'MarkerGenes' in originalFilename:
+                id = string.split(id,':')[1]
+                if ' ' in id:
+                    id = string.split(id,' ')[0]
+                if 'EN' in id: sy = 'En'
+                else: sy = 'Sy'
+        except Exception: pass
+        try: cluster_db[cluster].append(id)
+        except Exception: cluster_db[cluster] = [id]
+        export_lines.append(string.join([id,str(ind1[i])]+map(str, row),'\t')+'\n')
         i+=1
         
     ### Reverse the order of the file
@@ -1661,6 +1687,108 @@ def exportCustomGeneSet(geneSetName,species,allGenes):
         print 'Could not store since no species name provided.'
 
     
+def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False):
+    try: prior_clusters = priorColumnClusters
+    except Exception: prior_clusters=[]
+
+    if len(prior_clusters)>0 and len(group_db)==0:
+        newColumnHeader=[]
+        i=0
+        for sample_name in column_header:
+            newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
+            i+=1
+        group_db, column_header = assignGroupColors(newColumnHeader)
+
+        
+    from sklearn.manifold import TSNE
+    X=matrix.T
+    
+    #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
+    model = TSNE(n_components=2)
+    scores=model.fit_transform(X)
+    #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
+    
+    fig = pylab.figure()
+    ax = fig.add_subplot(111)
+    pylab.xlabel('TSNE-X')
+    pylab.ylabel('TSNE-Y')
+    pylab.title('t-SNE - '+dataset_name)
+            
+    axes = getAxesTransposed(scores) ### adds buffer space to the end of each axis and creates room for a legend
+    pylab.axis(axes)
+
+    marker_size = 15
+    if len(column_header)>20:
+        marker_size = 12
+    if len(column_header)>40:
+        marker_size = 10
+    if len(column_header)>120:
+        marker_size = 6
+        
+    group_names={}
+    i=0
+    for sample_name in column_header: #scores[0]
+        ### Add the text labels for each
+        try:
+            ### Get group name and color information
+            group_name,color,k = group_db[sample_name]
+            if group_name not in group_names:
+                label = group_name ### Only add once for each group
+            else: label = None
+            group_names[group_name] = color
+        except Exception:
+            color = 'r'; label=None
+        ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label)
+        #except Exception: print i, len(scores[pcB]);kill
+        if showLabels:
+            try: sample_name = '   '+string.split(sample_name,':')[1]
+            except Exception: pass
+            ax.text(scores[i][0],scores[i][1],sample_name,fontsize=11)
+        i+=1
+
+    group_count = []
+    for i in group_db:
+        if group_db[i][0] not in group_count:
+            group_count.append(group_db[i][0])
+    
+    #print len(group_count)
+    Lfontsize = 8
+    if len(group_count)>20:
+        Lfontsize = 10
+    if len(group_count)>30:
+        Lfontsize = 8
+    if len(group_count)>40:
+        Lfontsize = 6
+    if len(group_count)>50:
+        Lfontsize = 5
+    i=0
+    
+    box = ax.get_position()
+    if len(group_count) > 0: ### Make number larger to get the legend in the plot -- BUT, the axis buffer above has been disabled
+        # Shink current axis by 20%
+        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        try: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize = Lfontsize) ### move the legend over to the right of the plot
+        except Exception: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    else:
+        ax.set_position([box.x0, box.y0, box.width, box.height])
+        pylab.legend(loc="upper left", prop={'size': 10})
+  
+    
+    
+    filename = 'Clustering-%s-t-SNE.pdf' % dataset_name
+    try: pylab.savefig(root_dir + filename)
+    except Exception: None ### Rare error
+    #print 'Exporting:',filename
+    filename = filename[:-3]+'png'
+    try: pylab.savefig(root_dir + filename) #dpi=200
+    except Exception: None ### Rare error
+    graphic_link.append(['Principal Component Analysis',root_dir+filename])
+    if display:
+        print 'Exporting:',filename
+        try:
+            pylab.show()
+        except Exception:
+            pass### when run in headless mode
 
 def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, group_db, display=False, showLabels=True, algorithm='SVD',geneSetName=None, species=None, pcA=1,pcB=2):
     print "Performing Principal Component Analysis..."
@@ -1834,21 +1962,36 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     fig.clf()
 
 def ica(filename):
+    showLabels=True
     X, column_header, row_header, dataset_name, group_db = importData(filename)
     X = map(numpy.array, zip(*X)) ### coverts these to tuples
     column_header, row_header = row_header, column_header
 
     ica = FastICA()
-    S_ica_ = ica.fit(X).transform(X)  # Estimate the sources
+    scores = ica.fit(X).transform(X)  # Estimate the sources
     
-    S_ica_ /= S_ica_.std(axis=0)
+    scores /= scores.std(axis=0)
+        
+    fig = pylab.figure()
+    ax = fig.add_subplot(111)
+    pylab.xlabel('ICA-X')
+    pylab.ylabel('ICA-Y')
+    pylab.title('ICA - '+dataset_name)
+            
+    axes = getAxes(scores) ### adds buffer space to the end of each axis and creates room for a legend
+    pylab.axis(axes)
     
-    pylab.plot()
-    #plot_samples(S_ica_ / numpy.std(S_ica_))
-    
+    marker_size = 15
+    if len(column_header)>20:
+        marker_size = 12
+    if len(column_header)>40:
+        marker_size = 10
+    if len(column_header)>120:
+        marker_size = 6
+        
     group_names={}
     i=0
-    for sample_name in column_header: #scores[0]
+    for sample_name in row_header: #scores[0]
         ### Add the text labels for each
         try:
             ### Get group name and color information
@@ -1859,17 +2002,15 @@ def ica(filename):
             group_names[group_name] = color
         except Exception:
             color = 'r'; label=None
-        try: ax.plot(S_ica_[0][i],S_ica_[1][i],color=color,marker='o',markersize=marker_size,label=label)
-        except Exception:
-            print len(S_ica_)
-            print i, len(S_ica_[0]);sys.exit()
+        ax.plot(scores[0][i],scores[1][i],color=color,marker='o',markersize=marker_size,label=label)
         if showLabels:
-            ax.text(scores[0][i],S_ica_[1][i],sample_name,fontsize=8)
+            ax.text(scores[0][i],scores[1][i],sample_name,fontsize=8)
         i+=1
         
     pylab.title('ICA recovered signals')
     
     pylab.show()
+    
 
 def plot_samples(S, axis_list=None):
     pylab.scatter(S[:, 0], S[:, 1], s=20, marker='o', linewidths=0, zorder=10,
@@ -2050,7 +2191,23 @@ def getAxes(scores):
         None
     return [x_axis_min, x_axis_max, y_axis_min, y_axis_max]
 
+def getAxesTransposed(scores):
+    """ Adjust these axes to account for (A) legend size (left hand upper corner)
+    and (B) long sample name extending to the right
+    """
     
+    scores = map(numpy.array, zip(*scores))
+    try:
+        x_range = max(scores[0])-min(scores[0])
+        y_range = max(scores[1])-min(scores[1])
+        x_axis_min = min(scores[0])-int((float(x_range)/7))
+        x_axis_max = max(scores[0])+int((float(x_range)/7))
+        y_axis_min = min(scores[1])-int(float(y_range/7))
+        y_axis_max = max(scores[1])+int(float(y_range/7))
+    except KeyError:
+        None
+    return [x_axis_min, x_axis_max, y_axis_min, y_axis_max]
+
 def Kmeans(features, column_header, row_header):
     #http://www.janeriksolem.net/2009/04/clustering-using-scipys-k-means.html
     #class1 = numpy.array(numpy.random.standard_normal((100,2))) + numpy.array([5,5]) 
@@ -2929,14 +3086,18 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     #PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=True)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
-        if plotType == '3D':
+        if algorithm == 't-SNE':
+            matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
+            column_header, row_header = row_header, column_header   
+            tSNE(numpy.array(matrix), column_header,dataset_name,group_db,display=display,showLabels=showLabels)
+        elif plotType == '3D':
             try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
             except Exception:
                 print traceback.format_exc()
                 PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
- 
         else:
             PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
+
     return graphic_link
 
 def outputClusters(filenames,graphics,Normalize=False):
@@ -3902,6 +4063,8 @@ def coincidentIncedence(filename,genes):
     
 if __name__ == '__main__':
     import UI
+    filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/amplify/exp.CombinedSingleCell_March_15_2015.txt'
+    ica(filename);sys.exit()
     replaceWithBinary('/Users/saljh8/Downloads/Neg_Bi_wholegenome.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA/AML-TCGA/ExpressionInput/counts.LAML1.txt');sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/genes.tpm_tracking-ordered.txt'

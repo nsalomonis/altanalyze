@@ -312,6 +312,7 @@ def reorderInputFile(custom_path,marker_list,marker_condition_db):
     fn=filepath(custom_path)
     exp_db={}
     probeset_symbol_db={}
+    #print custom_path;sys.exit()
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -331,6 +332,10 @@ def reorderInputFile(custom_path,marker_list,marker_condition_db):
         condition = marker_condition_db[uid]
         try: export_obj.write(condition+':'+exp_db[uid])
         except Exception:
+            print [uid]
+            for i in exp_db:
+                print [i];break
+            
             print 'Error encountered with the ID:',uid, 'not in exp_db'; kill
     export_obj.close()
     
@@ -689,7 +694,7 @@ def identifyMarkers(filename,cluster_comps):
                 
             x = 1
         else: #elif x<500:
-            probeset = t[0]; proceed = 'no'
+            probeset = t[0]; proceed = 'no'; symbol=''; geneID=''
             try:
                 lti = len(tissues)+1
                 try: description,symbol=annotation_db[probeset][:2] ### See above annotation_db download
@@ -780,14 +785,15 @@ def identifyMarkers(filename,cluster_comps):
             if symbol not in ranked_list:
                 ranked_list.append(symbol); ranked_lookup.append([probeset,symbol,rho])
         for (probeset,symbol,rho) in ranked_lookup[:genesToReport]:  ### Here is where we would compare rho values between tissues with the same probesets
-            if compare_clusters == 'yes':
-                try: tissue_specific_IDs[tissue].append(probeset)
-                except Exception: tissue_specific_IDs[tissue] = [probeset]
-            else:
-                try: tissue_specific_IDs[probeset].append(tissue)
-                except Exception: tissue_specific_IDs[probeset] = [tissue]
-            try: interim_correlations[tissue].append([probeset,symbol,rho])
-            except Exception: interim_correlations[tissue] = [[probeset,symbol,rho]]
+            if rho>0.1:
+                if compare_clusters == 'yes':
+                    try: tissue_specific_IDs[tissue].append(probeset)
+                    except Exception: tissue_specific_IDs[tissue] = [probeset]
+                else:
+                    try: tissue_specific_IDs[probeset].append(tissue)
+                    except Exception: tissue_specific_IDs[probeset] = [tissue]
+                try: interim_correlations[tissue].append([probeset,symbol,rho])
+                except Exception: interim_correlations[tissue] = [[probeset,symbol,rho]]    
         if correlateAllGenes:
             for tissue in tissue_scores:
                 for (rho,(probeset,symbol)) in tissue_scores[tissue]:
