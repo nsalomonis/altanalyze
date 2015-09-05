@@ -45,7 +45,15 @@ def plot_density_single(settings, sample_label,
     Plot MISO events using BAM files and posterior distribution files.
     TODO: If comparison files are available, plot Bayes factors too.
     """
+    
+    #### Added for BAM files with no chr in chromosome name
     bamfile = pysam.Samfile(bam_filename, 'rb')
+    for entry in bamfile.fetch():
+        chromosome = bamfile.getrname(entry.rname)
+        break
+    if 'chr' not in str(chromosome): chrom = str(chrom)[3:]
+    #### End
+    
     try:
         subset_reads = bamfile.fetch(reference=chrom, start=tx_start,end=tx_end)
     except ValueError as e:
@@ -210,11 +218,13 @@ def plot_density(sashimi_obj, pickle_filename, event, plot_title=None):
     tx_start, tx_end, exon_starts, exon_ends, gene_obj, mRNAs, strand, chrom = \
         parseGene(pickle_filename, event)
 
+    #print tx_start, tx_end, exon_starts, exon_ends, gene_obj, mRNAs, strand, chrom - This is normal
     # Get the right scalings
     graphcoords, graphToGene = getScaling(tx_start, tx_end, strand,
                                           exon_starts, exon_ends, intron_scale,
                                           exon_scale, reverse_minus)
 
+    #print graphcoords, graphToGene;sys.exit()
     nfiles = len(bam_files)
     if plot_title is not None:
         # Use custom title if given
@@ -683,6 +693,9 @@ def plot_density_from_file(settings_f, pickle_filename, event,
     tx_start, tx_end, exon_starts, exon_ends, gene_obj, mRNAs, strand, chrom = \
         parseGene(pickle_filename, event)
 
+    #chrom = str(chrom)[3:]
+    
+    
     # Override settings flag on whether to show posterior plots
     # if --no-posteriors was given to plot.py
     sashimi_obj = Sashimi(event, output_dir,

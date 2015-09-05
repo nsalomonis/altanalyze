@@ -907,7 +907,8 @@ def load_genes_from_gff(gff_filename,
 
         if (num_genes % 5000) == 0:
             if not suppress_warnings:
-                print "Through %d genes..." %(num_genes)
+                #print "Through %d genes..." %(num_genes)
+		pass
         num_genes += 1
 
     num_genes = len(gff_genes)
@@ -955,7 +956,7 @@ def make_gene_from_gff_records(gene_label,
         exons = []
 
         if len(transcript_exons) == 0:
-            print "%s has no exons" %(transcript_id)
+            #print "%s has no exons" %(transcript_id)
             continue
 
         # Record how many transcripts we have with exons children

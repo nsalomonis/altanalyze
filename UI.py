@@ -483,27 +483,35 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         flx = exp_file_location_db[dataset]
     if root == None: display=False
     else: display=True
+    runKallisto = False
     try:
         import RNASeq, ExonArray
-        print 'Pre-processing input files'
         expFile = flx.ExpFile()
         count = verifyFileLength(expFile)
-        if count==0:
-            try: biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp_instance)
+        try: fastq_folder = flx.RunKallisto()
+        except Exception: fastq_folder = []
+        if len(fastq_folder)>0 and count<2:
+            print 'Pre-processing input files'
+            try:
+                parent_dir = export.findParentDir(expFile)
+                flx = exp_file_location_db[dataset]; flx.setRootDir(parent_dir)
+                fastq_folder = flx.RunKallisto()
+                runKallisto = True
+                RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False)   
             except Exception:
-                try:
-                    parent_dir = export.findParentDir(expFile)
-                    flx = exp_file_location_db[dataset]; flx.setRootDir(parent_dir)
-                    fastq_folder = flx.RunKallisto()
-                    RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False)   
-                except Exception:
-                    print 'Kallisto failed due to:',traceback.format_exc()
-                    
+                print 'Kallisto failed due to:',traceback.format_exc()
             try: root.destroy()
             except Exception: null=[]
             return None
+        elif len(fastq_folder)>0 and count>1:
+            try: root.destroy()
+            except Exception: null=[]
+            return None ### Already run
+        elif count<2:
+            print 'Pre-processing input files'
+            try: biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp_instance)
+            except Exception: print 'unknown'
             biotypes = getBiotypes(expFile)
-
         else:
             biotypes = getBiotypes(expFile)
         array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',array_type)
@@ -5255,24 +5263,6 @@ def getUserParameters(run_parameter,Multi=None):
                                     except Exception: continue ### Occurs if the file is open... not critical to worry about       
 
         if run_from_scratch == 'Process Expression file':
-            if array_type != 'RNASeq':
-                ### This is the new option for expression filtering of non-RNASeq classified data
-                try:
-                    #print option_db['rpkm_threshold'].DefaultOption()
-                    if 'rpkm_threshold' in option_db:
-                        option_db['rpkm_threshold'].setArrayOptions('0')
-                        if option_db['rpkm_threshold'].DefaultOption() == ['NA']:
-                            option_db['rpkm_threshold'].setDefaultOption('0')
-                        option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')
-                    else:
-                        option_db['rpkm_threshold'].setArrayOptions('0')
-                        option_db['rpkm_threshold'].setDefaultOption('0')
-                        option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')                     
-                except Exception:
-                    option_db['rpkm_threshold'].setArrayOptions('0')
-                    option_db['rpkm_threshold'].setDefaultOption('0')
-                    option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)') 
-
                 
             status = 'repeat'
             while status == 'repeat':
@@ -5310,6 +5300,34 @@ def getUserParameters(run_parameter,Multi=None):
                     else: i = -1
                     output_dir = string.join(string.split(input_exp_file,'/')[:i],'/')
 
+            if array_type == 'RNASeq':
+                counts_file = string.replace(input_exp_file,'exp.','counts.')
+                count = verifyFileLength(counts_file)
+                if count == 0 or 'exp.' not in input_exp_file: #No counts file
+                    ### Wrong platform listed
+                    array_type = "3'array"
+                    vendor = 'other:Symbol' ### Ensembl linked system name
+                    option_list,option_db = importUserOptions(array_type)
+                    
+            print array_type, vendor
+            if array_type != 'RNASeq':
+                ### This is the new option for expression filtering of non-RNASeq classified data
+                try:
+                    #print option_db['rpkm_threshold'].DefaultOption()
+                    if 'rpkm_threshold' in option_db:
+                        option_db['rpkm_threshold'].setArrayOptions('0')
+                        if option_db['rpkm_threshold'].DefaultOption() == ['NA']:
+                            option_db['rpkm_threshold'].setDefaultOption('0')
+                        option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')
+                    else:
+                        option_db['rpkm_threshold'].setArrayOptions('0')
+                        option_db['rpkm_threshold'].setDefaultOption('0')
+                        option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')                     
+                except Exception:
+                    option_db['rpkm_threshold'].setArrayOptions('0')
+                    option_db['rpkm_threshold'].setDefaultOption('0')
+                    option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')
+                    
             if "ExpressionInput" not in output_dir and len(input_exp_file)>1 and "ExpressionInput" not in input_exp_file:
                 try:
                     ### If the user designates an output directory that doesn't contain ExpressionInput, move the exp-file there and rename
@@ -6071,10 +6089,11 @@ def getUserParameters(run_parameter,Multi=None):
             StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
             if array_type=='RNASeq':
                 expFile = expFile[:-4]+'-steady-state.txt'
+        """
         else:
             print_out = 'WARNING... Prior to running ICGS, you must first run AltAnalyze\nusing assigned groups for this array type.'
             IndicatorWindow(print_out,'Continue')
-            AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+            AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()"""
             
         values = expFile, mlp_instance, gsp, False
         StatusWindow(values,'predictGroups') ### proceed to run the full discovery analysis here!!!

@@ -163,7 +163,7 @@ class Main(wx.Frame):
         self.panel2.SetSizer(sizer)
         self.page1.SetBackgroundColour("white")
         self.myGrid = gridlib.Grid(self.page2, id=1002)
-        self.myGrid.CreateGrid(100, 400) ### Sets this at 400 columns rather than 100
+        self.myGrid.CreateGrid(100, 150) ### Sets this at 400 columns rather than 100
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.GridRightClick, id=1002)
         self.Bind(gridlib.EVT_GRID_CELL_LEFT_DCLICK, self.GridRowColor, id=1002)
         self.HighlightedCells = []
@@ -378,6 +378,8 @@ class Main(wx.Frame):
     def AltExonViewInitiate(self, event):
         ### Temporary option for exon visualization until the main tool is complete and database can be bundled with the program
         gene = str(self.myGrid.GetCellValue(self.GridRowEvent, 0))
+        if ':' in gene:
+            gene = string.split(gene,':')[0]
         datasetDir = self.main_results_directory
         #print datasetDir
         self.control.write("Plotting... " + gene + "\n")

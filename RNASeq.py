@@ -4445,16 +4445,16 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     kallisto_file = filepath(kallisto_file)
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
     fn = filepath(kallisto_file)
-    output_dir=root_dir+'ExpressionInput/kallisto/'
-    try: os.mkdir(root_dir+'ExpressionInput')
+    output_dir=root_dir+'/ExpressionInput/kallisto/'
+    try: os.mkdir(root_dir+'/ExpressionInput')
     except Exception: pass
-    try: os.mkdir(root_dir+'ExpressionInput/kallisto')
+    try: os.mkdir(root_dir+'/ExpressionInput/kallisto')
     except Exception: pass
     fastq_folder += '/'
     dir_list = read_directory(fastq_folder)
     fastq_paths = []
     for file in dir_list:
-        if 'fastq' in file:
+        if 'fastq' in file and '._' not in file[:4]: ### Hidden files
             fastq_paths.append(fastq_folder+file)
     fastq_paths,paired = findPairs(fastq_paths)
     if returnSampleNames:
@@ -4505,9 +4505,9 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             print traceback.format_exc();sys.exit()
             print n, 'TPM expression import failed'
     dataset_name = string.replace(dataset_name,'exp.','')
-    to = export.ExportFile(root_dir+'ExpressionInput/transcript.'+dataset_name+'.txt')
-    go = export.ExportFile(root_dir+'ExpressionInput/exp.'+dataset_name+'.txt')
-    so = export.ExportFile(root_dir+'ExpressionInput/summary.'+dataset_name+'.txt')
+    to = export.ExportFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt')
+    go = export.ExportFile(root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
+    so = export.ExportFile(root_dir+'/ExpressionInput/summary.'+dataset_name+'.txt')
     exportMatrix(to,headers,expMatrix) ### Export transcript expression matrix
     geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
     exportMatrix(go,headers,geneMatrix) ### export gene expression matrix

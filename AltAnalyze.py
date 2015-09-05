@@ -4500,7 +4500,7 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            root.title('AltAnalyze version 2.0.9 beta')
+            root.title('AltAnalyze version 2.0.9.2 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
             self.root = root
             height = 450; width = 500
@@ -5071,9 +5071,9 @@ def timestamp():
 
 def callWXPython():
     import wx
-    import RemoteViewer
+    import AltAnalyzeViewer
     app = wx.App(False)
-    RemoteViewer.remoteViewer(app)
+    AltAnalyzeViewer.remoteViewer(app)
     
 def AltAnalyzeSetup(skip_intro):
     global apt_location; global root_dir;global log_file; global summary_data_db; summary_data_db={}; reload(UI)
@@ -5091,7 +5091,8 @@ def AltAnalyzeSetup(skip_intro):
             #mac_package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/python')
             #os.system(mac_package_path+' RemoteViewer.py');sys.exit()
             mac_package_path = string.replace(package_path,'python','AltAnalyzeViewer.app/Contents/MacOS/AltAnalyzeViewer')
-            os.system();sys.exit()
+            import subprocess
+            subprocess.call([mac_package_path]);sys.exit()
         """
         import threading
         import wx
@@ -5439,7 +5440,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             outputExonCoordinateRefBEDfile = bam_dir+'/BedRef/'+species+'_'+string.replace(dataset,'exp.','')
             analysisType = ['exon','junction','reference']
             #analysisType = ['junction']
-            multiBAMtoBED.parallelBAMProcessing(bam_dir,refExonCoordinateFile,outputExonCoordinateRefBEDfile,analysisType=analysisType,useMultiProcessing=fl.multiThreading(),MLP=mlp)
+            multiBAMtoBED.parallelBAMProcessing(bam_dir,refExonCoordinateFile,outputExonCoordinateRefBEDfile,analysisType=analysisType,useMultiProcessing=fl.multiThreading(),MLP=mlp,root=root)
     
           biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp)
       
@@ -5731,8 +5732,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI-clust.txt'
           
           ### Calculate ANOVA p-value stats based on groups
-          matrix,original_data = statistics.matrixImport(inputpsi)
-          matrix_pvalues=statistics.runANOVA(matrix)
+          matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
+          matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
           anovaFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
           graphic_link1 = ExpressionBuilder.exportHeatmap(anovaFilteredDir)
           try: summary_data_db2['QC']+=graphic_link1
@@ -6529,6 +6530,7 @@ def commandLineRun():
             
         if 'PCA' in image_export:
             #AltAnalyze.py --input "/Users/nsalomonis/Desktop/folds.txt" --image PCA --plotType 3D --display True --labels yes
+            #--algorithm "t-SNE"
             include_labels = 'yes'
             plotType = '2D'
             pca_algorithm = 'SVD'
@@ -6589,7 +6591,11 @@ def commandLineRun():
             if 'AltResults' not in altresult_dir:
                 altresult_dir+='/AltResults/'
 
-            if 'raw' in data_type: ### Switch directories if expression
+            if 'Sashimi' in analysisType:
+                altresult_dir = string.split(altresult_dir,'AltResults')[0]
+                genes = geneFileDir
+                geneFileDir=''
+            elif 'raw' in data_type: ### Switch directories if expression
                 altanalyze_results_folder = string.replace(altresult_dir,'AltResults','ExpressionInput')
                 altresult_dir = UI.getValidExpFile(altanalyze_results_folder)
                 if len(altresult_dir)==0:
@@ -6621,7 +6627,9 @@ def commandLineRun():
                         
             if len(genes)==0:
                 print 'Please list one or more genes (--genes "ANXA7 FYN TCF3 NAV2 ETS2 MYLK ATP2A2")'; sys.exit()
-            UI.altExonViewer(species,platform,altresult_dir, genes, show_introns, analysisType, False)
+            try: UI.altExonViewer(species,platform,altresult_dir, genes, show_introns, analysisType, False)
+            except Exception:
+                print traceback.format_exc() 
             sys.exit()
             
         if 'network' in image_export:
@@ -7886,6 +7894,8 @@ if __name__ == '__main__':
     19) (done) Include various gene databases for LineageProfiler in download and allow for custom databases to be used (markerFinder based)
     20) (done) Quantile normalization option for any non-Affy, non-RNASeq data (check box)
     21) (done) Import agilent from Feature extraction files (pull-down option)
+    
+    22) Update the software from the software
     
     Advantages of this tool kit:
     0) Easiest to use, hands down

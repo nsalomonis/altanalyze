@@ -32,6 +32,7 @@ import subprocess
 import BAMtoJunctionBED
 import BAMtoExonBED
 import getopt
+import traceback
     
 ################# General data import methods #################
 
@@ -67,9 +68,10 @@ def getFolders(sub_dir):
         if '.' not in entry: dir_list2.append(entry)
     return dir_list2
 
-def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,analysisType=[],useMultiProcessing=False,MLP=None):
+def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,analysisType=[],useMultiProcessing=False,MLP=None,root=None):
     paths_to_run=[]
-
+    errors=[]
+    
     if '.bam' in directory:
         ### Allow a single BAM file to be specifically analyzed (e.g., bsub operation)
         bam_file = directory
@@ -129,9 +131,26 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
         if len(analysisType) == 0 or 'junction' in analysisType:
             print 'Extracting junction alignments from BAM files...',
             pool = MLP.Pool(processes=pool_size)
-            results = pool.map(runBAMtoJunctionBED, paths_to_run) ### worker jobs initiated in tandem
+            try: results = pool.map(runBAMtoJunctionBED, paths_to_run) ### worker jobs initiated in tandem
+            except ValueError:
+                print_out = '\WARNING!!! No Index found for the BAM files. Sort and Index using Samtools prior to loading in AltAnalyze'
+                print traceback.format_exc()
+                if root!=None:
+                    UI.WarningWindow(print_out,'Exit');sys.exit()
+                    
             try:pool.close(); pool.join(); pool = None
             except Exception: pass
+            print_out=None
+            for sample,missing in results:
+                if len(missing)>1:
+                    print_out = '\nWarning!!! %s chromosomes not found in: %s (PySam platform-specific error)' % (string.join(missing,', '),sample)
+                    
+            if root!=None and print_out!=None:
+                try:
+                    import UI
+                    UI.WarningWindow(print_out,'Continue')
+                except Exception: pass  
+                    
             print len(paths_to_run), 'BAM files','processed'
         if len(analysisType) == 0 or 'reference' in analysisType:
             #print 'Building exon reference coordinates from Ensembl/UCSC and all junctions...',
@@ -160,8 +179,9 @@ def runBAMtoJunctionBED(paths_to_run):
     bamfile_dir,bed_reference_dir,output_bedfile_path = paths_to_run
     output_bedfile_path = string.replace(bamfile_dir,'.bam','__junction.bed')
     #if os.path.exists(output_bedfile_path) == False: ### Only run if the file doesn't exist
-    BAMtoJunctionBED.parseJunctionEntries(bamfile_dir,multi=True)
+    results = BAMtoJunctionBED.parseJunctionEntries(bamfile_dir,multi=True)
     #else: print output_bedfile_path, 'already exists.'
+    return results
     
 def runBAMtoExonBED(paths_to_run):
     bamfile_dir,bed_reference_dir,output_bedfile_path = paths_to_run

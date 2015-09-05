@@ -1690,16 +1690,16 @@ def exportCustomGeneSet(geneSetName,species,allGenes):
 def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False):
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
+    try:
+        if len(prior_clusters)>0 and len(group_db)==0:
+            newColumnHeader=[]
+            i=0
+            for sample_name in column_header:
+                newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
+                i+=1
+            group_db, column_header = assignGroupColors(newColumnHeader)    
+    except Exception: group_db={}
 
-    if len(prior_clusters)>0 and len(group_db)==0:
-        newColumnHeader=[]
-        i=0
-        for sample_name in column_header:
-            newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
-            i+=1
-        group_db, column_header = assignGroupColors(newColumnHeader)
-
-        
     from sklearn.manifold import TSNE
     X=matrix.T
     
@@ -1833,22 +1833,23 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
 
     ####  FROM LARSSON ########
     #100 most correlated Genes with PC1
-    idx = numpy.argsort(u[0])
-    idx2 = numpy.argsort(u[1])
-    idx3 = numpy.argsort(u[2])
-    idx4 = numpy.argsort(u[3])
+    #print vt
+    idx = numpy.argsort(u[:,0])
+    idx2 = numpy.argsort(u[:,1])
+    idx3 = numpy.argsort(u[:,2])
+    idx4 = numpy.argsort(u[:,3])
 
-    correlated_genes = map(lambda i: row_header[i],idx[:200])
-    anticorrelated_genes = map(lambda i: row_header[i],idx[-200:])
+    correlated_genes = map(lambda i: row_header[i],idx[:100])
+    anticorrelated_genes = map(lambda i: row_header[i],idx[-100:])
+    #print correlated_genes
+    correlated_genes2 = map(lambda i: row_header[i],idx2[:100])
+    anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-100:])
 
-    correlated_genes2 = map(lambda i: row_header[i],idx2[:200])
-    anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-200:])
-
-    correlated_genes3 = map(lambda i: row_header[i],idx3[:200])
-    anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-200:])
+    correlated_genes3 = map(lambda i: row_header[i],idx3[:100])
+    anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-100:])
     
-    correlated_genes4 = map(lambda i: row_header[i],idx4[:200])
-    anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-200:])
+    correlated_genes4 = map(lambda i: row_header[i],idx4[:100])
+    anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-100:])
     
     filename = root_dir+'Clustering-%s-PCA.txt' % dataset_name
     print 'exporting PCA driver genes to:',filename
@@ -2051,10 +2052,11 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
 
     ####  FROM LARSSON ########
     #100 most correlated Genes with PC1
-    idx = numpy.argsort(u[0])
-    idx2 = numpy.argsort(u[1])
-    idx3 = numpy.argsort(u[2])
-    idx4 = numpy.argsort(u[3])
+    idx = numpy.argsort(u[:,0])
+    idx2 = numpy.argsort(u[:,1])
+    idx3 = numpy.argsort(u[:,2])
+    idx4 = numpy.argsort(u[:,3])
+    
     correlated_genes = map(lambda i: row_header[i],idx[:200])
     anticorrelated_genes = map(lambda i: row_header[i],idx[-200:])
 
@@ -3322,6 +3324,8 @@ def iGraphDraw(edges, pathway_name, labels=None, graph_layout='shell', display=F
     output_filename=None
     if len(edges) > 700 and 'AltAnalyze' not in pathway_name:
         print findFilename(filePath), 'too large to visualize...'
+    elif len(edges) > 3000:
+        print findFilename(filePath), 'too large to visualize...'
     else:
         arrow_scaler = 1 ### To scale the arrow
         if edges>40: arrow_scaler = .9
@@ -3995,6 +3999,21 @@ def replaceWithBinary(filename):
                 else: values2.append('1')
             ea.write(string.join([t[0]]+values2,'\t')+'\n')
     ea.close()
+
+def geneMethylationOutput(filename):
+    filename2 = filename[:-4]+'-binary.txt'
+    ea = export.ExportFile(filename2)    
+    firstLine=True
+    fn = filepath(filename)
+    db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        values = (t[20],t[3]+'-methylation')
+        db[values]=[]
+    for value in db:
+        ea.write(string.join(list(value),'\t')+'\n')
+    ea.close()
     
 def coincidentIncedence(filename,genes):
     exportPairs=False
@@ -4060,10 +4079,45 @@ def coincidentIncedence(filename,genes):
         ea.close()
     else:
         return final_population_percent
-    
+
+def extractFeatures(countinp,IGH_gene_file):
+    import export
+    ExonsPresent=False
+    igh_genes=[]
+    firstLine = True
+    for line in open(IGH_gene_file,'rU').xreadlines():
+	if firstLine: firstLine=False
+	else:
+            data = cleanUpLine(line)
+	    gene = string.split(data,'\t')[0]
+	    igh_genes.append(gene)
+            
+    if 'counts.' in countinp:
+	feature_file = string.replace(countinp,'counts.','IGH.')
+	fe = export.ExportFile(feature_file)
+	firstLine = True
+	for line in open(countinp,'rU').xreadlines():
+	    if firstLine:
+                fe.write(line)
+                firstLine=False
+	    else:
+		feature_info = string.split(line,'\t')[0]
+                gene = string.split(feature_info,':')[0]
+                if gene in igh_genes:
+                    fe.write(line)
+        fe.close()
+                        
 if __name__ == '__main__':
+    filename = '/Users/saljh8/Desktop/Mouse_organoid/ExpressionInput/amplify/exp.nature14966-s6.txt'
+    runPCAonly(filename,[],False,showLabels=False,plotType='2D');sys.exit()
+    
+    countinp = '/Volumes/salomonis2/SinghLab/20150715_single_GCBCell/bams/ExpressionInput/counts.Bcells.txt'
+    IGH_gene_file = '/Volumes/salomonis2/SinghLab/20150715_single_GCBCell/bams/ExpressionInput/IGH_genes.txt'
+    extractFeatures(countinp,IGH_gene_file);sys.exit()
+    
+
     import UI
-    filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/amplify/exp.CombinedSingleCell_March_15_2015.txt'
+    geneMethylationOutput(filename);sys.exit()
     ica(filename);sys.exit()
     replaceWithBinary('/Users/saljh8/Downloads/Neg_Bi_wholegenome.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA/AML-TCGA/ExpressionInput/counts.LAML1.txt');sys.exit()

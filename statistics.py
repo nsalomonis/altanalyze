@@ -23,6 +23,7 @@ import random
 import copy
 try: import salstat_stats
 except Exception: null=[]; #print 'WARNING! The library file "salstat_stats" is not installed'
+import traceback
 
 
 try: ### Added for AltAnalyze - Nathan Salomonis, 1-24-2012
@@ -909,12 +910,14 @@ def testModeratedStatistics():
 
 def matrixImport(filename):
     matrix={}
+    compared_groups={} ### track which values correspond to which groups for pairwise group comparisons
     original_data={}
     headerRow=True
     for line in open(filename,'rU').xreadlines():
         original_line = line
         data = line.rstrip()
         values = string.split(data,'\t')
+        #print len(values)
         if headerRow:
             group_db={}
             groups=[]
@@ -931,15 +934,21 @@ def matrixImport(filename):
                 search_dir = string.split(filename,'AltResults')[0]+'ExpressionInput'
                 files = unique.read_directory(search_dir)
                 for file in files:
-                    if 'groups.' in file:
+                    if 'groups.' in file and '.txt' in file:
+                        #print file
                         sample_group_db = ExpressionBuilder.simplerGroupImport(search_dir+'/'+file)
-                index=0
+                
+                index=0; count=0
                 for s in values[1:]:
-                    g = sample_group_db[s]
-                    try: group_db[g].append(index)
-                    except Exception: group_db[g] = [index]
+                    if s in sample_group_db:
+                        g = sample_group_db[s]
+                        try: group_db[g].append(index)
+                        except Exception: group_db[g] = [index]
+                        count+=1
+                        if g not in groups: groups.append(g)
+                    #else: print [s]
                     index+=1
-                    if g not in groups: groups.append(g)
+            #print count
             headerRow = False
             grouped_values=[]
             original_data['header'] = original_line
@@ -948,25 +957,37 @@ def matrixImport(filename):
             values=values[1:]
             grouped_floats=[]
             float_values = []
+            associated_groups=[]
             for g in groups: ### string values
                 gvalues_list=[]
                 for i in group_db[g]:
-                    if values[i] != '0':
-                        try: gvalues_list.append(float(values[i]))
-                        except Exception: pass
-                    else:
-                        try: gvalues_list.append('') ### Thus are missing values
-                        except Exception: pass
+                    try:
+                        if values[i] != '0':
+                            try:
+                                gvalues_list.append(float(values[i]))
+                            except Exception: pass
+                        else:
+                            #try: gvalues_list.append('') ### Thus are missing values
+                            #except Exception: pass
+                            pass
+                    except Exception:
+                        #try: gvalues_list.append('') ### Thus are missing values
+                        #except Exception: pass
+                        pass
                 grouped_floats.append(gvalues_list)
+                if len(gvalues_list)>1:
+                    associated_groups.append(g)
             matrix[key] = grouped_floats
+            compared_groups[key] = associated_groups
             if '\n' not in original_line:
                 original_line+='\n'
             original_data[key] = original_line
             last_line = line
-    return matrix,original_data
+    return matrix,compared_groups,original_data
 
-def runANOVA(matrix):
+def runANOVA(filename,matrix,compared_groups):
     matrix_pvalues={}
+    all_matrix_pvalues={}
     matrix_pvalues_list=[]
     useAdjusted=False
     for key in matrix:
@@ -975,29 +996,95 @@ def runANOVA(matrix):
             if len(group)>1:
                 filtered_groups.append(group)
         try:
+
             p = OneWayANOVA(filtered_groups)
             if useAdjusted == False:
                 if p < 0.05:
-                    matrix_pvalues[key]=p
-                    matrix_pvalues_list.append((p,key))
+                    try:
+                        ### Perform all possible pairwise group comparisons
+                        gi1=-1
+                        major_groups={}
+                        comparisons={}
+                        group_names = compared_groups[key]
+                        added=[]
+                        for g1 in filtered_groups:
+                            gi1+=1; gi2=-1
+                            for g2 in filtered_groups:
+                                gi2+=1
+                                if g1!=g2:
+                                    pairwise_p = OneWayANOVA([g1,g2])
+                                    if pairwise_p<0.05:
+                                        group1 = group_names[gi1]
+                                        group2 = group_names[gi2]
+                                        sorted_groups=[group1,group2]
+                                        sorted_groups.sort()
+                                        group1, group2 = sorted_groups
+                                        if (group1,group2) not in added:
+                                            if key == 'Tnfaip8:ENSMUSG00000062210:E3.4-E8.1 ENSMUSG00000062210:E1.4-E8.1':
+                                                print group1,'\t',group2,'\t',pairwise_p
+                                            added.append((group1,group2))
+                                            try: major_groups[group1]+=1
+                                            except Exception: major_groups[group1]=1
+                                            try: major_groups[group2]+=1
+                                            except Exception: major_groups[group2]=1
+                                            try: comparisons[group1].append(group2)
+                                            except Exception: comparisons[group1] = [group2]
+                                            try: comparisons[group2].append(group1)
+                                            except Exception: comparisons[group2] = [group1]
+                        major_group_list=[]
+
+                        for group in major_groups: major_group_list.append([major_groups[group],group])
+                        major_group_list.sort()
+                        major_group_list.reverse()
+                        top_group = major_group_list[0][1]
+                        hits = top_group+'_vs_'+string.join(comparisons[top_group],'|')
+                        """
+                        if major_group_list[0][0] == major_group_list[1][0]:
+                            hits = major_group_list[0][1]+'|'+major_group_list[1][1]
+                        else:
+                            hits = major_group_list[0][1]
+                        """
+                    except Exception:
+                        #print traceback.format_exc();sys.exit()
+                        hits=''
+                    matrix_pvalues[key]=[p,p]
+                    matrix_pvalues_list.append((p,'',key,hits))
             else:
                 matrix_pvalues[key]=[p,p]
-                matrix_pvalues_list.append((p,key))
+                matrix_pvalues_list.append((p,'',key,''))
+            all_matrix_pvalues[key]=[p,p]
             #if 'CAMK2D' in key: print filtered_groups; print key, p
-        except Exception: pass ### not enough values present or groups
-    if useAdjusted:
-        adjustPermuteStats(matrix_pvalues)
-        adj_matrix_pvalues = copy.deepcopy(matrix_pvalues)
-        matrix_pvalues={}
-        for key in adj_matrix_pvalues:
-            p,adjp = adj_matrix_pvalues[key]
-            if adj_matrix_pvalues[key][1] < 0.05:
-                matrix_pvalues[key] = adj_matrix_pvalues[key][1]
-                matrix_pvalues_list.append((adj_matrix_pvalues[key][1],key))
+        except Exception:
+            #print traceback.format_exc();sys.exit()
+            pass ### not enough values present or groups
+        
+    adjustPermuteStats(all_matrix_pvalues)
+    adj_matrix_pvalues = copy.deepcopy(all_matrix_pvalues)
+    if useAdjusted: matrix_pvalues={}
     matrix_pvalues_list.sort()
+    matrix_pvalues_list2=[]
+    for (p,null,key,hits) in matrix_pvalues_list:
+        p,adjp = adj_matrix_pvalues[key]
+        if useAdjusted:
+            if adj_matrix_pvalues[key][1] < 0.05:
+                matrix_pvalues_list2.append([key,str(p),str(adjp),hits])
+                matrix_pvalues[key] = adjp
+        else:
+            matrix_pvalues_list2.append([key,str(p),str(adjp),hits])
+            
+    exportANOVAStats(filename,matrix_pvalues_list2)
     print len(matrix_pvalues), 'ANOVA significant reciprocal PSI-junctions...'
     return matrix_pvalues
 
+def exportANOVAStats(filename,matrix_pvalues_list):
+    import export
+    export_name = filename[:-4]+'-stats.txt'
+    ee=export.ExportFile(export_name)
+    ee.write('SplicingEvent\tANOVA rawp\tANOVA adjp\tDriving Group(s)\n')
+    for ls in matrix_pvalues_list:
+        ee.write(string.join(ls,'\t')+'\n')
+    ee.close()
+    
 def returnANOVAFiltered(filename,original_data,matrix_pvalues):
     import export
     altExonFile = filename[:-4]+'-ANOVA.txt'
@@ -1014,9 +1101,9 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
     filename = '/Volumes/SEQ-DATA/Jared/AltResults/Unbiased/junctions/top_alt_junctions-renamed.txt'
     filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/AltResults/Unbiased/junctions/top_alt_junctions_grouped.txt'
-    filename = '/Volumes/SEQ-DATA/Ichi/Ichi-new/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    matrix,original_data = matrixImport(filename)
-    matrix_pvalues=runANOVA(matrix)
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Dan-Traf6KO/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
+    matrix,compared_groups,original_data = matrixImport(filename)
+    matrix_pvalues=runANOVA(filename,matrix,compared_groups)
     returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()
     a = range(3, 18)
     k=[]

@@ -68,7 +68,7 @@ def serialize_genes(gff_genes,
         # Make directory for chromosome if it doesn't already exist
         chrom_dir = os.path.join(output_dir, chrom_dir_name)
         if not os.path.isdir(chrom_dir):
-            print "Making directory: %s" %(chrom_dir)
+            #print "Making directory: %s" %(chrom_dir)
             os.makedirs(chrom_dir)
 
         t1 = time.time()
@@ -99,7 +99,8 @@ def serialize_genes(gff_genes,
                 compressed_id_to_gene_id[gene_compressed_id] = gene_id
  
         t2 = time.time()
-        print "  - Chromosome serialization took %.2f seconds" %(t2 - t1)
+        #print "  - Chromosome serialization took %.2f seconds" %(t2 - t1)
+        print '.',
 
     # Shelve the mapping from gene ids to filenames
     shelved_filename = os.path.join(output_dir,
@@ -119,8 +120,8 @@ def serialize_genes(gff_genes,
 
     # Output a list of genes in ordinary GFF format
     genes_filename = os.path.join(output_dir, "genes.gff")
-    print "Outputting gene records in GFF format..."
-    print "  - Output file: %s" %(genes_filename)
+    #print "Outputting gene records in GFF format..."
+    #print "  - Output file: %s" %(genes_filename)
     with open(gff_filename) as gff_in:
         with open(genes_filename, "w") as gff_out:
             for line in gff_in:
@@ -146,13 +147,13 @@ def index_gff(gff_filename, output_dir,
             %(gff_filename)
         return
     
-    print "  - GFF: %s" %(gff_filename)
-    print "  - Outputting to: %s" %(output_dir)
+    #print "  - GFF: %s" %(gff_filename)
+    #print "  - Outputting to: %s" %(output_dir)
     overall_t1 = time.time()
     t1 = time.time()
     gff_genes = gene_utils.load_genes_from_gff(gff_filename)
     t2 = time.time()
-    print "  - Loading of genes from GFF took %.2f seconds" %(t2 - t1)
+    #print "  - Loading of genes from GFF took %.2f seconds" %(t2 - t1)
 
     t1 = time.time()
     serialize_genes(gff_genes,
@@ -160,7 +161,7 @@ def index_gff(gff_filename, output_dir,
                     output_dir,
                     compress_id=compress_id)
     t2 = time.time()
-    print "  - Serialization of genes from GFF took %.2f seconds" %(t2 - t1)
+    print " Serialization of genes from GFF took %.2f seconds" %(t2 - t1)
     overall_t2 = time.time()
     print "Indexing of GFF took %.2f seconds." %(overall_t2 - overall_t1)
 

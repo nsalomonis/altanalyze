@@ -14,8 +14,8 @@ _authorEmail = 'nsalomonis@gmail.com'
 _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
-excludes = ['wx','sklearn'] #["wxPython"] #"numpy","scipy","matplotlib"
-includes = ["mpmath", "numpy"]
+excludes = ['wx'] #["wxPython"] #"numpy","scipy","matplotlib"
+includes = ["mpmath", "numpy","sklearn.neighbors.typedefs",'sklearn.utils.lgamma','sklearn.manifold','sklearn.utils.sparsetools._graph_validation','sklearn.utils.weight_vector','pysam.TabProxies']
 """ By default, suds will be installed in site-packages as a .egg file (zip compressed). Make a duplicate, change to .zip and extract
 here to allow it to be recognized by py2exe (must be a directory) """
 
@@ -39,6 +39,7 @@ if sys.platform.startswith("darwin"):
         from distutils.core import setup
         import py2app
         import lxml
+        import sklearn
         includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath"] #"xml.sax.drivers2.drv_pyexpat"
         """
         resources = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
@@ -81,11 +82,17 @@ if sys.platform.startswith("win"):
         import unique
         import lxml
         import sys
+        import sklearn
+        import pysam
+        import TabProxies
+        import ctabix
+        import csamtools
+        import cvcf
         import six ### relates to a date-time dependency in matplotlib
         #sys.path.append(unique.filepath("Config\DLLs")) ### This is added, but DLLs still require addition to DLL python dir
         from distutils.filelist import findall
         import os
-        excludes = ['sklearn']
+        excludes = []
         
         data_files=matplotlib.get_py2exe_datafiles()
         
@@ -99,13 +106,21 @@ if sys.platform.startswith("win"):
         windows=[{"script":_script,"icon_resources":[(1,_appIcon)]}]
         options={'py2exe':
                         {
-                        "includes": 'suds',
                         "includes": 'lxml',
+                        'includes': 'pysam',
+                        'includes': 'TabProxies',
+                        'includes': 'csamtools',
+                        'includes': 'ctabix',
                         'includes': 'lxml.etree',
                         'includes': 'lxml._elementpath',
                         "includes": 'matplotlib',
                         "includes": 'mpl_toolkits',
                         "includes": 'matplotlib.backends.backend_tkagg',
+                        #'includes': 'sklearn.neighbors.typedefs',
+                        #'includes': 'sklearn.utils.lgamma',
+                        #"includes": 'sklearn.utils.sparsetools._graph_validation',
+                        #"includes": 'sklearn.utils.weight_vector',
+                        #"includes": 'sklearn.manifold',
                         "dll_excludes": matplot_exclude+scipy_exclude,
                         }}
         setup(

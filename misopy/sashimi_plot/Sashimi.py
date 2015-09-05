@@ -98,7 +98,8 @@ class Sashimi:
         #print "Saving plot to: %s" %(output_fname)
         #output_fname2=output_fname.replace(".pdf")
         plt.savefig(output_fname)
-
+        plt.clf()
+        plt.close() ### May result in TK associated errors later on
 
             
         

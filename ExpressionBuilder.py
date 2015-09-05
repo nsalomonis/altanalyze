@@ -278,7 +278,10 @@ def simplerGroupImport(group_dir):
     fn = filepath(group_dir)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        sample_filename,group_number,group_name = string.split(data,'\t')
+        try: sample_filename,group_number,group_name = string.split(data,'\t')
+        except Exception:
+            print string.split(data,'\t')
+            kill
         sample_group_db[sample_filename] = group_name
     return sample_group_db
 

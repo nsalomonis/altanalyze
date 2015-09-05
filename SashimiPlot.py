@@ -146,19 +146,30 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 	    if 'ANOVA' in t:
 		type='PSI'
 	    elif 'independent confirmation' in t:
-		type=='confirmed'
+		type='confirmed'
+	    elif 'ANOVA' in fname:
+		type = 'ANOVA'
 	    firstLine=False
 	if ' ' in t[0] and ':' in t[0]:
 	    splicing_events.append(t[0])
 	elif type=='ASPIRE':
 	    splicing_events.append(t[j1i] +' '+ t[j2i])
+	elif type=='ANOVA':
+	    try:
+		a,b = string.split(t[0],'|')
+		a = string.split(a,':')
+		a = string.join(a[1:],':')
+		splicing_events.append(a +' '+ b)
+	    except Exception: pass
 	elif type=='PSI':
 	    try:
 		j1,j2 = string.split(t[0],'|')
 		a,b,c = string.split(j1,':')
 		j1 = b+':'+c
 		splicing_events.append(j1 +' '+ j2)
-	    except Exception: pass
+	    except Exception:
+		#print traceback.format_exc();sys.exit()
+		pass
 	elif type=='confirmed':
 	    try:
 		event_pair1 = string.split(t[1],'|')[0]
@@ -179,7 +190,7 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 	 li=cleanUpLine(li)
 	 #print li
 	 
-	#dem[0]=['ENSG00000132424:I10.1 ENSG00000132424:E10.1-E11.1','ENSG00000146147:E10.3-E11.1 ENSG00000146147:E9.3-E15.1']
+	 #dem[0]=['ENSG00000132424:I10.1 ENSG00000132424:E10.1-E11.1','ENSG00000146147:E10.3-E11.1 ENSG00000146147:E9.3-E15.1']
 	 de=string.split(li,'\t')
 	 dem[0]=de
 	 #print dem[0]
@@ -221,7 +232,6 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 		
 		for ij in range(len(samp)):
 		    list1.append(ij)
-	    
 	    update_plot_settings(bamdir,list1,list2,samp)
 	    
 	    a=string.split(dem[key][i]," ")
@@ -235,18 +245,21 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 	    event=findParentDir(inputpsi)
 	    event=event+"trial_index/"
 	    setting =unique.filepath("Config/sashimi_plot_settings.txt")
-	    try: ch1=string.replace(ch1,':','_')
+	    try: ch1=string.replace(ch1,':','__')
 	    except Exception: pass
 	    name=ch1
 	    #outputdir=findParentDir(inputpsi)+"sashimiplots"
 	    try: os.makedirs(outputdir)
 	    except Exception: pass
 	    
+	#print '********',[ch1],[event],outputdir
 	try:
 	    ssp.plot_event(ch1,event,setting,outputdir)
 	except Exception:
+	    #print '^^^^^^^^^^^^',[ch1],[event],outputdir;sys.exit()
 	    #print traceback.format_exc()
 	    #print "error2"
+	    #sys.exit()
 	    continue
     #outputdir=findParentDir(inputpsi)+"sashimiplots" 
     for filename in os.listdir(outputdir):
@@ -278,6 +291,7 @@ def Sashimiplottting(bamdir,countsin,inputpsi,genelis):
     header=True
     junction_max=[]
     countsin = unique.filepath(countsin)
+
     for line in open(countsin,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -311,7 +325,7 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
         for file in files:
             if 'counts.' in file and 'steady-state.txt' not in file:
                     countinp = search_dir+'/'+file
-		    
+    
     inputpsi = root_dir+'/AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI.txt'
     #outputdir=findParentDir(inputpsi)+"sashimiplots"
     outputdir = root_dir+'/ExonPlots'
@@ -327,11 +341,11 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
     gene_label,gene_sym=genelist(inputpsi)
     for filename in os.listdir(outputdir):
 	if '.pdf' in filename:
-	    newname=string.split(filename,':')
+	    newname=string.split(filename,'__')
 	    if newname[0] in gene_sym:
 		new_filename = str(filename)
-		if ':' in filename:
-		    new_filename = string.split(filename,':')[1]
+		if '__' in filename:
+		    new_filename = string.split(filename,'__')[1]
 		elif '\\' in filename:
 		    new_filename = string.split(filename,'\\')[1]
 		elif '/' in filename:
@@ -342,9 +356,10 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
 		continue
 
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new'
-    genelis = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/AlternativeOutput/Rn_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
-    genelis = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
-    bamdir = '/Volumes/salomonis1/projects/Bex1-RIP/Input/bams'
-    remoteSashimiPlot('Rn',root_dir,bamdir,genelis)
+    root_dir = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/RCM_retry'
+    genelis = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/RCM_retry/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
+    #genelis = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
+    genelis = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/RCM_retry/AltResults/AlternativeOutput/Hs_RNASeq_RCM_vs_NDR.ExpCutoff-5.0_average-ASPIRE-exon-inclusion-results.txt'
+    bamdir = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/'
+    remoteSashimiPlot('Hs',root_dir,bamdir,genelis)
     sys.exit()
