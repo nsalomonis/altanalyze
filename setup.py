@@ -124,6 +124,7 @@ if sys.platform.startswith("win"):
                         "dll_excludes": matplot_exclude+scipy_exclude,
                         }}
         setup(
+                        #console = windows,
                         windows = windows,
                         options = options,
                         version=_appVersion,
@@ -133,6 +134,14 @@ if sys.platform.startswith("win"):
                         url=_authorURL,
                         data_files=matplotlibdata_files+data_files,
         )
+
+if sys.platform.startswith("2linux"):
+	# bb_setup.py
+	from bbfreeze import Freezer
+	 
+	f = Freezer(distdir="bb-binary")
+	f.addScript("AltAnalyze.py")
+	f()
 
 if sys.platform.startswith("2linux"):
 	# bb_setup.py

@@ -61,6 +61,21 @@ def plot_density_single(settings, sample_label,
         #print "Are you sure %s appears in your BAM file?" %(chrom)
         #print "Aborting plot..."
         return axvar
+    
+    """
+    ### NS
+    total_junctions=0
+    for entry in subset_reads:
+        try: cigarstring = entry.cigarstring
+        except Exception:
+            if 3 in codes: cigarstring = 'N'
+            else: cigarstring = None
+        if cigarstring != None:
+          if 'N' in cigarstring: ### Hence a junction
+            #print cigarstring;sys.exit()
+            total_junctions+=1    
+    """
+    
     wiggle, jxns = readsToWiggle_pysam(subset_reads, tx_start, tx_end)
     wiggle = 1e3 * wiggle / coverage
                 
@@ -76,9 +91,10 @@ def plot_density_single(settings, sample_label,
     
     maxheight = max(wiggle)
     if ymax is None:
-        ymax = maxheight
+        ymax = maxheight ### squishes the junction line down - AltANalyze
     else:
         ymax = ymax
+    ymax = maxheight*0.95 ### squishes the junction line down - AltAnalyze
     ymin = -.5 * ymax 
 
     # Reduce memory footprint by using incremented graphcoords.
@@ -103,7 +119,26 @@ def plot_density_single(settings, sample_label,
         for s, e in mRNA:
             tmp.extend([s, e])
         sslists.append(tmp)
+   
+    ### Added for AltAnalyze
+    exclusion_junctions_db={}
+    try:
+        for jxn1 in jxns:
+            leftss1, rightss1 = map(int, jxn1.split(":"))
+            for jxn2 in jxns:
+                if jxn1!=jxn2:
+                    leftss2, rightss2 = map(int, jxn2.split(":"))
+                    coords=[leftss1, rightss1,leftss2, rightss2]
+                    coords.sort()
+                    if [coords[0],coords[-1]]== [leftss1, rightss1]:
+                        exclusion_junctions_db[jxn1]=[]
+                    if [coords[0],coords[-1]]== [leftss2, rightss2]:
+                        exclusion_junctions_db[jxn2]=[] 
+    except Exception:
+        pass
 
+    ### end
+    
     for jxn in jxns:
         leftss, rightss = map(int, jxn.split(":"))
 
@@ -118,7 +153,12 @@ def plot_density_single(settings, sample_label,
             if leftss in sslists[i] and \
                 rightss in sslists[i]:
                 numisoforms += 1
-        if numisoforms > 0:
+        if jxn in exclusion_junctions_db:
+            numisoforms = 2
+        else:
+            numisoforms = 1
+        if numisoforms > 0 and jxns[jxn]>1: ### Added in AltAnalyze
+            
             if numisoforms % 2 == 0: # put on bottom 
                 pts = [(ss1, 0), (ss1, -h), (ss2, -h), (ss2, 0)]
                 midpt = cubic_bezier(pts, .5)
@@ -295,6 +335,7 @@ def plot_density(sashimi_obj, pickle_filename, event, plot_title=None):
     ## Figure out correct y-axis values
     ##
     ymax_vals = []
+
     if ymax != None:
         # Use user-given ymax values if provided
         max_used_yval = ymax
@@ -304,7 +345,6 @@ def plot_density(sashimi_obj, pickle_filename, event, plot_title=None):
         used_yvals = [curr_ax.get_ylim()[1] for curr_ax in plotted_axes]
         # Round up
         max_used_yval = math.ceil(max(used_yvals))
-
     # Reset axes based on this.
     # Set fake ymin bound to allow lower junctions to be visible
     fake_ymin = -0.6 * max_used_yval
@@ -314,12 +354,13 @@ def plot_density(sashimi_obj, pickle_filename, event, plot_title=None):
     universal_ticks = map(math.ceil, universal_yticks)
     for sample_num, curr_ax in enumerate(plotted_axes):
         #Changed code
-        max_used_yval=used_yvals[sample_num]
+        max_used_yval=used_yvals[sample_num]*1.5
         fake_ymin = -0.6 * max_used_yval
         universal_yticks = linspace(0, max_used_yval,
                                 nyticks + 1)
                                 # print max_used_yval
         #
+                
         if showYaxis:
             curr_ax.set_ybound(lower=fake_ymin, upper=max_used_yval)
             curr_yticklabels = []
@@ -425,14 +466,16 @@ def readsToWiggle_pysam(reads, tx_start, tx_end):
             #print "Skipping read with no CIGAR string: %s" %(read.cigar)
             continue
         cigar_str = sam_utils.sam_cigar_to_str(read.cigar)
-
+        
+        """
         if ("N" in cigar_str) and (cigar_str.count("N") > 1):
             #print "Skipping read with multiple junctions crossed: %s" \
             #      %(cigar_str)
             continue
-
+        """
         # Check if the read contains an insertion (I)
         # or deletion (D) -- if so, skip it
+        
         for cigar_part in read.cigar:
             if cigar_part[0] == 1 or \
                cigar_part[1] == 2:

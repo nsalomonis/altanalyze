@@ -253,6 +253,7 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 	    except Exception: pass
 	    
 	#print '********',[ch1],[event],outputdir
+
 	try:
 	    ssp.plot_event(ch1,event,setting,outputdir)
 	except Exception:
@@ -356,10 +357,10 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
 		continue
 
 if __name__ == '__main__':
-    root_dir = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/RCM_retry'
+    root_dir = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/'
     genelis = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/RCM_retry/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
     #genelis = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
-    genelis = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/RCM_retry/AltResults/AlternativeOutput/Hs_RNASeq_RCM_vs_NDR.ExpCutoff-5.0_average-ASPIRE-exon-inclusion-results.txt'
-    bamdir = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/'
-    remoteSashimiPlot('Hs',root_dir,bamdir,genelis)
+    genelis = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/AltResults/AlternativeOutput/Mm_RNASeq_TRAF6 KO_vs_wt.ExpCutoff-5.0_average-ASPIRE-exon-inclusion-results.txt'
+    bamdir = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/'
+    remoteSashimiPlot('Mm',root_dir,bamdir,genelis)
     sys.exit()

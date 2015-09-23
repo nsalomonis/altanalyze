@@ -1704,7 +1704,10 @@ def fastRPKMCalculate(counts_file,GeneLengths=None):
             junction_sum_array=[0]*len(samples)
         else:
             try: values = map(float,t[1:])
-            except Exception: print t; sys.exit()
+            except Exception:
+                print traceback.format_exc()
+                print t
+                badCountsLine
             ### get the total reads/sample
             if '-' in string.split(t[0],'=')[0]:
                 junction_sum_array = [sum(value) for value in zip(*[junction_sum_array,values])]
@@ -3027,15 +3030,6 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,driverGenes=driver_genes) #fold=2,samplesDiffering=2
         print 'Evaluating',len(expressed_values),'genes, differentially expressed',fold,'fold for at least',samplesDiffering*2,'samples'
     #sys.exit()
-    
-    if reportOnly:
-        print_out = '%d genes, differentially expressed %d fold for at least %d samples' % (len(expressed_values), fold, samplesDiffering*2)
-        return print_out
-    else:
-        import OBO_import; import ExpressionBuilder
-        gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
-        symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)
-
     areYouSure=False
     if (excludeCellCycle == 'strict' or excludeCellCycle == True) and areYouSure:
         cc_param = copy.deepcopy(parameters)
@@ -3060,13 +3054,25 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         expressed_values = expressed_values2
     print 'amplifyGenes:',amplifyGenes
     
+    ### Write out filtered list to amplify and to filtered.YourExperiment.txt
     filtered_file = export.findParentDir(expFile)+'/amplify/'+export.findFilename(expFile)
     groups_file = string.replace(expFile,'exp.','groups.')
     groups_filtered_file = string.replace(filtered_file,'exp.','groups.')
     try: export.customFileCopy(groups_file,groups_filtered_file) ### if present copy over
     except Exception: pass
-    
     writeFilteredFile(filtered_file,platform,headers,{},expressed_values,[])
+    filtered_file_new = string.replace(expFile,'exp.','filteredExp.')
+    try: export.customFileCopy(filtered_file,filtered_file_new) ### if present copy over
+    except Exception: pass
+    
+    if reportOnly:
+        print_out = '%d genes, differentially expressed %d fold for at least %d samples' % (len(expressed_values), fold, samplesDiffering*2)
+        return print_out
+    else:
+        import OBO_import; import ExpressionBuilder
+        gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
+        symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)
+
     if len(expressed_values)<2000 and column_method == 'hopach':
         row_method = 'hopach'; row_metric = 'correlation'
     else:
@@ -3319,7 +3325,7 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
 
     try:
         newDriverGenes1 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
-        newDriverGenes1_str = string.join(newDriverGenes1.keys(),' ')+' amplify positive'
+        newDriverGenes1_str = 'G1 '+string.join(newDriverGenes1.keys(),' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes1_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
         parameters.setPathwaySelect('None Selected')
@@ -3327,13 +3333,13 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         
         newDriverGenes2 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
-        newDriverGenes2_str = string.join(newDriverGenes2.keys(),' ')+' amplify positive'
+        newDriverGenes2_str = 'G2 '+string.join(newDriverGenes2.keys(),' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes2_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
         parameters.setPathwaySelect('None Selected')
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         newDriverGenes3 = unique.unique(newDriverGenes1.keys()+newDriverGenes2.keys())
-        newDriverGenes3_str = string.join(newDriverGenes3,' ')+' amplify positive'
+        newDriverGenes3_str = 'G3 '+string.join(newDriverGenes3,' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes3_str)
         try: parameters.setClusterGOElite('BioMarkers')
         except Exception: pass
@@ -4457,6 +4463,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         if 'fastq' in file and '._' not in file[:4]: ### Hidden files
             fastq_paths.append(fastq_folder+file)
     fastq_paths,paired = findPairs(fastq_paths)
+
     if returnSampleNames:
         return fastq_paths
     
@@ -4478,10 +4485,11 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 print traceback.format_exc();sys.exit()
                 ### If installed globally
                 retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
-                
+    
     kallisto_folders=[]
     expMatrix={}
     countMatrix={}
+    sample_total_counts={}
     headers=['UID']
     for n in fastq_paths:
         output_path = output_dir+n
@@ -4489,11 +4497,21 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         begin_time = time.time()
         print 'Running kallisto on:',n,
         p=fastq_paths[n]
-        try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "--o", output_path]+p)
-        except Exception:
-            retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "--o", output_path]+p)
+        b=[" > "+n+'.sam']
+
+        if paired == 'paired':
+            try:
+                #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
+                retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
+            except Exception:
+                retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)
+        else:
+            try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+            except Exception:
+                retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
         if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
         else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
+
         input_path = output_path+'/abundance.txt'
         try:
             try: expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
@@ -4501,9 +4519,26 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 input_path = output_path+'/abundance.tsv'
                 expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
             headers.append(n)
+            sample_total_counts = importTotalReadCounts(n,output_path+'/run_info.json',sample_total_counts)
         except Exception:
             print traceback.format_exc();sys.exit()
             print n, 'TPM expression import failed'
+            if paired == 'paired':
+                print '\n...Make sure the paired-end samples were correctly assigned:'
+                for i in fastq_paths:
+                    print 'Common name:',i,
+                    for x in fastq_paths[i]:
+                        print export.findParentDir(x),
+                    print '\n'
+                    
+    ### Summarize alignment information
+    for sample in countMatrix:
+        estCounts = int(float(countMatrix[sample]))
+        totalCounts = sample_total_counts[sample]
+        aligned = str(100*estCounts/float(totalCounts))
+        aligned =  string.split(aligned,'.')[0]+'.'+string.split(aligned,'.')[1][:2]
+        countMatrix[sample] = [str(estCounts),totalCounts,aligned]
+    
     dataset_name = string.replace(dataset_name,'exp.','')
     to = export.ExportFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt')
     go = export.ExportFile(root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
@@ -4511,7 +4546,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     exportMatrix(to,headers,expMatrix) ### Export transcript expression matrix
     geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
     exportMatrix(go,headers,geneMatrix) ### export gene expression matrix
-    exportMatrix(so,['SampleID','Estimated Counts'],countMatrix) ### export gene expression matrix
+    exportMatrix(so,['SampleID','Estimated Counts','Total Fragments','Percent Aligned'],countMatrix) ### export gene expression matrix
     
 def calculateGeneTPMs(species,expMatrix):
     import gene_associations
@@ -4544,8 +4579,7 @@ def calculateGeneTPMs(species,expMatrix):
 def exportMatrix(eo,headers,matrix):
     eo.write(string.join(headers,'\t')+'\n')
     for gene in matrix:
-        try: eo.write(string.join([gene]+matrix[gene],'\t')+'\n')
-        except Exception: eo.write(string.join([gene,str(matrix[gene])],'\t')+'\n')
+        eo.write(string.join([gene]+matrix[gene],'\t')+'\n')
     eo.close()
 
 def importTPMs(sample,input_path,expMatrix,countMatrix):
@@ -4563,6 +4597,16 @@ def importTPMs(sample,input_path,expMatrix,countMatrix):
             except Exception: countMatrix[sample]=float(est_counts)
     return expMatrix,countMatrix
 
+def importTotalReadCounts(sample,input_path,sample_total_counts):
+    ### Import from Kallisto Json file
+    for line in open(input_path,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if "n_processed: " in data:
+            total = string.split(data,"n_processed: ")[1]
+            total = string.split(total,',')[0]
+            sample_total_counts[sample]=total
+    return sample_total_counts
+
 def findPairs(fastq_paths):
     #fastq_paths = ['/Volumes/test/run0718_lane12_read1_index701=Kopan_RBP_02_14999.fastq.gz','/Volumes/run0718_lane12_read2_index701=Kopan_RBP_02_14999.fastq.gz']
     import export
@@ -4570,14 +4614,17 @@ def findPairs(fastq_paths):
     under_suffix_notation=0
     suffix_notation=0
     equal_notation=0
+    suffix_db={}
     for i in fastq_paths:
-        if 'read1' in i or 'read2' in i or 'pair1' in i or 'pair2':
+        if 'read1' in i or 'read2' in i or 'pair1' in i or 'pair2' or 'R1' in i or 'R2' in i:
             read_notation+=1
-        name = string.split(i,'fastq')[0]
+        f = export.findFilename(i)
+        name = string.split(f,'fastq')[0]
         if '_1.' in name or '_2.' in name:
             under_suffix_notation+=1
         elif '1.' in name or '2.' in name:
             suffix_notation+=1
+            suffix_db[name[-2:]]=[]
         if '=' in name:
             equal_notation+=1
     if read_notation==0 and suffix_notation==0 and under_suffix_notation==0:
@@ -4592,7 +4639,8 @@ def findPairs(fastq_paths):
         return new_names, 'single'
     else:
         new_names={}
-        if equal_notation==0:
+        paired = 'paired'
+        if equal_notation==len(fastq_paths):
             for i in fastq_paths:
                 name = string.split(i,'=')[-1]
                 name = string.replace(name,'.fastq.gz','')
@@ -4605,21 +4653,28 @@ def findPairs(fastq_paths):
                 except Exception: new_names[name]=[i]
         else:
             for i in fastq_paths:
-                if suffix_notation>0:
+                if suffix_notation == len(fastq_paths) and len(suffix_db)==2: ### requires that files end in both .1 and .2
                     pairs = ['1.','2.']
                 else:
-                    pairs = ['read1','read2','pair1','pair2','_1.','_2.']
+                    pairs = ['-read1','-read2','-pair1','-pair2','_read1','_read2','_pair1','_pair2','read1','read2','pair1','pair2','_1.','_2.','_R1','_R2','-R1','-R2','R1','R2']
                 n=str(i)
-                n = string.replace(n,'.fastq.gz','')
-                n = string.replace(n,'.fastq','')
+                n = string.replace(n,'fastq.gz','')
+                n = string.replace(n,'fastq','')
                 for p in pairs: n = string.replace(n,p,'')
                 if '/' in n or '\\' in n:
                     n = export.findFilename(n)
                 if '=' in n:
                     n = string.split(n,'=')[1]
+                if n[-1]=='.':
+                    n = n[:-1] ###remove the last decimal
                 try: new_names[n].append(i)
                 except Exception: new_names[n]=[i]
-        return new_names, 'paired'
+        for i in new_names:
+            if len(new_names[i])>1:
+                pass
+            else:
+                paired = 'single'
+        return new_names, paired
             
 def getFASTAFile(species):
     fasta_file=None
@@ -4630,10 +4685,11 @@ def getFASTAFile(species):
     return fasta_file
 
 if __name__ == '__main__':
-    filename = '/Volumes/SEQ-DATA/AML-TCGA/MDS-AML-combined/counts.AML-MDS.txt'
+    filename = '/Volumes/SEQ-DATA/PCBC-new/July2014/counts.All.txt'
     #fastRPKMCalculate(filename);sys.exit()
+    calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
     #copyICGSfiles('','');sys.exit()
-    #runKallisto('Mm','test','C:\\Users\Nathan Salomonis\\Desktop\\testKallistoData\\','C:\\Users\Nathan Salomonis\\Desktop\\testKallistoData\\');sys.exit()
+    #runKallisto('Hs','test','/Users/saljh8/Desktop/dataAnalysis/Grimes/AML_Kallisto_test/paired-end/','/Users/saljh8/Desktop/dataAnalysis/Grimes/AML_Kallisto_test/paired-end/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'
@@ -4644,11 +4700,10 @@ if __name__ == '__main__':
     gsp.setJustShowTheseIDs('')
     gsp.setNormalize('median')
     gsp.setSampleDiscoveryParameters(0,0,0,6,
-        True,'AltExon','protein_coding',False,'cosine','hopach',0.4)
+        True,'AltExon','protein_coding',False,'cosine','hopach',0.1)
     
     #gsp.setSampleDiscoveryParameters(1,1,4,3, True,'Gene','protein_coding',False,'cosine','hopach',0.5)
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    #calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
     #fastRPKMCalculate(filename);sys.exit()
     results_file = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/ExpressionInput/DataPlots/400 fold for at least 4 samples/Clustering-myeloblast-steady-state-correlated-features-hierarchical_euclidean_cosine-hopach.txt'
     driverFile = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/ExpressionInput/drivingTFs-symbol.txt'
@@ -4656,7 +4711,7 @@ if __name__ == '__main__':
     expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
     expFile = '/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/exp.E15.5_Adult_IRI Data-output.txt'
     expFile = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/temp/C4Meth450-filtered-SC-3_regulated.txt'
-    expFile = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    expFile = '/Volumes/SEQ-DATA/Grimeslab/TopHat/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust-filter.txt'
     #expFile = '/Users/saljh8/Desktop/Mouse_organoid/ExpressionInput/exp.nature14966-s6.txt'
 
     singleCellRNASeqWorkflow('Mm', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()

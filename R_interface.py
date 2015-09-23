@@ -5,6 +5,7 @@ import random
 import copy
 import os
 import os.path
+R_present=True
 
 try:
     from rpy import r
@@ -14,7 +15,10 @@ except Exception:
         from pyper import *
         #print "\n---------Using PypeR---------\n"
         r = R(use_numpy=True)
-    except Exception: pass
+    except Exception:
+        r = None
+        R_present=False
+        pass
 
 ### Create a Directory for R packages in the AltAnalyze program directory (in non-existant)
 r_package_path = string.replace(os.getcwd()+'/Config/R','\\','/') ### R doesn't link \\
@@ -447,6 +451,8 @@ class RScripts:
             return 'continue'
         else: return 'break'
     def Hopach(self,cluster_method,metric_gene,force_gene,metric_array,force_array):
+        if R_present==False:
+            rNotPresent
         print_out = r('library("Biobase")')
         if "Error" in print_out:
             print 'Installing the R package "Biobase" in Config/R'

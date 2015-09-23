@@ -8,10 +8,13 @@
 import os
 import sys
 import glob
-import matplotlib
-
-# Use PDF backend
-matplotlib.use("pdf")
+import warnings
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
+    import matplotlib
+    # Use PDF backend
+    try: matplotlib.use("pdf")
+    except Exception: pass
 
 from scipy import *
 from numpy import *

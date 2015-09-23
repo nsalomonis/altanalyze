@@ -11,7 +11,7 @@ _appDescription +="promoter changes and view how these changes may affect protei
 _authorName = 'Nathan Salomonis'
 _authorEmail = 'nsalomonis@gmail.com'
 _authorURL = 'http://www.altanalyze.org'
-_appIcon = "AltAnalyze_W7.ico"
+_appIcon = "Viewer.ico"
 
 excludes = ["igraph","patsy","pandas","suds","lxml","cairo","cairo2","ImageTk","PIL","Pillow","mpmath",'pysam','Bio']
 excludes = ["igraph","patsy","pandas","suds","lxml","cairo","cairo2","mpmath",'virtualenv','Tkinter','matplotlib.tests',"Pillow"]
@@ -61,7 +61,7 @@ if sys.platform.startswith("darwin"):
                      #"resources": resources,
                      "argv_emulation": True,
                      'arch': 'i386', ## for wx 
-                     "iconfile": "altanalyze.icns"}
+                     "iconfile": "Viewer.icns"}
         }
         setup(name=_appName,
                         app=[_script],

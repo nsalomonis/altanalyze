@@ -378,7 +378,7 @@ class StatusWindow:
             else:
                 root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.0.9.2 beta')
+            root.title('AltAnalyze version 2.0.9.3 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 300; width = 700
@@ -826,7 +826,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
         try: modelSize = int(modelSize)
         except Exception: modelSize = 'optimize'
 
-    if (geneModel == None or geneModel == False) and (modelSize == None or modelSize == 'no'):
+    if (geneModel == None or geneModel == False) and (modelSize == None or modelSize == 'no') and custom_markerFinder == False:
         import ExpressionBuilder
         compendium_type = fl.CompendiumType()
         compendium_platform = fl.CompendiumPlatform()
@@ -3334,6 +3334,22 @@ def verifyFileLength(filename):
     except Exception: null=[]
     return count
 
+def getGeneSystem(filename):
+    firstRow=True
+    count=0
+    system = 'Symbol'
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines():
+            if firstRow: firstRow=False
+            else:
+                id = string.split(line,'\t')[0]
+                if 'ENS' in id: system = 'Ensembl'
+                count+=1
+            if count>9: break
+    except Exception: null=[]
+    return system
+
 def determinePlatform(filename):
     platform = ''
     try:
@@ -3687,7 +3703,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.0.9.2 beta.\n')
+        txt.insert(END, 'AltAnalyze version 2.0.9.3 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
@@ -4413,6 +4429,7 @@ def getUserParameters(run_parameter,Multi=None):
         except Exception: null = None        
         PathFile = ''
     
+    old_options = []
     try:
         #### Get information from previous loop
         if len(run_parameter) == 2 and run_parameter != 'no': ### Occurs when selecting "Back" from Elite parameter window
@@ -5304,12 +5321,16 @@ def getUserParameters(run_parameter,Multi=None):
                 counts_file = string.replace(input_exp_file,'exp.','counts.')
                 count = verifyFileLength(counts_file)
                 if count == 0 or 'exp.' not in input_exp_file: #No counts file
+                    systm = getGeneSystem(input_exp_file)
                     ### Wrong platform listed
                     array_type = "3'array"
-                    vendor = 'other:Symbol' ### Ensembl linked system name
-                    option_list,option_db = importUserOptions(array_type)
+                    vendor = 'other:'+systm ### Ensembl linked system name
+                    if old_options==[]: ### If we haven't hit the back button
+                        if len(old_options)==0:
+                            option_list,option_db = importUserOptions(array_type) ### will re-set the paramater values, so not good for back select
+                            user_variables['array_type'] = array_type
                     
-            print array_type, vendor
+            #print array_type, vendor
             if array_type != 'RNASeq':
                 ### This is the new option for expression filtering of non-RNASeq classified data
                 try:
@@ -6397,17 +6418,8 @@ def downloadInteractionDBs(species,windowType):
     
 if __name__ == '__main__':
     dir = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/Clustering/Combined-junction-exon-evidence.txt'
-    a = exportJunctionList(dir,limit=50)
-    print a;sys.exit()
-    root = Tk()
-    import Config.AltAnalyzeViewer as cr
-    currentDirectory = str(os.getcwd())
-    os.chdir(currentDirectory+'/Config') 
-    app = wx.PySimpleApp(False)
-    fr = cr.Main(parent=None,id=1)
-    fr.Show()
-    app.MainLoop()
-    os.chdir(currentDirectory)
+    #a = exportJunctionList(dir,limit=50)
+    #print a;sys.exit()
     try:
         import multiprocessing as mlp
         mlp.freeze_support()

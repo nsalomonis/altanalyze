@@ -133,9 +133,10 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
             pool = MLP.Pool(processes=pool_size)
             try: results = pool.map(runBAMtoJunctionBED, paths_to_run) ### worker jobs initiated in tandem
             except ValueError:
-                print_out = '\WARNING!!! No Index found for the BAM files. Sort and Index using Samtools prior to loading in AltAnalyze'
+                print_out = '\WARNING!!! No Index found for the BAM files (.bam.bai). Sort and Index using Samtools prior to loading in AltAnalyze'
                 print traceback.format_exc()
                 if root!=None:
+                    import UI
                     UI.WarningWindow(print_out,'Exit');sys.exit()
                     
             try:pool.close(); pool.join(); pool = None

@@ -77,9 +77,9 @@ def genelist(fname):
 		j2b = int(float(string.split(j2b,'.')[0][1:]))
 		#print [j1a,j2a,j1b,j2b], t[2], t[3]
 		if j1a>j2a or j1b<j2b:
-		    val = t[3]+' '+t[2]
+		    val = t[2]+' '+t[3]
 		else:
-		    val=t[2]+' '+t[3]
+		    val=t[3]+' '+t[2]
 	    except Exception:
 		#print traceback.format_exc();sys.exit()
 		val=t[2]+' '+t[3]
@@ -314,7 +314,7 @@ def obtainTopGeneResults():
     pass
 
 if __name__ == '__main__':
-    remoteIndexing('Mm','/Users/saljh8/Desktop/Grimes/GEC14074/')
+    remoteIndexing('Mm','/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/')
     
     #"""
     countinp = os.path.abspath(os.path.expanduser(sys.argv[1]))

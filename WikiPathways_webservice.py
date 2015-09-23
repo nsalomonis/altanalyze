@@ -22,6 +22,7 @@ import base64
 import export
 import time
 import unique
+import traceback
 try:
     import gene_associations
     """
@@ -32,6 +33,7 @@ try:
     from wikipathways_api_client import WikipathwaysApiClient
     wikipathways_api_client_instance = WikipathwaysApiClient()
 except Exception:
+    print traceback.format_exc()
     None ### Occurs when functions in this module are resued in different modules
             
 def filepath(filename):
@@ -397,9 +399,12 @@ def getAllSpeciesPathways(species_full):
     return pathway_db
 
 if __name__ == '__main__':
-    #pathway_db = getAllSpeciesPathways('Homo sapiens');
-    #getPathwayAs(pathway_db,'','');sys.exit()
-    #getColoredPathwayTest();sys.exit()
+    pathway_db = getAllSpeciesPathways('Homo sapiens');
+    for i in pathway_db:
+        print i
+    
+    getPathwayAs(pathway_db,'','');sys.exit()
+    getColoredPathwayTest();sys.exit()
     filename = "/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/AltAnalyzeExon/Methylation_Variance/GO-Elite_adjp-2fold/regulated/GE.poor_vs_good-fold2.0_adjp0.05.txt"
     visualizePathwayAssociations(filename,'Hs','Ensembl','WP2857')
     #viewLineageProfilerResults(filename,[]); sys.exit()

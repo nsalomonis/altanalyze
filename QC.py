@@ -1,5 +1,6 @@
 
 import traceback
+import sys
 try:
     import warnings
     with warnings.catch_warnings():
@@ -14,7 +15,7 @@ try:
         #mpl.rcParams['font.sans-serif'] = 'Arial'
         import numpy
 except Exception:
-    None
+    print traceback.format_exc()
 
 import string
 import time
@@ -586,7 +587,15 @@ def plotExonExpression(fig,matrix,stdev_matrix,row_headers,column_headers,datase
         # Shink current axis by 20%
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width, box.height*0.6])
-        ax.legend(loc=loc, ncol=ncol, bbox_to_anchor=(0., 1.02,1.,.8),fontsize = size) ### move the legend over to the right of the plot
+        try: ax.legend(loc=loc, ncol=ncol, bbox_to_anchor=(0., 1.02,1.,.8),fontsize = size) ### move the legend over to the right of the plot
+        except Exception:
+            ### Older versions of Matplotlib
+            try:
+                pylab.legend(prop={fontsize: 'small'})
+                ax.legend(loc=loc, ncol=ncol, bbox_to_anchor=(0., 1.02,1.,.8))
+            except Exception:
+                pass
+            
     else:
         pylab.legend(loc=loc, ncol=ncol, prop={'size': size})
 
@@ -851,7 +860,6 @@ def outputArrayQC(filename):
     
 def outputRNASeqQC(filename):
     """ QC plots for RNA-Seq analysis. The file should be exon-level read counts"""
-    
     global root_dir
     global graphic_link
     graphic_link = []
@@ -974,7 +982,7 @@ if __name__ == '__main__':
     file = '/Users/saljh8/Desktop/Archived/Desktop/dataAnalysis/CPMC/Liliana/CPMC_GB-samples/Cultured/AltResults/RawSpliceData/Hs/splicing-index/Hs_Exon_CBD_vs_Vehicle.p5_average.txt'
     file = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/Lattice/Full/AltResults/RawSpliceData/Mm/splicing-index/myeloblast.txt'
     file = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/Lattice/Full/ExpressionInput/exp.myeloblast.txt'
-    file = '/Volumes/SEQ-DATA/PCBC/EB-Single-Cell/BedFiles/ExpressionInput/counts.EB.txt'
+    file = '/Volumes/salomonis1/projects/Grimes/GEC_14061/bams/ExpressionInput/counts.gec_14061.txt'
     #file = '/Volumes/SEQ-DATA/SingleCell-Churko/ExpressionInput/exp.CM.txt'
     outputRNASeqQC(file);sys.exit()
     species='Hs'

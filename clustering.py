@@ -134,7 +134,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("hopach")')
                 if "Error" in print_out: print 'unable to download the package "hopach"'; forceError
         except Exception,e:
-            print 'Failed to install hopach'
+            #print traceback.format_exc()
+            print 'Failed to install hopach or R not installed (install R before using hopach)'
             row_method = 'average'; column_method = 'average'
         if len(column_header)==2: column_method = 'average'
         if len(row_header)==2: row_method = 'average'
@@ -1834,41 +1835,50 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     ####  FROM LARSSON ########
     #100 most correlated Genes with PC1
     #print vt
-    idx = numpy.argsort(u[:,0])
-    idx2 = numpy.argsort(u[:,1])
-    idx3 = numpy.argsort(u[:,2])
-    idx4 = numpy.argsort(u[:,3])
-
-    correlated_genes = map(lambda i: row_header[i],idx[:100])
-    anticorrelated_genes = map(lambda i: row_header[i],idx[-100:])
-    #print correlated_genes
-    correlated_genes2 = map(lambda i: row_header[i],idx2[:100])
-    anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-100:])
-
-    correlated_genes3 = map(lambda i: row_header[i],idx3[:100])
-    anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-100:])
-    
-    correlated_genes4 = map(lambda i: row_header[i],idx4[:100])
-    anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-100:])
-    
-    filename = root_dir+'Clustering-%s-PCA.txt' % dataset_name
-    print 'exporting PCA driver genes to:',filename
-    exportData = export.ExportFile(filename)
-    allGenes={}
-    for gene in correlated_genes: exportData.write(gene+'\tcorrelated-PC1\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes: exportData.write(gene+'\tanticorrelated-PC1\n'); allGenes[gene]=[]
-    for gene in correlated_genes2: exportData.write(gene+'\tcorrelated-PC2\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes2: exportData.write(gene+'\tanticorrelated-PC2\n'); allGenes[gene]=[]
-    for gene in correlated_genes3: exportData.write(gene+'\tcorrelated-PC3\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes3: exportData.write(gene+'\tanticorrelated-PC3\n'); allGenes[gene]=[]
-    for gene in correlated_genes4: exportData.write(gene+'\tcorrelated-PC4\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes4: exportData.write(gene+'\tanticorrelated-PC4\n'); allGenes[gene]=[]
-    exportData.close()
-    if geneSetName != None:
-        if len(geneSetName)>0:
-            exportCustomGeneSet(geneSetName,species,allGenes)
-            print 'Exported geneset to "StoredGeneSets"'
+    try:
+       ####  FROM LARSSON ########
+        #100 most correlated Genes with PC1
+        idx = numpy.argsort(u[:,0])
+        idx2 = numpy.argsort(u[:,1])
+        try:
+            idx3 = numpy.argsort(u[:,2])
+            idx4 = numpy.argsort(u[:,3])
+        except Exception: pass
         
+        correlated_genes = map(lambda i: row_header[i],idx[:100])
+        anticorrelated_genes = map(lambda i: row_header[i],idx[-100:])
+
+        correlated_genes2 = map(lambda i: row_header[i],idx2[:100])
+        anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-100:])
+        try:
+            correlated_genes3 = map(lambda i: row_header[i],idx3[:100])
+            anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-100:])
+
+            correlated_genes4 = map(lambda i: row_header[i],idx4[:100])
+            anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-100:])
+        except Exception: pass
+        
+        print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
+        exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
+        
+        allGenes={}
+        for gene in correlated_genes: exportData.write(gene+'\tcorrelated-PC1\n'); allGenes[gene]=[]
+        for gene in anticorrelated_genes: exportData.write(gene+'\tanticorrelated-PC1\n'); allGenes[gene]=[]
+        for gene in correlated_genes2: exportData.write(gene+'\tcorrelated-PC2\n'); allGenes[gene]=[]
+        for gene in anticorrelated_genes2: exportData.write(gene+'\tanticorrelated-PC2\n'); allGenes[gene]=[]
+        for gene in correlated_genes3: exportData.write(gene+'\tcorrelated-PC3\n'); allGenes[gene]=[]
+        for gene in anticorrelated_genes3: exportData.write(gene+'\tanticorrelated-PC3\n'); allGenes[gene]=[]
+        try:
+            for gene in correlated_genes4: exportData.write(gene+'\tcorrelated-PC4\n'); allGenes[gene]=[]
+            for gene in anticorrelated_genes4: exportData.write(gene+'\tanticorrelated-PC4\n'); allGenes[gene]=[]
+        except Exception: pass
+        exportData.close()
+        
+        if geneSetName != None:
+            if len(geneSetName)>0:
+                exportCustomGeneSet(geneSetName,species,allGenes)
+                print 'Exported geneset to "StoredGeneSets"'         
+    except Exception: pass        
     ###########################
     
     #if len(row_header)>20000:
@@ -2050,42 +2060,50 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
     label2 = 'PC%i (%2.1f%%)' %(1+1, fracs[1]*100)
     label3 = 'PC%i (%2.1f%%)' %(2+1, fracs[2]*100)
 
-    ####  FROM LARSSON ########
-    #100 most correlated Genes with PC1
-    idx = numpy.argsort(u[:,0])
-    idx2 = numpy.argsort(u[:,1])
-    idx3 = numpy.argsort(u[:,2])
-    idx4 = numpy.argsort(u[:,3])
-    
-    correlated_genes = map(lambda i: row_header[i],idx[:200])
-    anticorrelated_genes = map(lambda i: row_header[i],idx[-200:])
+    try:
+        ####  FROM LARSSON ########
+        #100 most correlated Genes with PC1
+        idx = numpy.argsort(u[:,0])
+        idx2 = numpy.argsort(u[:,1])
+        idx3 = numpy.argsort(u[:,2])
+        try: idx4 = numpy.argsort(u[:,3])
+        except Exception: pass
+        
+        correlated_genes = map(lambda i: row_header[i],idx[:100])
+        anticorrelated_genes = map(lambda i: row_header[i],idx[-100:])
 
-    correlated_genes2 = map(lambda i: row_header[i],idx2[:200])
-    anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-200:])
+        correlated_genes2 = map(lambda i: row_header[i],idx2[:100])
+        anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-100:])
 
-    correlated_genes3 = map(lambda i: row_header[i],idx3[:200])
-    anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-200:])
-    
-    correlated_genes4 = map(lambda i: row_header[i],idx4[:200])
-    anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-200:])
-    
-    print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
-    exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
-    
-    allGenes={}
-    for gene in correlated_genes: exportData.write(gene+'\tcorrelated-PC1\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes: exportData.write(gene+'\tanticorrelated-PC1\n'); allGenes[gene]=[]
-    for gene in correlated_genes2: exportData.write(gene+'\tcorrelated-PC2\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes2: exportData.write(gene+'\tanticorrelated-PC2\n'); allGenes[gene]=[]
-    for gene in correlated_genes3: exportData.write(gene+'\tcorrelated-PC3\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes3: exportData.write(gene+'\tanticorrelated-PC3\n'); allGenes[gene]=[]
-    for gene in correlated_genes4: exportData.write(gene+'\tcorrelated-PC4\n'); allGenes[gene]=[]
-    for gene in anticorrelated_genes4: exportData.write(gene+'\tanticorrelated-PC4\n'); allGenes[gene]=[]
-    exportData.close()
-    if geneSetName != None:
-        if len(geneSetName)>0:
-            exportCustomGeneSet(geneSetName,species,allGenes)
-            print 'Exported geneset to "StoredGeneSets"'
+        correlated_genes3 = map(lambda i: row_header[i],idx3[:100])
+        anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-100:])
+        try:
+            correlated_genes4 = map(lambda i: row_header[i],idx4[:100])
+            anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-100:])
+        except Exception: pass
+        
+        print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
+        exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
+        
+        allGenes={}
+        for gene in correlated_genes: exportData.write(gene+'\tcorrelated-PC1\n'); allGenes[gene]=[]
+        for gene in anticorrelated_genes: exportData.write(gene+'\tanticorrelated-PC1\n'); allGenes[gene]=[]
+        for gene in correlated_genes2: exportData.write(gene+'\tcorrelated-PC2\n'); allGenes[gene]=[]
+        for gene in anticorrelated_genes2: exportData.write(gene+'\tanticorrelated-PC2\n'); allGenes[gene]=[]
+        for gene in correlated_genes3: exportData.write(gene+'\tcorrelated-PC3\n'); allGenes[gene]=[]
+        for gene in anticorrelated_genes3: exportData.write(gene+'\tanticorrelated-PC3\n'); allGenes[gene]=[]
+        try:
+            for gene in correlated_genes4: exportData.write(gene+'\tcorrelated-PC4\n'); allGenes[gene]=[]
+            for gene in anticorrelated_genes4: exportData.write(gene+'\tanticorrelated-PC4\n'); allGenes[gene]=[]
+        except Exception: pass
+        exportData.close()
+        
+        if geneSetName != None:
+            if len(geneSetName)>0:
+                exportCustomGeneSet(geneSetName,species,allGenes)
+                print 'Exported geneset to "StoredGeneSets"'  
+    except Exception:
+        pass
 
     #numpy.Mdiff.toFile(root_dir+'/PCA/correlated.txt','\t')
     if use_svd == False:
@@ -3794,6 +3812,22 @@ def simpleIntegrityCheck(filename):
         ea.write(string.join(i,'\t')+'\n')
     ea.close()
 
+def BedFileCheck(filename):
+    fn = filepath(filename)
+    firstRow=True
+    print filename,
+    found = False
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            firstRow = False
+        else:
+            #if len(t) != 12: print len(t);sys.exit()
+            if ':70895507-70895600' in data:
+                found = t[4]
+    print found
+    
 def simpleFilter(filename):
     fn = filepath(filename)
     filename = filename[:-4]+'-new.txt'
@@ -4106,9 +4140,71 @@ def extractFeatures(countinp,IGH_gene_file):
                 if gene in igh_genes:
                     fe.write(line)
         fe.close()
-                        
+                       
+def filterForJunctions(countinp):
+    import export
+    ExonsPresent=False
+    igh_genes=[]
+    firstLine = True
+    count = 0
+    if 'counts.' in countinp:
+	feature_file = countinp[:-4]+'-output.txt'
+	fe = export.ExportFile(feature_file)
+	firstLine = True
+	for line in open(countinp,'rU').xreadlines():
+	    if firstLine:
+                fe.write(line)
+                firstLine=False
+	    else:
+		feature_info = string.split(line,'\t')[0]
+                junction = string.split(feature_info,'=')[0]
+                if '-' in junction:
+                    fe.write(line)
+                    count+=1
+        fe.close()
+        
+    print count
+        
+def countIntronsExons(filename):
+    import export
+    exon_db={}
+    intron_db={}
+    firstLine = True
+    last_transcript=None
+    for line in open(filename,'rU').xreadlines():
+        if firstLine:
+            firstLine=False
+        else:
+            line = line.rstrip()
+            t = string.split(line,'\t')
+            transcript = t[-1]
+            chr = t[1]
+            strand = t[2]
+            start = t[3]
+            end = t[4]
+            exon_db[chr,start,end]=[]
+            if transcript==last_transcript:
+                if strand == '1':
+                    intron_db[chr,last_end,start]=[]
+                else:
+                    intron_db[chr,last_start,end]=[]
+            last_end = end
+            last_start = start
+            last_transcript = transcript
+            
+    print len(exon_db)+1, len(intron_db)+1
+                                          
 if __name__ == '__main__':
-    filename = '/Users/saljh8/Desktop/Mouse_organoid/ExpressionInput/amplify/exp.nature14966-s6.txt'
+    
+    filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/ensembl/Hs/Hs_Ensembl_transcript-annotations.txt'
+    countIntronsExons(filename);sys.exit()
+    filterForJunctions(filename);sys.exit()
+    
+    folder = '/Users/saljh8/Desktop/Grimes/AltSplice/AltResults/GG1-IG2/junction/'
+    files = UI.read_directory(folder)
+    for file in files: #:70895507-70895600
+        if '.bed' in file: BedFileCheck(folder+'/'+file)
+    sys.exit()
     runPCAonly(filename,[],False,showLabels=False,plotType='2D');sys.exit()
     
     countinp = '/Volumes/salomonis2/SinghLab/20150715_single_GCBCell/bams/ExpressionInput/counts.Bcells.txt'

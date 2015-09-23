@@ -163,7 +163,7 @@ class Main(wx.Frame):
         self.panel2.SetSizer(sizer)
         self.page1.SetBackgroundColour("white")
         self.myGrid = gridlib.Grid(self.page2, id=1002)
-        self.myGrid.CreateGrid(100, 150) ### Sets this at 400 columns rather than 100
+        #self.myGrid.CreateGrid(100, self.dataset_file_length) ### Sets this at 400 columns rather than 100 - Excel like
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.GridRightClick, id=1002)
         self.Bind(gridlib.EVT_GRID_CELL_LEFT_DCLICK, self.GridRowColor, id=1002)
         self.HighlightedCells = []
@@ -260,6 +260,7 @@ class Main(wx.Frame):
         #Open Button        
         ButtonMan = wx.Button(self.panel_left, id=1001, label="Open Project", pos=(0,0), size=(100,100)) 
         self.Bind(wx.EVT_BUTTON, self.OnOpen, id=1001)
+
         OpenSizer = wx.BoxSizer(wx.HORIZONTAL)
         OpenSizer.Add(ButtonMan, 1, wx.EXPAND)
         self.panel_left.SetSizer(OpenSizer)
@@ -616,7 +617,18 @@ class Main(wx.Frame):
 
                 print 'Using',self.geneset_type, len(self.supported_genesets),'pathways'
                 break
-
+        for file in os.listdir(self.main_results_directory+'/ExpressionOutput'):
+            if 'DATASET' in file:
+                dataset_file = unique.filepath(self.main_results_directory+'/ExpressionOutput/'+file)
+                for line in open(dataset_file,'rU').xreadlines():
+                    self.dataset_file_length = len(string.split(line,'\t'))
+                    break
+        print self.dataset_file_length
+        if self.dataset_file_length<50:
+            self.dataset_file_length=50
+        self.myGrid.CreateGrid(100, self.dataset_file_length) ### Re-set the grid width based on the DATASET- file width
+        
+        
     def OnOpen(self, event):
         #Bound to the open tab from the menu and the "Open Project" button. 
         openFileDialog = wx.DirDialog(None, "Choose project", "", wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)  
@@ -857,6 +869,7 @@ class Main(wx.Frame):
             self.myGrid.ClearGrid()
             self.DirFileTxt = single_input_stream
             self.DirFile = single_input_stream
+            print 'a'
             table_file = open(self.DirFileTxt, "r")
             table_file_contents = []
             for line in table_file:
@@ -971,6 +984,7 @@ class Main(wx.Frame):
             PageDownFound = "False"
             match_count = 0
             answer=popup.GetValue()
+
             for cell in self.ColoredCellList:
                 self.myGrid.SetCellBackgroundColour(cell[0], cell[1], wx.WHITE)
             self.ColoredCellList = []
@@ -1014,7 +1028,8 @@ class Main(wx.Frame):
         popup = wx.TextEntryDialog(None, "Filter the table.", "Search", "Enter filter phrase.")
         if popup.ShowModal()==wx.ID_OK:
             self.myGrid.ClearGrid()
-            answer=popup.GetValue()            
+            answer=popup.GetValue()
+            print 'b'
             try:
                 table_file = open(self.DirFileTxt, "r")
                 table_file_contents = []
@@ -1058,6 +1073,7 @@ class Main(wx.Frame):
             self.myGrid.ClearGrid()
             answer=popup.GetValue()
             answer = answer.upper()
+            print 'c'
             try:
                 table_file = open(self.DirFileTxt, "r")
                 table_file_contents = []
@@ -1066,6 +1082,7 @@ class Main(wx.Frame):
                 t_c = 0
                 column_clusters_flat = 0
                 for line in table_file:
+                    line=string.replace(line,'Insufficient Expression','0')
                     try:
                         line = line.rstrip(); line = string.replace(line,'"','')
                         line = line.split("\t")
@@ -1172,6 +1189,7 @@ class Main(wx.Frame):
 
                 table_file_contents = []
                 count = 0
+                print 'd'
                 for line in open(self.DirFileTxt,'rU').xreadlines():
                     line = line.rstrip(); line = string.replace(line,'"','')
                     regex_test = re.findall(answer.upper(), line.upper())
@@ -1216,6 +1234,7 @@ class Main(wx.Frame):
             answer = self.sortbox.GetLineText(0)
             self.myGrid.ClearGrid()
             answer = answer.upper()
+            print 'e'
             try:
                 table_file = open(self.DirFileTxt, "r")
                 table_file_contents = []
@@ -1224,6 +1243,7 @@ class Main(wx.Frame):
                 t_c = 0
                 column_clusters_flat = 0
                 for line in table_file:
+                    line=string.replace(line,'Insufficient Expression','0')
                     try:
                         line = line.rstrip(); line = string.replace(line,'"','')
                         line = line.split("\t")
@@ -1449,17 +1469,22 @@ class Main(wx.Frame):
             except:
                 pass
             try:
+                #First time the DATASET file is imported
                 #font = wx.Font(16, wx.DECORATIVE, wx.BOLD, wx.NORMAL)
                 #self.PanelTitle = wx.StaticText(self.panel, label=title_name, pos=(210, 15))
                 #self.PanelTitle.SetFont(font)
-                table_file = open(self.DirFileTxt, "r")
+                #table_file = open(self.DirFileTxt, "rU")
                 table_file_contents = []
                 column_lengths = []
-                for line in table_file:
+                count=0
+                print 'f'
+                for line in open(self.DirFileTxt,'rU').xreadlines():
                     line = line.rstrip(); line = string.replace(line,'"','')
                     line = line.split("\t")
                     column_lengths.append(len(line))
                     table_file_contents.append((line))
+                    if count>2000: break
+                    count+=1
 
                 self.max_column_length = max(column_lengths)
                 self.table_length = len(table_file_contents)
@@ -1608,15 +1633,19 @@ class Main(wx.Frame):
                 self.myGrid.DeleteRows(100, self.AppendTotal, True)        
             except:
                 pass
+            print 'g'
             try:
-                table_file = open(self.DirFileTxt, "r")
+                count=0
+                #table_file = open(self.DirFileTxt, "r")
                 table_file_contents = []
                 column_lengths = []
-                for line in table_file:
+                for line in open(self.DirFileTxt,'rU').xreadlines():
                     line = line.rstrip(); line = string.replace(line,'"','')
                     line = line.split("\t")
                     column_lengths.append(len(line))
                     table_file_contents.append((line))
+                    count+=1
+                    if count>2000:break
                 
                 self.max_column_length = max(column_lengths)
 
@@ -1656,16 +1685,22 @@ class Main(wx.Frame):
                 TXT_FLAG = 0
                 self.control.write("Unable2 to open txt." + "\n")
             DATASET_FIND_FLAG = re.findall("DATASET", self.DirFileTxt)
+            count=0
             if(len(DATASET_FIND_FLAG) > 0):
+                print 'h'
                 try:
-                    table_file = open(self.DirFileTxt, "rU")
+                    #table_file = open(self.DirFileTxt, "rU")
                     table_file_contents = []
                     pre_sort2 = []
                     header = []
                     t_c = 0
                     column_clusters_flat = 0
                     answer = "AC"
-                    for line in table_file:
+                    for line in open(self.DirFileTxt,'rU').xreadlines():
+                    #for line in table_file:
+                        count+=1
+                        if count>2000:
+                            break
                         try:
                             line = line.rstrip(); line = string.replace(line,'"','')
                             line = line.split("\t")
@@ -1700,9 +1735,7 @@ class Main(wx.Frame):
                             pre_sort2.append((pre_sort1))
                         except:
                             continue
-                    
-                    
-    
+
                     table_file_contents.append(header[0])
                     if(column_clusters_flat == 1):
                         table_file_contents.append(header[1])

@@ -2,6 +2,7 @@ import base64
 import csv
 import getpass
 from lxml import etree as ET
+from lxml import _elementpath
 import re
 import requests
 import sys
@@ -10,7 +11,6 @@ class WikipathwaysApiClient(object):
     """Returns :class:`WikipathwaysApiClient` object.
     :param identifier: WikiPathways ID for the new :class:`WikipathwaysApiClient` object.
     """
-
 
     def __invert_dict(dictionary):
         return dict((v, k) for k, v in dictionary.iteritems())
