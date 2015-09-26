@@ -7407,7 +7407,7 @@ def commandLineRun():
                 print species_full, ': This species is not available for this version %s of the Official database.' % select_version
             else:
                 update_goelite_resources = 'no' ### This is handled separately below
-                UI.getOnlineEliteDatabase(file_location_defaults,ensembl_version,[species],update_goelite_resources,'')
+                UI.getOnlineEliteDatabase(file_location_defaults,ensembl_version,[species],update_goelite_resources,'');
             
             ### Attempt to download additional Ontologies and GeneSets
             if additional_resources[0] != None: ### Indicates that the user requested the download of addition GO-Elite resources
@@ -7421,8 +7421,17 @@ def commandLineRun():
                     print 'Finished adding additional analysis resources.'
                 except Exception:
                     print 'Download error encountered for additional Ontologies and GeneSets...\nplease try again later.'
-                    
-            print "Finished adding database"
+                status = UI.verifyLineageProfilerDatabases(species,'command-line')
+                if status == False:
+                    print 'Please note: LineageProfiler not currently supported for this species...'
+                
+            if array_type == 'junction' or array_type == 'RNASeq': ### Download junction databases
+                try: UI.checkForLocalArraySupport(species,array_type,specific_array_type,'command-line')
+                except Exception:
+                    print 'Please install a valid gene database before proceeding.\n'
+                    print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart65';sys.exit()
+                status = UI.verifyLineageProfilerDatabases(species,'command-line')
+                print "Finished adding database"
             sys.exit()
         try:
             #print ge_fold_cutoffs,ge_pvalue_cutoffs, change_threshold, resources_to_analyze, goelite_permutations, p_val_threshold, z_threshold                    
