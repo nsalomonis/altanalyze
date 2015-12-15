@@ -5729,7 +5729,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     species,array_type,expFile=fl.CountsFile(),min_events=0,med_events=1)
           except Exception: pass
           #"""
-          inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI-clust.txt'
+          inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_'+array_type+'_top_alt_junctions-PSI-clust.txt'
           
           ### Calculate ANOVA p-value stats based on groups
           matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
@@ -6003,6 +6003,17 @@ def displayHelp():
         print cleanUpLine(line)
     print '\n################################################ - END HELP'
     sys.exit()
+    
+def searchDirectory(directory,var):
+    directory = unique.filepath(directory)
+
+    files = unique.read_directory(directory)
+    version = unique.getCurrentGeneDatabaseVersion()
+    for file in files:
+        if var in file:
+            location = string.split(directory+'/'+file,version)[1][1:]
+            return [location]
+            break
     
 ###### Command Line Functions (AKA Headless Mode) ######
 def commandLineRun():
@@ -6543,13 +6554,18 @@ def commandLineRun():
                 if opt == '--plotType': plotType=arg
                 if opt == '--algorithm': pca_algorithm=arg
                 if opt == '--geneSetName': geneSetName=arg
+                if opt == '--zscore':
+                    if arg=='yes' or arg=='True' or arg == 'true':
+                        zscore=True
+                    else:
+                        zscore=False
                 if opt == '--display':
                     if arg=='yes' or arg=='True' or arg == 'true':
                         display=True
 
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
-            UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, plotType=plotType, display=display, geneSetName=geneSetName, species=species)
+            UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore)
             sys.exit()
 
         if 'VennDiagram' in image_export:
@@ -6951,6 +6967,10 @@ def commandLineRun():
             common_to_copy+=['ensembl/'+species+'/'+species+'_Ensembl-annotations.txt']
             common_to_copy+=['ensembl/'+species+'/'+species+'_microRNA-Ensembl.txt']
             common_to_copy+=['ensembl/'+species+'/'+species+'_Ensembl_transcript-biotypes.txt']
+            common_to_copy+=['ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt']
+            common_to_copy+= searchDirectory("AltDatabase/ensembl/"+species+"/",'Ensembl_Protein')
+            common_to_copy+= searchDirectory("AltDatabase/ensembl/"+species+"/",'ProteinFeatures')
+            common_to_copy+= searchDirectory("AltDatabase/ensembl/"+species+"/",'ProteinCoordinates')
             supported_arrays_present = 'no'
             for arraytype in selected_platforms:
                 if arraytype in species_to_package[species]: supported_arrays_present = 'yes' #Hence a non-RNASeq platform is present
@@ -7076,7 +7096,7 @@ def commandLineRun():
                         print 'Requires ordereddict (also can install the library ordereddict). To call 2.7: /usr/bin/python2.7'
                         sys.exit()
                 try:
-                    #output_dir = markerFinder.getAverageExpressionValues(input_exp_file,platform) ### Either way, make an average annotated file from the DATASET file
+                    output_dir = markerFinder.getAverageExpressionValues(input_exp_file,platform) ### Either way, make an average annotated file from the DATASET file
                     if 'DATASET' in input_exp_file:
                         group_exp_file = string.replace(input_exp_file,'DATASET','AVERAGE')
                     else:

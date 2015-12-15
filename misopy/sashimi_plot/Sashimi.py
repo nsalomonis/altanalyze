@@ -6,6 +6,7 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import rc
+import string
 
 import misopy.sashimi_plot.plot_utils.plot_settings as plot_settings
 import misopy.sashimi_plot.plot_utils.plotting as plotting
@@ -98,6 +99,10 @@ class Sashimi:
         #print "Saving plot to: %s" %(output_fname)
         #output_fname2=output_fname.replace(".pdf")
         plt.savefig(output_fname)
+        
+        ### Write out a png as well
+        output_fname = string.replace(output_fname,'.pdf','.png')
+        plt.savefig(output_fname,dpi=120)
         plt.clf()
         plt.close() ### May result in TK associated errors later on
 

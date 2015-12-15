@@ -105,7 +105,7 @@ def checkExpressionFileFormat(expFile):
             try: uid, coordinates = string.split(key,'=')
             except Exception: uid = key
             if '' in t[1:]:
-                values = [0 if x=='' else x for x in values]
+                values = [0 if x=='' else x for x in t[1:]]
             else:
                 values = t[1:]
             try: values = map(lambda x: float(x), values)
@@ -143,9 +143,11 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     array_folds={}
     for line in open(fn1,'rU').xreadlines():             
       data = cleanUpLine(line)
-      if data[0] != '#':
+      if data[0] != '#' and data[0] != '!':
         fold_data = string.split(data,'\t'); arrayid = fold_data[0]
-        if arrayid[0]== ' ': arrayid = arrayid[1:] ### Cufflinks issue
+        if arrayid[0]== ' ':
+            try: arrayid = arrayid[1:] ### Cufflinks issue
+            except Exception: arrayid = ' ' ### can be the first row UID column as blank
         #if 'counts.' in expr_input_dir: arrayid,coordinates = string.split(arrayid,'=') ### needed for exon-level analyses only
         ### differentiate data from column headers
         if x == 1:
@@ -264,6 +266,7 @@ def filterRNASeq(counts_db):
             i+=1
     #print reassigned, re
     
+    
 def addMaxReadCounts(filename):
     import RNASeq
     max_count_db,array_names = RNASeq.importGeneCounts(filename,'max')
@@ -272,9 +275,17 @@ def addMaxReadCounts(filename):
         gs.setMaxCount(max_count_db[gene]) ### Shouldn't cause an error, but we want to get an exception if it does (something is wrong with the analysis)        
 
 def simplerGroupImport(group_dir):
-    if 'exp.' in group_dir:
+    if 'exp.' in group_dir or 'filteredExp.' in group_dir:
         group_dir = string.replace(group_dir,'exp.','groups.')
-    sample_group_db={}
+        group_dir = string.replace(group_dir,'filteredExp.','groups.')
+    import collections
+    try: sample_group_db = collections.OrderedDict()
+    except Exception:
+        try:
+            import ordereddict
+            sample_group_db = ordereddict.OrderedDict()
+        except Exception:
+            sample_group_db={}
     fn = filepath(group_dir)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -494,6 +505,9 @@ def exportDataForGenMAPP(headers,input_type):
             if '-' in ensembl_gene:
                 ensembl_gene = string.split(ensembl_gene,'-')[0]
             data_val = ensembl_gene+'\t'+system_code
+        elif ('ENS' in probeset or 'ENF' in probeset) and system_code == 'Sy':
+            system_code = 'En'
+            data_val = probeset+'\t'+system_code
         else:
             data_val = probeset+'\t'+system_code
         for value in array_folds[probeset]: data_val += '\t'+ str(value)
@@ -652,7 +666,8 @@ def exportGOEliteInput(headers,system_code):
                     system_code = 'Sy'
             except Exception:
                 pass
-
+            if ('ENS' in probeset or 'ENF' in probeset) and system_code == 'Sy':
+                system_code = 'En'
             values = string.join([probeset,system_code],'\t')+'\n'; goelite.write(values)
         goelite.close()
 
@@ -988,15 +1003,25 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                     ### Convert to log2 RPKM values - or counts
                     try: values = map(lambda x: math.log(float(x)+increment,2), t[1:])
                     except Exception:
-                        logTransformWithNAs(t[1:],increment)
+                        values = logTransformWithNAs(t[1:],increment)
                 else:
                     try: values = map(float,t[1:])
                     except Exception:
-                        logTransformWithNAs(t[1:],increment)
+                        values = logTransformWithNAs(t[1:],increment)
                 
                 ### Calculate log-fold values relative to the mean of all sample expression values
                 values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
-                avg = statistics.avg(values)
+                try: avg = statistics.avg(values)
+                except Exception:
+                    values2=[]
+                    for v in values:
+                        try: values2.append(float(v))
+                        except Exception: pass
+                    values = values2
+                    try: avg = statistics.avg(values)
+                    except Exception:
+                        if len(values)>0: avg = values[0]
+                        else: avg = 0
                 if convertNonLogToLog and platform != 'RNASeq':
                     ### Rather than convert the values to log, and perform mean subtraction to derive folds, calculate in non-log space and then convert the folds to log
                     try: log_folds = map(lambda x: math.log(((x+increment/(avg+1))),2), values)
@@ -1193,7 +1218,12 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
             if arrayid in annotate_db: y = 1
             if arrayid in conventional_array_db: z = 1
             break
-        if array_type != "AltMouse" and (array_type != "3'array" or 'Ensembl' in vendor):
+        Vendor = vendor ### Need to rename as re-assigning will cause a global conflict error
+        for arrayid in array_folds:
+            if 'ENS' in arrayid and Vendor == 'Symbol': 
+                Vendor = 'Ensembl'
+                break
+        if array_type != "AltMouse" and (array_type != "3'array" or 'Ensembl' in Vendor):
             #annotate_db[gene] = symbol, definition,rna_processing
             #probeset_db[gene] = transcluster_string, exon_id_string
             title = ['Ensembl_gene','Definition','Symbol','Transcript_cluster_ids','Constitutive_exons_used','Constitutive_IDs_used','Putative microRNA binding sites','Select Cellular Compartments','Select Protein Classes','Chromosome','Strand','Genomic Gene Corrdinates','GO-Biological Process','GO-Molecular Function','GO-Cellular Component','WikiPathways']
@@ -1219,7 +1249,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 symbol = ca.Symbol()
                 data_val = [arrayid,ca.Description(),ca.Symbol(),ca.Species(),ca.Coordinates()]
                 data_val = string.join(data_val,'\t')
-            elif array_type != 'AltMouse' and (array_type != "3'array" or 'Ensembl' in vendor):
+            elif array_type != 'AltMouse' and (array_type != "3'array" or 'Ensembl' in Vendor):
                 try: definition = annotate_db[arrayid][0]; symbol = annotate_db[arrayid][1]; rna_processing = annotate_db[arrayid][2]
                 except Exception: definition=''; symbol=''; rna_processing=''
                 report = 'all'
@@ -1251,7 +1281,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 definition = annotate_db[arrayid][0]
                 symbol = annotate_db[arrayid][1]
                 data_val = arrayid +'\t'+ definition +'\t'+ symbol
-            elif array_type == "3'array" and 'Ensembl' not in vendor:
+            elif array_type == "3'array" and 'Ensembl' not in Vendor:
                 try:
                     ca = conventional_array_db[arrayid]
                     definition = ca.Description()
@@ -2323,6 +2353,35 @@ def calculateNormalizedIntensities(root_dir, species, array_type, avg_all_for_SS
         print exon_entries, 'found with',saved_entries,'entries normalized.'
     return alt_exon_output_dir
 
+def predictSplicingEventTypes(junction1,junction2):
+    j1a,j1b = string.split(junction1,'-')
+    j2a,j2b = string.split(junction2,'-')
+    j1a = string.split(j1a,':')[1][1:]
+    j2a = string.split(j2a,':')[1][1:]  
+    
+    j1a,r1a = string.split(j1a,'.')
+    j1b,r1b = string.split(j1b[1:],'.')
+
+    j2a,r2a = string.split(j2a,'.')
+    j2b,r2b = string.split(j2b[1:],'.')
+    
+    ### convert to integers
+    j1a,r1a,j1b,r1b,j2a,r2a,j2b,r2b = map(lambda x: int(float(x)),[j1a,r1a,j1b,r1b,j2a,r2a,j2b,r2b])
+    
+    splice_event=[]
+    if j1a == j2a and j1b==j2b: ### alt-splice site
+        if r1a == r2a: splice_event.append("three-prime")
+        else: splice_event.append("five-prime")
+    elif j1a == j2a: splice_event.append("cassette-exon")
+    elif j1b==j2b:
+        if 'E1.' in junction1: splice_event.append("altPromoter")
+        else: splice_event.append("cassette-exon")
+    elif 'E1.' in junction1 or 'E1.1' in junction2:
+        splice_event.append("altPromoter")
+            
+    print splice_event
+    print [j1a,r1a,j1b,r1b,j2a,r2a,j2b,r2b];sys.exit()
+
 def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expFile,min_events=0,med_events=0):
     expFile = exportSorted(expFile, 0) ### Sort the expression file
     print expFile
@@ -2910,8 +2969,10 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                         filterByLocalJunctionExp(prior_gene,feature_exp_db)
                         #try: gene_junction_denom[prior_gene] = [max(value) for value in zip(*gene_junction_denom[prior_gene])] # sum the junction counts for all junctions across the gene
                         #except Exception: pass
-                    #compareJunctionExpression(prior_gene)
-                    filterByLocalJunctionExp(prior_gene,feature_exp_db)
+                    if platform == 'RNASeq':
+                        filterByLocalJunctionExp(prior_gene,feature_exp_db)
+                    else:
+                        compareJunctionExpression(prior_gene)
                     feature_exp_db={}
                     gene_junction_denom={}
                 if max(counts)>4:
@@ -2965,7 +3026,7 @@ def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_
     probeset_type = 'core'
     import JunctionArray; import AltAnalyze
     buildFromDeNovoJunctionsOnly=True
-    if buildFromDeNovoJunctionsOnly:
+    if buildFromDeNovoJunctionsOnly and platform=='RNASeq':
         alt_junction_db={}
     else:
         exon_db, constitutive_probeset_db = AltAnalyze.importSplicingAnnotations(platform,species,probeset_type,avg_all_for_SS,root_dir)
@@ -3542,18 +3603,20 @@ def getHighestExpressingGenes(input_file,output_dir,topReported):
     firstLine = True
     sampleExpression_db={}
     for line in open(input_file,'rU').xreadlines():
-        data = line[:-1]
+        data = cleanUpLine(line)
         values = string.split(data,'\t')
         if firstLine:
             headers = values[1:]
             for i in headers:
                 sampleExpression_db[i]=[]
             firstLine = False
+            print len(values)
         else:
             gene = values[0]
             i=0
             for rpkm in values[1:]:
                 sampleExpression_db[headers[i]].append((float(rpkm),gene))
+
                 i+=1
     for sample in sampleExpression_db:
         Sample = string.replace(sample,'.bed','')
@@ -3572,7 +3635,7 @@ def getHighestExpressingGenes(input_file,output_dir,topReported):
         else:
             topExpGenes = map(lambda x: str(x[1]), sampleExpression_db[sample][-1*topReported:])
         for gene in topExpGenes:
-            if 'ENS' in gene: system = 'En'
+            if 'ENS' in gene or 'ENF' in gene: system = 'En'
             else: system = 'Sy'
             export_object.write(gene+'\t'+system+'\t1\n')
         export_object.close()
@@ -3694,6 +3757,7 @@ def exportSorted(filename, sort_col, excludeHeader=True):
         return ouput_file
     
 if __name__ == '__main__':
+    #predictSplicingEventTypes('ENSG00000123352:E15.4-E16.1','ENSG00000123352:E15.3-E16.1');sys.exit()
     test=False
     if test:
         directory = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/'
@@ -3794,7 +3858,7 @@ if __name__ == '__main__':
         #print export_dir
         #RNASeq.correlateClusteredGenes(export_dir)
     if analysis == 'highest-expressing':
-        getHighestExpressingGenes(directory,output_file,int(var))
+        getHighestExpressingGenes(directory,output_file,float(var))
     if analysis == 'lncRNA':
         lncRNANeighborCorrelationAnalysis(directory)
     if analysis == 'NI':

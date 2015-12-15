@@ -27,6 +27,8 @@ import time
 import traceback
 try: import export
 except Exception: pass
+try: import unique
+except Exception: pass
 
 try:
     import TabProxies
@@ -69,8 +71,7 @@ def writeJunctionBedFile(junction_db,jid,o):
                     junction_db2[(chr,jc,strand)]=junction_db[(chr,jc,tophat_strand)]
                 except Exception: pass
         junction_db = junction_db2
-        
-
+    
     for (chr,jc,tophat_strand) in junction_db:
         x_ls=[]; y_ls=[]; dist_ls=[]
         read_count = str(len(junction_db[(chr,jc,tophat_strand)]))
@@ -83,7 +84,15 @@ def writeJunctionBedFile(junction_db,jid,o):
         output_list = [chr,str(outlier_start),str(outlier_end),junction_id,read_count,tophat_strand,str(outlier_start),str(outlier_end),'255,0,0\t2',exon_lengths,'0,'+dist]
         o.write(string.join(output_list,'\t')+'\n')
           
-            
+def writeIsoformFile(isoform_junctions,o):
+    for coord in isoform_junctions:
+        isoform_junctions[coord] = unique.unique(isoform_junctions[coord])
+        if '+' in coord:
+            print coord, isoform_junctions[coord] 
+    
+    if '+' in coord:
+        sys.exit()
+    
 def retreiveAllKnownSpliceSites():
     ### Uses a priori strand information when none present
     import export, unique
@@ -131,6 +140,18 @@ def parseJunctionEntries(bam_dir,multi=False):
     original_junction_db = copy.deepcopy(junction_db)
     
     bamf = pysam.Samfile(bam_dir, "rb" )
+    ### Is there are indexed .bai for the BAM? Check.
+    try:
+        for entry in bamf.fetch():
+            codes = map(lambda x: x[0],entry.cigar)
+            break
+    except Exception:
+        ### Make BAM Index
+        if multi == False:
+            print 'Building BAM index file for', bam_dir
+        pysam.index(bam_dir)
+        bamf = pysam.Samfile(bam_dir, "rb" )
+
     chromosome = False
     chromosomes={}
     count=0
@@ -139,10 +160,12 @@ def parseJunctionEntries(bam_dir,multi=False):
     l1 = None; l2=None
     o = open (string.replace(bam_dir,'.bam','__junction.bed'),"w")
     o.write('track name=junctions description="TopHat junctions"\n')
-    outlier_start = 0; outlier_end = 0; read_count = 0
+    export_isoform_models = False
+    if export_isoform_models:
+        io = open (string.replace(bam_dir,'.bam','__isoforms.txt'),"w")
+    isoform_junctions = copy.deepcopy(junction_db)
+    outlier_start = 0; outlier_end = 0; read_count = 0; c=0
     for entry in bamf.fetch():
-      #chromosome = bamf.getrname( entry.rname ) 
-      codes = map(lambda x: x[0],entry.cigar)
       try: cigarstring = entry.cigarstring
       except Exception:
           if 3 in codes: cigarstring = 'N'
@@ -163,8 +186,10 @@ def parseJunctionEntries(bam_dir,multi=False):
             if prior_jc_start == 0: pass
             elif (entry.pos-prior_jc_start) > 5000 or bamf.getrname( entry.rname ) != chromosome: ### New chr or far from prior reads
                 writeJunctionBedFile(junction_db,jid,o)
+                #writeIsoformFile(isoform_junctions,io)
                 junction_db = copy.deepcopy(original_junction_db) ### Re-set this object
                 jid+=1
+
             chromosome = bamf.getrname( entry.rname )
             chromosomes[chromosome]=[] ### keep track
             X=entry.pos
@@ -179,11 +204,32 @@ def parseJunctionEntries(bam_dir,multi=False):
                 #if multi == False:  print 'No TopHat strand information';sys.exit()
                 tophat_strand = None
             coordinates,up_to_intron_dist = getSpliceSites(entry.cigar,X)
+                                
             for (five_prime_ss,three_prime_ss) in coordinates:
                 jc = five_prime_ss,three_prime_ss
                 #print X, Y, jc, entry.cigarstring, entry.cigar
                 try: junction_db[chromosome,jc,tophat_strand].append([X,Y,up_to_intron_dist])
                 except Exception: junction_db[chromosome,jc,tophat_strand] = [[X,Y,up_to_intron_dist]]
+                
+            if export_isoform_models:
+                try:
+                    mate = bamf.mate(entry) #https://groups.google.com/forum/#!topic/pysam-user-group/9HM6nx_f2CI
+    
+                    if 'N' in mate.cigarstring:
+                        mate_coordinates,mate_up_to_intron_dist = getSpliceSites(mate.cigar,mate.pos)
+                    else: mate_coordinates=[]
+                except Exception: mate_coordinates=[]
+                #print coordinates,mate_coordinates
+                junctions = map(lambda x: tuple(x),coordinates)
+                if len(mate_coordinates)>0:
+                    try:
+                        isoform_junctions[chromosome,tuple(junctions),tophat_strand].append(mate_coordinates)
+                    except Exception:
+                        isoform_junctions[chromosome,tuple(junctions),tophat_strand] = [mate_coordinates]
+                else:
+                    if (chromosome,tuple(junctions),tophat_strand) not in isoform_junctions:
+                        isoform_junctions[chromosome,tuple(junctions),tophat_strand] = []
+                
             count+=1
     writeJunctionBedFile(junction_db,jid,o) ### One last read-out
     if multi == False:

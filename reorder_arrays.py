@@ -90,7 +90,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     except Exception: probability_statistic = 'unpaired t-test'
     try: gene_exp_threshold = math.log(fl.GeneExpThreshold(),2)
     except Exception: gene_exp_threshold = 0
-    try: gene_rpkm_threshold = fl.RPKMThreshold()
+    try: gene_rpkm_threshold = float(fl.RPKMThreshold())
     except Exception: gene_rpkm_threshold = 0
     try: FDR_statistic = fl.FDRStatistic()
     except Exception: FDR_statistic = 'Benjamini-Hochberg'

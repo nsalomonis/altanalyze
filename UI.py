@@ -424,9 +424,9 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, self._parent))
             except Exception,e: createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose,contrast,None)
         if analysis_type == 'performPCA':
-            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species = info_list
-            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species))
-            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species)
+            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore = info_list
+            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore))
+            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore)
         if analysis_type == 'runLineageProfiler':
             fl, filename, vendor, custom_markerFinder, geneModel_file, modelDiscovery = info_list
             try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent, modelSize=modelDiscovery))
@@ -870,14 +870,15 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     try: root.destroy()
     except Exception: None
     
-def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None):
+def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None, zscore=False):
     import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
     else: pca_labels=False
-    
+    if zscore=='yes': zscore = True
+    elif zscore=='no': zscore = False
     try:
-        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels, plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName, species=species)
+        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels, plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName, species=species, zscore=zscore)
         try: print'Finished building PCA.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -3432,8 +3433,10 @@ def importUserOptions(array_type,vendor=None):
         data = string.replace(data,'\k','\n') ###Used \k in the file instead of \n, since these are removed above
         if array_type == 'RNASeq':
             data = string.replace(data,'probeset','junction')
-            data = string.replace(data,'probe set','junction')
+            data = string.replace(data,'probe set','junction/exon')
             data = string.replace(data,'CEL file','BED, BAM, TAB or TCGA junction file')
+        if vendor != 'Affymetrix':
+            data = string.replace(data,'probe set','gene')      
         if vendor == 'Agilent':
             if 'CEL file' in data:
                 data = string.replace(data,'CEL file','Feature Extraction file')
@@ -4298,6 +4301,7 @@ def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
                 if array_type == 'RNASeq': filename = 'AltDatabase/'+species+'_'+array_type+'.zip'
                 elif 'glue' in specific_arraytype: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'_Glue.zip'
                 elif 'hta 2.0' in specific_arraytype: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'_HTA-2_0.zip'
+                elif 'mta 1.0' in specific_arraytype: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'_MTA-1_0.zip'
                 else: filename = 'AltDatabase/'+species+'/'+species+'_'+array_type+'.zip'
                 dir = 'AltDatabase/updated/'+gene_database; var_list = filename,dir
                 if debug_mode == 'no' and run_mode == 'GUI':
@@ -4317,6 +4321,8 @@ def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
                     elif 'glue' not in specific_arraytype and 'Glue' in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
                     elif 'hta 2.0' in specific_arraytype and 'HTA-2_0' not in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
                     elif 'hta 2.0' not in specific_arraytype and 'HTA-2_0' in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
+                    elif 'mta 1.0' in specific_arraytype and 'MTA-1_0' not in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
+                    elif 'mta 1.0' not in specific_arraytype and 'MTA-1_0' in specific_platform: wrong_junction_db = 'yes'; downloaded_junction_db = 'no'
                     #print [specific_arraytype], [specific_platform], wrong_junction_db, downloaded_junction_db
       
 def exportGeneList(gene_list,outputFolder):
@@ -4962,6 +4968,9 @@ def getUserParameters(run_parameter,Multi=None):
                                 GeneSelection+=' amplify'
                         except Exception: pass
 
+                    if GeneSetSelection  != 'None Selected' and PathwaySelection == ['None Selected']:
+                        PathwaySelection = [gu.Results()[GeneSetSelection][0]] ### Default this to the first selection
+
                     GeneSetSelection = string.replace(GeneSetSelection,'\n',' ')
                     GeneSetSelection = string.replace(GeneSetSelection,'\r',' ')
                     #print [GeneSetSelection, JustShowTheseIDs, GeneSelection,ClusterGOElite,normalization]
@@ -5004,6 +5013,7 @@ def getUserParameters(run_parameter,Multi=None):
                     dimensions = gu.Results()['dimensions']
                     pca_labels = gu.Results()['pca_labels']
                     pca_algorithm = gu.Results()['pca_algorithm']
+                    zscore = gu.Results()['zscore']
                     transpose = gu.Results()['transpose']
                     geneSetName = gu.Results()['pcaGeneSets']
                     if len(geneSetName)==0:
@@ -5012,7 +5022,7 @@ def getUserParameters(run_parameter,Multi=None):
                         analysis = 'performPCA'
                         if transpose == 'yes': transpose = True
                         else: transpose = False
-                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species
+                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -5325,13 +5335,12 @@ def getUserParameters(run_parameter,Multi=None):
                     ### Wrong platform listed
                     array_type = "3'array"
                     vendor = 'other:'+systm ### Ensembl linked system name
-                    if old_options==[]: ### If we haven't hit the back button
-                        if len(old_options)==0:
-                            option_list,option_db = importUserOptions(array_type) ### will re-set the paramater values, so not good for back select
-                            user_variables['array_type'] = array_type
-                    
+                    if old_options==[] or 'marker_finder' not in old_options: ### If we haven't hit the back button
+                        option_list,option_db = importUserOptions(array_type) ### will re-set the paramater values, so not good for back select
+                        user_variables['array_type'] = array_type
+                        
             #print array_type, vendor
-            if array_type != 'RNASeq':
+            if array_type == "3'array":
                 ### This is the new option for expression filtering of non-RNASeq classified data
                 try:
                     #print option_db['rpkm_threshold'].DefaultOption()
@@ -5479,8 +5488,7 @@ def getUserParameters(run_parameter,Multi=None):
                     if visualize_results == 'yes':
                         try:
                             ### Tests to make sure these are installed - required for visualization
-                            try: import matplotlib as mpl
-                            except Exception: from matplotlib import mpl
+                            import matplotlib
                             from numpy import array
                             from scipy import rand
                         except Exception:
@@ -5797,11 +5805,16 @@ def getUserParameters(run_parameter,Multi=None):
             if comps_name in dir_files and len(group_db)>0:
                 comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
                 for group1,group2 in comp_group_list:
-                    try: group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
+                    try:
+                        group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
+                        original_comp_group_list.append((group_name1,group_name2)) ### If comparisons already exist, default to these
                     except KeyError:
                         print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
-                        WarningWindow(print_out,'Exit'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
-                    original_comp_group_list.append((group_name1,group_name2)) ### If comparisons already exist, default to these
+                        #WarningWindow(print_out,'Exit'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+                        #print print_out
+                        original_comp_group_list=[]
+                        
+                    
         else:
             for cel_file in cel_files:
                 group = ''; group_name = ''    

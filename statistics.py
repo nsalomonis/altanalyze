@@ -958,6 +958,7 @@ def matrixImport(filename):
             grouped_floats=[]
             float_values = []
             associated_groups=[]
+
             for g in groups: ### string values
                 gvalues_list=[]
                 for i in group_db[g]:
@@ -990,14 +991,15 @@ def runANOVA(filename,matrix,compared_groups):
     all_matrix_pvalues={}
     matrix_pvalues_list=[]
     useAdjusted=False
+    pvals=[]
     for key in matrix:
         filtered_groups = []
         for group in matrix[key]:
             if len(group)>1:
                 filtered_groups.append(group)
         try:
-
             p = OneWayANOVA(filtered_groups)
+            pvals.append(p)
             if useAdjusted == False:
                 if p < 0.05:
                     try:
@@ -1012,25 +1014,26 @@ def runANOVA(filename,matrix,compared_groups):
                             for g2 in filtered_groups:
                                 gi2+=1
                                 if g1!=g2:
-                                    pairwise_p = OneWayANOVA([g1,g2])
-                                    if pairwise_p<0.05:
-                                        group1 = group_names[gi1]
-                                        group2 = group_names[gi2]
-                                        sorted_groups=[group1,group2]
-                                        sorted_groups.sort()
-                                        group1, group2 = sorted_groups
-                                        if (group1,group2) not in added:
-                                            if key == 'Tnfaip8:ENSMUSG00000062210:E3.4-E8.1 ENSMUSG00000062210:E1.4-E8.1':
-                                                print group1,'\t',group2,'\t',pairwise_p
-                                            added.append((group1,group2))
-                                            try: major_groups[group1]+=1
-                                            except Exception: major_groups[group1]=1
-                                            try: major_groups[group2]+=1
-                                            except Exception: major_groups[group2]=1
-                                            try: comparisons[group1].append(group2)
-                                            except Exception: comparisons[group1] = [group2]
-                                            try: comparisons[group2].append(group1)
-                                            except Exception: comparisons[group2] = [group1]
+                                    if abs(avg(g1)-avg(g2))>0.2:
+                                        pairwise_p = OneWayANOVA([g1,g2])
+                                        if pairwise_p<0.05:
+                                            group1 = group_names[gi1]
+                                            group2 = group_names[gi2]
+                                            sorted_groups=[group1,group2]
+                                            sorted_groups.sort()
+                                            group1, group2 = sorted_groups
+                                            if (group1,group2) not in added:
+                                                if key == 'Tnfaip8:ENSMUSG00000062210:E3.4-E8.1 ENSMUSG00000062210:E1.4-E8.1':
+                                                    print group1,'\t',group2,'\t',pairwise_p
+                                                added.append((group1,group2))
+                                                try: major_groups[group1]+=1
+                                                except Exception: major_groups[group1]=1
+                                                try: major_groups[group2]+=1
+                                                except Exception: major_groups[group2]=1
+                                                try: comparisons[group1].append(group2)
+                                                except Exception: comparisons[group1] = [group2]
+                                                try: comparisons[group2].append(group1)
+                                                except Exception: comparisons[group2] = [group1]
                         major_group_list=[]
 
                         for group in major_groups: major_group_list.append([major_groups[group],group])
@@ -1047,8 +1050,9 @@ def runANOVA(filename,matrix,compared_groups):
                     except Exception:
                         #print traceback.format_exc();sys.exit()
                         hits=''
-                    matrix_pvalues[key]=[p,p]
-                    matrix_pvalues_list.append((p,'',key,hits))
+                    if len(added)>0:
+                        matrix_pvalues[key]=[p,p]
+                        matrix_pvalues_list.append((p,'',key,hits))
             else:
                 matrix_pvalues[key]=[p,p]
                 matrix_pvalues_list.append((p,'',key,''))
@@ -1057,7 +1061,8 @@ def runANOVA(filename,matrix,compared_groups):
         except Exception:
             #print traceback.format_exc();sys.exit()
             pass ### not enough values present or groups
-        
+    pvals.sort()
+    #print pvals[:20]
     adjustPermuteStats(all_matrix_pvalues)
     adj_matrix_pvalues = copy.deepcopy(all_matrix_pvalues)
     if useAdjusted: matrix_pvalues={}
@@ -1099,9 +1104,10 @@ def returnANOVAFiltered(filename,original_data,matrix_pvalues):
 if __name__ == '__main__':
     dirfile = unique
     filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
-    filename = '/Volumes/SEQ-DATA/Jared/AltResults/Unbiased/junctions/top_alt_junctions-renamed.txt'
-    filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/AltResults/Unbiased/junctions/top_alt_junctions_grouped.txt'
-    filename = '/Volumes/salomonis1-1/projects/Grimes/mm_U2AF1/bams/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Volumes/SEQ-DATA/Jared/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    #filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    #filename = '/Volumes/SEQ-DATA/SRSF2_human-GSE65349/SRSF2/Hs/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     matrix,compared_groups,original_data = matrixImport(filename)
     matrix_pvalues=runANOVA(filename,matrix,compared_groups)
     returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()

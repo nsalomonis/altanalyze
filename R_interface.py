@@ -197,8 +197,22 @@ def importHopachOutput(filename):
     
     hopach_clusters.sort()
     hopach_clusters = map(lambda x: x[1], hopach_clusters) ### Store the original file indexes in order based the cluster final order
+    
+    ### Change the cluster_levels from non-integers to integers for ICGS comparison group simplicity and better coloring of the color bar
+    cluster_level2 = []
+    cluster_index_db={}
+    index = 1
+    for c in cluster_level:
+        if c not in cluster_index_db:
+            cluster_index_db[c]=str(index)
+            new_cluster_id = index
+            index+=1
+        else:
+            new_cluster_id = cluster_index_db[c]
+        cluster_level2.append(new_cluster_id)
+
     db['leaves'] = hopach_clusters ### This mimics Scipy's cluster output data structure
-    db['level'] = cluster_level
+    db['level'] = cluster_level2
     return db
             
 class RScripts:
@@ -277,9 +291,11 @@ class RScripts:
 
         # specify the grouping column for finding differential genes
         import multiprocessing
-        cores = str(multiprocessing.cpu_count()/2)
-        
-        print_out=r('diff_test_res <- differentialGeneTest(URMM[expressed_genes, ], fullModelFormulaStr = "expression~Group",cores=%s)') % cores
+        cores = multiprocessing.cpu_count()
+        print 'using', cores, 'cores'
+        k =  'diff_test_res <- differentialGeneTest(URMM[expressed_genes, ], fullModelFormulaStr = "expression~Group",cores=%s)' % cores
+        print [k]
+        print_out=r(k)
         print print_out
         gene_ord='ordering_genes <- row.names(subset(diff_test_res, pval < %s))' %p_val
        
@@ -547,7 +563,7 @@ class RScripts:
             output_filename = string.replace(gene_output,'rows.','')
             cdt_output_line = 'hopach2tree(data, file = %s, hopach.genes = %s, hopach.arrays = %s, dist.genes = %s, dist.arrays = %s, d.genes = %s, d.arrays = %s, gene.wts = NULL, array.wts = NULL, gene.names = NULL)' % (output_filename,hopg,hopa,distmatg,distmata,metric_g,metric_a) ###7 values
         except Exception: None
-        #make_tree_line = 'makeTree(labels, ord, medoids, dist, side = "GENE")' ### Used internally by HOPACH
+        make_tree_line = 'makeTree(labels, ord, medoids, dist, side = "GENE")' ### Used internally by HOPACH
         #print cdt_output_line
         try: print_out = r(cdt_output_line)
         except Exception: None
@@ -834,6 +850,7 @@ def reformatHeatmapFile(input_file):
                 array_names = []
                 for i in t[2:]:
                     array_names.append(string.replace(i,':','-'))
+                    #print array_names;sys.exit()
                     #array_names.append(i)
             elif 'column_clusters-flat' in t:
                 array_clusters = t[2:]
@@ -866,7 +883,7 @@ if __name__ == '__main__':
     analysis_method='hopach'; multtest_type = 'f'
     #Sample log File
     #Input-exp.MixedEffectsThanneer-DPF3%20DMRT3%20FOXA1%20SMAD6%20TBX3%20amplify%20monocle-hierarchical_cosine_correlated.txt
-    filename='/Users/saljh8/Desktop/Grimes/KashishNormalization/6-5-2015/DataPlots/MarkerFinder/DataPlots/test.txt'
+    filename='/Users/saljh8/Desktop/cardiacRNASeq/DataPlots/Clustering-additionalExpressionSingleCell-annotated-hierarchical_cosine_cosine2.txt'
     rawExpressionFile = filename
     #filename = "/Volumes/SEQ-DATA/Eric/embryonic_singlecell_kidney/ExpressionOutput/Clustering/SampleLogFolds-Kidney.txt"
     #filename = "/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewCardiacMarkers1/FullDataset/ExpressionOutput/Clustering/SampleLogFolds-CM.txt"

@@ -573,18 +573,20 @@ def getGenomicPosition(ac,ens_protein,uniprot_seq_len,pos1,pos2,ep_list):
         residue_positions.append(ep.ResidueStopPos())
         if pos1_contained == 1:
             start_offset = pos1 - ep.ResidueStartPos()
-            if ep.Strand == '+':
+            if ep.Strand() == '+':
                 genomic_feature_start = ep.GenomicStartPos()+(start_offset*3)
             else:
-                genomic_feature_start = ep.GenomicStopPos()-(start_offset*3)
+                genomic_feature_start = ep.GenomicStartPos()-(start_offset*3)-1
+            if ens_protein == 'ENSMUSP00000044603':
+                print 'start',ep.Strand(), ep.ResidueStartPos(),ep.ResidueStopPos(),pos1_contained,pos2_contained,ep.GenomicStartPos(),ep.GenomicStopPos(),genomic_feature_start,pos1,pos2,start_offset
         if pos2_contained == 1:
-            stop_offset = pos2 - ep.ResidueStartPos()+1
-            if ep.Strand == '+':
+            stop_offset = pos2 - ep.ResidueStartPos()
+            if ep.Strand() == '+':
                 genomic_feature_stop = ep.GenomicStartPos()+(stop_offset*3)
             else:
-                genomic_feature_stop = ep.GenomicStopPos()-(stop_offset*3)
-        #if ens_protein == 'ENSDARP00000071086':
-            #print ep.ResidueStartPos(),ep.ResidueStopPos(),pos1_contained,pos2_contained,ep.GenomicStartPos(),ep.GenomicStopPos()
+                genomic_feature_stop = ep.GenomicStartPos()-(stop_offset*3)+2
+            if ens_protein == 'ENSMUSP00000044603':
+                print 'stop',ep.Strand(),ep.ResidueStartPos(),ep.ResidueStopPos(),pos1_contained,pos2_contained,ep.GenomicStartPos(),ep.GenomicStopPos(),genomic_feature_stop,pos1,pos2,stop_offset
     if uniprot_seq_len == residue_positions[-1]:
         try: return genomic_feature_start,genomic_feature_stop,'found' ### both should be found if everything is accurately built beforehand
         except Exception: null=[] #print ens_protein,ac,pos1,pos2, uniprot_seq_len, residue_positions[-1],ep.Strand(), ep.ResidueStartPos(), ep.ResidueStopPos(),genomic_feature_stop,genomic_feature_start
@@ -655,7 +657,7 @@ def import_uniprot_ft_data(species,protein_coordinate_file,domain_gene_counts,en
                 else:
                     if ft_length < 3: pos_1 = pos1 - 3; pos_2 = pos2 + 3
                     else: pos_1 = pos1 - 1; pos_2 = pos2 + 1
-                    
+                
                 if primary_uniprot_id in uniprot_protein_seq_db:
                     full_prot_seq = uniprot_protein_seq_db[primary_uniprot_id].Sequence()
                     sequence_fragment = full_prot_seq[pos_1:pos_2] ###We will search for this sequence, so have this expanded if too small (see above code)
@@ -769,7 +771,7 @@ def importGeneAnnotations(species):
     return gene_db
 
 if __name__ == '__main__':
-    species = 'Zm'
+    species = 'Mm'
     array_type = 'RNASeq'
     genes_analyzed = importGeneAnnotations(species)
     uniprot_arrayid_db={}

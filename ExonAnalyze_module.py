@@ -481,21 +481,21 @@ def getFeatureIsoformGenomePositions(species,protein_ft_db,mRNA_protein_seq_db,g
                         error = True
                     if error == False:
                         if ft.DomainSeq() in protein_seq:
-                            if coordinate_type == 'genomic':
-                                pos1 = ft.GenomicStart(); pos2 = ft.GenomicStop()
-                            else:
-                                pos1 = str(ft.DomainStart()); pos2 = str(ft.DomainEnd())
+                            #if coordinate_type == 'genomic':
+                            pos1_genomic = ft.GenomicStart(); pos2_genomic = ft.GenomicStop()
+                            #else:
+                            pos1 = str(ft.DomainStart()); pos2 = str(ft.DomainEnd())
     
                             ### There are often many features that overlap within a transcript, so consistently pick just one
                             if mRNA in transcript_feature_db:
                                 db = transcript_feature_db[mRNA]
                                 if (pos1,pos2) in db:
-                                    db[pos1, pos2].append([protein,ft_name,annotation])
+                                    db[pos1, pos2].append([pos1_genomic, pos2_genomic, protein,ft_name,annotation])
                                 else:
-                                    db[pos1, pos2]=[[protein,ft_name,annotation]]
+                                    db[pos1, pos2]=[[pos1_genomic, pos2_genomic, protein,ft_name,annotation]]
                             else:
                                 db={}
-                                db[pos1, pos2]=[[protein,ft_name,annotation]]
+                                db[pos1, pos2]=[[pos1_genomic, pos2_genomic, protein,ft_name,annotation]]
                                 transcript_feature_db[mRNA] = db
                                 
                             #values = [mRNA, protein, pos1, pos2,ft_name,annotation]; unique_entries.append(values)
@@ -507,8 +507,8 @@ def getFeatureIsoformGenomePositions(species,protein_ft_db,mRNA_protein_seq_db,g
             db = transcript_feature_db[transcript]
             for (pos1,pos2) in db:
                 db[pos1,pos2].sort() ### Pick the alphabetically listed first feature
-                protein,ft_name,annotation = db[pos1,pos2][0]
-                values = [transcript, protein, pos1, pos2,ft_name,annotation]
+                pos1_genomic, pos2_genomic, protein,ft_name,annotation = db[pos1,pos2][0]
+                values = [transcript, protein, pos1, pos2,pos1_genomic, pos2_genomic, ft_name,annotation]
                 export_data.write(string.join(values,'\t')+'\n')
                 
     export_data.close()
@@ -517,7 +517,6 @@ def getFeatureIsoformGenomePositions(species,protein_ft_db,mRNA_protein_seq_db,g
     print len(failed_ac),'mRNAs without identified/in silico derived proteins'  ### Appear to be ncRNAs without ATGs
     print failed_ac[:20]
     
-
 def identifyAltIsoformsProteinComp(probeset_gene_db,species,array_type,protein_domain_db,compare_all_features,data_type):
     """ This function is used by the module IdentifyAltIsoforms to run 'characterizeProteinLevelExonChanges'"""
     global protein_ft_db; protein_ft_db = protein_domain_db; protein_domain_db=[]

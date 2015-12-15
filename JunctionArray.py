@@ -89,7 +89,10 @@ class ExonAnnotationData:
         except Exception: symbols = self._symbols
         return symbols
     def setTranscriptClusterID(self,transcript_cluster): self._transcript_cluster = transcript_cluster
-    def TranscriptCluster(self): return self._transcript_cluster
+    def TranscriptCluster(self):
+        if self._transcript_cluster[-2:] == '.1':
+            self._transcript_cluster = self._transcript_cluster[:-2]
+        return self._transcript_cluster
     def setTranscripts(self, transcripts): self.transcripts = transcripts
     def EnsemblTranscripts(self): return self.transcripts    
     def ProbesetType(self):
@@ -184,7 +187,7 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
     extraction_type = 'Ensembl'
 
     tc_ensembl_annotations = importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
-    if 'HTA' in specific_array_type:
+    if 'HTA' in specific_array_type or 'MTA' in specific_array_type:
         ens_trans_gene_db = importGenericReverse('AltDatabase/ensembl/Hs/Hs_Ensembl_transcript-annotations.txt')
         
     ensembl_symbol_db={}; ensembl_gene_db={}
@@ -257,7 +260,7 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
             missing_count+=1
             #if missing_count<20: print transcript_cluster_id,ti.EnsemblGeneIDs(),ti.Symbol()
             
-    if 'HTA' in specific_array_type:
+    if 'HTA' in specific_array_type or 'MTA' in specific_array_type:
         ### Add TCs based on genomic overlap positions with Ensembl genes
         coordinates_to_annotate={}; added_genes=0
         for transcript_cluster_id in tc_ensembl_annotations:
@@ -273,7 +276,7 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
             ti = tc_ensembl_annotations[transcript_cluster_id]
             if transcript_cluster_id not in gene_annotation_db:
                 try:
-                    if 'ENSG' in ti.GeneID():
+                    if 'ENSG' in ti.GeneID() or 'ENSMUSG' in ti.GeneID():
                         gene_annotation_db[transcript_cluster_id]=['',ti.GeneID(),ti.Symbol()[0],'']
                         try: ensembl_associations[transcript_cluster_id].append(ti.GeneID())
                         except KeyError: ensembl_associations[transcript_cluster_id] = [ti.GeneID()]
@@ -284,7 +287,7 @@ def importJunctionArrayAnnotations(species,array_type,specific_array_type):
                     limit+=1
             else:
                 try:
-                    if 'ENSG' in ti.GeneID(): added_genes+=1
+                    if 'ENSG' in ti.GeneID() or 'ENSMUSG' in ti.GeneID(): added_genes+=1
                 except Exception: pass
                 
 
@@ -329,12 +332,24 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
     if 'lue' in specific_array_type: ### Grab an hGlue specific annotation file
         filename = export_dir+string.lower(species[0])+'Glue_3_0_v1.annotation_map_dt.v3.hg18.csv'
     elif 'HTA' in specific_array_type:
-        psr_probeset_db = importGenericReverse(export_dir+'probeset-psr.txt')
+        try: psr_probeset_db = importGenericReverse(export_dir+'probeset-psr.txt')
+        except Exception:
+            psr_probeset_db = importGenericReverse(export_dir+species+'_probeset-psr.txt')
         if extraction_type == 'Ensembl':
             filename = export_dir+'HTA-2_0.na33.hg19.transcript.csv'
             type = 'TranscriptCluster'
         else:
             filename = export_dir+'HTA-2_0.na33.hg19.probeset.csv'
+            #filename = export_dir+'test.csv'
+    elif 'MTA' in specific_array_type:
+        try: psr_probeset_db = importGenericReverse(export_dir+'probeset-psr.txt')
+        except Exception:
+            psr_probeset_db = importGenericReverse(export_dir+species+'_probeset-psr.txt')
+        if extraction_type == 'Ensembl':
+            filename = export_dir+'MTA-1_0.na35.mm10.transcript.csv'
+            type = 'TranscriptCluster'
+        else:
+            filename = export_dir+'MTA-1_0.na35.mm10.probeset.csv'
             #filename = export_dir+'test.csv'
     verifyFile(filename,array_type) ### Check's to see if it is installed and if not, downloads or throws an error
     fn=filepath(filename)
@@ -368,7 +383,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
         
         if x<5 or '#' == data[0]: x+=1
         elif x>2:
-            if 'HTA' in specific_array_type:
+            if 'HTA' in specific_array_type or 'MTA' in specific_array_type:
                 if extraction_type != 'Ensembl': type = 'PSR'
                 ### This is the probeset file which has a different structure and up-to-date genomic coordinates (as of hg19)
                 if header_row:
@@ -399,19 +414,23 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
                         for ga in gene_annotation:
                             try: ga = string.split(ga,' // '); symbols = ga[1]
                             except Exception: pass
-                        if 'ENSG' in transcript_annotation:
+                        if 'ENSG' in transcript_annotation or 'ENSMUSG' in transcript_annotation:
+                            if 'ENSG' in transcript_annotation: delim = 'ENSG'
+                            if 'ENSMUSG' in transcript_annotation: delim = 'ENSMUSG'
                             try:
-                                ta = string.split(transcript_annotation,'ENSG')[1]
+                                ta = string.split(transcript_annotation,delim)[1]
                                 try: ta = string.split(ta,' ')[0]
                                 except Exception: pass
-                                geneids='ENSG'+ta
+                                geneids=delim+ta
                             except Exception: pass
-                        if 'ENST' in transcript_annotation:
+                        if 'ENST' in transcript_annotation or 'ENSMUST' in transcript_annotation:
+                            if 'ENST' in transcript_annotation: delim = 'ENST'
+                            if 'ENSMUST' in transcript_annotation: delim = 'ENSMUST'
                             try:
-                                gene_annotation = string.split(transcript_annotation,'ENST')[1]
+                                gene_annotation = string.split(transcript_annotation,delim)[1]
                                 try: gene_annotation = string.split(gene_annotation,' ')[0]
                                 except Exception: pass
-                                ens_transcripts = ['ENST'+gene_annotation]
+                                ens_transcripts = [delim+gene_annotation]
                             except Exception: pass
                         #if probeset == 'TC04000084.hg.1':
                         #print transcript_annotation;sys.exit()
@@ -419,7 +438,8 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
                         probeset = probeset[:-2] # remove the .1 or .0 at the end - doesn't match to the probeset annotations
                         psri = PSRAnnotation(psr,probeset,'',probeset,strand,geneids,symbols,'','','',type)
                         psri.setChromosome(chr)
-                        psri.setStart(int(t[starti]))
+                        try: psri.setStart(int(t[starti]))
+                        except Exception: continue
                         psri.setEnd(int(t[endi]))
                         psri.setTranscripts(ens_transcripts)
                     elif 'JUC' in psr:
@@ -435,6 +455,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
                         five_EC,three_EC = five_exon,three_exon ### NOT SURE THIS IS CORRECT
                         junction_alinging_probesets[probeset] = [five_exon,five_exon], [three_exon,three_exon]
                         seq = t[jsi]
+                        seq = string.lower(string.replace(seq,'|',''))
                         psri = PSRAnnotation(psr,probeset,'',transcript_cluster,strand,'','',exon_cluster,constitutive,seq,type)
                         try: junction_start = int(t[jse]); junction_end = int(t[jee])
                         except Exception: print t;sys.exit()
@@ -447,6 +468,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
                             exon2s = junction_end; exon2e = junction_end-16
                         psri.setTranscriptClusterID(transcript_cluster)
                         psri.setChromosome(chr)
+                        #print chr, transcript_cluster, exon1s, exon2s, seq, five_EC, three_EC;sys.exit()
                     elif 'PSR' in psr:
                         type = 'Exon'
                         exon_cluster = string.split(t[xi],'///')[0] ### grab the first exonIDs
@@ -510,7 +532,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
             elif extraction_type == 'sequence':
                 store = 'no'
                 if type == 'Exon' or type == 'Junction':
-                    transcript_cluster_count[psri.TranscriptCluster()]=[]                    
+                    transcript_cluster_count[psri.TranscriptCluster()]=[]
                     if psri.TranscriptCluster() in ensembl_associations:
                         ens_geneid = ensembl_associations[psri.TranscriptCluster()][0]
                         critical_junctions=''
@@ -546,6 +568,7 @@ def importJunctionArrayAnnotationMappings(array_type,specific_array_type,species
             if type == 'TranscriptCluster':
                 tc+=1
             if type == 'Junction':
+                #print 'here';sys.exit()
                 j+=1
                 if extraction_type == 'comparisons':
                     ### Store the left exon-cluster and right exon-cluster for each junction
@@ -1744,7 +1767,7 @@ def getJunctionExonLocations(species,array_type,specific_array_type):
     ensembl_associations = importJunctionArrayAnnotations(species,array_type,specific_array_type)
     extraction_type = 'sequence'
     exon_seq_db=importJunctionArrayAnnotationMappings(array_type,specific_array_type,species,extraction_type)
-    if 'HTA' in specific_array_type:
+    if 'HTA' in specific_array_type or 'MTA' in specific_array_type:
         exportImportedProbesetLocations(species,array_type,exon_seq_db,ensembl_associations)
     getLocations(species,array_type,exon_seq_db)
 

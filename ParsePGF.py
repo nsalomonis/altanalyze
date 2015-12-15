@@ -116,9 +116,9 @@ if __name__ == '__main__':
     array_type = 'gene'
     #array_type = 'exon'
     array_type = 'junction'
-    species = 'Hs'
+    species = 'Mm'
     parent_dir = 'AltDatabase/'+species+'/'+array_type+'/library'
     parent_dir = '/AltDatabase/affymetrix/LibraryFiles'
     e = GrabFiles(); e.setdirectory(parent_dir)
-    pgf_dir,pgf_file = e.searchdirectory('HTA-2_0.r1.pgf')
+    pgf_dir,pgf_file = e.searchdirectory('MTA-1_0.r3.pgf')
     importPGF(parent_dir,species,pgf_dir)

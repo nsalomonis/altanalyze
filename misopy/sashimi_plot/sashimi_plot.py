@@ -147,9 +147,11 @@ def plot_event(event_name, pickle_dir, settings_filename,
               %(event_name, pickle_dir)
     
     pickle_filename = event_to_filenames[event_name]
-
+    import string
+    #pickle_filename = string.replace(pickle_filename,' 1','')
     if no_posteriors:
         print "Asked to not plot MISO posteriors."
+
 
     plot_density_from_file(settings_filename, pickle_filename, event_name,
                            output_dir,
@@ -275,6 +277,7 @@ def main():
         event_name = options.plot_event[0]
         pickle_dir = os.path.abspath(os.path.expanduser(options.plot_event[1]))
         settings_filename = os.path.abspath(os.path.expanduser(options.plot_event[2]))
+
         plot_event(event_name, pickle_dir, settings_filename, output_dir,
                    no_posteriors=no_posteriors,
                    plot_title=plot_title,

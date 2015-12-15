@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#!/usr/bin/env python
 
 import numpy as np
 import pylab as pl
@@ -12,51 +11,13 @@ import multiprocessing
 import time
 import subprocess
 import random
-from pyPdf import PdfFileReader, PdfFileWriter
 import argparse
 import math
 import unique
 import traceback
-count_sum_array=[];
-dem=dict()
-sample_read=dict()
-gene_label=[]
-gene_sym=dict()
-
-def genelist(fname):
-    fname = unique.filepath(fname)
-    lis=[]
-    for line in open(fname,'rU').xreadlines():
-        line = cleanUpLine(line)
-        t=string.split(line,'\t')
-	gene=string.split(t[2],':')
-	val=t[2]+' '+t[3]
-	lis.append(val)
-	
-        if gene[0] in gene_sym:
-		continue	
-	else:
-		gene_sym[gene[0]]=t[0]
-	       
-	
-        #print t[0]
-    return lis,gene_sym
-
-def sample(fname):
-    fname = unique.filepath(fname)
-    head=0
-    samplelis=[]
-    for line in open(fname,'rU').xreadlines():
-        line = cleanUpLine(line)
-	if head ==0:
-	    t=string.split(line,'\t')
-	    #print t
-	    for p in range(11,len(t)):
-		samplelis.append(t[p])
-	    head=1
-        else:
-	    break;
-    return samplelis
+count_sum_array_db={}
+sampleReadDepth={}
+geneSymbol_db={}
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
@@ -65,30 +26,31 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-def update_plot_settings(bamdir,list1,list2,samp):
-    export_pl=open(unique.filepath('Config/sashimi_plot_settings.txt'),'w')
-    export_pl.write('[data]')
-    export_pl.write('\n')
-    export_pl.write('bam_prefix = '+bamdir+'\n')
-    export_pl.write('bam_files =[')
-  
-    for i in range(len(list1)):
-        g=samp[list1[i]].replace('.bed','.bam')
-	#print i
-        if i==len(list1)-1 and len(list2)==0:
-            export_pl.write('"'+g+'"]')
-        else:
-            export_pl.write('"'+g+'",')      
-    for j in range(len(list2)):
-	#print j
-        g=samp[list2[j]].replace('.bed','.bam')
-        export_pl.write('"'+g+'"')
-        if j==len(list2)-1:
-            export_pl.write(']')
-        else:
-            export_pl.write(',')
+def update_plot_settings(bamdir,group_psi_values,sample_headers):
+    ### This functions writes out the sample orders, colors and sequence coverage for each BAM files for SashimiPlot
+    bams=[]
+    sample_colors=[]
+    sample_coverage=[]
+    colors = ['red','blue','green','grey','orange','purple','yellow','peach','pink','violet','magenta','navy']
+    colors = colors*300
+    color_index=0
+
+    for group in group_psi_values:
+	for index in group_psi_values[group]:
+	    g=sample_headers[index].replace('.bed','.bam')
+	    bams.append('"'+g+'"')
+	    sample_colors.append('"'+colors[color_index]+'"')
+	    sample_coverage.append(str(int(sampleReadDepth[index])))
+	color_index+=1 ### reset for the new group
+    bams = string.join(bams,',')
+    sample_colors = string.join(sample_colors,',')
+    sample_coverage = string.join(sample_coverage,',')
     
-	
+    export_pl=open(unique.filepath('Config/sashimi_plot_settings.txt'),'w')
+    export_pl.write('[data]\n')
+    export_pl.write('bam_prefix = '+bamdir+'\n')
+    export_pl.write('bam_files =['+bams+']\n')
+
     export_pl.write('\n')
     export_pl.write('[plotting]')
     export_pl.write('\n') 
@@ -96,46 +58,20 @@ def update_plot_settings(bamdir,list1,list2,samp):
     export_pl.write('font_size = 6 \nbar_posteriors = False \nnyticks = 4 \nnxticks = 4 \n')
     export_pl.write('show_ylabel = False \nshow_xlabel = True \nshow_posteriors = False \nnumber_junctions = True \n')
     export_pl.write('resolution = .5 \nposterior_bins = 40 \ngene_posterior_ratio = 5 \n')
-    export_pl.write('colors =[')
-    for i in range(len(list1)):
-        export_pl.write('"'+'red'+'"')
-        if i==len(list1)-1 and len(list2)==0:
-            export_pl.write(']')
-        else:
-            export_pl.write(',')
-    for j in range(len(list2)):
-        export_pl.write('"'+'blue'+'"')
-        if j==len(list2)-1:
-            export_pl.write(']')
-        else:
-            export_pl.write(',')
-    export_pl.write('\n')       
-    export_pl.write('coverages =[')
-    for i in range(len(list1)):
-        
-        e=sample_read[samp[list1[i]]]
-        export_pl.write(str(int(e)))
-        if i==len(list1)-1 and len(list2)==0:
-            export_pl.write(']')
-        else:
-            export_pl.write(',')
-    for j in range(len(list2)):
-        e=sample_read[samp[list2[j]]]
-        export_pl.write(str(int(e)))
-        if j==len(list2)-1:
-            export_pl.write(']')
-        else:
-            export_pl.write(',')
-    export_pl.write('\n')
+    export_pl.write('colors =['+sample_colors+']\n')
+    export_pl.write('coverages =['+sample_coverage+']\n')
+    
     export_pl.write('bar_color = "b" \nbf_thresholds = [0, 1, 2, 5, 10, 20]')
     export_pl.close()
         
-
-def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
+def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename):
     splicing_events=[]
+    
+    ### Import the splicing events to visualize from an external text file (multiple formats supported)
     type = None
+    expandedSearch = False
     firstLine = True
-    for line in open(fname,'rU').xreadlines():
+    for line in open(eventsToVisualizeFilename,'rU').xreadlines():
 	line = cleanUpLine(line)
 	t = string.split(line,'\t')
 	if firstLine:
@@ -143,23 +79,29 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 		j1i = t.index('junctionID-1')
 		j2i = t.index('junctionID-2')
 		type='ASPIRE'
+		expandedSearch = True
 	    if 'ANOVA' in t:
 		type='PSI'
 	    elif 'independent confirmation' in t:
 		type='confirmed'
-	    elif 'ANOVA' in fname:
+		expandedSearch = True
+	    elif 'ANOVA' in eventsToVisualizeFilename:
 		type = 'ANOVA'
 	    firstLine=False
+	if '|' in t[0]:
+	    type = 'ANOVA'
 	if ' ' in t[0] and ':' in t[0]:
 	    splicing_events.append(t[0])
 	elif type=='ASPIRE':
 	    splicing_events.append(t[j1i] +' '+ t[j2i])
+	    splicing_events.append(t[j2i] +' '+ t[j1i])
 	elif type=='ANOVA':
 	    try:
 		a,b = string.split(t[0],'|')
 		a = string.split(a,':')
 		a = string.join(a[1:],':')
 		splicing_events.append(a +' '+ b)
+		splicing_events.append(b +' '+ a)
 	    except Exception: pass
 	elif type=='PSI':
 	    try:
@@ -167,6 +109,7 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 		a,b,c = string.split(j1,':')
 		j1 = b+':'+c
 		splicing_events.append(j1 +' '+ j2)
+		splicing_events.append(j2 +' '+ j1)
 	    except Exception:
 		#print traceback.format_exc();sys.exit()
 		pass
@@ -175,147 +118,187 @@ def sashmi_plot_list(bamdir,fname,gene_label,lines,samp,gene_sym):
 		event_pair1 = string.split(t[1],'|')[0]
 		a,b,c,d = string.split(event_pair1,'-')
 		splicing_events.append(a+'-'+b +' '+ c+'-'+d)
+		splicing_events.append(c+'-'+d +' '+ a+'-'+b)
 	    except Exception: pass
 
+    spliced_junctions=[] ### Alternatively, compare to just one of the junctions
+    for splicing_event in splicing_events:
+	j1,j2 = string.split(splicing_event,' ')
+	spliced_junctions.append(j1)
+	spliced_junctions.append(j2)
+    
     if len(splicing_events)==0:
 	forceNoCompatibleEventsInFile
     
     print 'Exporting plots',
-    for li in splicing_events:
-	if ":U" in li or "-U" in li:
-	    
-	    continue
-	else:
-	
-	 li=cleanUpLine(li)
-	 #print li
-	 
-	 #dem[0]=['ENSG00000132424:I10.1 ENSG00000132424:E10.1-E11.1','ENSG00000146147:E10.3-E11.1 ENSG00000146147:E9.3-E15.1']
-	 de=string.split(li,'\t')
-	 dem[0]=de
-	 #print dem[0]
-	 for key in dem:
-	  for i in range(len(dem[key])):
-	    list1=[]
-	    list2=[]
-	    try:
-		k=gene_label.index(dem[key][i])
-		flag=1
-		lt=cleanUpLine(lines[k])
-		t=string.split(lt,'\t')
-		#print t
-		t=t[11:]
-		#print t
-		#list3=[]
-		#ind=[]
-		for x in range(len(t)):
-		    #print x,t[x]
-		    if(t[x]!=''):
-			if float(t[x]) < 0.8:
-			    list1.append(x)
-			    #print x
-			    #print 'list1:'+str(x)
-			else:
-			    list2.append(x)
-			    #print x
-			   # print str(x)
-		     
-		    else:
-			continue
-	    
-		if len(list1)>5:
-		    list1=list1[1:5]
-		if len(list2)>5:
-		    list2=list2[1:5]
-		#print len(list1),len(list2)
-	    except Exception:
-		
-		for ij in range(len(samp)):
-		    list1.append(ij)
-	    update_plot_settings(bamdir,list1,list2,samp)
-	    
-	    a=string.split(dem[key][i]," ")
-	    if '-' in a[1]:
-		    
-		    ch1=a[1]
-		    f=string.split(a[0],':')
-	    else:
-		    ch1=a[0]
-		    f=string.split(a[1],':')
-	    event=findParentDir(inputpsi)
-	    event=event+"trial_index/"
-	    setting =unique.filepath("Config/sashimi_plot_settings.txt")
-	    try: ch1=string.replace(ch1,':','__')
-	    except Exception: pass
-	    name=ch1
-	    #outputdir=findParentDir(inputpsi)+"sashimiplots"
-	    try: os.makedirs(outputdir)
-	    except Exception: pass
-	    
-	#print '********',[ch1],[event],outputdir
-
+    
+    groups_file = 'None'
+    dir_list = unique.read_directory(root_dir+'/ExpressionInput')
+    for file in dir_list:
+         if 'groups.' in file:
+            groups_file = root_dir+'ExpressionInput/'+file
+    if groups_file != None:
 	try:
-	    ssp.plot_event(ch1,event,setting,outputdir)
+	    import ExpressionBuilder
+            sample_group_db = ExpressionBuilder.simplerGroupImport(groups_file)
+	    groups=[]
+	    for sample in sample_group_db:
+		if sample_group_db[sample] not in groups:
+		    groups.append(sample_group_db[sample]) ### create an ordered list of unique group
 	except Exception:
-	    #print '^^^^^^^^^^^^',[ch1],[event],outputdir;sys.exit()
-	    #print traceback.format_exc()
-	    #print "error2"
-	    #sys.exit()
-	    continue
-    #outputdir=findParentDir(inputpsi)+"sashimiplots" 
+	    groups = ['None']
+            #print traceback.format_exc()
+            pass
+	    
+    firstLine = True
+    setting = unique.filepath("Config/sashimi_plot_settings.txt")
+    psi_parent_dir=findParentDir(PSIFilename)
+    index_dir=psi_parent_dir+"trial_index/"
+
+    import collections
+    analyzed_events=[]
+    for line in open(PSIFilename,'rU').xreadlines():
+	line = cleanUpLine(line)
+	t = string.split(line,'\t')
+	if firstLine:
+	    sample_headers = t[11:]
+	    index=0
+	    sample_group_index={}
+	    for s in sample_headers:
+		group = sample_group_db[s]
+		sample_group_index[index]=group
+		sampleReadDepth[index]=count_sum_array_db[s]
+		index+=1
+	    firstLine = False
+	else:
+	    splicing_event = val=t[2]+' '+t[3]
+	    if t[2] in analyzed_events and t[3] in analyzed_events:
+		continue
+	    #if 'ENSG00000095794' not in splicing_event: continue
+	    #else: print splicing_event
+	    if ":U" in splicing_event or "-U" in splicing_event:
+		continue
+	    else:
+		### First check to see if the full splicing event matches the entry
+		### If not (and not a PSI regulation hits list), look for an individual junction match
+		if splicing_event in splicing_events or (expandedSearch and (t[2] in spliced_junctions or t[3] in spliced_junctions)):
+		    geneID = string.split(t[2],':')[0]
+		    symbol = t[0]
+		    geneSymbol_db[geneID]=symbol
+		    index=0
+		    analyzed_events.append(t[2])
+		    analyzed_events.append(t[3])
+		    import collections
+		    initial_group_psi_values={}
+		    try: group_psi_values = collections.OrderedDict()
+		    except Exception:
+			try:
+			    import ordereddict
+			    group_psi_values = ordereddict.OrderedDict()
+			except Exception:
+			    group_psi_values={}			
+		    for i in t[11:]: ### Value PSI range in the input file
+			try: group = sample_group_index[index]
+			except Exception: group=None
+			try:
+			    try: initial_group_psi_values[group].append([float(i),index])
+			    except Exception: initial_group_psi_values[group] = [[float(i),index]]
+			except Exception:
+			    #print traceback.format_exc();sys.exit()
+			    pass ### Ignore the NULL values
+			index+=1
+		    ### limit the number of events reported and sort based on the PSI values in each group
+		    if 'None' in groups and len(groups)==1:
+			initial_group_psi_values['None'].sort()
+			group_size = len(initial_group_psi_values['None'])/2
+			filtered_group_index1 = map(lambda x: x[1], initial_group_psi_values['None'][:group_size])
+			filtered_group_index2 = map(lambda x: x[1], initial_group_psi_values['None'][group_size:])
+			group_psi_values['low']=filtered_group_index1
+			group_psi_values['high']=filtered_group_index2
+		    else:
+			for group in groups:
+			    if group in initial_group_psi_values:
+				initial_group_psi_values[group].sort()
+				filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:5])
+				group_psi_values[group]=filtered_group_indexes
+		    update_plot_settings(bamdir,group_psi_values,sample_headers)
+	
+		    try: formatted_splice_event=string.replace(t[3],':','__')
+		    except Exception: pass
+
+		    try: os.makedirs(outputdir)
+		    except Exception: pass
+		    
+		    #print '********',[formatted_splice_event],[index_dir],outputdir
+		    #print symbol,formatted_splice_event,
+		    try:
+			ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir)
+			#print 'success'
+		    except Exception:
+			pass
+			#print '^^^^^^^^^^^^',[formatted_splice_event],[index_dir],outputdir;sys.exit()
+			#print traceback.format_exc()
+			#print 'failed'
+
+		    try: formatted_splice_event=string.replace(t[2],':','__')
+		    except Exception: pass
+		    #print symbol,formatted_splice_event,
+		    try:
+			ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir)
+			#print 'success'
+		    except Exception:
+			pass
+			#print '^^^^^^^^^^^^',[formatted_splice_event],[index_dir],outputdir;sys.exit()
+			#print traceback.format_exc()
+			#print 'failed'
+		    
     for filename in os.listdir(outputdir):
 	newname=string.split(filename,'/')
 	#print newname[0]
-	if newname[0] in gene_sym:
-	    new_path = gene_sym[newname[0]]+'-'+filename
+	if newname[0] in geneSymbol_db:
+	    new_path = geneSymbol_db[newname[0]]+'-'+filename
 	    #new_path = string.replace()
 	    os.rename(filename,new_path)
 	else:
 	    continue
 
-  
 def findParentDir(filename):
     filename = string.replace(filename,'//','/')
     filename = string.replace(filename,'\\','/')
     x = string.find(filename[::-1],'/')*-1
     return filename[:x]      
 
-def Sashimiplottting(bamdir,countsin,inputpsi,genelis):
-    inputpsi = unique.filepath(inputpsi)
-    text_file = open(inputpsi,'rU')
-    lines = text_file.readlines()
-   
-    text_file.close()
-    samp=sample(inputpsi)
-    gene_label,gene_sym=genelist(inputpsi)
+def Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename):
+    PSIFilename = unique.filepath(PSIFilename)
 
     header=True
     junction_max=[]
     countsin = unique.filepath(countsin)
-
+    count_sum_array=[]
     for line in open(countsin,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if header:
             samples = t[1:]
             header=False
-            exon_sum_array=[0]*len(samples)
             count_sum_array=[0]*len(samples)
         else:
             values = map(float,t[1:])
             count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
 
-        for i in range(len(samp)):
-	   sample_read[samp[i]]=count_sum_array[i]
-          #print samp[i],sample_read[samp[i]]
+    index=0
+    for sample in samples:
+	count_sum_array_db[sample] = count_sum_array[index]
+	index+=1
 
-    genelis = unique.filepath(genelis)
+    eventsToVisualizeFilename = unique.filepath(eventsToVisualizeFilename)
 
-    sashmi_plot_list(bamdir,genelis,gene_label,lines,samp,gene_sym)
+    sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename)
 
-def remoteSashimiPlot(species,fl,bamdir,genelis):
-    global inputpsi
+def remoteSashimiPlot(species,fl,bamdir,eventsToVisualizeFilename):
+    global PSIFilename
     global outputdir
+    global root_dir
     try:
 	countinp = fl.CountsFile()
 	root_dir = fl.RootDir()
@@ -327,23 +310,28 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
             if 'counts.' in file and 'steady-state.txt' not in file:
                     countinp = search_dir+'/'+file
     
-    inputpsi = root_dir+'/AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI.txt'
-    #outputdir=findParentDir(inputpsi)+"sashimiplots"
+    PSIFilename = root_dir+'/AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI.txt'
+    
+    import ExpressionBuilder
+    dir_list = unique.read_directory(root_dir+'/ExpressionInput')
+    for file in dir_list:
+        if 'exp.' in file and 'steady-state' not in file:
+            exp_file = root_dir+'/ExpressionInput/'+file
+    global sample_group_db
+    sample_group_db = ExpressionBuilder.simplerGroupImport(exp_file)
+    
+    #outputdir=findParentDir(PSIFilename)+"sashimiplots"
     outputdir = root_dir+'/ExonPlots'
     outputdir = root_dir+'/SashimiPlots'
     try: os.mkdir(unique.filepath(outputdir))
     except Exception: pass
-    #print bamdir
-    #print countinp
-    #print inputpsi
-    #print genelis
-    Sashimiplottting(bamdir,countinp,inputpsi,genelis)
 
-    gene_label,gene_sym=genelist(inputpsi)
+    Sashimiplottting(bamdir,countinp,PSIFilename,eventsToVisualizeFilename)
+
     for filename in os.listdir(outputdir):
-	if '.pdf' in filename:
+	if '.pdf' in filename or '.png' in filename:
 	    newname=string.split(filename,'__')
-	    if newname[0] in gene_sym:
+	    if newname[0] in geneSymbol_db:
 		new_filename = str(filename)
 		if '__' in filename:
 		    new_filename = string.split(filename,'__')[1]
@@ -351,16 +339,17 @@ def remoteSashimiPlot(species,fl,bamdir,genelis):
 		    new_filename = string.split(filename,'\\')[1]
 		elif '/' in filename:
 		    new_filename = string.split(filename,'/')[1]
-	        nnname=gene_sym[newname[0]]+'-SashimiPlot_'+new_filename
+	        nnname=geneSymbol_db[newname[0]]+'-SashimiPlot_'+new_filename
 		os.rename(os.path.join(outputdir, filename), os.path.join(outputdir,nnname))
 	    else:
 		continue
 
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/'
-    genelis = '/Volumes/SEQ-DATA 1/Tara-Rindler/paired-end/RCM_retry/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
-    #genelis = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
-    genelis = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/AltResults/AlternativeOutput/Mm_RNASeq_TRAF6 KO_vs_wt.ExpCutoff-5.0_average-ASPIRE-exon-inclusion-results.txt'
-    bamdir = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/'
-    remoteSashimiPlot('Mm',root_dir,bamdir,genelis)
+    root_dir = '/Volumes/SEQ-DATA/Jared/'
+    eventsToVisualizeFilename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/AltResults/AlternativeOutput/exp.Hs_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
+    #eventsToVisualizeFilename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/AltResults/Clustering/Combined-junction-exon-evidence.txt'
+    #eventsToVisualizeFilename = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
+    #eventsToVisualizeFilename = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/AltResults/AlternativeOutput/Mm_RNASeq_TRAF6 KO_vs_wt.ExpCutoff-5.0_average-ASPIRE-exon-inclusion-results.txt'
+    bamdir = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/'
+    remoteSashimiPlot('Hs',root_dir,bamdir,eventsToVisualizeFilename)
     sys.exit()

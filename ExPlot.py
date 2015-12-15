@@ -1,15 +1,50 @@
 from __future__ import print_function
 import numpy
-import matplotlib.pyplot as plt
 import os
+import export
 import string
-from matplotlib.patches import Rectangle
-import matplotlib.patches
+import traceback
 import collections as c
 import sys
-import matplotlib.backend_bases as event_plot
-from mpldatacursor import datacursor
-from matplotlib.widgets import Slider as matplotSlider
+import unique
+
+command_args = string.join(sys.argv,' ')
+if len(sys.argv[1:])>0 and '--' in command_args: commandLine=True
+else: commandLine=False
+
+try:
+    import math
+    import warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
+        import matplotlib
+        #try: matplotlib.use('TkAgg')
+        #except Exception: pass
+        #if commandLine==False:
+            #try: matplotlib.rcParams['backend'] = 'TkAgg'
+            #except Exception: pass
+        try:
+            import matplotlib.pyplot as pylab
+            import matplotlib.colors as mc
+            import matplotlib.mlab as mlab
+            import matplotlib.ticker as tic
+            from matplotlib.patches import Circle
+            from mpl_toolkits.mplot3d import Axes3D
+            
+            matplotlib.rcParams['axes.linewidth'] = 0.5
+            matplotlib.rcParams['pdf.fonttype'] = 42
+            matplotlib.rcParams['font.family'] = 'sans-serif'
+            matplotlib.rcParams['font.sans-serif'] = 'Arial'
+            from matplotlib.patches import Rectangle
+            import matplotlib.patches
+            import matplotlib.backend_bases as event_plot
+            from mpldatacursor import datacursor
+            from matplotlib.widgets import Slider as matplotSlider
+        except Exception:
+            print(traceback.format_exc())
+            print('Matplotlib support not enabled')
+except Exception:
+    print(traceback.format_exc())
 
 #os.chdir("/Users/saljh8/Desktop/Code/AltAnalyze/Config/ExonViewFiles")
 
@@ -41,6 +76,18 @@ class SplicingIndexClass:
     def SplicingIndex(self): return self.splicing_index
     def PVal(self): return self.p_val
     def Midas(self): return self.midas
+
+class MicroRNAClass:
+    def __init__(self, exon_name, description, basepairs, algorithms):
+        self.exon_name = exon_name
+        self.description = description
+        self.basepairs = basepairs
+        self.algorithms = algorithms
+    def ExonBlock(self): return self.exon_name
+    def Description(self): return self.description
+    def BP(self): return self.basepairs
+    def Algorithms(self): return self.algorithms
+    
 
 def ProteinCentricIsoformView(Selected_Gene):
     Transcript_List = []
@@ -89,7 +136,33 @@ def ProteinCentricIsoformView(Selected_Gene):
             Transcript_Protein_db[transcriptID] = proteinID
             Protein_Transcript_db[proteinID] = transcriptID
             Protein_List.append(proteinID)
-    
+
+    #MicroRNA File
+    microRNA_db = {}
+    for line in open(microRNA_File, "rU").xreadlines():
+        line = line.rstrip()
+        line = line.split("\t")
+        try:
+            gene_and_exon_id = line[0].split(":")
+            current_gene_id = gene_and_exon_id[0]
+            current_exon_id = gene_and_exon_id[1]   
+        except Exception:
+            continue
+        #print([current_gene_id,current_exon_id,Selected_Gene]);break
+        current_description = line[1]
+        current_base_pairs = line[2]
+        algorithms = line[3]
+        if(current_gene_id == Selected_Gene):
+            m = MicroRNAClass(current_exon_id, current_description, current_base_pairs, algorithms)           
+            try:
+                if(len(microRNA_db[current_exon_id]) > 6):
+                    continue
+                microRNA_db[current_exon_id].append(m)
+                print("ADDED!")
+                
+            except:
+                microRNA_db[current_exon_id] = [m]
+            
     Transcript_ExonRegion_db={}
     geneExonRegion_db={}
     exon_coord_db={}
@@ -113,31 +186,54 @@ def ProteinCentricIsoformView(Selected_Gene):
                     AllBlocks[0][1].append(Block_Num)
                 if(I_E_id == "I"):
                     AllBlocks[1][1].append(Block_Num)
+                    continue
                 exon_added = False
                 #Exon_List = line[7].split("|")
                 exon_coord_db[chr,int(start),'start'] = exon_region
                 exon_coord_db[chr,int(stop),'stop'] = exon_region
                 exonRegion_db[Selected_Gene,exon_region] = er
                 #print chr,start,'start'
+    probeset_to_ExonID={}
+    if platform != 'RNASeq':
+        for line in open(unique.filepath('AltDatabase/'+species+'/'+string.lower(platform)+'/'+species+'_Ensembl_probesets.txt'), "rU").xreadlines():
+            line = line.rstrip()
+            line = line.split("\t")
+            gene = line[2]
+            if gene == Selected_Gene:
+                probeset = line[0]
+                exon_region = line[12]
+                if '.' not in exon_region:
+                    exon_region = string.replace(exon_region,'-','.')
+                probeset_to_ExonID[probeset] = exon_region
 
     ETC_List = []
-    for line in open(Etc_File, "rU").xreadlines():
+    for line in open(SplicingIndex_File, "rU").xreadlines():
         line = line.rstrip()
         line = line.split("\t")
-        GeneLine = line[0].split(":")
-        Gene = GeneLine[0]
+        if ':' in line[0]:
+            GeneLine = line[0].split(":")
+            FeatureID = GeneLine[1]
+        else:
+            FeatureID = line[0]
+        Gene = line[1]
         regcall = line[2]
         spl_index = line[3]
         pval = line[4]
         midas = line[5]
         S_I_data = SplicingIndexClass(regcall, spl_index, pval, midas)
         if(Gene == Selected_Gene):
-            try:
-                SplitGene = GeneLine[1].split("_")
-                SplitGene = SplitGene[0]         
-                ETC_List.append((SplitGene, S_I_data))
-            except:
-                pass
+            if platform != 'RNASeq':
+                if FeatureID in probeset_to_ExonID:
+                    FeatureID = probeset_to_ExonID[FeatureID]
+                    print(FeatureID)
+                    ETC_List.append((FeatureID, S_I_data))
+            else:
+                try:
+                    FeatureID = FeatureID.split("_")
+                    FeatureID = FeatureID[0]         
+                    ETC_List.append((FeatureID, S_I_data))
+                except:
+                    pass
 
     ETC_dict = {}
        
@@ -174,6 +270,7 @@ def ProteinCentricIsoformView(Selected_Gene):
     exon_virtualToRealPos= c.OrderedDict()
     junction_transcript_db = {}
     for transcriptID in Transcript_ExonRegion_db:
+            print('transcripts:',transcriptID)
             position=0
             Buffer=15
             for exon_object in Transcript_ExonRegion_db[transcriptID]:
@@ -256,10 +353,11 @@ def ProteinCentricIsoformView(Selected_Gene):
             last_protein = str(proteinID)
     
     Protein_Pos_Db[last_protein] = [(stored_start,stored_stop,None)]
-    Protein_virtualPos = RealToVirtual(Protein_Pos_Db, exon_virtualToRealPos, Protein_Transcript_db,Transcript_ExonRegion_db)    
+    Protein_virtualPos = RealToVirtual(Protein_Pos_Db, exon_virtualToRealPos, Protein_Transcript_db,Transcript_ExonRegion_db)
     
-    domainAnnotation_db={}
     Domain_Pos_Db={}
+    domainAnnotation_db={}
+    #"""
     for line in open(Prt_Regions_File, "rU").xreadlines():
         line = line.rstrip()
         line = line.split("\t")
@@ -274,9 +372,28 @@ def ProteinCentricIsoformView(Selected_Gene):
             except:
                 Domain_Pos_Db[proteinID] = [(domain_start,domain_stop,domainID)]
             domainAnnotation_db[domainID] = domainName
+
+    #"""
+    for line in open(UniPrt_Regions_File, "rU").xreadlines():
+        line = line.rstrip()
+        line = line.split("\t")
+        proteinID = line[0]
+        if proteinID in Protein_Pos_Db:
+            domain_start = int(float(line[3]))
+            domain_stop = int(float(line[4]))
+            domainID = line[-1]
+            domainName = line[-1]
+            try:
+                Domain_Pos_Db[proteinID].append((domain_start,domain_stop,domainID))
+            except:
+                Domain_Pos_Db[proteinID] = [(domain_start,domain_stop,domainID)]
+            domainAnnotation_db[domainID] = domainName
+            #print('--',domainName,domain_start,domain_stop)
+
     # Do the same for domain coordinates
     Domain_virtualPos = RealToVirtual(Domain_Pos_Db, exon_virtualToRealPos, Protein_Transcript_db,Transcript_ExonRegion_db)
-    return_val = ((junction_transcript_db, Protein_virtualPos, Domain_virtualPos, Transcript_db, exon_virtualToRealPos, ETC_dict))
+
+    return_val = ((junction_transcript_db, Protein_virtualPos, Domain_virtualPos, Transcript_db, exon_virtualToRealPos, ETC_dict, microRNA_db, domainAnnotation_db))
     return return_val
     
 def RealToVirtual(Protein_Pos_Db, exon_virtualToRealPos, Protein_Transcript_db,Transcript_ExonRegion_db):
@@ -334,25 +451,59 @@ def RealToVirtual(Protein_Pos_Db, exon_virtualToRealPos, Protein_Transcript_db,T
                     Transcript_to_Protein_Coords[transcript] = proteinID, virtual_p_start, virtual_p_stop, e_coords[0][0][0],e_coords[-1][0][1]
                 #print transcript, proteinID, virtual_p_start, virtual_p_stop, p_start,p_stop, e_coords[0][0][0],e_coords[-1][0][1],annotation
     return Transcript_to_Protein_Coords
+     
+def searchDirectory(directory,var,secondary=None):
+    directory = unique.filepath(directory)
+
+    files = unique.read_directory(directory)
+    for file in files:
+        if var in file:
+            if secondary== None:
+                return directory+'/'+file
+                break
+            elif secondary in file:
+                return directory+'/'+file
+                break
+            
+    ### if all else fails
+    return directory+'/'+file 
     
-def remoteGene(gene):
+def getPlatform(filename):
+    prefix = string.split(export.findFilename(filename),'.')[0]
+    array_type = string.split(prefix,'_')[1]
+    if array_type != 'RNASeq':
+        array_type = string.lower(array_type)
+    return array_type
+
+def remoteGene(gene,Species,root_dir,comparison_file):
     global Transcript_Annotations_File
     global ExonRegion_File
     global Selected_Gene
     global Prt_Trans_File
     global Prt_Regions_File
     global Prt_Boundaries_File
-    global Etc_File
-    import unique
-    Selected_Gene = gene
-    ExonRegion_File = unique.filepath("ExonViewFiles/Hs_Ensembl_exon.txt")
-    Transcript_Annotations_File = unique.filepath("ExonViewFiles/Hs_Ensembl_transcript-annotations.txt")
-    Prt_Trans_File = unique.filepath("ExonViewFiles/Hs_Ensembl_Protein__65_37.txt")
-    Prt_Regions_File = unique.filepath("ExonViewFiles/Hs_ProteinFeatures_build_65_37.txt")
-    Prt_Boundaries_File = unique.filepath("ExonViewFiles/Hs_ProteinCoordinates_build_65_37.tab")
-    Etc_File = unique.filepath("ExonViewFiles/Hs_RNASeq_K562_SRSF2_P95mut_vs_K562_SRSF2_WT.ExpCutoff-5.0_average-splicing-index-ProcessedSpliceData.txt")
-    #"ENSG00000005801"
-    #"ENSG00000110514"
+    global SplicingIndex_File
+    global UniPrt_Regions_File
+    global microRNA_File
+    global domainAnnotation_db
+    global platform
+    global species
+
+    Selected_Gene = str(gene)
+    species = Species
+    
+    comparison_name = string.split(export.findFilename(comparison_file),'.')[0]
+    ExonRegion_File = unique.filepath("AltDatabase/ensembl/"+species+"/"+species+"_Ensembl_exon.txt")
+    Transcript_Annotations_File = unique.filepath("AltDatabase/ensembl/"+species+"/"+species+"_Ensembl_transcript-annotations.txt")
+    Prt_Trans_File = searchDirectory("AltDatabase/ensembl/"+species+"/",'Ensembl_Protein')
+    Prt_Regions_File = searchDirectory("AltDatabase/ensembl/"+species+"/",'ProteinFeatures')
+    Prt_Boundaries_File = searchDirectory("AltDatabase/ensembl/"+species+"/",'ProteinCoordinates')
+    UniPrt_Regions_File = searchDirectory("AltDatabase/uniprot/"+species+"/",'FeatureCoordinate')
+    SplicingIndex_File = searchDirectory(root_dir+'/AltResults/ProcessedSpliceData/','splicing-index',secondary=comparison_name)
+    platform = getPlatform(SplicingIndex_File)
+    microRNA_File = searchDirectory("AltDatabase/"+species+"/"+platform,'microRNAs_multiple')
+    print(SplicingIndex_File)
+
     total_val = ProteinCentricIsoformView(Selected_Gene)
     junctions = total_val[0]
     p_boundaries = total_val[1]
@@ -360,6 +511,17 @@ def remoteGene(gene):
     transcript_db = total_val[3]
     exon_db = total_val[4]
     splice_db = total_val[5]
+    microRNA_db = total_val[6]
+    domainAnnotation_db = total_val[7]
+
+    #for i in exon_db:
+    #    print("THE", i, exon_db[i], "\n")
+
+    #for i in microRNA_db:
+    #        m_test = microRNA_db[i]
+    #    print(len(m_test))
+    #    for q in m_test:
+    #        print("microRNA", q.ExonBlock(), q.Description(), q.BP(), "\n")
 
     #for i in exon_db["ENST00000349238"]:
     #    print(i[2].EnsemblRegion())
@@ -406,20 +568,32 @@ def remoteGene(gene):
             FLAG = 1
             continue
 
-    for i in domain_color_key:
-        print(i, domain_color_key[i], "\n")
+    #for i in domain_color_key:
+        #print(i, domain_color_key[i], "\n")
     
-    Y = 50
+    Y = 100
     Transcript_to_Y = {}
     for transcript in transcript_db:
         Transcript_to_Y[transcript] = Y
-        Y = Y + 200
+        Y = Y + 300
     import traceback
 
+    def onpick(event):
+        #ind = event.ind
+        print(event.artist.get_label())
+
+    for i in domainAnnotation_db:
+        print(i,len(domainAnnotation_db));break
+    
+    fig = pylab.figure()
+    
     ylim = Y + 200
-    currentAxis = plt.gca()
-    ax = plt.axes()
+    currentAxis = pylab.gca()
+    #ax = pylab.axes()
+    ax = fig.add_subplot(111)
     X_Pos_List = []
+    CoordsBank = []
+    
     for transcript in transcript_db:
         try:
             Junc_List = junctions[transcript]
@@ -437,7 +611,8 @@ def remoteGene(gene):
                     SplicingIndex = LabelClass.SplicingIndex()
                     PVal = LabelClass.PVal()
                     Midas = LabelClass.Midas()
-                    Label = "\n" + "Exon: " + str(ExonName) + "\n" + "RegCall: "  + str(RegCall) + "\n" + "Splicing Index: " + str(SplicingIndex) + "\n" + "P-Value: " + str(PVal) + "\n" + "Midas Value: " + str(Midas)
+                    Label = "\n" + "Exon: " + str(ExonName) + "\n" + "RegCall: "  + str(RegCall) + "\n" + "Splicing Index: " + str(SplicingIndex) + "\n" + "P-Value: " + str(PVal) + "\n" + "Midas Value: " + str(Midas) + "\n"
+                    Label = string.replace(Label,"\n"," ")
                     if(RegCall == "UC"):
                         color_choice = "Grey"
                     else:
@@ -453,21 +628,43 @@ def remoteGene(gene):
                     color_choice = "Grey"
                 #print("Start", G_start, "end", G_end, "Region", entry[2].EnsemblRegion())
                 if((color_flag % 2) == 0):
-                    currentAxis.add_patch(Rectangle((G_start, y_pos), (G_end - G_start), 50, color = color_choice, label = (entry[2].EnsemblRegion() + Label)))
+                    currentAxis.add_patch(Rectangle((G_start, y_pos), (G_end - G_start), 50, color = color_choice, label = (entry[2].EnsemblRegion() + Label), picker = True))
+                    y_end = y_pos + 50
+                    try: CoordsBank.append((G_start, G_end, y_pos, y_end, 'Exon: '+entry[2].EnsemblRegion()+' '+ 'SI: '+str(SplicingIndex)[:4]+' Pval: '+str(Midas)[:4]))
+                    except Exception:
+                        CoordsBank.append((G_start, G_end, y_pos, y_end, 'Exon: '+entry[2].EnsemblRegion()))
+                    #print(entry[2].EnsemblRegion(),y_pos,y_end)
                 if((color_flag % 2) != 0):                   
-                    currentAxis.add_patch(Rectangle((G_start, y_pos), (G_end - G_start), 50, color = color_choice, label = (entry[2].EnsemblRegion() + Label)))
+                    currentAxis.add_patch(Rectangle((G_start, y_pos), (G_end - G_start), 50, color = color_choice, label = (entry[2].EnsemblRegion() + Label), picker = True))
+                    y_end = y_pos + 50
+                    try: CoordsBank.append((G_start, G_end, y_pos, y_end, 'Exon: '+entry[2].EnsemblRegion()+' '+ 'SI: '+str(SplicingIndex)[:4]+' p-value: '+str(Midas)[:4]))
+                    except Exception:
+                        CoordsBank.append((G_start, G_end, y_pos, y_end, 'Exon: '+entry[2].EnsemblRegion()))
+                    #print(entry[2].EnsemblRegion(),y_pos,y_end)
                 color_flag = color_flag + 1
+                if(entry[2].EnsemblRegion() in microRNA_db):
+                    microRNA_object = microRNA_db[entry[2].EnsemblRegion()]
+                    mr_label = "MICRORNA MATCHES" + "\n"
+                    for class_object in microRNA_object:
+                        mr_exonname = class_object.ExonBlock()
+                        mr_desc = class_object.Description() + " " + class_object.Algorithms()
+                        #print(mr_desc)
+                        mr_label = mr_label + mr_desc + "\n"
+                    
+                    currentAxis.add_patch(Rectangle((G_start, (y_pos - 75)), (G_end - G_start), 40, color = "Green", label = (mr_label), picker = True))
+                    y_start = y_pos - 75
+                    y_end = y_pos - 35
+                    CoordsBank.append((G_start, G_end, y_start, y_end, mr_desc))
                 
-                
-
             for entry in Junc_List:
+                junctionID = entry[-1]
                 try:
                     LabelClass = splice_db[entry[2]]
                     RegCall = LabelClass.RegCall()
                     SplicingIndex = LabelClass.SplicingIndex()
                     PVal = LabelClass.PVal()
                     Midas = LabelClass.Midas()
-                    Label = "\n" + "RegCall: " + str(RegCall) + "\n" + "Splicing Index: " + str(SplicingIndex) + "\n" + "P-Value: " + str(PVal) + "\n" + "Midas Value: " + str(Midas)
+                    Label = "\n" + "RegCall: " + str(RegCall) + "\n" + "Splicing Index: " + str(SplicingIndex) + "\n" + "P-Value: " + str(PVal) + "\n" + "Midas Value: " + str(Midas) + "\n"
                     if(float(SplicingIndex) > 0):
                         color_junc = "blue"
                     if(float(SplicingIndex) < 0):
@@ -477,44 +674,75 @@ def remoteGene(gene):
                 except:
                     Label = ""
                     color_junc = "grey"
-                currentAxis.add_patch(Rectangle((entry[0], y_pos), (entry[1] - entry[0]), 50, color = "White", label = (str(entry[2]) + Label)))
-                ax.arrow(entry[0], (y_pos+50), 8, 40, label = (str(entry[2]) + Label), color = color_junc)
-                ax.arrow((entry[0] + 8), (y_pos+90), 11, -40, label = (str(entry[2]) + Label), color = color_junc)
+                currentAxis.add_patch(Rectangle((entry[0], y_pos), (entry[1] - entry[0]), 50, color = "White", label = (str(entry[2]) + Label), picker = True))
+                ax.arrow(entry[0], (y_pos+50), 8, 40, label = (str(entry[2]) + Label), color = color_junc, picker = True)
+                ax.arrow((entry[0] + 8), (y_pos+90), 11, -40, label = (str(entry[2]) + Label), color = color_junc, picker = True)
+                y_start = y_pos
+                y_end = y_pos + 30
+                print(junctionID,y_start,y_end)
+                CoordsBank.append((G_start, G_end, y_start, y_end, junctionID))
 
-
-            P_Bound_List = p_boundaries[transcript]
-            P_Domain_List = p_domains[transcript]
-            E_Start = P_Bound_List[-2]
-            E_End = P_Bound_List[-1]
-            P_Start = P_Bound_List[1]
-            P_End = P_Bound_List[2]
-            #print("Boundaries: ", P_Start, P_End)
-            X_Pos_List.append(int(E_End))
-            #currentAxis.add_patch(Rectangle((E_Start, y_pos), E_End, 50, color = "Blue"))
             try:
-                currentAxis.add_patch(Rectangle((P_Start, (y_pos + 120)), (P_End - P_Start), 10, label = ("Protein: " + str(P_Bound_List[0]))))
-            except:
-                pass
-            for entry in P_Domain_List:
-                #print("Domain", entry)
-                color_domain_choice = domain_color_key[entry[1]]
-                currentAxis.add_patch(Rectangle((entry[2], y_pos + 100), (entry[3] - entry[2]), 50, color = color_domain_choice, label= ("Protein: " + str(entry[0]) + "\n" + "Domain: " + str(entry[1]))))
+                P_Bound_List = p_boundaries[transcript]
+                E_Start = P_Bound_List[-2]
+                E_End = P_Bound_List[-1]
+                P_Start = P_Bound_List[1]
+                P_End = P_Bound_List[2]
+                #print("Boundaries: ", P_Start, P_End)
+                X_Pos_List.append(int(E_End))
+                #currentAxis.add_patch(Rectangle((E_Start, y_pos), E_End, 50, color = "Blue"))
+                try:
+                    currentAxis.add_patch(Rectangle((P_Start, (y_pos + 120)), (P_End - P_Start), 10))
+                except:
+                    pass
+                p_label_list = ["DEF"]
+                #CoordsBank.append((P_Start, P_End, y_pos, P_End - P_Start, transcript)) ### Added by NS - needs work
+                P_Domain_List = p_domains[transcript]
+                for entry in P_Domain_List:
+                    #print("Domain", entry)
+                    color_domain_choice = domain_color_key[entry[1]]
+                    domain_annotation = domainAnnotation_db[entry[1]]
+                    #domain_annotation = string.replace(domain_annotation,'REGION-','')
+                    p_label = (str(entry[0]) +  " " + str(domain_annotation))
+                    print(entry[0], entry[2], entry[3], P_Start, P_End, domain_annotation, )
+                    Repeat_Flag = 0
+                    for i in p_label_list:
+                        if(p_label == i):
+                            Repeat_Flag = 1
+                    if(Repeat_Flag == 1):
+                        continue
+                    p_label_list.append(p_label)               
+                    currentAxis.add_patch(Rectangle((entry[2], y_pos + 100), (entry[3] - entry[2]), 50, color = color_domain_choice, label= p_label, picker = True))
+                    y_start = y_pos + 100
+                    y_end = y_pos + 150
+                    CoordsBank.append((entry[2], entry[3], y_start, y_end, p_label))
+            except Exception:
+                print(traceback.format_exc())
         except:
-            continue
-    plt.ylim([0.0, ylim])
+            print(traceback.format_exc())
+            pass
+    pylab.ylim([0.0, ylim])
     try:
         max_x = max(X_Pos_List)
     except:
         max_x = 5000
     try:
-        plt.xlim([0.0, max_x])
+        pylab.xlim([0.0, max_x])
     except:
-        plt.xlim([0.0, 3000])
-    datacursor(hover=True, formatter='{label}'.format, bbox=dict(fc='yellow', alpha=1), arrowprops=None)
-    plt.show()
+        pylab.xlim([0.0, 3000])
+    fig.canvas.mpl_connect('pick_event', onpick)
+    def format_coord(x, y):
+        for m in CoordsBank:
+            if(x >= m[0] and x <= m[1] and y >= m[2] and y <= m[3]):
+                string_display = m[4]
+                return string_display
+        string_display = "  "
+        return string_display
 
-        #currentAxis.add_patch(Rectangle
-
+    ax.format_coord = format_coord
+    #datacursor(hover=True, formatter='{label}'.format, bbox=dict(fc='yellow', alpha=1), arrowprops=None)
+    pylab.show()
+    
 if __name__ == "__main__":
     #Selected_Gene = sys.argv[1]
     Selected_Gene = 'ENSG00000005801'

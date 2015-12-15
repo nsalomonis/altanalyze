@@ -575,14 +575,19 @@ def getDomainGenomicCoordinates(species,xref_db):
                 #print interpro_name,ens_protein,seq_start,seq_end
                 genomic_domain_start = 0; genomic_domain_end = 0; domain_in_first_exon = 'no'; non_coding_seq_len = 0
                 for eti in coding_exons:
+                    domain_in_first_exon = 'no'
                     coding_bp_in_exon = eti.CodingBpInExon(); cumulative_coding_length += coding_bp_in_exon
                     if seq_start <= cumulative_coding_length and seq_start >= last_exon_cumulative_coding_length: ### Thus, domain starts in this exon
+                        var = 'start'
                         exonid = eti.ExonId(); ei = exon_db[exonid]
                         if abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) != coding_bp_in_exon:
                             ### Can occur in the first exon
-                            domain_in_first_exon = 'yes'
-                            non_coding_seq_len = abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) - coding_bp_in_exon
-                            genomic_bp_exon_offset = seq_start - last_exon_cumulative_coding_length + non_coding_seq_len
+                            if last_exon_cumulative_coding_length<2:
+                                domain_in_first_exon = 'yes'
+                                non_coding_seq_len = abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) - coding_bp_in_exon
+                                genomic_bp_exon_offset = seq_start - last_exon_cumulative_coding_length + non_coding_seq_len
+                            else:
+                                genomic_bp_exon_offset = seq_start - last_exon_cumulative_coding_length
                         else: genomic_bp_exon_offset = seq_start - last_exon_cumulative_coding_length
                         if strand == -1:
                             genomic_exon_start = ei.SeqRegionEnd() ### This needs to be reversed if reverse strand
@@ -593,6 +598,7 @@ def getDomainGenomicCoordinates(species,xref_db):
                         #print genomic_exon_start,last_exon_cumulative_coding_length,genomic_domain_start,genomic_bp_exon_offset;kill
                         #pfi.setGenomicStart(genomic_domain_start)
                     if seq_end <= cumulative_coding_length and seq_end >= last_exon_cumulative_coding_length: ### Thus, domain ends in this exon
+                        var = 'end'
                         exonid = eti.ExonId(); ei = exon_db[exonid]
                         genomic_bp_exon_offset = seq_end - last_exon_cumulative_coding_length
                         if (abs(ei.SeqRegionEnd()-ei.SeqRegionStart()+1) != coding_bp_in_exon) and domain_in_first_exon == 'yes': genomic_bp_exon_offset += non_coding_seq_len ### If the domain starts/ends in the first exon
@@ -608,15 +614,21 @@ def getDomainGenomicCoordinates(species,xref_db):
                     #if cumulative_coding_length == seq_end and strand == -1 and seq_start == 1 and domain_in_first_exon == 'yes':
                         #print interpro_name,protein_id,eti.ExonId(),ens_protein,ens_exon,seq_end,genomic_domain_start,genomic_domain_end;kill
                     
-                    #if ens_protein == 'ENSP00000369645':
-                        #ei = exon_db[eti.ExonId()]
+                    if ens_protein == 'ENSMUSP00000097740':
+                        print interpro_name, genomic_domain_start, genomic_domain_end, last_exon_cumulative_coding_length, seq_end, seq_start, non_coding_seq_len
+                        #print 'coding_bp_in_exon, cumulative_coding_length, genomic_bp_exon_offset',exon_db[exonid].StableId(), coding_bp_in_exon, cumulative_coding_length, genomic_bp_exon_offset
+                        if var == 'start':
+                            print interpro_name, var,genomic_exon_start,genomic_bp_exon_offset,start_correction, ei.SeqRegionStart(), ei.SeqRegionEnd()
+                        else:
+                            print interpro_name, var,genomic_exon_start,genomic_bp_exon_offset,end_correction, ei.SeqRegionStart(), ei.SeqRegionEnd()
                         #print 'exon',ens_exon,eti.ExonId(),ei.SeqRegionStart(), ei.SeqRegionEnd()#"""
-                        #print interpro_name,seq_end, cumulative_coding_length,last_exon_cumulative_coding_length, genomic_domain_start, genomic_domain_end, ei.SeqRegionStart(), ei.SeqRegionEnd()
+                        #print non_coding_seq_len, domain_in_first_exon, coding_bp_in_exon, genomic_exon_start, genomic_domain_start, genomic_bp_exon_offset, start_correction
+                        #print seq_start, interpro_name,seq_end, cumulative_coding_length,last_exon_cumulative_coding_length, genomic_domain_start, genomic_domain_end, ei.SeqRegionStart(), ei.SeqRegionEnd()
                     last_exon_cumulative_coding_length = cumulative_coding_length + 1
                 if genomic_domain_start !=0 and genomic_domain_end !=0:
                     values = [ens_protein,(seq_start/3)+1,seq_end/3,genomic_domain_start,genomic_domain_end,hit_id,interpro_ac,interpro_name]
                     values_list.append(values)
-                
+
     print 'interprot_matches:',interprot_match
     exportEnsemblTable(values_list,headers,output_dir)
 
@@ -1403,6 +1415,39 @@ def getExternalDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir):
     importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
 """
 
+class SystemData:
+    def __init__(self, syscode, sysname, mod):
+        self._syscode = syscode; self._sysname = sysname; self._mod = mod
+    def SystemCode(self): return self._syscode
+    def SystemName(self): return self._sysname
+    def MOD(self): return self._mod
+    def __repr__(self): return self.SystemCode()+'|'+self.SystemName()+'|'+self.MOD()
+    
+def importSystemInfo():
+    filename = 'Config/source_data.txt'; x=0
+    system_list=[]; system_codes={}
+    fn=filepath(filename); mod_list=[]
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if '!DOCTYPE' in data:
+            fn2 = string.replace(fn,'.txt','_archive.txt')
+            import shutil; shutil.copyfile(fn2,fn) ### Bad file was downloaded (with warning)
+            importSystemInfo(); break
+        else:
+            try: sysname=t[0];syscode=t[1]
+            except Exception: sysname=''
+        try: mod = t[2]
+        except Exception: mod = ''
+        if x==0: x=1
+        elif sysname != '':
+            system_list.append(sysname)
+            ad = SystemData(syscode,sysname,mod)
+            if len(mod)>1: mod_list.append(sysname)
+            system_codes[sysname] = ad
+    return system_codes,system_list,mod_list
+
+
 def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,ExternalDBName,configType,analysis_type,Overwrite_previous,Rewrite_existing,external_system_db,force):
     global external_xref_key_db; global species; species = Species; global overwrite_previous; overwrite_previous = Overwrite_previous
     global rewrite_existing; rewrite_existing = Rewrite_existing; global ensembl_build; global externalDBName; externalDBName = ExternalDBName
@@ -1413,7 +1458,9 @@ def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,External
     ### This is necessary to ensure similiar systems with different names are saved and referenced
     ### by the same system name and system code
 
-    import UI; system_codes,source_types,mod_types = UI.remoteSystemInfo()
+    import UI;
+    try: system_codes,source_types,mod_types = UI.remoteSystemInfo()
+    except Exception: system_codes,source_types,mod_types = importSystemInfo()
     system_synonym_db = {}; system_code_db={}; new_system_codes={}
     for system_name in system_codes: system_code_db[system_codes[system_name].SystemCode()] = system_name
     if externalDBName != 'GO':
@@ -1607,15 +1654,16 @@ def verifyFile(filename):
 if __name__ == '__main__':
     
     #getChrGeneOnly('Hs','Basic','EnsMart65','yes');sys.exit()
-    analysisType = 'GeneAndExternal'; externalDBName_list = ['AFFY_Zebrafish']
+    analysisType = 'GeneAndExternal'; externalDBName_list = ['Ens_Gg_transcript']
     force = 'yes'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'
     print 'proceeding'
+    analysisType = 'ExternalOnly'
     
-    ensembl_version = '27'
-    species = 'Hs'
+    ensembl_version = '65'
+    species = 'Gg'
     
-    ensembl_version = 'Fungi27'
-    species = 'Nc'
+    #ensembl_version = 'Fungi27'
+    #species = 'Nc'
     #print string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','');sys.exit()
     #getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA');sys.exit()
     
@@ -1623,10 +1671,16 @@ if __name__ == '__main__':
     #for i in child_dirs: print child_dirs[i]
     #"""
     ### WON'T WORK FOR MORE THAN ONE EXTERNAL DATABASE -- WHEN RUN WITHIN THIS MOD
-    species_full = 'Neurospora crassa'; genus,species = string.split(species_full,' '); species = genus[0]+species[0]
-    ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
+    species_full = 'Neurospora crassa'
+    species_full = 'Gallus gallus'
+    species_full = 'Mus musculus'; ensembl_version = '72'; force = 'no'; species = 'Mm'; analysisType = 'AltAnalyzeDBs'; configType = 'Advanced'
+    #child_dirs, ensembl_species, ensembl_versions = getCurrentEnsemblSpecies(ensembl_version)
+    #genus,species = string.split(species_full,' '); species = genus[0]+species[0]
+    #ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
     rewrite_existing = 'no'
+    external_system_db = {'Ens_Gg_transcript':'Et'}
     for externalDBName in externalDBName_list:
         if force == 'yes' and iteration == 1: force = 'no'
-        buildGOEliteDBs(species,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,analysisType,overwrite_previous,rewrite_existing,force); iteration+=1
-        #buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,force)
+        #buildGOEliteDBs(species,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,analysisType,overwrite_previous,rewrite_existing,external_system_db,force); iteration+=1
+        buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,ensembl_version,force)
+

@@ -566,7 +566,7 @@ def importProteinSequences(species,just_get_ids=False):
         for line in open(fn,'rU').xreadlines():             
             probeset_data = cleanUpLine(line)  #remove endline
             mRNA_AC,protein_AC,protein_seq = string.split(probeset_data,'\t')
-            if just_get_ids:
+            if just_get_ids==True:
                 transcript_protein_seq_db[mRNA_AC]=protein_AC
             else: transcript_protein_seq_db[mRNA_AC] = protein_AC,protein_seq
     return seq_files, transcript_protein_seq_db
@@ -1283,12 +1283,12 @@ def runProgramTest(Species,Array_type,Data_type,translate_seq,run_seqcomp):
             
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'; data_type = 'exon'
-    species = 'Hs'; array_type = 'RNASeq'; translate='yes'
+    species = 'Mm'; array_type = 'RNASeq'; translate='yes'
     #species = 'Mm'; array_type = 'RNASeq'; translate='yes'
     test='no'
     
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},{})
-    print len(ens_transcript_exon_db), len(ens_gene_transcript_db), len(ens_gene_exon_db);sys.exit()
+    #print len(ens_transcript_exon_db), len(ens_gene_transcript_db), len(ens_gene_exon_db);sys.exit()
     #runProgramTest(species,array_type,data_type,translate,run_seqcomp)
     runProgram(species,array_type,data_type,translate,run_seqcomp)

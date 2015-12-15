@@ -1,2 +1,3 @@
 GO-Elite/regulated/GO-Elite_results/networks/
+Search:*
 Restriction:.png

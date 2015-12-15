@@ -346,7 +346,9 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
                         gene_to_source_id = gene_associations.getGeneToUid(species_code,mod_source,display=display)
                     except Exception:
                         print_out = "WARNING: The primary gene ID system '"+mod+"'\ndoes not support relationships with '"+ source_data +"'.\nRe-run using a supported primary ID system."
-                        if PoolVar: q.put([print_out]); return None
+                        try:
+                            if PoolVar: q.put([print_out]); return None
+                        except Exception: pass
                         ForceCriticalError(print_out)
                 source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
                 if skipDenomImport==False:
@@ -362,7 +364,9 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
                 if missing:
                     print_out = "None of the input IDs match the selected mod (%s) or species (%s)." % (mod,species_name)
                     print_out += '\nVerify the correct ID system is indicated in the input file and the correct species seleced.'
-                    if PoolVar: q.put([print_out]); return None
+                    try:
+                        if PoolVar: q.put([print_out]); return None
+                    except Exception: pass
                     ForceCriticalError(print_out)
         if skipDenomImport==False:
             checkDenominatorMatchesInput(input_gene_list,denominator_gene_list,gene_file) ###This is for only the associated MOD IDs

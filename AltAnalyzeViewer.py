@@ -1,19 +1,29 @@
-from numpy import arange, sin, pi
 import os.path, sys, shutil
-import wx.lib.scrolledpanel
-import wx.grid as gridlib
 import os
 import string, re
-import wx
+
 import subprocess
-import matplotlib
 import numpy as np
-import matplotlib.pyplot as plt
-#matplotlib.use('WXAgg')
-from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-from matplotlib.figure import Figure
 import unique
 import traceback
+     
+import wx
+import wx.lib.scrolledpanel
+import wx.grid as gridlib
+
+try:
+    import warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
+        import matplotlib
+        #try: matplotlib.use('TkAgg')
+        #except Exception: pass
+        #import matplotlib.pyplot as plt   ### Backend conflict issue when called prior to the actual Wx window appearing
+        #matplotlib.use('WXAgg')
+        from matplotlib.backends.backend_wx import NavigationToolbar2Wx
+        from matplotlib.figure import Figure
+        from numpy import arange, sin, pi
+except Exception: print 'here'
 
 if os.name == 'nt': bheight=20
 else: bheight=10
@@ -335,7 +345,7 @@ class Main(wx.Frame):
     def OnQuit(self, event):
         popup = wx.MessageDialog(None, "Are you sure you want to quit?", "Warning", wx.YES_NO)
         popup_answer = popup.ShowModal()
-        print popup_answer
+        #print popup_answer
         if(popup_answer == 5103):
             self.Close()
         else:
@@ -362,15 +372,18 @@ class Main(wx.Frame):
             self.popupID1 = wx.NewId()
             self.popupID2 = wx.NewId()
             self.popupID3 = wx.NewId()
+            self.popupID4 = wx.NewId()
             self.Bind(wx.EVT_MENU, self.GeneExpressionSummaryPlot, id=self.popupID1)
             self.Bind(wx.EVT_MENU, self.PrintGraphVariables, id=self.popupID2)
             self.Bind(wx.EVT_MENU, self.AltExonViewInitiate, id=self.popupID3)
+            self.Bind(wx.EVT_MENU, self.IsoformViewInitiate, id=self.popupID4)
  
         # build the menu
         menu = wx.Menu()
         itemOne = menu.Append(self.popupID1, "Gene Plot")
         itemTwo = menu.Append(self.popupID2, "Print Variables")
-        itemThree = menu.Append(self.popupID3, "Splice Plot")
+        itemThree = menu.Append(self.popupID3, "Exon Plot")
+        itemFour = menu.Append(self.popupID4, "Isoform Plot")
  
         # show the popup menu
         self.PopupMenu(menu)
@@ -393,18 +406,20 @@ class Main(wx.Frame):
         #print print exp_file
         UI.altExonViewer(self.species,self.platform,exp_file,gene,show_introns,analysisType,'')
         
-    def ExonViewInitiate(self, event):
+    def IsoformViewInitiate(self, event):
+        print os.getcwd()
         #This function is a part of the pop-up menu for the table: it plots a gene and protein level view.
         os.chdir(parentDirectory)
         t = os.getcwd()
-        self.control.write(str(os.listdir(t)) + "\n")
-        R = self.myGrid.GetCellValue(self.GridRowEvent, 0)
-        #R = R[7:]
-        #R = "ENSG" + R
-        self.control.write("Plotting... " + R + "\n")
+        #self.control.write(str(os.listdir(t)) + "\n")
+        gene = self.myGrid.GetCellValue(self.GridRowEvent, 0)
+        if ':' in gene:
+            gene = string.split(gene,':')[0]
+            
+        self.control.write("Plotting... " + gene + "\n")
         import ExPlot
         reload(ExPlot)
-        ExPlot.remoteGene(R)
+        ExPlot.remoteGene(gene,self.species,self.main_results_directory,self.CurrentFile)
         #Q = subprocess.Popen(['python', 'ExPlot13.py', str(R)])
         #os.chdir(currentDirectory)
                                     
@@ -413,9 +428,13 @@ class Main(wx.Frame):
         Wikipathway_Flag = 0
         Protein_Flag = 0
         VarGridSet = []
-        for i in range(100):
-            p = self.myGrid.GetCellValue(0, i)
-            VarGridSet.append(p)
+        for i in range(3000):
+            try:
+                p = self.myGrid.GetCellValue(0, i)
+                VarGridSet.append(p)    
+            except Exception:
+                pass
+
         for i in VarGridSet:
             y = re.findall("WikiPathways", i)
             if len(y) > 0:
@@ -490,6 +509,7 @@ class Main(wx.Frame):
         #PLOTTING STARTS --
         means_men = Output_Values_List
         
+        import matplotlib.pyplot as plt
         fig, ax = plt.subplots()
         
         index = np.arange(n_groups)
@@ -499,7 +519,8 @@ class Main(wx.Frame):
         opacity = 0.4
         error_config = {'ecolor': '0.3'}
         
-        rects1 = plt.bar((index + pos), Output_Values_List, bar_width,
+        with warnings.catch_warnings():
+            rects1 = plt.bar((index + pos), Output_Values_List, bar_width,
                         alpha=opacity,
                         color='b',
                         yerr=Output_std_err,
@@ -511,6 +532,7 @@ class Main(wx.Frame):
         plt.legend()
         
         plt.tight_layout()
+        
         plt.show()
         #-- PLOTTING STOPS
 
@@ -615,17 +637,23 @@ class Main(wx.Frame):
                         self.supported_genesets = []
                         self.geneset_type = 'None Selected'
 
-                print 'Using',self.geneset_type, len(self.supported_genesets),'pathways'
+                #print 'Using',self.geneset_type, len(self.supported_genesets),'pathways'
                 break
-        for file in os.listdir(self.main_results_directory+'/ExpressionOutput'):
-            if 'DATASET' in file:
-                dataset_file = unique.filepath(self.main_results_directory+'/ExpressionOutput/'+file)
-                for line in open(dataset_file,'rU').xreadlines():
-                    self.dataset_file_length = len(string.split(line,'\t'))
-                    break
-        print self.dataset_file_length
-        if self.dataset_file_length<50:
+        try:
+            for file in os.listdir(self.main_results_directory+'/ExpressionOutput'):
+                if 'DATASET' in file:
+                    dataset_file = unique.filepath(self.main_results_directory+'/ExpressionOutput/'+file)
+                    for line in open(dataset_file,'rU').xreadlines():
+                        self.dataset_file_length = len(string.split(line,'\t'))
+                        break
+        except Exception:
+            pass
+        try:
+            if self.dataset_file_length<50:
+                self.dataset_file_length=50
+        except Exception:
             self.dataset_file_length=50
+
         self.myGrid.CreateGrid(100, self.dataset_file_length) ### Re-set the grid width based on the DATASET- file width
         
         
@@ -752,7 +780,7 @@ class Main(wx.Frame):
             self.ids = {root : self.tree.AddRoot(root)}
 
             for (dirpath, dirnames, filenames) in os.walk(root):
-                #print 'x',[dirpath, dirnames, filenames];sys.exit()
+                #print 'x',[dirpath, dirnames, filenames]#;sys.exit()
                 for dirname in dirnames:
                     #print dirpath, dirname
                     fullpath = os.path.join(dirpath, dirname)
@@ -816,13 +844,21 @@ class Main(wx.Frame):
                 self.main_results_directory = string.split(self.main_results_directory,'SashimiPlots')[0]
             opening_display_folder = self.main_results_directory + "/ExpressionOutput"
             
-            list_contents = os.listdir(opening_display_folder)
-            target_file = ""
-            for file in list_contents:
-                candidate = re.findall("SUMMARY", file)
-                if len(candidate) > 0:
-                    target_file = file
-                    break
+            try:
+                list_contents = os.listdir(opening_display_folder)
+                target_file = ""
+                for file in list_contents:
+                    candidate = re.findall("SUMMARY", file)
+                    if len(candidate) > 0:
+                        target_file = file
+                        break
+            except Exception:
+                opening_display_folder = self.main_results_directory
+                list_contents = os.listdir(opening_display_folder)
+                for file in list_contents:
+                    candidate = re.findall(".log", file)
+                    if len(candidate) > 0:
+                        target_file = file ### get the last log file
 
             target_file = unique.filepath(opening_display_folder + "/" + target_file)
             opened_target_file = open(target_file, "r")
@@ -830,18 +866,23 @@ class Main(wx.Frame):
             for line in opened_target_file:
                 line = line.rstrip(); line = string.replace(line,'"','')
                 line = line.split("\t")
+                if len(line)==1: line += ['']*5
                 opened_target_file_contents.append((line))
-
+           
             self.table_length = len(opened_target_file_contents)
             for cell in self.ColoredCellList:
-                self.myGrid.SetCellBackgroundColour(cell[0], cell[1], wx.WHITE)
+                try: self.myGrid.SetCellBackgroundColour(cell[0], cell[1], wx.WHITE)
+                except Exception: pass
             self.ColoredCellList = []
 
             x_count = 0
             for item_list in opened_target_file_contents:
                 y_count = 0
                 for item in item_list:
-                    self.myGrid.SetCellValue(x_count, y_count, item)
+                    try:
+                        self.myGrid.SetCellValue(x_count, y_count, item)
+                    except Exception:
+                        pass ### if the length of the row is 0
                     if(x_count == 0):
                         self.myGrid.SetCellFont(x_count, y_count, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
                     y_count = y_count + 1
@@ -869,7 +910,7 @@ class Main(wx.Frame):
             self.myGrid.ClearGrid()
             self.DirFileTxt = single_input_stream
             self.DirFile = single_input_stream
-            print 'a'
+
             table_file = open(self.DirFileTxt, "r")
             table_file_contents = []
             for line in table_file:
@@ -1029,7 +1070,7 @@ class Main(wx.Frame):
         if popup.ShowModal()==wx.ID_OK:
             self.myGrid.ClearGrid()
             answer=popup.GetValue()
-            print 'b'
+
             try:
                 table_file = open(self.DirFileTxt, "r")
                 table_file_contents = []
@@ -1073,7 +1114,7 @@ class Main(wx.Frame):
             self.myGrid.ClearGrid()
             answer=popup.GetValue()
             answer = answer.upper()
-            print 'c'
+
             try:
                 table_file = open(self.DirFileTxt, "r")
                 table_file_contents = []
@@ -1189,7 +1230,7 @@ class Main(wx.Frame):
 
                 table_file_contents = []
                 count = 0
-                print 'd'
+
                 for line in open(self.DirFileTxt,'rU').xreadlines():
                     line = line.rstrip(); line = string.replace(line,'"','')
                     regex_test = re.findall(answer.upper(), line.upper())
@@ -1234,7 +1275,7 @@ class Main(wx.Frame):
             answer = self.sortbox.GetLineText(0)
             self.myGrid.ClearGrid()
             answer = answer.upper()
-            print 'e'
+
             try:
                 table_file = open(self.DirFileTxt, "r")
                 table_file_contents = []
@@ -1343,6 +1384,8 @@ class Main(wx.Frame):
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     def SelectedTopTreeID(self, event):
+      item = event.GetItem()
+
       try:  
         #This handles the selection of an item in the TOP tree browser.
         item = event.GetItem()
@@ -1415,7 +1458,6 @@ class Main(wx.Frame):
         self.browser2.ExpandAll()
         
         #OPENING DISPLAY
-        display_file_selected = ""
         TXT_FLAG = 0
         PNG_FLAG = 0
         if(root_display[-1] != "/"):
@@ -1423,8 +1465,7 @@ class Main(wx.Frame):
         for possible in root_contents_display:
             total_filepath = unique.filepath(root_display + possible)
             if(possible[-4:] == ".txt"):
-                self.control.write("Displaying file: " + str(total_filepath) + "\n")
-                display_file_selected = total_filepath
+                self.control.write("Displaying File: " + str(total_filepath) + "\n")
                 break
 
         TXT_FLAG = 0
@@ -1442,6 +1483,7 @@ class Main(wx.Frame):
             root_display = root_display + "/"
         Pitch = os.listdir(root)
         PitchSelect = Pitch[0]
+        self.CurrentFile = PitchSelect
         #self.control.write(str(PitchSelect) + " " + root_display + "\n")                
         self.DirFile = unique.filepath(root_display + PitchSelect)
         self.IntFileTxt.Clear()
@@ -1477,7 +1519,7 @@ class Main(wx.Frame):
                 table_file_contents = []
                 column_lengths = []
                 count=0
-                print 'f'
+
                 for line in open(self.DirFileTxt,'rU').xreadlines():
                     line = line.rstrip(); line = string.replace(line,'"','')
                     line = line.split("\t")
@@ -1592,6 +1634,7 @@ class Main(wx.Frame):
         if(DirPath[-1] != "/"):
             DirPath = DirPath + "/"
         DirFile = DirPath + Parameters[0]
+        self.CurrentFile = DirFile
         self.control.write("Displaying file: " + DirFile + "\n")
         title_name = DirFile.split("/")
         title_name = title_name[-1]
@@ -1633,7 +1676,7 @@ class Main(wx.Frame):
                 self.myGrid.DeleteRows(100, self.AppendTotal, True)        
             except:
                 pass
-            print 'g'
+
             try:
                 count=0
                 #table_file = open(self.DirFileTxt, "r")
@@ -1683,11 +1726,11 @@ class Main(wx.Frame):
             except:
                 print traceback.format_exc()
                 TXT_FLAG = 0
-                self.control.write("Unable2 to open txt." + "\n")
+                self.control.write("Unable to open txt." + "\n")
             DATASET_FIND_FLAG = re.findall("DATASET", self.DirFileTxt)
             count=0
             if(len(DATASET_FIND_FLAG) > 0):
-                print 'h'
+
                 try:
                     #table_file = open(self.DirFileTxt, "rU")
                     table_file_contents = []
@@ -1946,9 +1989,9 @@ class Main(wx.Frame):
             #This function is bound to the "Run" button on the interactive tab GUI. Generates an interactive plot.
             #Currently updates on the panel are a priority and many changes may come with it.
             RegExHeat = re.findall("hierarchical", self.DirFile)
-            print 'A'
+
             if(len(RegExHeat) > 0):
-                print 'B'
+
                 for VariableName in self.heatmap_translation:
                     #self.control.write(str(self.heatmap_ids[self.heatmap_translation[VariableName]].GetValue()) + " " + str(VariableName) + " " + str(self.heatmap_ids[self.heatmap_translation[VariableName]]) + "\n")
                     try:
@@ -1956,7 +1999,7 @@ class Main(wx.Frame):
                         #print self.heatmap_translation[VariableName]
                     except Exception: pass
                 try:
-                    self.control.write(self.DirFile + "\n")
+                    #self.control.write(self.DirFile + "\n")
                     input_file_dir = self.DirFile + ".txt"
                     column_metric = self.heatmap_translation['column_metric']; #self.control.write(column_metric + "\n")
                     column_method = self.heatmap_translation['column_method']; #self.control.write(column_method + "\n")
@@ -1988,14 +2031,14 @@ class Main(wx.Frame):
                         row_method = None
                         color_gradient = 'yellow_black_blue'
                         normalization = 'median'
-                    print 'C'
+
                     translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Iterative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly', 'Perform Monocle':'monocle'}
                     try:
                         if 'None Selected' in HeatmapAdvanced: ('None Selected')
                     except Exception: HeatmapAdvanced = ('None Selected')
                     if ('None Selected' in HeatmapAdvanced and len(HeatmapAdvanced)==1) or 'None Selected' == HeatmapAdvanced: pass
                     else:
-                        print HeatmapAdvanced,'kill'
+                        #print HeatmapAdvanced,'kill'
                         try:
                             GeneSelection += ' '+string.join(list(HeatmapAdvanced),' ')
                             for name in translate:
@@ -2015,7 +2058,7 @@ class Main(wx.Frame):
                     except Exception: rho=None
                     if transpose == 'yes': transpose = True
                     else: transpose = False
-                    print 'D'
+
                     vendor = 'RNASeq'
                     color_gradient = string.replace(color_gradient,'-','_')
                     if GeneSetSelection != 'None Selected' or GeneSelection != '' or normalization != 'NA' or JustShowTheseIDs != '' or JustShowTheseIDs != 'None Selected':
@@ -2036,11 +2079,11 @@ class Main(wx.Frame):
                         transpose = gsp ### this allows methods that don't transmit this object to also work
                     if row_method == 'no': row_method = None
                     if column_method == 'no': column_method = None
-                    print [GeneSetSelection, PathwaySelection,OntologyID]
-                    print 'E'
+                    #print [GeneSetSelection, PathwaySelection,OntologyID]
+
                     remoteCallToAltAnalyze = False
-                    try: print [gsp.ClusterGOElite()]
-                    except Exception: print 'dog', traceback.format_exc()
+                    #try: print [gsp.ClusterGOElite()]
+                    #except Exception: print 'dog', traceback.format_exc()
                 except Exception:
                     print traceback.format_exc()
                 if remoteCallToAltAnalyze == False:
@@ -2068,7 +2111,7 @@ class Main(wx.Frame):
                             pid = subprocess.Popen(command, creationflags=DETACHED_PROCESS).pid
                         else:
                             command = [mac_package_path]+command
-                            print command
+
                             if usePopen:
                                 alt_command = ["start"]+command
                                 alt_command = ["start",mac_package_path]
@@ -2159,7 +2202,6 @@ def remoteViewer(app):
     fr = Main(parent=None,id=1)
     fr.Show()
     app.MainLoop()
-    
     
 if __name__ == "__main__":
     app = wx.App(False)

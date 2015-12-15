@@ -1277,14 +1277,17 @@ def exportEnsemblAnnotations(ensembl_annotation_db):
         data.write(values)
     data.close()
 
-def reimportEnsemblAnnotations(species):
+def reimportEnsemblAnnotations(species,symbolKey=False):
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl-annotations.txt'
     fn=filepath(filename)
     ensembl_annotation_db = {}
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         ensembl_gene_id,symbol,description,mRNA_processing = string.split(data,'\t')
-        ensembl_annotation_db[ensembl_gene_id] = symbol,description,mRNA_processing
+        if symbolKey:
+            ensembl_annotation_db[symbol] = ensembl_gene_id
+        else:
+            ensembl_annotation_db[ensembl_gene_id] = symbol,description,mRNA_processing
     return ensembl_annotation_db
     
 def importPreviousBuildTranslation(filename,use_class_structures):
@@ -2423,11 +2426,10 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
     except Exception: pass
     try: os.remove(output_file)
     except Exception: pass
-    print incl_isoform_seq
-    print include_region
-    print target_region;sys.exit()
+    #print incl_isoform_seq
+    #print include_region
+    #print target_region;sys.exit()
     
-    AGAGCTGAGCCAAGCGTTTACTGGGCAGCTGTTACG
     input_dir = exportPrimerInputSeq(incl_isoform_seq,include_region,target_region)
     primer3_file = getPrimer3Location()
     #for Primer3 release 2.3 and greater: SEQUENCE_PRIMER_PAIR_OK_REGION_LIST=100,50,300,50 ; 900,60,, ; ,,930,100
@@ -2528,16 +2530,21 @@ def importComparisonSplicingData4Primers(filename,species):
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
+        
         if firstLine:
+            header = t
             firstLine = False
             ei.write(line)
         else:
             try:
+                if 'comparison' in header:
+                    t = t[:-1]
                 exonid = t[0]; symbol = t[2]; confirmed = t[5]; fold_change = abs(float(t[-2])); percent_exp = float(t[-3])
+                print symbol
                 junctions = t[4]; isoforms = t[9]; splice_type = t[8]
                 #print symbol, fold_change,percent_exp,confirmed;sys.exit()
-                
-                if fold_change<2 and percent_exp>0.25 and (confirmed == 'yes'):
+                #if fold_change<2 and percent_exp>0.25 and (confirmed == 'yes'):
+                if fold_change < 50:
                     if 'alternative_polyA' not in splice_type and 'altPromoter' not in splice_type:
                         j1, j2 = string.split(string.split(junctions,'|')[0],' vs. ')
                         #(-)alt-C-terminus,(-)AA:188(ENSP00000397452)->238(ENSP00000410667),(-)microRNA-target(hsa-miR-599:miRanda,hsa-miR-186:miRanda)
@@ -2549,26 +2556,30 @@ def importComparisonSplicingData4Primers(filename,species):
                         #print symbol
                         try:
                             primer = identifyPCRregions(species,'RNASeq',exonid,j1,j2,iso1,iso2)
-                            print exonid, j1, j2, iso1, iso2
+                            #print exonid, j1, j2, iso1, iso2
                             ei.write(string.join(t+[primer],'\t')+'\n')
-                            print primer, symbol, exonid
+                            #print primer, symbol, exonid
                             #sys.exit()
-                        except Exception: pass #print traceback.format_exc(),'\n'; sys.exit()
+                        except Exception:
+                            pass
+                            print traceback.format_exc(),'\n'; #sys.exit()
                     
             except Exception:
-                #print traceback.format_exc(),'\n';sys.exit()
+                print traceback.format_exc(),'\n'#;sys.exit()
                 pass
     ei.close()
                 
 if __name__ == '__main__':
     ###KNOWN PROBLEMS: the junction analysis program calls exons as cassette-exons if there a new C-terminal exon occurs downstream of that exon in a different transcript (ENSG00000197991).
-    Species = 'Hs'
+    Species = 'Mm'
     test = 'yes'
     Data_type = 'ncRNA'
     Data_type = 'mRNA'
     #E6.1-E8.2 vs. E5.1-E8.3
-    filename = '/Users/saljh8/Desktop/Hs_RNASeq_D08_vs_D05.ExpCutoff-5.0_average-comparison-evidence.txt'
-    #importComparisonSplicingData4Primers(filename,Species); sys.exit()
+    filename = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/Clustering/Combined-junction-exon-evidence.txt'
+    #exportTranscriptExonIDAssociations(Species)
+    #createExonRegionSequenceDB(Species,'RNASeq'); sys.exit()
+    importComparisonSplicingData4Primers(filename,Species); sys.exit()
     
     #ENSG00000154556:E8.2-E9.7|ENSG00000154556:E5.12-E9.7	alt-N-terminus|-	alt-C-terminus|-	AA:41(ENST00000464975-PEP)->43(ENST00000493709-PEP)|-
     #ENSG00000161999:E2.3-E2.5	nonsense_mediated_decay|+	retained_intron|+	alt-N-terminus|+	alt-C-terminus|+	AA:72(ENST00000564436-PEP)->81(ENSP00000454700)|+
@@ -2578,7 +2589,7 @@ if __name__ == '__main__':
     identifyPCRregions(Species,'RNASeq','ENSG00000128891:E1.12','E1.12-E2.1','E1.11-E2.1','ENSP00000350695','ENSP00000350695'); sys.exit()
     #identifyPCRregions(Species,'RNASeq','ENSG00000133226:E9.1','E8.1-E9.1','E8.1-E11.3','ENST00000564436-PEP','ENSP00000454700'); sys.exit()
     #createExonRegionSequenceDB(Species,'RNASeq'); sys.exit()
-    exportTranscriptExonIDAssociations(Species);sys.exit()
+    
     getEnsemblAssociations(Species,Data_type,test); sys.exit()
     
     test_gene = ['ENSG00000143776']#,'ENSG00000154889','ENSG00000156026','ENSG00000148584','ENSG00000063176','ENSG00000126860'] #['ENSG00000105968']

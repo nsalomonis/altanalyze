@@ -8,11 +8,10 @@ try:
         import matplotlib
         matplotlib.rcParams['backend'] = 'TkAgg'
         import matplotlib.pyplot as pylab
-        from matplotlib import mpl
-        mpl.rcParams['axes.linewidth'] = 0.5
-        mpl.rcParams['pdf.fonttype'] = 42
-        #mpl.rcParams['font.family'] = 'sans-serif'
-        #mpl.rcParams['font.sans-serif'] = 'Arial'
+        matplotlib.rcParams['axes.linewidth'] = 0.5
+        matplotlib.rcParams['pdf.fonttype'] = 42
+        #matplotlib.rcParams['font.family'] = 'sans-serif'
+        #matplotlib.rcParams['font.sans-serif'] = 'Arial'
         import numpy
 except Exception:
     print traceback.format_exc()
@@ -602,7 +601,7 @@ def plotExonExpression(fig,matrix,stdev_matrix,row_headers,column_headers,datase
     filename = gene_symbol+datatype+'.pdf'
     pylab.savefig(root_dir + filename)
     filename = filename[:-3]+'png'
-    pylab.savefig(root_dir + filename,dpi=200) #,dpi=200
+    pylab.savefig(root_dir + filename,dpi=120) #,dpi=200
     if display:
         pylab.show()
     try:

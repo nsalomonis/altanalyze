@@ -314,8 +314,8 @@ def obtainTopGeneResults():
     pass
 
 if __name__ == '__main__':
-    remoteIndexing('Mm','/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/')
-    
+    remoteIndexing('Hs','/Volumes/salomonis2-1/CPMC_Melanoma-GBM/bams/')
+    sys.exit()
     #"""
     countinp = os.path.abspath(os.path.expanduser(sys.argv[1]))
     inputpsi = os.path.abspath(os.path.expanduser(sys.argv[2]))

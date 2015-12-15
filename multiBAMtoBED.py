@@ -175,7 +175,7 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
         if len(analysisType) == 0 or 'exon' in analysisType:
             for i in paths_to_run:
                 runBAMtoExonBED(i)
-        
+
 def runBAMtoJunctionBED(paths_to_run):
     bamfile_dir,bed_reference_dir,output_bedfile_path = paths_to_run
     output_bedfile_path = string.replace(bamfile_dir,'.bam','__junction.bed')

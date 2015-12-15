@@ -1,2 +1,2 @@
-DataPlots/Search:Clustering-LineageCorrelations,TissueFateMap
-Restriction:.txt,.png
+DataPlots/Search:TissueFateMap
+Restriction:.png

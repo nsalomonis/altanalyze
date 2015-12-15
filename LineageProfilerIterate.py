@@ -275,14 +275,27 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             
     gene_expression_db, sample_headers = importGeneExpressionValuesSimple(exp_input,translation_db)
     
+    pruneTissueSpecific=False
+    for gene in tissue_specific_db:
+        if gene not in gene_expression_db:
+            pruneTissueSpecific = True
+            break
+    if pruneTissueSpecific:
+        tissue_specific_db2={}
+        for gene in gene_expression_db:
+            if gene in tissue_specific_db:
+                tissue_specific_db2[gene] = tissue_specific_db[gene]
+        tissue_specific_db = tissue_specific_db2
+    
     all_marker_genes=[]            
     for gene in tissue_specific_db:
         all_marker_genes.append(gene)
-        
+    #print [modelSize]
     if len(geneModels)>0:
         allPossibleClassifiers = geneModels
-    elif modelSize == None or modelSize == 'optimize':
-        allPossibleClassifiers = [all_marker_genes]
+    elif modelSize == None or modelSize == 'optimize' or modelSize == 'no':
+        allPossibleClassifiers={}
+        allPossibleClassifiers[tuple(all_marker_genes)]=None
     else:
         ### A specific model size has been specified (e.g., find all 10-gene models)
         allPossibleClassifiers = getRandomSets(all_marker_genes,modelSize)
@@ -614,7 +627,7 @@ def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,t
     ### Determine if we should collapse the entries or not based on common phenotype references
     class_list=[]; processed=0; alternate_class={}
     for h in tissues:
-        if ':' in h:
+        if ':' in h and 'ENS' not in h:
             try:
                 phenotype, source = string.split(h,':'); processed+=1
                 if phenotype not in class_list: class_list.append(phenotype)
@@ -638,6 +651,7 @@ def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,t
             try: classifier_specific_db[gene] = tissue_specific_db[gene]
             except Exception: None
         expession_subset = filterGeneExpressionValues(gene_expression_db,classifier_specific_db,translation_db,expession_subset)
+
         ### If the incorrect gene system was indicated re-run with generic parameters
         if len(expession_subset)==0:
             translation_db=[]; keyed_by = 'primaryID'; targetPlatform = compendium_platform; analysis_type = 'geneLevel'
@@ -680,7 +694,7 @@ def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,t
                 positive_class=None
                 j=0
                 for tissue in tissue_scores:
-                    if ':' in tissue:
+                    if ':' in tissue and 'ENS' not in tissue:
                         group_name = string.split(tissue,':')[0]
                     else:
                         group_name = tissue
@@ -905,6 +919,7 @@ def importTissueSpecificProfiles(species,tissue_specific_db):
                 tissue_exp = map(float, t[tissue_index:])
                 if value_type == 'calls':
                     tissue_exp = produceDetectionCalls(tissue_exp,platform) ### 0 or 1 calls
+                
                 tissue_specific_db[gene]=x,tissue_exp ### Use this to only grab relevant gene expression profiles from the input dataset
                 tissues_added[t[marker_in]]=[]
             x+=1

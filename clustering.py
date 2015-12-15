@@ -40,14 +40,13 @@ try:
             import matplotlib.pyplot as pylab
             import matplotlib.colors as mc
             import matplotlib.mlab as mlab
-            from matplotlib import mpl
             import matplotlib.ticker as tic
             from matplotlib.patches import Circle
             from mpl_toolkits.mplot3d import Axes3D
-            mpl.rcParams['axes.linewidth'] = 0.5
-            mpl.rcParams['pdf.fonttype'] = 42
-            mpl.rcParams['font.family'] = 'sans-serif'
-            mpl.rcParams['font.sans-serif'] = 'Arial'
+            matplotlib.rcParams['axes.linewidth'] = 0.5
+            matplotlib.rcParams['pdf.fonttype'] = 42
+            matplotlib.rcParams['font.family'] = 'sans-serif'
+            matplotlib.rcParams['font.sans-serif'] = 'Arial'
         except Exception:
             print traceback.format_exc()
             print 'Matplotlib support not enabled'
@@ -245,7 +244,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         except Exception: scaling_factor = 2.5
     
     #print vmin/scaling_factor
-    norm = mpl.colors.Normalize(vmin/scaling_factor, vmax/scaling_factor) ### adjust the max and min to scale these colors by 2.5 (1 scales to the highest change)
+    norm = matplotlib.colors.Normalize(vmin/scaling_factor, vmax/scaling_factor) ### adjust the max and min to scale these colors by 2.5 (1 scales to the highest change)
     fig = pylab.figure(figsize=(default_window_width,default_window_hight)) ### could use m,n to scale here
     pylab.rcParams['font.size'] = 7.5
 
@@ -762,18 +761,18 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
 
     if (column_method != None or 'column' in cb_status) and show_color_bars == True:
         axc = fig.add_axes([axc_x, axc_y, axc_w, axc_h])  # axes for column side colorbar
-        cmap_c = mpl.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
-        #cmap_c = mpl.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
+        cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
+        #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
         if len(unique.unique(ind2))==2: ### cmap_c is too few colors
-            cmap_c = mpl.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
         elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
-            cmap_c = mpl.colors.ListedColormap(['#88BF47', '#3D3181', '#FEBC18', '#EE2C3C'])
+            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#FEBC18', '#EE2C3C'])
         elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
-            cmap_c = mpl.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
         elif len(unique.unique(ind2))==6: ### cmap_c is too few colors
-                    cmap_c = mpl.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
         elif len(unique.unique(ind2))==7: ### cmap_c is too few colors
-                    cmap_c = mpl.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
         elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
             cmap_c = pylab.cm.gist_rainbow
 
@@ -790,18 +789,18 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         if len(group_name_list)>0: ### Add a group color legend key
             if 'hopach' == column_method: ### allows us to add the second color bar       
                 axcd = fig.add_axes([ax2_x, ax2_y, ax2_w, color_bar_w])  # dendrogram coordinates with color_bar_w substituted - can use because dendrogram is not used
-                cmap_c = mpl.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
-                #cmap_c = mpl.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
+                cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
+                #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
                 if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
-                    cmap_c = mpl.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                    cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
-                    cmap_c = mpl.colors.ListedColormap(['#88BF47', '#3D3181', '#FEBC18', '#EE2C3C'])
+                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#FEBC18', '#EE2C3C'])
                 elif len(unique.unique(ind2_clust))==5: ### cmap_c is too few colors
-                    cmap_c = mpl.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
                 elif len(unique.unique(ind2_clust))==6: ### cmap_c is too few colors
-                    cmap_c = mpl.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
                 elif len(unique.unique(ind2_clust))==7: ### cmap_c is too few colors
-                    cmap_c = mpl.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
                 elif len(unique.unique(ind2_clust))>0: ### cmap_c is too few colors
                     cmap_c = pylab.cm.gist_rainbow
                 dc = numpy.array(ind2_clust, dtype=int)
@@ -817,18 +816,18 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             group_name_list.sort()
             group_colors = map(lambda x: x[0],group_name_list)
             group_names = map(lambda x: x[1],group_name_list)
-            cmap_d = mpl.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
-            #cmap_d = mpl.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
+            cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
+            #cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
             if len(unique.unique(ind2))==2: ### cmap_c is too few colors
-                cmap_d = mpl.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
-                cmap_d = mpl.colors.ListedColormap(['#88BF47', '#3D3181', '#FEBC18', '#EE2C3C'])
+                cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#FEBC18', '#EE2C3C'])
             elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
-                cmap_d = mpl.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+                cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
             elif len(unique.unique(ind2))==6: ### cmap_c is too few colors
-                cmap_d = mpl.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             elif len(unique.unique(ind2))==7: ### cmap_c is too few colors
-                cmap_d = mpl.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
                 cmap_d = pylab.cm.gist_rainbow
             dc = numpy.array(group_colors, dtype=int)
@@ -837,7 +836,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             axd.set_yticks([])
             #axd.set_xticklabels(group_names, rotation=45, ha='left')
             pylab.xticks(range(len(group_names)),group_names,rotation=45,ha='left')
-            #cmap_c = mpl.colors.ListedColormap(map(lambda x: GroupDB[x][-1], new_column_header))
+            #cmap_c = matplotlib.colors.ListedColormap(map(lambda x: GroupDB[x][-1], new_column_header))
 
     if show_color_bars == False:
         axc = fig.add_axes([axc_x, axc_y, axc_w, axc_h])  # axes for column side colorbar
@@ -852,7 +851,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             print ind1;kill
         dr.shape = (len(ind1),1)
         #print ind1, len(ind1)
-        cmap_r = mpl.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
+        cmap_r = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
         if len(unique.unique(ind1))>4: ### cmap_r is too few colors
             cmap_r = pylab.cm.gist_rainbow
         im_r = axr.matshow(dr, aspect='auto', origin='lower', cmap=cmap_r)
@@ -866,7 +865,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
 
     # Plot color legend
     axcb = fig.add_axes([axcb_x, axcb_y, axcb_w, axcb_h], frame_on=False)  # axes for colorbar
-    cb = mpl.colorbar.ColorbarBase(axcb, cmap=cmap, norm=norm, orientation='horizontal')
+    cb = matplotlib.colorbar.ColorbarBase(axcb, cmap=cmap, norm=norm, orientation='horizontal')
     #axcb.set_title("colorkey",fontsize=14)
     
     if 'LineageCorrelations' in dataset_name:
@@ -932,11 +931,12 @@ def openTreeView(filename):
 
 def remoteGOElite(elite_dir):
     mod = 'Ensembl'
+    #mod = 'AltExon'
     pathway_permutations = 'FisherExactTest'
     filter_method = 'z-score'
     z_threshold = 1.96
     p_val_threshold = 0.05
-    change_threshold = 2
+    change_threshold = 0
     if runGOElite:
         resources_to_analyze = EliteGeneSets
         if 'all' in resources_to_analyze:
@@ -1225,6 +1225,8 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
                 if ':' in id:
                     id = string.split(id,':')[-1]
                     sc = 'Ae'
+            if '&' in id:
+                sc = 'Ae'
             try: export_elite.write(id+'\t'+sc+'\n')
             except Exception: export_elite.write(id+'\n') ### if no System Code known
             allGenes[id]=[]
@@ -1323,6 +1325,12 @@ def updateColorBarData(ind1,ind2,column_header,row_header,row_method):
     except Exception: None
     return ind1,ind2,group_name_list,cb_status
 
+
+def ConvertFromHex(color1,color2,color3):
+    c1tuple = tuple(ord(c) for c in color1.lsstrip('0x').decode('hex'))
+    c2tuple = tuple(ord(c) for c in color2.lsstrip('0x').decode('hex'))
+    c3tuple = tuple(ord(c) for c in color3.lsstrip('0x').decode('hex'))
+
 def RedBlackSkyBlue():
     cdict = {'red':   ((0.0, 0.0, 0.0),
                        (0.5, 0.0, 0.1),
@@ -1419,7 +1427,8 @@ def filepath(filename):
     fn = unique.filepath(filename)
     return fn
 
-def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None):
+def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore=False):
+    
     global priorColumnClusters
     global priorRowClusters
     getRowClusters=False
@@ -1441,7 +1450,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None):
             if t[1] == 'row_clusters-flat':
                 t = t = [t[0]]+t[2:]
             ### color samples by annotated groups if an expression file
-            if 'exp.' in filename and ':' not in data:
+            if ('exp.' in filename or 'filteredExp.' in filename) and ':' not in data:
                 filename = string.replace(filename,'-steady-state.txt','.txt')
                 try:
                     import ExpressionBuilder
@@ -1512,7 +1521,15 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None):
                         #priorRowClusters[gene]=int(float(t[1]))
                         priorRowClusters.append(int(float(t[1])))
                     except Exception: pass
-                    
+                
+                if zscore:
+                    ### convert to z-scores for normalization prior to PCA
+                    avg = numpy.mean(s)
+                    std = numpy.std(s)
+                    if std ==0:
+                        std = 0.1
+                    try: s = map(lambda x: (x-avg)/std,s)
+                    except Exception: pass
                 if geneFilter==None:
                     matrix.append(s)
                     row_header.append(gene)
@@ -1548,6 +1565,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None):
             k+=1
         del original_matrix
         
+    if zscore: print 'Converting values to normalized z-scores...'
     #reverseOrder = True ### Cluster order is background (this is a temporary workaround)
     if reverseOrder == True:
         matrix.reverse(); row_header.reverse()
@@ -1907,7 +1925,10 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
         marker_size = 12
     if len(column_header)>40:
         marker_size = 10
- 
+    if len(column_header)>150:
+        marker_size = 7
+
+        
     group_names={}
     i=0
     for sample_name in column_header: #scores[0]
@@ -2136,7 +2157,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
     pylab.ylabel('Principal Component 2')
 
     """
-    axes = getAxes(scores) ### adds buffer space to the end of each axis and creates room for a legend
+    axes = getAxes(scores,PlotType='3D') ### adds buffer space to the end of each axis and creates room for a legend
     pylab.axis(axes)
     
     Lfontsize = 8
@@ -2154,6 +2175,11 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
         Lfontsize = 6
     if len(group_count)>50:
         Lfontsize = 5
+    
+    if len(scores[0])>150:
+        markersize = 7
+    else:
+        markersize = 10
     i=0
     group_names={}
     for x in scores[0]:
@@ -2169,7 +2195,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
         except Exception:
             color = 'r'; label=None
 
-        ax.plot([scores[0][i]],[scores[1][i]],[scores[2][i]],color=color,marker='o',markersize=10,label=label,markeredgewidth=0.1) #markeredgecolor=color
+        ax.plot([scores[0][i]],[scores[1][i]],[scores[2][i]],color=color,marker='o',markersize=markersize,label=label,markeredgewidth=0.1) #markeredgecolor=color
         if showLabels:
             #try: sample_name = '   '+string.split(sample_name,':')[1]
             #except Exception: pass
@@ -2196,17 +2222,23 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
         except Exception: None ### when run in headless mode
     fig.clf()
     
-def getAxes(scores):
+def getAxes(scores,PlotType=None):
     """ Adjust these axes to account for (A) legend size (left hand upper corner)
     and (B) long sample name extending to the right
     """
     try:
         x_range = max(scores[0])-min(scores[0])
         y_range = max(scores[1])-min(scores[1])
-        x_axis_min = min(scores[0])-(x_range/1.5)
-        x_axis_max = max(scores[0])+(x_range/1.5)
-        y_axis_min = min(scores[1])-(y_range/5)
-        y_axis_max = max(scores[1])+(y_range/5) 
+        if PlotType == '3D':
+            x_axis_min = min(scores[0])-(x_range/10)
+            x_axis_max = max(scores[0])+(x_range/10)
+            y_axis_min = min(scores[1])-(y_range/10)
+            y_axis_max = max(scores[1])+(y_range/10) 
+        else:
+            x_axis_min = min(scores[0])-(x_range/1.5)
+            x_axis_max = max(scores[0])+(x_range/1.5)
+            y_axis_min = min(scores[1])-(y_range/5)
+            y_axis_max = max(scores[1])+(y_range/5) 
     except KeyError:
         None
     return [x_axis_min, x_axis_max, y_axis_min, y_axis_max]
@@ -3083,7 +3115,7 @@ def runHCOnly(filename,graphics,Normalize=False):
                 row_method, row_metric, column_method, column_metric, color_gradient, display=False, Normalize=Normalize)
     return graphic_link
 
-def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,algorithm='SVD',geneSetName=None, species=None):
+def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,algorithm='SVD',geneSetName=None, species=None, zscore=False):
     global root_dir
     global graphic_link
     graphic_link=graphics ### Store all locations of pngs
@@ -3096,7 +3128,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     except Exception: None
         
     ### Transpose matrix and build PCA
-    matrix, column_header, row_header, dataset_name, group_db = importData(filename)
+    matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore)
     
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
@@ -3670,14 +3702,15 @@ def plotHistogram(filename):
     pylab.show()
 
 def multipleSubPlots(filename,uids,SubPlotType='column'):
-    uids = [uids[-1]]+uids[:-1]
+    #uids = [uids[-1]]+uids[:-1]
+    str_uids = string.join(uids,'_')
     matrix, column_header, row_header, dataset_name, group_db = importData(filename,geneFilter=uids)
     fig = pylab.figure()
     def ReplaceZeros(val,min_val):
         if val == 0: 
             return min_val
         else: return val
-        
+
     ### Order the graphs based on the original gene order
     new_row_header=[]
     matrix2 = []
@@ -3690,26 +3723,43 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
             matrix2.append(update_exp_vals)
     matrix = numpy.array(matrix2)
     row_header = new_row_header
+    print row_header
     color_list = ['r', 'b', 'y', 'g', 'w', 'k', 'm']
+    
+    groups=[]
+    for sample in column_header:
+        group = group_db[sample][0]
+        if group not in groups:
+            groups.append(group)
+            
     fontsize=10
-    if len(row_header)>3:
+    if len(groups)>0:
         color_list = []
-        cm = pylab.cm.get_cmap('gist_rainbow') #gist_ncar
-        for i in range(len(row_header)):
-            color_list.append(cm(1.*i/len(row_header)))  # color will now be an RGBA tuple
+        if len(groups)==9:
+            cm = matplotlib.colors.ListedColormap(['#80C241', '#118943', '#6FC8BB', '#ED1D30', '#F26E21','#8051A0', '#4684C5', '#FBD019','#3A52A4'])
+        elif len(groups)==3:
+            cm = matplotlib.colors.ListedColormap(['#4684C4','#FAD01C','#7D7D7F'])
+        elif len(groups)==5:
+            cm = matplotlib.colors.ListedColormap(['#41449B','#6182C1','#9DDAEA','#42AED0','#7F7F7F'])
+        else:
+            cm = pylab.cm.get_cmap('gist_rainbow') #gist_ncar
+        for i in range(len(groups)):
+            color_list.append(cm(1.*i/len(groups)))  # color will now be an RGBA tuple
             
     for i in range(len(matrix)):
-        temp = 510 + i
-        try: ax = pylab.subplot(temp)
-        except Exception: break
+        ax = pylab.subplot(5,1,1+i)
         OY = matrix[i]
         pylab.xlim(0,len(OY))
         pylab.subplots_adjust(right=0.85)
         ind = np.arange(len(OY))
         if SubPlotType=='column':
-            pylab.bar(ind, OY,edgecolor='black',linewidth=0,color=color_list[i])
-            width = .35
-            print i ,row_header[i]
+            index=-1
+            for v in OY:
+                index+=1
+                group = group_db[column_header[index]][0]
+                pylab.bar(index, v,edgecolor='black',linewidth=0,color=color_list[groups.index(group)])
+                width = .35
+            #print i ,row_header[i]
         if SubPlotType=='plot':
             pylab.plot(x,y)
 
@@ -3727,7 +3777,8 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
         #xtickNames = pylab.setp(pylab.gca(), xticklabels=['']+column_header)
         #pylab.setp(xtickNames, rotation=90, fontsize=10)
         
-    pylab.show()
+    #pylab.show()
+    pylab.savefig(filename[:-4]+'-'+str_uids+'.pdf')
 
 def simpleTranspose(filename):
     fn = filepath(filename)
@@ -3815,7 +3866,9 @@ def simpleIntegrityCheck(filename):
 def BedFileCheck(filename):
     fn = filepath(filename)
     firstRow=True
-    print filename,
+    filename = filename[:-4]+'-new.bed'
+    ea = export.ExportFile(filename)
+    
     found = False
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -3824,9 +3877,8 @@ def BedFileCheck(filename):
             firstRow = False
         else:
             #if len(t) != 12: print len(t);sys.exit()
-            if ':70895507-70895600' in data:
-                found = t[4]
-    print found
+            ea.write(string.join(t,'\t')+'\n')
+    ea.close()
     
 def simpleFilter(filename):
     fn = filepath(filename)
@@ -3836,9 +3888,11 @@ def simpleFilter(filename):
     matrix = []
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        t = string.split(data,'\t')
+        t = string.split(data,',')
+
         uid = t[0]
-        if '=chr' in t[0]:
+        #if '=chr' in t[0]:
+        if 1==2:
             a,b = string.split(t[0],'=')
             b = string.replace(b,'_',':')
             uid = a+ '='+b
@@ -4193,48 +4247,102 @@ def countIntronsExons(filename):
             last_transcript = transcript
             
     print len(exon_db)+1, len(intron_db)+1
-                                          
+             
+def importGeneList(gene_list_file):
+    genesets=[]
+    genes=[]
+    for line in open(gene_list_file,'rU').xreadlines():
+        gene = line.rstrip()
+        genes.append(gene)
+        if len(genes)==5:
+            genesets.append(genes)
+            genes=[]
+    if len(genes)>0 and len(genes)<6:
+        genes+=(5-len(genes))*[gene]
+        genesets.append(genes)
+    return genesets
+            
+def customClean(filename):
+    fn = filepath(filename)
+    firstRow=True
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            firstRow = False
+            print len(t)
+            ea.write(string.join(['UID']+t,'\t')+'\n')
+        else:
+            if ';' in t[0]:
+                uid = string.split(t[0],';')[0]
+            else:
+                uid = t[0]
+            values = map(lambda x: float(x),t[1:])
+            values.sort()
+            if values[3]>=1:
+                ea.write(string.join([uid]+t[1:],'\t')+'\n')
+    ea.close()
+    
 if __name__ == '__main__':
-    
+    #customClean('/Users/saljh8/Desktop/demo/Amit/ExpressionInput/exp.GSE72857_umitab-cleaned-output.txt');sys.exit()
+    #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()
     filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/ensembl/Hs/Hs_Ensembl_transcript-annotations.txt'
-    countIntronsExons(filename);sys.exit()
-    filterForJunctions(filename);sys.exit()
+    #countIntronsExons(filename);sys.exit()
+    #filterForJunctions(filename);sys.exit()
     
-    folder = '/Users/saljh8/Desktop/Grimes/AltSplice/AltResults/GG1-IG2/junction/'
+    folder = '/Users/saljh8/Downloads/exome/comparison_with_discordance/combine/'
     files = UI.read_directory(folder)
     for file in files: #:70895507-70895600
-        if '.bed' in file: BedFileCheck(folder+'/'+file)
+        if '.bed' in file:
+            BedFileCheck(folder+'/'+file)
+            pass
     sys.exit()
-    runPCAonly(filename,[],False,showLabels=False,plotType='2D');sys.exit()
+    #runPCAonly(filename,[],False,showLabels=False,plotType='2D');sys.exit()
     
     countinp = '/Volumes/salomonis2/SinghLab/20150715_single_GCBCell/bams/ExpressionInput/counts.Bcells.txt'
     IGH_gene_file = '/Volumes/salomonis2/SinghLab/20150715_single_GCBCell/bams/ExpressionInput/IGH_genes.txt'
-    extractFeatures(countinp,IGH_gene_file);sys.exit()
+    #extractFeatures(countinp,IGH_gene_file);sys.exit()
     
 
     import UI
-    geneMethylationOutput(filename);sys.exit()
-    ica(filename);sys.exit()
-    replaceWithBinary('/Users/saljh8/Downloads/Neg_Bi_wholegenome.txt');sys.exit()
+    #geneMethylationOutput(filename);sys.exit()
+    #ica(filename);sys.exit()
+    #replaceWithBinary('/Users/saljh8/Downloads/Neg_Bi_wholegenome.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA/AML-TCGA/ExpressionInput/counts.LAML1.txt');sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/genes.tpm_tracking-ordered.txt'
-    filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart65/Mm/RNASeq/Mm_Ensembl_exons.txt'
+    
     #filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/6-5-2015/ExpressionInput/amplify/exp.All-wt-output.txt'
-    getlastexon(filename);sys.exit()
+    #getlastexon(filename);sys.exit()
     TFs = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/TF-by-gene_matrix/all-TFs.txt'
     folder = '/Users/saljh8/Downloads/BLASTX2_Gecko.tab'
     genes = ['Cebpe','Gfi1']
     #genes = ['Gata1','Gfi1b']
-    coincentIncedenceTest(filename,TFs);sys.exit()
-    coincidentIncedence(filename,genes);sys.exit()
+    #coincentIncedenceTest(filename,TFs);sys.exit()
+    #coincidentIncedence(filename,genes);sys.exit()
     #test(folder);sys.exit()
     #files = UI.read_directory(folder)
     #for file in files: SimpleCorrdinateToBed(folder+'/'+file)
     #filename = '/Users/saljh8/Desktop/bed/RREs0.5_exons_unique.txt'
     #simpleIntegrityCheck(filename);sys.exit()
-    gene_list = ['Klf4','Klf1','Epor','Dnmt3a','Gfi1']
-
-    multipleSubPlots(filename,gene_list,SubPlotType='column');sys.exit()
+    
+    gene_list = ['S100a8','Chd7','Ets1','Chd7','S100a8']
+    gene_list_file = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes2.txt'
+    gene_list_file = '/Users/saljh8/Desktop/demo/Amit/ExpressionInput/genes.txt'
+    #gene_list_file = '/Users/saljh8/Desktop/Grimes/Comb-plots/AML_genes-interest.txt'
+    genesets = importGeneList(gene_list_file)
+    filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
+    filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
+    filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
+    #filename = '/Users/saljh8/Desktop/Grimes/Comb-plots/exp.AML_single-cell-output.txt'
+    #filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
+    print genesets
+    for gene_list in genesets:
+        multipleSubPlots(filename,gene_list,SubPlotType='column')
+    sys.exit()
 
     plotHistogram(filename);sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/Expression_final_files/ExpressionInput/amplify-wt/DataPlots/Clustering-exp.myeloid-steady-state-PCA-all_wt_myeloid_SingleCell-Klhl7 Dusp7 Slc25a33 H6pd Bcorl1 Sdpr Ypel3 251000-hierarchical_cosine_cosine.cdt'

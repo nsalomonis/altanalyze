@@ -1235,12 +1235,12 @@ if __name__ == '__main__':
     force = 'yes'
     download_species = 'Hs'
     species = 'Hs'
-    species = 'Rn'
-    exportBioTypes(selected_species);sys.exit()
+    species = 'Mm'
+    #exportBioTypes(selected_species);sys.exit()
     #additional_resources=['Latest WikiPathways','KEGG','BioGRID','DrugBank','miRNA Targets','Transcription Factor Targets']
     #translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species);sys.exit()
     additional_resources=['Latest WikiPathways','PathwayCommons','Transcription Factor Targets','Domains','BioMarkers']
     additional_resources+=['miRNA Targets','GOSlim','Disease Ontology','Phenotype Ontology','KEGG','RVista Transcription Factor Sites']
-    additional_resources=['Transcription Factor Targets']
+    additional_resources=['BioGRID']
     buildAccessoryPathwayDatabases(selected_species,additional_resources,force)
     

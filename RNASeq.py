@@ -2726,6 +2726,9 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     #expressed_uids = filterByProteinAnnotation(species,expressed_uids)
     print len(expressed_uids), 'expressed genes by RPKM (%d) and counts (%d)' % (rpkm_threshold,exp_threshold)
     #"""
+
+    import OBO_import; import ExpressionBuilder
+    gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
     
     try: biological_categories = importBiologicalRelationships(species)
     except Exception:
@@ -2734,6 +2737,11 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         print 'Missing annotation file in:','AltDatabase/uniprot/'+species+'/custom_annotations.txt !!!!!'
     if restrictBy !=None:
         genes = biological_categories['protein_coding']
+        genes_temp=dict(genes)
+        for gene in genes_temp:
+            if gene in gene_to_symbol_db:
+                genes[gene_to_symbol_db[gene][0]]=[] ### add symbols
+        genes_temp={}
     else:
         genes = {}
         for i in expressed_uids: genes[i]=[]
@@ -2766,7 +2774,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
                 try: expressed_uids = driver_genes.viewkeys() & expressed_uids_db2.viewkeys() ### common
                 except Exception: expressed_uids = getOverlappingKeys(driver_genes,expressed_uids_db2)
 
-    if len(expressed_uids)==0:
+    if len(expressed_uids)<10:
         expressed_uids=[]
         for uid in expressed_uids_db:
             expressed_uids.append(uid)
@@ -2810,7 +2818,7 @@ def filterByProteinAnnotation(species,expressed_uids):
     else:
         return expressed_uids
 
-def CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGenes=[]):
+def CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=[]):
     firstLine=True
     expressed_values={}
     expressed_values_filtered={}
@@ -2829,6 +2837,7 @@ def CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGen
             if uid in expressed_uids:
                 vs = list(values); vs.sort()
                 cv = statistics.stdev(values)/statistics.avg(values)
+                if samplesDiffering<1: samplesDiffering=1
                 if platform == 'RNASeq':
                     if (vs[-1*samplesDiffering]/vs[samplesDiffering])>fold: ### Ensures that atleast 4 samples are significantly different in the set
                         expressed_values[uid] = values
@@ -2837,7 +2846,7 @@ def CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGen
                     if (vs[-1*samplesDiffering]-vs[samplesDiffering])>fold: ### Ensures that atleast 4 samples are significantly different in the set
                         expressed_values[uid] = values
                         cv_list.append((cv,uid))
-            if uid in driverGenes:
+            if uid in guideGenes:
                 expressed_values[uid] = values
                 cv_list.append((10000,uid)) ### Very high CV
     cv_list.sort()
@@ -2902,7 +2911,7 @@ def checkExpressionFileFormat(expFile,platform):
         platform = "3'array"
     return platform
     
-def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGenes=[]):
+def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=[]):
     firstLine=True
     expressed_values={}
     for line in open(expFile,'rU').xreadlines():
@@ -2929,13 +2938,13 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
                 if platform == 'RNASeq':
                     values = map(lambda x: math.log(x+1,2),values)
                     vs = list(values); vs.sort()
-                    if (vs[-1*samplesDiffering]-vs[samplesDiffering])>math.log(fold,2): ### Ensures that atleast 4 samples are significantly different in the set
+                    if (vs[-1*samplesDiffering]-vs[samplesDiffering-1])>math.log(fold,2): ### Ensures that atleast 4 samples are significantly different in the set
                         expressed_values[uid] = values
                 else:
                     vs = list(values); vs.sort()
-                    if (vs[-1*samplesDiffering]-vs[samplesDiffering])>math.log(fold,2): ### Ensures that atleast 4 samples are significantly different in the set
+                    if (vs[-1*samplesDiffering]-vs[samplesDiffering-1])>math.log(fold,2): ### Ensures that atleast 4 samples are significantly different in the set
                         expressed_values[uid] = values
-                if uid in driverGenes:
+                if uid in guideGenes:
                     expressed_values[uid] = values
                 #if uid == 'ENSMUSG00000062825': print (vs[-1*samplesDiffering]-vs[samplesDiffering]),math.log(fold,2);sys.exit()
 
@@ -2950,7 +2959,7 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
         else:
             fold+=1
             samplesDiffering+=1
-        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,driverGenes=driverGenes)
+        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guideGenes)
     elif fold == 1.2 and samplesDiffering == 1:
         return expressed_values, fold, samplesDiffering, headers
     elif len(expressed_values)<50:
@@ -2958,7 +2967,7 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
         samplesDiffering-=1
         if samplesDiffering<1: samplesDiffering = 1
         if fold < 1.1: fold = 1.2
-        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,driverGenes=driverGenes)
+        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guideGenes)
     else:
         return expressed_values, fold, samplesDiffering, headers
     return expressed_values, fold, samplesDiffering, headers
@@ -3023,13 +3032,18 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
         fold = 1.25
     #"""
     if use_CV:
-        expressed_values, fold, samplesDiffering, headers = CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,driverGenes=driver_genes)
+        expressed_values, fold, samplesDiffering, headers = CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=driver_genes)
     else:
         print 'Finding an optimal number of genes based on differing thresholds to include for clustering...'
         #fold=1; samplesDiffering=1
-        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,driverGenes=driver_genes) #fold=2,samplesDiffering=2
+        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=driver_genes) #fold=2,samplesDiffering=2
         print 'Evaluating',len(expressed_values),'genes, differentially expressed',fold,'fold for at least',samplesDiffering*2,'samples'
     #sys.exit()
+    
+    import OBO_import; import ExpressionBuilder
+    gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
+    symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)
+    
     areYouSure=False
     if (excludeCellCycle == 'strict' or excludeCellCycle == True) and areYouSure:
         cc_param = copy.deepcopy(parameters)
@@ -3068,10 +3082,6 @@ def findCommonExpressionProfles(expFile,species,platform,expressed_uids,driver_g
     if reportOnly:
         print_out = '%d genes, differentially expressed %d fold for at least %d samples' % (len(expressed_values), fold, samplesDiffering*2)
         return print_out
-    else:
-        import OBO_import; import ExpressionBuilder
-        gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
-        symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)
 
     if len(expressed_values)<2000 and column_method == 'hopach':
         row_method = 'hopach'; row_metric = 'correlation'
@@ -3507,9 +3517,9 @@ def writeFilteredFile(results_file,platform,headers,gene_to_symbol_db,expressed_
 def remoteGetDriverGenes(Species,platform,results_file,numSamplesClustered=3,excludeCellCycle=False,ColumnMethod='hopach'):
     global species
     species = Species
-    driverGenes = correlateClusteredGenes(platform,results_file,stringency='strict',excludeCellCycle=excludeCellCycle,ColumnMethod=ColumnMethod)
-    driverGenes = string.join(driverGenes.keys(),' ')+' amplify positive'
-    return driverGenes
+    guideGenes = correlateClusteredGenes(platform,results_file,stringency='strict',excludeCellCycle=excludeCellCycle,ColumnMethod=ColumnMethod)
+    guideGenes = string.join(guideGenes.keys(),' ')+' amplify positive'
+    return guideGenes
     
 def correlateClusteredGenes(platform,results_file,stringency='medium',numSamplesClustered=3,excludeCellCycle=False,graphics=[],ColumnMethod='hopach',rhoCuttOff=0.2):
     
@@ -3531,25 +3541,25 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
         for i in highVarHighComplexity: combined_results[i]=[]
         #combined_results = highVarHighComplexity
     if stringency == 'strict':
-        medVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,filter=True,numSamplesClustered=numSamplesClustered)
-        medVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=4,hits_to_report=50,filter=True,numSamplesClustered=numSamplesClustered) #hits_cutoff=6
-        highVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.5,hits_cutoff=3,hits_to_report=50,filter=True,numSamplesClustered=numSamplesClustered)
-        highVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=3,hits_to_report=50,filter=True,numSamplesClustered=numSamplesClustered)
+        medVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50000,filter=True,numSamplesClustered=numSamplesClustered)
+        medVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=4,hits_to_report=50000,filter=True,numSamplesClustered=numSamplesClustered) #hits_cutoff=6
+        highVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.5,hits_cutoff=3,hits_to_report=50000,filter=True,numSamplesClustered=numSamplesClustered)
+        highVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=3,hits_to_report=50000,filter=True,numSamplesClustered=numSamplesClustered)
         #combined_results = dict(medVarLowComplexity.items() + medVarLowComplexity.items() + highVarLowComplexity.items() + highVarHighComplexity.items())
         combined_results={}
         for i in medVarLowComplexity: combined_results[i]=[]
         for i in medVarHighComplexity: combined_results[i]=[]
         for i in highVarLowComplexity: combined_results[i]=[]
         for i in highVarHighComplexity: combined_results[i]=[]
-        driverGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
-        if driverGenes == 'TooFewBlocks':
-            driverGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
-            if driverGenes == 'TooFewBlocks':
-                driverGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.2,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,forceOutput=True)
-        if len(driverGenes)>200:
+        guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
+        if guideGenes == 'TooFewBlocks':
+            guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
+            if guideGenes == 'TooFewBlocks':
+                guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.2,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,forceOutput=True)
+        if len(guideGenes)>200:
             print 'Too many drivers (>200)... performing more stringent filtering...'
-            driverGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,restrictTFs=True)
-        return driverGenes
+            guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,restrictTFs=True)
+        return guideGenes
     #B4galt6, Prom1
     for tuple_ls in combined_results:
         data_length = len(tuple_ls);break
@@ -3661,7 +3671,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
     if hits_to_report == 1:
         if len(block_db)<4 and forceOutput==False:
             return 'TooFewBlocks'
-        driverGenes={}
+        guideGenes={}
         ### Select the top TFs or non-TFs with the most gene correlations
         for b in block_db:
             corr_counts_gene = []; cell_cycle_count=[]
@@ -3680,34 +3690,34 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                         if gene not in cell_cycle:
                             if restrictTFs==True and tf_count==0: pass
                             else:
-                                driverGenes[gene]=[]
+                                guideGenes[gene]=[]
                                 tf_count+=1
                 if len(tfs)==0:
                     gene = corr_counts_gene[-1][-1]
                     if gene not in cell_cycle:
-                        driverGenes[gene]=[]
+                        guideGenes[gene]=[]
                 #block_db[b]= [corr_counts_gene[-1][-1]] ### save just the selected gene indexes
         
         ### Additional filter to remove drivers that will bring in cell cycle genes (the more drivers the more likely)
         if excludeCellCycle == 'strict':
-            #print 'drivers',len(driverGenes)
-            driverCorrelated = numpyCorrelationMatrixGeneAlt(matrix,row_header,driverGenes,gene_to_symbol_db,rho_cutoff)
-            driverGenes={}
+            #print 'drivers',len(guideGenes)
+            guideCorrelated = numpyCorrelationMatrixGeneAlt(matrix,row_header,guideGenes,gene_to_symbol_db,rho_cutoff)
+            guideGenes={}
             addition_cell_cycle_associated=[]
-            for gene in driverCorrelated:
+            for gene in guideCorrelated:
                 cell_cycle_count=[]
-                for corr_gene in driverCorrelated[gene]:
+                for corr_gene in guideCorrelated[gene]:
                     if corr_gene in cell_cycle: cell_cycle_count.append(corr_gene)
-                #print gene, len(cell_cycle_count),len(driverCorrelated[gene])
-                if (float(len(cell_cycle_count))/len(driverCorrelated[gene]))>.15 or (len(driverCorrelated[gene])<4 and (len(cell_cycle_count)>0)):
+                #print gene, len(cell_cycle_count),len(guideCorrelated[gene])
+                if (float(len(cell_cycle_count))/len(guideCorrelated[gene]))>.15 or (len(guideCorrelated[gene])<4 and (len(cell_cycle_count)>0)):
                     print gene, cell_cycle_count
                     addition_cell_cycle_associated.append(gene)
                     pass
                 else:
-                    driverGenes[gene]=[]
-            print 'additional Cell Cycle drivers removed:',addition_cell_cycle_associated
-        print len(driverGenes), 'novel guide genes discovered:', driverGenes.keys()
-        return driverGenes
+                    guideGenes[gene]=[]
+            print 'additional Cell Cycle guide genes removed:',addition_cell_cycle_associated
+        print len(guideGenes), 'novel guide genes discovered:', guideGenes.keys()
+        return guideGenes
         
     def greaterThan(x,results_file,numSamplesClustered):
         if 'alt_junctions' not in results_file and Platform == None:
@@ -3791,6 +3801,8 @@ def exportGroupsFromClusters(cluster_file,expFile,platform):
                 name = name+'.bed'
             elif 'junction_quantification.txt' not in name and '.txt' not in name:
                 name = name+'.txt'
+        if ':' in name:
+            name = string.split(name,':')[1]
         out_obj.write(name+'\t'+cluster+'\t'+cluster+'\n')
         if cluster not in unique_clusters: unique_clusters.append(cluster)
     out_obj.close()
@@ -4498,7 +4510,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         print 'Running kallisto on:',n,
         p=fastq_paths[n]
         b=[" > "+n+'.sam']
-
+        """
         if paired == 'paired':
             try:
                 #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
@@ -4511,7 +4523,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
         if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
         else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
-
+        """
         input_path = output_path+'/abundance.txt'
         try:
             try: expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
@@ -4619,7 +4631,10 @@ def findPairs(fastq_paths):
         if 'read1' in i or 'read2' in i or 'pair1' in i or 'pair2' or 'R1' in i or 'R2' in i:
             read_notation+=1
         f = export.findFilename(i)
-        name = string.split(f,'fastq')[0]
+        if 'fastq' in f:
+            name = string.split(f,'fastq')[0]
+        elif 'fq' in f:
+            name = string.split(f,'fq')[0]
         if '_1.' in name or '_2.' in name:
             under_suffix_notation+=1
         elif '1.' in name or '2.' in name:
@@ -4645,6 +4660,10 @@ def findPairs(fastq_paths):
                 name = string.split(i,'=')[-1]
                 name = string.replace(name,'.fastq.gz','')
                 name = string.replace(name,'.fastq','')
+                name = string.replace(name,'.FASTQ.gz','')
+                name = string.replace(name,'.FASTQ','')
+                name = string.replace(name,'.fq.gz','')
+                name = string.replace(name,'.fq','')
                 if '/' in name or '\\' in name:
                     name = export.findFilename(name)
                 if '=' in name:
@@ -4687,9 +4706,9 @@ def getFASTAFile(species):
 if __name__ == '__main__':
     filename = '/Volumes/SEQ-DATA/PCBC-new/July2014/counts.All.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
+    #calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
     #copyICGSfiles('','');sys.exit()
-    #runKallisto('Hs','test','/Users/saljh8/Desktop/dataAnalysis/Grimes/AML_Kallisto_test/paired-end/','/Users/saljh8/Desktop/dataAnalysis/Grimes/AML_Kallisto_test/paired-end/');sys.exit()
+    runKallisto('Nc','Biofuel','/Volumes/SEQ-DATA/Hong','/Volumes/SEQ-DATA/Hong');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

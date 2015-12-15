@@ -583,7 +583,7 @@ def alignAllDomainsToTranscripts(species,platform):
     protein_ft_db,domain_gene_counts = FeatureAlignment.grab_exon_level_feature_calls(species,platform,gene_db)
     import ExonAnalyze_module
     seq_files, mRNA_protein_seq_db = IdentifyAltIsoforms.importProteinSequences(species,'getSequence') ### Import all available protein sequences (downloaded or in silico)
-    coordinate_type = 'genomic'; coordinate_type = 'protein'
+    coordinate_type = 'genomic'; #coordinate_type = 'protein'
     ExonAnalyze_module.getFeatureIsoformGenomePositions(species,protein_ft_db,mRNA_protein_seq_db,gene_transcript_db,coordinate_type)
 
     ### We may need to augment the above domain coordinate to isoform information with the Ensembl and UniProt files (if seq alignment failed for some reason - see grab_exon_level_feature_calls)!
@@ -628,8 +628,8 @@ def buildAltExonDatabases(species,platform):
     alignAllDomainsToTranscripts(species,platform)
     
 if __name__ == '__main__':
-    isoformViewer();sys.exit()
-    species = 'Hs'; type = 'exon'; platform = 'RNASeq'
+    #isoformViewer();sys.exit()
+    species = 'Mm'; type = 'exon'; platform = 'RNASeq'
     #importAllTranscriptData(species); sys.exit()
     #getCodingGenomicCoordinates(species)
     #importProteinFeatureData(species)
