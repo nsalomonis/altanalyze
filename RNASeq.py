@@ -3721,7 +3721,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
         
     def greaterThan(x,results_file,numSamplesClustered):
         if 'alt_junctions' not in results_file and Platform == None:
-            if x>numSamplesClustered: return 1
+            if x>(numSamplesClustered-0): return 1
             else: return 0
         else:
             return 1
@@ -4510,7 +4510,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         print 'Running kallisto on:',n,
         p=fastq_paths[n]
         b=[" > "+n+'.sam']
-        """
+        #"""
         if paired == 'paired':
             try:
                 #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
@@ -4523,7 +4523,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
         if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
         else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
-        """
+        #"""
         input_path = output_path+'/abundance.txt'
         try:
             try: expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
@@ -4545,10 +4545,14 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                     
     ### Summarize alignment information
     for sample in countMatrix:
-        estCounts = int(float(countMatrix[sample]))
-        totalCounts = sample_total_counts[sample]
-        aligned = str(100*estCounts/float(totalCounts))
-        aligned =  string.split(aligned,'.')[0]+'.'+string.split(aligned,'.')[1][:2]
+        try: estCounts = int(float(countMatrix[sample]))
+        except Exception: estCounts='NA'
+        try: totalCounts = sample_total_counts[sample]
+        except Exception: totalCounts = 'NA'
+        try: aligned = str(100*estCounts/float(totalCounts))
+        except Exception: aligned = 'NA'
+        try: aligned =  string.split(aligned,'.')[0]+'.'+string.split(aligned,'.')[1][:2]
+        except Exception: aligned = 'NA'
         countMatrix[sample] = [str(estCounts),totalCounts,aligned]
     
     dataset_name = string.replace(dataset_name,'exp.','')
@@ -4556,18 +4560,29 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     go = export.ExportFile(root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
     so = export.ExportFile(root_dir+'/ExpressionInput/summary.'+dataset_name+'.txt')
     exportMatrix(to,headers,expMatrix) ### Export transcript expression matrix
-    geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
-    exportMatrix(go,headers,geneMatrix) ### export gene expression matrix
+    try:
+        geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
+        exportMatrix(go,headers,geneMatrix) ### export gene expression matrix
+    except Exception: 
+        print 'AltAnalyze was unable to summarize gene TPMs from transcripts, proceeding with transcripts.'
+        export.copyFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt',root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
     exportMatrix(so,['SampleID','Estimated Counts','Total Fragments','Percent Aligned'],countMatrix) ### export gene expression matrix
     
 def calculateGeneTPMs(species,expMatrix):
     import gene_associations
     try: gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
     except Exception:
-        import GeneSetDownloader
-        print 'Ensembl-EnsTranscripts required for gene conversion... downloading from the web...'
-        GeneSetDownloader.remoteDownloadEnsemblTranscriptAssocations(species)
-        gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
+        try:
+            print 'Missing transcript-to-gene associations... downloading from Ensembl.'
+            import EnsemblSQL
+            db_version = unique.getCurrentGeneDatabaseVersion()
+            EnsemblSQL.getGeneTranscriptOnly(species,'Basic',db_version,'yes')
+            gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
+        except Exception:
+            import GeneSetDownloader
+            print 'Ensembl-EnsTranscripts required for gene conversion... downloading from the web...'
+            GeneSetDownloader.remoteDownloadEnsemblTranscriptAssocations(species)
+            gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
     import OBO_import
     transcript_to_gene_db = OBO_import.swapKeyValues(gene_to_transcript_db)
     
@@ -4633,6 +4648,8 @@ def findPairs(fastq_paths):
         f = export.findFilename(i)
         if 'fastq' in f:
             name = string.split(f,'fastq')[0]
+        elif 'FASTQ' in f:
+            name = string.split(f,'FASTQ')[0]
         elif 'fq' in f:
             name = string.split(f,'fq')[0]
         if '_1.' in name or '_2.' in name:
@@ -4704,11 +4721,11 @@ def getFASTAFile(species):
     return fasta_file
 
 if __name__ == '__main__':
-    filename = '/Volumes/SEQ-DATA/PCBC-new/July2014/counts.All.txt'
+    filename = '/Volumes/SEQ-DATA/PCBC-new/ReNormalized/counts.C4-steady-state.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    #calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
+    calculateRPKMsFromGeneCounts(filename,'Hs');sys.exit()
     #copyICGSfiles('','');sys.exit()
-    runKallisto('Nc','Biofuel','/Volumes/SEQ-DATA/Hong','/Volumes/SEQ-DATA/Hong');sys.exit()
+    runKallisto('Mm','test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

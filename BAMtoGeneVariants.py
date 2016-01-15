@@ -77,6 +77,9 @@ def findVariants(bam_dir,search_locations,multi=False):
                     int(md) ### If an integer, no mismatches or deletions/insertion present
                     continue
                 except Exception:
+                    #print chr, int(start),int(stop)
+                    #print alignedread.get_reference_sequence()
+                    #print alignedread.seq;sys.exit()
                     md = string.replace(md,'C','A')
                     md = string.replace(md,'G','A')
                     md = string.replace(md,'T','A')

@@ -1014,7 +1014,7 @@ def runANOVA(filename,matrix,compared_groups):
                             for g2 in filtered_groups:
                                 gi2+=1
                                 if g1!=g2:
-                                    if abs(avg(g1)-avg(g2))>0.2:
+                                    if abs(avg(g1)-avg(g2))>0.1:
                                         pairwise_p = OneWayANOVA([g1,g2])
                                         if pairwise_p<0.05:
                                             group1 = group_names[gi1]
@@ -1108,6 +1108,7 @@ if __name__ == '__main__':
     #filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     #filename = '/Volumes/SEQ-DATA/SRSF2_human-GSE65349/SRSF2/Hs/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Volumes/SEQ-DATA/Ichi/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     matrix,compared_groups,original_data = matrixImport(filename)
     matrix_pvalues=runANOVA(filename,matrix,compared_groups)
     returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()

@@ -105,9 +105,9 @@ def prepareComparisonData(input_file,diffStateQuery,CovariateQuery,uniqueDonors,
             cellLine = values[cellLineIndex]
             try: donor_id = values[unique_donor_index]
             except Exception:
-                print values
+                #print values
                 continue
-                print len(values), unique_donor_index;sys.exit()
+                #print len(values), unique_donor_index;sys.exit()
             if donor_id == '': donor_id = cellLine
             sex = values[sex_index]
             diffState = values[cellTypeIndex]

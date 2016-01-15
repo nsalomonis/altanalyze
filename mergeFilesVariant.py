@@ -73,8 +73,8 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
                     try: t = t[1:]
                     except Exception: t = ['null']
                     if includeColumns==False:
-                        #headers.append(file)
-                        for i in t: headers.append(i+'.'+file); #headers.append(i)
+                        headers.append(file)
+                        #for i in t: headers.append(i+'.'+file); #headers.append(i)
                     else:
                         headers.append(t[includeColumns]+'.'+file)
             else: #elif 'FOXP1' in data or 'SLK' in data or 'MBD2' in data:
@@ -97,12 +97,12 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
                     except Exception: combined_data[key] = [values]
                 else:
                     combined_data[key] = values
-                #if float(t[1])>0.15: filter_keys[key]=[]
+                if float(t[1])>0.15: filter_keys[key]=[]
         #print duplicates
         dataset_data[filename] = combined_data
     for i in dataset_data:
         print len(dataset_data[i]), i
-    #print 'filter_keys',len(filter_keys)
+    print 'filter_keys',len(filter_keys)
     ###Add null values for key's in all_keys not in the list for each individual dataset
     combined_file_data = {}
     for filename in files:
@@ -113,7 +113,7 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
             number_of_values = len(combined_data[key][0]); break
         while i<number_of_values: null_values.append('0'); i+=1
         for key in all_keys:
-            #if key in filter_keys:
+          if key in filter_keys:
             include = 'yes'
             if combine_type == 'intersection':
                 if all_keys[key]>(len(files_to_merge)-1): include = 'yes'
