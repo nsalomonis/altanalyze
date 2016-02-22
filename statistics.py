@@ -1109,6 +1109,7 @@ if __name__ == '__main__':
     #filename = '/Volumes/SEQ-DATA/SRSF2_human-GSE65349/SRSF2/Hs/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Volumes/SEQ-DATA/Ichi/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Volumes/SEQ-DATA/CardiacRNASeq/Combined/AltResults/AlternativeOutput1/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     matrix,compared_groups,original_data = matrixImport(filename)
     matrix_pvalues=runANOVA(filename,matrix,compared_groups)
     returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()

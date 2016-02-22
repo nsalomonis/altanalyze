@@ -79,7 +79,8 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
                         headers.append(t[includeColumns]+'.'+file)
             else: #elif 'FOXP1' in data or 'SLK' in data or 'MBD2' in data:
                 key = t[0]
-                key = t[0]+':'+t[1]+' '+t[3]+'|'+t[5]; t = [key,t[2]]
+                try: key = t[0]+':'+t[1]+' '+t[3]+'|'+t[5]; t = [key,t[2]]
+                except Exception: print key;sys.exit()
                 if includeColumns==False:
                     try: values = t[1:]
                     except Exception: values = ['null']
@@ -92,6 +93,7 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
                 if len(key)>0 and key != ' ' and key not in combined_data: ### When the same key is present in the same dataset more than once
                     try: all_keys[key] += 1
                     except KeyError: all_keys[key] = 1
+                v = float(values[0])
                 if permform_all_pairwise == 'yes':
                     try: combined_data[key].append(values); duplicates.append(key)
                     except Exception: combined_data[key] = [values]
@@ -138,7 +140,7 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
                     except KeyError: combined_file_data[key] = values
 
     original_filename = string.replace(original_filename,'1.',  '1.AS-')
-    export_file = output_dir+'/MergedFiles.txt'
+    export_file = output_dir+'/MergedVariants.txt'
     fn=filepath(export_file);data = open(fn,'w')
     title = string.join(['uid']+headers,'\t')+'\n'; data.write(title)
     for key in combined_file_data:
@@ -149,6 +151,14 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
             for result in results:
                 merged=[]
                 for i in result: merged+=i
+                merged2 = map(float,merged)
+                if max(merged2)>1:
+                    merged=[]
+                    max_val = max(merged2)
+                    for i in merged2:
+                        try: i = i/max_val
+                        except Exception: pass
+                        merged.append(str(i))            
                 values = string.join([key]+merged,'\t')+'\n'; data.write(values) ###removed [new_key]+ from string.join
         else:
             try:

@@ -87,6 +87,46 @@ def getChrGeneOnly(Species,configType,ensembl_version,force):
         values_list.append(values)
     exportEnsemblTable(values_list,headers,output_dir)
     
+def getGeneTranscriptOnly(Species,configType,ensembl_version,force):
+    global species; species = Species
+    global rewrite_existing; rewrite_existing = 'yes'
+    print 'Downloading Ensembl flat files for parsing from Ensembl SQL FTP server...'
+    
+    global ensembl_build
+    ensembl_sql_dir, ensembl_sql_description_dir = getEnsemblSQLDir(ensembl_version)
+    print ensembl_sql_dir
+    ensembl_build = string.split(ensembl_sql_dir,'core')[-1][:-1]
+    sql_file_db,sql_group_db = importEnsemblSQLInfo(configType) ###Import the Config file with the files and fields to parse from the downloaded SQL files
+
+    filtered_sql_group_db={} ### Get only these tables
+    filtered_sql_group_db['Primary'] = ['gene.txt','gene_stable_id.txt','transcript.txt','transcript_stable_id.txt']
+        
+    filtered_sql_group_db['Description'] = [ensembl_sql_description_dir]
+    sq = EnsemblSQLInfo(ensembl_sql_description_dir, 'EnsemblSQLDescriptions', 'Description', '', '', '')
+    sql_file_db['Primary',ensembl_sql_description_dir] = sq        
+    output_dir = 'AltDatabase/ensembl/'+species+'/EnsemblSQL/'
+    additionalFilter = ['transcript','gene']
+    importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,filtered_sql_group_db,sql_file_db,output_dir,'Primary',force) ###Download and import the Ensembl SQL files
+    
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze':
+        parent_dir = 'AltDatabase/goelite/'
+    else:
+        parent_dir = 'Databases/'
+    output_dir = parent_dir+species+'/uid-gene/Ensembl-EnsTranscript.txt'
+            
+    headers = ['Ensembl Gene ID', 'Ensembl Transcript ID']
+    values_list=[]
+    for transcript_id in transcript_db:
+        ti = transcript_db[transcript_id]
+        try: ens_gene = gene_db[ti.GeneId()].StableId()
+        except Exception: ens_gene = gene_stable_id_db[ti.GeneId()].StableId()
+        try: ens_transcript = transcript_db[transcript_id].StableId()
+        except Exception: ens_transcript = transcript_stable_id_db[transcript_id].StableId()
+        values = [ens_gene,ens_transcript]
+        values_list.append(values)
+    exportEnsemblTable(values_list,headers,output_dir)
+    
 def getEnsemblSQLDir(ensembl_version):
     if 'Plus' in ensembl_version:
         ensembl_version = string.replace(ensembl_version,'Plus','')
@@ -1652,7 +1692,7 @@ def verifyFile(filename):
     return file_found
             
 if __name__ == '__main__':
-    
+    getGeneTranscriptOnly('Gg','Basic','EnsMart65','yes');sys.exit()
     #getChrGeneOnly('Hs','Basic','EnsMart65','yes');sys.exit()
     analysisType = 'GeneAndExternal'; externalDBName_list = ['Ens_Gg_transcript']
     force = 'yes'; configType = 'Basic'; overwrite_previous = 'no'; iteration=0; version = 'current'

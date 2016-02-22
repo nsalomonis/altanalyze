@@ -6028,7 +6028,7 @@ def commandLineRun():
     #python AltAnalyze.py --species Mm --platform RNASeq --bedDir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles" --groupdir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles/ExpressionInput/groups.test.txt" --compdir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles/ExpressionInput/comps.test.txt" --output "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles" --expname "test"
     #python AltAnalyze.py --species Mm --platform RNASeq --filterdir "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles/" --output "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/BedFiles"
     #python AltAnalyze.py --expdir "/Users/nsalomonis/Desktop/Nathan/ExpressionInput/exp.test.txt" --exonMapFile "/Users/nsalomonis/Desktop/Nathan/hgu133_probe.txt" --species Hs --platform "3'array" --output "/Users/nsalomonis/Desktop/Nathan"
-
+    #python AltAnalyze.py --species Hs --platform "3'array" --expname test --channelToExtract green --FEdir /Users/saljh8/Downloads/AgllentTest/ --output /Users/saljh8/Downloads/AgllentTest/
     global apt_location; global root_dir; global probability_statistic; global log_file; global summary_data_db; summary_data_db={}
 
     ###required

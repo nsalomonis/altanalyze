@@ -510,3 +510,9 @@ class WikipathwaysApiClient(object):
             pathways.append(pathway)
 
         return pathways
+
+if __name__ == '__main__':
+    client = WikipathwaysApiClient()
+    wp_id_data = client.get_pathway_as(file_format = 'gpml',identifier = 'WP254', version = 0)
+    with open('WP205.gpml', 'a') as file_out:
+        file_out.write(wp_id_data)

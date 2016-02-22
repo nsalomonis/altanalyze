@@ -1021,7 +1021,7 @@ class GUI:
         self.option = 'group_select' ### choose a variable name here
         self.options = filenames
         self.default_option = 0
-        self.comboBox()
+        self.comboBox() ### This is where the cluster group gets selected and stored
         
         # create a frame and pack it
         frame1 = Tkinter.Frame(self.parent_type)
@@ -5094,7 +5094,8 @@ def getUserParameters(run_parameter,Multi=None):
                 except Exception: pass
                 try: channel_to_extract = gu.Results()['channel_to_extract']
                 except Exception: channel_to_extract = 'no'
-                if build_exon_bedfile == 'yes':
+                
+                if build_exon_bedfile == 'yes' and len(input_fastq_dir)==0:
                     print_out = 'Please note: AltAnalyze will exit immediately after\nimporting your junction results to allow you to build\nyour exon count files and reload this data.' 
                     IndicatorWindowSimple(print_out,'Continue')
                     run_from_scratch = 'buildExonExportFiles'
@@ -6133,7 +6134,7 @@ def getUserParameters(run_parameter,Multi=None):
         StatusWindow(values,'predictGroups') ### proceed to run the full discovery analysis here!!!
         if len(graphic_links)>0:
             root = Tk()
-            root.title('AltAnalyze: Evaluate Sampled Groupings')
+            root.title('AltAnalyze: Evaluate ICGS Clustering Results')
             ### Review results in custom GUI for predicting groups
             gu = GUI(root,'PredictGroups',[],'')
             nextStep = gu.Results()['next']

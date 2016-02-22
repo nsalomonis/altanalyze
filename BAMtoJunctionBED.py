@@ -61,14 +61,17 @@ def writeJunctionBedFile(junction_db,jid,o):
         if tophat_strand==None:
             strandStatus = False
         break
-        
+
     if strandStatus== False: ### If no strand information in the bam file filter and add known strand data
         junction_db2={}
         for (chr,jc,tophat_strand) in junction_db:
+            original_chr = chr
+            if 'chr' not in chr:
+                chr = 'chr'+chr
             for j in jc:                
                 try:
                     strand = splicesite_db[chr,j]
-                    junction_db2[(chr,jc,strand)]=junction_db[(chr,jc,tophat_strand)]
+                    junction_db2[(original_chr,jc,strand)]=junction_db[(original_chr,jc,tophat_strand)]
                 except Exception: pass
         junction_db = junction_db2
     
@@ -98,6 +101,7 @@ def retreiveAllKnownSpliceSites():
     import export, unique
     chromosomes_found={}
     parent_dir = export.findParentDir(bam_file)
+    species = None
     for file in os.listdir(parent_dir):
         if 'AltAnalyze_report' in file and '.log' in file:
             log_file = unique.filepath(parent_dir+'/'+file)
@@ -107,6 +111,9 @@ def retreiveAllKnownSpliceSites():
                 line = line.rstrip()
                 if species_tag in line:
                     species = string.split(line,species_tag)[1]
+    if species == None:
+        species = IndicatedSpecies
+
     splicesite_db={}
     refExonCoordinateFile = unique.filepath('AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt')
     firstLine=True
@@ -125,9 +132,11 @@ def retreiveAllKnownSpliceSites():
     
     return splicesite_db,chromosomes_found
 
-def parseJunctionEntries(bam_dir,multi=False):
+def parseJunctionEntries(bam_dir,multi=False, Species=None):
     global bam_file
     global splicesite_db
+    global IndicatedSpecies
+    IndicatedSpecies = Species
     bam_file = bam_dir
     try: splicesite_db,chromosomes_found = retreiveAllKnownSpliceSites()
     except Exception: splicesite_db={}; chromosomes_found={}
@@ -168,12 +177,13 @@ def parseJunctionEntries(bam_dir,multi=False):
     for entry in bamf.fetch():
       try: cigarstring = entry.cigarstring
       except Exception:
+          codes = map(lambda x: x[0],entry.cigar)
           if 3 in codes: cigarstring = 'N'
           else: cigarstring = None
       if cigarstring != None:
         if 'N' in cigarstring: ### Hence a junction
+            """
             if entry.cigar[0][1]<60 and entry.cigar[0][1]>20:
-                """
                 if count<310:
                     a1 = entry.seq[entry.cigar[0][1]-5:entry.cigar[0][1]]
                     a2 = entry.seq[entry.cigar[0][1]:entry.cigar[0][1]+6]
@@ -181,8 +191,8 @@ def parseJunctionEntries(bam_dir,multi=False):
                     else:
                         print entry.opt('XS'), a1,a2, entry.seq
                         l1 = a1; l2 = a2
-                else: sys.exit()"""
-                
+                else: sys.exit()
+            """
             if prior_jc_start == 0: pass
             elif (entry.pos-prior_jc_start) > 5000 or bamf.getrname( entry.rname ) != chromosome: ### New chr or far from prior reads
                 writeJunctionBedFile(junction_db,jid,o)
@@ -195,16 +205,17 @@ def parseJunctionEntries(bam_dir,multi=False):
             X=entry.pos
             Y=entry.pos+entry.alen
             prior_jc_start = X
+            """
             if entry.is_reverse:
                 strand = '-' ### This is the strand the seq aligns to but not necessarily the REAL strand the mRNA aligns to (see XS below)
             else:                
-                strand = '+'
+                strand = '+' """
             try: tophat_strand = entry.opt('XS') ### TopHat knows which sequences are likely real splice sites so it assigns a real strand to the read
             except Exception:
                 #if multi == False:  print 'No TopHat strand information';sys.exit()
                 tophat_strand = None
             coordinates,up_to_intron_dist = getSpliceSites(entry.cigar,X)
-                                
+
             for (five_prime_ss,three_prime_ss) in coordinates:
                 jc = five_prime_ss,three_prime_ss
                 #print X, Y, jc, entry.cigarstring, entry.cigar
@@ -257,13 +268,15 @@ if __name__ == "__main__":
         print "Example: python BAMtoJunctionBED.py --i /Users/me/sample1.bam"
         sys.exit()
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i='])
+        Species = None
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','species='])
         for opt, arg in options:
             if opt == '--i': bam_dir=arg ### full path of a BAM file
+            elif opt == '--species': Species=arg ### full path of a BAM file
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
             
-    try: parseJunctionEntries(bam_dir)
+    try: parseJunctionEntries(bam_dir,Species=Species)
     except ZeroDivisionError:
         print [sys.argv[1:]],'error'; error
 

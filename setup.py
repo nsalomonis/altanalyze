@@ -15,7 +15,7 @@ _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
 excludes = ['wx'] #["wxPython"] #"numpy","scipy","matplotlib"
-includes = ["mpmath", "numpy","sklearn.neighbors.typedefs",'sklearn.utils.lgamma','sklearn.manifold','sklearn.utils.sparsetools._graph_validation','sklearn.utils.weight_vector','pysam.TabProxies']
+includes = ["mpmath", "numpy","sklearn.neighbors.typedefs",'sklearn.utils.lgamma','sklearn.manifold','sklearn.utils.sparsetools._graph_validation','sklearn.utils.weight_vector','pysam.TabProxies','pysam.ctabixproxies']
 """ By default, suds will be installed in site-packages as a .egg file (zip compressed). Make a duplicate, change to .zip and extract
 here to allow it to be recognized by py2exe (must be a directory) """
 
