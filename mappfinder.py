@@ -573,11 +573,13 @@ def performGeneSetORA(geneset_dir):
     else:
         
         ###Calculate primary z-scores for GeneSets
+        #print len(input_gene_list), len(gene_to_mapp)
         mapp_to_mod_genes = getGenesInPathway(input_gene_list,gene_to_mapp) ### For summary reporting
         mapp_input_gene_count,Rm,input_linked_mapp = countGenesInPathway(input_gene_list,gene_to_mapp,'yes')
-        
+
         mapp_denominator_gene_count,Nm,denom_linked_mapp = countGenesInPathway(denominator_gene_list,gene_to_mapp,'yes')
         #print Nm,"unique genes, linked to GeneSets and in dataset and", Rm, "unique GeneSets\n linked genes matching criterion."
+        
         #zstart_time = time.time()
         
         try:

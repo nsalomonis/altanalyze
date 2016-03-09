@@ -354,10 +354,12 @@ def getOrderedGroups(filename):
     group_list.reverse()
     return group_list
         
-def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[]):
+def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Species=None):
     import clustering
     """ From the generated marker sets, output the replicate input data """
     marker_root_dir = fl.OutputDir()+'/'+'ExpressionOutput/MarkerFinder'
+    #print 1,fl.DatasetFile()
+    #print 2, fl.Vendor()
     for marker_dir in read_directory(marker_root_dir):
         if 'MarkerGenes' in marker_dir and 'correlation' in marker_dir:
             marker_dir = marker_root_dir+'/'+marker_dir
@@ -366,8 +368,20 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[]):
             ExpressionBuilder.exportGeometricFolds(fl.DatasetFile(),platform,marker_list,probeset_symbol_db,exportOutliers=False,exportRelative=False,customPath=custom_path,convertNonLogToLog=convertNonLogToLog)
             reorderInputFile(custom_path,marker_list, marker_condition_db)
             row_method = None; row_metric = 'cosine'; column_method = None; column_metric = 'euclidean'; color_gradient = 'yellow_black_blue'; transpose = False
+            import UI
+            gsp = UI.GeneSelectionParameters(Species,platform,fl.Vendor())
+            gsp.setPathwaySelect('None Selected')
+            gsp.setGeneSelection('')
+            gsp.setOntologyID('')
+            gsp.setGeneSet('None Selected')
+            gsp.setJustShowTheseIDs('')                
+            gsp.setTranspose(False)
+            gsp.setNormalize('median')
+            gsp.setGeneSelection('')
+            gsp.setClusterGOElite('GeneOntology')
+
             try:
-                graphics = clustering.runHCexplicit(custom_path, graphics, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True)
+                graphics = clustering.runHCexplicit(custom_path, graphics, row_method, row_metric, column_method, column_metric, color_gradient, gsp, display=False)
             except Exception:
                 print traceback.format_exc()
                 print 'Error occured in generated MarkerGene clusters... see ExpressionOutput/MarkerFinder files.'
@@ -406,6 +420,14 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
     global all_genes_ranked; all_genes_ranked={}
     global RPKM_threshold; global correlationDirection
 
+    """
+    print 4,Platform, codingType, geneToReport, correlateAll, logTransform,
+    try:
+        #print AdditionalParameters.CorrelationDirection()
+        print AdditionalParameters.RPKMThreshold()
+    except Exception:
+        print 'nope'
+    """
     global AvgExpDir
     if len(filename) == 2:
         filename, AvgExpDir = filename  #### Used when there are replicate samples: avg_exp_dir is non-replicate
@@ -421,9 +443,12 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
     import RNASeq
     Platform = RNASeq.checkExpressionFileFormat(filename,Platform)
 
+    try: RPKM_threshold = AdditionalParameters.RPKMThreshold() ### Used for exclusion of non-expressed genes
+    except Exception:
+        pass
     if Platform == 'RNASeq':
         try: RPKM_threshold = AdditionalParameters.RPKMThreshold() ### Used for exclusion of non-expressed genes
-        except Exception: RPKM_threshold = 3; logTransform = True
+        except Exception: RPKM_threshold = 1; logTransform = True
 
     correlationDirection = 1.00 ### Correlate to a positive or negative idealized pattern
     try:

@@ -113,11 +113,11 @@ def getColorRange(x):
     
 def heatmap(x, row_header, column_header, row_method, column_method, row_metric, column_metric, color_gradient,
             dataset_name, display=False, contrast=None, allowAxisCompression=True,Normalize=True,PriorColumnClusters=None, PriorRowClusters=None):
-    print "Performing hiearchical clustering using %s for columns and %s for rows" % (column_metric,row_metric)
+    print "Performing hieararchical clustering using %s for columns and %s for rows" % (column_metric,row_metric)
     show_color_bars = True ### Currently, the color bars don't exactly reflect the dendrogram colors
     try: ExportCorreleationMatrix = exportCorreleationMatrix
     except Exception: ExportCorreleationMatrix = False
-    
+
     try: os.mkdir(root_dir) ### May need to create this directory
     except Exception: None
     if display == False:
@@ -209,7 +209,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 column_method = 'hopach'
                 skipClustering = True   
     except Exception,e:
-        print traceback.format_exc()
+        #print traceback.format_exc()
+        pass
     
     n = len(x[0]); m = len(x)
     if color_gradient == 'red_white_blue':
@@ -399,7 +400,6 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         try: ax1.set_xticks([]); ax1.set_yticks([]) ### Hides ticks
         except Exception: pass
         
-        
         time_diff = str(round(time.time()-start_time,1))
         print 'Row clustering completed in %s seconds' % time_diff
     else:
@@ -513,13 +513,15 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             cluster_elite_terms,top_genes = remoteGOElite(elite_dir)
             if cluster_elite_terms['label-size']>40: ge_fontsize = 9.5
     except Exception: pass  #print traceback.format_exc()
-    #exportGOEliteInputs(root_dir,dataset_name,new_row_header,xt,ind1)
+
     try:
         elite_dirs = string.split(elite_dir,'GO-Elite')
         old_elite_dir = elite_dirs[0]+'GO-Elite'+elite_dirs[-1] ### There are actually GO-Elite/GO-Elite directories for the already clustered
+        old_elite_dir = string.replace(old_elite_dir,'ICGS/','')
         if len(PriorColumnClusters)>0 and PriorRowClusters>0 and skipClustering:
             cluster_elite_terms,top_genes = importGOEliteResults(old_elite_dir)
     except Exception,e:
+        #print traceback.format_exc()
         pass
     try:
         if len(justShowTheseIDs)<1 and len(top_genes) > 0 and column_fontsize < 9:
@@ -672,11 +674,11 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     def onpick1(event):
         text = event.artist
         print('onpick1 text:', text.get_text())
-        if '(c' not in text.get_text() and 'cluster' not in text.get_text():
-            webbrowser.open('http://www.genecards.org/cgi-bin/carddisp.pl?gene='+string.replace(text.get_text(),' ',''))
-        elif 'TreeView' in text.get_text():
+        if 'TreeView' in text.get_text():
             try: openTreeView(cdt_file)
             except Exception: print 'Failed to open TreeView'
+        elif 'p=' not in text.get_text():
+            webbrowser.open('http://www.genecards.org/cgi-bin/carddisp.pl?gene='+string.replace(text.get_text(),' ',''))
         else:
             #"""
             import TableViewer
@@ -688,6 +690,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             TableViewer.viewTable(text.get_text(),header,tuple_list) #"""
             
             cluster_prefix = 'c'+string.split(text.get_text(),'(c')[1][:-1]+'-'
+
             for geneSet in EliteGeneSets:
                 if geneSet == 'GeneOntology':
                     png_file_dir = elite_dir+'/GO-Elite_results/networks/'+cluster_prefix+'GO'+'.png'
@@ -966,12 +969,15 @@ def remoteGOElite(elite_dir):
         returnPathways = 'no'
         root = None
         import GO_Elite
+        reload(GO_Elite)
         
         input_files = dir_list = unique.read_directory(elite_dir) ### Are there any files to analyze?
         if len(input_files)>0 and resources_to_analyze !=['']:
             print '\nBeginning to run GO-Elite analysis on all results' 
             file_dirs = elite_dir,None,elite_dir
-            variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,root
+            enrichmentAnalysisType = 'ORA'
+            #enrichmentAnalysisType = 'URA'
+            variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,enrichmentAnalysisType,root
             try: GO_Elite.remoteAnalysis(variables,'non-UI Heatmap')
             except Exception: 'GO-Elite failed for:',elite_dir
             try: UI.openDirectory(elite_dir+'/GO-Elite_results')
@@ -1176,6 +1182,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     export_lines = []
     for row in xt:
         id = new_row_header[i]
+        original_id = id
         if sy == '$En:Sy':
             cluster = 'cluster-'+string.split(id,':')[0]
         elif sy == 'S' and ':' in id:
@@ -1184,6 +1191,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
             cluster = 'cluster-'+string.split(id,':')[0]
         else:
             cluster = 'c'+str(ind1[i])
+
         try:
             if 'MarkerGenes' in originalFilename:
                 id = string.split(id,':')[1]
@@ -1194,7 +1202,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
         except Exception: pass
         try: cluster_db[cluster].append(id)
         except Exception: cluster_db[cluster] = [id]
-        export_lines.append(string.join([id,str(ind1[i])]+map(str, row),'\t')+'\n')
+        export_lines.append(string.join([original_id,str(ind1[i])]+map(str, row),'\t')+'\n')
         i+=1
         
     ### Reverse the order of the file
@@ -1833,6 +1841,30 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         except Exception:
             pass### when run in headless mode
 
+def excludeHighlyCorrelatedHits(x,row_header):
+    ### For methylation data or other data with redundant signatures, remove these and only report the first one
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
+        D1 = numpy.corrcoef(x)
+    i=0
+    exclude={}
+    gene_correlations={}
+    include = []
+    for score_ls in D1:
+        k=0
+        for v in score_ls:
+            if str(v)!='nan':
+                if v>1.00 and k!=i:
+                    #print row_header[i], row_header[k], v
+                    if row_header[i] not in exclude:
+                        exclude[row_header[k]]=[]
+                #if k not in exclude: include.append(row_header[k])
+            k+=1    
+        #if i not in exclude: include.append(row_header[i])
+        i+=1
+    #print len(exclude),len(row_header);sys.exit()
+    return exclude
+
 def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, group_db, display=False, showLabels=True, algorithm='SVD',geneSetName=None, species=None, pcA=1,pcB=2):
     print "Performing Principal Component Analysis..."
     from numpy import mean,cov,double,cumsum,dot,linalg,array,rank
@@ -1864,7 +1896,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     
     if algorithm == 'SVD': use_svd = True
     else: use_svd = False
-    M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
+    #M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
     Mdif = matrix/matrix.std()
     Mdif = Mdif.T
     u, s, vt = svd(Mdif, 0)
@@ -1877,102 +1909,57 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     ####  FROM LARSSON ########
     #100 most correlated Genes with PC1
     #print vt
-    includeMorePCs=False
+    PCsToInclude = 4
+    correlated_db={}
+    allGenes={}
+    new_matrix = []
+    new_headers = []
+    added_indexes=[]
+    x = 0
+    #100 most correlated Genes with PC1
+    print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
+    exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
+    
+    matrix = zip(*matrix) ### transpose this back to normal
     try:
-       ####  FROM LARSSON ########
-        #100 most correlated Genes with PC1
-        idx = numpy.argsort(u[:,0])
-        idx2 = numpy.argsort(u[:,1])
-        try:
-            idx3 = numpy.argsort(u[:,2])
-            idx4 = numpy.argsort(u[:,3])
-        except Exception: pass
-        if includeMorePCs:
-            try:
-                idx5 = numpy.argsort(u[:,4])
-                idx6 = numpy.argsort(u[:,5])
-                idx7 = numpy.argsort(u[:,6])
-                idx8 = numpy.argsort(u[:,7])
-                idx9 = numpy.argsort(u[:,8])
-                idx10 = numpy.argsort(u[:,9])
-                idx11 = numpy.argsort(u[:,10])
-                idx12 = numpy.argsort(u[:,11])
-            except Exception: pass
+        while x<PCsToInclude:
+            idx = numpy.argsort(u[:,x])         
+            correlated = map(lambda i: row_header[i],idx[:300])
+            anticorrelated = map(lambda i: row_header[i],idx[-300:])
+            correlated_db[x] = correlated,anticorrelated
+            ### Create a new filtered matrix of loading gene indexes
+            fidx = list(idx[:300])+list(idx[-300:])
+            for i in fidx:
+                if i not in added_indexes:
+                    added_indexes.append(i)
+                    new_headers.append(row_header[i])
+                    new_matrix.append(matrix[i])
+            x+=1
+                    
+        #redundant_genes = excludeHighlyCorrelatedHits(numpy.array(new_matrix),new_headers)
+        redundant_genes = []
         
-        correlated_genes = map(lambda i: row_header[i],idx[:100])
-        anticorrelated_genes = map(lambda i: row_header[i],idx[-100:])
-
-        correlated_genes2 = map(lambda i: row_header[i],idx2[:100])
-        anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-100:])
-        try:
-            correlated_genes3 = map(lambda i: row_header[i],idx3[:100])
-            anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-100:])
-
-            correlated_genes4 = map(lambda i: row_header[i],idx4[:100])
-            anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-100:])
-        except Exception: pass
-        
-        if includeMorePCs:
-            try:
-                correlated_genes5 = map(lambda i: row_header[i],idx5[:100])
-                anticorrelated_genes5 = map(lambda i: row_header[i],idx5[-100:])
-                correlated_genes6 = map(lambda i: row_header[i],idx6[:100])
-                anticorrelated_genes6 = map(lambda i: row_header[i],idx6[-100:])
-                correlated_genes7 = map(lambda i: row_header[i],idx7[:100])
-                anticorrelated_genes7 = map(lambda i: row_header[i],idx7[-100:])
-                correlated_genes8 = map(lambda i: row_header[i],idx8[:100])
-                anticorrelated_genes8 = map(lambda i: row_header[i],idx8[-100:])
-                correlated_genes9 = map(lambda i: row_header[i],idx9[:100])
-                anticorrelated_genes9 = map(lambda i: row_header[i],idx9[-100:])
-                correlated_genes10 = map(lambda i: row_header[i],idx10[:100])
-                anticorrelated_genes10 = map(lambda i: row_header[i],idx10[-100:])
-                correlated_genes11 = map(lambda i: row_header[i],idx11[:100])
-                anticorrelated_genes11 = map(lambda i: row_header[i],idx11[-100:])
-                correlated_genes12 = map(lambda i: row_header[i],idx12[:100])
-                anticorrelated_genes12 = map(lambda i: row_header[i],idx12[-100:])
-            except Exception: pass
-        
-        print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
-        exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
-        
-        allGenes={}
-        for gene in correlated_genes: exportData.write(gene+'\tcorrelated-PC1\n'); allGenes[gene]=[]
-        for gene in anticorrelated_genes: exportData.write(gene+'\tanticorrelated-PC1\n'); allGenes[gene]=[]
-        for gene in correlated_genes2: exportData.write(gene+'\tcorrelated-PC2\n'); allGenes[gene]=[]
-        for gene in anticorrelated_genes2: exportData.write(gene+'\tanticorrelated-PC2\n'); allGenes[gene]=[]
-
-        try:
-            for gene in correlated_genes3: exportData.write(gene+'\tcorrelated-PC3\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes3: exportData.write(gene+'\tanticorrelated-PC3\n'); allGenes[gene]=[]
-            for gene in correlated_genes4: exportData.write(gene+'\tcorrelated-PC4\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes4: exportData.write(gene+'\tanticorrelated-PC4\n'); allGenes[gene]=[]
-        except Exception: pass
-        try:
-            for gene in correlated_genes5: exportData.write(gene+'\tcorrelated-PC5\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes5: exportData.write(gene+'\tanticorrelated-PC5\n'); allGenes[gene]=[]
-            for gene in correlated_genes6: exportData.write(gene+'\tcorrelated-PC6\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes6: exportData.write(gene+'\tanticorrelated-PC6\n'); allGenes[gene]=[]
-            for gene in correlated_genes7: exportData.write(gene+'\tcorrelated-PC7\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes7: exportData.write(gene+'\tanticorrelated-PC7\n'); allGenes[gene]=[]
-            for gene in correlated_genes8: exportData.write(gene+'\tcorrelated-PC8\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes8: exportData.write(gene+'\tanticorrelated-PC8\n'); allGenes[gene]=[]
-            for gene in correlated_genes9: exportData.write(gene+'\tcorrelated-PC9\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes9: exportData.write(gene+'\tanticorrelated-PC9\n'); allGenes[gene]=[]
-            for gene in correlated_genes10: exportData.write(gene+'\tcorrelated-PC10\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes10: exportData.write(gene+'\tanticorrelated-PC10\n'); allGenes[gene]=[]
-            for gene in correlated_genes11: exportData.write(gene+'\tcorrelated-PC11\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes11: exportData.write(gene+'\tanticorrelated-PC11\n'); allGenes[gene]=[]
-            for gene in correlated_genes12: exportData.write(gene+'\tcorrelated-PC12\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes12: exportData.write(gene+'\tanticorrelated-PC12\n'); allGenes[gene]=[]
-        except Exception: pass
-        
+        for x in correlated_db:
+            correlated,anticorrelated = correlated_db[x]
+            count=0
+            for gene in correlated:
+                if gene not in redundant_genes and count<100:
+                    exportData.write(gene+'\tcorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
+                    count+=1
+            count=0
+            for gene in anticorrelated:
+                if gene not in redundant_genes and count<100:
+                    exportData.write(gene+'\tanticorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
+                    count+=1
         exportData.close()
         
         if geneSetName != None:
             if len(geneSetName)>0:
                 exportCustomGeneSet(geneSetName,species,allGenes)
-                print 'Exported geneset to "StoredGeneSets"'         
-    except Exception: pass        
+                print 'Exported geneset to "StoredGeneSets"'
+    except ZeroDivisionError:
+        pass       
+
     ###########################
     
     #if len(row_header)>20000:
@@ -2142,7 +2129,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
     fig = pylab.figure()
     ax = fig.add_subplot(111, projection='3d')
     start = time.time()
-    M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
+    #M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
     
     if algorithm == 'SVD': use_svd = True
     else: use_svd = False
@@ -2157,50 +2144,56 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
     label2 = 'PC%i (%2.1f%%)' %(1+1, fracs[1]*100)
     label3 = 'PC%i (%2.1f%%)' %(2+1, fracs[2]*100)
 
+    PCsToInclude = 4
+    correlated_db={}
+    allGenes={}
+    new_matrix = []
+    new_headers = []
+    added_indexes=[]
+    x = 0
+    #100 most correlated Genes with PC1
+    print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
+    exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
+    
+    matrix = zip(*matrix) ### transpose this back to normal
     try:
-        ####  FROM LARSSON ########
-        #100 most correlated Genes with PC1
-        idx = numpy.argsort(u[:,0])
-        idx2 = numpy.argsort(u[:,1])
-        idx3 = numpy.argsort(u[:,2])
-        try: idx4 = numpy.argsort(u[:,3])
-        except Exception: pass
+        while x<PCsToInclude:
+            idx = numpy.argsort(u[:,x])         
+            correlated = map(lambda i: row_header[i],idx[:300])
+            anticorrelated = map(lambda i: row_header[i],idx[-300:])
+            correlated_db[x] = correlated,anticorrelated
+            ### Create a new filtered matrix of loading gene indexes
+            fidx = list(idx[:300])+list(idx[-300:])
+            for i in fidx:
+                if i not in added_indexes:
+                    added_indexes.append(i)
+                    new_headers.append(row_header[i])
+                    new_matrix.append(matrix[i])
+            x+=1
+                    
+        #redundant_genes = excludeHighlyCorrelatedHits(numpy.array(new_matrix),new_headers)
+        redundant_genes = []
         
-        correlated_genes = map(lambda i: row_header[i],idx[:100])
-        anticorrelated_genes = map(lambda i: row_header[i],idx[-100:])
-
-        correlated_genes2 = map(lambda i: row_header[i],idx2[:100])
-        anticorrelated_genes2 = map(lambda i: row_header[i],idx2[-100:])
-
-        correlated_genes3 = map(lambda i: row_header[i],idx3[:100])
-        anticorrelated_genes3 = map(lambda i: row_header[i],idx3[-100:])
-        try:
-            correlated_genes4 = map(lambda i: row_header[i],idx4[:100])
-            anticorrelated_genes4 = map(lambda i: row_header[i],idx4[-100:])
-        except Exception: pass
-        
-        print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
-        exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
-        
-        allGenes={}
-        for gene in correlated_genes: exportData.write(gene+'\tcorrelated-PC1\n'); allGenes[gene]=[]
-        for gene in anticorrelated_genes: exportData.write(gene+'\tanticorrelated-PC1\n'); allGenes[gene]=[]
-        for gene in correlated_genes2: exportData.write(gene+'\tcorrelated-PC2\n'); allGenes[gene]=[]
-        for gene in anticorrelated_genes2: exportData.write(gene+'\tanticorrelated-PC2\n'); allGenes[gene]=[]
-        for gene in correlated_genes3: exportData.write(gene+'\tcorrelated-PC3\n'); allGenes[gene]=[]
-        for gene in anticorrelated_genes3: exportData.write(gene+'\tanticorrelated-PC3\n'); allGenes[gene]=[]
-        try:
-            for gene in correlated_genes4: exportData.write(gene+'\tcorrelated-PC4\n'); allGenes[gene]=[]
-            for gene in anticorrelated_genes4: exportData.write(gene+'\tanticorrelated-PC4\n'); allGenes[gene]=[]
-        except Exception: pass
+        for x in correlated_db:
+            correlated,anticorrelated = correlated_db[x]
+            count=0
+            for gene in correlated:
+                if gene not in redundant_genes and count<100:
+                    exportData.write(gene+'\tcorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
+                    count+=1
+            count=0
+            for gene in anticorrelated:
+                if gene not in redundant_genes and count<100:
+                    exportData.write(gene+'\tanticorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
+                    count+=1
         exportData.close()
         
         if geneSetName != None:
             if len(geneSetName)>0:
                 exportCustomGeneSet(geneSetName,species,allGenes)
-                print 'Exported geneset to "StoredGeneSets"'  
-    except Exception:
-        pass
+                print 'Exported geneset to "StoredGeneSets"'
+    except ZeroDivisionError:
+        pass       
 
     #numpy.Mdiff.toFile(root_dir+'/PCA/correlated.txt','\t')
     if use_svd == False:
@@ -2552,7 +2545,8 @@ def debugTKBug():
 
 def runHCexplicit(filename, graphics, row_method, row_metric, column_method, column_metric, color_gradient,
                   extra_params, display=True, contrast=None, Normalize=False, JustShowTheseIDs=[],compressAxis=True):
-    """ Explicit method for hiearchical clustering with defaults defined by the user (see below function) """
+    """ Explicit method for hieararchical clustering with defaults defined by the user (see below function) """
+    #print [filename, graphics, row_method, row_metric, column_method, column_metric, color_gradient, contrast, Normalize]
     
     global root_dir
     global inputFilename
@@ -2616,8 +2610,9 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
         try:
             EliteGeneSets = extra_params.ClusterGOElite()
             if EliteGeneSets != ['']: runGOElite = True
-            #print EliteGeneSets
-        except Exception: pass
+        except Exception:
+            #print traceback.format_exc()
+            pass
         try:
             storeGeneSetName = extra_params.StoreGeneSetName()
         except Exception:
@@ -2648,7 +2643,9 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
         if len(priorColumnClusters)>0 and priorRowClusters>0 and row_method==None and column_method == None:
             try: justShowTheseIDs = importPriorDrivers(inputFilename)
             except Exception: justShowTheseIDs=[]
-    except Exception: print traceback.format_exc()
+    except Exception:
+        #print traceback.format_exc()
+        pass
     
     #print len(matrix),;print len(column_header),;print len(row_header)
     if filterIDs:
@@ -2716,6 +2713,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     
     if len(column_header)>1000 or len(row_header)>1000:
         print 'Performing hierarchical clustering (please be patient)...'
+
     runHierarchicalClustering(matrix, row_header, column_header, dataset_name, row_method, row_metric,
                               column_method, column_metric, color_gradient, display=display,contrast=contrast,
                               allowAxisCompression=allowAxisCompression, Normalize=Normalize)
@@ -2925,6 +2923,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         if row_method != None: targetGenes.sort()
         for row_id in row_header:
             original_rowid = row_id
+            symbol=''
             if ':' in row_id:
                 a,b = string.split(row_id,':')[:2]
                 if 'ENS' in a or len(a)==17:
@@ -2992,6 +2991,8 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         ### If one gene entered, display the most positive and negative correlated
         import markerFinder; k=0
         for targetGeneValues in targetGeneValue_array:
+            correlated=[]
+            anticorrelated=[]
             try: targetGeneID = original_headers[k]
             except Exception: targetGeneID=''
             try:
@@ -3006,6 +3007,10 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
                 if 'top' in targetGene:
                     if rho_results[4][0]<rho_cutoff: proceed = False
                 if rho>rho_cutoff and proceed: #and rho_results[3][0]>rho_cutoff:# ensures only clustered genes considered
+                    rh = row_header[ind]
+                    #if gene_to_symbol[rh][0] in targetGenes:correlated.append(gene_to_symbol[rh][0])
+                    #correlated.append(gene_to_symbol[rh][0])
+                    
                     if len(row_header2)<100 or multipleGenes:
                         rh = row_header[ind]
                         #print rh, rho # Ly6c1, S100a8
@@ -3030,6 +3035,10 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             rho_results.reverse()
             for (rho,ind) in rho_results[:limit]: ### Get the top-50 anti-correlated plus the gene of interest
                 if rho<-1*rho_cutoff and 'positive' not in targetGene:
+                    rh = row_header[ind]
+                    #if gene_to_symbol[rh][0] in targetGenes:anticorrelated.append(gene_to_symbol[rh][0])
+                    #anticorrelated.append(gene_to_symbol[rh][0])
+                    
                     if len(row_header2)<100 or multipleGenes:
                         rh = row_header[ind]
                         if matrix[ind] not in matrix2:
@@ -3067,7 +3076,8 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             except Exception:
                 pass
             k+=1
-            
+            #print targetGeneID+'\t'+str(len(correlated))+'\t'+str(len(anticorrelated))
+        #sys.exit()
         if 'IntraCorrelatedOnly' in targetGene:
             matrix2 = matrix2_alt
             row_header2 = row_header2_alt
@@ -3100,6 +3110,8 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         matrix2 = map(numpy.array, zip(*matrix2)) ### coverts these to tuples
         column_header, row_header2 = row_header2, column_header
 
+    exclude=[]
+    #exclude = excludeHighlyCorrelatedHits(numpy.array(matrix2),row_header2)
     exportData.write(string.join(['UID']+column_header,'\t')+'\n') ### title row export
     i=0
     for row_id in row_header2:
@@ -3117,7 +3129,8 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             except Exception: a = 1; b=2
             if a==b:
                 row_id = a
-        exportData.write(string.join([row_id]+map(str,matrix2[i]),'\t')+'\n') ### export values
+        if row_id not in exclude:
+            exportData.write(string.join([row_id]+map(str,matrix2[i]),'\t')+'\n') ### export values
         i+=1
 
     print len(row_header2), 'top-correlated IDs'
@@ -3146,7 +3159,8 @@ def numpyCorrelationMatrixGeneStore(x,rows,genes,gene_to_symbol):
 
     else:
         eo=export.ExportFile(output_file)
-        D1 = numpy.ma.corrcoef(x)
+        #D1 = numpy.ma.corrcoef(x)
+        D1 = numpy.corrcoef(x)
         i=0
         for score_ls in D1:
             scores = []
@@ -3175,7 +3189,8 @@ def numpyCorrelationMatrixGeneStore(x,rows,genes,gene_to_symbol):
 def numpyCorrelationMatrixGene(x,rows,genes,gene_to_symbol):
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
-        D1 = numpy.ma.corrcoef(x)
+        #D1 = numpy.ma.corrcoef(x)
+        D1 = numpy.corrcoef(x)
     i=0
     gene_correlations={}
     for score_ls in D1:
@@ -3196,7 +3211,7 @@ def numpyCorrelationMatrixGene(x,rows,genes,gene_to_symbol):
     return gene_correlations
 
 def runHCOnly(filename,graphics,Normalize=False):
-    """ Simple method for hiearchical clustering with defaults defined by the function rather than the user (see above function) """
+    """ Simple method for hieararchical clustering with defaults defined by the function rather than the user (see above function) """
     
     global root_dir
     global graphic_link
@@ -3234,7 +3249,7 @@ def runHCOnly(filename,graphics,Normalize=False):
                 row_method, row_metric, column_method, column_metric, color_gradient, display=False, Normalize=Normalize)
     return graphic_link
 
-def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,algorithm='SVD',geneSetName=None, species=None, zscore=False):
+def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,algorithm='SVD',geneSetName=None, species=None, zscore=True):
     global root_dir
     global graphic_link
     graphic_link=graphics ### Store all locations of pngs
@@ -3248,7 +3263,6 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         
     ### Transpose matrix and build PCA
     matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore)
-    
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
         column_header, row_header = row_header, column_header
@@ -3271,7 +3285,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
 
     return graphic_link
 
-def outputClusters(filenames,graphics,Normalize=False):
+def outputClusters(filenames,graphics,Normalize=False,Species=None,platform=None,vendor=None):
     """ Peforms PCA and Hiearchical clustering on exported log-folds from AltAnalyze """
     
     global root_dir
@@ -3310,6 +3324,11 @@ def outputClusters(filenames,graphics,Normalize=False):
     color_gradient = 'red_white_blue'
     color_gradient = 'red_black_sky'
     
+    global species
+    species = Species
+    EliteGeneSets=['GeneOntology']
+    runGOElite = True
+
     ### Generate Significant Gene HeatMap
     matrix, column_header, row_header, dataset_name, group_db = original
     GroupDB = group_db
@@ -4417,9 +4436,9 @@ if __name__ == '__main__':
     files = UI.read_directory(folder)
     for file in files: #:70895507-70895600
         if '.bed' in file:
-            BedFileCheck(folder+'/'+file)
+            #BedFileCheck(folder+'/'+file)
             pass
-    sys.exit()
+    #sys.exit()
     #runPCAonly(filename,[],False,showLabels=False,plotType='2D');sys.exit()
     
     countinp = '/Volumes/salomonis2/SinghLab/20150715_single_GCBCell/bams/ExpressionInput/counts.Bcells.txt'

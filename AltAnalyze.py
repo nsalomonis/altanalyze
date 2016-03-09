@@ -5517,7 +5517,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                 try: markerFinder.analyzeData(group_exp_file,species,array_type,compendiumType,AdditionalParameters=fl,logTransform=logTransform)
                 except Exception: None
             ### Generate heatmaps (unclustered - order by markerFinder)
-            try: graphics = markerFinder.generateMarkerHeatMaps(fl,array_type,graphics=graphics)
+            try: graphics = markerFinder.generateMarkerHeatMaps(fl,array_type,graphics=graphics,Species=species)
             except Exception: print traceback.format_exc()
 
       remove_intronic_junctions = original_remove_intronic_junctions ### This var gets reset when running FilterDABG
@@ -6546,6 +6546,7 @@ def commandLineRun():
             plotType = '2D'
             pca_algorithm = 'SVD'
             geneSetName = None
+            zscore = True
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 if opt == '--labels':
                     include_labels=arg
@@ -7105,6 +7106,12 @@ def commandLineRun():
                     ### Work around when performing this analysis on an alternative exon input cluster file
                     group_exp_file = input_exp_file
                 fl = UI.ExpressionFileLocationData(input_exp_file,'','',''); fl.setOutputDir(export.findParentDir(export.findParentDir(input_exp_file)[:-1]))
+                try: fl.setSpecies(species); fl.setVendor(vendor)
+                except Exception: pass
+                try:
+                    rpkm_threshold = float(rpkm_threshold) ### If supplied, for any platform, use it
+                    fl.setRPKMThreshold(rpkm_threshold)
+                except Exception: pass
                 if platform=='RNASeq':
                     try: rpkm_threshold = float(rpkm_threshold)
                     except Exception: rpkm_threshold = 1.0
@@ -7128,7 +7135,7 @@ def commandLineRun():
                 except Exception:
                     print '--vendor not indicated by user... assuming Affymetrix'
                     fl.setVendor('Affymetrix')
-                try: markerFinder.generateMarkerHeatMaps(fl,array_type,convertNonLogToLog=logTransform)
+                try: markerFinder.generateMarkerHeatMaps(fl,array_type,convertNonLogToLog=logTransform,Species=species)
                 except Exception: print traceback.format_exc() 
             print 'Cell/Tissue marker classification analysis finished';sys.exit()
     

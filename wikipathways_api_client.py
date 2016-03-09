@@ -248,7 +248,7 @@ class WikipathwaysApiClient(object):
         # create pathway
         update_params = {'auth' : username+'-'+authentication, 'gpml': gpml}
         re = requests.post(self.base_iri + 'createPathway', params=update_params)
-        print re.text
+        #print re.text
 
 
     def get_colored_pathway(self, identifier, element_identifiers, colors, version = '0', file_format = 'svg'):

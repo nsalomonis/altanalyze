@@ -1350,7 +1350,9 @@ def runGOElite(mod):
       if multiProcessing == True:
            go_to_mod_genes, mapp_to_mod_genes = multiMappfinder(species,species_code,source_data,mod,system_codes,permute,resources,file_dirs,root)
       else:
-           go_to_mod_genes, mapp_to_mod_genes, timediff, mappfinder_input, resource = mappfinder.generateMAPPFinderScores(species,species_code,source_data,mod,system_codes,permute,resources,file_dirs,root,Multi=mlp)
+           try:go_to_mod_genes, mapp_to_mod_genes, timediff, mappfinder_input, resource = mappfinder.generateMAPPFinderScores(species,species_code,source_data,mod,system_codes,permute,resources,file_dirs,root,Multi=mlp)
+           except Exception: print traceback.format_exc()
+
       reload(mappfinder) ### Clear memory of any retained objects
 
   else: denom_search_dir = ''
@@ -1889,7 +1891,8 @@ def remoteAnalysis(variables,run_type,Multi=None):
     global commandLineMode; commandLineMode = 'no'; global enrichment_type; enrichment_type = 'ORA'
     global mlp; mlp = Multi
     
-    species_code,mod,permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,parent = variables
+    try: species_code,mod,permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,enrichment_type,parent = variables
+    except Exception: species_code,mod,permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,parent = variables
     #print variables
     try: permutations = int(permutations)
     except Exception: permutations = permutations ### For Fisher Exact

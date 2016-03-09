@@ -1655,7 +1655,7 @@ def visualizeQCPlots(expr_input_dir):
         
         print 'Building hierarchical cluster graphs...'
         paths = getSampleLogFoldFilenames(expr_input_dir)
-        graphic_links = clustering.outputClusters(paths,graphic_links, Normalize='row mean')
+        graphic_links = clustering.outputClusters(paths,graphic_links, Normalize='median',Species=species)
         try: graphic_links = clustering.runPCAonly(original_expr_input_dir,graphic_links,False,plotType='2D',display=False)
         except Exception: pass
     except Exception:

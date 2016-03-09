@@ -33,7 +33,7 @@ try:
     from wikipathways_api_client import WikipathwaysApiClient
     wikipathways_api_client_instance = WikipathwaysApiClient()
 except Exception:
-    print traceback.format_exc()
+    #print traceback.format_exc()
     None ### Occurs when functions in this module are resued in different modules
             
 def filepath(filename):
@@ -76,6 +76,7 @@ def getPathwayAs(pathway_db,species_code,mod):
         wp_id_data = wikipathways_api_client_instance.get_pathway_as(file_format = file_type,identifier = wpid, version = 0)
         #wp_id_data = base64.b64decode(wp_id_data)
         gpml_path = filepath('BuildDBs/WPs/'+processor_time+'/'+wpid+'.gpml')
+        #print gpml_path
         outfile = export.ExportFile(gpml_path)
         outfile.write(wp_id_data); outfile.close()
         gene_system_list = string.split(wp_id_data,'\n')

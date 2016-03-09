@@ -870,7 +870,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     try: root.destroy()
     except Exception: None
     
-def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None, zscore=False):
+def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None, zscore=True):
     import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
@@ -4579,7 +4579,12 @@ def getUserParameters(run_parameter,Multi=None):
         except Exception:
             ### An error occurs because this is a system name for the Other ID option
             array_type = "3'array"
-            vendor = 'other:'+array_full ### Ensembl linked system name
+            if array_full == "3'array" and vendor == 'RNASeq':
+                ### Occurs when hitting the back button
+                ### When RNASeq is selected as the platform but change to "3'array" when normalized data is imported.
+                vendor = 'other:Symbol'
+            else:
+                vendor = 'other:'+array_full ### Ensembl linked system name
         if array_full == 'Normalized externally':
             array_type = "3'array"
             vendor = 'other:'+array_full ### Ensembl linked system name
@@ -5001,12 +5006,12 @@ def getUserParameters(run_parameter,Multi=None):
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
                         
-            if additional_analyses == 'Principal Components':
-                selected_parameters.append('Principal Components')
+            if additional_analyses == 'Dimensionality Reduction':
+                selected_parameters.append('Dimensionality Reduction')
                 status = 'repeat'
                 while status == 'repeat':
                     root = Tk()
-                    root.title('AltAnalyze: Perform Principal Component Analysis from an Expression Matrix')
+                    root.title('AltAnalyze: Perform Dimensionality Reduction from an Expression Matrix')
                     gu = GUI(root,option_db,option_list['PCA'],'')
                     try: input_cluster_file = gu.Results()['input_cluster_file']
                     except Exception: input_cluster_file = ''
@@ -5346,9 +5351,12 @@ def getUserParameters(run_parameter,Multi=None):
                 try:
                     #print option_db['rpkm_threshold'].DefaultOption()
                     if 'rpkm_threshold' in option_db:
-                        option_db['rpkm_threshold'].setArrayOptions('0')
+                        option_db['rpkm_threshold'].setArrayOptions('1')
+                        print vendor
+                        if "other:Symbol" in vendor:
+                            option_db['rpkm_threshold'].setDefaultOption('1')
                         if option_db['rpkm_threshold'].DefaultOption() == ['NA']:
-                            option_db['rpkm_threshold'].setDefaultOption('0')
+                            option_db['rpkm_threshold'].setDefaultOption('1')
                         option_db['rpkm_threshold'].setDisplay('Remove genes expressed below (non-log)')
                     else:
                         option_db['rpkm_threshold'].setArrayOptions('0')

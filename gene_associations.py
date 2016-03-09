@@ -732,7 +732,7 @@ def importGeneSetsIntoDatabase(source_file,species_code,mod):
     export.deleteFolder('BuildDBs/temp') ### Delete any previous data
     destination_dir = filepath('BuildDBs/temp/'+source_filename)
     export.customFileCopy(source_file,destination_dir)
-    print destination_dir
+    #print destination_dir
     custom_sets_folder = export.findParentDir(destination_dir)
     import GO_Elite; system_codes,source_types,mod_types = GO_Elite.getSourceData()
     gene_to_custom = importGeneCustomData(species_code,system_codes,custom_sets_folder,mod)
@@ -1718,7 +1718,7 @@ def parseBioPax3(custom_sets_folder):
             data = cleanUpLine(line)
             if 'pathway rdf:ID=' in data: ##<pathway rdf:ID="EGFR1_pathway_Human">
                 pathway_name = string.split(data,'pathway rdf:ID')[-1][:-1]
-                
+                #test   
 def processXMLline(data_type,line):
     data_types = ['NAME','pathway']
     for data_type in data_types:
@@ -1955,7 +1955,7 @@ def IDconverter(filename,species_code,input_system_name, output_system_name,anal
         filename = export.findFilename(filename)
         return filename
     else:
-        print len(input_data_db), len(converted_ids)
+        #print len(input_data_db), len(converted_ids)
         return converted_ids, input_data_db
 
 if __name__ == '__main__':
