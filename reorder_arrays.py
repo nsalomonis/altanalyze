@@ -95,6 +95,8 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     try: FDR_statistic = fl.FDRStatistic()
     except Exception: FDR_statistic = 'Benjamini-Hochberg'
     calculateAsNonLog=True
+    if blanksPresent:
+        calculateAsNonLog=False
     
     ### Begin processing sample expression values according to the organized groups
     for row_id in data:

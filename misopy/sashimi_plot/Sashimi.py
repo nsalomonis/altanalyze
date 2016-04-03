@@ -10,6 +10,9 @@ import string
 
 import misopy.sashimi_plot.plot_utils.plot_settings as plot_settings
 import misopy.sashimi_plot.plot_utils.plotting as plotting
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['font.sans-serif'] = 'Arial'
 
 class Sashimi:
     """
@@ -79,11 +82,12 @@ class Sashimi:
             #print "Using sans serif fonts."
             plotting.make_sans_serif(font_size=font_size)
 
-    def save_plot(self, plot_label=None):
+    def save_plot(self, plot_label=None,show=False):
         """
         Save plot to the output directory. Determine
         the file type.
         """
+
         if self.output_filename == None:
             raise Exception, "sashimi_plot does not know where to save the plot."
         output_fname = None
@@ -95,6 +99,12 @@ class Sashimi:
                 os.path.dirname(dirname, "%s.%s" %(plot_label, ext))
         else:
             output_fname = self.output_filename
+            ### determine whether to show the plot interactively, using a parameter file
+            try:
+                s = open(string.split(output_fname,'SashimiPlots')[0]\
+                         +'SashimiPlots/show.txt','r')
+                show_param=s.read()
+            except Exception: show_param = 'False'
         print '.',
         #print "Saving plot to: %s" %(output_fname)
         #output_fname2=output_fname.replace(".pdf")
@@ -103,8 +113,9 @@ class Sashimi:
         ### Write out a png as well
         output_fname = string.replace(output_fname,'.pdf','.png')
         plt.savefig(output_fname,dpi=120)
-        plt.clf()
-        plt.close() ### May result in TK associated errors later on
-
-            
-        
+        if 'TRUE' in show_param:
+            plt.show()
+            plt.clf()
+        else:
+            plt.clf()
+            plt.close() ### May result in TK associated errors later on

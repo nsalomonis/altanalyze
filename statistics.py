@@ -1110,9 +1110,9 @@ if __name__ == '__main__':
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Volumes/SEQ-DATA/Ichi/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Volumes/SEQ-DATA/CardiacRNASeq/Combined/AltResults/AlternativeOutput1/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    matrix,compared_groups,original_data = matrixImport(filename)
-    matrix_pvalues=runANOVA(filename,matrix,compared_groups)
-    returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()
+    #matrix,compared_groups,original_data = matrixImport(filename)
+    #matrix_pvalues=runANOVA(filename,matrix,compared_groups)
+    #returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()
     a = range(3, 18)
     k=[]
     for i in a:
@@ -1120,17 +1120,12 @@ if __name__ == '__main__':
         k.append(y)
         
     print sum(k)
-    print choose(17,12)
-    sys.exit()
-    r=1749
-    n=2536
-    R=9858
-    N=16595
-
-    r=19
-    n=32
-    R=8347
-    N=19411
+    #print choose(17,12)
+    #sys.exit()
+    r=589
+    n=1019
+    R=6605
+    N=10000
     
     z = zscore(r,n,N,R)
     print z, p_value(z);sys.exit()

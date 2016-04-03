@@ -378,7 +378,7 @@ class StatusWindow:
             else:
                 root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.0.9.3 beta')
+            root.title('AltAnalyze version 2.0.9.4 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 300; width = 700
@@ -424,9 +424,9 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, self._parent))
             except Exception,e: createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose,contrast,None)
         if analysis_type == 'performPCA':
-            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore = info_list
-            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore))
-            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore)
+            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene = info_list
+            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene))
+            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene)
         if analysis_type == 'runLineageProfiler':
             fl, filename, vendor, custom_markerFinder, geneModel_file, modelDiscovery = info_list
             try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent, modelSize=modelDiscovery))
@@ -742,6 +742,7 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
     if root == None: display = False
     else: display = True
     if analysisType == 'Sashimi-Plot':
+        showEvent = False
         try:
             ### Create sashimi plot index
             import SashimiIndex
@@ -750,7 +751,15 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
             import SashimiPlot
             #reload(SashimiPlot)
             print 'Running Sashimi-Plot...'
-            SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,gene) ### assuming the bam files are in the root-dir
+            if '.txt' in gene:
+                events_file = gene
+                events = None
+            else:
+                genes = string.split(gene,' ')
+                events_file = None
+                if len(genes)==1:
+                    showEvent = True
+            SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,events_file,events=genes,show=showEvent) ### assuming the bam files are in the root-dir
             if root != None and root != '':
                 print_out = 'Sashimi-Plot results saved to:\n'+exp_file+'SashimiPlots'
                 try: InfoWindow(print_out, 'Continue')
@@ -870,7 +879,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     try: root.destroy()
     except Exception: None
     
-def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None, zscore=True):
+def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None, zscore=True, colorByGene=None):
     import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
@@ -878,7 +887,7 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
     if zscore=='yes': zscore = True
     elif zscore=='no': zscore = False
     try:
-        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels, plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName, species=species, zscore=zscore)
+        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels, plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene)
         try: print'Finished building PCA.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -3685,11 +3694,11 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze version 2.0.9 beta.\n'
+        about = 'AltAnalyze version 2.0.9.4 beta.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.altanalyze.org\n'
-        about+= '\nDeveloped by:\n\tNathan Salomonis\n\tBruce Conklin\nGladstone Institutes 2008-2011'
+        about+= '\nDeveloped by:\n\Salomonis Research Group\nCincinnati Childrens Hospital Medical Center 2008-2016'
         tkMessageBox.showinfo("About AltAnalyze",about,parent=self._parent)
         """
         
@@ -3706,11 +3715,11 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.0.9.3 beta.\n')
+        txt.insert(END, 'AltAnalyze version 2.0.9.4 beta.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
-        txt.insert(END, '\nDeveloped by:\n\tNathan Salomonis\n\tBruce Conklin\nGladstone Institutes 2008-2011')
+        txt.insert(END, '\nDeveloped by:\n\Salomonis Research Group\nCincinnati Childrens Hospital Medical Center 2008-2016')
         txt.tag_config('link', foreground="blue", underline = 1)
         txt.tag_bind('link', '<Button-1>', showLink)
         
@@ -3851,7 +3860,9 @@ class ExpressionFileLocationData:
         else:
             return self.ExpFile()
     def GroupsFile(self): return self._groups_file
+    def setGroupsFile(self, groups_file):self._groups_file=groups_file
     def CompsFile(self): return self._comps_file
+    def setCompsFile(self, comps_file):self._comps_file=comps_file
     def setArchitecture(self,architecture): self.architecture = architecture
     def setAPTLocation(self,apt_location): self._apt_location = osfilepath(apt_location)
     def setInputCDFFile(self,cdf_file): self._cdf_file = osfilepath(cdf_file)
@@ -4577,14 +4588,16 @@ def getUserParameters(run_parameter,Multi=None):
         vendor = gu.Results()['manufacturer_selection']
         try: array_type = array_codes[array_full].ArrayCode()
         except Exception:
-            ### An error occurs because this is a system name for the Other ID option
-            array_type = "3'array"
-            if array_full == "3'array" and vendor == 'RNASeq':
-                ### Occurs when hitting the back button
-                ### When RNASeq is selected as the platform but change to "3'array" when normalized data is imported.
-                vendor = 'other:Symbol'
-            else:
-                vendor = 'other:'+array_full ### Ensembl linked system name
+            if vendor == 'Other ID':
+                #"""
+                ### An error occurs because this is a system name for the Other ID option
+                array_type = "3'array"
+                if array_full == "3'array" and vendor == 'RNASeq':
+                    ### Occurs when hitting the back button
+                    ### When RNASeq is selected as the platform but change to "3'array" when normalized data is imported.
+                    vendor = 'other:Symbol'
+                else:
+                    vendor = 'other:'+array_full ### Ensembl linked system name
         if array_full == 'Normalized externally':
             array_type = "3'array"
             vendor = 'other:'+array_full ### Ensembl linked system name
@@ -4802,7 +4815,8 @@ def getUserParameters(run_parameter,Multi=None):
                     if analysisType == 'Sashimi-Plot':
                         altanalyze_results_folder = string.split(altanalyze_results_folder,'AltResults')[0]
                         exp_file = altanalyze_results_folder
-                        gene_symbol = altgenes_file
+                        if len(gene_symbol)<1:
+                            gene_symbol = altgenes_file
                     elif data_type == 'raw expression': ### Switch directories if expression
                         altanalyze_results_folder = string.replace(altanalyze_results_folder,'AltResults','ExpressionInput')
                         exp_file = getValidExpFile(altanalyze_results_folder)
@@ -4813,11 +4827,11 @@ def getUserParameters(run_parameter,Multi=None):
                             print_out = "No files found in: "+altanalyze_results_folder
                             IndicatorWindow(print_out,'Continue')
 
-                    if len(exp_file)>0 and len(gene_symbol)>0:
+                    if len(exp_file)>0 or ((len(exp_file)>0 or len(gene_symbol)>0) and analysisType == 'Sashimi-Plot'):
                         analysis = 'AltExonViewer'
                         values = species,array_type,exp_file,gene_symbol,show_introns,analysisType
                         StatusWindow(values,analysis) ### display an window with download status
-                        if len(altgenes_file)>0 or ' ' in gene_symbol:
+                        if len(altgenes_file)>0 or ' ' in gene_symbol or ((len(exp_file)>0 or len(gene_symbol)>0) and analysisType == 'Sashimi-Plot'):
                             ### Typically have a Tkinter related error
                             if os.name == 'posix':
                                 try:
@@ -4958,7 +4972,10 @@ def getUserParameters(run_parameter,Multi=None):
                     contrast = gu.Results()['contrast']
                     if transpose == 'yes': transpose = True
                     else: transpose = False
-                    translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle','Top Correlated Only':'top','Positive Correlations Only':'positive','Perform Iterative Discovery':'driver', 'Intra-Correlated Only':'IntraCorrelatedOnly', 'Perform Monocle':'monocle'}
+                    translate={'None Selected':'','Exclude Cell Cycle Effects':'excludeCellCycle',
+                               'Top Correlated Only':'top','Positive Correlations Only':'positive',
+                               'Perform Iterative Discovery':'guide', 'Intra-Correlated Only':'IntraCorrelatedOnly',
+                               'Correlation Only to Guides':'GuideOnlyCorrelation','Perform Monocle':'monocle'}
                     try:
                         if 'None Selected' in HeatmapAdvanced: pass
                     except Exception: HeatmapAdvanced = ('None Selected')
@@ -4969,10 +4986,10 @@ def getUserParameters(run_parameter,Multi=None):
                             for name in translate:
                                 GeneSelection = string.replace(GeneSelection,name,translate[name])
                             GeneSelection = string.replace(GeneSelection,'  ',' ')
-                            if 'top' in GeneSelection or 'driver' in GeneSelection or 'excludeCellCycle' in GeneSelection or 'positive' in GeneSelection or 'IntraCorrelatedOnly' in GeneSelection:
+                            if 'top' in GeneSelection or 'positive' in GeneSelection or 'IntraCorrelatedOnly' in GeneSelection: #or 'guide' in GeneSelection or 'excludeCellCycle' in GeneSelection - will force correlation to selected genes
                                 GeneSelection+=' amplify'
                         except Exception: pass
-
+                    ### This variable isn't needed later, just now to indicate not to correlate in the first round
                     if GeneSetSelection  != 'None Selected' and PathwaySelection == ['None Selected']:
                         PathwaySelection = [gu.Results()[GeneSetSelection][0]] ### Default this to the first selection
 
@@ -4984,6 +5001,11 @@ def getUserParameters(run_parameter,Multi=None):
                         if CorrelationCutoff!=None: #len(GeneSelection)>0 and 
                             gsp.setRhoCutoff(CorrelationCutoff)
                             GeneSelection = 'amplify '+GeneSelection
+                            if 'GuideOnlyCorrelation' in GeneSelection:
+                                ### Save the correlation cutoff for ICGS but don't get expanded correlation sets in the first round
+                                GeneSelection = string.replace(GeneSelection,'GuideOnlyCorrelation','')
+                                GeneSelection = string.replace(GeneSelection,'amplify','')
+                                GeneSelection = string.replace(GeneSelection,'  ','')
                         gsp.setGeneSet(GeneSetSelection)
                         gsp.setPathwaySelect(PathwaySelection)
                         gsp.setGeneSelection(GeneSelection)
@@ -5021,13 +5043,28 @@ def getUserParameters(run_parameter,Multi=None):
                     zscore = gu.Results()['zscore']
                     transpose = gu.Results()['transpose']
                     geneSetName = gu.Results()['pcaGeneSets']
+                    try:
+                        colorByGene = gu.Results()['colorByGene']
+                        colorByGene_temp = string.replace(colorByGene,' ','')
+                        if len(colorByGene_temp)==0:
+                            colorByGene = None
+                        else:
+                            #Standardize the delimiter
+                            colorByGene = string.replace(colorByGene,'|',' ')
+                            colorByGene = string.replace(colorByGene,',',' ')
+                            colorByGene = string.replace(colorByGene,'\r',' ')
+                            colorByGene = string.replace(colorByGene,'\n',' ')
+                            colorByGene = string.replace(colorByGene,'  ',' ')
+                            if colorByGene[0] == ' ': colorByGene=colorByGene[1:]
+                            if colorByGene[-1] == ' ': colorByGene=colorByGene[:-1]
+                    except Exception: colorByGene = None
                     if len(geneSetName)==0:
                         geneSetName = None
                     if len(input_cluster_file)>0:
                         analysis = 'performPCA'
                         if transpose == 'yes': transpose = True
                         else: transpose = False
-                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore
+                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -5333,14 +5370,19 @@ def getUserParameters(run_parameter,Multi=None):
                     else: i = -1
                     output_dir = string.join(string.split(input_exp_file,'/')[:i],'/')
 
-            if array_type == 'RNASeq':
+            try: prior_platform = user_variables['prior_platform']
+            except Exception: prior_platform = None
+            if array_type == 'RNASeq' or prior_platform == 'RNASeq':
                 counts_file = string.replace(input_exp_file,'exp.','counts.')
                 count = verifyFileLength(counts_file)
                 if count == 0 or 'exp.' not in input_exp_file: #No counts file
                     systm = getGeneSystem(input_exp_file)
                     ### Wrong platform listed
                     array_type = "3'array"
+                    prior_platform = 'RNASeq'
                     vendor = 'other:'+systm ### Ensembl linked system name
+                    user_variables['manufacturer_selection'] = vendor
+                    user_variables['prior_platform'] = prior_platform
                     if old_options==[] or 'marker_finder' not in old_options: ### If we haven't hit the back button
                         option_list,option_db = importUserOptions(array_type) ### will re-set the paramater values, so not good for back select
                         user_variables['array_type'] = array_type
@@ -5353,7 +5395,7 @@ def getUserParameters(run_parameter,Multi=None):
                     if 'rpkm_threshold' in option_db:
                         option_db['rpkm_threshold'].setArrayOptions('1')
                         print vendor
-                        if "other:Symbol" in vendor:
+                        if "other:Symbol" in vendor or "other:Ensembl" in vendor:
                             option_db['rpkm_threshold'].setDefaultOption('1')
                         if option_db['rpkm_threshold'].DefaultOption() == ['NA']:
                             option_db['rpkm_threshold'].setDefaultOption('1')
@@ -5739,7 +5781,7 @@ def getUserParameters(run_parameter,Multi=None):
             fl = ExpressionFileLocationData(exp_file_dir,stats_file_dir,groups_file_dir,comps_file_dir)
             exp_file_location_db={}; exp_file_location_db[dataset_name]=fl
             parent_dir = output_dir  ### interchangable terms (parent_dir used with expression file import)
-            print groups_file_dir
+            #print groups_file_dir
         if run_from_scratch == 'Process Expression file':
             if len(input_exp_file)>0:
                 if len(input_stats_file)>1: ###Make sure the files have the same arrays and order first
@@ -5779,7 +5821,7 @@ def getUserParameters(run_parameter,Multi=None):
                 else:
                     group = ''; group_name = ''    
                 agd = ArrayGroupData(cel_file,group,group_name); array_group_list.append(agd)
-                if batch_effects == 'yes': ### Used during backselect (must include a 'batch' variable in the stored var name)
+                if batch_effects == 'yes' or normalize_gene_data == 'group': ### Used during backselect (must include a 'batch' variable in the stored var name)
                     if (cel_file,'batch') in user_variables:
                         batch_name = user_variables[cel_file,'batch']; batch = ''
                     else:
@@ -5799,7 +5841,7 @@ def getUserParameters(run_parameter,Multi=None):
                 for cel_file in cel_files:
                     group = ''; group_name = ''    
                     agd = ArrayGroupData(cel_file,group,group_name); array_group_list.append(agd); group_db=[]
-            if batch_effects == 'yes':
+            if batch_effects == 'yes' or normalize_gene_data == 'group':
                 if batch_name in dir_files: ### Almost identical format and output files (import existing if present here)
                     try:
                         array_batch_list,batch_db = importArrayGroupsSimple(batch_file_dir,cel_files) #agd = ArrayGroupData(array_header,group,group_name)
@@ -5887,7 +5929,7 @@ def getUserParameters(run_parameter,Multi=None):
                         IndicatorWindow(print_out,'Continue')                 
                 exported = 0
                 
-                if batch_effects == 'yes':
+                if batch_effects == 'yes' or normalize_gene_data == 'group':
                     option_db,option_list = formatArrayGroupsForGUI(array_batch_list, category = 'BatchArrays')
                     ###Force this GUI to repeat until the user fills in each entry, but record what they did add
                     user_variables_long={}
@@ -5905,7 +5947,7 @@ def getUserParameters(run_parameter,Multi=None):
                             except Exception: null=[]
                         ###Store the batch names and assign batch numbers
                         batch_name_db={}; batch_name_list = []; batch_number = 1
-                        print option_list['BatchArrays']
+                        #print option_list['BatchArrays']
                         for cel_file in option_list['BatchArrays']: ### start we these CEL files, since they are ordered according to their order in the expression dataset
                             batch_name = gu.Results()[cel_file,'batch']
                             if batch_name not in batch_name_db:
@@ -6149,6 +6191,17 @@ def getUserParameters(run_parameter,Multi=None):
             group_selected = gu.Results()['group_select']
             if nextStep == 'UseSelected':
                 group_selected = group_selected[:-4]+'.txt'
+                exp_file = fl.ExpFile()
+                ### We have to update the OutlierRemoved file if the original expression file was filtered
+                if 'OutliersRemoved' in group_selected and 'OutliersRemoved' not in exp_file:
+                    exp_file = exp_file[:-4]+'-OutliersRemoved.txt'
+                    fl.setExpFile(exp_file) ### set this to the outlier removed version
+                    groups_file = string.replace(exp_file,'exp.','groups.')
+                    comps_file = string.replace(exp_file,'exp.','comps.')
+                    fl.setGroupsFile(groups_file)
+                    fl.setCompsFile(comps_file)
+                    exp_file_location_db={}
+                    exp_file_location_db[dataset_name+'-OutliersRemoved'] = fl
                 RNASeq.exportGroupsFromClusters(group_selected,fl.ExpFile(),array_type)
                 run_from_scratch = 'Process Expression file'
             else:
@@ -6156,7 +6209,7 @@ def getUserParameters(run_parameter,Multi=None):
                 AltAnalyze.AltAnalyzeSetup((selected_parameters,user_variables)); sys.exit()
         else:
             AltAnalyze.AltAnalyzeSetup((selected_parameters,user_variables)); sys.exit()
-                                    
+                           
     expr_var = species,array_type,vendor,constitutive_source,dabg_p,expression_threshold,avg_all_for_ss,expression_data_format,include_raw_data, run_from_scratch, perform_alt_analysis
     alt_var = analysis_method,p_threshold,filter_probeset_types,alt_exon_fold_cutoff,gene_expression_cutoff,remove_intronic_junctions,permute_p_threshold, perform_permutation_analysis, export_splice_index_values, analyze_all_conditions
     additional_var = calculate_splicing_index_p, run_MiDAS, analyze_functional_attributes, microRNA_prediction_method, filter_for_AS, additional_algorithms

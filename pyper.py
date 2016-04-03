@@ -419,6 +419,7 @@ class R: # (object):
 		# "Warning: In 2.5, magic names (typically those with a double
 		# underscore (DunderAlias) at both ends of the name) may look at the
 		# class rather than the instance even for old-style classes."
+
 		self.__dict__.update({
 			'max_len' : max_len, 
 			'use_dict' : use_dict,
@@ -625,4 +626,7 @@ def runR(CMDS, Robj='R', max_len=1000, use_numpy=True, use_dict=None, host='loca
 	if len(rlt) == 1: rlt = rlt[0]
 	return rlt
 	
-
+if __name__ == '__main__':
+	import unique
+	path = unique.filepath("AltDatabase/R/Contents/MacOS/R")
+	r = R(RCMD='R',use_numpy=True)

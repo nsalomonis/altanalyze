@@ -118,7 +118,7 @@ def checkExpressionFileFormat(expFile):
             
     if inputMax>100: ### Thus, not log values
         expressionDataFormat = 'non-log'
-        if inputMin<=1:
+        if inputMin<=1: #if inputMin<=1:
             increment = inputMin+1
         convert = True
     else:
@@ -491,9 +491,9 @@ def exportDataForGenMAPP(headers,input_type):
     genmapp_title = ['GeneID','SystemCode'] + headers
     genmapp_title = string.join(genmapp_title,'\t')+'\t'+'ANOVA-rawp'+'\t'+'ANOVA-adjp'+'\t'+'largest fold'+'\n'
     genmapp.write(genmapp_title)
-
+    
     for probeset in array_folds:
-        if 'ENS' in probeset and (' ' in probeset or '_' in probeset or ':' in probeset or '-' in probeset):
+        if 'ENS' in probeset and (' ' in probeset or '_' in probeset or ':' in probeset or '-' in probeset) and len(probeset)>9:
             system_code = 'En'
             ensembl_gene = 'ENS'+string.split(probeset,'ENS')[1]
             if ' ' in ensembl_gene:
@@ -505,7 +505,7 @@ def exportDataForGenMAPP(headers,input_type):
             if '-' in ensembl_gene:
                 ensembl_gene = string.split(ensembl_gene,'-')[0]
             data_val = ensembl_gene+'\t'+system_code
-        elif ('ENS' in probeset or 'ENF' in probeset) and system_code == 'Sy':
+        elif ('ENS' in probeset or 'ENF' in probeset) and system_code == 'Sy' and len(probeset)>9:
             system_code = 'En'
             data_val = probeset+'\t'+system_code
         else:
@@ -649,7 +649,7 @@ def exportGOEliteInput(headers,system_code):
         goelite_title = string.join(goelite_title,'\t')+'\n'; goelite.write(goelite_title)
         for probeset in denominator_geneids:
             try:
-                if 'ENS' in probeset and (' ' in probeset or '_' in probeset or ':' in probeset or '-' in probeset):
+                if 'ENS' in probeset and (' ' in probeset or '_' in probeset or ':' in probeset or '-' in probeset) and len(probeset)>9:
                     system_code = 'En'
                     ensembl_gene = 'ENS'+string.split(probeset,'ENS')[1]
                     if ' ' in ensembl_gene:
@@ -666,7 +666,7 @@ def exportGOEliteInput(headers,system_code):
                     system_code = 'Sy'
             except Exception:
                 pass
-            if ('ENS' in probeset or 'ENF' in probeset) and system_code == 'Sy':
+            if ('ENS' in probeset or 'ENF' in probeset) and system_code == 'Sy' and len(probeset)>9:
                 system_code = 'En'
             values = string.join([probeset,system_code],'\t')+'\n'; goelite.write(values)
         goelite.close()
@@ -971,9 +971,11 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
         for line in open(fn,'rU').xreadlines():
             data = cleanUpLine(line)
             t = string.split(data,'\t')
+
             if data[0]=='#' and row_number==0: row_number = 0
             elif row_number==0:
                 sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = simpleGroupImport(groups_dir)
+
                 try: sample_index_list = map(lambda x: t[1:].index(x), sample_list) ### lookup index of each sample in the ordered group sample list
                 except Exception:
                     missing=[]
@@ -999,50 +1001,52 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                 row_number=1
             else:
                 gene = t[0]
+
                 if platform == 'RNASeq':
                     ### Convert to log2 RPKM values - or counts
                     try: values = map(lambda x: math.log(float(x)+increment,2), t[1:])
                     except Exception:
-                        values = logTransformWithNAs(t[1:],increment)
+                        if convertNonLogToLog:
+                            values = logTransformWithNAs(t[1:],increment)
+                        else:
+                            values = TransformWithNAs(t[1:])
                 else:
                     try: values = map(float,t[1:])
                     except Exception:
-                        values = logTransformWithNAs(t[1:],increment)
+                        if convertNonLogToLog:
+                            values = logTransformWithNAs(t[1:],increment)
+                        else:
+                            values = TransformWithNAs(t[1:])
                 
                 ### Calculate log-fold values relative to the mean of all sample expression values
+
                 values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
+
                 try: avg = statistics.avg(values)
                 except Exception:
                     values2=[]
                     for v in values:
                         try: values2.append(float(v))
                         except Exception: pass
-                    values = values2
-                    try: avg = statistics.avg(values)
+                    try: avg = statistics.avg(values2)
                     except Exception:
-                        if len(values)>0: avg = values[0]
+                        if len(values2)>0: avg = values2[0]
                         else: avg = 0
-                if convertNonLogToLog and platform != 'RNASeq':
-                    ### Rather than convert the values to log, and perform mean subtraction to derive folds, calculate in non-log space and then convert the folds to log
-                    try: log_folds = map(lambda x: math.log(((x+increment/(avg+1))),2), values)
-                    except Exception:
-                        log_folds=[]
-                        for x in values:
-                            try: log_folds.append(math.log(((x+increment/(avg+1))),2))
-                            except Exception: log_folds.append('')
-                        
-                else:
-                    try: log_folds = map(lambda x: (x-avg), values)
-                    except Exception: 
-                        log_folds=[]
-                        for x in values:
-                            try: log_folds.append(x-avg)
-                            except Exception: log_folds.append('')
+
+                try: log_folds = map(lambda x: (x-avg), values)
+                except Exception: 
+                    log_folds=[]
+                    for x in values:
+                        try: log_folds.append(x-avg)
+                        except Exception: log_folds.append('')
+
                 if gene in genes_to_import:
                     ### Genes regulated in any user-indicated comparison according to the fold and pvalue cutoffs provided
                     log_folds = map(lambda x: str(x), log_folds)
                     try: gene = gene+' '+probeset_symbol[gene]
                     except Exception: gene = gene
+                    if len(t[1:])!=len(log_folds):
+                        log_folds = t[1:] ### If NAs - output the original values
                     export_data.write(string.join([gene]+log_folds,'\t')+'\n')
 
                     if exportRelative:
@@ -1050,7 +1054,17 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                         control_group_avg={}; comps_exp_db={}
                         for group_name in comps_name_db: ### control group names
                             con_group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
-                            control_group_avg[group_name] = statistics.avg(con_group_values) ### store the mean value of each control group
+                            try: control_group_avg[group_name] = statistics.avg(con_group_values) ### store the mean value of each control group
+                            except Exception:
+                                con_group_values2=[]
+                                for val in con_group_values:
+                                    try: con_group_values2.append(float(val))
+                                    except Exception: pass
+                                    try: control_group_avg[group_name] = statistics.avg(con_group_values)
+                                    except Exception:
+                                        if len(con_group_values)>0:
+                                            control_group_avg[group_name] = con_group_values[0]
+                                        else: control_group_avg[group_name] = 0.0
                             for exp_group in comps_name_db[group_name]:
                                 try: comps_exp_db[exp_group].append(group_name) ### Create a reversed version of the comps_name_db, list experimental as the key
                                 except Exception: comps_exp_db[exp_group] = [group_name]
@@ -1063,16 +1077,13 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                                 for control_group_name in comps_exp_db[group_name]:
                                     con_avg = control_group_avg[control_group_name]
                                     
-                                    if convertNonLogToLog and platform != 'RNASeq':
-                                        relative_log_folds += map(lambda x: str(math.log(((x+increment)/(con_avg+increment)),2)), group_values) ### calculate log-folds and convert to strings
-                                    else:
-                                        try:
-                                            relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
-                                        except Exception:
-                                            relative_log_folds=[]
-                                            for x in group_values:
-                                                try: relative_log_folds.append(str(x-con_avg))
-                                                except Exception: relative_log_folds.append('')
+                                    try:
+                                        relative_log_folds += map(lambda x: str(x-con_avg), group_values) ### calculate log-folds and convert to strings
+                                    except Exception:
+                                        relative_log_folds=[]
+                                        for x in group_values:
+                                            try: relative_log_folds.append(str(x-con_avg))
+                                            except Exception: relative_log_folds.append('')
                             
                                     if relative_headers_exported == False:
                                         exp_sample_names = group_name_sample_db[group_name]
@@ -1082,7 +1093,8 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                             title = string.join(['UID']+relative_column_names,'\t')+'\n' ### Export column headers for the relative fold changes
                             export_relative.write(title)
                             relative_headers_exported = True
-                          
+                        if len(t[1:])!=len(relative_log_folds):
+                            relative_log_folds = t[1:] ### If NAs - output the original values
                         export_relative.write(string.join([gene]+relative_log_folds,'\t')+'\n')
                             
                 elif exportOutliers:
@@ -1097,6 +1109,8 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                             if max(values)<0.1: proceed = False
                         if proceed == True:
                             log_folds = map(lambda x: str(x), log_folds)
+                            if len(t[1:])!=len(log_folds):
+                                log_folds = t[1:] ### If NAs - output the original values
                             export_outliers.write(string.join([gene]+log_folds,'\t')+'\n')
                             
                 row_number+=1 ### Keep track of the first gene as to write out column headers for the relative outputs
@@ -1109,6 +1123,14 @@ def logTransformWithNAs(values,increment):
     values2=[]
     for x in values:
         try: values2.append(math.log(float(x)+increment,2))
+        except Exception:
+            values2.append('')
+    return values2
+
+def TransformWithNAs(values):
+    values2=[]
+    for x in values:
+        try: values2.append(float(x))
         except Exception:
             values2.append('')
     return values2

@@ -163,7 +163,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             #print traceback.format_exc()
             forceError
             
-    importGeneExpressionValues(exp_input,tissue_specific_db,translation_db)
+    importGeneExpressionValues(exp_input,tissue_specific_db,translation_db,species=species)
     ### If the incorrect gene system was indicated re-run with generic parameters
 
     if len(expession_subset)==0 and (array_type == "3'array" or array_type == 'AltMouse' or array_type == 'Other'):
@@ -175,7 +175,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             except Exception:
                 try: targetPlatform = 'gene'; importTissueSpecificProfiles(species)
                 except Exception: targetPlatform = "3'array"; importTissueSpecificProfiles(species)
-        importGeneExpressionValues(exp_input,tissue_specific_db,translation_db)
+        importGeneExpressionValues(exp_input,tissue_specific_db,translation_db,species=species)
     zscore_output_dir = analyzeTissueSpecificExpressionPatterns()
 
     return zscore_output_dir
@@ -288,12 +288,19 @@ def simpleUIDImport(filename):
         uid_db[string.split(data,'\t')[0]]=[]
     return uid_db
         
-def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog=False):
+def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog=False,previouslyRun=False,species=None):
     ### Import gene-level expression raw values           
     fn=filepath(filename); x=0; genes_added={}; gene_expression_db={}
     dataset_name = export.findFilename(filename)
     max_val=0
     print 'importing:',dataset_name
+    
+    try:
+        import gene_associations, OBO_import
+        gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+        symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+    except Exception: symbol_to_gene={}
+    
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -315,6 +322,8 @@ def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog
                     print gene, [translation_db[gene]];sys.exit()"""
                 try: gene = translation_db[gene] ### Ensembl annotations
                 except Exception: pass
+            try: gene = symbol_to_gene[gene][0] ### If RNASeq is the selected platform and Symbol is the uid
+            except Exception: pass
             if gene in tissue_specific_db:
                 index,tissue_exp=tissue_specific_db[gene]
                 try: genes_added[gene]+=1
@@ -349,8 +358,8 @@ def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog
     expession_subset.sort() ### This order now matches that of 
     gene_expression_db=[]
     
-    if max_val<20 and platform == 'RNASeq':
-        importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog=True)
+    if max_val<20 and platform == 'RNASeq' and previouslyRun==False: ### Only allow to happen once
+        importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog=True,previouslyRun=True,species=species)
 
 def produceDetectionCalls(values,Platform):
     # Platform can be the compendium platform (targetPlatform) or analyzed data platform (platform or array_type)

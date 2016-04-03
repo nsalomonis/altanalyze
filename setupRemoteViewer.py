@@ -41,7 +41,7 @@ if sys.platform.startswith("darwin"):
         from distutils.core import setup
         import py2app
         #import lxml
-        includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath"] #"xml.sax.drivers2.drv_pyexpat"
+        includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath",'pysam.TabProxies','pysam.ctabixproxies'] #"xml.sax.drivers2.drv_pyexpat"
         """
         resources = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
         frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']

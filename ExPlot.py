@@ -158,7 +158,7 @@ def ProteinCentricIsoformView(Selected_Gene):
                 if(len(microRNA_db[current_exon_id]) > 6):
                     continue
                 microRNA_db[current_exon_id].append(m)
-                print("ADDED!")
+                #print("ADDED!")
                 
             except:
                 microRNA_db[current_exon_id] = [m]
@@ -175,6 +175,7 @@ def ProteinCentricIsoformView(Selected_Gene):
         geneID = line[0]
         exon_region = line[1]
         chr = line[2]
+        exonID = line[1]
         strand = line[3]
         start = line[4]
         stop = line[5]
@@ -225,7 +226,7 @@ def ProteinCentricIsoformView(Selected_Gene):
             if platform != 'RNASeq':
                 if FeatureID in probeset_to_ExonID:
                     FeatureID = probeset_to_ExonID[FeatureID]
-                    print(FeatureID)
+                    #print(FeatureID)
                     ETC_List.append((FeatureID, S_I_data))
             else:
                 try:
@@ -244,33 +245,38 @@ def ProteinCentricIsoformView(Selected_Gene):
             stop = exon_data.Stop()
             chr = exon_data.Chr()
             strand = exon_data.Strand()
-            start_exon_region = exon_coord_db[chr,start,'start']
-            stop_exon_region = exon_coord_db[chr,stop,'stop']
-            if '-' in strand:
-                stop_exon_region,start_exon_region = start_exon_region,stop_exon_region
-            regions = [start_exon_region]
-            block,start_region = start_exon_region.split('.')
-            start_region = int(float(start_region))
-            block,stop_region = stop_exon_region.split('.')
-            stop_region = int(float(stop_region))
-            region = start_region+1
-            while region<stop_region:
-                er = block+'.'+str(region)
-                regions.append(er)
-                region+=1
-            if stop_region != start_region:
-                regions.append(stop_exon_region)
-            for region in regions:
-                er = exonRegion_db[Selected_Gene,region]
-                try:
-                    Transcript_ExonRegion_db[transcriptID].append(er)
-                except:
-                    Transcript_ExonRegion_db[transcriptID] = [er]
+            try:
+                start_exon_region = exon_coord_db[chr,start,'start']
+                stop_exon_region = exon_coord_db[chr,stop,'stop']
+                proceed = True
+            except Exception: ### Not clear why this error occurs. Erroring region was found to be an intron region start position (I7.2 ENSMUSG00000020385)
+                proceed = False
+            if proceed:
+                if '-' in strand:
+                    stop_exon_region,start_exon_region = start_exon_region,stop_exon_region
+                regions = [start_exon_region]
+                block,start_region = start_exon_region.split('.')
+                start_region = int(float(start_region))
+                block,stop_region = stop_exon_region.split('.')
+                stop_region = int(float(stop_region))
+                region = start_region+1
+                while region<stop_region:
+                    er = block+'.'+str(region)
+                    regions.append(er)
+                    region+=1
+                if stop_region != start_region:
+                    regions.append(stop_exon_region)
+                for region in regions:
+                    er = exonRegion_db[Selected_Gene,region]
+                    try:
+                        Transcript_ExonRegion_db[transcriptID].append(er)
+                    except:
+                        Transcript_ExonRegion_db[transcriptID] = [er]
     
     exon_virtualToRealPos= c.OrderedDict()
     junction_transcript_db = {}
     for transcriptID in Transcript_ExonRegion_db:
-            print('transcripts:',transcriptID)
+            #print('transcripts:',transcriptID)
             position=0
             Buffer=15
             for exon_object in Transcript_ExonRegion_db[transcriptID]:
@@ -502,7 +508,7 @@ def remoteGene(gene,Species,root_dir,comparison_file):
     SplicingIndex_File = searchDirectory(root_dir+'/AltResults/ProcessedSpliceData/','splicing-index',secondary=comparison_name)
     platform = getPlatform(SplicingIndex_File)
     microRNA_File = searchDirectory("AltDatabase/"+species+"/"+platform,'microRNAs_multiple')
-    print(SplicingIndex_File)
+    #print(SplicingIndex_File)
 
     total_val = ProteinCentricIsoformView(Selected_Gene)
     junctions = total_val[0]
@@ -582,8 +588,7 @@ def remoteGene(gene,Species,root_dir,comparison_file):
         #ind = event.ind
         print(event.artist.get_label())
 
-    for i in domainAnnotation_db:
-        print(i,len(domainAnnotation_db));break
+    #for i in domainAnnotation_db: print(i,len(domainAnnotation_db));break
     
     fig = pylab.figure()
     
@@ -618,9 +623,11 @@ def remoteGene(gene,Species,root_dir,comparison_file):
                     else:
                         S_Int = float(SplicingIndex)
                         if(S_Int > 0):
-                            color_choice = (0.7, 0.7, 0.99)
+                            #color_choice = (0.7, 0.7, 0.99)
+                            color_choice = 'blue'
                         if(S_Int < 0):
-                            color_choice = (0.8, 0.4, 0.4)
+                            #color_choice = (0.8, 0.4, 0.4)
+                            color_choice = 'red'
                                             
                 except:
                     #print(traceback.format_exc());sys.exit()
@@ -679,7 +686,7 @@ def remoteGene(gene,Species,root_dir,comparison_file):
                 ax.arrow((entry[0] + 8), (y_pos+90), 11, -40, label = (str(entry[2]) + Label), color = color_junc, picker = True)
                 y_start = y_pos
                 y_end = y_pos + 30
-                print(junctionID,y_start,y_end)
+                #print(junctionID,y_start,y_end)
                 CoordsBank.append((G_start, G_end, y_start, y_end, junctionID))
 
             try:
@@ -697,14 +704,15 @@ def remoteGene(gene,Species,root_dir,comparison_file):
                     pass
                 p_label_list = ["DEF"]
                 #CoordsBank.append((P_Start, P_End, y_pos, P_End - P_Start, transcript)) ### Added by NS - needs work
-                P_Domain_List = p_domains[transcript]
+                try: P_Domain_List = p_domains[transcript]
+                except Exception: P_Domain_List=[]
                 for entry in P_Domain_List:
                     #print("Domain", entry)
                     color_domain_choice = domain_color_key[entry[1]]
                     domain_annotation = domainAnnotation_db[entry[1]]
                     #domain_annotation = string.replace(domain_annotation,'REGION-','')
                     p_label = (str(entry[0]) +  " " + str(domain_annotation))
-                    print(entry[0], entry[2], entry[3], P_Start, P_End, domain_annotation, )
+                    #print(entry[0], entry[2], entry[3], P_Start, P_End, domain_annotation, )
                     Repeat_Flag = 0
                     for i in p_label_list:
                         if(p_label == i):
@@ -717,9 +725,10 @@ def remoteGene(gene,Species,root_dir,comparison_file):
                     y_end = y_pos + 150
                     CoordsBank.append((entry[2], entry[3], y_start, y_end, p_label))
             except Exception:
-                print(traceback.format_exc())
+                pass
+                #print(traceback.format_exc())
         except:
-            print(traceback.format_exc())
+            #print(traceback.format_exc())
             pass
     pylab.ylim([0.0, ylim])
     try:
@@ -745,5 +754,8 @@ def remoteGene(gene,Species,root_dir,comparison_file):
     
 if __name__ == "__main__":
     #Selected_Gene = sys.argv[1]
-    Selected_Gene = 'ENSG00000005801'
-    remoteGene(Selected_Gene)
+    Selected_Gene = 'ENSMUSG00000020385'
+    Species = 'Mm'
+    root_dir = '/Users/saljh8/Desktop/Grimes/GEC14074'
+    comparison_file = '/Users/saljh8/Desktop/Grimes/GEC14074/AltResults/RawSpliceData/Mm/splicing-index/Mm_RNASeq_a_vs_b.ExpCutoff-5.0_average.txt'
+    remoteGene(Selected_Gene,Species,root_dir,comparison_file)

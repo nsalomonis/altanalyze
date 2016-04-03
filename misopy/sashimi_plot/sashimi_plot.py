@@ -89,7 +89,8 @@ def plot_bf_dist(bf_filename, settings_filename, output_dir,
     for thresh in bf_thresholds:
         if type(thresh) != int:
             print "Error: BF thresholds must be integers."
-            sys.exit(1)
+            #sys.exit(1)
+
     print "Using BF thresholds: "
     print bf_thresholds
     print "Using bar color: %s" %(bar_color)
@@ -106,8 +107,6 @@ def plot_bf_dist(bf_filename, settings_filename, output_dir,
     plt.ylabel("No. events")
     sashimi_obj.save_plot()
     
-
-
 def plot_event(event_name, pickle_dir, settings_filename,
                output_dir,
                no_posteriors=False,
@@ -124,11 +123,11 @@ def plot_event(event_name, pickle_dir, settings_filename,
     
     if not os.path.isfile(settings_filename):
         print "Error: settings filename %s not found." %(settings_filename)
-        sys.exit(1)
+        #sys.exit(1)
 
     if not os.path.isdir(pickle_dir):
         print "Error: event pickle directory %s not found." %(pickle_dir)
-        sys.exit(1)
+        #sys.exit(1)
         
     # Retrieve the full pickle filename
     genes_filename = os.path.join(pickle_dir,
@@ -168,7 +167,8 @@ def plot_insert_len(insert_len_filename,
     """
     if not os.path.isfile(settings_filename):
         print "Error: settings filename %s not found." %(settings_filename)
-        sys.exit(1)
+        #sys.exit(1)
+
     plot_name = os.path.basename(insert_len_filename)
     sashimi_obj = Sashimi(plot_name, output_dir,
                           settings_filename=settings_filename)
@@ -247,11 +247,11 @@ def main():
 
     if options.plot_event is None:
         greeting()
-        sys.exit(1)
+        #sys.exit(1)
 
     if options.output_dir == None:
         print "Error: need --output-dir"
-        sys.exit(1)
+        #sys.exit(1)
 
     output_dir = os.path.abspath(os.path.expanduser(options.output_dir))
 

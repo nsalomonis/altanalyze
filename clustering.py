@@ -125,13 +125,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 
     if row_method == 'hopach' or column_method == 'hopach':
         try:
-            from pyper import R
-            r = R(use_numpy=True)
-            print_out = r('library("hopach")')
-            if "Error" in print_out:
-                print 'Installing the R package "hopach" in Config/R'
-                print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("hopach")')
-                if "Error" in print_out: print 'unable to download the package "hopach"'; forceError
+            import R_test
         except Exception,e:
             #print traceback.format_exc()
             print 'Failed to install hopach or R not installed (install R before using hopach)'
@@ -160,7 +154,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             """
             
             import R_interface
-            reload(R_interface)
+            #reload(R_interface)
             if row_method == 'hopach' and column_method == 'hopach': cluster_method = 'both'
             elif row_method == 'hopach': cluster_method = 'gene'
             else: cluster_method = 'array'
@@ -191,7 +185,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
        
     skipClustering = False
     try:
-        if len(PriorColumnClusters)>0 and PriorRowClusters>0 and row_method==None and column_method == None:
+        if len(PriorColumnClusters)>0 and len(PriorRowClusters)>0 and row_method==None and column_method == None:
             print 'Prior generated clusters being used rather re-clustering'
             """
             try:
@@ -372,7 +366,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         no_plot=False ### Indicates that we want to show the dendrogram
         try:
             if runGOElite: no_plot = True
-            elif len(PriorColumnClusters)>0 and PriorRowClusters>0 and row_method==None and column_method == None:
+            elif len(PriorColumnClusters)>0 and len(PriorRowClusters)>0 and row_method==None and column_method == None:
                 no_plot = True ### If trying to instantly view prior results, no dendrogram will be display, but prior GO-Elite can
             else:
                 ax1 = fig.add_axes([ax1_x, ax1_y, ax1_w, ax1_h], frame_on=False) # frame_on may be False - this window conflicts with GO-Elite labels
@@ -419,7 +413,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         prior_xt = xt
         xt = xt[idx1,:]   # xt is transformed x
         #ind1 = ind1[idx1,:] ### reorder the flat cluster to match the order of the leaves the dendrogram
-        ind1 = [ind1[i] for i in idx1] ### replaces the above due to numpy specific windows version issue
+        try: ind1 = [ind1[i] for i in idx1] ### replaces the above due to numpy specific windows version issue
+        except Exception:
+            if 'MarkerGenes' in dataset_name:
+                ind1 = ['NA']*len(row_header) ### Used for exporting the flat cluster data
+                row_method = None
+                
+        
     ### taken from http://stackoverflow.com/questions/2982929/plotting-results-of-hierarchical-clustering-ontop-of-a-matrix-of-data-in-python/3011894#3011894
     im = axm.matshow(xt, aspect='auto', origin='lower', cmap=cmap, norm=norm) ### norm=norm added to scale coloring of expression with zero = white or black
     axm.set_xticks([]) ### Hides x-ticks
@@ -484,7 +484,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         dataset_name = string.split(dataset_name,'-hierarchical')[0]
     filename = 'Clustering-%s-hierarchical_%s_%s.pdf' % (dataset_name,column_metric,row_metric)
 
-    elite_dir, cdt_file = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,display)
+    elite_dir, cdt_file = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display)
 
     def ViewPNG(png_file_dir):
         if os.name == 'nt':
@@ -494,11 +494,11 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         elif 'linux' in sys.platform: os.system('xdg-open "'+png_file_dir+'"')
         
     try:
-        if 'monocle' in justShowTheseIDs and 'driver' not in justShowTheseIDs:
+        if 'monocle' in justShowTheseIDs and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
             import R_interface
             R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',cdt_file[:-3]+'txt')
             png_file_dir = root_dir+'/Monocle/monoclePseudotime.png'
-            print png_file_dir
+            #print png_file_dir
             ViewPNG(png_file_dir)
     except Exception:
         #print traceback.format_exc()
@@ -507,7 +507,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     cluster_elite_terms={}; ge_fontsize=11.5; top_genes=[]; proceed=True
     try:
         try:
-            if 'driver' in justShowTheseIDs: proceed = False
+            if 'driver' in justShowTheseIDs or 'guide' in justShowTheseIDs: proceed = False
         except Exception: pass
         if proceed:
             cluster_elite_terms,top_genes = remoteGOElite(elite_dir)
@@ -518,7 +518,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         elite_dirs = string.split(elite_dir,'GO-Elite')
         old_elite_dir = elite_dirs[0]+'GO-Elite'+elite_dirs[-1] ### There are actually GO-Elite/GO-Elite directories for the already clustered
         old_elite_dir = string.replace(old_elite_dir,'ICGS/','')
-        if len(PriorColumnClusters)>0 and PriorRowClusters>0 and skipClustering:
+        if len(PriorColumnClusters)>0 and len(PriorRowClusters)>0 and skipClustering:
             cluster_elite_terms,top_genes = importGOEliteResults(old_elite_dir)
     except Exception,e:
         #print traceback.format_exc()
@@ -558,6 +558,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         if 'positive' in justShowTheseIDs: justShowTheseIDs.remove('positive')
         if 'amplify' in justShowTheseIDs: justShowTheseIDs.remove('amplify')
         if 'IntraCorrelatedOnly' in justShowTheseIDs: justShowTheseIDs.remove('IntraCorrelatedOnly')
+        if 'GuideOnlyCorrelation' in justShowTheseIDs: justShowTheseIDs.remove('GuideOnlyCorrelation')
     except Exception:
         pass
 
@@ -612,13 +613,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         else:
             feature_id = row_header[new_index]
             if ':' in feature_id:
-                if 'ENS' != feature_id[:3]:
+                if 'ENS' != feature_id[:3] or 'G0000' in feature_id:
                     feature_id = string.split(feature_id,':')[1]
                 else:
                     feature_id = string.split(feature_id,':')[0]
                     try: feature_id = gene_to_symbol[feature_id][0]
                     except Exception: pass
-            if ' ' in feature_id and 'ENS' in feature_id:
+            if (' ' in feature_id and ('ENS' in feature_id or 'G0000' in feature_id)):
                 feature_id = string.split(feature_id,' ')[1]
             try:
                 if feature_id in justShowTheseIDs: color = 'red'
@@ -777,6 +778,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
         if len(unique.unique(ind2))==2: ### cmap_c is too few colors
             cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+        elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
+            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
         elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
             cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18'])
         elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
@@ -811,6 +814,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
                 if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
                     cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
+                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
                 elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
                     cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
                 elif len(unique.unique(ind2_clust))==5: ### cmap_c is too few colors
@@ -838,6 +843,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
             if len(unique.unique(ind2))==2: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
+                cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
             elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
@@ -871,18 +878,20 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     # axr --> axes for row side colorbar
     if (row_method != None or 'row' in cb_status) and show_color_bars == True:
         axr = fig.add_axes([axr_x, axr_y, axr_w, axr_h])  # axes for column side colorbar
-        try: dr = numpy.array(ind1, dtype=int)
+        try:
+            dr = numpy.array(ind1, dtype=int)
+            dr.shape = (len(ind1),1)
+            #print ind1, len(ind1)
+            cmap_r = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
+            if len(unique.unique(ind1))>4: ### cmap_r is too few colors
+                cmap_r = pylab.cm.gist_rainbow
+            im_r = axr.matshow(dr, aspect='auto', origin='lower', cmap=cmap_r)
+            axr.set_xticks([]) ### Hides ticks
+            axr.set_yticks([])
+            #axr.set_frame_on(False) ### Hide border
         except Exception:
-            print ind1;kill
-        dr.shape = (len(ind1),1)
-        #print ind1, len(ind1)
-        cmap_r = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
-        if len(unique.unique(ind1))>4: ### cmap_r is too few colors
-            cmap_r = pylab.cm.gist_rainbow
-        im_r = axr.matshow(dr, aspect='auto', origin='lower', cmap=cmap_r)
-        axr.set_xticks([]) ### Hides ticks
-        axr.set_yticks([])
-        #axr.set_frame_on(False) ### Hide border
+            row_method = None
+            pass ### likely occurs for some reason when row_method should be None
         
     if show_color_bars == False:
         axr = fig.add_axes([axr_x, axr_y, axr_w, axr_h])  # axes for column side colorbar
@@ -921,7 +930,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         fig.text(0.020, 0.070, 'Open heatmap in TreeView (click here)', fontsize = 11.5, picker=True,color = 'red', backgroundcolor='white')
     else:
         fig.text(0.020, 0.070, 'Open heatmap in TreeView (click here)', fontsize = 11.5, picker=True,color = 'red')
-    if 'Outlier' in dataset_name:
+    if 'Outlier' in dataset_name and 'Removed' not in dataset_name:
         graphic_link.append(['Hierarchical Clustering - Outlier Genes Genes',root_dir+filename])
     elif 'Relative' in dataset_name:
         graphic_link.append(['Hierarchical Clustering - Significant Genes (Relative comparisons)',root_dir+filename])
@@ -938,7 +947,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if display:
         proceed=True
         try:
-            if 'driver' in justShowTheseIDs:
+            if 'driver' in justShowTheseIDs or 'guide' in justShowTheseIDs:
                 proceed = False
         except Exception: pass
         if proceed:
@@ -1155,7 +1164,7 @@ def systemCodeCheck(IDs):
     id_type = id_type_count[-1][-1]
     return id_type
 
-def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,display):
+def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display):
     """ Export the clustered results as a text file, only indicating the flat-clusters rather than the tree """
     
     filename = string.replace(filename,'.pdf','.txt')
@@ -1194,10 +1203,11 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
 
         try:
             if 'MarkerGenes' in originalFilename:
+                cluster = 'cluster-'+string.split(id,':')[0]
                 id = string.split(id,':')[1]
                 if ' ' in id:
                     id = string.split(id,' ')[0]
-                if 'EN' in id: sy = 'En'
+                if 'G000' in id: sy = 'En'
                 else: sy = 'Sy'
         except Exception: pass
         try: cluster_db[cluster].append(id)
@@ -1228,7 +1238,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
             if sy == '$En:Sy':
                 id = string.split(id,':')[1]
                 ids = string.split(id,' ')
-                if 'ENS' in ids[0]: id = ids[0]
+                if 'ENS' in ids[0] or 'G0000' in ids[0]: id = ids[0]
                 else: id = ids[-1]
                 sc = 'En'
             elif sy == 'Sy' and ':' in id:
@@ -1247,8 +1257,11 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
                 sc = 'En'
                 if ' ' in id:
                     ids = string.split(id,' ')
-                    if 'ENS' in ids[-1]: id = ids[-1]
+                    if 'ENS' in ids[-1] or 'G0000' in ids[-1]: id = ids[-1]
                     else: id = ids[0]
+            elif sy == 'En' and '&' in id:
+                for i in string.split(id,'&'):
+                    if 'G0000' in i: id = i; sc = 'En'; break
             elif sy == 'Sy' and 'EFN' in id:
                 sc = 'En'
             else:
@@ -1265,7 +1278,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
         export_elite.close()
     try:
         if storeGeneSetName != None:
-            if len(storeGeneSetName)>0 and 'driver' not in justShowTheseIDs:
+            if len(storeGeneSetName)>0 and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
                 exportCustomGeneSet(storeGeneSetName,species,allGenes)
                 print 'Exported geneset to "StoredGeneSets"'
     except Exception: pass
@@ -1273,7 +1286,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     ### Export as CDT file
     filename = string.replace(filename,'.txt','.cdt')
     if display:
-        try: exportJTV(filename, new_column_header, new_row_header)
+        try: exportJTV(filename, new_column_header, new_row_header,vmax=vmax)
         except Exception: pass
     export_cdt = export.ExportFile(filename)
     column_header = string.join(['UNIQID','NAME','GWEIGHT']+new_column_header,'\t')+'\n' ### format column-names for export
@@ -1295,7 +1308,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     export_cdt.close()
     return elite_dir, filename
 
-def exportJTV(cdt_dir, column_header, row_header):
+def exportJTV(cdt_dir, column_header, row_header,vmax=None):
     ### This is a config file for TreeView
     filename = string.replace(cdt_dir,'.cdt','.jtv')
     export_jtv = export.ExportFile(filename)
@@ -1318,6 +1331,8 @@ def exportJTV(cdt_dir, column_header, row_header):
         hscale = '1'
     if len(row_header)>1000:
         hscale = '0.5'
+    contrast = str(float(vmax)/4)[:4] ### base the contrast on the heatmap vmax variable
+    """
     config = '<DocumentConfig><UrlExtractor/><ArrayUrlExtractor/><MainView><ColorExtractor>'
     config+= '<ColorSet down="#00FFFF"/></ColorExtractor><ArrayDrawer/><GlobalXMap>'
     config+= '<FixedMap type="Fixed" scale="'+cscale+'"/><FillMap type="Fill"/><NullMap type="Null"/>'
@@ -1328,7 +1343,25 @@ def exportJTV(cdt_dir, column_header, row_header):
     config+= '<GeneSummary/></TextView><TextView><GeneSummary/></TextView></TextView><ArrayNameView>'
     config+= '<ArraySummary included="0"/></ArrayNameView><AtrSummary/><GtrSummary/></MainView></DocumentConfig>'
     export_jtv.write(config)
+    """
     
+    config = '<DocumentConfig><UrlExtractor/><ArrayUrlExtractor/><MainView><ColorExtractor>'
+    config+= '<ColorSet down="#00FFFF"/></ColorExtractor><ArrayDrawer/><GlobalXMap>'
+    config+= '<FixedMap type="Fixed" scale="'+cscale+'"/><FillMap type="Fill"/><NullMap type="Null"/>'
+    config+= '</GlobalXMap><GlobalYMap><FixedMap type="Fixed" scale="'+hscale+'"/><FillMap type="Fill"/>'
+    config+= '<NullMap type="Null"/></GlobalYMap><ZoomXMap><FixedMap type="Fixed"/><FillMap type="Fill"/>'
+    config+= '<NullMap type="Null"/></ZoomXMap><ZoomYMap><FixedMap type="Fixed"/><FillMap type="Fill"/>'
+    config+= '<NullMap type="Null"/></ZoomYMap><TextView><TextView><GeneSummary/></TextView><TextView>'
+    config+= '<GeneSummary/></TextView><TextView><GeneSummary/></TextView></TextView><ArrayNameView>'
+    config+= '<ArraySummary included="0"/></ArrayNameView><AtrSummary/><GtrSummary/></MainView><Views>'
+    config+= '<View type="Dendrogram" dock="1"><ColorExtractor contrast="'+contrast+'"><ColorSet up="#FFFF00" down="#00CCFF"/>'
+    config+= '</ColorExtractor><ArrayDrawer/><GlobalXMap current="Fill"><FixedMap type="Fixed"/><FillMap type="Fill"/>'
+    config+= '<NullMap type="Null"/></GlobalXMap><GlobalYMap current="Fill"><FixedMap type="Fixed"/><FillMap type="Fill"/>'
+    config+= '<NullMap type="Null"/></GlobalYMap><ZoomXMap><FixedMap type="Fixed"/><FillMap type="Fill"/><NullMap type="Null"/>'
+    config+= '</ZoomXMap><ZoomYMap current="Fixed"><FixedMap type="Fixed"/><FillMap type="Fill"/><NullMap type="Null"/></ZoomYMap>'
+    config+= '<TextView><TextView><GeneSummary/></TextView><TextView><GeneSummary/></TextView><TextView><GeneSummary/></TextView>'
+    config+= '</TextView><ArrayNameView><ArraySummary included="0"/></ArrayNameView><AtrSummary/><GtrSummary/></View></Views></DocumentConfig>'
+    export_jtv.write(config)
 ### How to create custom colors - http://matplotlib.sourceforge.net/examples/pylab_examples/custom_cmap.html
 
 def updateColorBarData(ind1,ind2,column_header,row_header,row_method):
@@ -1738,7 +1771,7 @@ def exportCustomGeneSet(geneSetName,species,allGenes):
         print 'Could not store since no species name provided.'
 
     
-def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False):
+def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,row_header=None,colorByGene=None):
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
     try:
@@ -1763,8 +1796,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     ax = fig.add_subplot(111)
     pylab.xlabel('TSNE-X')
     pylab.ylabel('TSNE-Y')
-    pylab.title('t-SNE - '+dataset_name)
-            
+
     axes = getAxesTransposed(scores) ### adds buffer space to the end of each axis and creates room for a legend
     pylab.axis(axes)
 
@@ -1776,6 +1808,109 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     if len(column_header)>120:
         marker_size = 6
         
+    ### Color By Gene
+    if colorByGene != None:
+        matrix = numpy.array(matrix)
+        min_val = matrix.min()  ### min val
+        if ' ' in colorByGene:
+            genes = string.split(colorByGene,' ')
+        else:
+            genes = [colorByGene]
+        genePresent=False
+        numberGenesPresent=[]
+        for gene in genes:
+            if gene in row_header:
+                numberGenesPresent.append(gene)
+                genePresent = True
+        numberGenesPresent = len(numberGenesPresent)
+        if numberGenesPresent==1:
+            cm = pylab.cm.get_cmap('Reds')
+        else:
+            if numberGenesPresent==2:
+                cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            elif numberGenesPresent==3: 
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+            elif numberGenesPresent==4:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
+            elif numberGenesPresent==5:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+            elif numberGenesPresent==6: 
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+            elif numberGenesPresent==7:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+            else:
+                cm = pylab.cm.get_cmap('gist_rainbow')
+        if genePresent:
+            dataset_name+='-'+colorByGene
+            group_db={}
+            bestGeneAssociated={}
+            k=0
+            for gene in genes:
+                try:
+                    i = row_header.index(gene)
+                    values = map(float,matrix[i])
+                    min_val = min(values)
+                    bin_size = (max(values)-min_val)/8
+                    max_val = max(values)
+                    
+                    ranges = []
+                    iz=min_val
+                    while iz < (max(values)-bin_size/100):
+                        r = iz,iz+bin_size
+                        if len(ranges)==7:
+                            r = iz,max_val
+                        ranges.append(r)
+                        iz+=bin_size
+                    color_db = {}
+                    for i in range(len(ranges)):
+                        if i==0:
+                            color = '#C0C0C0'
+                        else:
+                            if numberGenesPresent==1:
+                                ### use a single color gradient
+                                color = cm(1.*i/len(ranges))
+                                #color = cm(1.*(i+1)/len(ranges))
+                            else:
+                                if i>5:
+                                    color = cm(k)
+                                else:
+                                    color = '#C0C0C0'
+                        color_db[ranges[i]] = color
+                    i=0
+                    for val in values:
+                        sample = column_header[i]
+                        for (l,u) in color_db:
+                            range_index = ranges.index((l,u)) ### what is the ranking of this range
+                            if val>=l and val<=u:
+                                color = color_db[(l,u)]
+                                color_label = [gene+'-range: '+str(l)[:4]+'-'+str(u)[:4],color,'']
+                                group_db[sample] = color_label
+                                try: bestGeneAssociated[sample].append([range_index,val,color_label])
+                                except Exception: bestGeneAssociated[sample] = [[range_index,val,color_label]]
+                        i+=1
+                    #print min(values),min_val,bin_size,max_val
+                    if len(genes)>1:
+                        ### Collapse and rank multiple gene results
+                        for sample in bestGeneAssociated:
+                            bestGeneAssociated[sample].sort()
+                            color_label = bestGeneAssociated[sample][-1][-1]
+                            if numberGenesPresent>1:
+                                index = bestGeneAssociated[sample][-1][0]
+                                if index > 5:
+                                    gene = string.split(color_label[0],'-')[0]
+                                else:
+                                    gene = 'Null'
+                                color_label[0] = gene
+                            group_db[sample] = color_label
+                except Exception:
+                    print [gene], 'not found in rows...'
+                    #print traceback.format_exc()
+                k+=1
+        else:
+            print [colorByGene], 'not found in rows...'
+            
+    pylab.title('t-SNE - '+dataset_name)
+    
     group_names={}
     i=0
     for sample_name in column_header: #scores[0]
@@ -1824,8 +1959,6 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         ax.set_position([box.x0, box.y0, box.width, box.height])
         pylab.legend(loc="upper left", prop={'size': 10})
   
-    
-    
     filename = 'Clustering-%s-t-SNE.pdf' % dataset_name
     try: pylab.savefig(root_dir + filename)
     except Exception: None ### Rare error
@@ -1865,7 +1998,9 @@ def excludeHighlyCorrelatedHits(x,row_header):
     #print len(exclude),len(row_header);sys.exit()
     return exclude
 
-def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, group_db, display=False, showLabels=True, algorithm='SVD',geneSetName=None, species=None, pcA=1,pcB=2):
+def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
+            group_db, display=False, showLabels=True, algorithm='SVD', geneSetName=None,
+            species=None, pcA=1,pcB=2, colorByGene=None):
     print "Performing Principal Component Analysis..."
     from numpy import mean,cov,double,cumsum,dot,linalg,array,rank
 
@@ -1917,7 +2052,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     added_indexes=[]
     x = 0
     #100 most correlated Genes with PC1
-    print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
+    print 'exporting PCA loading genes to:',root_dir+'/PCA/correlated.txt'
     exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
     
     matrix = zip(*matrix) ### transpose this back to normal
@@ -1957,7 +2092,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
             if len(geneSetName)>0:
                 exportCustomGeneSet(geneSetName,species,allGenes)
                 print 'Exported geneset to "StoredGeneSets"'
-    except ZeroDivisionError:
+    except Exception:
         pass       
 
     ###########################
@@ -1978,7 +2113,6 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     ax = fig.add_subplot(111)
     pylab.xlabel(label1)
     pylab.ylabel(label2)
-    pylab.title('Principal Component Analysis - '+dataset_name)
             
     axes = getAxes(scores) ### adds buffer space to the end of each axis and creates room for a legend
     pylab.axis(axes)
@@ -1992,6 +2126,110 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
         marker_size = 7
     #marker_size = 9
         
+    #samples = list(column_header)
+    ### Color By Gene
+    if colorByGene != None:
+        matrix = numpy.array(matrix)
+        min_val = matrix.min()  ### min val
+        if ' ' in colorByGene:
+            genes = string.split(colorByGene,' ')
+        else:
+            genes = [colorByGene]
+        genePresent=False
+        numberGenesPresent=[]
+        for gene in genes:
+            if gene in row_header:
+                numberGenesPresent.append(gene)
+                genePresent = True
+        numberGenesPresent = len(numberGenesPresent)
+        if numberGenesPresent==1:
+            cm = pylab.cm.get_cmap('Reds')
+        else:
+            if numberGenesPresent==2:
+                cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            elif numberGenesPresent==3: 
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+            elif numberGenesPresent==4:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
+            elif numberGenesPresent==5:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+            elif numberGenesPresent==6: 
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+            elif numberGenesPresent==7:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+            else:
+                cm = pylab.cm.get_cmap('gist_rainbow')
+        if genePresent:
+            dataset_name+='-'+colorByGene
+            group_db={}
+            bestGeneAssociated={}
+            k=0
+            for gene in genes:
+                try:
+                    i = row_header.index(gene)
+                    values = map(float,matrix[i])
+                    min_val = min(values)
+                    bin_size = (max(values)-min_val)/8
+                    max_val = max(values)
+                    
+                    ranges = []
+                    iz=min_val
+                    while iz < (max(values)-bin_size/100):
+                        r = iz,iz+bin_size
+                        if len(ranges)==7:
+                            r = iz,max_val
+                        ranges.append(r)
+                        iz+=bin_size
+                    color_db = {}
+                    for i in range(len(ranges)):
+                        if i==0:
+                            color = '#C0C0C0'
+                        else:
+                            if numberGenesPresent==1:
+                                ### use a single color gradient
+                                color = cm(1.*i/len(ranges))
+                                #color = cm(1.*(i+1)/len(ranges))
+                            else:
+                                if i>5:
+                                    color = cm(k)
+                                else:
+                                    color = '#C0C0C0'
+                        color_db[ranges[i]] = color
+                    i=0
+                    for val in values:
+                        sample = column_header[i]
+                        for (l,u) in color_db:
+                            range_index = ranges.index((l,u)) ### what is the ranking of this range
+                            if val>=l and val<=u:
+                                color = color_db[(l,u)]
+                                color_label = [gene+'-range: '+str(l)[:4]+'-'+str(u)[:4],color,'']
+                                group_db[sample] = color_label
+                                try: bestGeneAssociated[sample].append([range_index,val,color_label])
+                                except Exception: bestGeneAssociated[sample] = [[range_index,val,color_label]]
+                        i+=1
+                    #print min(values),min_val,bin_size,max_val
+                    if len(genes)>1:
+                        ### Collapse and rank multiple gene results
+                        for sample in bestGeneAssociated:
+                            bestGeneAssociated[sample].sort()
+                            color_label = bestGeneAssociated[sample][-1][-1]
+                            if numberGenesPresent>1:
+                                index = bestGeneAssociated[sample][-1][0]
+                                if index > 5:
+                                    gene = string.split(color_label[0],'-')[0]
+                                else:
+                                    gene = 'Null'
+                                color_label[0] = gene
+                            group_db[sample] = color_label
+                except Exception:
+                    print [gene], 'not found in rows...'
+                    #print traceback.format_exc()
+                k+=1
+        else:
+            print [colorByGene], 'not found in rows...'
+            
+    pylab.title('Principal Component Analysis - '+dataset_name)
+    
     group_names={}
     i=0
     for sample_name in column_header: #scores[0]
@@ -2031,7 +2269,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name, 
     i=0
     #group_count = group_count*10 ### force the legend box out of the PCA core plot
     box = ax.get_position()
-    if len(group_count) > 4:
+    if len(group_count) > 0:
         # Shink current axis by 20%
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         try: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize = Lfontsize) ### move the legend over to the right of the plot
@@ -2124,7 +2362,9 @@ def plot_samples(S, axis_list=None):
     pylab.ylabel('y')
     
 
-def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=False, showLabels=True, algorithm='SVD',geneSetName=None, species=None):
+def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
+          display=False, showLabels=True, algorithm='SVD',geneSetName=None,
+          species=None,colorByGene=None):
     from numpy import mean,cov,double,cumsum,dot,linalg,array,rank
     fig = pylab.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -2152,7 +2392,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
     added_indexes=[]
     x = 0
     #100 most correlated Genes with PC1
-    print 'exporting PCA driver genes to:',root_dir+'/PCA/correlated.txt'
+    print 'exporting PCA loading genes to:',root_dir+'/PCA/correlated.txt'
     exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
     
     matrix = zip(*matrix) ### transpose this back to normal
@@ -2235,6 +2475,107 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db, display=Fal
         if group_db[i][0] not in group_count:
             group_count.append(group_db[i][0])
     
+    ### Color By Gene
+    if colorByGene != None:
+        matrix = numpy.array(matrix)
+        min_val = matrix.min()  ### min val
+        if ' ' in colorByGene:
+            genes = string.split(colorByGene,' ')
+        else:
+            genes = [colorByGene]
+        genePresent=False
+        numberGenesPresent=[]
+        for gene in genes:
+            if gene in row_header:
+                numberGenesPresent.append(gene)
+                genePresent = True
+        numberGenesPresent = len(numberGenesPresent)
+        if numberGenesPresent==1:
+            cm = pylab.cm.get_cmap('Reds')
+        else:
+            if numberGenesPresent==2:
+                cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            elif numberGenesPresent==3: 
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+            elif numberGenesPresent==4:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
+            elif numberGenesPresent==5:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+            elif numberGenesPresent==6: 
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+            elif numberGenesPresent==7:
+                cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+            else:
+                cm = pylab.cm.get_cmap('gist_rainbow')
+        if genePresent:
+            dataset_name+='-'+colorByGene
+            group_db={}
+            bestGeneAssociated={}
+            k=0
+            for gene in genes:
+                try:
+                    i = row_header.index(gene)
+                    values = map(float,matrix[i])
+                    min_val = min(values)
+                    bin_size = (max(values)-min_val)/8
+                    max_val = max(values)
+                    
+                    ranges = []
+                    iz=min_val
+                    while iz < (max(values)-bin_size/100):
+                        r = iz,iz+bin_size
+                        if len(ranges)==7:
+                            r = iz,max_val
+                        ranges.append(r)
+                        iz+=bin_size
+                    color_db = {}
+                    for i in range(len(ranges)):
+                        if i==0:
+                            color = '#C0C0C0'
+                        else:
+                            if numberGenesPresent==1:
+                                ### use a single color gradient
+                                color = cm(1.*i/len(ranges))
+                                #color = cm(1.*(i+1)/len(ranges))
+                            else:
+                                if i>5:
+                                    color = cm(k)
+                                else:
+                                    color = '#C0C0C0'
+                        color_db[ranges[i]] = color
+                    i=0
+                    for val in values:
+                        sample = column_header[i]
+                        for (l,u) in color_db:
+                            range_index = ranges.index((l,u)) ### what is the ranking of this range
+                            if val>=l and val<=u:
+                                color = color_db[(l,u)]
+                                color_label = [gene+'-range: '+str(l)[:4]+'-'+str(u)[:4],color,'']
+                                group_db[sample] = color_label
+                                try: bestGeneAssociated[sample].append([range_index,val,color_label])
+                                except Exception: bestGeneAssociated[sample] = [[range_index,val,color_label]]
+                        i+=1
+                    #print min(values),min_val,bin_size,max_val
+                    if len(genes)>1:
+                        ### Collapse and rank multiple gene results
+                        for sample in bestGeneAssociated:
+                            bestGeneAssociated[sample].sort()
+                            color_label = bestGeneAssociated[sample][-1][-1]
+                            if numberGenesPresent>1:
+                                index = bestGeneAssociated[sample][-1][0]
+                                if index > 5:
+                                    gene = string.split(color_label[0],'-')[0]
+                                else:
+                                    gene = 'Null'
+                                color_label[0] = gene
+                            group_db[sample] = color_label
+                except Exception:
+                    print [gene], 'not found in rows...'
+                    #print traceback.format_exc()
+                k+=1
+        else:
+            print [colorByGene], 'not found in rows...'
+            
     #print len(group_count)
     if len(group_count)>20:
         Lfontsize = 10
@@ -2488,7 +2829,6 @@ def runHierarchicalClustering(matrix, row_header, column_header, dataset_name,
         PriorColumnClusters=None
         PriorRowClusters=None
         
-        
     run = False
     print 'max allowed cluster size:',maxSize
     if len(matrix)>0 and (len(matrix)<maxSize or row_method == None):
@@ -2585,7 +2925,9 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
         try:
             rho_cutoff = extra_params.RhoCutoff()
             print 'Setting correlation cutoff to a rho of',rho_cutoff
-        except Exception: rho_cutoff = 0.5
+        except Exception:
+            rho_cutoff = 0.5 ### Always done if no rho, but only used if getGeneCorrelations == True
+            #print 'Setting correlation cutoff to a rho of',rho_cutoff
         PathwayFilter = extra_params.PathwaySelect()
         GeneSet = extra_params.GeneSet()
         OntologyID = extra_params.OntologyID()
@@ -2671,14 +3013,19 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
             alt_targetGene = string.replace(targetGene,'amplify','')
             alt_targetGene = string.replace(alt_targetGene,'amplify','')
             alt_targetGene = string.replace(alt_targetGene,'driver','')
+            alt_targetGene = string.replace(alt_targetGene,'guide','')
             alt_targetGene = string.replace(alt_targetGene,'top','')
             alt_targetGene = string.replace(alt_targetGene,'positive','')
             alt_targetGene = string.replace(alt_targetGene,'excludeCellCycle','')
             alt_targetGene = string.replace(alt_targetGene,'monocle','')
+            alt_targetGene = string.replace(alt_targetGene,'GuideOnlyCorrelation','')
             alt_targetGene = string.replace(alt_targetGene,' ','')  
         except Exception:
             alt_targetGene = ''
-        if getGeneCorrelations and targetGene != 'driver' and targetGene !='excludeCellCycle' and targetGene !='top' and targetGene != ' monocle' and targetGene !='positive' and len(alt_targetGene)>0: ###Restrict analyses to only genes that correlate with the target gene of interest
+        if getGeneCorrelations and targetGene != 'driver' and targetGene != 'GuideOnlyCorrelation' and \
+                    targetGene != 'guide' and targetGene !='excludeCellCycle' and \
+                    targetGene !='top' and targetGene != ' monocle' and \
+                    targetGene !='positive' and len(alt_targetGene)>0: ###Restrict analyses to only genes that correlate with the target gene of interest
             allowAxisCompression = False
             if transpose and transpose_update == False: transpose_update = False ### If filterByPathways selected
             elif transpose and transpose_update: transpose_update = True ### If filterByPathways not selected
@@ -2720,7 +3067,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     #"""
     #graphic_link = [root_dir+'Clustering-exp.myeloid-steady-state-amplify positive Mki67 Clec4a2 Gria3 Ifitm6 Gfi1b -hierarchical_cosine_cosine.txt']
 
-    if 'driver' in targetGene:
+    if 'driver' in targetGene or 'guide' in targetGene:
         import RNASeq
         input_file = graphic_link[-1][-1][:-4]+'.txt'
         if 'excludeCellCycle' in targetGene: excludeCellCycle = True
@@ -2741,7 +3088,7 @@ def importPriorDrivers(inputFilename):
     return genes
 
 def exportTargetGeneList(targetGene,inputFilename):
-    exclude=['positive','top','driver', 'amplify']
+    exclude=['positive','top','driver', 'guide', 'amplify','GuideOnlyCorrelation']
     exportFile = inputFilename[:-4]+'-targetGenes.txt'
     eo = export.ExportFile(root_dir+findFilename(exportFile))
     targetGenes = string.split(targetGene,' ')
@@ -3218,7 +3565,24 @@ def runHCOnly(filename,graphics,Normalize=False):
     global inputFilename
     global GroupDB
     global allowLargeClusters
+    global runGOElite
+    global EliteGeneSets
+    runGOElite = False
+    EliteGeneSets=[]
     allowLargeClusters = False
+    
+    ###############
+    global inputFilename
+    global originalFilename
+    global GroupDB
+    global justShowTheseIDs
+    global targetGeneIDs
+    global normalize
+    global species
+    global storeGeneSetName
+    targetGene=[]
+    filterByPathways=False
+    ###############
     
     graphic_link=graphics ### Store all locations of pngs
     inputFilename = filename ### Used when calling R
@@ -3249,7 +3613,7 @@ def runHCOnly(filename,graphics,Normalize=False):
                 row_method, row_metric, column_method, column_metric, color_gradient, display=False, Normalize=Normalize)
     return graphic_link
 
-def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,algorithm='SVD',geneSetName=None, species=None, zscore=True):
+def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None):
     global root_dir
     global graphic_link
     graphic_link=graphics ### Store all locations of pngs
@@ -3274,14 +3638,14 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         if algorithm == 't-SNE':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
             column_header, row_header = row_header, column_header   
-            tSNE(numpy.array(matrix), column_header,dataset_name,group_db,display=display,showLabels=showLabels)
+            tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,showLabels=showLabels,row_header=row_header,colorByGene=colorByGene)
         elif plotType == '3D':
-            try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
+            try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species, colorByGene=colorByGene)
             except Exception:
                 print traceback.format_exc()
-                PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
+                PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species, colorByGene=colorByGene)
         else:
-            PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species)
+            PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species, colorByGene=colorByGene)
 
     return graphic_link
 
@@ -3312,10 +3676,10 @@ def outputClusters(filenames,graphics,Normalize=False,Species=None,platform=None
     matrix, column_header, row_header, dataset_name, group_db = original
     matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
     column_header, row_header = row_header, column_header
-    if len(row_header)<700000 and len(column_header)<700000:
+    if len(row_header)<700000 and len(column_header)<700000 and len(column_header)>2:
         PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db)
     else:
-        print 'SKIPPING PCA!!! - Your dataset file is over the recommended size limit for clustering (>7000 rows). Please cluster later using "Additional Analyses".'
+        print 'SKIPPING PCA!!! - Your dataset file is over or under the recommended size limit for clustering (>7000 rows). Please cluster later using "Additional Analyses".'
 
     row_method = 'average'
     column_method = 'average'
@@ -3326,8 +3690,9 @@ def outputClusters(filenames,graphics,Normalize=False,Species=None,platform=None
     
     global species
     species = Species
-    EliteGeneSets=['GeneOntology']
-    runGOElite = True
+    if 'LineageCorrelations' not in filename and 'Zscores' not in filename:
+        EliteGeneSets=['GeneOntology']
+        runGOElite = True
 
     ### Generate Significant Gene HeatMap
     matrix, column_header, row_header, dataset_name, group_db = original
@@ -3861,7 +4226,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
             matrix2.append(update_exp_vals)
     matrix = numpy.array(matrix2)
     row_header = new_row_header
-    print row_header
+    #print row_header
     color_list = ['r', 'b', 'y', 'g', 'w', 'k', 'm']
     
     groups=[]
@@ -4412,7 +4777,7 @@ def customClean(filename):
         t = string.split(data,'\t')
         if firstRow:
             firstRow = False
-            print len(t)
+            #print len(t)
             ea.write(string.join(['UID']+t,'\t')+'\n')
         else:
             if ';' in t[0]:
@@ -4431,7 +4796,8 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/ensembl/Hs/Hs_Ensembl_transcript-annotations.txt'
     #countIntronsExons(filename);sys.exit()
     #filterForJunctions(filename);sys.exit()
-    
+    #filename = '/Users/saljh8/Desktop/Grimes/GEC14074/ExpressionOutput/LineageCorrelations-test-protein_coding-zscores.txt'
+    #runHCOnly(filename,[]); sys.exit()
     folder = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/ensembl/Hs'
     files = UI.read_directory(folder)
     for file in files: #:70895507-70895600
@@ -4501,7 +4867,7 @@ if __name__ == '__main__':
     Kmeans(features, column_header, row_header); sys.exit()
     #graphViz();sys.exit()
     filename = '/Users/saljh8/Desktop/delete.txt'
-    runHCOnly(filename,[]); sys.exit()
+    
     filenames = [filename]
     outputClusters(filenames,[]); sys.exit()
     #runPCAonly(filename,[],False);sys.exit()

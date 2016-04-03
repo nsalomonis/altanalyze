@@ -5,21 +5,35 @@ import random
 import copy
 import os
 import os.path
+import unique
 R_present=True
 
 try:
     from rpy import r
     print "\n---------Using RPY---------\n"
 except Exception:
+    from pyper import *
+    #print "\n---------Using PypeR---------\n"
+    ### Running the wrong one once is fine, but multiple times causes it to stall in a single session
     try:
-        from pyper import *
-        #print "\n---------Using PypeR---------\n"
-        r = R(use_numpy=True)
+        try:
+            if 'darwin' in sys.platform:
+                #print 'Using AltAnalyze local version of R'
+                #print 'A'
+                path = unique.filepath("AltDatabase/tools/R/Mac/R")
+                r = R(RCMD=path,use_numpy=True)
+            else:
+                #print 'B'
+                r = R(use_numpy=True)   
+        except Exception:
+            #print 'C'
+            r = R(use_numpy=True)   
     except Exception:
+        #print traceback.format_exc()
         r = None
         R_present=False
         pass
-
+    
 LegacyMode = True
 ### Create a Directory for R packages in the AltAnalyze program directory (in non-existant)
 r_package_path = string.replace(os.getcwd()+'/Config/R','\\','/') ### R doesn't link \\

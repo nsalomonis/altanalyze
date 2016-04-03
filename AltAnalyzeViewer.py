@@ -23,7 +23,7 @@ try:
         from matplotlib.backends.backend_wx import NavigationToolbar2Wx
         from matplotlib.figure import Figure
         from numpy import arange, sin, pi
-except Exception: print 'here'
+except Exception: pass
 
 if os.name == 'nt': bheight=20
 else: bheight=10
@@ -209,9 +209,11 @@ class Main(wx.Frame):
         self.D_3DLabel = wx.StaticText(self.page3, label="3D", pos=(305, 120))
         self.D_2DLabel = wx.StaticText(self.page3, label="2D", pos=(375, 120))
                         
-        self.Yes1Radio = wx.RadioButton(self.page3, id=40, pos=(285, 83), size=(12, 12), style=wx.RB_GROUP)
+        self.IncludeLabelsRadio = wx.RadioButton(self.page3, id=40, pos=(285, 83), size=(12, 12), style=wx.RB_GROUP)
         self.No1Radio = wx.RadioButton(self.page3, id=41, pos=(355, 83), size=(12, 12))
-        self.Yes1Radio.SetValue(True)        
+        self.IncludeLabelsRadio.SetValue(True)
+        
+        #self.EnterPCAGenes = wx.TextCtrl(self.page3, id=48, pos=(105,45), size=(375,20))
         
         self.D_3DRadio = wx.RadioButton(self.page3, id=46, pos=(285, 123), size=(12, 12), style=wx.RB_GROUP)
         self.D_2DRadio = wx.RadioButton(self.page3, id=47, pos=(355, 123), size=(12, 12))
@@ -226,7 +228,7 @@ class Main(wx.Frame):
         self.No1Label.Hide()
         self.D_3DLabel.Hide()
         self.D_2DLabel.Hide()
-        self.Yes1Radio.Hide()
+        self.IncludeLabelsRadio.Hide()
         self.No1Radio.Hide()
         self.D_3DRadio.Hide()
         self.D_2DRadio.Hide()
@@ -371,19 +373,25 @@ class Main(wx.Frame):
         if not hasattr(self, "popupID3"):
             self.popupID1 = wx.NewId()
             self.popupID2 = wx.NewId()
-            self.popupID3 = wx.NewId()
-            self.popupID4 = wx.NewId()
+            if self.analyzeSplicing:
+                self.popupID3 = wx.NewId()
+                self.popupID4 = wx.NewId()
+                self.popupID5 = wx.NewId()
             self.Bind(wx.EVT_MENU, self.GeneExpressionSummaryPlot, id=self.popupID1)
             self.Bind(wx.EVT_MENU, self.PrintGraphVariables, id=self.popupID2)
-            self.Bind(wx.EVT_MENU, self.AltExonViewInitiate, id=self.popupID3)
-            self.Bind(wx.EVT_MENU, self.IsoformViewInitiate, id=self.popupID4)
+            if self.analyzeSplicing:
+                self.Bind(wx.EVT_MENU, self.AltExonViewInitiate, id=self.popupID3)
+                self.Bind(wx.EVT_MENU, self.IsoformViewInitiate, id=self.popupID4)
+                self.Bind(wx.EVT_MENU, self.SashimiPlotInitiate, id=self.popupID5)
  
         # build the menu
         menu = wx.Menu()
         itemOne = menu.Append(self.popupID1, "Gene Plot")
-        itemTwo = menu.Append(self.popupID2, "Print Variables")
-        itemThree = menu.Append(self.popupID3, "Exon Plot")
-        itemFour = menu.Append(self.popupID4, "Isoform Plot")
+        #itemTwo = menu.Append(self.popupID2, "Print Variables")
+        if self.analyzeSplicing:
+            itemThree = menu.Append(self.popupID3, "Exon Plot")
+            itemFour = menu.Append(self.popupID4, "Isoform Plot")
+            itemFive = menu.Append(self.popupID5, "SashimiPlot")
  
         # show the popup menu
         self.PopupMenu(menu)
@@ -391,12 +399,29 @@ class Main(wx.Frame):
 
     def AltExonViewInitiate(self, event):
         ### Temporary option for exon visualization until the main tool is complete and database can be bundled with the program
-        gene = str(self.myGrid.GetCellValue(self.GridRowEvent, 0))
-        if ':' in gene:
-            gene = string.split(gene,':')[0]
+        i=0; values=[]
+        while i<1000:
+            try:
+                val = str(self.myGrid.GetCellValue(self.GridRowEvent, i))
+                values.append(val)
+                if ('G000' in val) and '->' not in val:
+                    geneID_temp = string.split(val,":")[0]
+                    if ('G000' in geneID_temp) and '->' not in geneID_temp:
+                        geneID = geneID_temp
+                        if ' ' in geneID:
+                            geneID = string.split(geneID,' ')[0]
+                    else:
+                        geneID_temp = string.split(val,":")[1]
+                        if ('G000' in geneID_temp):
+                            geneID = geneID_temp
+                            if ' ' in geneID:
+                                geneID = string.split(geneID,' ')[0]
+                i+=1
+            except Exception: break
+            
         datasetDir = self.main_results_directory
         #print datasetDir
-        self.control.write("Plotting... " + gene + "\n")
+        self.control.write("Plotting... " + geneID + "\n")
         data_type = 'raw expression'
         show_introns = 'no'
         analysisType = 'graph-plot'
@@ -404,137 +429,206 @@ class Main(wx.Frame):
         #print exp_dir
         exp_file = UI.getValidExpFile(exp_dir)
         #print print exp_file
-        UI.altExonViewer(self.species,self.platform,exp_file,gene,show_introns,analysisType,'')
-        
+        UI.altExonViewer(self.species,self.platform,exp_file,geneID,show_introns,analysisType,'')
+    
     def IsoformViewInitiate(self, event):
-        print os.getcwd()
+        #print os.getcwd()
         #This function is a part of the pop-up menu for the table: it plots a gene and protein level view.
         os.chdir(parentDirectory)
         t = os.getcwd()
         #self.control.write(str(os.listdir(t)) + "\n")
         gene = self.myGrid.GetCellValue(self.GridRowEvent, 0)
-        if ':' in gene:
-            gene = string.split(gene,':')[0]
-            
-        self.control.write("Plotting... " + gene + "\n")
+        
+        i=0; values=[]; spliced_junctions=[]
+        while i<1000:
+            try:
+                val = str(self.myGrid.GetCellValue(self.GridRowEvent, i))
+                values.append(val)
+                if ('G000' in val) and 'ENSP' not in val and 'ENST' not in val and '->' not in val:
+                    geneID_temp = string.split(val,":")[0]
+                    if ('G000' in geneID_temp) and '->' not in geneID_temp:
+                        geneID = geneID_temp
+                        if ' ' in geneID:
+                            geneID = string.split(geneID,' ')[0]
+                    elif '->' in geneID_temp: pass
+                    else:
+                        geneID_temp = string.split(val,":")[1]
+                        if ('G000' in geneID_temp):
+                            geneID = geneID_temp
+                            if ' ' in geneID:
+                                geneID = string.split(geneID,' ')[0]
+                i+=1
+            except Exception: break
+        #print [geneID]
+        self.control.write("Plotting... " + geneID + "\n")
         import ExPlot
         reload(ExPlot)
-        ExPlot.remoteGene(gene,self.species,self.main_results_directory,self.CurrentFile)
+        ExPlot.remoteGene(geneID,self.species,self.main_results_directory,self.CurrentFile)
         #Q = subprocess.Popen(['python', 'ExPlot13.py', str(R)])
         #os.chdir(currentDirectory)
-                                    
+    
+    def SashimiPlotInitiate(self, event):
+        #This function is a part of the pop-up menu for the table: it plots a SashimiPlot
+
+        datasetDir = str(self.main_results_directory)
+        geneID = None
+        #self.control.write(str(os.listdir(t)) + "\n")
+        i=0; values=[]; spliced_junctions=[]
+        while i<1000:
+            try:
+                val = str(self.myGrid.GetCellValue(self.GridRowEvent, i))
+                values.append(val)
+                if ('G000' in val) and ':E' in val:
+                    #if 'ASPIRE' in self.DirFileTxt:
+                    if ':ENS' in val:
+                        val = 'ENS'+string.split(val,':ENS')[1]
+                        val = string.replace(val,'|', ' ')
+                        #Can also refer to MarkerFinder files
+                        if ' ' in val:
+                            if '.' not in string.split(val,' ')[1]:
+                                val = string.split(val,' ')[0] ### get the gene
+                    if 'Combined-junction' in self.DirFileTxt:
+                        if '-' in val and '|' in val:
+                            junctions = string.split(val,'|')[0]
+                            val = 'ENS'+string.split(junctions,'-ENS')[-1]
+                            spliced_junctions.append(val) ### exclusion junction
+                    if 'index' in self.DirFileTxt: ### Splicing-index analysis
+                        spliced_junctions.append(val)
+                    elif '-' in val:
+                        spliced_junctions.append(val) ### junction-level
+                if ('G000' in val) and geneID == None and '->' not in val:
+                    geneID = string.split(val,":")[0]
+                    if ' ' in geneID:
+                        geneID = string.split(geneID,' ')[0]
+                i+=1
+            except Exception: break
+        
+        if len(spliced_junctions)>0:
+            spliced_junctions = [spliced_junctions[-1]] ### Select the exclusion junction
+        else:
+            spliced_junctions = [geneID]
+        if 'DATASET' in self.DirFileTxt:
+            spliced_junctions = [geneID]
+        import SashimiPlot
+        reload(SashimiPlot)
+        self.control.write("Attempting to build SashimiPlots for " + str(spliced_junctions[0]) + "\n")
+        SashimiPlot.remoteSashimiPlot(self.species,datasetDir,datasetDir,None,events=spliced_junctions,show=True) ### assuming the bam files are in the root-dir
+
     def GeneExpressionSummaryPlot(self, event):
         #This function is a part of the pop-up menu for the table: it plots expression levels.
         Wikipathway_Flag = 0
         Protein_Flag = 0
         VarGridSet = []
-        for i in range(3000):
-            try:
-                p = self.myGrid.GetCellValue(0, i)
-                VarGridSet.append(p)    
-            except Exception:
-                pass
-
-        for i in VarGridSet:
-            y = re.findall("WikiPathways", i)
-            if len(y) > 0:
-                Wikipathway_Flag = 1
-                break
-        if Wikipathway_Flag == 0:
+        try:
+            for i in range(3000):
+                try:
+                    p = self.myGrid.GetCellValue(0, i)
+                    VarGridSet.append(p)    
+                except Exception:
+                    pass
+    
             for i in VarGridSet:
-                y = re.findall("Select Protein Classes", i)
+                y = re.findall("WikiPathways", i)
                 if len(y) > 0:
-                    Protein_Flag = 1
+                    Wikipathway_Flag = 1
                     break
-        if Protein_Flag == 1:
-            VariableBox = []
-            for i in range(len(VarGridSet)):
-                y = re.findall("avg", VarGridSet[i])
-                if(len(y) > 0):
-                    VariableBox.append(i)
-        if Wikipathway_Flag == 1:
-            VariableBox = []
-            for i in range(len(VarGridSet)):
-                y = re.findall("avg", VarGridSet[i])
-                if(len(y) > 0):
-                    VariableBox.append(i)
-        q_barrel = []
-        for i in VariableBox:
-            q_box = []
-            q = i
-            for p in range(500):                
-                if(q < 0):
-                    break
-                q = q - 1   
-                #Regular expression is needed to find the appropriate columns to match from.
-                FLAG_log_fold = re.findall("log_fold",VarGridSet[q])
-                FLAG_adjp = re.findall("adjp",VarGridSet[q])
-                FLAG_rawp = re.findall("rawp",VarGridSet[q])
-                FLAG_wiki = re.findall("Wiki",VarGridSet[q])
-                FLAG_pc = re.findall("Protein Classes",VarGridSet[q])
-                FLAG_avg = re.findall("avg",VarGridSet[q])
-                if(len(FLAG_log_fold) > 0 or len(FLAG_adjp) > 0 or len(FLAG_rawp) > 0 or len(FLAG_wiki) > 0 or len(FLAG_pc) > 0 or len(FLAG_avg) > 0):
-                    break
-                q_box.append(q)
-            q_barrel.append((q_box))
-        Values_List = []
-        HeaderList = []
-        TitleList = self.myGrid.GetCellValue(self.GridRowEvent, 0)
-        for i in VariableBox:
-            HeaderList.append(self.myGrid.GetCellValue(0, i))
-        for box in q_barrel:
-            output_box = []
-            for value in box:
-                output_var = self.myGrid.GetCellValue(self.GridRowEvent, value)
-                output_box.append(float(output_var))
-            Values_List.append((output_box))            
-        self.control.write("Plotting values from: " + str(self.myGrid.GetCellValue(self.GridRowEvent, 0)) + "\n")
-        Output_Values_List = []
-        Output_std_err = []
-        for box in Values_List:
-            T = 0
-            for item in box:
-                T = T + item
-            output_item = T / float(len(box))
-            Output_Values_List.append(output_item)
-        
-        for box in Values_List:
-            box_std = np.std(box)
-            box_power = np.power((len(box)), 0.5)
-            std_err = box_std / float(box_power)
-            Output_std_err.append(std_err)                
+            if Wikipathway_Flag == 0:
+                for i in VarGridSet:
+                    y = re.findall("Select Protein Classes", i)
+                    if len(y) > 0:
+                        Protein_Flag = 1
+                        break
+            if Protein_Flag == 1:
+                VariableBox = []
+                for i in range(len(VarGridSet)):
+                    y = re.findall("avg", VarGridSet[i])
+                    if(len(y) > 0):
+                        VariableBox.append(i)
+            if Wikipathway_Flag == 1:
+                VariableBox = []
+                for i in range(len(VarGridSet)):
+                    y = re.findall("avg", VarGridSet[i])
+                    if(len(y) > 0):
+                        VariableBox.append(i)
+            q_barrel = []
+            for i in VariableBox:
+                q_box = []
+                q = i
+                for p in range(500):                
+                    if(q < 0):
+                        break
+                    q = q - 1   
+                    #Regular expression is needed to find the appropriate columns to match from.
+                    FLAG_log_fold = re.findall("log_fold",VarGridSet[q])
+                    FLAG_adjp = re.findall("adjp",VarGridSet[q])
+                    FLAG_rawp = re.findall("rawp",VarGridSet[q])
+                    FLAG_wiki = re.findall("Wiki",VarGridSet[q])
+                    FLAG_pc = re.findall("Protein Classes",VarGridSet[q])
+                    FLAG_avg = re.findall("avg",VarGridSet[q])
+                    if(len(FLAG_log_fold) > 0 or len(FLAG_adjp) > 0 or len(FLAG_rawp) > 0 or len(FLAG_wiki) > 0 or len(FLAG_pc) > 0 or len(FLAG_avg) > 0):
+                        break
+                    q_box.append(q)
+                q_barrel.append((q_box))
+            Values_List = []
+            HeaderList = []
+            TitleList = self.myGrid.GetCellValue(self.GridRowEvent, 0)
+            for i in VariableBox:
+                HeaderList.append(self.myGrid.GetCellValue(0, i))
+            for box in q_barrel:
+                output_box = []
+                for value in box:
+                    output_var = self.myGrid.GetCellValue(self.GridRowEvent, value)
+                    output_box.append(float(output_var))
+                Values_List.append((output_box))            
+            self.control.write("Plotting values from: " + str(self.myGrid.GetCellValue(self.GridRowEvent, 0)) + "\n")
+            Output_Values_List = []
+            Output_std_err = []
+            for box in Values_List:
+                T = 0
+                for item in box:
+                    T = T + item
+                output_item = T / float(len(box))
+                Output_Values_List.append(output_item)
             
-        n_groups = len(Output_Values_List)
-
-        #PLOTTING STARTS --
-        means_men = Output_Values_List
-        
-        import matplotlib.pyplot as plt
-        fig, ax = plt.subplots()
-        
-        index = np.arange(n_groups)
-        bar_width = 0.35
-        pos = bar_width / float(2)
-        
-        opacity = 0.4
-        error_config = {'ecolor': '0.3'}
-        
-        with warnings.catch_warnings():
-            rects1 = plt.bar((index + pos), Output_Values_List, bar_width,
-                        alpha=opacity,
-                        color='b',
-                        yerr=Output_std_err,
-                        label="")
-        
-        #plt.title(self.myGrid.GetCellValue(self.GridRowEvent, 2))
-        plt.title(TitleList)
-        plt.xticks(index + bar_width, HeaderList)
-        plt.legend()
-        
-        plt.tight_layout()
-        
-        plt.show()
-        #-- PLOTTING STOPS
+            for box in Values_List:
+                box_std = np.std(box)
+                box_power = np.power((len(box)), 0.5)
+                std_err = box_std / float(box_power)
+                Output_std_err.append(std_err)                
+                
+            n_groups = len(Output_Values_List)
+    
+            #PLOTTING STARTS --
+            means_men = Output_Values_List
+            
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots()
+            
+            index = np.arange(n_groups)
+            bar_width = 0.35
+            pos = bar_width / float(2)
+            
+            opacity = 0.4
+            error_config = {'ecolor': '0.3'}
+            
+            with warnings.catch_warnings():
+                rects1 = plt.bar((index + pos), Output_Values_List, bar_width,
+                            alpha=opacity,
+                            color='b',
+                            yerr=Output_std_err,
+                            label="")
+            
+            #plt.title(self.myGrid.GetCellValue(self.GridRowEvent, 2))
+            plt.title(TitleList)
+            plt.xticks(index + bar_width, HeaderList)
+            plt.legend()
+            
+            plt.tight_layout()
+            
+            plt.show()
+            #-- PLOTTING STOPS
+        except Exception:
+            self.control.write("Plot failed to output... only applicalbe for the file with prefix DATASET")
 
     def PrintGraphVariables(self, event):
         #This function is a part of the pop-up menu for the table: it prints the variables for the expression levels. Used for testing mainly.
@@ -742,7 +836,7 @@ class Main(wx.Frame):
                 except:
                     continue
                 count = count + 1
-
+            
             #AVAILABLE DATA SET
             
             try:
@@ -778,11 +872,13 @@ class Main(wx.Frame):
             color_root = [253, 253, 253]
             self.tree.DeleteAllItems()
             self.ids = {root : self.tree.AddRoot(root)}
+            self.analyzeSplicing=False
 
             for (dirpath, dirnames, filenames) in os.walk(root):
                 #print 'x',[dirpath, dirnames, filenames]#;sys.exit()
                 for dirname in dirnames:
                     #print dirpath, dirname
+                    if 'Splicing' in dirpath: self.analyzeSplicing=True
                     fullpath = os.path.join(dirpath, dirname)
                     #print currentDirectory+'/'+dirpath
                     self.ids[fullpath] = self.tree.AppendItem(self.ids[dirpath], dirname)
@@ -843,7 +939,6 @@ class Main(wx.Frame):
             if 'SashimiPlots' in self.main_results_directory:
                 self.main_results_directory = string.split(self.main_results_directory,'SashimiPlots')[0]
             opening_display_folder = self.main_results_directory + "/ExpressionOutput"
-            
             try:
                 list_contents = os.listdir(opening_display_folder)
                 target_file = ""
@@ -1412,6 +1507,7 @@ class Main(wx.Frame):
                 FindList = re.findall(SearchSuffix, obj)
                 if(len(FindList) > 0):
                     self.TopSelectList.append(obj)
+                    #print obj
         self.browser2.DeleteAllItems()
         for filename in root_contents:              
             if(SearchSuffix != "*"):
@@ -1422,7 +1518,8 @@ class Main(wx.Frame):
             else:
                 if(filename[-4] == "."):
                     display_name = filename[0:-4]
-                    ID_Strings.append(display_name)                
+                    if "AVERAGE-" not in display_name and "COUNTS-" not in display_name:
+                        ID_Strings.append(display_name)                
         ID_Strings = list(set(ID_Strings))
         change_path = currentDirectory + "/UseDir" ### NS-91615 alternative to __file__
         shutil.rmtree("UseDir")
@@ -1862,7 +1959,7 @@ class Main(wx.Frame):
         self.No1Label.Hide()
         self.D_3DLabel.Hide()
         self.D_2DLabel.Hide()
-        self.Yes1Radio.Hide()
+        self.IncludeLabelsRadio.Hide()
         self.No1Radio.Hide()
         self.D_3DRadio.Hide()
         self.D_2DRadio.Hide()
@@ -1892,7 +1989,7 @@ class Main(wx.Frame):
             self.No1Label.Show()
             self.D_3DLabel.Show()
             self.D_2DLabel.Show()
-            self.Yes1Radio.Show()
+            self.IncludeLabelsRadio.Show()
             self.No1Radio.Show()
             self.D_3DRadio.Show()
             self.D_2DRadio.Show()
@@ -2143,7 +2240,7 @@ class Main(wx.Frame):
                     InputFile = InputFile.replace("-PCA", "")
                     InputFile = InputFile.replace("DataPlots/Clustering-", "ExpressionInput/")
                     input_file_dir= InputFile + ".txt"
-                if(self.Yes1Radio.GetValue() == True):
+                if(self.IncludeLabelsRadio.GetValue() == True):
                     include_labels= 'yes'
                 else:
                     include_labels= 'no'    

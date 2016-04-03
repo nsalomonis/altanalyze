@@ -4500,7 +4500,7 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            root.title('AltAnalyze version 2.0.9.3 beta')
+            root.title('AltAnalyze version 2.0.9.4 beta')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
             self.root = root
             height = 450; width = 500
@@ -4595,7 +4595,7 @@ class SummaryResultsWindow:
         self.emergency_exit = False            
         self.LINKS = []
         self.tl = tl
-        self.tl.title('AltAnalyze version 2.0.9 beta')
+        self.tl.title('AltAnalyze version 2.0.9.4 beta')
         self.analysis_type = analysis_type
 
         filename = 'Config/icon.gif'
@@ -5239,7 +5239,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   else: id_name = 'array IDs'
 
   print_items=[]; #print [permute_p_threshold]; sys.exit()
-  print_items.append("AltAnalyze version 2.0.9 - Expression Analysis Parameters Being Used...")
+  print_items.append("AltAnalyze version 2.0.9.4 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'database'+': '+unique.getCurrentGeneDatabaseVersion())
   print_items.append('\t'+'species'+': '+species)
   print_items.append('\t'+'method'+': '+array_type)
@@ -5477,9 +5477,9 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
     
   goelite_run = False
   if run_from_scratch == 'Process Expression file' or run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or 'Feature Extraction' in run_from_scratch:
-      if fl.NormMatrix()=='quantile' and 'Feature Extraction' not in run_from_scratch:
+      if (fl.NormMatrix()=='quantile' or fl.NormMatrix()=='group') and 'Feature Extraction' not in run_from_scratch:
             import NormalizeDataset
-            try: NormalizeDataset.normalizeDataset(fl.ExpFile())
+            try: NormalizeDataset.normalizeDataset(fl.ExpFile(),normalization=fl.NormMatrix(),platform=array_type)
             except Exception: print "Normalization failed for unknown reasons..."
       #"""
       status = ExpressionBuilder.remoteExpressionBuilder(species,array_type,
@@ -5732,12 +5732,13 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_'+array_type+'_top_alt_junctions-PSI-clust.txt'
           
           ### Calculate ANOVA p-value stats based on groups
-          matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
-          matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
-          anovaFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
-          graphic_link1 = ExpressionBuilder.exportHeatmap(anovaFilteredDir)
-          try: summary_data_db2['QC']+=graphic_link1
-          except Exception: summary_data_db2['QC']=graphic_link1
+          if array_type !='gene' and array_type != 'exon':
+                matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
+                matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
+                anovaFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
+                graphic_link1 = ExpressionBuilder.exportHeatmap(anovaFilteredDir)
+                try: summary_data_db2['QC']+=graphic_link1
+                except Exception: summary_data_db2['QC']=graphic_link1
       except Exception: print traceback.format_exc()
       
       import RNASeq
@@ -5760,16 +5761,17 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             expression_results_folder = string.replace(altresult_dir,'AltResults','ExpressionInput')
             expression_dir = UI.getValidExpFile(expression_results_folder)
       
+            show_introns=False
             try: altresult_dir = UI.getValidSplicingScoreFile(altanalyze_results_folder)
             except Exception,e:
                   print traceback.format_exc()
+            analysisType='plot'
             for file in dir_list:
                   if 'AltExonConfirmed' in file:
                       gene_dir = splicing_results_root+'/'+file
                       genes = UI.importGeneList(gene_dir,limit=50) ### list of gene IDs or symbols
                       gene_string = gene_string+','+genes
                       print 'Imported genes from',file,'\n'
-                      show_introns=False
                       analysisType='plot'
             for file in dir_list:
                   if 'Combined-junction-exon-evidence' in file and 'top' not in file:
@@ -5781,33 +5783,35 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
       except Exception:
         print traceback.format_exc()
-
-      try:
-        top_PSI_junction = inputpsi[:-4]+'-ANOVA.txt'
-        isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
-      except Exception:
-        print traceback.format_exc()
-      try:
-          analyzeBAMs = False
-          dir_list = unique.read_directory(fl.RootDir())
-          for file in dir_list:
-            if '.bam' in string.lower(file):
-                analyzeBAMs=True
-          if analyzeBAMs:
-            ### Create sashimi plot index
-            import SashimiIndex
-            SashimiIndex.remoteIndexing(species,fl)
-            import SashimiPlot
-            print 'Exporting Sashimi Plots for the top-predicted splicing events... be patient'
-            try: SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
-            except Exception: pass
-            print 'completed'
-            SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
-            print 'completed'
-          else:
-            print 'No BAM files present in the root directory... skipping SashimiPlot analysis...'
-      except Exception:
-        print traceback.format_exc()
+        
+      if array_type != 'exon' and array_type != 'gene':
+            ### SashimiPlot Visualization
+            try:
+              top_PSI_junction = inputpsi[:-4]+'-ANOVA.txt'
+              isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
+            except Exception:
+              print traceback.format_exc()
+            try:
+                analyzeBAMs = False
+                dir_list = unique.read_directory(fl.RootDir())
+                for file in dir_list:
+                  if '.bam' in string.lower(file):
+                      analyzeBAMs=True
+                if analyzeBAMs:
+                  ### Create sashimi plot index
+                  import SashimiIndex
+                  SashimiIndex.remoteIndexing(species,fl)
+                  import SashimiPlot
+                  print 'Exporting Sashimi Plots for the top-predicted splicing events... be patient'
+                  try: SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
+                  except Exception: pass
+                  print 'completed'
+                  SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
+                  print 'completed'
+                else:
+                  print 'No BAM files present in the root directory... skipping SashimiPlot analysis...'
+            except Exception:
+              print traceback.format_exc()
         
   try:
       clearObjectsFromMemory(exon_db); clearObjectsFromMemory(constitutive_probeset_db)
@@ -6547,14 +6551,18 @@ def commandLineRun():
             pca_algorithm = 'SVD'
             geneSetName = None
             zscore = True
+            colorByGene=None
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 if opt == '--labels':
                     include_labels=arg
-                    if include_labels == 'True':
+                    if include_labels == 'True' or include_labels == 'yes':
                         include_labels = 'yes'
+                    else:
+                        include_labels = 'no'
                 if opt == '--plotType': plotType=arg
                 if opt == '--algorithm': pca_algorithm=arg
                 if opt == '--geneSetName': geneSetName=arg
+                if opt == '--genes': colorByGene=arg
                 if opt == '--zscore':
                     if arg=='yes' or arg=='True' or arg == 'true':
                         zscore=True
@@ -6566,7 +6574,8 @@ def commandLineRun():
 
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
-            UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore)
+            UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
+                          plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene)
             sys.exit()
 
         if 'VennDiagram' in image_export:
@@ -6609,8 +6618,10 @@ def commandLineRun():
                 altresult_dir+='/AltResults/'
 
             if 'Sashimi' in analysisType:
+                #python AltAnalyze.py --image AltExonViewer --AltResultsDir "/Users/saljh8/Desktop/Grimes/GEC14074/AltResults/" --genes "Dgat1 Dgat2 Tcf7l1" --species Mm --platform RNASeq --analysisType SashimiPlot
+                analysisType = 'Sashimi-Plot'
                 altresult_dir = string.split(altresult_dir,'AltResults')[0]
-                genes = geneFileDir
+                if len(geneFileDir)>0: genes = geneFileDir
                 geneFileDir=''
             elif 'raw' in data_type: ### Switch directories if expression
                 altanalyze_results_folder = string.replace(altresult_dir,'AltResults','ExpressionInput')
@@ -6972,6 +6983,7 @@ def commandLineRun():
             common_to_copy+= searchDirectory("AltDatabase/ensembl/"+species+"/",'Ensembl_Protein')
             common_to_copy+= searchDirectory("AltDatabase/ensembl/"+species+"/",'ProteinFeatures')
             common_to_copy+= searchDirectory("AltDatabase/ensembl/"+species+"/",'ProteinCoordinates')
+            common_to_copy+= searchDirectory("AltDatabase/uniprot/"+species+"/",'FeatureCoordinate')
             supported_arrays_present = 'no'
             for arraytype in selected_platforms:
                 if arraytype in species_to_package[species]: supported_arrays_present = 'yes' #Hence a non-RNASeq platform is present
@@ -6981,6 +6993,7 @@ def commandLineRun():
                     er = 'ArchiveDBs/'+ensembl_version+'/'+species+'/'+ensembl_version+'/'
                     export.copyFile(ir+file, er+file)
                     
+            
             if 'RNASeq' in species_to_package[species]:
                 common_to_copy+=['ensembl/'+species+'/'+species+'_Ensembl_junction.txt']
                 common_to_copy+=['ensembl/'+species+'/'+species+'_Ensembl_exon.txt']

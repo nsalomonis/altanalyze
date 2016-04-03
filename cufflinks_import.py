@@ -1,6 +1,6 @@
 #!/usr/local/bin/python2.6
 
-###update
+###cufflinks_import
 #Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
@@ -18,16 +18,13 @@
 #OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""This module contains generic methods for downloading and decompressing files designated
-online files and coordinating specific database build operations for all AltAnalyze supported
-gene ID systems with other program modules. """
-
 import os
 import sys
 import unique
 import string
 import export
 import gzip
+import getopt
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -104,53 +101,97 @@ def gunzip():
 
 def importCufflinksDir(directory):
     root_dir_files = getFiles(directory)
+    global sample_FPKM_db
     sample_FPKM_db={}
-    for sample in root_dir_files: ### e.g.,
+    for sample in root_dir_files: ###
+        if 'fpkm_tracking' in sample:
+            x_db,transcript_db = readFPKMs(directory+'/'+sample)
+            sample_FPKM_db.update(x_db)
+        ### Below occurs if it is a directory of FPKM results with the folder name as the sample
         try:
             files = getFiles(directory+'/'+sample)
             for file in files:
-                if file == 'isoforms.fpkm_tracking.gz':
+                if 'fpkm_tracking' in file:
                     x_db,transcript_db = readFPKMs(directory+'/'+sample+'/'+file)
-                    sample_FPKM_db.uppdate(x_db)
+                    sample_FPKM_db.update(x_db)
         except Exception: pass
     
     ### Get the samples
     samples = sample_FPKM_db.keys()
     samples.sort()
     ### Get the transcripts
-    fpkm_db = sample_FPKM_db[samples[0]]
-    transcripts = fpkm_db.keys()                
-    for transcript in transcripts:
-        for sample in samples:
-            fpkm = sample_FPKM_db[sample][transcript]
-            fpkm_list.append(fpkm)
-
+    gene_fpkm_db={}
+    for sample in samples:
+        fpkm_db = sample_FPKM_db[sample]
+        for gene in fpkm_db:
+            fpkm = fpkm_db[gene]
+            try: gene_fpkm_db[gene].append(fpkm)
+            except Exception: gene_fpkm_db[gene] = [fpkm]
+        
+    export_object = open(directory+'/Cufflinks.txt','w')
+    headers = string.join(['UID']+samples,'\t')+'\n'
+    export_object.write(headers)
+    for geneID in gene_fpkm_db:
+        values = map(str,gene_fpkm_db[geneID])
+        values = string.join([geneID]+values,'\t')+'\n'
+        export_object.write(values)
+    export_object.close()
+    
 def readFPKMs(path):
-    f=gzip.open(path,'rb')
+    if '.gz' in path:
+        f=gzip.open(path,'rb')
+    else:
+        f=open(path,"rU")
     file_content=f.read()
     fpkm_data = string.split(file_content,'\n')
     sample = export.findFilename(path)
+    if 'fpkm_tracking' in sample:
+        sample = string.split(sample,'.fpkm_tracking')[0]
+        sample = string.replace(sample,'.sorted.genes','')
     fpkm_db={}
     transcript_db={}
     firstLine=True
+    row_count=0
     for line in fpkm_data:
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if firstLine:
-            track_i = t.index('tracking_id')
-            gene_i = t.index('gene_id')
-            fpkm_i = t.index('FPKM')
+            try:
+                track_i = t.index('tracking_id')
+                gene_i = t.index('gene_id')
+                fpkm_i = t.index('FPKM')
+            except Exception:
+                fpkm_i = 9
+                gene_i = 3
+                row_count = 1
             firstLine = False
-        else:
-            geneID = t[gene_i]
-            transcriptID = t[gene_i]
-            fpkm = t[fpkm_i]
-            fpkm_db[transcriptID] = float(fpkm)
-            transcript_db[transcriptID] = geneID
+        if firstLine == False and row_count>0:
+            if len(t)>1:
+                geneID = t[gene_i]
+                transcriptID = t[gene_i]
+                fpkm = t[fpkm_i]
+                fpkm_db[transcriptID] = float(fpkm)
+                transcript_db[transcriptID] = geneID
+        row_count+=1
     sample_FPKM_db[sample] = fpkm_db
     return sample_FPKM_db,transcript_db
-    
-if __name__ == '__main__':
-    dir = '/Volumes/SEQ-DATA/Cufflinks'
-    importCufflinksDir(dir)
+
+if __name__ == "__main__":
+    ################  Comand-line arguments ################
+    if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
+        print "Warning! Please designate a directory of fpkm_tracking file as input in the command-line"
+        print "Example: python cufflinks_import.py --i /Users/cufflinks/"
+        sys.exit()
+    else:
+        Species = None
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','species='])
+        for opt, arg in options:
+            if opt == '--i': dir=arg ### full path of a BAM file
+            elif opt == '--species': Species=arg ### full path of a BAM file
+            else:
+                print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
+            
+    try: importCufflinksDir(dir)
+    except ZeroDivisionError:
+        print [sys.argv[1:]],'error'; error
 

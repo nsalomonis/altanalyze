@@ -16,7 +16,7 @@
 #OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys, string
+import sys, string, os
 import statistics
 import math
 import os.path
@@ -525,16 +525,30 @@ def checkBEDFileFormat(bed_dir,root_dir):
             print 'Exiting AltAnalyze'; forceError
     return chr_present
 
-def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,searchChr=None,getBiotype=None,testImport=False):
+def getStrandMappingData(species):
+    splicesite_db={}
+    refExonCoordinateFile = unique.filepath('AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt')
+    firstLine=True
+    for line in open(refExonCoordinateFile,'rU').xreadlines():
+        if firstLine: firstLine=False
+        else:
+            line = line.rstrip('\n')
+            t = string.split(line,'\t'); #'gene', 'exon-id', 'chromosome', 'strand', 'exon-region-start(s)', 'exon-region-stop(s)', 'constitutive_call', 'ens_exon_ids', 'splice_events', 'splice_junctions'
+            geneID, exon, chr, strand, start, stop = t[:6]
+            splicesite_db[chr,int(start)]=strand
+            splicesite_db[chr,int(stop)]=strand
+    return splicesite_db
+
+def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,searchChr=None,getBiotype=None,testImport=False,filteredJunctions=None):
     dir_list = read_directory(bed_dir)
     begin_time = time.time()
     if 'chr' not in searchChr:
         searchChr = 'chr'+searchChr
-    condition_count_db={}; neg_count=0; pos_count=0; junction_db={}; biotypes={}; algorithms={}; exon_len_db={}
+    condition_count_db={}; neg_count=0; pos_count=0; junction_db={}; biotypes={}; algorithms={}; exon_len_db={}; splicesite_db={}
 
     if testImport == 'yes': print "Reading user RNA-seq input data files"
     for filename in dir_list:
-        count_db={}; x=0
+        count_db={}; rows=0
         fn=filepath(bed_dir+filename)
         condition = export.findFilename(fn)
         if '__' in condition:
@@ -556,8 +570,9 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
             for line in open(fn,delim).xreadlines(): ### changed rU to r to remove \r effectively, rather than read as end-lines
                 data = cleanUpLine(line)
                 t = string.split(data,'\t')
-                if x==0 or '#' == data[0]:
-                    format_description = data; x=1
+                rows+=1
+                if rows==1 or '#' == data[0]:
+                    format_description = data
                     algorithm = 'Unknown'
                     if 'TopHat' in format_description: algorithm = 'TopHat'
                     elif 'HMMSplicer' in format_description: algorithm = 'HMMSplicer'
@@ -569,26 +584,34 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                         algorithm = 'TCGA format'
                         if 'barcode' in t: junction_position = 1
                         else: junction_position = 0
+                    elif '.tab' in fn and len(t)==9:
+                        try: start = float(t[1]) ### expect this to be a numerical coordinate
+                        except Exception: continue
+                        algorithm = 'STAR'
+                        strand = '-' ### If no strand exists
+                        rows=2 ### allows this first row to be processed
+                        if len(splicesite_db)==0: ### get strand to pos info
+                            splicesite_db = getStrandMappingData(species)   
                     if testImport == 'yes': print condition, algorithm
-                else:
+                if rows>1:
                     try:
                         if ':' in t[0]:
                             chr = string.split(t[0],':')[0]
                         else: chr = t[0]
                         if 'chr' not in chr:
                             chr = 'chr'+chr
-                        if searchChr == chr or ('BioScope' in algorithm and searchChr == t[1]): proceed = 'yes'
+                        if searchChr == chr or ('BioScope' in algorithm and searchChr == t[1]): proceed = True
                         elif searchChr == 'chrMT' and ('BioScope' not in algorithm):
-                            if 'M' in chr: proceed = 'yes'
-                            else: proceed = 'no'
-                        else: proceed = 'no'
+                            if 'M' in chr: proceed = True
+                            else: proceed = False
+                        else: proceed = False
                     except IndexError:
                         print 'The input file:\n',filename
                         print 'is not formated as expected (format='+algorithm+').'
                         print 'search chromosome:',searchChr
                         print t; force_bad_exit
-                    if proceed == 'yes':
-                        proceed = 'no'
+                    if proceed:
+                        proceed = False
                         if '.tab' in fn or '.TAB' in fn:
                             ### Applies to non-BED format Junction and Exon inputs (BioScope)
                             if 'BioScope' in algorithm:
@@ -605,17 +628,35 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                         exon1_stop,exon2_start = int(start),int(end); junction_id=''
                                         ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
                                         exon1_stop+=1; exon2_start-=1
-                                        if float(reads)>4: proceed = 'yes' ### Added in version 2.0.9 to remove rare novel isoforms
+                                        #if float(reads)>4 or getReads:
+                                        proceed = True ### Added in version 2.0.9 to remove rare novel isoforms
                                         seq_length = abs(exon1_stop-exon2_start)
                                 if algorithm == 'BioScope-junction':
                                     chr = t[1]; strand = t[2]; exon1_stop = int(t[4]); exon2_start = int(t[8]); count_paired = t[17]; count_single = t[19]; score=t[21]
                                     if 'chr' not in chr: chr = 'chr'+chr
                                     try: exon1_start = int(t[3]); exon2_stop = int(t[9])
-                                    except Exception: null=[] ### If missing, these are not assigned
+                                    except Exception: pass ### If missing, these are not assigned
                                     reads = str(int(float(count_paired))+int(float(count_single))) ### Users will either have paired or single read (this uses either)
                                     biotype = 'junction'; biotypes[biotype]=[]; junction_id=''
-                                    if float(reads)>4: proceed = 'yes' ### Added in version 2.0.9 to remove rare novel isoforms
+                                    if float(reads)>4 or getReads: proceed = True ### Added in version 2.0.9 to remove rare novel isoforms
                                     seq_length = abs(float(exon1_stop-exon2_start))
+                            if 'STAR' in algorithm:
+                                chr = t[0]; exon1_stop = int(t[1])-1; exon2_start = int(t[2])+1; strand=''
+                                if 'chr' not in chr: chr = 'chr'+chr
+                                reads = str(int(t[7])+int(t[6]))
+                                biotype = 'junction'; biotypes[biotype]=[]; junction_id=''
+                                if float(reads)>4 or getReads: proceed = True ### Added in version 2.0.9 to remove rare novel isoforms
+                                if (chr,exon1_stop) in splicesite_db:
+                                    strand = splicesite_db[chr,exon1_stop]
+                                elif (chr,exon2_start) in splicesite_db:
+                                    strand = splicesite_db[chr,exon2_start]
+                                #else: proceed = False
+                                seq_length = abs(float(exon1_stop-exon2_start))
+                                if strand == '-': ### switch the orientation of the positions
+                                    exon1_stop,exon2_start=exon2_start,exon1_stop
+                                exon1_start = exon1_stop; exon2_stop = exon2_start
+                                #if 9996685==exon1_stop and 10002682==exon2_stop:
+                                #print chr, strand, reads, exon1_stop, exon2_start,proceed;sys.exit()
                         else:
                             try:
                                 if algorithm == 'TCGA format':
@@ -643,13 +684,13 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     exon1_stop,exon1_start = b; exon2_stop,exon2_start = a
                                 else:
                                     exon1_stop = exon1_start+exon1_len; exon2_start=exon2_stop-exon2_len+1
-                                proceed = 'yes'
+                                if float(reads)>4 or getReads: proceed = True
                                 if algorithm == 'HMMSplicer':
                                     if '|junc=' in junction_id: reads = string.split(junction_id,'|junc=')[-1]
-                                    else: proceed = 'no'
+                                    else: proceed = False
                                 if algorithm == 'SpliceMap':
                                     if ')' in junction_id and len(junction_id)>1: reads = string.split(junction_id,')')[0][1:]
-                                    else: proceed = 'no'
+                                    else: proceed = False
                                 seq_length = abs(float(exon1_stop-exon2_start)) ### Junction distance
                             except Exception,e:
                                 #print traceback.format_exc();sys.exit()
@@ -666,11 +707,11 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     seq_length = abs(float(exon1_stop-exon2_start))
                                 ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
                                 exon1_stop+=1; exon2_start-=1
-                                if float(reads)>4: ### Added in version 2.0.9 to remove rare novel isoforms
-                                    proceed = 'yes'
-                                else: proceed = 'no'
+                                #if float(reads)>4 or getReads: ### Added in version 2.0.9 to remove rare novel isoforms
+                                proceed = True
+                                #else: proceed = False
 
-                        if proceed == 'yes':
+                        if proceed:
                             if 'chr' not in chr:
                                 chr = 'chr'+chr ### Add the chromosome prefix
                             if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
@@ -679,9 +720,16 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                             else: neg_count+=1
                             if getReads and seq_length>0:
                                 if getBiotype == biotype:
-                                    count_db[chr,exon1_stop,exon2_start] = reads
-                                    try: exon_len_db[chr,exon1_stop,exon2_start] = seq_length
-                                    except Exception: exon_len_db[chr,exon1_stop,exon2_start] = []
+                                    if biotype == 'junction':
+                                        ### We filtered for junctions>4 reads before, now we include all reads for expressed junctions
+                                        if (chr,exon1_stop,exon2_start) in filteredJunctions:
+                                            count_db[chr,exon1_stop,exon2_start] = reads
+                                            try: exon_len_db[chr,exon1_stop,exon2_start] = seq_length
+                                            except Exception: exon_len_db[chr,exon1_stop,exon2_start] = []
+                                    else:
+                                        count_db[chr,exon1_stop,exon2_start] = reads
+                                        try: exon_len_db[chr,exon1_stop,exon2_start] = seq_length
+                                        except Exception: exon_len_db[chr,exon1_stop,exon2_start] = []
                             elif seq_length>0:
                                 if (chr,exon1_stop,exon2_start) not in junction_db:
                                     ji = JunctionData(chr,strand,exon1_stop,exon2_start,junction_id,biotype)
@@ -1621,7 +1669,7 @@ class AlignExonsAndJunctionsToEnsembl:
             
                     if platformType == 'RNASeq':
     
-                         condition_count_db,exon_len_db,biotypes2,algorithms = importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=True,searchChr=searchchr,getBiotype=biotype,testImport=testImport)
+                         condition_count_db,exon_len_db,biotypes2,algorithms = importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=True,searchChr=searchchr,getBiotype=biotype,testImport=testImport,filteredJunctions=self.junction_simple_db)
                     else:
                          condition_count_db,exon_len_db,biotypes2,algorithms = importExpressionMatrix(bed_dir,root_dir,species,fl,'yes',getBiotype=biotype)
                     ###First export original counts, rather than quantile normalized or RPKM
@@ -2693,11 +2741,14 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     global species
     global rho_cutoff
     species = Species
+    removeOutliers = False
     if parameters != None:
         rpkm_threshold = parameters.ExpressionCutoff()
         exp_threshold = parameters.CountsCutoff()
         rho_cutoff = parameters.RhoCutoff()
         restrictBy = parameters.RestrictBy()
+        try: removeOutliers = parameters.RemoveOutliers()
+        except Exception: pass
         if platform == 'exons':
             rpkm_threshold=0
             exp_threshold=0
@@ -2705,7 +2756,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         rho_cutoff = 0.4
         restrictBy = 'protein_coding'
     onlyIncludeDrivers=True
-    
+                
     if platform != 'exons':
         platform = checkExpressionFileFormat(expFile,platform)
 
@@ -2713,6 +2764,30 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         if rpkm_threshold>1.9999:
             rpkm_threshold = math.log(rpkm_threshold,2) ### log2 transform
         
+    if removeOutliers:
+        ### Remove samples with low relative number of genes expressed
+        try:
+            print '***Removing outlier samples***'
+            import sampleIndexSelection
+            output_file = expFile[:-4]+'-OutliersRemoved.txt'
+            sampleIndexSelection.statisticallyFilterFile(expFile,output_file,rpkm_threshold)
+            if 'exp.' in expFile:
+                ### move the original groups and comps files
+                groups_file = string.replace(expFile,'exp.','groups.')
+                groups_file = string.replace(groups_file,'-steady-state','')
+                groups_filtered_file = groups_file[:-4]+'-OutliersRemoved.txt'
+                comps_file = string.replace(groups_file,'groups.','comps.')
+                comps_filtered_file = string.replace(groups_filtered_file,'groups.','comps.')
+                try: os.rename(groups_file,groups_filtered_file) ### if present copy over
+                except Exception: pass
+                try: os.rename(comps_file,comps_filtered_file) ### if present copy over
+                except Exception: pass
+            expFile = output_file
+            print ''
+        except Exception:
+            print '***Filtering FAILED***'
+            print traceback.format_exc()
+            
     expressed_uids_rpkm = getMaxCounts(expFile,rpkm_threshold)
     
     try: expressed_uids_counts = getMaxCounts(string.replace(expFile,'exp.','counts.'),exp_threshold)
@@ -3307,7 +3382,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
             row_method = 'average'; row_metric = 'euclidean'
         else:
             row_method = 'weighted'; row_metric = 'cosine'
-    print row_method, row_metric
+    #print row_method, row_metric
     correlateByArrayDirectly = False
     if correlateByArrayDirectly:
         import clustering

@@ -770,8 +770,10 @@ def plotExpressionDistribution(qc_db,dataset_name):
         if len(qc_db)<7: color = color_list[i]
         else: color = tuple(rand(3))
         pylab.plot(x_ls,y_ls,color=color,label=name,linewidth=1.75)
-        k = y_ls.index(max(y_ls))
-        pylab.text(x_ls[k],y_ls[k],code,fontsize=7) ### Plot this on the maximum value
+        try:
+            k = y_ls.index(max(y_ls))
+            pylab.text(x_ls[k],y_ls[k],code,fontsize=7) ### Plot this on the maximum value
+        except Exception: pass
         i+=1
     if len(sample_list)<15:
         font_size = 11

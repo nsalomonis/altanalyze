@@ -101,10 +101,11 @@ def expressedIndexes(values):
 
 def advancedPearsonCorrelationAnalysis(uid,data_list1,tissue_template_db):
     expIndexes = expressedIndexes(data_list1)
-    if (float(len(expIndexes))/len(data_list1))>0.1: ### Atleast 50% of samples evaluated express the gene
+    Queried[uid]=[]
+    if (float(len(expIndexes))/len(data_list1))>0.0: ### Atleast 50% of samples evaluated express the gene
         data_list = map(lambda i: data_list1[i],expIndexes) ### Only expressed values (non-None)
         max_diff = max(data_list)-statistics.avg(data_list)
-        if max_diff>0.4 and max(data_list)>-1:
+        if max_diff>-1000 and max(data_list)>-1000:
             if correlateAllGenes:
                 min_rho = -1
             else:
@@ -115,13 +116,15 @@ def advancedPearsonCorrelationAnalysis(uid,data_list1,tissue_template_db):
                 filtered_template = map(lambda i: tissue_template[i],expIndexes)
                 c2 = filtered_template.count(1)
                 if len(data_list)!= len(filtered_template): kill
-                if c1 == c2: ### If number of 1's in list1 matches list2
+                if c1 == c2 or c1 != c2: ### If number of 1's in list1 matches list2
                     rho = rhoCalculation(data_list,filtered_template)
                     if tissue == 'Housekeeping':
                         print tissue, rho, uid;sys.exit()
                     if rho>min_rho:
+                        Added[uid]=[]
                         try: tissue_scores[tissue].append([rho,uid])
                         except Exception: tissue_scores[tissue] = [[rho,uid]]
+
 
 def PearsonCorrelationAnalysis(uid,data_list1,tissue_template_db):
     if correlateAllGenes:
@@ -419,7 +422,8 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
     global correlateAllGenes; correlateAllGenes = correlateAll
     global all_genes_ranked; all_genes_ranked={}
     global RPKM_threshold; global correlationDirection
-
+    global Added; Added={}; global Queried; Queried={}
+    
     """
     print 4,Platform, codingType, geneToReport, correlateAll, logTransform,
     try:
@@ -441,7 +445,8 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
         use_replicates = True
     
     import RNASeq
-    Platform = RNASeq.checkExpressionFileFormat(filename,Platform)
+    try: Platform = RNASeq.checkExpressionFileFormat(filename,Platform)
+    except Exception: Platform = "3'array"
 
     try: RPKM_threshold = AdditionalParameters.RPKMThreshold() ### Used for exclusion of non-expressed genes
     except Exception:
@@ -796,7 +801,8 @@ def identifyMarkers(filename,cluster_comps):
                     #print print_limit,'genes analyzed'
                     print '*',
                     print_limit+=print_interval
-    #print len(tissue_scores),count
+    
+    #print len(Added),len(Queried),len(tissue_scores),count;sys.exit()
     tissue_specific_IDs={}; interim_correlations={}
 
     for tissue in tissue_scores:

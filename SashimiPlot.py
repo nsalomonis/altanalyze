@@ -17,7 +17,6 @@ import unique
 import traceback
 count_sum_array_db={}
 sampleReadDepth={}
-geneSymbol_db={}
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
@@ -63,10 +62,9 @@ def update_plot_settings(bamdir,group_psi_values,sample_headers):
     
     export_pl.write('bar_color = "b" \nbf_thresholds = [0, 1, 2, 5, 10, 20]')
     export_pl.close()
-        
-def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename):
+      
+def importSplicingEventsToVisualize(eventsToVisualizeFilename):
     splicing_events=[]
-    
     ### Import the splicing events to visualize from an external text file (multiple formats supported)
     type = None
     expandedSearch = False
@@ -120,23 +118,46 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename):
 		splicing_events.append(a+'-'+b +' '+ c+'-'+d)
 		splicing_events.append(c+'-'+d +' '+ a+'-'+b)
 	    except Exception: pass
+    splicing_events = unique.unique(splicing_events)
+    return splicing_events,expandedSearch
 
-    spliced_junctions=[] ### Alternatively, compare to just one of the junctions
-    for splicing_event in splicing_events:
-	j1,j2 = string.split(splicing_event,' ')
-	spliced_junctions.append(j1)
-	spliced_junctions.append(j2)
+def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=None):
+    import gene_associations
+    gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+    import OBO_import; symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
     
+    if events==None:
+	splicing_events,expandedSearch = importSplicingEventsToVisualize(eventsToVisualizeFilename)
+    else:
+	### Replace any ":" from the input events
+	#for i in range(len(events)): events[i] = string.replace(events[i],':','__')
+	expandedSearch = True
+	
+	for i in range(len(events)):
+	    gene = string.split(events[i],'__')[0]
+	    if gene in gene_to_symbol:
+		symbol = gene_to_symbol[gene][0]
+	    elif 'ENS' not in gene or 'G0000' in gene:
+		if gene in symbol_to_gene:
+		    ensID = symbol_to_gene[gene][0]
+		    symbol = gene
+		    events[i] = ensID ### translate this ID to an Ensembl gene ID for propper SashimiPlot lookup
+	splicing_events = events ### optionally get from supplied variable
+	
     if len(splicing_events)==0:
+	print eventsToVisualizeFilename
 	forceNoCompatibleEventsInFile
     
     print 'Exporting plots',
     
+    ### Determine Groups for Coloring
     groups_file = 'None'
     dir_list = unique.read_directory(root_dir+'/ExpressionInput')
+
     for file in dir_list:
          if 'groups.' in file:
-            groups_file = root_dir+'ExpressionInput/'+file
+            groups_file = root_dir+'/ExpressionInput/'+file
+
     if groups_file != None:
 	try:
 	    import ExpressionBuilder
@@ -149,19 +170,71 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename):
 	    groups = ['None']
             #print traceback.format_exc()
             pass
-	    
+
+    processed_events = formatAndSubmitSplicingEventsToSashimiPlot(PSIFilename,bamdir,splicing_events,sample_group_db,groups,expandedSearch)
+    mopup_events=[]
+    for event in splicing_events:
+	add = True
+	if event in processed_events:
+	    add = False
+	if ' ' in event:
+	    try:
+		j1,j2 = string.split(event,' ')
+		if j1 in processed_events:
+		    add = False
+		if j2 in processed_events:
+		    add = False
+	    except Exception: pass
+	if add: mopup_events.append(event)
+		    
+    ### Do the same for supplied gene queries or junctions that didn't map above using the gene expression values as a guide
+    #print len(splicing_events),len(processed_events),len(mopup_events)
+    processed_events = formatAndSubmitSplicingEventsToSashimiPlot(steady_state_exp_file,bamdir,mopup_events,sample_group_db,groups,expandedSearch)
+    return gene_to_symbol
+
+def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,sample_group_db,groups,expandedSearch):
+    ### Begin exporting parameters and events for SashimiPlot visualization
     firstLine = True
     setting = unique.filepath("Config/sashimi_plot_settings.txt")
-    psi_parent_dir=findParentDir(PSIFilename)
-    index_dir=psi_parent_dir+"trial_index/"
+    psi_parent_dir=findParentDir(filename)
+    if 'PSI' not in filename:
+	index_dir=string.split(psi_parent_dir,'ExpressionInput')[0]+"AltResults/AlternativeOutput/sashimi_index/"
+    else:
+	index_dir=psi_parent_dir+"sashimi_index/"
 
+    spliced_junctions=[] ### Alternatively, compare to just one of the junctions
+    for splicing_event in splicing_events:
+	try:
+	    j1,j2 = string.split(splicing_event,' ')
+	    spliced_junctions.append(j1)
+	    spliced_junctions.append(j2)    
+	except Exception:
+	    spliced_junctions.append(splicing_event) ### single gene ID or junction
+
+    if 'PSI' not in filename:
+	splicing_events_db = {}
+	for event in splicing_events:
+	    event = string.replace(event,':','__')
+	    if ' ' in event:
+		event = string.split(event,' ')[-1]
+	    gene = string.split(event,"__")[0]
+	    try: splicing_events_db[gene].append(event)
+	    except Exception: splicing_events_db[gene] = [event]
+	splicing_events = splicing_events_db
+    
     import collections
-    analyzed_events=[]
-    for line in open(PSIFilename,'rU').xreadlines():
+    analyzed_junctions=[]
+    processed_events=[]
+    for line in open(filename,'rU').xreadlines():
 	line = cleanUpLine(line)
 	t = string.split(line,'\t')
 	if firstLine:
-	    sample_headers = t[11:]
+	    if 'PSI' in filename:
+		sampleIndexBegin = 11
+		sample_headers = t[sampleIndexBegin:]
+	    else:
+		sampleIndexBegin = 1
+		sample_headers = t[sampleIndexBegin:]
 	    index=0
 	    sample_group_index={}
 	    for s in sample_headers:
@@ -171,23 +244,39 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename):
 		index+=1
 	    firstLine = False
 	else:
-	    splicing_event = val=t[2]+' '+t[3]
-	    if t[2] in analyzed_events and t[3] in analyzed_events:
-		continue
-	    #if 'ENSG00000095794' not in splicing_event: continue
-	    #else: print splicing_event
+	    if 'PSI' in filename:
+		splicing_event = val=t[2]+' '+t[3]
+		j1=t[2]
+		j2=t[3]
+		if t[2] in analyzed_junctions and t[3] in analyzed_junctions:
+		    continue
+	    else:
+		splicing_event = t[0] ### The gene ID
+		j1 = t[0]
+		j2 = t[0]
 	    if ":U" in splicing_event or "-U" in splicing_event:
 		continue
 	    else:
 		### First check to see if the full splicing event matches the entry
 		### If not (and not a PSI regulation hits list), look for an individual junction match
-		if splicing_event in splicing_events or (expandedSearch and (t[2] in spliced_junctions or t[3] in spliced_junctions)):
-		    geneID = string.split(t[2],':')[0]
-		    symbol = t[0]
-		    geneSymbol_db[geneID]=symbol
+		if splicing_event in splicing_events or (expandedSearch and (j1 in spliced_junctions or j2 in spliced_junctions)):
+		    if splicing_event in processed_events: continue
+		    if j2 in processed_events: continue
+		    if j1 in processed_events: continue
+		    processed_events.append(splicing_event)
+		    processed_events.append(j1)
+		    processed_events.append(j2)
+		    #print processed_events, splicing_event
+		    if 'PSI' in filename:
+			geneID = string.split(t[2],':')[0]
+			symbol = t[0]
+			analyzed_junctions.append(t[2])
+			analyzed_junctions.append(t[3])
+		    else: ### For exp.dataset-steady-state.txt files
+			geneID = splicing_event
+			events = splicing_events[geneID]
 		    index=0
-		    analyzed_events.append(t[2])
-		    analyzed_events.append(t[3])
+
 		    import collections
 		    initial_group_psi_values={}
 		    try: group_psi_values = collections.OrderedDict()
@@ -197,7 +286,7 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename):
 			    group_psi_values = ordereddict.OrderedDict()
 			except Exception:
 			    group_psi_values={}			
-		    for i in t[11:]: ### Value PSI range in the input file
+		    for i in t[sampleIndexBegin:]: ### Value PSI range in the input file
 			try: group = sample_group_index[index]
 			except Exception: group=None
 			try:
@@ -223,44 +312,33 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename):
 				group_psi_values[group]=filtered_group_indexes
 		    update_plot_settings(bamdir,group_psi_values,sample_headers)
 	
-		    try: formatted_splice_event=string.replace(t[3],':','__')
-		    except Exception: pass
+		    if 'PSI' in filename:
+			try: formatted_splice_event=string.replace(t[3],':','__')
+			except Exception: pass
+			### Submit the query
+			try: ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir); success = True
+			except Exception:
+			    success = False
+			    #print traceback.format_exc();sys.exit()
+			
+		    else:
+			for event in events:
+			    try:
+				ssp.plot_event(event,index_dir,setting,outputdir)
+				#print 'success' #formatted_splice_event='ENSMUSG00000000355__E4.1-E5.1'
+			    except Exception: ### If it fails, output the gene-level plot
+				try: ssp.plot_event(geneID,index_dir,setting,outputdir); success = True
+				except Exception:
+				    success = False
+				    #print traceback.format_exc();sys.exit()
 
-		    try: os.makedirs(outputdir)
-		    except Exception: pass
-		    
-		    #print '********',[formatted_splice_event],[index_dir],outputdir
-		    #print symbol,formatted_splice_event,
-		    try:
-			ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir)
-			#print 'success'
-		    except Exception:
-			pass
-			#print '^^^^^^^^^^^^',[formatted_splice_event],[index_dir],outputdir;sys.exit()
-			#print traceback.format_exc()
-			#print 'failed'
-
-		    try: formatted_splice_event=string.replace(t[2],':','__')
-		    except Exception: pass
-		    #print symbol,formatted_splice_event,
-		    try:
-			ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir)
-			#print 'success'
-		    except Exception:
-			pass
-			#print '^^^^^^^^^^^^',[formatted_splice_event],[index_dir],outputdir;sys.exit()
-			#print traceback.format_exc()
-			#print 'failed'
-		    
-    for filename in os.listdir(outputdir):
-	newname=string.split(filename,'/')
-	#print newname[0]
-	if newname[0] in geneSymbol_db:
-	    new_path = geneSymbol_db[newname[0]]+'-'+filename
-	    #new_path = string.replace()
-	    os.rename(filename,new_path)
-	else:
-	    continue
+		    ### Second attempt
+		    if 'PSI' in filename and success==False: ### Only relevant when parsing the junction pairs but not genes
+			try: formatted_splice_event=string.replace(t[2],':','__')
+			except Exception: pass
+			try: ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir); # print 'success'
+			except Exception: pass    
+    return processed_events
 
 def findParentDir(filename):
     filename = string.replace(filename,'//','/')
@@ -268,7 +346,7 @@ def findParentDir(filename):
     x = string.find(filename[::-1],'/')*-1
     return filename[:x]      
 
-def Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename):
+def Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,events=None):
     PSIFilename = unique.filepath(PSIFilename)
 
     header=True
@@ -291,14 +369,21 @@ def Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename):
 	count_sum_array_db[sample] = count_sum_array[index]
 	index+=1
 
-    eventsToVisualizeFilename = unique.filepath(eventsToVisualizeFilename)
+    if events==None:
+	#print 'Preparing Sashimi-Input:',eventsToVisualizeFilename
+	eventsToVisualizeFilename = unique.filepath(eventsToVisualizeFilename)
 
-    sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename)
+    gene_to_symbol=sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=events)
+    return gene_to_symbol
 
-def remoteSashimiPlot(species,fl,bamdir,eventsToVisualizeFilename):
+def remoteSashimiPlot(Species,fl,bamdir,eventsToVisualizeFilename,events=None,show=False):
     global PSIFilename
     global outputdir
     global root_dir
+    global steady_state_exp_file
+    global species
+    species = Species
+    
     try:
 	countinp = fl.CountsFile()
 	root_dir = fl.RootDir()
@@ -317,6 +402,8 @@ def remoteSashimiPlot(species,fl,bamdir,eventsToVisualizeFilename):
     for file in dir_list:
         if 'exp.' in file and 'steady-state' not in file:
             exp_file = root_dir+'/ExpressionInput/'+file
+	elif 'exp.' in file and 'steady-state' in file:
+	    steady_state_exp_file = root_dir+'/ExpressionInput/'+file
     global sample_group_db
     sample_group_db = ExpressionBuilder.simplerGroupImport(exp_file)
     
@@ -325,12 +412,20 @@ def remoteSashimiPlot(species,fl,bamdir,eventsToVisualizeFilename):
     outputdir = root_dir+'/SashimiPlots'
     try: os.mkdir(unique.filepath(outputdir))
     except Exception: pass
+    
+    if show:
+	s = open(outputdir+'/show.txt','w')
+	s.write('TRUE'); s.close()
+    else:
+	s = open(outputdir+'/show.txt','w')
+	s.write('FALSE'); s.close()
 
-    Sashimiplottting(bamdir,countinp,PSIFilename,eventsToVisualizeFilename)
-
+    geneSymbol_db=Sashimiplottting(bamdir,countinp,PSIFilename,eventsToVisualizeFilename,events=events)
     for filename in os.listdir(outputdir):
 	if '.pdf' in filename or '.png' in filename:
-	    newname=string.split(filename,'__')
+	    fn = string.replace(filename,'.pdf','')
+	    fn = string.replace(fn,'.png','')
+	    newname=string.split(fn,'__')
 	    if newname[0] in geneSymbol_db:
 		new_filename = str(filename)
 		if '__' in filename:
@@ -339,17 +434,18 @@ def remoteSashimiPlot(species,fl,bamdir,eventsToVisualizeFilename):
 		    new_filename = string.split(filename,'\\')[1]
 		elif '/' in filename:
 		    new_filename = string.split(filename,'/')[1]
-	        nnname=geneSymbol_db[newname[0]]+'-SashimiPlot_'+new_filename
+	        nnname=geneSymbol_db[newname[0]][0]+'-SashimiPlot_'+new_filename
 		os.rename(os.path.join(outputdir, filename), os.path.join(outputdir,nnname))
 	    else:
 		continue
-
+    print ''
+    
 if __name__ == '__main__':
-    root_dir = '/Volumes/SEQ-DATA/Jared/'
-    eventsToVisualizeFilename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/AltResults/AlternativeOutput/exp.Hs_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
-    #eventsToVisualizeFilename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/AltResults/Clustering/Combined-junction-exon-evidence.txt'
-    #eventsToVisualizeFilename = '/Volumes/salomonis1/projects/Bex1-RIP/Input/AltAnalyze_new/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
-    #eventsToVisualizeFilename = '/Volumes/salomonis2/2015-08-05_TRAF6_KO_RNA_Seq_pair_end/bams/AltResults/AlternativeOutput/Mm_RNASeq_TRAF6 KO_vs_wt.ExpCutoff-5.0_average-ASPIRE-exon-inclusion-results.txt'
-    bamdir = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/'
-    remoteSashimiPlot('Hs',root_dir,bamdir,eventsToVisualizeFilename)
+    root_dir = '/Volumes/SEQ-DATA/Krithika/'
+    events = ['EFNCRG00000003117']
+    #events = None
+    eventsToVisualizeFilename = '/Users/saljh8/Desktop/Grimes/GEC14074/AltResults/Clustering/AltExonConfirmed-test.txt'
+    eventsToVisualizeFilename = None
+    bamdir = root_dir
+    remoteSashimiPlot('Nc',root_dir,bamdir,eventsToVisualizeFilename,events=events,show=True)
     sys.exit()

@@ -5,7 +5,7 @@ import suds
 
 _script = 'AltAnalyze.py'
 _appName = "AltAnalyze"
-_appVersion = '2.0.9.1'
+_appVersion = '2.0.9.4'
 _appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to take RNASeq or "
 _appDescription +="relatively raw microarray data (CEL files or normalized), identify predicted alternative splicing or alternative "
 _appDescription +="promoter changes and view how these changes may affect protein sequence, domain composition, and microRNA targeting."
@@ -15,7 +15,9 @@ _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
 excludes = ['wx'] #["wxPython"] #"numpy","scipy","matplotlib"
-includes = ["mpmath", "numpy","sklearn.neighbors.typedefs",'sklearn.utils.lgamma','sklearn.manifold','sklearn.utils.sparsetools._graph_validation','sklearn.utils.weight_vector','pysam.TabProxies','pysam.ctabixproxies']
+includes = ["mpmath", "numpy","sklearn.neighbors.typedefs",'sklearn.utils.lgamma','sklearn.manifold',
+	    'sklearn.utils.sparsetools._graph_validation','sklearn.utils.weight_vector',
+	    'pysam.TabProxies','pysam.ctabixproxies','patsy.builtins']
 """ By default, suds will be installed in site-packages as a .egg file (zip compressed). Make a duplicate, change to .zip and extract
 here to allow it to be recognized by py2exe (must be a directory) """
 
