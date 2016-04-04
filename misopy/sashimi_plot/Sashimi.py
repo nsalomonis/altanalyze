@@ -108,7 +108,7 @@ class Sashimi:
         print '.',
         #print "Saving plot to: %s" %(output_fname)
         #output_fname2=output_fname.replace(".pdf")
-        plt.savefig(output_fname)
+        plt.savefig(output_fname)  ### An error here appears to be due to an issue with one of the BAM files (can't print out the bam file names in plot_gene.py)
         
         ### Write out a png as well
         output_fname = string.replace(output_fname,'.pdf','.png')

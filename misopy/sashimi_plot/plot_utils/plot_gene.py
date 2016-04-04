@@ -90,6 +90,7 @@ def plot_density_single(settings, sample_label,
         wiggle = log10(wiggle + 1)
     
     maxheight = max(wiggle)
+    
     if ymax is None:
         ymax = maxheight ### squishes the junction line down - AltANalyze
     else:
@@ -109,9 +110,9 @@ def plot_density_single(settings, sample_label,
             compressed_x.append(prevx)
             prevx = graphcoords[i]
             tmpval = []
-
+    
     fill_between(compressed_x, compressed_wiggle,\
-        y2=0, color=color, lw=0)
+            y2=0, color=color, lw=0)
    
     sslists = []
     for mRNA in mRNAs:
@@ -138,6 +139,48 @@ def plot_density_single(settings, sample_label,
         pass
 
     ### end
+    
+    ### The below code was copied from the next loop to pre-calculate the avg junction pos
+    avg_junction_count=[]
+    for jxn in jxns:
+        leftss, rightss = map(int, jxn.split(":"))
+
+        ss1, ss2 = [graphcoords[leftss - tx_start - 1],\
+            graphcoords[rightss - tx_start]]
+
+        mid = (ss1 + ss2) / 2
+        h = -3 * ymin / 4
+   
+        numisoforms = 0
+        for i in range(len(mRNAs)):
+            if leftss in sslists[i] and \
+                rightss in sslists[i]:
+                numisoforms += 1
+        if jxn in exclusion_junctions_db:
+            numisoforms = 2
+        else:
+            numisoforms = 1
+        if numisoforms > 0 and jxns[jxn]>1: ### Added in AltAnalyze
+            
+            if numisoforms % 2 == 0: # put on bottom 
+                pts = [(ss1, 0), (ss1, -h), (ss2, -h), (ss2, 0)]
+                midpt = cubic_bezier(pts, .5)
+            else:                         # put on top 
+                leftdens = wiggle[leftss - tx_start - 1]
+                rightdens = wiggle[rightss - tx_start]
+
+                pts = [(ss1, leftdens),
+                       (ss1, leftdens + h),
+                       (ss2, rightdens + h),
+                       (ss2, rightdens)]
+                midpt = cubic_bezier(pts, .5)
+            if midpt[1]>0: avg_junction_count.append(midpt[1])
+    avg_junction_count = average(avg_junction_count)
+    increment = avg_junction_count/3.8 ### This is the calculated offset to get better junction pos
+    if len(jxns)>10:
+        fs = 6
+        increment = avg_junction_count/5
+    else: fs = 8
     
     for jxn in jxns:
         leftss, rightss = map(int, jxn.split(":"))
@@ -173,8 +216,15 @@ def plot_density_single(settings, sample_label,
                 midpt = cubic_bezier(pts, .5)
 
             if number_junctions:
-                text(midpt[0], midpt[1], '%s'%(jxns[jxn]),
-                     fontsize=6, ha='center', va='center', backgroundcolor='w')
+                if (midpt[1])<0:
+                    try: incr=int((increment*-1)/1.2)
+                    except Exception: incr = -1 ### occurs with increment = nan
+                else:
+                    try: incr = int(increment)
+                    except Exception: incr = 1
+                text(midpt[0], midpt[1]+incr, '%s'%(jxns[jxn]),
+                     #fontsize=6, ha='center', va='center', backgroundcolor='b')
+                     fontsize=fs, ha='center', va='center')
 
             a = Path(pts, [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4])
             p = PathPatch(a, ec=color, lw=log(jxns[jxn] + 1) /\
@@ -296,8 +346,9 @@ def plot_density(sashimi_obj, pickle_filename, event, plot_title=None):
 
         #print "Reading sample label: %s" %(sample_label)
         #print "Processing BAM: %s" %(bam_file)
-        
-        plotted_ax = plot_density_single(settings, sample_label,
+
+        try:
+            plotted_ax = plot_density_single(settings, sample_label,
                                          tx_start, tx_end, gene_obj, mRNAs, strand,
                                          graphcoords, graphToGene, bam_file, ax1, chrom,
                                          paired_end=False, intron_scale=intron_scale,
@@ -308,6 +359,8 @@ def plot_density(sashimi_obj, pickle_filename, event, plot_title=None):
                                          show_ylabel=show_ylabel, show_xlabel=show_xlabel,
                                          font_size=font_size,
                                          junction_log_base=junction_log_base)
+        except Exception:
+             continue ### Skip this Bam file - AltAnalyze
         plotted_axes.append(plotted_ax)
 
         if show_posteriors:
