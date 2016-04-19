@@ -751,17 +751,19 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
             import SashimiPlot
             #reload(SashimiPlot)
             print 'Running Sashimi-Plot...'
+            genes=None
             if '.txt' in gene:
                 events_file = gene
                 events = None
             else:
+                gene = string.replace(gene,',',' ')
                 genes = string.split(gene,' ')
                 events_file = None
                 if len(genes)==1:
                     showEvent = True
             SashimiPlot.remoteSashimiPlot(species,exp_file,exp_file,events_file,events=genes,show=showEvent) ### assuming the bam files are in the root-dir
             if root != None and root != '':
-                print_out = 'Sashimi-Plot results saved to:\n'+exp_file+'SashimiPlots'
+                print_out = 'Sashimi-Plot results saved to:\n'+exp_file+'/SashimiPlots'
                 try: InfoWindow(print_out, 'Continue')
                 except Exception: None
         except Exception:
@@ -964,13 +966,16 @@ class StringVarFile:
             else:
                 if self.__newline: new = ""; self.__newline = 0
                 new = new+c
-        self.set(new)
+        try: self.set(new)
+        except Exception: pass
         #except Exception: None ### Not sure why this occurs
         try:
             log_report = open(logfile,'a')
             log_report.write(s); log_report.close() ### Variable to record each print statement
         except Exception: pass
-    def set(self,s): self.__stringvar.set(s); self.__window.update()   
+    def set(self,s):
+        try: self.__stringvar.set(s); self.__window.update()
+        except Exception: pass
     def get(self): return self.__stringvar.get()
     def flush(self): pass
     
@@ -4810,7 +4815,7 @@ def getUserParameters(run_parameter,Multi=None):
                     gene_symbol = gu.Results()['gene_symbol']
                     altgenes_file = gu.Results()['altgenes_file']
                     analysisType = gu.Results()['analysisType']
-                    if len(altgenes_file)>0:
+                    if len(altgenes_file)>0 and analysisType != 'Sashimi-Plot':
                         gene_symbol = importGeneList(altgenes_file) ### list of gene IDs or symbols
                     if analysisType == 'Sashimi-Plot':
                         altanalyze_results_folder = string.split(altanalyze_results_folder,'AltResults')[0]
@@ -4830,21 +4835,39 @@ def getUserParameters(run_parameter,Multi=None):
                     if len(exp_file)>0 or ((len(exp_file)>0 or len(gene_symbol)>0) and analysisType == 'Sashimi-Plot'):
                         analysis = 'AltExonViewer'
                         values = species,array_type,exp_file,gene_symbol,show_introns,analysisType
-                        StatusWindow(values,analysis) ### display an window with download status
-                        if len(altgenes_file)>0 or ' ' in gene_symbol or ((len(exp_file)>0 or len(gene_symbol)>0) and analysisType == 'Sashimi-Plot'):
+                        try: StatusWindow(values,analysis) ### display an window with download status
+                        except Exception: pass
+                        #if len(altgenes_file)>0 or ' ' in gene_symbol or ((len(exp_file)>0 or len(gene_symbol)>0) and analysisType == 'Sashimi-Plot'):
+                        if len(analysisType)>0:
                             ### Typically have a Tkinter related error
-                            if os.name == 'posix':
+                            commandline_args = ['--selected_parameters',selected_parameters[-1]]
+                            for uv in user_variables:
+                                if isinstance(user_variables[uv], list):
+                                    commandline_args += ['--'+uv,user_variables[uv][0]]
+                                else:
+                                    try:
+                                        if len(user_variables[uv])>0:
+                                            commandline_args += ['--'+uv,user_variables[uv]]
+                                    except Exception: pass 
+                            commandline_args = map(lambda x: string.replace(x,' ','__'),commandline_args)
+                            commandline_args = str(string.join(commandline_args,' '))
+                            if os.name == 'posix' or os.name == 'nt':
                                 try:
                                     package_path = filepath('python')
-                                    mac_package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/AltAnalyze')
-                                    kill
-                                    os.system(mac_package_path+' --GUI yes');sys.exit()
+                                    if os.name == 'posix':
+                                        package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/AltAnalyze')
+                                    else:
+                                        package_path = string.replace(package_path,'python','AltAnalyze.exe')
+                                        package_path = 'AltAnalyze.exe'
+                                    #print [package_path+' --GUI yes '+commandline_args]
+                                    os.system(package_path+' --GUI yes '+commandline_args);sys.exit()
                                 except Exception:   
                                     package_path = filepath('python')
-                                    print package_path
-                                    mac_package_path = string.replace(package_path,'python','AltAnalyze.py')
-                                    mac_package_path = 'python '+mac_package_path
-                                    os.system(mac_package_path+' --GUI yes');sys.exit()
+                                    package_path = string.replace(package_path,'python','AltAnalyze.py')
+                                    package_path = 'python '+package_path
+                                    if os.name == 'nt':
+                                        package_path = 'python AltAnalyze.py'
+                                    os.system(package_path+' --GUI yes '+commandline_args);sys.exit()
                             else:
                                 AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                         else:

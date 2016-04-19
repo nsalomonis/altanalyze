@@ -3171,8 +3171,16 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
         row_method = 'weighted'; row_metric = 'cosine'
     if amplifyGenes:
         transpose = parameters
-        parameters.setGeneSelection(parameters.GeneSelection()+' IntraCorrelatedOnly amplify')
-        print 'Finding intra-correlated genes from the input geneset(s)...'
+        try:
+            if len(parameters.GeneSelection())>0:
+                parameters.setGeneSelection(parameters.GeneSelection()+' amplify')
+                print 'Finding correlated genes to the input geneset(s)...'
+            else:
+                print 'Finding intra-correlated genes from the input geneset(s)...'
+                parameters.setGeneSelection(parameters.GeneSelection()+' IntraCorrelatedOnly amplify')
+        except Exception:         
+            parameters.setGeneSelection(parameters.GeneSelection()+' IntraCorrelatedOnly amplify')
+            print 'Finding intra-correlated genes from the input geneset(s)...'
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
         #return graphic_links
@@ -3183,8 +3191,11 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
         for i in row_header: ### Filter the expressed values for the intra-correlated queried gene set and replace
             try: expressed_values2[i]=expressed_values[i]
             except Exception:
-                e = symbol_to_gene[i][0]
-                expressed_values2[e]=expressed_values[e]
+                try:
+                    e = symbol_to_gene[i][0]
+                    expressed_values2[e]=expressed_values[e]
+                except Exception: 
+                    pass
         expressed_values = expressed_values2
         
     print 'Looking for common gene expression profiles for class assignment...',
@@ -4561,6 +4572,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         kallisto_file = kallisto_dir + 'Mac/bin/kallisto'; plat = 'MacOSX'
     elif 'linux' in sys.platform:
         kallisto_file = kallisto_dir + '/Linux/bin/kallisto'; plat = 'linux'
+    print 'Using',kallisto_file
     kallisto_file = filepath(kallisto_file)
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
     fn = filepath(kallisto_file)
@@ -4619,11 +4631,21 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             except Exception:
                 retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)
         else:
-            try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
-            except Exception:
-                retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+            if os.name == 'nt':
+                try:
+                    try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
+                    except Exception: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+                except Exception:
+                    try: retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
+                    except Exception:
+                        retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+            else:
+                try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+                except Exception:
+                    retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
         if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
         else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
+
         #"""
         input_path = output_path+'/abundance.txt'
         try:
@@ -4836,14 +4858,14 @@ if __name__ == '__main__':
         True,'gene','p2rotein_coding',True,'cosine','hopach',0.4)
     #expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/test/Original/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
     expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/test/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
-    singleCellRNASeqWorkflow('Mm', "3'array", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
+    #singleCellRNASeqWorkflow('Mm', "3'array", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
     
     
     filename = '/Volumes/SEQ-DATA/Grimeslab/TopHat/ExpressionInput/counts.myeloid-wt.txt'
-    fastRPKMCalculate(filename);sys.exit()
-    calculateRPKMsFromGeneCounts(filename,'Mm');sys.exit()
+    #fastRPKMCalculate(filename);sys.exit()
+    #calculateRPKMsFromGeneCounts(filename,'Mm');sys.exit()
     #copyICGSfiles('','');sys.exit()
-    runKallisto('Mm','test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test');sys.exit()
+    runKallisto('Mm','test','C:/Users/Nathan Salomonis/Desktop/testKallistoData','C:/Users/Nathan Salomonis/Desktop/testKallistoData');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

@@ -242,7 +242,7 @@ def prepareComparisonData(input_file,diffStateQuery,CovariateQuery,uniqueDonors,
 
     covariates_to_consider=[]
     for covariateType in covariate_samples:
-        if len(covariate_samples[covariateType])>2: ### Thus at least two samples to compare
+        if len(covariate_samples[covariateType])>1: ### Thus at least two samples to compare
             covariates_to_consider.append(covariateType)
     comps_db={}
     for covariateType in covariates_to_consider:
@@ -1130,11 +1130,11 @@ if __name__ == '__main__':
     platform='RNASeq'
     species='Hs'
     probability_statistic = 'moderated t-test'
-    probability_statistic = 'unpaired t-test'
+    #probability_statistic = 'unpaired t-test'
     minRPKM=-1000
     logfold_threshold=math.log(1.3,2)
     pval_threshold=0.05
-    use_adjusted_p = True
+    use_adjusted_p = False
     expression_files=[]
     platforms=[]
     metadata_files=[]

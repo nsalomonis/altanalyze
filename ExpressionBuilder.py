@@ -144,7 +144,9 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     for line in open(fn1,'rU').xreadlines():             
       data = cleanUpLine(line)
       if data[0] != '#' and data[0] != '!':
-        fold_data = string.split(data,'\t'); arrayid = fold_data[0]
+        fold_data = string.split(data,'\t')
+        try: arrayid = fold_data[0]
+        except Exception: arrayid = 'UID'
         if arrayid[0]== ' ':
             try: arrayid = arrayid[1:] ### Cufflinks issue
             except Exception: arrayid = ' ' ### can be the first row UID column as blank
@@ -924,7 +926,7 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
         
     """ Import sample and gene expression values from input file, filter, calculate geometric folds
     and export. Use for clustering and QC."""
-    print '\n',filename
+    #print '\n',filename
     filename = string.replace(filename,'///','/')
     filename = string.replace(filename,'//','/')
     if 'ExpressionOutput' in filename:
@@ -1011,7 +1013,11 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                         else:
                             values = TransformWithNAs(t[1:])
                 else:
-                    try: values = map(float,t[1:])
+                    try:
+                        if convertNonLogToLog:
+                            values = map(lambda x: math.log(float(x)+increment,2), t[1:])
+                        else:
+                            values = map(float,t[1:])
                     except Exception:
                         if convertNonLogToLog:
                             values = logTransformWithNAs(t[1:],increment)
@@ -3778,6 +3784,129 @@ def exportSorted(filename, sort_col, excludeHeader=True):
     except Exception:
         return ouput_file
     
+def importJunctionPositions(species,array_type):
+    ### Look up the junction coordinates for the region
+    if array_type == 'RNASeq':
+        probesets = 'junctions'
+    else:
+        probesets = 'probesets'
+    filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_'+probesets+'.txt'
+    fn=filepath(filename)
+    region_db = {}
+    firstRow=True
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow: firstRow = False
+        else:
+            probeset = t[0]
+            gene = t[2]
+            chr = t[4]
+
+            if '|' in t[13]:
+                region1 = string.split(t[13],'|')[1]
+                region2 = string.split(t[14],'|')[0]
+                junction_coord = region1+'-'+region2
+                region_db[probeset] = junction_coord
+                region_db[junction_coord] = gene+':'+t[12],chr ### Junction region for this version of Ensembl
+    return region_db
+
+def convertArrayReciprocalJunctionToCoordinates(species,array_type,dir_path,start_version,end_version):
+    """ Script for taking junction array defined ASPIRE or LinearRegression junction pairs, extracting the region coordinates
+    and exporting those coordinates with end_version EnsMart block and region IDs"""
+    
+    UI.exportDBversion(start_version) ### Database EnsMart version
+    
+    region_db = importJunctionPositions(species,array_type)
+    
+    comparison_db={}
+    dir_list = UI.read_directory(dir_path)
+    for filename in dir_list:
+        if '.txt' in filename:
+            comparsion = string.split(filename,'.')[0]
+            proceed = False
+            if ('ASPIRE' in filename or 'egress' in filename) and ('GENE' not in filename and 'inclusion' in filename): proceed = True ### Need to create a special analysis just for reciprocal junctions
+            if proceed: ### Don't include splicing-index results for RNA-Seq
+                comparison_db[comparsion] = {}
+                fn=filepath(dir_path+'/'+filename)
+                x=0
+                for line in open(fn,'rU').xreadlines():
+                    data = cleanUpLine(line)
+                    t = string.split(data,'\t')
+                    if x==0:
+                        p1 = t.index('probeset1')
+                        p2 = t.index('probeset2')
+                        reg_call = t.index('regulation_call')
+                        e1 = t.index('exons1')
+                        x=1
+                    else:
+                        if '-' in t[e1]:
+                            jc1 = region_db[t[p1]]
+                            jc2 = region_db[t[p2]]
+                            chr = region_db[jc1][1]
+                            db = comparison_db[comparsion]
+                            db[jc1,jc2] = t[reg_call],chr
+
+    UI.exportDBversion(end_version) ### Database EnsMart version
+    converted_comparison_db = {}
+    region_db2 = importJunctionPositions(species,'RNASeq')
+    
+    eo = export.ExportFile(dir_path+'/converted_junction_events.txt')
+    succeed=0; fail=0
+    for comparison in comparison_db:
+        for (j1,j2) in comparison_db[comparison]:
+            reg_call,chr = comparison_db[comparison][(j1,j2)]
+            if j1 in region_db2 and j2 in region_db2:
+                junction1_id,chr = region_db2[j1]
+                junction2_id,chr = region_db2[j2]
+                #print junction1_id, junction2_id, j1,j2, comparison;sys.exit()
+            else:
+                junction1_id=''
+                junction2_id=''
+            j1=chr+':'+j1
+            j2=chr+':'+j2
+            values = string.join([comparison,j1,j2,junction1_id,junction2_id,reg_call],'\t')+'\n'
+            eo.write(values)
+    eo.close()
+        
+def convertPSIJunctionIDsToPositions(psi_file,regulated_file):
+    """ Links up PSI genomic positions with IDs in a significantly differentially regulated PSI results file """
+    
+    fn=filepath(psi_file)
+    x=0
+    coord_db = {}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if x==0:
+            symbol = t.index('Symbol')
+            minor = t.index('Minor-Isoform')
+            major = t.index('Major Isoform')
+            coord = t.index('Coordinates')
+            x=1
+        else:
+            uid = t[symbol]+':'+t[minor]+'|'+t[major]
+            coordinates = t[coord]
+            coord_db[uid] = coordinates
+    
+    dir_path = export.findParentDir(regulated_file)
+    comparison = export.findFilename(regulated_file)
+    eo = export.ExportFile(dir_path+'/coordinate_PSI_events.txt')
+    fn=filepath(regulated_file) 
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        event = t[0]
+        event = string.replace(event,'@',':')
+        event = string.replace(event,'&',':')
+        event = string.replace(event,'__','|')
+        regulation = t[1]
+        if event in coord_db:
+            coordinates = coord_db[event]
+            values = string.join([comparison,event,coordinates,regulation],'\t')+'\n'
+            eo.write(values)
+    eo.close()
+
 if __name__ == '__main__':
     #predictSplicingEventTypes('ENSG00000123352:E15.4-E16.1','ENSG00000123352:E15.3-E16.1');sys.exit()
     test=False
@@ -3787,9 +3916,12 @@ if __name__ == '__main__':
         for file in dir_list:
           if 'PSI-clust' in file: 
             filename = meanCenterPSI(directory+'/'+file)
-            filterJunctionExpression(filename,minPercentPresent=0.75)
+            #filterJunctionExpression(filename,minPercentPresent=0.75)
         #exportHeatmap('/Volumes/My Passport/AML-LAML/LAML1/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust-filt.txt',color_gradient='yellow_black_blue',columnMethod='hopach')
-        sys.exit()
+        #sys.exit()
+    convertPSIJunctionIDsToPositions('/Volumes/SEQ-DATA/Grimeslab/TopHat/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI.txt','/Users/saljh8/Documents/1-dataAnalysis/SplicingFactors/Grimes-MarkerFinder-v2.txt.txt')
+    #convertArrayReciprocalJunctionToCoordinates('Hs','junction','/Volumes/Time Machine Backups/dataAnalysis/SplicingFactor/Hs/hglue/Marto/AltResults/AlternativeOutput','EnsMart65','EnsMart72')
+    sys.exit()
     
     fold = 2
     pval = 0.05

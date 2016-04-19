@@ -1,15 +1,22 @@
 ### R_test.py
 import sys
+import os
 from pyper import R
 import unique
 
-if 'darwin' in sys.platform:
+if 'Xdarwin' in sys.platform:
     try:
         path = unique.filepath("AltDatabase/tools/R/Mac/R")
         r = R(RCMD=path,use_numpy=True)
         #print '1'
     except Exception:
         #print '2'
+        r = R(use_numpy=True)
+elif os.name == 'nt':
+    try:
+        path = unique.filepath("AltDatabase/tools/R/PC/bin/x64/R.exe")
+        r = R(RCMD=path,use_numpy=True)
+    except Exception:
         r = R(use_numpy=True)
 else:
     #print '3'

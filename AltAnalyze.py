@@ -4665,7 +4665,8 @@ class SummaryResultsWindow:
         if analysis_type == 'AS':
             txt.insert(END, '\n\nView all splicing plots in the folder ')
             txt.insert(END, 'ExonPlots',('link', str(i))); i+=1
-            self.LINKS.append(output_dir+'ExonPlots/') 
+            try: self.LINKS.append(output_dir+'ExonPlots/')
+            except Exception: pass
             
         txt.tag_config('link', foreground="blue", underline = 1)
         txt.tag_bind('link', '<Button-1>', showLink)
@@ -5804,10 +5805,13 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                   import SashimiPlot
                   print 'Exporting Sashimi Plots for the top-predicted splicing events... be patient'
                   try: SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir) ### assuming the bam files are in the root-dir
-                  except Exception: pass
+                  except Exception: pass # print traceback.format_exc()
                   print 'completed'
-                  SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
+                  try: SashimiPlot.remoteSashimiPlot(species,fl,fl.RootDir(),isoform_dir2) ### assuming the bam files are in the root-dir
+                  except Exception: pass #print traceback.format_exc()
                   print 'completed'
+                  ### Try again, in case the symbol conversion failed
+                  SashimiPlot.justConvertFilenames(species,fl.RootDir()+'/SashimiPlots')
                 else:
                   print 'No BAM files present in the root directory... skipping SashimiPlot analysis...'
             except Exception:
@@ -7824,10 +7828,20 @@ def runCommandLineVersion():
     command_args = string.join(sys.argv,' ')
     #try: cleanUpCommandArguments()
     #except Exception: null=[]
-    #print [command_args];sys.exit()
+    print 3,[sys.argv],
     if len(sys.argv[1:])>0 and '--' in command_args:
         if '--GUI' in command_args:
-            AltAnalyzeSetup('no') ### a trick to get back to the main page of the GUI (if AltAnalyze has Tkinter conflict)
+            ### Hard-restart of AltAnalyze while preserving the prior parameters
+            command_arguments = string.split(command_args,' --')
+            if len(command_arguments)>2:
+                command_arguments = map(lambda x: string.split(x,' '),command_arguments)
+                command_arguments = map(lambda (x,y): (x,string.replace(y,'__',' ')),command_arguments[2:])
+                selected_parameters = [command_arguments[0][1]]
+                user_variables={}
+                for (o,v) in command_arguments: user_variables[o]=v
+                AltAnalyzeSetup((selected_parameters,user_variables))
+            else:
+                AltAnalyzeSetup('no') ### a trick to get back to the main page of the GUI (if AltAnalyze has Tkinter conflict)
         try:
             commandLineRun()
         except Exception:

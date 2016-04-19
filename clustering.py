@@ -473,6 +473,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             new_row_header.append(row_header[idx1[i]])
         else:
             new_row_header.append(row_header[i])
+
     for i in range(x.shape[1]):
         if column_method != None:
             new_column_header.append(column_header[idx2[i]])
@@ -1191,7 +1192,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     export_lines = []
     for row in xt:
         id = new_row_header[i]
-        original_id = id
+        original_id = str(id)
         if sy == '$En:Sy':
             cluster = 'cluster-'+string.split(id,':')[0]
         elif sy == 'S' and ':' in id:
@@ -1871,7 +1872,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                                 color = cm(1.*i/len(ranges))
                                 #color = cm(1.*(i+1)/len(ranges))
                             else:
-                                if i>5:
+                                if i>1:
                                     color = cm(k)
                                 else:
                                     color = '#C0C0C0'
@@ -1896,7 +1897,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                             color_label = bestGeneAssociated[sample][-1][-1]
                             if numberGenesPresent>1:
                                 index = bestGeneAssociated[sample][-1][0]
-                                if index > 5:
+                                if index > 1:
                                     gene = string.split(color_label[0],'-')[0]
                                 else:
                                     gene = 'Null'
@@ -2190,7 +2191,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
                                 color = cm(1.*i/len(ranges))
                                 #color = cm(1.*(i+1)/len(ranges))
                             else:
-                                if i>5:
+                                if i>2:
                                     color = cm(k)
                                 else:
                                     color = '#C0C0C0'
@@ -2215,7 +2216,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
                             color_label = bestGeneAssociated[sample][-1][-1]
                             if numberGenesPresent>1:
                                 index = bestGeneAssociated[sample][-1][0]
-                                if index > 5:
+                                if index > 2:
                                     gene = string.split(color_label[0],'-')[0]
                                 else:
                                     gene = 'Null'
@@ -2538,7 +2539,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
                                 color = cm(1.*i/len(ranges))
                                 #color = cm(1.*(i+1)/len(ranges))
                             else:
-                                if i>5:
+                                if i>1:
                                     color = cm(k)
                                 else:
                                     color = '#C0C0C0'
@@ -2563,7 +2564,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
                             color_label = bestGeneAssociated[sample][-1][-1]
                             if numberGenesPresent>1:
                                 index = bestGeneAssociated[sample][-1][0]
-                                if index > 5:
+                                if index > 1:
                                     gene = string.split(color_label[0],'-')[0]
                                 else:
                                     gene = 'Null'
@@ -2988,7 +2989,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     except Exception:
         #print traceback.format_exc()
         pass
-    
+
     #print len(matrix),;print len(column_header),;print len(row_header)
     if filterIDs:
         transpose_update = True ### Since you can filterByPathways and getGeneCorrelations, only transpose once
@@ -3060,7 +3061,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     
     if len(column_header)>1000 or len(row_header)>1000:
         print 'Performing hierarchical clustering (please be patient)...'
-
+    
     runHierarchicalClustering(matrix, row_header, column_header, dataset_name, row_method, row_metric,
                               column_method, column_metric, color_gradient, display=display,contrast=contrast,
                               allowAxisCompression=allowAxisCompression, Normalize=Normalize)
@@ -3257,6 +3258,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     i=0
         
     ### If multiple genes entered, just display these
+    targetGenes=[targetGene]
     if ' ' in targetGene or ',' in targetGene or '|' in targetGene or '\n' in targetGene or '\r' in targetGene:
         multipleGenes = True
         if ' ' in targetGene: delim = ' '
@@ -3270,7 +3272,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         if row_method != None: targetGenes.sort()
         for row_id in row_header:
             original_rowid = row_id
-            symbol=''
+            symbol=row_id
             if ':' in row_id:
                 a,b = string.split(row_id,':')[:2]
                 if 'ENS' in a or len(a)==17:
@@ -3322,7 +3324,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     if multipleGenes==False: limit = 50
     else: limit = 140 # lower limit is 132
     print 'limit:',limit
-    
+
     if multipleGenes==False or 'amplify' in targetGene or 'correlated' in targetGene:
         row_header3=[] ### Convert to symbol if possible
         if multipleGenes==False:
@@ -3425,6 +3427,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             k+=1
             #print targetGeneID+'\t'+str(len(correlated))+'\t'+str(len(anticorrelated))
         #sys.exit()
+        
         if 'IntraCorrelatedOnly' in targetGene:
             matrix2 = matrix2_alt
             row_header2 = row_header2_alt
@@ -3449,6 +3452,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             if symbol in matrix_db:
                 matrix_temp.append(matrix_db[symbol]); header_temp.append(symbol)
         #print len(header_temp), len(matrix_db)
+
         if len(header_temp) >= len(matrix_db): ### Hence it worked and all IDs are the same type
             matrix2 = matrix_temp
             row_header2 = header_temp
@@ -3461,6 +3465,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     #exclude = excludeHighlyCorrelatedHits(numpy.array(matrix2),row_header2)
     exportData.write(string.join(['UID']+column_header,'\t')+'\n') ### title row export
     i=0
+
     for row_id in row_header2:
         if ':' in row_id:
             a,b = string.split(row_id,':')[:2]
@@ -4677,22 +4682,22 @@ def extractFeatures(countinp,IGH_gene_file):
     igh_genes=[]
     firstLine = True
     for line in open(IGH_gene_file,'rU').xreadlines():
-	if firstLine: firstLine=False
-	else:
+        if firstLine: firstLine=False
+        else:
             data = cleanUpLine(line)
-	    gene = string.split(data,'\t')[0]
-	    igh_genes.append(gene)
+            gene = string.split(data,'\t')[0]
+            igh_genes.append(gene)
             
     if 'counts.' in countinp:
-	feature_file = string.replace(countinp,'counts.','IGH.')
-	fe = export.ExportFile(feature_file)
-	firstLine = True
-	for line in open(countinp,'rU').xreadlines():
-	    if firstLine:
+        feature_file = string.replace(countinp,'counts.','IGH.')
+        fe = export.ExportFile(feature_file)
+        firstLine = True
+        for line in open(countinp,'rU').xreadlines():
+            if firstLine:
                 fe.write(line)
                 firstLine=False
-	    else:
-		feature_info = string.split(line,'\t')[0]
+            else:
+                feature_info = string.split(line,'\t')[0]
                 gene = string.split(feature_info,':')[0]
                 if gene in igh_genes:
                     fe.write(line)
@@ -4705,15 +4710,15 @@ def filterForJunctions(countinp):
     firstLine = True
     count = 0
     if 'counts.' in countinp:
-	feature_file = countinp[:-4]+'-output.txt'
-	fe = export.ExportFile(feature_file)
-	firstLine = True
-	for line in open(countinp,'rU').xreadlines():
-	    if firstLine:
+        feature_file = countinp[:-4]+'-output.txt'
+        fe = export.ExportFile(feature_file)
+        firstLine = True
+        for line in open(countinp,'rU').xreadlines():
+            if firstLine:
                 fe.write(line)
                 firstLine=False
-	    else:
-		feature_info = string.split(line,'\t')[0]
+            else:
+                feature_info = string.split(line,'\t')[0]
                 junction = string.split(feature_info,'=')[0]
                 if '-' in junction:
                     fe.write(line)

@@ -295,7 +295,9 @@ def getColoredPathway(root_dir,graphID_db,file_type,dataset_name,WPID=None):
             file = wikipathways_api_client_instance.get_colored_pathway(identifier=wpid,version=0,
                                 element_identifiers=graphID_list,colors=hex_color_list,file_format=file_type)
             #file = base64.b64decode(file) ### decode this file
-            name = string.replace(name,'/','-'); name = string.replace(name,'\\','-') ### will otherwise create a sub-directory
+            name = string.replace(name,':','-')
+            name = string.replace(name,'/','-')
+            name = string.replace(name,'\\','-') ### will otherwise create a sub-directory
             output_filename = root_dir+wpid+'_'+name+dataset_name+'.'+file_type
             outfile = export.ExportFile(output_filename)
             if file_type == 'png':

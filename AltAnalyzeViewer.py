@@ -1555,6 +1555,7 @@ class Main(wx.Frame):
         self.browser2.ExpandAll()
         
         #OPENING DISPLAY
+        display_file_selected = ""
         TXT_FLAG = 0
         PNG_FLAG = 0
         if(root_display[-1] != "/"):
@@ -1563,6 +1564,7 @@ class Main(wx.Frame):
             total_filepath = unique.filepath(root_display + possible)
             if(possible[-4:] == ".txt"):
                 self.control.write("Displaying File: " + str(total_filepath) + "\n")
+                display_file_selected = total_filepath
                 break
 
         TXT_FLAG = 0

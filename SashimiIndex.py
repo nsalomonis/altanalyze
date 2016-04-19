@@ -349,7 +349,7 @@ def obtainTopGeneResults():
     pass
 
 if __name__ == '__main__':
-    remoteIndexing('Nc','/Volumes/SEQ-DATA/Krithika')
+    remoteIndexing('Mm','/Volumes/salomonis1/projects/Grimes/Grimes_Single_cell_bams/')
     sys.exit()
     #"""
     countinp = os.path.abspath(os.path.expanduser(sys.argv[1]))

@@ -55,7 +55,7 @@ def cleanUpLine(line):
     return data
     
 def combineAllLists(files_to_merge,original_filename,includeColumns=False):
-    headers =[]; all_keys={}; dataset_data={}; files=[]; filter_keys={}
+    headers =[]; all_keys={}; dataset_data={}; files=[]
     for filename in files_to_merge:
         print filename
         duplicates=[]
@@ -73,13 +73,13 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
                     try: t = t[1:]
                     except Exception: t = ['null']
                     if includeColumns==False:
-                        #headers.append(file)
-                        for i in t: headers.append(i+'.'+file); #headers.append(i)
+                        for i in t:    
+                            headers.append(i+'.'+file)
+                            #headers.append(i)
                     else:
                         headers.append(t[includeColumns]+'.'+file)
             else: #elif 'FOXP1' in data or 'SLK' in data or 'MBD2' in data:
                 key = t[0]
-                key = t[0]+':'+t[1]+' '+t[3]+'|'+t[5]; t = [key,t[2]]
                 if includeColumns==False:
                     try: values = t[1:]
                     except Exception: values = ['null']
@@ -97,23 +97,19 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
                     except Exception: combined_data[key] = [values]
                 else:
                     combined_data[key] = values
-                #if float(t[1])>0.15: filter_keys[key]=[]
         #print duplicates
         dataset_data[filename] = combined_data
     for i in dataset_data:
         print len(dataset_data[i]), i
-    #print 'filter_keys',len(filter_keys)
     ###Add null values for key's in all_keys not in the list for each individual dataset
     combined_file_data = {}
     for filename in files:
         combined_data = dataset_data[filename]
         ###Determine the number of unique values for each key for each dataset
         null_values = []; i=0
-        for key in combined_data:
-            number_of_values = len(combined_data[key][0]); break
+        for key in combined_data: number_of_values = len(combined_data[key][0]); break
         while i<number_of_values: null_values.append('0'); i+=1
         for key in all_keys:
-            #if key in filter_keys:
             include = 'yes'
             if combine_type == 'intersection':
                 if all_keys[key]>(len(files_to_merge)-1): include = 'yes'

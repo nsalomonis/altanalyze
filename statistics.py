@@ -958,7 +958,6 @@ def matrixImport(filename):
             grouped_floats=[]
             float_values = []
             associated_groups=[]
-
             for g in groups: ### string values
                 gvalues_list=[]
                 for i in group_db[g]:
@@ -987,11 +986,15 @@ def matrixImport(filename):
     return matrix,compared_groups,original_data
 
 def runANOVA(filename,matrix,compared_groups):
+    import export
     matrix_pvalues={}
     all_matrix_pvalues={}
     matrix_pvalues_list=[]
+    pairwise_matrix = {}
     useAdjusted=False
     pvals=[]
+    eo = export.ExportFile(filename[:-4]+'-pairwise.txt')
+    eo.write(string.join(['UID','Group1','Group2','rawp','G1-PSI','G2-PSI'],'\t')+'\n')
     for key in matrix:
         filtered_groups = []
         for group in matrix[key]:
@@ -1023,8 +1026,8 @@ def runANOVA(filename,matrix,compared_groups):
                                             sorted_groups.sort()
                                             group1, group2 = sorted_groups
                                             if (group1,group2) not in added:
-                                                if key == 'Tnfaip8:ENSMUSG00000062210:E3.4-E8.1 ENSMUSG00000062210:E1.4-E8.1':
-                                                    print group1,'\t',group2,'\t',pairwise_p
+                                                #if key == 'Tnfaip8:ENSMUSG00000062210:E3.4-E8.1 ENSMUSG00000062210:E1.4-E8.1':
+                                                #print group1,'\t',group2,'\t',pairwise_p
                                                 added.append((group1,group2))
                                                 try: major_groups[group1]+=1
                                                 except Exception: major_groups[group1]=1
@@ -1034,6 +1037,9 @@ def runANOVA(filename,matrix,compared_groups):
                                                 except Exception: comparisons[group1] = [group2]
                                                 try: comparisons[group2].append(group1)
                                                 except Exception: comparisons[group2] = [group1]
+                                                values = string.join([key,group_names[gi1],group_names[gi2],str(pairwise_p),str(avg(g1)),str(avg(g2))],'\t')+'\n'
+                                                eo.write(values)
+                                                #pairwise_matrix[key,group_names[gi1],group_names[gi2]] = pairwise_p,avg(g1),avg(g2)
                         major_group_list=[]
 
                         for group in major_groups: major_group_list.append([major_groups[group],group])
@@ -1077,6 +1083,7 @@ def runANOVA(filename,matrix,compared_groups):
         else:
             matrix_pvalues_list2.append([key,str(p),str(adjp),hits])
             
+    eo.close()
     exportANOVAStats(filename,matrix_pvalues_list2)
     print len(matrix_pvalues), 'ANOVA significant reciprocal PSI-junctions...'
     return matrix_pvalues
@@ -1109,10 +1116,10 @@ if __name__ == '__main__':
     #filename = '/Volumes/SEQ-DATA/SRSF2_human-GSE65349/SRSF2/Hs/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Volumes/SEQ-DATA/Ichi/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    filename = '/Volumes/SEQ-DATA/CardiacRNASeq/Combined/AltResults/AlternativeOutput1/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    #matrix,compared_groups,original_data = matrixImport(filename)
-    #matrix_pvalues=runANOVA(filename,matrix,compared_groups)
-    #returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()
+    filename = '/Volumes/salomonis2-1/SplicingFactors-U2AF1/GSE66793_Mm_U2AF1/bams/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
+    matrix,compared_groups,original_data = matrixImport(filename)
+    matrix_pvalues=runANOVA(filename,matrix,compared_groups)
+    returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()
     a = range(3, 18)
     k=[]
     for i in a:

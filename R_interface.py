@@ -17,11 +17,14 @@ except Exception:
     ### Running the wrong one once is fine, but multiple times causes it to stall in a single session
     try:
         try:
-            if 'darwin' in sys.platform:
+            if 'Xdarwin' in sys.platform:
                 #print 'Using AltAnalyze local version of R'
                 #print 'A'
                 path = unique.filepath("AltDatabase/tools/R/Mac/R")
                 r = R(RCMD=path,use_numpy=True)
+            elif os.name == 'nt':
+                path = unique.filepath("AltDatabase/tools/R/PC/bin/x64/R.exe")
+                r = R(RCMD=path,use_numpy=True)    
             else:
                 #print 'B'
                 r = R(use_numpy=True)   

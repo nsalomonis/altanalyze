@@ -158,6 +158,8 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None):
         ### Make BAM Index
         if multi == False:
             print 'Building BAM index file for', bam_dir
+        bam_dir = str(bam_dir)
+        #On Windows, this indexing step will fail if the __init__ pysam file line 51 is not set to - catch_stdout = False
         pysam.index(bam_dir)
         bamf = pysam.Samfile(bam_dir, "rb" )
 
