@@ -124,6 +124,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         pylab.figure() ### Add this to avoid a Tkinter bug after running MarkerFinder (not sure why it is needed) - creates a second empty window when display == True
                 
     if row_method == 'hopach' or column_method == 'hopach':
+        ### Test R and hopach
+        """
         try:
             import R_test
         except Exception,e:
@@ -132,6 +134,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             row_method = 'average'; column_method = 'average'
         if len(column_header)==2: column_method = 'average'
         if len(row_header)==2: row_method = 'average'
+        """
+        pass
+    
     """
     Prototype methods:
     http://old.nabble.com/How-to-plot-heatmap-with-matplotlib--td32534593.html
@@ -485,7 +490,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         dataset_name = string.split(dataset_name,'-hierarchical')[0]
     filename = 'Clustering-%s-hierarchical_%s_%s.pdf' % (dataset_name,column_metric,row_metric)
 
-    elite_dir, cdt_file = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display)
+    elite_dir, cdt_file, SystemCode = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display)
 
     def ViewPNG(png_file_dir):
         if os.name == 'nt':
@@ -511,7 +516,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if 'driver' in justShowTheseIDs or 'guide' in justShowTheseIDs: proceed = False
         except Exception: pass
         if proceed:
-            cluster_elite_terms,top_genes = remoteGOElite(elite_dir)
+            cluster_elite_terms,top_genes = remoteGOElite(elite_dir,SystemCode=SystemCode)
             if cluster_elite_terms['label-size']>40: ge_fontsize = 9.5
     except Exception: pass  #print traceback.format_exc()
 
@@ -964,9 +969,10 @@ def openTreeView(filename):
     fn = filepath("AltDatabase/TreeView/TreeView.jar")
     retcode = subprocess.Popen(['java', "-Xmx500m", '-jar', fn, "-r", filename])
 
-def remoteGOElite(elite_dir):
+def remoteGOElite(elite_dir,SystemCode = None):
     mod = 'Ensembl'
-    #mod = 'AltExon'
+    if SystemCode == 'Ae':    
+        mod = 'AltExon'
     pathway_permutations = 'FisherExactTest'
     filter_method = 'z-score'
     z_threshold = 1.96
@@ -1307,7 +1313,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
         export_cdt.write(line)
     
     export_cdt.close()
-    return elite_dir, filename
+    return elite_dir, filename, sc
 
 def exportJTV(cdt_dir, column_header, row_header,vmax=None):
     ### This is a config file for TreeView
@@ -3331,7 +3337,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             targetGeneValue_array = [targetGeneValues]
         else:
             targetGeneValue_array = matrix2
-            if len(row_header2)>4:
+            if len(row_header2)>4 and len(row_header)<20000:
                 print 'Performing all pairwise corelations...',
                 corr_matrix = numpyCorrelationMatrixGene(matrix,row_header,row_header2,gene_to_symbol)
                 print 'complete'
@@ -4794,11 +4800,113 @@ def customClean(filename):
             if values[3]>=1:
                 ea.write(string.join([uid]+t[1:],'\t')+'\n')
     ea.close()
+
+def MakeJunctionFasta(filename):
+    fn = filepath(filename)
+    firstRow=True
+    filename = filename[:-4]+'.fasta'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        probeset, seq = string.split(data,'\t')[:2]
+        ea.write(">"+probeset+'\n')
+        ea.write(string.upper(seq)+'\n')
+    ea.close()
+    
+def ToppGeneFilter(filename):
+    import gene_associations, OBO_import
+    gene_to_symbol = gene_associations.getGeneToUid('Mm',('hide','Ensembl-Symbol'))
+    symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+    
+    fn = filepath(filename)
+    firstRow=True
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            firstRow = False
+            #print len(t)
+            ea.write(string.join(['Ensembl\t\tCategory'],'\t')+'\n')
+        else:
+            symbol = t[1]; category = t[3]
+            symbol = symbol[0]+string.lower(symbol[1:]) ### Mouse
+            category = category[:100]
+            if symbol in symbol_to_gene:
+                ensembl = symbol_to_gene[symbol][0]
+                ea.write(string.join([ensembl,symbol,category],'\t')+'\n')
+    ea.close()
+
+def CountKallistoAlignedJunctions(filename):
+    fn = filepath(filename)
+    firstRow=True
+    #filename = filename[:-4]+'.fasta'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    counts=0
+    unique={}
+    ea = export.ExportFile(filename[:-4]+'-Mpo.txt')
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if 'ENS' in line and 'JUNC1201' in line:
+            ea.write(line)
+            unique[t[0]]=[]
+            counts+=1
+    print counts, len(unique)
+    ea.close()
+    
+def getBlockExonPositions():
+    fn = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart65/ensembl/Mm/Mm_Ensembl_exon.txt'
+    firstRow=True
+    filename = fn[:-4]+'.block.txt'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    lines=0
+    exon_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        gene,exonid,chromosome,strand,start,stop, a, b, c, d = string.split(data,'\t')
+        exonid = string.split(exonid,'.')[0]
+        uid = gene+':'+exonid
+        if lines>0:
+            try:
+                exon_db[uid,strand].append(int(start))
+                exon_db[uid,strand].append(int(stop))
+            except Exception:
+                exon_db[uid,strand] = [int(start)]
+                exon_db[uid,strand].append(int(stop))
+        lines+=1
+    print len(exon_db)
+    for (uid,strand) in exon_db:
+        exon_db[uid,strand].sort()
+        if strand == '-':
+            exon_db[uid,strand].reverse()
+        start = str(exon_db[uid,strand][0])
+        stop = str(exon_db[uid,strand][1])
+        coord = [start,stop]; coord.sort()
+        
+        ea.write(uid+'\t'+strand+'\t'+coord[0]+'\t'+coord[1]+'\n')
+    
+    ea.close()
     
 if __name__ == '__main__':
+    getBlockExonPositions();sys.exit()
     #customClean('/Users/saljh8/Desktop/demo/Amit/ExpressionInput/exp.GSE72857_umitab-cleaned-output.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()
-    filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/ensembl/Hs/Hs_Ensembl_transcript-annotations.txt'
+    filename = '/Users/saljh8/Desktop/Grimes/GEC14078/MergedFiles.txt'
+    CountKallistoAlignedJunctions(filename);sys.exit()
+    filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/Mm/junction1/junction_critical-junction-seq.txt'
+    MakeJunctionFasta(filename);sys.exit()
+    filename = '/Users/saljh8/Downloads/CoexpressionAtlas.txt'
+    ToppGeneFilter(filename); sys.exit()
     #countIntronsExons(filename);sys.exit()
     #filterForJunctions(filename);sys.exit()
     #filename = '/Users/saljh8/Desktop/Grimes/GEC14074/ExpressionOutput/LineageCorrelations-test-protein_coding-zscores.txt'

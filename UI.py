@@ -3663,6 +3663,40 @@ class InfoWindow:
             print dialogue
             #print 'Attempted to open a GUI that is not accessible...exiting program';sys.exit()
             #print "Analysis finished...exiting AltAnalyze."; sys.exit()
+       
+class MacConsiderations:
+    def __init__(self):
+        parent = Tk()
+        self._parent = parent
+        parent.title('AltAnalyze: Considerations for Mac OSX')
+        self._user_variables={}
+        filename = 'Config/MacOSX.png'; #fn=filepath(filename); img = PhotoImage(file=fn)
+        img = ImageTk.PhotoImage(file=filepath(filename))
+        can = Canvas(parent); can.pack(side='top',fill=BOTH); can.config(width=img.width(), height=img.height())        
+        can.create_image(2, 2, image=img, anchor=NW)
+
+        ### Add some buttons to the horizontal RadioSelect
+        continue_to_next_win = Tkinter.Button(text = 'Continue', command = parent.destroy)
+        continue_to_next_win.pack(side = 'right', padx = 5, pady = 5);
+
+        info_win = Button(self._parent, text="Online Help", command=self.Linkout)
+        info_win.pack(side = 'left', padx = 5, pady = 5)
+        self.url = 'http://www.altanalyze.org/MacOSX_help.html'
+
+        parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
+        parent.mainloop()
+        
+    def Linkout(self):
+        try: webbrowser.open(self.url)
+        except Exception,e: print e
+        
+    def deleteWindow(self):
+        #tkMessageBox.showwarning("Quit Selected","Use 'Quit' button to end program!",parent=self._parent)
+        self._parent.destroy(); sys.exit()
+
+    def callback(self, tag):
+        #print 'Button',[option], tag,'was pressed.'
+        self._user_variables['continue'] = tag   
         
 class MainMenu:
     def __init__(self):
@@ -3703,7 +3737,7 @@ class MainMenu:
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.altanalyze.org\n'
-        about+= '\nDeveloped by:\n\Salomonis Research Group\nCincinnati Childrens Hospital Medical Center 2008-2016'
+        about+= '\nDeveloped by:\nSalomonis Research Group\nCincinnati Childrens Hospital Medical Center 2008-2016'
         tkMessageBox.showinfo("About AltAnalyze",about,parent=self._parent)
         """
         
@@ -4384,7 +4418,10 @@ def getUserParameters(run_parameter,Multi=None):
     global PathDir; global PathFile; global file_location_defaults; global integrate_online_species; integrate_online_species = 'no'
     global option_db; global option_list; global analysis_status; analysis_status = 'continue'; global selected_parameters; selected_parameters=[]
     global backSelect; global fl; predictGroups = False
-    
+
+    if os.name == 'posix' and run_parameter == 'yes':
+        try: MacConsiderations()
+        except Exception: pass
     ### Get default options for ExpressionBuilder and AltAnalyze
 
     na = 'NA'; log = 'log'; no = 'no'

@@ -182,6 +182,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None):
           codes = map(lambda x: x[0],entry.cigar)
           if 3 in codes: cigarstring = 'N'
           else: cigarstring = None
+    
       if cigarstring != None:
         if 'N' in cigarstring: ### Hence a junction
             """

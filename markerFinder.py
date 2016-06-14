@@ -316,6 +316,7 @@ def reorderInputFile(custom_path,marker_list,marker_condition_db):
     exp_db={}
     probeset_symbol_db={}
     #print custom_path;sys.exit()
+    #print fn
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -333,13 +334,19 @@ def reorderInputFile(custom_path,marker_list,marker_condition_db):
     export_obj.write(header)
     for uid in marker_list:
         condition = marker_condition_db[uid]
-        try: export_obj.write(condition+':'+exp_db[uid])
-        except Exception:
-            print [uid]
+        new_uid = condition+':'+uid
+        if uid in exp_db:
+            export_obj.write(condition+':'+exp_db[uid])
+        elif new_uid in exp_db:
+            export_obj.write(exp_db[new_uid])
+        else:
+            """
+            print [uid], len(exp_db)
             for i in exp_db:
                 print [i];break
-            
             print 'Error encountered with the ID:',uid, 'not in exp_db'; kill
+            """
+            pass
     export_obj.close()
     
 def getOrderedGroups(filename):
@@ -368,6 +375,13 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Spec
             marker_dir = marker_root_dir+'/'+marker_dir
             marker_list, probeset_symbol_db, marker_condition_db = importMarkerProfiles(marker_dir,fl)
             custom_path = string.replace(marker_dir,'MarkerGenes','Clustering/MarkerGenes')
+            """
+            print fl.DatasetFile()
+            print len(marker_list), marker_list[:3]
+            print len(probeset_symbol_db)
+            print custom_path
+            print convertNonLogToLog
+            """
             ExpressionBuilder.exportGeometricFolds(fl.DatasetFile(),platform,marker_list,probeset_symbol_db,exportOutliers=False,exportRelative=False,customPath=custom_path,convertNonLogToLog=convertNonLogToLog)
             reorderInputFile(custom_path,marker_list, marker_condition_db)
             row_method = None; row_metric = 'cosine'; column_method = None; column_metric = 'euclidean'; color_gradient = 'yellow_black_blue'; transpose = False

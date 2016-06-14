@@ -3504,7 +3504,7 @@ def numpyCorrelationMatrix(x,rows,gene):
     for score_ls in D1:
         for v in score_ls:
             scores.append(v)
-    return statistics.avg(scores)
+    return numpy.average(scores)
 
 def numpyCorrelationMatrixCount(x,rows,cutoff=0.4,geneTypeReport=None):
     ### Find which genes are most correlated
@@ -3911,7 +3911,7 @@ def exportGroupsFromClusters(cluster_file,expFile,platform):
         if platform == 'RNASeq':
             if 'junction_quantification' not in name and '.bed' not in name:
                 name = name+'.bed'
-            elif 'junction_quantification.txt' not in name and '.txt' not in name:
+            elif 'junction_quantification.txt' not in name and '.txt' not in name and '.bed' not in name:
                 name = name+'.txt'
         if ':' in name:
             name = string.split(name,':')[1]
@@ -4865,7 +4865,7 @@ if __name__ == '__main__':
     #fastRPKMCalculate(filename);sys.exit()
     #calculateRPKMsFromGeneCounts(filename,'Mm');sys.exit()
     #copyICGSfiles('','');sys.exit()
-    runKallisto('Mm','test','C:/Users/Nathan Salomonis/Desktop/testKallistoData','C:/Users/Nathan Salomonis/Desktop/testKallistoData');sys.exit()
+    #runKallisto('Mm','test','C:/Users/Nathan Salomonis/Desktop/testKallistoData','C:/Users/Nathan Salomonis/Desktop/testKallistoData');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'
@@ -4875,8 +4875,8 @@ if __name__ == '__main__':
     gsp.setGeneSelection('')
     gsp.setJustShowTheseIDs('')
     gsp.setNormalize('median')
-    gsp.setSampleDiscoveryParameters(0,0,0,6,
-        True,'AltExon','protein_coding',False,'cosine','hopach',0.1)
+    gsp.setSampleDiscoveryParameters(0,0,1.5,3,
+        False,'AltExon','protein_coding',False,'cosine','hopach',0.35)
     
     #gsp.setSampleDiscoveryParameters(1,1,4,3, True,'Gene','protein_coding',False,'cosine','hopach',0.5)
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
@@ -4888,9 +4888,10 @@ if __name__ == '__main__':
     expFile = '/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/exp.E15.5_Adult_IRI Data-output.txt'
     expFile = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/temp/C4Meth450-filtered-SC-3_regulated.txt'
     expFile = '/Volumes/SEQ-DATA/Grimeslab/TopHat/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust-filter.txt'
-    #expFile = '/Users/saljh8/Desktop/Mouse_organoid/ExpressionInput/exp.nature14966-s6.txt'
+    expFile = '/Users/saljh8/Documents/Leucegene_TargetPSIFiles/exp.TArget_psi_noif_uncorr_03-50missing-12high.txt'
+    expFile = '/Volumes/BOZEMAN2015/Hs_RNASeq_top_alt_junctions-PSI-clust-filter.txt'
 
-    singleCellRNASeqWorkflow('Mm', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
+    singleCellRNASeqWorkflow('Hs', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
     
     #expFile = '/Users/saljh8/Desktop/Grimes/AltSplice/Gmp-cluster-filter.txt'
     #singleCellRNASeqWorkflow('Mm', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()

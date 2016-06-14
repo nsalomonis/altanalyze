@@ -235,12 +235,15 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
             else:
                 sampleIndexBegin = 1
                 sample_headers = t[sampleIndexBegin:]
+		if '.bed' not in sample_headers[0]: ### Add .bed if removed manually
+		    sample_headers = map(lambda s: s+'.bed',sample_headers)
             index=0
             sample_group_index={}
             for s in sample_headers:
                 group = sample_group_db[s]
                 sample_group_index[index]=group
-                sampleReadDepth[index]=count_sum_array_db[s]
+                try: sampleReadDepth[index]=count_sum_array_db[s]
+		except Exception: sampleReadDepth[index]=count_sum_array_db[s]
                 index+=1
             firstLine = False
         else:
@@ -305,10 +308,14 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                         group_psi_values['low']=filtered_group_index1
                         group_psi_values['high']=filtered_group_index2
                     else:
+			gn=0
                         for group in groups:
+			    gn+=1
+			    #if gn>4: break
                             if group in initial_group_psi_values:
                                 initial_group_psi_values[group].sort()
-                                filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:5])
+				if len(groups)>3:
+				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:4])
                                 group_psi_values[group]=filtered_group_indexes
                     update_plot_settings(bamdir,group_psi_values,sample_headers)
             
@@ -348,21 +355,26 @@ def findParentDir(filename):
 
 def Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,events=None):
     PSIFilename = unique.filepath(PSIFilename)
-
     header=True
     junction_max=[]
     countsin = unique.filepath(countsin)
     count_sum_array=[]
+    count=0
     for line in open(countsin,'rU').xreadlines():
-        data = cleanUpLine(line)
-        t = string.split(data,'\t')
-        if header:
-            samples = t[1:]
-            header=False
-            count_sum_array=[0]*len(samples)
-        else:
-            values = map(float,t[1:])
-            count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
+	data = cleanUpLine(line)
+	t = string.split(data,'\t')
+	if header:
+	    samples = []
+	    for s in t[1:]:
+		if '.bed' not in s: s+='.bed'
+		samples.append(s)
+	    header=False
+	    count_sum_array=[0]*len(samples)
+	else:
+	    values = map(float,t[1:])
+	    count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
+	    count+=1
+	    if count >30000 and 'salomonis' in bamdir: break
 
     index=0
     for sample in samples:
@@ -468,10 +480,11 @@ def justConvertFilenames(species,outputdir):
             
 if __name__ == '__main__':
     root_dir = '/Volumes/salomonis1/projects/Grimes/Grimes_Single_cell_bams'
-    events = ['ENSMUSG00000017210:E6.1-E8.1']
-    #events = None
-    eventsToVisualizeFilename = 'C:/Users/Nathan Salomonis/Desktop/BAMS/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
-    eventsToVisualizeFilename = None
+    root_dir = '/Volumes/salomonis1/projects/Grimes/Mm-Sara-AML-080615-090315/bams'
+    events = ['Zeb2']
+    events = None
+    eventsToVisualizeFilename = '/Volumes/salomonis1-1/projects/Grimes/Mm-Sara-AML-080615-090315/bams/AltResults/AlternativeOutput/top50/Mm_RNASeq_top_alt_junctions-PSI-clust-pairwise.txt'
+    #eventsToVisualizeFilename = None
     bamdir = root_dir
-    remoteSashimiPlot('Mm',root_dir,bamdir,eventsToVisualizeFilename,events=events,show=True)
+    remoteSashimiPlot('Mm',root_dir,bamdir,eventsToVisualizeFilename,events=events,show=False)
     sys.exit()

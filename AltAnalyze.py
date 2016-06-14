@@ -5056,8 +5056,13 @@ class StringVarFile:
                     new = new+c
             self.set(new)
         except Exception: pass
-    def set(self,s): self.__stringvar.set(s); self.__window.update()   
-    def get(self): return self.__stringvar.get()
+    def set(self,s):
+        try: self.__stringvar.set(s); self.__window.update()
+        except Exception: pass
+    def get(self):
+        try:
+            return self.__stringvar.get()
+        except Exception: pass
     def flush(self):
         pass
             

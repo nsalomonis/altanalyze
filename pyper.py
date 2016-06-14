@@ -150,7 +150,8 @@ else:
 	def sendAll(p, s):
 		p.stdin.write(_mybytes(s))
 		#os.write(p.stdin.fileno(), s)
-		p.stdin.flush()
+		try: p.stdin.flush()
+		except Exception: pass
 
 	def readLine(p, *a, **b):
 		return(_mystr(p.stdout.readline()))

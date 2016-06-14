@@ -1049,11 +1049,11 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                 if gene in genes_to_import:
                     ### Genes regulated in any user-indicated comparison according to the fold and pvalue cutoffs provided
                     log_folds = map(lambda x: str(x), log_folds)
-                    try: gene = gene+' '+probeset_symbol[gene]
-                    except Exception: gene = gene
+                    try: gene2 = gene+' '+probeset_symbol[gene]
+                    except Exception: gene2 = gene
                     if len(t[1:])!=len(log_folds):
                         log_folds = t[1:] ### If NAs - output the original values
-                    export_data.write(string.join([gene]+log_folds,'\t')+'\n')
+                    export_data.write(string.join([gene2]+log_folds,'\t')+'\n')
 
                     if exportRelative:
                         ### Calculate log-fold values relative to the mean of each valid group comparison
@@ -1101,12 +1101,12 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                             relative_headers_exported = True
                         if len(t[1:])!=len(relative_log_folds):
                             relative_log_folds = t[1:] ### If NAs - output the original values
-                        export_relative.write(string.join([gene]+relative_log_folds,'\t')+'\n')
+                        export_relative.write(string.join([gene2]+relative_log_folds,'\t')+'\n')
                             
                 elif exportOutliers:
                     ### When a gene is regulated and not significant, export to the outlier set
-                    try: gene = gene+' '+probeset_symbol[gene]
-                    except Exception: gene = gene
+                    try: gene2 = gene+' '+probeset_symbol[gene]
+                    except Exception: gene2 = gene
                     ### These are defaults we may allow the user to control later
                     log_folds = [0 if x=='' else x for x in log_folds] ### using list comprehension, replace '' with 0
                     if max([max(log_folds),abs(min(log_folds))])>1:
@@ -1117,7 +1117,7 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                             log_folds = map(lambda x: str(x), log_folds)
                             if len(t[1:])!=len(log_folds):
                                 log_folds = t[1:] ### If NAs - output the original values
-                            export_outliers.write(string.join([gene]+log_folds,'\t')+'\n')
+                            export_outliers.write(string.join([gene2]+log_folds,'\t')+'\n')
                             
                 row_number+=1 ### Keep track of the first gene as to write out column headers for the relative outputs
                 
@@ -2148,20 +2148,6 @@ def buildAltExonClusterInputs(input_folder,species,platform,dataType='AltExonCon
 def exportHeatmap(filename,useHOPACH=True, color_gradient='red_black_sky',normalize=False,columnMethod='average',size=0,graphics=[]):
     import clustering
     row_method = 'weighted'; row_metric = 'cosine'; column_method = 'average'; column_metric = 'euclidean'; transpose = False
-    if useHOPACH:
-        try:
-            from pyper import R
-            r = R(use_numpy=True)
-            print_out = r('library("hopach")')
-            if "Error" in print_out:
-                print 'Installing the R package "hopach" in Config/R'
-                print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("hopach")')
-                if "Error" in print_out: print 'unable to download the package "hopach"'; forceError
-            row_method = 'hopach'; column_method = 'hopach' ### Use HOPACH if installed
-        except Exception,e: pass
-    if size>3000:
-        row_method = 'average'
-    
     try:
         if columnMethod !=None:
             column_method = columnMethod

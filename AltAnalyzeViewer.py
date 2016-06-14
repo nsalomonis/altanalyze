@@ -1028,9 +1028,11 @@ class Main(wx.Frame):
                 x_count = x_count + 1 
             self.myGrid.AutoSize() 
             for i in range(50):
-                colsize = self.myGrid.GetColSize(i)
-                if(colsize > 200):
-                    self.myGrid.SetColSize(i, 200)
+                try:
+                    colsize = self.myGrid.GetColSize(i)
+                    if(colsize > 200):
+                        self.myGrid.SetColSize(i, 200)
+                except Exception: pass
             self.page2.Layout()                 
             
         if single_input_stream[-4:] == ".png":

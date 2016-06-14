@@ -9,8 +9,21 @@ import unique
 R_present=True
 
 try:
-    from rpy import r
-    print "\n---------Using RPY---------\n"
+    ### If file is present use this location
+    loc = unique.filepath('Config/R_location.txt')
+    s = open(loc,'r')
+    useStaticLocation=s.read()
+    #print useStaticLocation
+    #print 'Using the Config designated location'
+except Exception:
+    #print 'NOT using the Config designated location'
+    useStaticLocation = False
+    
+try:
+    forceError ### This doesn't currently work with the compiled version of AltAnalyz
+    import rpy2.robjects as robjects
+    r = robjects.r
+    print "\n---------Using RPY2---------\n"  
 except Exception:
     from pyper import *
     #print "\n---------Using PypeR---------\n"
@@ -27,10 +40,26 @@ except Exception:
                 r = R(RCMD=path,use_numpy=True)    
             else:
                 #print 'B'
-                r = R(use_numpy=True)   
+                if useStaticLocation == False or useStaticLocation=='no':
+                    print 'NOT using static location'
+                    r = R(use_numpy=True)
+                else:
+                    print 'Using static location'
+                    path = '/usr/local/bin/R'
+                    if os.path.exists(path): pass
+                    else:
+                        path = '/usr/bin/R'
+                    if os.path.exists(path):
+                        print 'Using the R path:',path
+                        r = R(RCMD=path,use_numpy=True)
+                    else:
+                        r = None
+                        R_present=False
+                        print 'R does not appear to be installed... Please install first.'
         except Exception:
             #print 'C'
-            r = R(use_numpy=True)   
+            r = R(use_numpy=True)
+
     except Exception:
         #print traceback.format_exc()
         r = None
@@ -40,12 +69,14 @@ except Exception:
 LegacyMode = True
 ### Create a Directory for R packages in the AltAnalyze program directory (in non-existant)
 r_package_path = string.replace(os.getcwd()+'/Config/R','\\','/') ### R doesn't link \\
+r_package_path = unique.filepath(r_package_path) ### Remove the AltAnalyze.app location
 try: os.mkdir(r_package_path)
 except Exception: None
 
-### Set an R-package installation path
-command = '.libPaths("'+r_package_path+'")'; r(command) ### doesn't work with %s for some reason
-#print_out = r('.libPaths()');print print_out; sys.exit()
+if R_present:
+    ### Set an R-package installation path
+    command = '.libPaths("'+r_package_path+'")'; r(command) ### doesn't work with %s for some reason
+    #print_out = r('.libPaths()');print print_out; sys.exit()
 
 def remoteMonocle(input_file,expPercent,pval,numGroups):
     #input_file="Altanalyze" 
@@ -537,7 +568,6 @@ class RScripts:
         parse_line = 'data<-read.table(%s,sep="\t",as.is=T,row.names=1,header=T)' % filename
         checklinelengths(self._file)
         print_out = r(parse_line)
-        #print parse_line
         dat = r['data']
         #print "Number of columns in input file:",len(dat)
         print_out = r('data<-as.matrix(data)')
