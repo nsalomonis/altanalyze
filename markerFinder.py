@@ -774,6 +774,7 @@ def identifyMarkers(filename,cluster_comps):
                 if 'protein_coding' not in coding_class and 'pseudogene' not in coding_class and len(description)>0:
                     if 'MT-' not in symbol and '.' not in symbol:
                         proceed = 'yes'
+            proceed = 'yes' ### Force it to anlayze all genes
             count+=1
             #if coding_class != 'protein_coding':
             #print coding_class, coding_type, proceed, probeset, symbol, species, len(gene_to_symbol),coding_db[probeset];sys.exit()
@@ -1985,7 +1986,7 @@ def importAndAverageExport(expr_input,platform,annotationDB=None,annotationHeade
 
 if __name__ == '__main__':
     Species='Mm'
-    filename = ('/Users/saljh8/Desktop/Dan_TRAF6/temp/ExpressionInput/exp.test-steady-state.txt','/Users/saljh8/Desktop/Dan_TRAF6/temp/ExpressionOutput/AVERAGE-test.txt')
+    filename = ('/Users/saljh8/Desktop/Grimes/Kallisto/ExpressionInput/exp.kallisto.txt','/Users/saljh8/Desktop/Grimes/Kallisto/ExpressionOutput/AVERAGE-kallisto.txt')
     analyzeData(filename,Species,"RNASeq","protein_coding",geneToReport=60,correlateAll=True,AdditionalParameters=None,logTransform=True)
     sys.exit()
     averageNIValues('/Users/saljh8/Desktop/LineageProfiler/AltResults/RawSpliceData/Hs/splicing-index/meta-average.txt','/Users/saljh8/Desktop/LineageProfiler/ExpressionInput/stats.meta-steady-state.txt',{});sys.exit()

@@ -106,14 +106,17 @@ def statisticallyFilterFile(input_file,output_file,threshold):
     distribution.sort()
     avg = int(statistics.avg(distribution))
     stdev = int(statistics.stdev(distribution))
+    min_exp = int(min(distribution))
     cutoff = avg - (stdev*2)
     dev = 2
-    print 'The average number of genes expressed above %s is %s, (SD is %s)' % (threshold,avg,stdev)
+    print 'The average number of genes expressed above %s is %s, (SD is %s, min is %s)' % (threshold,avg,stdev,min_exp)
     if cutoff<0:
         if (stdev-avg)>0:
             cutoff = avg - (stdev/2); dev = 0.5
         else:
             cutoff = avg - stdev; dev = 1
+    if min_exp>cutoff:
+        cutoff = avg - stdev; dev = 1
     import export
     eo = export.ExportFile(counts_file)
     eo.write('Sample\tGenes Expressed(threshold:'+str(threshold)+')\n')

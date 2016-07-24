@@ -248,6 +248,7 @@ def identifyArrayType(full_dir_list):
                     txt = line.decode(fileencoding)
                     print txt;kill"""
             else: break
+    
     array_ls = []
     for array in arrays:
         if len(array)<50: array_ls.append(array) ### Occurs with version 4 encoding (bad entries added)
@@ -6433,7 +6434,7 @@ class GeneSelectionParameters:
         else: return False
     def FeaturestoEvaluate(self): return self.featurestoEvaluate
     def RestrictBy(self):
-        if self.restrictBy == True or self.restrictBy == 'yes':
+        if self.restrictBy == True or self.restrictBy == 'yes' or self.restrictBy == 'protein_coding':
             return 'protein_coding'
         else:
             return None

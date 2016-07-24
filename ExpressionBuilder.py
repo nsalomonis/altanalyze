@@ -147,9 +147,12 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
         fold_data = string.split(data,'\t')
         try: arrayid = fold_data[0]
         except Exception: arrayid = 'UID'
-        if arrayid[0]== ' ':
-            try: arrayid = arrayid[1:] ### Cufflinks issue
-            except Exception: arrayid = ' ' ### can be the first row UID column as blank
+        if len(arrayid)>0:
+            if arrayid[0]== ' ':
+                try: arrayid = arrayid[1:] ### Cufflinks issue
+                except Exception: arrayid = ' ' ### can be the first row UID column as blank
+        else:
+            arrayid = 'UID'
         #if 'counts.' in expr_input_dir: arrayid,coordinates = string.split(arrayid,'=') ### needed for exon-level analyses only
         ### differentiate data from column headers
         if x == 1:
@@ -3905,9 +3908,9 @@ if __name__ == '__main__':
             #filterJunctionExpression(filename,minPercentPresent=0.75)
         #exportHeatmap('/Volumes/My Passport/AML-LAML/LAML1/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust-filt.txt',color_gradient='yellow_black_blue',columnMethod='hopach')
         #sys.exit()
-    convertPSIJunctionIDsToPositions('/Volumes/SEQ-DATA/Grimeslab/TopHat/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI.txt','/Users/saljh8/Documents/1-dataAnalysis/SplicingFactors/Grimes-MarkerFinder-v2.txt.txt')
+    #convertPSIJunctionIDsToPositions('/Volumes/SEQ-DATA/Grimeslab/TopHat/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI.txt','/Users/saljh8/Documents/1-dataAnalysis/SplicingFactors/Grimes-MarkerFinder-v2.txt.txt')
     #convertArrayReciprocalJunctionToCoordinates('Hs','junction','/Volumes/Time Machine Backups/dataAnalysis/SplicingFactor/Hs/hglue/Marto/AltResults/AlternativeOutput','EnsMart65','EnsMart72')
-    sys.exit()
+    #sys.exit()
     
     fold = 2
     pval = 0.05
@@ -3966,11 +3969,11 @@ if __name__ == '__main__':
                     use_downregulated_labels = False
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
-    
+
     ### Allow for import of genes to exclude (e.g., sex-associated or pseudogenes)
     try: genesToExclude = excludeGenesImport(excludeGenes)
     except Exception: genesToExclude = {}
-    
+    print analysis
     if array_type == 'RNASeq':
         gene_exp_threshold = 50
         gene_rpkm_threshold = 3
@@ -3989,11 +3992,12 @@ if __name__ == '__main__':
         ### but order by MarkerFinder correlations and groups
         orderHeatmapByMarkerFinderOrder(directory)
     if analysis == 'unbiased':
+        #python ExpressionBuilder.py --species Hs --platform RNASeq --i "/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/" --a unbiased --additional "/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/counts.GBM_scRNA-Seq.txt"
         import RNASeq
         #export_dir = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/Lattice/Full/AltResults/Unbiased/DataPlots/Clustering-myeloblast-hierarchical_euclidean_euclidean.txt'
         #export_dir = '/Volumes/SEQ-DATA/SingleCell-Churko/AltResults/Unbiased/DataPlots/Clustering-CM-hierarchical_euclidean_euclidean.txt'
         #calculateNormalizedIntensities(directory, species, array_type, analysis_type = 'raw', expFile = additional)
-        var = unbiasedComparisonSpliceProfiles(directory,species,array_type,expFile=additional,min_events=4,med_events=9)
+        var = unbiasedComparisonSpliceProfiles(directory,species,array_type,expFile=additional,min_events=0,med_events=0)
         #export_dir, exported_IDs = var
         #print export_dir
         #RNASeq.correlateClusteredGenes(export_dir)

@@ -1734,12 +1734,12 @@ class AlignExonsAndJunctionsToEnsembl:
     def countsDir(self):
         return self.countsFile
     
-def calculateRPKMsFromGeneCounts(filename,species):
+def calculateRPKMsFromGeneCounts(filename,species,AdjustExpression):
     """ Manual way of calculating gene RPKMs from gene counts only """
     gene_lengths = getGeneExonLengths(species)
-    fastRPKMCalculate(filename,GeneLengths=gene_lengths)
+    fastRPKMCalculate(filename,GeneLengths=gene_lengths,AdjustExpression=AdjustExpression)
     
-def fastRPKMCalculate(counts_file,GeneLengths=None):
+def fastRPKMCalculate(counts_file,GeneLengths=None,AdjustExpression=True):
     export_path = string.replace(counts_file,'counts.','exp.')
     export_data = export.ExportFile(export_path) ### Write this new file
     fn=filepath(counts_file); header=True
@@ -1769,6 +1769,10 @@ def fastRPKMCalculate(counts_file,GeneLengths=None):
         jatr=Average(junction_sum_array) # Average of the total maped reads
         eatr=Average(exon_sum_array) # Average of the total maped reads
     
+    if AdjustExpression:
+        offset = 1
+    else:
+        offset = 0
     header=True
     c=math.pow(10.0,9.0)
     for line in open(fn,'rU').xreadlines():
@@ -1785,10 +1789,11 @@ def fastRPKMCalculate(counts_file,GeneLengths=None):
                 l=abs(int(coordinates[1])-int(coordinates[0])) ### read-length  
             except Exception: ### Manual way of calculating gene RPKMs from gene counts only
                 exon_id = t[0]
-                l = GeneLengths[exon_id]
-                        
-            try: read_counts = map(lambda x: int(x)+1, t[1:])
-            except Exception: read_counts = map(lambda x: int(float(x))+1, t[1:])
+                try: l = GeneLengths[exon_id]
+                except Exception: continue #Occurs when Ensembl genes supplied from an external analysis 
+                   
+            try: read_counts = map(lambda x: int(x)+offset, t[1:])
+            except Exception: read_counts = map(lambda x: int(float(x))+offset, t[1:])
             if '-' in exon_id:
                 count_stats = zip(read_counts,junction_sum_array)
                 atr = jatr
@@ -2332,13 +2337,15 @@ def combineDetectedExons(unmapped_exon_db,align_exon_db,novel_exon_db):
                     if x == 2: null=[]; #print 'SOME EXONS FOUND WITH ONLY ONE ALIGNING POSITION...',key,ji.GeneID(),ed1.ExonRegionID(),e1,e2
                 try: red1 = ed1.ExonRegionData(); red2 = ed2.ExonRegionData()
                 except Exception:
+                    """
                     print [ji.GeneID(), ji.Chr(), key]
                     print e1, e2
                     try: print ed1.ExonRegionData()
                     except Exception: 'ed1 failed'
                     try: print ed2.ExonRegionData()
                     except Exception: 'ed2 failed'
-                    kill
+                    """
+                    continue
                 region1 = ed1.ExonRegionID(); region2 = ed2.ExonRegionID()
                 #print region1,region2,ji.GeneID(),ji.Chr(),ji.Strand()
              
@@ -2767,6 +2774,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     if removeOutliers:
         ### Remove samples with low relative number of genes expressed
         try:
+            import shutil
             print '***Removing outlier samples***'
             import sampleIndexSelection
             output_file = expFile[:-4]+'-OutliersRemoved.txt'
@@ -2778,9 +2786,13 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
                 groups_filtered_file = groups_file[:-4]+'-OutliersRemoved.txt'
                 comps_file = string.replace(groups_file,'groups.','comps.')
                 comps_filtered_file = string.replace(groups_filtered_file,'groups.','comps.')
+                counts_file = string.replace(expFile,'exp.','counts.')
+                counts_filtered_file = string.replace(output_file,'exp.','counts.')
                 try: os.rename(groups_file,groups_filtered_file) ### if present copy over
                 except Exception: pass
                 try: os.rename(comps_file,comps_filtered_file) ### if present copy over
+                except Exception: pass
+                try: shutil.copyfile(counts_file,counts_filtered_file) ### if present copy over
                 except Exception: pass
             expFile = output_file
             print ''
@@ -2801,7 +2813,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     print 'Genes filtered by counts:',len(expressed_uids_counts)
     print 'Genes filtered by expression:',len(expressed_uids_rpkm),len(expressed_uids)
     #expressed_uids = filterByProteinAnnotation(species,expressed_uids)
-    print len(expressed_uids), 'expressed genes by RPKM (%d) and counts (%d)' % (rpkm_threshold,exp_threshold)
+    print len(expressed_uids), 'expressed genes by RPKM/TPM (%d) and counts (%d)' % (rpkm_threshold,exp_threshold)
     #"""
 
     import OBO_import; import ExpressionBuilder
@@ -2812,6 +2824,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         restrictBy = None
         biological_categories={}
         print 'Missing annotation file in:','AltDatabase/uniprot/'+species+'/custom_annotations.txt !!!!!'
+
     if restrictBy !=None:
         genes = biological_categories['protein_coding']
         genes_temp=dict(genes)
@@ -4845,8 +4858,7 @@ def getFASTAFile(species):
 
 if __name__ == '__main__':
     
-    
-    species='Mm'; platform = "3'array"; vendor = "3'array"
+    species='Hs'; platform = "3'array"; vendor = "3'array"
     import UI; import multiprocessing as mlp
     gsp = UI.GeneSelectionParameters(species,platform,vendor)
     gsp.setGeneSet('None Selected')
@@ -4854,16 +4866,15 @@ if __name__ == '__main__':
     gsp.setGeneSelection('')
     gsp.setJustShowTheseIDs('')
     gsp.setNormalize('median')
-    gsp.setSampleDiscoveryParameters(1,1,4,4,
-        True,'gene','p2rotein_coding',True,'cosine','hopach',0.4)
+    gsp.setSampleDiscoveryParameters(1,50,4,4,
+        True,'gene','protein_coding',False,'cosine','hopach',0.4)
     #expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/test/Original/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
-    expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/test/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
-    #singleCellRNASeqWorkflow('Mm', "3'array", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
+    expFile = '/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/exp.GBM_scRNA-Seq-steady-state.txt'
+    #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
-    
-    filename = '/Volumes/SEQ-DATA/Grimeslab/TopHat/ExpressionInput/counts.myeloid-wt.txt'
+    filename = '/Users/saljh8/Downloads/counts.GSE81682_HTSeq.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    #calculateRPKMsFromGeneCounts(filename,'Mm');sys.exit()
+    calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
     #runKallisto('Mm','test','C:/Users/Nathan Salomonis/Desktop/testKallistoData','C:/Users/Nathan Salomonis/Desktop/testKallistoData');sys.exit()
     import multiprocessing as mlp

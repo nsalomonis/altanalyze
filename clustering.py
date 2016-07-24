@@ -798,6 +798,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'k', 'w','w','w'])
             #cmap_c = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
+        #elif len(unique.unique(ind2))==10:  cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'k'])
         elif len(unique.unique(ind2))==11: 
             cmap_c = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
         elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
@@ -863,6 +864,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
                 #cmap_d = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'k', 'w','w','w'])
                 #cmap_d = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
+            #elif len(unique.unique(ind2))==10: cmap_d = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'k'])
             elif len(unique.unique(ind2))==11:
                 #Eryth Gfi1 Gran HSCP-1 HSCP-2 IG2 MDP Meg Mono Multi-Lin Myelo
                 cmap_d = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
@@ -1197,17 +1199,20 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     cluster_db={}
     export_lines = []
     for row in xt:
-        id = new_row_header[i]
-        original_id = str(id)
-        if sy == '$En:Sy':
-            cluster = 'cluster-'+string.split(id,':')[0]
-        elif sy == 'S' and ':' in id:
-            cluster = 'cluster-'+string.split(id,':')[0]
-        elif sy == 'Sy' and ':' in id:
-            cluster = 'cluster-'+string.split(id,':')[0]
-        else:
-            cluster = 'c'+str(ind1[i])
-
+        try:
+            id = new_row_header[i]
+            original_id = str(id)
+            if sy == '$En:Sy':
+                cluster = 'cluster-'+string.split(id,':')[0]
+            elif sy == 'S' and ':' in id:
+                cluster = 'cluster-'+string.split(id,':')[0]
+            elif sy == 'Sy' and ':' in id:
+                cluster = 'cluster-'+string.split(id,':')[0]
+            else:
+                cluster = 'c'+str(ind1[i])
+        except Exception:
+            pass
+    
         try:
             if 'MarkerGenes' in originalFilename:
                 cluster = 'cluster-'+string.split(id,':')[0]
@@ -2048,6 +2053,11 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     label1 = 'PC%i (%2.1f%%)' %(pcA+1, fracs[0]*100)
     label2 = 'PC%i (%2.1f%%)' %(pcB+1, fracs[1]*100)
 
+    #http://docs.scipy.org/doc/scipy/reference/sparse.html
+    #scipy.sparse.linalg.svds - sparse svd
+    #idx = numpy.argsort(vt[0,:])
+    #print idx;sys.exit() # Use this as your cell order or use a density analysis to get groups
+    
     ####  FROM LARSSON ########
     #100 most correlated Genes with PC1
     #print vt
@@ -4897,8 +4907,76 @@ def getBlockExonPositions():
     
     ea.close()
     
+def combineVariants(fn):
+    firstRow=True
+    filename = fn[:-4]+'.gene-level.txt'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    lines=0
+    gene_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        gene = t[9]
+        if lines == 0:
+            header = ['UID']+t[16:]
+            header = string.join(header,'\t')+'\n'
+            ea.write(header)
+            lines+=1
+        else:
+            var_calls = map(float,t[16:])
+            if gene in gene_db:
+                count_sum_array = gene_db[gene]
+                count_sum_array = [sum(value) for value in zip(*[count_sum_array,var_calls])]
+                gene_db[gene] = count_sum_array
+            else:
+                gene_db[gene] = var_calls
+    
+    for gene in gene_db:
+        var_calls = gene_db[gene]
+        var_calls2=[]
+        for i in var_calls:
+            if i==0: var_calls2.append('0')
+            else: var_calls2.append('1')
+        ea.write(gene+'\t'+string.join(var_calls2,'\t')+'\n')
+    ea.close()
+
+    
+def compareFusions(fn):
+    firstRow=True
+    filename = fn[:-4]+'.matrix.txt'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    lines=0
+    fusion_db={}
+    sample_list=[]
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        sample, fusion = string.split(data,'\t')
+        try: fusion_db[fusion].append(sample)
+        except Exception: fusion_db[fusion] = [sample]
+        if sample not in sample_list: sample_list.append(sample)
+    
+    fusion_db2=[]
+    for fusion in fusion_db:
+        samples = fusion_db[fusion]
+        samples2=[]
+        for s in sample_list:
+            if s in samples: samples2.append('1')
+            else: samples2.append('0')
+        fusion_db[fusion] = samples2
+        
+    ea.write(string.join(['Fusion']+sample_list,'\t')+'\n')
+    for fusion in fusion_db:
+        print [fusion]
+        ea.write(fusion+'\t'+string.join(fusion_db[fusion],'\t')+'\n')
+    ea.close()
+    
 if __name__ == '__main__':
-    getBlockExonPositions();sys.exit()
+    compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
+    #combineVariants('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_known_variants.txt');sys.exit()
     #customClean('/Users/saljh8/Desktop/demo/Amit/ExpressionInput/exp.GSE72857_umitab-cleaned-output.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/GEC14078/MergedFiles.txt'
