@@ -7768,7 +7768,8 @@ def commandLineRun():
                 fl.setCELFileDir(cel_file_dir); fl.setOutputDir(output_dir)
             fl = exp_file_location_db[dataset]; fl.setRootDir(parent_dir)
             
-            apt_location = fl.APTLocation()
+            try: apt_location = fl.APTLocation()
+            except Exception: apt_location = ''
             root_dir = fl.RootDir(); fl.setExonBedBuildStatus(build_exon_bedfile)
             fl.setMarkerFinder(marker_finder)
             fl.setFeatureNormalization(normalize_feature_exp)

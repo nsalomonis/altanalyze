@@ -209,7 +209,7 @@ def runPyCombat(fl):
 ########  End AltAnalyze Functions  ######## 
 
 if __name__ == "__main__":
-    expfile = '/Volumes/My Passport/dataAnalysis/PCBC_Sep2013/miRNA/AltAnalyze/ExpressionInput/exp.allMIRS_miRseq_RAW_and_log2.txt'
+    expfile = '/Users/saljh8/Desktop/dataAnalysis/Heping/4-runs/ExpressionInput/exp.singh-results-317.txt'
     groupsfile = string.replace(expfile,'exp.','groups.')
     import UI
     fl = UI.ExpressionFileLocationData(expfile,'',groupsfile,'')

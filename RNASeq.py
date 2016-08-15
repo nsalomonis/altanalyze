@@ -1083,6 +1083,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name,Mu
     exonFile = p.exonFile()
     junctionFile = p.junctionFile()
     junctionCompFile = p.junctionCompFile()
+    novelJunctionAnnotations = p.novelJunctionAnnotations()
     
     #chromosomes = ['chr1']
     #p('chrY'); p('chr1'); p('chr2')
@@ -1165,6 +1166,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name,Mu
     catFiles(junctionFile,'junctions')
     catFiles(exonFile,'exons')
     catFiles(junctionCompFile,'comps')
+    catFiles(novelJunctionAnnotations,'denovo')
     
     if normalize_feature_exp == 'RPKM':
         fastRPKMCalculate(countsFile)
@@ -1239,6 +1241,10 @@ class AlignExonsAndJunctionsToEnsembl:
     def junctionCompFile(self):
         junction_comp_file = self.root_dir+'AltDatabase/'+self.species+'/RNASeq/'+self.species + '_junction_comps_updated.txt'
         return junction_comp_file
+    
+    def novelJunctionAnnotations(self):
+        junction_annotation_file = self.root_dir+'AltDatabase/ensembl/'+self.species+'/'+self.species + '_alternative_junctions_de-novo.txt'
+        return junction_annotation_file
     
     def AnalysisMode(self): return self.analysisMode
     
@@ -3454,8 +3460,9 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
     column_metric = 'cosine'
     #if LegacyMode: column_method = 'hopach'
 
+    cellCycleRemove1=[]; cellCycleRemove2=[]
     try:
-        newDriverGenes1 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
+        newDriverGenes1, cellCycleRemove1 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
         newDriverGenes1_str = 'Guide1 '+string.join(newDriverGenes1.keys(),' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes1_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
@@ -3463,14 +3470,19 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         
-        newDriverGenes2 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
+        newDriverGenes2, cellCycleRemove2 = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',stringency='strict',numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,ColumnMethod=column_method)
         newDriverGenes2_str = 'Guide2 '+string.join(newDriverGenes2.keys(),' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes2_str) ### force correlation to these targetGenes
         parameters.setGeneSet('None Selected') ### silence this
         parameters.setPathwaySelect('None Selected')
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
         newDriverGenes3 = unique.unique(newDriverGenes1.keys()+newDriverGenes2.keys())
-        newDriverGenes3_str = 'Guide3 '+string.join(newDriverGenes3,' ')+' amplify positive'
+        cellCycleRemove=cellCycleRemove1+cellCycleRemove2 ### It is possible for a cell cycle guide-gene to be reported in both guide1 and 2, but only as cell cycle associated in one of them
+        newDriverGenes3_filtered=[]
+        for i in newDriverGenes3:
+            if not i in cellCycleRemove:
+                newDriverGenes3_filtered.append(i)
+        newDriverGenes3_str = 'Guide3 '+string.join(newDriverGenes3_filtered,' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes3_str)
         try: parameters.setClusterGOElite('BioMarkers')
         except Exception: pass
@@ -3641,7 +3653,7 @@ def writeFilteredFile(results_file,platform,headers,gene_to_symbol_db,expressed_
 def remoteGetDriverGenes(Species,platform,results_file,numSamplesClustered=3,excludeCellCycle=False,ColumnMethod='hopach'):
     global species
     species = Species
-    guideGenes = correlateClusteredGenes(platform,results_file,stringency='strict',excludeCellCycle=excludeCellCycle,ColumnMethod=ColumnMethod)
+    guideGenes, cellCycleRemove = correlateClusteredGenes(platform,results_file,stringency='strict',excludeCellCycle=excludeCellCycle,ColumnMethod=ColumnMethod)
     guideGenes = string.join(guideGenes.keys(),' ')+' amplify positive'
     return guideGenes
     
@@ -3676,15 +3688,15 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
         for i in medVarHighComplexity: combined_results[i]=[]
         for i in highVarLowComplexity: combined_results[i]=[]
         for i in highVarHighComplexity: combined_results[i]=[]
-        guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
+        guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
         if guideGenes == 'TooFewBlocks':
-            guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
+            guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
             if guideGenes == 'TooFewBlocks':
-                guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.2,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,forceOutput=True)
+                guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.2,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,forceOutput=True)
         if len(guideGenes)>200:
             print 'Too many drivers (>200)... performing more stringent filtering...'
-            guideGenes = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,restrictTFs=True)
-        return guideGenes
+            guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,restrictTFs=True)
+        return guideGenes, addition_cell_cycle_associated
     #B4galt6, Prom1
     for tuple_ls in combined_results:
         data_length = len(tuple_ls);break
@@ -3724,7 +3736,8 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
         
 def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=5,filter=False,geneFilter=None,numSamplesClustered=3,excludeCellCycle=False,restrictTFs=False,forceOutput=False):
     import clustering
-   
+    addition_cell_cycle_associated=[]
+    
     if geneFilter != None:
         geneFilter_db={}
         for i in geneFilter:
@@ -3792,10 +3805,9 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
             block_db[block] = [i] ### store the row index
         i+=1
 
-
     if hits_to_report == 1:
         if len(block_db)<4 and forceOutput==False:
-            return 'TooFewBlocks'
+            return 'TooFewBlocks', None
         guideGenes={}
         ### Select the top TFs or non-TFs with the most gene correlations
         for b in block_db:
@@ -3829,7 +3841,6 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
             #print 'drivers',len(guideGenes)
             guideCorrelated = numpyCorrelationMatrixGeneAlt(matrix,row_header,guideGenes,gene_to_symbol_db,rho_cutoff)
             guideGenes={}
-            addition_cell_cycle_associated=[]
             for gene in guideCorrelated:
                 cell_cycle_count=[]
                 for corr_gene in guideCorrelated[gene]:
@@ -3843,7 +3854,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                     guideGenes[gene]=[]
             print 'additional Cell Cycle guide genes removed:',addition_cell_cycle_associated
         print len(guideGenes), 'novel guide genes discovered:', guideGenes.keys()
-        return guideGenes
+        return guideGenes,addition_cell_cycle_associated
         
     def greaterThan(x,results_file,numSamplesClustered):
         if 'alt_junctions' not in results_file and Platform == None:

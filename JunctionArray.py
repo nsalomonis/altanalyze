@@ -1642,7 +1642,7 @@ def inferJunctionComps(species,array_type,searchChr=None):
     if array_type != 'RNASeq':               
         print count, 'probed junctions being compared to identify putative reciprocal junction comparisons'
 
-    critical_exon_db, critical_gene_junction_db = EnsemblImport.compareJunctions(species,putative_as_junction_db,{})
+    critical_exon_db, critical_gene_junction_db = EnsemblImport.compareJunctions(species,putative_as_junction_db,{},rootdir=root_dir, searchChr=searchChr)
 
     if array_type != 'RNASeq':
         print len(critical_exon_db),'genes with alternative reciprocal junctions pairs found'

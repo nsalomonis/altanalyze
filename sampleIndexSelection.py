@@ -18,7 +18,11 @@ def filterFile(input_file,output_file,filter_names):
     firstLine = True
     for line in open(input_file,'rU').xreadlines():
         data = line.rstrip()
-        values = string.split(data,'\t')
+        data = string.replace(data,'"','')
+        if '.csv' in input_file:
+            values = string.split(data,',')
+        else:
+            values = string.split(data,'\t')
         if firstLine:
             if data[0]!='#':
                 sample_index_list = map(lambda x: values.index(x), filter_names)
@@ -80,7 +84,10 @@ def statisticallyFilterFile(input_file,output_file,threshold):
     count_sum_array=[]
     for line in open(input_file,'rU').xreadlines():
         data = line.rstrip()
-        t = string.split(data,'\t')
+        if '.csv' in input_file:
+            t = string.split(data,',')
+        else:
+            t = string.split(data,'\t')
         if header:
             samples = t[1:]
             header=False
@@ -167,6 +174,7 @@ def combineDropSeq(input_dir):
 
 if __name__ == '__main__':
     ################  Comand-line arguments ################
+    #statisticallyFilterFile('a','b',1)
     import getopt
     filter_rows=False
     filter_file=None

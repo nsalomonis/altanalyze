@@ -516,19 +516,23 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if 'driver' in justShowTheseIDs or 'guide' in justShowTheseIDs: proceed = False
         except Exception: pass
         if proceed:
-            cluster_elite_terms,top_genes = remoteGOElite(elite_dir,SystemCode=SystemCode)
-            if cluster_elite_terms['label-size']>40: ge_fontsize = 9.5
-    except Exception: pass  #print traceback.format_exc()
+            try:
+                cluster_elite_terms,top_genes = remoteGOElite(elite_dir,SystemCode=SystemCode)
+                if cluster_elite_terms['label-size']>40: ge_fontsize = 9.5
+            except Exception:
+                pass
 
-    try:
-        elite_dirs = string.split(elite_dir,'GO-Elite')
-        old_elite_dir = elite_dirs[0]+'GO-Elite'+elite_dirs[-1] ### There are actually GO-Elite/GO-Elite directories for the already clustered
-        old_elite_dir = string.replace(old_elite_dir,'ICGS/','')
-        if len(PriorColumnClusters)>0 and len(PriorRowClusters)>0 and skipClustering:
-            cluster_elite_terms,top_genes = importGOEliteResults(old_elite_dir)
-    except Exception,e:
-        #print traceback.format_exc()
-        pass
+    except Exception: pass  #print traceback.format_exc()
+    if len(cluster_elite_terms)<1:
+        try:
+            elite_dirs = string.split(elite_dir,'GO-Elite')
+            old_elite_dir = elite_dirs[0]+'GO-Elite'+elite_dirs[-1] ### There are actually GO-Elite/GO-Elite directories for the already clustered
+            old_elite_dir = string.replace(old_elite_dir,'ICGS/','')
+            if len(PriorColumnClusters)>0 and len(PriorRowClusters)>0 and skipClustering:
+                cluster_elite_terms,top_genes = importGOEliteResults(old_elite_dir)
+        except Exception,e:
+            #print traceback.format_exc()
+            pass
     try:
         if len(justShowTheseIDs)<1 and len(top_genes) > 0 and column_fontsize < 9:
             column_fontsize = 10
@@ -632,7 +636,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 else: color = 'black'
             except Exception: pass
             try:
-                if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<5 and feature_id in top_genes):
+                if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in top_genes):
                     axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                     #axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                 elif ' ' in row_header[new_index]:
@@ -1009,7 +1013,9 @@ def remoteGOElite(elite_dir,SystemCode = None):
     
 def importGOEliteResults(elite_dir):
     global eliteGeneSet
-    pruned_results = elite_dir+'/GO-Elite_results/pruned-results_z-score_elite.txt'
+    pruned_results = elite_dir+'/GO-Elite_results/CompleteResults/ORA_pruned/pruned-results_z-score_elite.txt' ### This is the exception (not moved)
+    if os.path.isfile(pruned_results) == False:
+        pruned_results = elite_dir+'/GO-Elite_results/pruned-results_z-score_elite.txt'
     firstLine=True
     cluster_elite_terms={}
     all_term_length=[0]
@@ -1541,6 +1547,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                 except Exception:
                     #print traceback.format_exc()
                     pass
+
             group_db, column_header = assignGroupColors(t[1:])
             x=1
         elif 'column_clusters-flat' in t:
@@ -1615,7 +1622,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                         matrix.append(s)
                         row_header.append(gene)
                 x+=1
-
+    
     if inputMax>100: ### Thus, not log values
         print 'Converting values to log2...'
         matrix=[]
@@ -1656,7 +1663,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
     ### Add groups for column pre-clustered samples if there
 
     group_db2, row_header2 = assignGroupColors(list(row_header)) ### row_header gets sorted in this function and will get permenantly screwed up if not mutated
-
+    
     #if '.cdt' in filename: matrix.reverse(); row_header.reverse()
     for i in group_db2:
         if i not in group_db: group_db[i] = group_db2[i]
@@ -1794,7 +1801,9 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
                 i+=1
             group_db, column_header = assignGroupColors(newColumnHeader)    
-    except Exception: group_db={}
+    except Exception,e:
+        #print e
+        group_db={}
 
     from sklearn.manifold import TSNE
     X=matrix.T
@@ -1850,8 +1859,11 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             elif numberGenesPresent==7:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+            elif numberGenesPresent==8:
+                #cm = matplotlib.colors.ListedColormap(['g', 'b', 'o', 'r', 'y','p', 'm', '#F5A3D7'])
+                cm = matplotlib.colors.ListedColormap(['#DC2342', '#0B9B48', '#FDDF5E', '#E0B724', '#5D82C1', '#F79020', '#4CB1E4', '#983894'])
             else:
-                cm = pylab.cm.get_cmap('gist_rainbow')
+                cm = pylab.cm.gist_rainbow
         if genePresent:
             dataset_name+='-'+colorByGene
             group_db={}
@@ -1914,7 +1926,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                                     gene = 'Null'
                                 color_label[0] = gene
                             group_db[sample] = color_label
-                except Exception:
+                except Exception, e:
                     print [gene], 'not found in rows...'
                     #print traceback.format_exc()
                 k+=1
@@ -2016,6 +2028,20 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     print "Performing Principal Component Analysis..."
     from numpy import mean,cov,double,cumsum,dot,linalg,array,rank
 
+    try: prior_clusters = priorColumnClusters
+    except Exception: prior_clusters=[]
+    try:
+        if len(prior_clusters)>0 and len(group_db)==0:
+            newColumnHeader=[]
+            i=0
+            for sample_name in column_header:
+                newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
+                i+=1
+            group_db, column_header = assignGroupColors(newColumnHeader)    
+    except Exception,e:
+        #print e
+        group_db={}
+        
     pcA-=1
     pcB-=1
     
@@ -2261,7 +2287,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         except Exception:
             color = 'r'; label=None
         try: ax.plot(scores[pcA][i],scores[1][i],color=color,marker='o',markersize=marker_size,label=label)
-        except Exception: print i, len(scores[pcB]);kill
+        except Exception, e: print e; print i, len(scores[pcB]);kill
         if showLabels:
             try: sample_name = '   '+string.split(sample_name,':')[1]
             except Exception: pass
@@ -2378,7 +2404,6 @@ def plot_samples(S, axis_list=None):
     pylab.xlabel('x')
     pylab.ylabel('y')
     
-
 def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
           display=False, showLabels=True, algorithm='SVD',geneSetName=None,
           species=None,colorByGene=None):
@@ -2388,6 +2413,20 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
     start = time.time()
     #M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
     
+    try: prior_clusters = priorColumnClusters
+    except Exception: prior_clusters=[]
+    try:
+        if len(prior_clusters)>0 and len(group_db)==0:
+            newColumnHeader=[]
+            i=0
+            for sample_name in column_header:
+                newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
+                i+=1
+            group_db, column_header = assignGroupColors(newColumnHeader)    
+    except Exception,e:
+        #print e
+        group_db={}
+        
     if algorithm == 'SVD': use_svd = True
     else: use_svd = False
     Mdif = matrix/matrix.std()
@@ -3001,7 +3040,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     try:
         if len(priorColumnClusters)>0 and priorRowClusters>0 and row_method==None and column_method == None:
             try: justShowTheseIDs = importPriorDrivers(inputFilename)
-            except Exception: justShowTheseIDs=[]
+            except Exception: pass #justShowTheseIDs=[]
     except Exception:
         #print traceback.format_exc()
         pass
@@ -3111,7 +3150,8 @@ def exportTargetGeneList(targetGene,inputFilename):
     targetGenes = string.split(targetGene,' ')
     for gene in targetGenes:
         if gene not in exclude:
-            eo.write(gene+'\n')
+            try: eo.write(gene+'\n')
+            except Exception: print 'Error export out gene (bad ascii):', [gene]
     eo.close()
     
 def debugPylab():

@@ -5164,6 +5164,29 @@ def getUserParameters(run_parameter,Multi=None):
                     else:
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
+
+            if additional_analyses == 'MarkerFinder Analysis':
+                selected_parameters.append('MarkerFinder Analysis')
+                status = 'repeat'
+                while status == 'repeat':
+                    root = Tk()
+                    root.title('AltAnalyze: Perform MarkerFinder Analysis from the Input in ExpressionInput')
+                    gu = GUI(root,option_db,option_list['MarkerFinder'],'')
+                    input_exp_file = gu.Results()['input_markerfinder_file']
+                    genes_to_output = gu.Results()['compendiumPlatform']
+                    if len(geneModel_file) == 0: geneModel_file = None
+                    if len(modelDiscovery) == 0: modelDiscovery = None
+                    if len(input_exp_file)>0:
+                        analysis = 'runLineageProfiler'
+                        fl = ExpressionFileLocationData('','','','') ### Create this object to store additional parameters for LineageProfiler
+                        fl.setCompendiumType(compendiumType)
+                        fl.setCompendiumPlatform(compendiumPlatform)
+                        values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file, modelDiscovery
+                        StatusWindow(values,analysis) ### display an window with download status
+                        AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                    else:
+                        print_out = "No input expression file selected."
+                        IndicatorWindow(print_out,'Continue')
             
         if 'CEL files' in run_from_scratch or 'RNA-seq reads' in run_from_scratch or 'Feature Extraction' in run_from_scratch:
             """Designate CEL, Agilent or BED file directory, Dataset Name and Output Directory"""
@@ -6143,12 +6166,15 @@ def getUserParameters(run_parameter,Multi=None):
     except ValueError: gene_expression_cutoff = gene_expression_cutoff    
 
     ### Find the current verison of APT (if user deletes location in Config file) and set APT file locations
-    apt_location = getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS)
+    
+    try: apt_location = getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS)
+    except Exception: pass
 
     ### Set the primary parent directory for ExpressionBuilder and AltAnalyze (one level above the ExpressionInput directory, if present)
     for dataset in exp_file_location_db:
         fl = exp_file_location_db[dataset_name]
-        fl.setAPTLocation(apt_location)
+        try: fl.setAPTLocation(apt_location)
+        except Exception: pass
         if run_from_scratch == 'Process CEL files' or 'Feature Extraction' in run_from_scratch:
             fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setXHybRemoval(remove_xhyb)
             fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)

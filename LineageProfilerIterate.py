@@ -275,6 +275,17 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             
     gene_expression_db, sample_headers = importGeneExpressionValuesSimple(exp_input,translation_db)
     
+    ### Make sure each sample ID is unique
+    samples_added=[]; i=1
+    ### Organize sample expression, with the same gene order as the tissue expression set
+    for s in sample_headers:
+        if s in samples_added:
+            samples_added.append(s+"."+str(i)) ### Ensure only unique sample IDs exist
+            i+=1
+        else:
+            samples_added.append(s)
+    sample_headers = samples_added
+    
     pruneTissueSpecific=False
     for gene in tissue_specific_db:
         if gene not in gene_expression_db:
@@ -664,7 +675,7 @@ def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,t
         if len(expession_subset)!=len(classifiers): f+=1
         #if modelSize=='optimize': print len(expession_subset), len(classifiers);sys.exit()
         if (len(expession_subset) != len(classifiers)) and  modelSize=='optimize':
-            print "Please provide a reference set of equal length or smaller to the input analysis set"; sys.exit()
+            print "Please provide a reference set of equal length or smaller to the input analysis set"; kill
         #print len(expession_subset), len(classifiers);sys.exit()
         if len(expession_subset)==len(classifiers): ### Sometimes a gene or two are missing from one set
             s+=1
@@ -1161,14 +1172,14 @@ def analyzeTissueSpecificExpressionPatterns(tissue_specific_db,expession_subset,
             
         except Exception: null=[] ### Gene is not present in the input dataset
 
-    ### Organize sample expression, with the same gene order as the tissue expression set
-    sample_exp_db={}
+    sample_exp_db={}; 
     for (index,exp_vals) in expession_subset:
         i=0
         for f in exp_vals:
+            s = sampleHeaders[i]
             ### The order of the tissue specific expression profiles is based on the import gene order
-            try: sample_exp_db[sample_headers[i]].append(f)
-            except Exception: sample_exp_db[sample_headers[i]] = [f]
+            try: sample_exp_db[s].append(f)
+            except Exception: sample_exp_db[s] = [f]
             i+=1
 
     if correlate_by_order == 'yes':
@@ -1413,7 +1424,8 @@ def PearsonCorrelationAnalysis(sample_exp_db,tissue_exp_db):
                 ### p-value is likely useful to report (not supreemly accurate but likely sufficient)
                 if len(tissue_expression_list) != len(sample_expression_list):
                     print len(tissue_expression_list), len(sample_expression_list)
-                    print "Program Error!!! The length of the input expression list does not match the reference expression list";sys.exit()
+                    print "Program Error!!! The length of the input expression list does not match the reference expression list (could indicate duplicate sample names)"
+                    pass
                 rho,p = stats.pearsonr(tissue_expression_list,sample_expression_list)
                 #print rho,p
                 #rho,p = stats.spearmanr(tissue_expression_list,sample_expression_list)

@@ -697,8 +697,7 @@ def getEnsExonStructureData(species,data_type):
     global transcript_exon_db; transcript_exon_db={}
     global initial_junction_db; initial_junction_db = {}; global too_short; too_short={}
     global ensembl_annotations; ensembl_annotations={}; global ensembl_gene_coordinates; ensembl_gene_coordinates = {}
-
-    if data_type == 'mRNA':
+    if data_type == 'mRNA' or data_type == 'gene':
         importEnsExonStructureData(filename2,species,data2process)
         importEnsExonStructureData(filename1,species,data2process)
     elif data_type == 'ncRNA':  ###Builds database based on a mix of Ensembl, GenBank and UID ncRNA IDs
@@ -1750,15 +1749,20 @@ def reformatJunctions(exons,type):
     else: exons2 = string.join(exons2,'|')
     return exons2
     
-def compareJunctions(species,putative_as_junction_db,exon_regions):
+def compareJunctions(species,putative_as_junction_db,exon_regions,rootdir=None,searchChr=None):
     ### Add polyA site information and mutually-exclusive splicing site
-    if len(exon_regions)==0: export_annotation = '_de-novo'
-    else: export_annotation = ''
-    alt_junction_export = 'AltDatabase/ensembl/'+species+'/'+species+'_alternative_junctions'+export_annotation+'.txt'
+    if len(exon_regions)==0:
+        export_annotation = '_de-novo'
+        alt_junction_export = rootdir+'/AltDatabase/ensembl/'+species+'/denovo/'+species+'_alternative_junctions'+export_annotation+'.'+searchChr+'.txt'
+        import export
+        data = export.ExportFile(alt_junction_export)
+    else:
+        export_annotation = ''
+        alt_junction_export = 'AltDatabase/ensembl/'+species+'/'+species+'_alternative_junctions'+export_annotation+'.txt'
     if export_annotation != '_de-novo':
         print 'Writing the file:',alt_junction_export
         print len(putative_as_junction_db),'genes being examined for AS/alt-promoters in Ensembl'
-    fn=filepath(alt_junction_export); data = open(fn,'w')
+        fn=filepath(alt_junction_export); data = open(fn,'w')
     title = ['gene','critical-exon-id','junction1','junction2']
     title = string.join(title,'\t')+'\n'; data.write(title)
     

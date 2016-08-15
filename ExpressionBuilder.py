@@ -296,7 +296,7 @@ def simplerGroupImport(group_dir):
         data = cleanUpLine(line)
         try: sample_filename,group_number,group_name = string.split(data,'\t')
         except Exception:
-            print string.split(data,'\t')
+            print string.split(data,'\t'), 'more than 3 columns present in groups file'
             kill
         sample_group_db[sample_filename] = group_name
     return sample_group_db
@@ -2453,7 +2453,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
         i=0
         indexes=[]
         for e in events:
-            if e>4: indexes.append(i) ### minimum expression value
+            if e>min_exp_thresh: indexes.append(i) ### minimum expression value (changed from 5 to 10 8/5/2016)
             i+=1
         return indexes
     
