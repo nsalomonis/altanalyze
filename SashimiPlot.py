@@ -316,9 +316,13 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                                 initial_group_psi_values[group].sort()
 				if len(groups)>3:
 				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:4])
+				else:
+				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:5])
                                 group_psi_values[group]=filtered_group_indexes
-                    update_plot_settings(bamdir,group_psi_values,sample_headers)
-            
+                    try: update_plot_settings(bamdir,group_psi_values,sample_headers)
+		    except Exception:
+			print 'Cannot update the settings file. Likely permissions issue.'
+
                     if 'PSI' in filename:
                         try: formatted_splice_event=string.replace(t[3],':','__')
                         except Exception: pass
@@ -480,10 +484,10 @@ def justConvertFilenames(species,outputdir):
             
 if __name__ == '__main__':
     root_dir = '/Volumes/salomonis1/projects/Grimes/Grimes_Single_cell_bams'
-    root_dir = '/Volumes/salomonis1/projects/Grimes/Mm-Sara-AML-080615-090315/bams'
-    events = ['Zeb2']
+    root_dir = '/Users/saljh8/Desktop/Grimes/GEC14074'
+    events = ['Aldh3a2']
     events = None
-    eventsToVisualizeFilename = '/Volumes/salomonis1-1/projects/Grimes/Mm-Sara-AML-080615-090315/bams/AltResults/AlternativeOutput/top50/Mm_RNASeq_top_alt_junctions-PSI-clust-pairwise.txt'
+    eventsToVisualizeFilename = '/Users/saljh8/Desktop/Grimes/GEC14074/AltResults/AlternativeOutput/top50/Mm_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
     #eventsToVisualizeFilename = None
     bamdir = root_dir
     remoteSashimiPlot('Mm',root_dir,bamdir,eventsToVisualizeFilename,events=events,show=False)

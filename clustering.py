@@ -977,8 +977,10 @@ def openTreeView(filename):
 
 def remoteGOElite(elite_dir,SystemCode = None):
     mod = 'Ensembl'
+
     if SystemCode == 'Ae':    
         mod = 'AltExon'
+
     pathway_permutations = 'FisherExactTest'
     filter_method = 'z-score'
     z_threshold = 1.96
@@ -1294,6 +1296,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
             except Exception: export_elite.write(id+'\n') ### if no System Code known
             allGenes[id]=[]
         export_elite.close()
+    
     try:
         if storeGeneSetName != None:
             if len(storeGeneSetName)>0 and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
@@ -1790,7 +1793,7 @@ def exportCustomGeneSet(geneSetName,species,allGenes):
         print 'Could not store since no species name provided.'
 
     
-def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,row_header=None,colorByGene=None):
+def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,row_header=None,colorByGene=None,species=None):
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
     try:
@@ -1831,6 +1834,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         
     ### Color By Gene
     if colorByGene != None:
+        gene_translation_db={}
         matrix = numpy.array(matrix)
         min_val = matrix.min()  ### min val
         if ' ' in colorByGene:
@@ -1839,10 +1843,27 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             genes = [colorByGene]
         genePresent=False
         numberGenesPresent=[]
+        
         for gene in genes:
             if gene in row_header:
                 numberGenesPresent.append(gene)
                 genePresent = True
+        ### Translate symbol to Ensembl
+        if len(numberGenesPresent)==0:
+            try:
+                import gene_associations; import OBO_import
+                gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+                symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+
+                for symbol in genes:
+                    if symbol in symbol_to_gene:
+                        gene = symbol_to_gene[symbol][0]
+                        if gene in row_header:
+                            numberGenesPresent.append(gene)
+                            genePresent = True
+                            gene_translation_db[symbol]=gene    
+            except Exception: pass
+            
         numberGenesPresent = len(numberGenesPresent)
         if numberGenesPresent==1:
             cm = pylab.cm.get_cmap('Reds')
@@ -1859,11 +1880,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             elif numberGenesPresent==7:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-            elif numberGenesPresent==8:
-                #cm = matplotlib.colors.ListedColormap(['g', 'b', 'o', 'r', 'y','p', 'm', '#F5A3D7'])
-                cm = matplotlib.colors.ListedColormap(['#DC2342', '#0B9B48', '#FDDF5E', '#E0B724', '#5D82C1', '#F79020', '#4CB1E4', '#983894'])
             else:
-                cm = pylab.cm.gist_rainbow
+                cm = pylab.cm.get_cmap('gist_rainbow')
         if genePresent:
             dataset_name+='-'+colorByGene
             group_db={}
@@ -1871,7 +1889,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             k=0
             for gene in genes:
                 try:
-                    i = row_header.index(gene)
+                    try: i = row_header.index(gene)
+                    except Exception: i = row_header.index(gene_translation_db[gene])
                     values = map(float,matrix[i])
                     min_val = min(values)
                     bin_size = (max(values)-min_val)/8
@@ -1895,7 +1914,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                                 color = cm(1.*i/len(ranges))
                                 #color = cm(1.*(i+1)/len(ranges))
                             else:
-                                if i>1:
+                                if i>2:
                                     color = cm(k)
                                 else:
                                     color = '#C0C0C0'
@@ -1920,13 +1939,13 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                             color_label = bestGeneAssociated[sample][-1][-1]
                             if numberGenesPresent>1:
                                 index = bestGeneAssociated[sample][-1][0]
-                                if index > 1:
+                                if index > 2:
                                     gene = string.split(color_label[0],'-')[0]
                                 else:
                                     gene = 'Null'
                                 color_label[0] = gene
                             group_db[sample] = color_label
-                except Exception, e:
+                except Exception:
                     print [gene], 'not found in rows...'
                     #print traceback.format_exc()
                 k+=1
@@ -2172,6 +2191,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     #samples = list(column_header)
     ### Color By Gene
     if colorByGene != None:
+        gene_translation_db={}
         matrix = numpy.array(matrix)
         min_val = matrix.min()  ### min val
         if ' ' in colorByGene:
@@ -2180,10 +2200,26 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             genes = [colorByGene]
         genePresent=False
         numberGenesPresent=[]
+        
         for gene in genes:
             if gene in row_header:
                 numberGenesPresent.append(gene)
                 genePresent = True
+        ### Translate symbol to Ensembl
+        if len(numberGenesPresent)==0:
+            try:
+                import gene_associations; import OBO_import
+                gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+                symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+                for symbol in genes:
+                    if symbol in symbol_to_gene:
+                        gene = symbol_to_gene[symbol][0]
+                        if gene in row_header:
+                            numberGenesPresent.append(gene)
+                            genePresent = True
+                            gene_translation_db[symbol]=gene
+            except Exception: pass
+            
         numberGenesPresent = len(numberGenesPresent)
         if numberGenesPresent==1:
             cm = pylab.cm.get_cmap('Reds')
@@ -2209,7 +2245,8 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             k=0
             for gene in genes:
                 try:
-                    i = row_header.index(gene)
+                    try: i = row_header.index(gene)
+                    except Exception: i = row_header.index(gene_translation_db[gene])
                     values = map(float,matrix[i])
                     min_val = min(values)
                     bin_size = (max(values)-min_val)/8
@@ -2533,6 +2570,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
     
     ### Color By Gene
     if colorByGene != None:
+        gene_translation_db={}
         matrix = numpy.array(matrix)
         min_val = matrix.min()  ### min val
         if ' ' in colorByGene:
@@ -2541,10 +2579,26 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
             genes = [colorByGene]
         genePresent=False
         numberGenesPresent=[]
+        
         for gene in genes:
             if gene in row_header:
                 numberGenesPresent.append(gene)
                 genePresent = True
+        ### Translate symbol to Ensembl
+        if len(numberGenesPresent)==0:
+            try:
+                import gene_associations; import OBO_import
+                gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+                symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+                for symbol in genes:
+                    if symbol in symbol_to_gene:
+                        gene = symbol_to_gene[symbol][0]
+                        if gene in row_header:
+                            numberGenesPresent.append(gene)
+                            genePresent = True
+                            gene_translation_db[symbol]=gene
+            except Exception: pass
+            
         numberGenesPresent = len(numberGenesPresent)
         if numberGenesPresent==1:
             cm = pylab.cm.get_cmap('Reds')
@@ -2570,7 +2624,8 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
             k=0
             for gene in genes:
                 try:
-                    i = row_header.index(gene)
+                    try: i = row_header.index(gene)
+                    except Exception: i = row_header.index(gene_translation_db[gene])
                     values = map(float,matrix[i])
                     min_val = min(values)
                     bin_size = (max(values)-min_val)/8
@@ -2594,7 +2649,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
                                 color = cm(1.*i/len(ranges))
                                 #color = cm(1.*(i+1)/len(ranges))
                             else:
-                                if i>1:
+                                if i>2:
                                     color = cm(k)
                                 else:
                                     color = '#C0C0C0'
@@ -2619,7 +2674,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
                             color_label = bestGeneAssociated[sample][-1][-1]
                             if numberGenesPresent>1:
                                 index = bestGeneAssociated[sample][-1][0]
-                                if index > 1:
+                                if index > 2:
                                     gene = string.split(color_label[0],'-')[0]
                                 else:
                                     gene = 'Null'
@@ -3699,7 +3754,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         if algorithm == 't-SNE':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
             column_header, row_header = row_header, column_header   
-            tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,showLabels=showLabels,row_header=row_header,colorByGene=colorByGene)
+            tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species)
         elif plotType == '3D':
             try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species, colorByGene=colorByGene)
             except Exception:

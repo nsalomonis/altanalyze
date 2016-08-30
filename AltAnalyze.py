@@ -4500,7 +4500,7 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            root.title('AltAnalyze version 2.0.9.4 beta')
+            root.title('AltAnalyze version 2.1.0')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
             self.root = root
             height = 450; width = 500
@@ -4595,7 +4595,7 @@ class SummaryResultsWindow:
         self.emergency_exit = False            
         self.LINKS = []
         self.tl = tl
-        self.tl.title('AltAnalyze version 2.0.9.4 beta')
+        self.tl.title('AltAnalyze version 2.1.0')
         self.analysis_type = analysis_type
 
         filename = 'Config/icon.gif'
@@ -5245,7 +5245,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   else: id_name = 'array IDs'
 
   print_items=[]; #print [permute_p_threshold]; sys.exit()
-  print_items.append("AltAnalyze version 2.0.9.4 - Expression Analysis Parameters Being Used...")
+  print_items.append("AltAnalyze version 2.1.0 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'database'+': '+unique.getCurrentGeneDatabaseVersion())
   print_items.append('\t'+'species'+': '+species)
   print_items.append('\t'+'method'+': '+array_type)
@@ -5452,18 +5452,21 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       
       if biotypes == 'failed':
           print_out = 'No valid chromosomal positions in the input BED or BioScope files. Exiting AltAnalyze.'
-          #print traceback.format_exc()
+          if len(fastq_folder)>0:
+            if 'FTP' in traceback.format_exc():
+                print_out = 'AltAnlayze was unable to retreive a transcript fasta sequence file from the Ensembl website. '
+                print_out += 'Ensure you are connected to the internet and that the website http://ensembl.org is live.'
+            else:
+                print_out = 'An unexplained error was encountered with Kallisto analysis:\n'
+                print_out += traceback.format_exc()
           try:
               UI.WarningWindow(print_out,'Exit')
               root.destroy(); sys.exit()
           except Exception:
               print print_out; sys.exit()
             
-      #print '!!!!!back inside AltAnalyze'
-      #returnLargeGlobalVars()
       reload(RNASeq)
-      #print '!!!!!again'
-      #returnLargeGlobalVars()
+
       if root_dir in biotypes:
             print_out = 'Exon-level BED coordinate predictions exported to:\n'+biotypes
             print_out+= '\n\nAfter obtaining exon expression estimates, rename exon BED files to\n'

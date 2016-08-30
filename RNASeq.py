@@ -2848,7 +2848,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     genes.update(biological_categories['kinase'])
     genes.update(biological_categories['GPCR'])
     """
-    expressed_uids_db={}; driver_genes={}
+    expressed_uids_db={}; guide_genes={}
     for id in expressed_uids: expressed_uids_db[id]=[]
     if platform == 'exons': ### For splicing-index value filtering
         expressed_uids=[]
@@ -2865,10 +2865,10 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         for id in expressed_uids: expressed_uids_db2[id]=[]
         
         if drivers != False:
-            driver_genes = getDrivers(drivers)
+            guide_genes = getDrivers(drivers)
             if onlyIncludeDrivers:
-                try: expressed_uids = driver_genes.viewkeys() & expressed_uids_db2.viewkeys() ### common
-                except Exception: expressed_uids = getOverlappingKeys(driver_genes,expressed_uids_db2)
+                try: expressed_uids = guide_genes.viewkeys() & expressed_uids_db2.viewkeys() ### common
+                except Exception: expressed_uids = getOverlappingKeys(guide_genes,expressed_uids_db2)
 
     if len(expressed_uids)<10:
         expressed_uids=[]
@@ -2876,7 +2876,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
             expressed_uids.append(uid)
     print len(expressed_uids), 'expressed IDs being further analyzed'
     #sys.exit()
-    print_out = findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_genes,mlp,parameters=parameters,reportOnly=reportOnly)
+    print_out = findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_genes,mlp,parameters=parameters,reportOnly=reportOnly)
     return print_out
 
 def getOverlappingKeys(db1,db2):
@@ -3093,29 +3093,31 @@ def intraCorrelation(expressed_values,mlp):
         for k in a: correlated_genes[k] = a[k]
     return correlated_genes
 
-def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_genes,mlp,fold=2,samplesDiffering=2,parameters=None,reportOnly=False):
+def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_genes,mlp,fold=2,samplesDiffering=2,parameters=None,reportOnly=False):
     use_CV=False
-    ### POTENTIONAL GOALS: FILTER OUT PATHWAY ASSOCIATED GENES SUCH AS CELL CYCLE TO REMOVE THOSE EFFECTS
-    ### ADDED WEIGHTED DRIVER GENES INTO THE ANALYSIS AT THE USER'S DESCRETION
-    ### SORT INITIALLY ONLY BY TFS/CELL SURFACE OR OTHERS TO EVALUTE CLUSTERS AND INITIAL DATA
-    ### DON'T NECESSARILY REQUIRE MORE THAN 9 TO FIND PATTERNS (ESPECIALLY WITH JUST TFs)
-    ### DON'T BE AS STRINGENT WITH REQURING EFFECT IN MANY SAMPLES OR WITH SUCH HIGH FOLD
-    ### USE A FASTER SURROGATE CLUSTERING METHOD
     
     row_metric = 'correlation'; row_method = 'average'
     column_metric = 'cosine'; column_method = 'hopach'
+    original_column_metric = column_metric
+    original_column_method = column_method
     color_gradient = 'yellow_black_blue'; transpose = False; graphic_links=[]
     if parameters != None:
         fold = parameters.FoldDiff()
         samplesDiffering = parameters.SamplesDiffering()
         amplifyGenes = parameters.amplifyGenes()
+        if 'Guide' in parameters.GeneSelection():
+            amplifyGenes = False ### This occurs when running ICGS with the BOTH option, in which Guide3 genes are retained - ignore these
+            parameters.setGeneSelection('')
+            parameters.setClusterGOElite('')
         excludeCellCycle = parameters.ExcludeCellCycle()
         import clustering
         row_metric = 'correlation'; row_method = 'average'
         column_metric = parameters.ColumnMetric(); column_method = parameters.ColumnMethod()
+        original_column_metric = column_metric
+        original_column_method = column_method
         color_gradient = 'yellow_black_blue'; graphic_links=[]
         if platform == 'exons': color_gradient = 'yellow_black_blue'
-        driver_genes = parameters.JustShowTheseIDs()
+        guide_genes = parameters.JustShowTheseIDs()
         cell_cycle_id_list = []
     else:
         amplifyGenes = False
@@ -3131,11 +3133,11 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
     
     #"""
     if use_CV:
-        expressed_values, fold, samplesDiffering, headers = CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=driver_genes)
+        expressed_values, fold, samplesDiffering, headers = CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=guide_genes)
     else:
         print 'Finding an optimal number of genes based on differing thresholds to include for clustering...'
         #fold=1; samplesDiffering=1
-        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=driver_genes) #fold=2,samplesDiffering=2
+        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guide_genes) #fold=2,samplesDiffering=2
         print 'Evaluating',len(expressed_values),'genes, differentially expressed',fold,'fold for at least',samplesDiffering*2,'samples'
     #sys.exit()
     
@@ -3155,7 +3157,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
         if len(expressed_values)<1000:
             row_method = 'hopach'; row_metric = 'correlation'
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
-        cc_graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
+        cc_graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
         cell_cycle_id_list = genericRowIDImport(string.replace(cc_graphic_links[0][-1],'.png','.txt'))
         expressed_values2 = {}
         for id in expressed_values:
@@ -3201,7 +3203,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
             parameters.setGeneSelection(parameters.GeneSelection()+' IntraCorrelatedOnly amplify')
             print 'Finding intra-correlated genes from the input geneset(s)...'
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
-        graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
+        graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
         #return graphic_links
         import clustering
         matrix, column_header, row_header, dataset_name, group_db = clustering.importData(graphic_links[-1][-1][:-4]+'.txt')
@@ -3379,8 +3381,8 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
     atleast_10 = new_filtered_set
         
     addMultipleDrivers=True
-    if len(driver_genes)>0 and addMultipleDrivers: ### Artificially weight the correlated genes with known biological driverse
-        for gene in driver_genes:
+    if len(guide_genes)>0 and addMultipleDrivers: ### Artificially weight the correlated genes with known biological driverse
+        for gene in guide_genes:
             y=1
             while y<2:
                 if y==1:
@@ -3443,9 +3445,9 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
             if platform == 'exons': color_gradient = 'yellow_black_blue'
             transpose = False
             if column_method != 'hopach': row_method = 'average' ### needed due to PC errors (possibly outside of LegacyMode)
-            graphic_links = clustering.runHCexplicit(results_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
+            graphic_links = clustering.runHCexplicit(results_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
             if len(graphic_links)==0:
-                graphic_links = clustering.runHCexplicit(results_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
+                graphic_links = clustering.runHCexplicit(results_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
             cluster_file = string.replace(graphic_links[0][1],'.png','.txt')
         except Exception: pass
         #exportGroupsFromClusters(cluster_file,expFile,platform)
@@ -3457,7 +3459,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
     except Exception: print traceback.format_exc()
         
     row_metric = 'correlation'; row_method = 'hopach'
-    column_metric = 'cosine'
+    #column_metric = 'cosine'
     #if LegacyMode: column_method = 'hopach'
 
     cellCycleRemove1=[]; cellCycleRemove2=[]
@@ -3484,8 +3486,16 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
                 newDriverGenes3_filtered.append(i)
         newDriverGenes3_str = 'Guide3 '+string.join(newDriverGenes3_filtered,' ')+' amplify positive'
         parameters.setGeneSelection(newDriverGenes3_str)
-        try: parameters.setClusterGOElite('BioMarkers')
-        except Exception: pass
+        try:
+            parameters.setClusterGOElite('BioMarkers')
+            """
+            if species == 'Mm' or species == 'Hs' or species == 'Rn':
+                parameters.setClusterGOElite('BioMarkers')
+            else:
+                parameters.setClusterGOElite('GeneOntology')
+            """
+        except Exception, e: 
+            print e
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, parameters, display=False, Normalize=True)
     except Exception:
         print traceback.format_exc()
@@ -3495,7 +3505,10 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,driver_
     return graphic_links
 
 def copyICGSfiles(expFile,graphic_links):
-    root_dir = string.split(expFile,'ExpressionInput')[0]
+    if 'ExpressionInput' in expFile:
+        root_dir = string.split(expFile,'ExpressionInput')[0]
+    else:
+        root_dir = string.split(expFile,'AltResults')[0]
     import shutil
     destination_folder = root_dir+'/ICGS'
     try: os.mkdir(destination_folder)
@@ -3725,11 +3738,11 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
         if platform == 'exons': color_gradient = 'yellow_black_blue'
         transpose = False
         try:
-            len(driver_genes)
+            len(guide_genes)
         except Exception:
-            driver_genes = []
+            guide_genes = []
  
-        graphics = clustering.runHCexplicit(new_results_file, graphics, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=driver_genes)
+        graphics = clustering.runHCexplicit(new_results_file, graphics, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
         cluster_file = string.replace(graphics[0][1],'.png','.txt')
         #exportGroupsFromClusters(cluster_file,expFile,platform)
     return graphics, new_results_file
@@ -3783,9 +3796,9 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
             #if row_header[i] == 'Pax6': print [block],row_header[i-1],rho,rho_cutoff
             """
             try:
-                if row_header[i] in driver_genes: print row_header[i], rho
-                if row_header[i-1] in driver_genes: print row_header[i-1], rho
-                if row_header[i+1] in driver_genes: print row_header[i+1], rho
+                if row_header[i] in guide_genes: print row_header[i], rho
+                if row_header[i-1] in guide_genes: print row_header[i-1], rho
+                if row_header[i+1] in guide_genes: print row_header[i+1], rho
             except Exception:
                 pass
             """
@@ -3836,9 +3849,9 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                         guideGenes[gene]=[]
                 #block_db[b]= [corr_counts_gene[-1][-1]] ### save just the selected gene indexes
         
-        ### Additional filter to remove drivers that will bring in cell cycle genes (the more drivers the more likely)
+        ### Additional filter to remove guides that will bring in cell cycle genes (the more guides the more likely)
         if excludeCellCycle == 'strict':
-            #print 'drivers',len(guideGenes)
+            #print 'guides',len(guideGenes)
             guideCorrelated = numpyCorrelationMatrixGeneAlt(matrix,row_header,guideGenes,gene_to_symbol_db,rho_cutoff)
             guideGenes={}
             for gene in guideCorrelated:
@@ -4631,7 +4644,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             print 'Building kallisto index file...'
             try: retcode = subprocess.call([kallisto_file, "index","-i", kallisto_root+species, fasta_file])
             except Exception:
-                print traceback.format_exc();sys.exit()
+                print traceback.format_exc()
                 ### If installed globally
                 retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
     
@@ -4717,7 +4730,10 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     
 def calculateGeneTPMs(species,expMatrix):
     import gene_associations
-    try: gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
+    try:
+        gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
+        if len(gene_to_transcript_db)==0:
+            kill
     except Exception:
         try:
             print 'Missing transcript-to-gene associations... downloading from Ensembl.'
@@ -4887,7 +4903,7 @@ if __name__ == '__main__':
     #fastRPKMCalculate(filename);sys.exit()
     calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
-    #runKallisto('Mm','test','C:/Users/Nathan Salomonis/Desktop/testKallistoData','C:/Users/Nathan Salomonis/Desktop/testKallistoData');sys.exit()
+    runKallisto('Dr','Etv2 GFP Single Cell','/Volumes/Seagate Exp/Single Cell RNA seq Run 1696 FASTQ','/Volumes/Seagate Exp/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'
@@ -4904,7 +4920,7 @@ if __name__ == '__main__':
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     #fastRPKMCalculate(filename);sys.exit()
     results_file = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/ExpressionInput/DataPlots/400 fold for at least 4 samples/Clustering-myeloblast-steady-state-correlated-features-hierarchical_euclidean_cosine-hopach.txt'
-    driverFile = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/ExpressionInput/drivingTFs-symbol.txt'
+    guideGeneFile = '/Volumes/SEQ-DATA/Grimes/14018_gmp-pro/ExpressionInput/drivingTFs-symbol.txt'
 
     expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
     expFile = '/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/exp.E15.5_Adult_IRI Data-output.txt'
@@ -4919,7 +4935,7 @@ if __name__ == '__main__':
     #singleCellRNASeqWorkflow('Mm', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()
     #expFile = '/Users/saljh8/Downloads/methylation/ExpressionInput/exp.female-steady-state.txt'
     
-    #singleCellRNASeqWorkflow('Hs', 'RNASeq', expFile, mlp, exp_threshold=50, rpkm_threshold=5) # drivers=driverFile)
+    #singleCellRNASeqWorkflow('Hs', 'RNASeq', expFile, mlp, exp_threshold=50, rpkm_threshold=5) # drivers=guideGeneFile)
     #sys.exit()
     #correlateClusteredGenes(results_file);sys.exit()
     #reformatExonFile('Hs','exon',True);sys.exit()

@@ -1,10 +1,16 @@
 import base64
 import csv
 import getpass
+try:
+    import lxml
+except Exception:
+    print 'library lxml not supported. WikiPathways and LineageProfiler visualization will not work. Please install with pip install lxml.'
 from lxml import etree as ET
 from lxml import _elementpath
 import re
-import requests
+try: import requests
+except Exception:
+    print 'library requests not supported. WikiPathways and LineageProfiler visualization will not work. Please install with pip install requests.'
 import sys
 
 class WikipathwaysApiClient(object):

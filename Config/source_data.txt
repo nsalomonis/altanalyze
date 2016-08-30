@@ -3,6 +3,7 @@ Xenopus_Jamboree	Xj
 Kyotograil	Ky	
 modCB	Mg	
 MIM	Mi	
+AltExon	Ae	
 sharesCDS	Sc	
 RefSeq	Q	
 Illumina	Il	
