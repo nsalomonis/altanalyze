@@ -502,12 +502,14 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     try:
         if 'monocle' in justShowTheseIDs and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
             import R_interface
+            print 'Running Monocle through R (be patient, this can take 20 minutes+)'
             R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',cdt_file[:-3]+'txt')
             png_file_dir = root_dir+'/Monocle/monoclePseudotime.png'
             #print png_file_dir
             ViewPNG(png_file_dir)
     except Exception:
-        #print traceback.format_exc()
+        print '...Monocle error:'
+        print traceback.format_exc()
         pass
     
     cluster_elite_terms={}; ge_fontsize=11.5; top_genes=[]; proceed=True

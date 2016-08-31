@@ -861,31 +861,28 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
     export_object.close()
     print 'File written...'
     #return input_file
-
     
     array_names = []; array_linker_db = {}; d = 0; i = 0
     for entry in headers.split('\t'):
-                
-                entry=cleanUpLine(entry)
-                if '::' in entry:
-                    a = (entry.split("::"))
-                elif ':' in entry:
-                    a = (entry.split(":"))
-                else:
-                    a = (clusters[i],entry)
-                #entry=string.join(a,'.')
+        entry=cleanUpLine(entry)
+        if '::' in entry:
+            a = (entry.split("::"))
+        elif ':' in entry:
+            a = (entry.split(":"))
+        else:
+            a = (clusters[i],entry)
+        #entry=string.join(a,'.')
               
-                ent=entry+'\t'+a[0];
-                #if(ent[0].isdigit()):
-                #    ent='X'+ent[0:]
-                
-                #if '-' in ent:
-                 #   ent=string.replace(ent,'-','.')
-                #if '+' in ent:
-                 #   ent=string.replace(ent,'+','.')
-                    #print j
-                array_names.append(ent);
-                i+=1
+        ent=entry+'\t'+a[0];
+        #if(ent[0].isdigit()):
+        #    ent='X'+ent[0:]     
+        #if '-' in ent:
+            #   ent=string.replace(ent,'-','.')
+        #if '+' in ent:
+            #   ent=string.replace(ent,'+','.')
+            #print j
+        array_names.append(ent);
+        i+=1
         
     i=0
     eheader = string.join(['']+['Group'],'\t')+'\n' ### format column-flat-clusters for export
@@ -896,19 +893,22 @@ def CreateFilesMonocle(filename,rawExpressionFile,species='Hs'):
     export_cdt.close()
     gheader = string.join(['']+ ['gene_short_name'],'\t')+'\n' ### format column-flat-clusters for export
     export_gene.write(gheader)
-   
     for key in key_list:
+        proceed=False
+        ### The commented out code just introduces errors and is not needed - re-evaluate in the future if needed
+        """
         if key in gene_to_symbol:
-             symbol = gene_to_symbol[id][0]
-             if symbol in gene_list:
-                        nid = symbol
-                        proceed = True
-             if proceed:
-                    k=gene_list.index(nid)
-                    export_object.write(line)
-                    export_gene.write(id+'\n')
+            symbol = gene_to_symbol[key][0]
+            if symbol in gene_list:
+                nid = symbol
+                proceed = True
+            if proceed:
+                k=gene_list.index(nid)
+                export_object.write(line)
+                export_gene.write(key+'\n')
         else:
-            export_gene.write(key+'\t'+key+'\n')
+            export_gene.write(key+'\t'+key+'\n')"""
+        export_gene.write(key+'\t'+key+'\n')
  
             
     export_object.close() 
