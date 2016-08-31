@@ -452,7 +452,15 @@ def remoteSashimiPlot(Species,fl,bamdir,eventsToVisualizeFilename,events=None,sh
                     new_filename = string.split(filename,'/')[1]
                 nnname=geneSymbol_db[newname[0]][0]+'-SashimiPlot_'+new_filename
                 try: os.rename(os.path.join(outputdir, filename), os.path.join(outputdir,nnname))
-                except Exception: pass
+                except Exception:
+                    if 'already exists' in traceback.format_exc():
+                        ### File already exists, delete the new one
+                        try: os.remove(os.path.join(outputdir,nnname))
+                        except Exception: pass
+                        ### Now right the new one
+                        try: os.rename(os.path.join(outputdir, filename), os.path.join(outputdir,nnname))
+                        except Exception: pass
+                    pass
             else:
                 continue
     print ''
@@ -483,12 +491,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis1/projects/Grimes/Grimes_Single_cell_bams'
-    root_dir = '/Users/saljh8/Desktop/Grimes/GEC14074'
+    root_dir = 'C:/Users/Nathan Salomonis/Desktop/BAMS/'
     events = ['Aldh3a2']
-    events = None
-    eventsToVisualizeFilename = '/Users/saljh8/Desktop/Grimes/GEC14074/AltResults/AlternativeOutput/top50/Mm_RNASeq_top_alt_junctions-PSI-clust-ANOVA.txt'
-    #eventsToVisualizeFilename = None
+    #events = None
+    eventsToVisualizeFilename = 'C:/Users/Nathan Salomonis/Desktop/BAMS/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
+    eventsToVisualizeFilename = None
     bamdir = root_dir
     remoteSashimiPlot('Mm',root_dir,bamdir,eventsToVisualizeFilename,events=events,show=False)
     sys.exit()

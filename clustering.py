@@ -500,13 +500,16 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         elif 'linux' in sys.platform: os.system('xdg-open "'+png_file_dir+'"')
         
     try:
-        if 'monocle' in justShowTheseIDs and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
-            import R_interface
-            print 'Running Monocle through R (be patient, this can take 20 minutes+)'
-            R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',cdt_file[:-3]+'txt')
-            png_file_dir = root_dir+'/Monocle/monoclePseudotime.png'
-            #print png_file_dir
-            ViewPNG(png_file_dir)
+        try:
+            temp1=len(justShowTheseIDs)
+            if 'monocle' in justShowTheseIDs and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
+                import R_interface
+                print 'Running Monocle through R (be patient, this can take 20 minutes+)'
+                R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',cdt_file[:-3]+'txt')
+                png_file_dir = root_dir+'/Monocle/monoclePseudotime.png'
+                #print png_file_dir
+                ViewPNG(png_file_dir)
+        except Exception: pass # no justShowTheseIDs
     except Exception:
         print '...Monocle error:'
         print traceback.format_exc()
