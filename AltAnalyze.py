@@ -7933,6 +7933,51 @@ class Logger(object):
 
     def flush(self): pass
     
+def dependencyCheck():
+    ### Make sure core dependencies for AltAnalyze are met and if not report back
+    
+    from pkgutil import iter_modules
+    modules = set(x[1] for x in iter_modules())  ### all installed modules
+    dependent_modules = ['string','csv','base64','getpass','requests']
+    dependent_modules += ['math','warnings','sklearn','time','os','webbrowser']
+    dependent_modules += ['scipy','numpy','matplotlib','igraph','pandas','patsy']
+    dependent_modules += ['ImageTk','PIL','cairo','wx','fastcluster','pysam', 'Tkinter']
+    print ''
+    count=0
+    for module in dependent_modules:
+        if module not in modules:
+            print 'AltAnalyze depedency not met for:',module
+            if 'fastcluster' == module:
+                print '...Faster hierarchical cluster not supported without fastcluster'
+            if 'pysam' == module:
+                print '...BAM file access not supported without pysam'
+            if 'scipy' == module:
+                print '...Many required statistical routines not supported without scipy'
+            if 'numpy' == module:
+                print '...Many required statistical routines not supported without numpy'
+            if 'matplotlib' == module:
+                print '...Core graphical outputs not supported without matplotlib'
+            if 'requests' == module:
+                print '...Wikipathways visualization not supported without requests'
+            if 'lxml' == module:
+                print '...Wikipathways visualization not supported without lxml'
+            if 'wx' == module:
+                print '...The AltAnalyze Results Viewer requires wx'
+            if 'ImageTk' == module or 'PIL' == module:
+                print '...Some graphical results displays require ImageTk and PIL'
+            if 'Tkinter' == module:
+                print '...AltAnalyze graphical user interface mode requires Tkinter'
+            if 'igraph' == module or 'cairo' == module:
+                print '...Network visualization requires igraph and cairo'
+            if 'sklearn' == module:
+                print '...t-SNE analysis requires sklearn'
+            if 'pandas' == module or 'patsy' == module:
+                print '...Combat batch effects correction requires pandas and patsy'
+            count+=1
+    if count>0:
+        print '\nWARNING!!!! Some dependencies are not currently met.'
+        print "This will likely impact some of AltAnalyze's performance\n"
+
 if __name__ == '__main__':
     try: mlp.freeze_support()
     except Exception: pass
@@ -7941,6 +7986,8 @@ if __name__ == '__main__':
     skip_intro = 'yes'; #sys.exit()
     #skip_intro = 'remoteViewer'
     runCommandLineVersion()
+    
+    dependencyCheck()
     if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)
 
     """ To do list:
