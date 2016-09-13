@@ -4,7 +4,7 @@ import sys
 
 _script = 'AltAnalyzeViewer.py'
 _appName = "AltAnalyzeViewer"
-_appVersion = '1.0.0.2'
+_appVersion = '1.0.1'
 _appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to take RNASeq or "
 _appDescription +="relatively raw microarray data (CEL files or normalized), identify predicted alternative splicing or alternative "
 _appDescription +="promoter changes and view how these changes may affect protein sequence, domain composition, and microRNA targeting."

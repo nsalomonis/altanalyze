@@ -188,7 +188,6 @@ def importGeneModels(filename):
 def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compendium_platform,modelSize=None,customMarkers=False,geneModels=False,permute=False,useMulti=False):
     """ This code differs from LineageProfiler.py in that it is able to iterate through the LineageProfiler functions with distinct geneModels
     that are either supplied by the user or discovered from all possible combinations. """
-    
     #global inputType
     global exp_output_file; exp_output_file = exp_output; global targetPlatform
     global tissues; global sample_headers; global collapse_override
@@ -199,6 +198,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     pearson_list={}
     #global tissue_specific_db
     
+    print array_type
     collapse_override = True
     customMarkerFile = customMarkers
     if geneModels == False or geneModels == None: geneModels = []
@@ -217,9 +217,9 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     global correlate_by_order; correlate_by_order = 'no'
     global rho_threshold; rho_threshold = -1
     global correlate_to_tissue_specific; correlate_to_tissue_specific = 'no'
-    platform = array_type
     cutoff = 0.01
     global value_type
+    platform = array_type
     
     if 'stats.' in exp_input:
         value_type = 'calls'
@@ -229,9 +229,13 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     tissue_specific_db={}; sample_headers=[]; tissues=[]
     if len(array_type)==2:
         ### When a user-supplied expression is provided (no ExpressionOutput files provided - importGeneIDTranslations)
-        vendor, array_type = array_type
+        array_type, vendor = array_type
+        if ':' in vendor:
+            vendor = string.split(vendor,':')[1]
+        if array_type == 'RNASeq':
+            vendor = 'Symbol'
         platform = array_type
-    else: vendor = 'Not needed'
+    else: vendor = 'Symbol'
 
     if 'RawSplice' in exp_input or 'FullDatasets' in exp_input or coding_type == 'AltExon':
         analysis_type = 'AltExon'
@@ -241,18 +245,19 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             translation_db = importExonIDTranslations(array_type,species,translate_to_genearray)
             keyed_by = 'translation'
         else: translation_db=[]; keyed_by = 'primaryID'; targetPlatform = compendium_platform
-    elif array_type == "3'array" or array_type == 'AltMouse':
-        ### Get arrayID to Ensembl associations
-        if vendor != 'Not needed':
-            ### When no ExpressionOutput files provided (user supplied matrix)
-            translation_db = importVendorToEnsemblTranslations(species,vendor,exp_input)
-        else:
-            translation_db = importGeneIDTranslations(exp_output)
-        keyed_by = 'translation'
-        targetPlatform = compendium_platform
-        analysis_type = 'geneLevel'
     else:
-        translation_db=[]; keyed_by = 'primaryID'; targetPlatform = compendium_platform; analysis_type = 'geneLevel'
+        try:
+            ### Get arrayID to Ensembl associations
+            if vendor != 'Not needed':
+                ### When no ExpressionOutput files provided (user supplied matrix)
+                translation_db = importVendorToEnsemblTranslations(species,vendor,exp_input)
+            else:
+                translation_db = importGeneIDTranslations(exp_output)
+            keyed_by = 'translation'
+            targetPlatform = compendium_platform
+            analysis_type = 'geneLevel' 
+        except Exception:
+            translation_db=[]; keyed_by = 'primaryID'; targetPlatform = compendium_platform; analysis_type = 'geneLevel'
 
     targetPlatform = compendium_platform ### Overides above
     try: importTissueSpecificProfiles(species,tissue_specific_db)
@@ -285,23 +290,30 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
         else:
             samples_added.append(s)
     sample_headers = samples_added
-    
+
     pruneTissueSpecific=False
     for gene in tissue_specific_db:
         if gene not in gene_expression_db:
             pruneTissueSpecific = True
             break
+        
     if pruneTissueSpecific:
         tissue_specific_db2={}
         for gene in gene_expression_db:
             if gene in tissue_specific_db:
                 tissue_specific_db2[gene] = tissue_specific_db[gene]
+            elif gene in translation_db:
+                altGeneID = translation_db[gene]
+                if altGeneID in tissue_specific_db:
+                    tissue_specific_db2[gene] = tissue_specific_db[altGeneID]
+                    
         tissue_specific_db = tissue_specific_db2
     
     all_marker_genes=[]            
     for gene in tissue_specific_db:
         all_marker_genes.append(gene)
     #print [modelSize]
+    
     if len(geneModels)>0:
         allPossibleClassifiers = geneModels
     elif modelSize == None or modelSize == 'optimize' or modelSize == 'no':
@@ -316,7 +328,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     if len(allPossibleClassifiers)<16:
         print 'Using:'
         for model in allPossibleClassifiers:
-            print 'model',num,model
+            print 'model',num, 'with',len(model),'genes',model
             num+=1
             all_models+=model
     
@@ -324,7 +336,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     #print len(all_models);sys.exit()
     
     ### This is the main analysis function
-    print 'Number of references to compare to:',len(tissues)
+    print 'Number of reference samples to compare to:',len(tissues)
     if len(tissues)<16:
         print tissues
 
@@ -616,11 +628,18 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
         print '\tYour data may not be comparable to the provided reference (quality control may be needed).\n\n'
     else:
         print 'No unusual warning.\n'
+        
+    reference_exp_file = customMarkers
+    query_exp_file = exp_input
+    classification_file = output_classification_file
+    harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, classification_file)
+    
     return top_hit_db
 
 
 def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,translation_db,compendium_platform,
                 modelSize,species,gene_expression_db,sampleHeaders):
+
     classifyBasedOnRho=True
     hit_list=[]
     ### Iterate through LineageProfiler for all gene models (allPossibleClassifiers)
@@ -661,6 +680,7 @@ def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,t
         for gene in classifiers:
             try: classifier_specific_db[gene] = tissue_specific_db[gene]
             except Exception: None
+        #print len(gene_expression_db), len(classifier_specific_db), len(expession_subset), len(translation_db)
         expession_subset = filterGeneExpressionValues(gene_expression_db,classifier_specific_db,translation_db,expession_subset)
 
         ### If the incorrect gene system was indicated re-run with generic parameters
@@ -780,7 +800,10 @@ def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,t
                         population2_denom+=1
                 sample_diff_z[headers[index+1]].append((diff_z,max([max_pearson_model,min_pearson_model])))  ### Added pearson max here
                 index+=1
-            percent_positive = (float(positive)/float(index))*100
+            try: percent_positive = (float(positive)/float(index))*100
+            except ZeroDivisionError:
+                print 'WARNING!!!! No matching genes. Make sure your gene IDs are the same ID type as your reference.'
+                forceNoMatchingGeneError
             mean_percent_positive.append(percent_positive)
             if len(tissues)==2:
                 try:
@@ -872,16 +895,18 @@ def importVendorToEnsemblTranslations(species,vendor,exp_input):
         except Exception: None
     """
     translation_db={}
-    import BuildAffymetrixAssociations
     
     ### Use the same annotation method that is used to create the ExpressionOutput annotations
     use_go = 'yes'
     conventional_array_db={}
-    conventional_array_db = BuildAffymetrixAssociations.getArrayAnnotationsFromGOElite(conventional_array_db,species,vendor,use_go)
-    for arrayid in conventional_array_db:
-        ca = conventional_array_db[arrayid]
-        ens = ca.Ensembl()
-        try: translation_db[arrayid] = ens[0] ### This first Ensembl is ranked as the most likely valid based on various metrics in getArrayAnnotationsFromGOElite
+    import gene_associations
+    gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-'+vendor))
+    
+    for EnsGeneID in gene_to_symbol:
+        vendorID = gene_to_symbol[EnsGeneID][0]
+        try:
+            translation_db[vendorID] = EnsGeneID
+            translation_db[EnsGeneID] = vendorID
         except Exception: None
     
     return translation_db
@@ -898,6 +923,7 @@ def importTissueSpecificProfiles(species,tissue_specific_db):
         filename = string.replace(filename,'.txt','_stats.txt')
     fn=filepath(filename); x=0
     tissues_added={}
+    dataType = 'matrix'
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -909,7 +935,12 @@ def importTissueSpecificProfiles(species,tissue_specific_db):
                 if 'UID' == i or 'uid' == i: ens_index = index; uid_index = index
                 if analysis_type == 'AltExon': ens_index = ens_index ### Assigned above when analyzing probesets
                 elif 'Ensembl' in i: ens_index = index
-                if 'marker-in' in i: tissue_index = index+1; marker_in = index
+                if 'marker-in' in i:
+                    tissue_index = index+1; marker_in = index
+                    dataType = 'MarkerFinder'
+                if 'row_clusters-flat' in i:
+                    tissue_index = 2 ### start reading fold data at column 3
+                    dataType = 'clustering'
                 index+=1
             try:
                 for i in t[tissue_index:]: tissues.append(i)
@@ -919,20 +950,27 @@ def importTissueSpecificProfiles(species,tissue_specific_db):
                 try: ens_index = uid_index
                 except Exception: None
         else:
-            try:
+            if 'column_clusters-flat' == t[0]: ### clustered heatmap - skip this row
+                continue
+            if dataType=='clustering':
                 gene = t[0]
-                tissue_exp = map(float, t[1:])
-                tissue_specific_db[gene]=x,tissue_exp ### Use this to only grab relevant gene expression profiles from the input dataset
-            except Exception:
-                gene = string.split(t[ens_index],'|')[0] ### Only consider the first listed gene - this gene is the best option based on ExpressionBuilder rankings
-                #if 'Pluripotent Stem Cells' in t[marker_in] or 'Heart' in t[marker_in]:
-                #if t[marker_in] not in tissues_added: ### Only add the first instance of a gene for that tissue - used more for testing to quickly run the analysis
-                tissue_exp = map(float, t[tissue_index:])
-                if value_type == 'calls':
-                    tissue_exp = produceDetectionCalls(tissue_exp,platform) ### 0 or 1 calls
-                
-                tissue_specific_db[gene]=x,tissue_exp ### Use this to only grab relevant gene expression profiles from the input dataset
-                tissues_added[t[marker_in]]=[]
+                tissue_exp = map(float, t[2:])
+                tissue_specific_db[gene]=x,tissue_exp
+            else:  
+                try:
+                    gene = t[0]
+                    tissue_exp = map(float, t[1:])
+                    tissue_specific_db[gene]=x,tissue_exp ### Use this to only grab relevant gene expression profiles from the input dataset
+                except Exception:
+                    gene = string.split(t[ens_index],'|')[0] ### Only consider the first listed gene - this gene is the best option based on ExpressionBuilder rankings
+                    #if 'Pluripotent Stem Cells' in t[marker_in] or 'Heart' in t[marker_in]:
+                    #if t[marker_in] not in tissues_added: ### Only add the first instance of a gene for that tissue - used more for testing to quickly run the analysis
+                    tissue_exp = map(float, t[tissue_index:])
+                    if value_type == 'calls':
+                        tissue_exp = produceDetectionCalls(tissue_exp,platform) ### 0 or 1 calls
+                    
+                    tissue_specific_db[gene]=x,tissue_exp ### Use this to only grab relevant gene expression profiles from the input dataset
+                    tissues_added[t[marker_in]]=[]
             x+=1
     #print len(tissue_specific_db), 'genes in the reference database'
 
@@ -964,21 +1002,26 @@ def simpleUIDImport(filename):
         uid_db[string.split(data,'\t')[0]]=[]
     return uid_db
 
-def importGeneExpressionValuesSimple(filename,translation_db):
+def importGeneExpressionValuesSimple(filename,translation_db,translate=False):
     ### Import gene-level expression raw values           
     fn=filepath(filename); x=0; genes_added={}; gene_expression_db={}
     dataset_name = string.split(filename,delim)[-1][:-4]
     #print 'importing:',dataset_name
+    sampleIndex=1
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        
         if x==0:
+            if 'row_clusters-flat' in t:
+                sampleIndex = 2 ### start reading fold data at column 3
+                dataType = 'clustering'
             if '#' not in data[0]:
-                for i in t[1:]: sample_headers.append(i)
+                for i in t[sampleIndex:]: sample_headers.append(i)
                 x=1
         else:
             gene = t[0]
+            if 'column_clusters-flat' == t[0]: ### clustered heatmap - skip this row
+                continue
             #if '-' not in gene and ':E' in gene: print gene;sys.exit()
             if analysis_type == 'AltExon':
                 try: ens_gene,exon = string.split(gene,'-')[:2]
@@ -988,16 +1031,18 @@ def importGeneExpressionValuesSimple(filename,translation_db):
                 """if gene == 'ENSMUSG00000025915-E19.3':
                     for i in translation_db: print [i], len(translation_db); break
                     print gene, [translation_db[gene]];sys.exit()"""
-                try: gene = translation_db[gene] ### Ensembl annotations
-                except Exception: gene = 'null'
-            
+                if translate:
+                    ### This caused two many problems so we removed it with the translate default above
+                    try: gene = translation_db[gene] ### Ensembl annotations
+                    except Exception: pass
+                
             try: genes_added[gene]+=1
             except Exception: genes_added[gene]=1
-            try: exp_vals = map(float, t[1:])
+            try: exp_vals = map(float, t[sampleIndex:])
             except Exception:
                 ### If a non-numeric value in the list
                 exp_vals=[]
-                for i in t[1:]:
+                for i in t[sampleIndex:]:
                     try: exp_vals.append(float(i))
                     except Exception: exp_vals.append(i)
             gene_expression_db[gene] = exp_vals
@@ -1986,7 +2031,271 @@ def allPairwiseSampleCorrelation(fn):
         #if i[1]>.70: print i
         print i
         
+def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, classification_file):
+    """
+    The goal of this function is to take LineageProfilerIterative classified samples to a reference matrix,
+    combine the reference matrix and the query matrix at the gene symbol level, retain the original reference
+    column and row orders, then re-order the query samples within the context of the reference samples the
+    correlations were derived from. In doing so, the harmonization occurs by attempting to map the expression
+    values within a common numerical format to minimize dataset specific effects (folds, non-log expression).
+    The function culminates in a heatmap showing the genes and re-ordered samples in thier listed orders.
+    Outlier samples with low correlations will ultimately need to be represented outside of the reference
+    sample continuum. The function attempts to propagate sample group labels from the reference and query sets
+    (if avaialble, in the sample headers or in a groups file), and indicate original gene and column clusters
+    if available.
+    
+    Alternative description: To represent new cells/samples within the continuum of established scRNA-Seq profiles
+    we have developed a robust and fast data harmonization function. This data harmonization approach applies a
+    k-nearest neighbor classification approach to order submitted cells along the continuum of reference gene expression
+     profiles, without alternating the order of the reference cells and cluster groups in original reference matrix.
+    The established group labels are in effect propagated to new queried samples. The final data is represented in an
+    intuitive queriable heatmap and dimensionality reduction scatter plot (t-SNE, PCA). To harmonize the input exp. data,
+    the input file formats are emperically determined (log, non-log, log-fold) and standardized to log2 expression.
+    Submitted FASTQ files to AltAnalyze will be optionally pseudoaligned and normalized to maximize compatibility with the
+    existing reference datasets. Alternative classification algoriths and options for submission of new reference sets will
+    be supported. Issues may arrise in the expression harmonization step, however, profiles are already biased towards genes
+    with cell population restricted expression, largely abrogating this problem.
+
+    """
+    
+    output_file = importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,classification_file)
+    import clustering
+    row_method = None; row_metric = 'cosine'; column_method = None; column_metric = 'euclidean'; color_gradient = 'yellow_black_blue'
+    transpose = False; Normalize='median'
+    graphics = clustering.runHCexplicit(output_file, [], row_method, row_metric,
+                column_method, column_metric, color_gradient, transpose, Normalize=Normalize, display=True)
+
+class ClassificationData:
+    def __init__(self,sample,score,assigned_class):
+        self.sample = sample; self.score = score; self.assigned_class = assigned_class
+    def Sample(self): return self.sample
+    def Score(self): return self.score
+    def AssignedClass(self): return self.assigned_class
+    
+    
+def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,classification_file):
+    """Harmonize the numerical types and feature IDs of the input files, then combine """
+    
+    import export
+    ref_filename = export.findFilename(reference_exp_file)
+    query_filename = export.findFilename(query_exp_file)
+    root_dir = export.findParentDir(query_exp_file)
+    output_dir = root_dir+'/'+ref_filename[:-4]+'__'+query_filename ### combine the filenames and query path
+    
+    ref_exp_db,ref_headers,ref_col_clusters = importExpressionFile(reference_exp_file)
+    query_exp_db,query_headers,query_col_clusters = importExpressionFile(query_exp_file,ignoreClusters=True)
+    
+    column_clusters=[]
+    if len(ref_col_clusters)>0:
+        for sample in ref_col_clusters:
+            column_clusters.append(ref_col_clusters[sample]) ### this is an ordered dictionary
+        
+    """ Store an alternative reference for each header """
+    ### In case a ":" is in one header but not in another, create an alternative reference set
+    alt_ref_headers = []
+    for sample in ref_headers:
+        if ':' in sample:
+            alt_sample_id = string.split(sample,':')[1]
+            alt_ref_headers.append(alt_sample_id)
+            if sample in ref_col_clusters: ### If clusters assigned in original file
+                cluster = ref_col_clusters[sample]
+                ref_col_clusters[alt_sample_id]=cluster  ### append to the original
+    
+    """ Store alternative query sample names with groups added """
+    original_sampleID_translation={}
+    for sample in query_headers:
+        if ':' in sample:
+            original_sampleID = string.split(sample,':')[1]
+            original_sampleID_translation[original_sampleID] = sample
+            
+    """ Import the Classification data """
+    input_dir = output_dir
+    sample_classes={}
+    new_headers=[]
+    query_header_proppegated_clusters={}
+    firstLine = True
+    for line in open(classification_file,'rU').xreadlines():
+        data = line.rstrip()
+        data = string.replace(data,'"','')
+        values = string.split(data,'\t')
+        if firstLine:
+            firstLine=False
+            header_row = values
+            score_index = header_row.index('Combined Correlation DiffScore')
+            class_index = header_row.index('Predicted Class')
+        else:
+            sample = values[0]
+            score = values[score_index]
+            assigned_class = values[class_index]
+            if sample in original_sampleID_translation:
+                sample = original_sampleID_translation[sample]
+            cd = ClassificationData(sample,score,assigned_class)
+            try: sample_classes[assigned_class].append([score,cd])
+            except Exception: sample_classes[assigned_class] = [[score,cd]]
+            query_header_proppegated_clusters[sample]=assigned_class
+        
+    """ Assign a cluster label to the query sample if applicable """
+    for sample in query_headers:
+        if sample in query_header_proppegated_clusters:
+            ref_sample = query_header_proppegated_clusters[sample]
+            if ref_sample in ref_col_clusters:
+                cluster = ref_col_clusters[ref_sample]
+                column_clusters.append(cluster) ### Assign a predicted cluster label to the query sample
+            
+    for assigned_class in sample_classes:
+        ### Ordered by score
+        sample_classes[assigned_class].sort()
+        sample_classes[assigned_class].reverse()
+        
+    """ Integrate the queried samples in with the reference continuum """
+    ### Loop through the reference headers and add those in the query where they arise
+    for sample in ref_headers:
+        new_headers.append(sample)
+        if sample in sample_classes:
+            sample_data = sample_classes[sample]
+            for (score,cd) in sample_data:
+                if cd.Sample() not in new_headers and cd.Sample() not in alt_ref_headers: ### In case some of the same reference samples were added to the query
+                    new_headers.append(cd.Sample())
+    
+    """ Combine the two datasets, before re-ordering """
+    ### In case the UIDs in the two datasets are in different formats (we assume either Ensembl or Symbol)
+    ### we allow conversion between these systems
+    for refUID in ref_exp_db: break
+    for queryUID in query_exp_db: break
+    
+    if 'ENS' in refUID or 'ENS' in queryUID:
+        ### Covert one or both to gene symbol
+        try:
+            import gene_associations
+            gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+        except Exception: gene_to_symbol={}
+        if 'ENS' in refUID:
+            ref_exp_db = convertFromEnsemblToSymbol(ref_exp_db,gene_to_symbol)
+        if 'ENS' in queryUID:
+            query_exp_db = convertFromEnsemblToSymbol(query_exp_db,gene_to_symbol)
+    
+    ### Write out the combined data
+    export_object = export.ExportFile(output_dir)
+    if len(column_clusters)>0:
+        ### Output with gene and column clusters
+        export_object.write(string.join(['UID','row_clusters-flat']+ref_headers+query_headers,'\t')+'\n')
+        export_object.write(string.join(['column_clusters-flat','']+column_clusters,'\t')+'\n')
+        new_headers = ['row_clusters-flat']+new_headers
+    else:
+        export_object.write(string.join(['UID']+ref_headers+query_headers,'\t')+'\n')
+    
+    for uid in ref_exp_db:
+        if uid in query_exp_db:
+            export_object.write(string.join([uid]+ref_exp_db[uid]+query_exp_db[uid],'\t')+'\n')
+    export_object.close()
+    
+    """ Re-order the samples based on the classification analysis """
+    ### The ref_headers has the original reference sample order used to guide the query samples
+    import sampleIndexSelection
+    input_file=output_dir
+    output_file = input_file[:-4]+'-ReOrdered.txt'
+    filter_names = new_headers
+    sampleIndexSelection.filterFile(input_file,output_file,filter_names)
+    return output_file
+    
+def convertFromEnsemblToSymbol(exp_db,gene_to_symbol):
+    ### covert primary ID to symbol
+    exp_db_symbol = {}
+    for UID in exp_db:
+        if UID in gene_to_symbol:
+            symbol = gene_to_symbol[UID][0]
+            exp_db_symbol[symbol] = exp_db[UID]
+    return exp_db_symbol
+
+def checkForGroupsFile(filename,headers):
+    new_headers = headers
+    if ('exp.' in filename or 'filteredExp.' in filename):
+        filename = string.replace(filename,'-steady-state.txt','.txt')
+        try:
+            import ExpressionBuilder
+            sample_group_db = ExpressionBuilder.simplerGroupImport(filename)
+            new_headers = []
+            for v in headers:
+                if v in sample_group_db:
+                    v = sample_group_db[v]+':'+v
+                new_headers.append(v)
+        except Exception:
+            #print traceback.format_exc()
+            pass
+    return new_headers
+
+def importExpressionFile(input_file,ignoreClusters=False):
+    """ Import the expression value and harmonize to log, non-fold values """
+    import collections
+    expression_db=collections.OrderedDict()
+    column_cluster_index=collections.OrderedDict()
+    row_cluster_index=collections.OrderedDict()
+    ### Check the file format (log, non-log, fold) - assume log is log2
+    import ExpressionBuilder
+    expressionDataFormat,increment,convertNonLogToLog = ExpressionBuilder.checkExpressionFileFormat(input_file,reportNegatives=True)
+    inputFormat = 'NumericMatrix'
+    firstLine = True
+    for line in open(input_file,'rU').xreadlines():
+        data = line.rstrip()
+        data = string.replace(data,'"','')
+        if '.csv' in input_file:
+            values = string.split(data,',')
+        else:
+            values = string.split(data,'\t')
+        if firstLine:
+            firstLine=False
+            if 'row_clusters-flat' in values[1]:
+                numStart = 2 ### Start numeric import at column 3
+                inputFormat = 'Clustering'
+                header_row = values[numStart:]
+            else:
+                numStart = 1 ### Start numeric import at column 2
+                header_row = values[numStart:]
+                header_row=checkForGroupsFile(input_file,header_row) ### in case there is a groups file
+            
+        else:
+            ### store the column to cluster relationships (reference only - propegated to query)
+            ### We can simply retain this column for the output
+            if 'column_clusters-flat' in values:
+                clusters = values[numStart:]
+                i=0
+                for header in header_row:
+                    cluster = clusters[i]
+                    column_cluster_index[header]=cluster 
+                    i+=1
+                continue
+            uid = values[0]
+            if inputFormat == 'Clustering':
+                ### store the row cluster ID
+                row_cluster_index[uid]=values[1] 
+            numericVals = map(float, values[numStart:])
+            if increment<-1 and convertNonLogToLog == False:
+                ### Indicates the data is really fold changes (if the increment is a small negative,
+                ### it could be due to quantile normalization and the values are really raw expression values)
+                row_min = min(numericVals)
+                numericVals = map(lambda x: x-row_min, numericVals) ### move into positive log expression space
+            elif increment<-1 and convertNonLogToLog: ### shouldn't be encountered since fold values should all be logged
+                row_min = min(numericVals)
+                numericVals = map(lambda x: math.log(x-row_min+1,2), numericVals) ### move into positive log expression space
+            elif convertNonLogToLog:
+                try: numericVals = map(lambda x: math.log(x+increment,2), numericVals) ### log2 and increment
+                except Exception:
+                    print 'increment',increment
+                    print numericVals[0:10],numericVals[-10:];sys.exit()
+            numericVals = map(str,numericVals) ### we are saving to a file
+            if inputFormat == 'Clustering' and ignoreClusters==False:
+                expression_db[uid] = [values[1]]+numericVals
+            else:
+                expression_db[uid] = numericVals
+    return expression_db, header_row, column_cluster_index
+            
 if __name__ == '__main__':
+    #"""
+    reference_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Potter/Kidney/DropSeq-2k/r3/WT_Kidney_MarkerFinder_reference60.txt'
+    query_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Potter/Kidney/HoxClustersAD-gone/ExpressionInput/exp.Mut-OutliersRemoved.txt'
+    classification_file= '/Users/saljh8/Desktop/dataAnalysis/Potter/Kidney/HoxClustersAD-gone/ExpressionInput/SampleClassification/Mut-OutliersRemoved-SampleClassification.txt'
+    harmonizeClassifiedSamples('Mm',reference_exp_file,query_exp_file,classification_file);sys.exit()
+    #"""
     #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()
     #allPairwiseSampleCorrelation('/Users/saljh8/Desktop/Sarwal-New/UCRM_bx.txt');sys.exit()
 

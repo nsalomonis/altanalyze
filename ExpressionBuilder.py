@@ -90,22 +90,28 @@ def getArrayHeaders(expr_input_dir):
             x = 1
     return array_names, array_linker_db
 
-def checkExpressionFileFormat(expFile):
+def checkExpressionFileFormat(expFile,reportNegatives=False):
+    """ Determine if the data is log, non-log and increment value for log calculation """
     firstLine=True; convert=False
     inputMax=0; inputMin=10000; increment=0
     expressed_values={}
+    startIndex = 1
     for line in open(expFile,'rU').xreadlines():
         line = cleanUpLine(line)
         key = string.split(line,'\t')[0]
         t = string.split(line,'\t')
         if firstLine:
             headers = line
+            if 'row_clusters-flat' == t[1]:
+                startIndex = 2
             firstLine = False
         else:
+            if 'column_clusters-flat' in t:
+                continue ### skip this row if analyzing a clustered heatmap file
             try: uid, coordinates = string.split(key,'=')
             except Exception: uid = key
             if '' in t[1:]:
-                values = [0 if x=='' else x for x in t[1:]]
+                values = [0 if x=='' else x for x in t[startIndex:]]
             else:
                 values = t[1:]
             try: values = map(lambda x: float(x), values)
@@ -124,7 +130,14 @@ def checkExpressionFileFormat(expFile):
     else:
         expressionDataFormat = "log"
     #print expressionDataFormat,increment,convert
-    return expressionDataFormat,increment,convert
+    if reportNegatives == False:
+        return expressionDataFormat,increment,convert
+    else:
+        ### Report if negative values are present
+        increment = inputMin
+        if convert: ### Should rarely be the case, as this would indicate that a non-log folds are present in the file
+            increment = increment+1
+        return expressionDataFormat,increment,convert
 
 def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db):
     print "Processing the expression file:",expr_input_dir
@@ -1667,7 +1680,8 @@ def combineLPResultFiles(input_files):
         o.close()
     except Exception: pass
     
-    returnRowHeaderForMaxEntry(output_file,10)
+    try: returnRowHeaderForMaxEntry(output_file,10)
+    except Exception: pass
     return output_file
 
 def visualizeQCPlots(expr_input_dir):
@@ -3981,7 +3995,8 @@ if __name__ == '__main__':
         matchAndCorrelate(directory, var, output_source, additional)
     if analysis == 'returnRowHeaderForMaxEntry':
         ### Used primarily for combining LineageProfiler z-scores to report the top categories across compendiums
-        returnRowHeaderForMaxEntry(directory,int(var))
+        try: returnRowHeaderForMaxEntry(directory,int(var))
+        except Exception: pass
     if analysis == 'featureCorrelate':
         try: output_file = output_file
         except Exception: output_file=directory

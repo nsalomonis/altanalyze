@@ -880,27 +880,30 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
             except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
             try: WarningWindow(print_out,'Continue')
             except Exception: None
+        try: root.destroy()
+        except Exception: None
     else:
         import LineageProfilerIterate
         print '\n****Running LineageProfilerIterate****'
         codingtype = 'exon'; compendium_platform = 'exon'
-        platform = array_type,'Affymetrix'
+        platform = array_type,vendor
         try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel,modelSize=modelSize)
         except Exception:
             print_out = traceback.format_exc()
-            try: InfoWindow(print_out, 'Continue')
+            try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
             except Exception: None
         print_out = 'LineageProfiler classification results saved to the folder "SampleClassification".'
         if root!=None and root!='':
             try: openDirectory(export.findParentDir(expr_input_dir)+'/SampleClassification')
             except Exception: None
-            try: InfoWindow(print_out, 'Continue')
-            except Exception: None
+            #try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
+            #except Exception: None
         else:
             print print_out
 
-    try: root.destroy()
-    except Exception: None
+        try: root.destroy()
+        except Exception: None
+
     
 def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None, zscore=True, colorByGene=None):
     import clustering; reload(clustering)
@@ -2496,7 +2499,7 @@ class GUI:
                         print_out += "1) (if running directly from source code) Tkinter/PMW components are not installed or are incompatible.\n"
                         print_out += "2) (if running directly from source code) Python version is untested with AltAnalyze.\n"
                         print_out += "3) There is a conflict between the AltAnalyze packaged version of python on the OS.\n\n"
-                        print_out += "Contact genmapp@gladstone.ucsf.edu if this error persists with your system information.\n"
+                        print_out += "Contact altanalyze@gmail.com if this error persists with your system information.\n"
                         print_out += "Alternatively, try AltAnalyze using command-line options (http://www.AltAnalyze.org)."
                         try: InfoWindow(print_out,'Continue')
                         except Exception: print print_out
@@ -2527,7 +2530,7 @@ class GUI:
                         print_out += "1) (if running directly from source code) Tkinter/PMW components are not installed or are incompatible.\n"
                         print_out += "2) (if running directly from source code) Python version is untested with AltAnalyze.\n"
                         print_out += "3) There is a conflict between the AltAnalyze packaged version of python on the OS.\n\n"
-                        print_out += "Contact genmapp@gladstone.ucsf.edu if this error persists with your system information.\n"
+                        print_out += "Contact altanalyze@gmail.com if this error persists with your system information.\n"
                         print_out += "Alternatively, try AltAnalyze using command-line options (see documentation at http://AltAnalyze.org)."
                         try: InfoWindow(print_out,'Continue')
                         except Exception: print print_out
@@ -3001,7 +3004,7 @@ def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,u
     if Cytoscape_found == 'no':
         fln,status = update.download(goelite_url+'Cytoscape/cytoscape.tar.gz','','')
         if 'Internet' not in status: print "Cytoscape program folder downloaded."
-        
+
     count = verifyFileLength('AltDatabase/TreeView/TreeView.jar')
     if count==0:
         fln,status = update.download(goelite_url+'TreeView.zip','AltDatabase/NoVersion','')

@@ -1,5 +1,3 @@
-#!/usr/local/bin/python2.6
-
 ###AltAnalyze
 #Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
@@ -5146,7 +5144,7 @@ def badExit():
         print "\n...exiting AltAnalyze due to unexpected error"
         try: 
             time_stamp = timestamp()    
-            print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to genmapp@gladstone.ucsf.edu."
+            print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to altanalyze@gmail.com."
             try:
                 if len(log_file)>0:
                     if commandLineMode == 'no':
@@ -6202,18 +6200,40 @@ def commandLineRun():
             perform_alt_analysis = 'yes' ### Perform alternative exon analysis
             exonMapFile = arg
         elif opt == '--specificArray': specific_array_type = arg  ### e.g., hGlue
-        elif opt == '--celdir': cel_file_dir=arg
-        elif opt == '--bedDir': cel_file_dir=arg
-        elif opt == '--FEdir': cel_file_dir = arg
-        elif opt == '--expdir': input_exp_file=arg
-        elif opt == '--statdir': input_stats_file=arg
-        elif opt == '--filterdir': input_filtered_dir=arg
-        elif opt == '--groupdir': groups_file=arg
-        elif opt == '--compdir': comps_file=arg
-        elif opt == '--cdfdir': input_cdf_file=arg
-        elif opt == '--csvdir': input_annotation_file=arg
+        elif opt == '--celdir':
+            arg = verifyPath(arg)
+            cel_file_dir=arg
+        elif opt == '--bedDir':
+            arg = verifyPath(arg)
+            cel_file_dir=arg
+        elif opt == '--FEdir':
+            arg = verifyPath(arg)
+            cel_file_dir = arg
+        elif opt == '--expdir':
+            arg = verifyPath(arg)
+            input_exp_file=arg
+        elif opt == '--statdir':
+            arg = verifyPath(arg)
+            input_stats_file=arg
+        elif opt == '--filterdir':
+            arg = verifyPath(arg)
+            input_filtered_dir=arg
+        elif opt == '--groupdir':
+            arg = verifyPath(arg)
+            groups_file=arg
+        elif opt == '--compdir':
+            arg = verifyPath(arg)
+            comps_file=arg
+        elif opt == '--cdfdir':
+            arg = verifyPath(arg)
+            input_cdf_file=arg
+        elif opt == '--csvdir':
+            arg = verifyPath(arg)
+            input_annotation_file=arg
         elif opt == '--expname': exp_name=arg
-        elif opt == '--output': output_dir=arg
+        elif opt == '--output':
+            arg = verifyPath(arg)
+            output_dir=arg
         elif opt == '--vendor': manufacturer=arg
         elif opt == '--runICGS': runICGS=True
         elif opt == '--IDtype': IDtype=arg
@@ -6226,7 +6246,9 @@ def commandLineRun():
         elif opt == '--version': ensembl_version = arg
         elif opt == '--compendiumPlatform': compendiumPlatform=arg ### platform for which the LineageProfiler compendium is built on
         elif opt == '--force': force=arg
-        elif opt == '--input': input_file_dir=arg; pipelineAnalysis = False ### If this option is entered, only perform the indicated analysis
+        elif opt == '--input':
+            arg = verifyPath(arg)
+            input_file_dir=arg; pipelineAnalysis = False ### If this option is entered, only perform the indicated analysis
         elif opt == '--image': image_export.append(arg)
         elif opt == '--wpid': wpid=arg
         elif opt == '--mod': mod=arg
@@ -6454,7 +6476,9 @@ def commandLineRun():
             join_option='Intersection'
             uniqueOnly=False
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
-                if opt == '--input': files_to_merge.append(arg)
+                if opt == '--input':
+                    arg = verifyPath(arg)
+                    files_to_merge.append(arg)
                 if opt == '--join': join_option = arg
                 if opt == '--uniqueOnly': unique_only = arg
             if len(files_to_merge)<2:
@@ -6594,7 +6618,9 @@ def commandLineRun():
             # AltAnalyze.py --image "VennDiagram" --input "C:\file1.txt" --input "C:\file2.txt" --output "C:\graphs"
             files_to_merge=[]
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
-                if opt == '--input': files_to_merge.append(arg)
+                if opt == '--input':
+                    arg = verifyPath(arg)
+                    files_to_merge.append(arg)
                 if opt == '--display':
                     if arg=='yes' or arg=='True' or arg == 'true':
                         display=True
@@ -7933,6 +7959,19 @@ class Logger(object):
 
     def flush(self): pass
     
+def verifyPath(filename):
+    ### See if the file is in the current working directory
+    new_filename = filename
+    try:
+        cwd = os.getcwd()
+        files = unique.read_directory(cwd)
+        if filename in files:
+            new_filename = cwd+'/'+new_filename
+    except Exception:
+        pass
+
+    return new_filename
+    
 def dependencyCheck():
     ### Make sure core dependencies for AltAnalyze are met and if not report back
     
@@ -7976,7 +8015,7 @@ def dependencyCheck():
             count+=1
     if count>0:
         print '\nWARNING!!!! Some dependencies are not currently met.'
-        print "This will likely impact some of AltAnalyze's performance\n"
+        print "This may impact AltAnalyze's performance\n"
 
 if __name__ == '__main__':
     try: mlp.freeze_support()

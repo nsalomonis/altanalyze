@@ -176,7 +176,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
                 try: targetPlatform = 'gene'; importTissueSpecificProfiles(species)
                 except Exception: targetPlatform = "3'array"; importTissueSpecificProfiles(species)
         importGeneExpressionValues(exp_input,tissue_specific_db,translation_db,species=species)
-    zscore_output_dir = analyzeTissueSpecificExpressionPatterns()
+    zscore_output_dir = analyzeTissueSpecificExpressionPatterns(expInput=exp_input)
 
     return zscore_output_dir
 
@@ -431,7 +431,7 @@ def importExonIDTranslations(array_type,species,translate_to_genearray):
         del gene_translation_db; del gene_translation_db2
     return translation_db
 
-def analyzeTissueSpecificExpressionPatterns():
+def analyzeTissueSpecificExpressionPatterns(expInput=None):
     tissue_specific_sorted = []; genes_present={}; tissue_exp_db={}; gene_order_db={}; gene_order=[]
     for (index,vals) in expession_subset: genes_present[index]=[]
     for gene in tissue_specific_db:
@@ -487,7 +487,7 @@ def analyzeTissueSpecificExpressionPatterns():
         
     PearsonCorrelationAnalysis(sample_exp_db,tissue_exp_db)
     sample_exp_db=[]; tissue_exp_db=[]
-    zscore_output_dir = exportCorrelationResults()
+    zscore_output_dir = exportCorrelationResults(expInput)
     return zscore_output_dir
 
 def returnTissueSpecificExpressionProfiles(sample_exp_db,tissue_exp_db,tissue_to_index):
@@ -630,8 +630,12 @@ def replacePearsonPvalueWithZscore():
             scores.append([r,z,sample])
         tissue_comparison_scores[tissue] = scores
 
-def exportCorrelationResults():
-    corr_output_file = string.replace(exp_output_file,'DATASET','LineageCorrelations')
+def exportCorrelationResults(exp_input):
+    input_file = export.findFilename(exp_input)
+    if '.txt' in exp_output_file:
+        corr_output_file = string.replace(exp_output_file,'DATASET','LineageCorrelations')
+    else: ### Occurs when processing a non-standard AltAnalyze file
+        corr_output_file = exp_output_file+'/'+input_file
     corr_output_file = string.replace(corr_output_file,'.txt','-'+coding_type+'-'+compendiumPlatform+'.txt')
     if analysis_type == 'AltExon':
         corr_output_file = string.replace(corr_output_file,coding_type,'AltExon')
@@ -688,12 +692,12 @@ if __name__ == '__main__':
     vendor = 'Affymetrix'
     vendor = 'other:Symbol'
     vendor = 'other:Ensembl'
-    vendor = 'RNASeq'
+    #vendor = 'RNASeq'
     array_type = "exon"
-    array_type = "3'array"
-    array_type = "RNASeq"
+    #array_type = "3'array"
+    #array_type = "RNASeq"
     compendium_platform = "3'array"
-    #compendium_platform = "exon"
+    compendium_platform = "exon"
     #compendium_platform = "gene"
     #array_type = "junction"
     codingtype = 'ncRNA'
@@ -701,8 +705,8 @@ if __name__ == '__main__':
     #codingtype = 'AltExon'
     array_type = vendor, array_type
 
-    exp_input = "/Volumes/SEQ-DATA/Kamath/BedFiles/ExpressionInput/exp.AF-steady-state.txt"
-    exp_output = "/Volumes/SEQ-DATA/Kamath/BedFiles/ExpressionOutput/DATASET-AF.txt"
+    exp_input = "/Users/saljh8/Documents/1-conferences/GE/LineageMarkerAnalysis/Synapse-ICGS-EB-Ensembl.txt"
+    exp_output = "/Users/saljh8/Documents/1-conferences/GE/LineageMarkerAnalysis/temp.txt"
     #customMarkers = "/Users/nsalomonis/Desktop/dataAnalysis/qPCR/PAM50/AltAnalyze/ExpressionOutput/MarkerFinder/AVERAGE-training.txt"
     customMarkers = False
 

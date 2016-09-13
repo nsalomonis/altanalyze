@@ -412,6 +412,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         idx2 = Z2['leaves'] ### apply the clustering for the array-dendrograms to the actual matrix data
         xt = xt[:,idx2]
         #ind2 = ind2[:,idx2] ### reorder the flat cluster to match the order of the leaves the dendrogram
+        """ Error can occur here if hopach was selected in a prior run but now running NONE """
         ind2 = [ind2[i] for i in idx2] ### replaces the above due to numpy specific windows version issue
     if row_method != None:
         idx1 = Z1['leaves'] ### apply the clustering for the gene-dendrograms to the actual matrix data
@@ -642,13 +643,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             except Exception: pass
             try:
                 if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in top_genes):
-                    axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
-                    #axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
+                    #axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
+                    axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                 elif ' ' in row_header[new_index]:
                     symbol = string.split(row_header[new_index], ' ')[-1]
                     if symbol in justShowTheseIDs:
-                        axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
-                        #axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True)
+                        #axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
+                        axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True)
             except Exception: pass
                     
         if cluster in cluster_elite_terms:
@@ -779,7 +780,6 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             axm.text(adji, cadj, ''+column_header[i], rotation=270, verticalalignment="top",fontsize=column_fontsize)
             new_column_header.append(column_header[i])
 
-
     # Plot colside colors
     # axc --> axes for column side colorbar
 
@@ -792,7 +792,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
         #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
         if len(unique.unique(ind2))==2: ### cmap_c is too few colors
-            cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
         elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
             cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
         elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
@@ -812,7 +813,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             cmap_c = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
         elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
             cmap_c = pylab.cm.gist_rainbow
-
+    
         dc = numpy.array(ind2, dtype=int)
         dc.shape = (1,len(ind2)) 
         im_c = axc.matshow(dc, aspect='auto', origin='lower', cmap=cmap_c)
@@ -829,7 +830,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
                 #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
                 if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
-                    cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                    #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                    cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
                 elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
                     cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
                 elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
@@ -858,7 +860,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
             #cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
             if len(unique.unique(ind2))==2: ### cmap_c is too few colors
-                cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                #cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                cmap_d = matplotlib.colors.ListedColormap(['w', 'k'])
             elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
@@ -1520,7 +1523,7 @@ def filepath(filename):
 
 def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore=False):
     
-    global priorColumnClusters
+    global priorColumnClusters 
     global priorRowClusters
     getRowClusters=False
     start_time = time.time()
@@ -1708,13 +1711,20 @@ def importSIF(filename):
 def assignGroupColors(t):
     """ Assign a unique color to each group. Optionally used for cluster display. """
     column_header=[]; group_number_db={}
+    groupNamesPresent=False # Some samples may have missing group names which will result in a clustering error
+    for i in t:
+        if ':' in i: groupNamesPresent = True
+
     for i in t:
         repls = {'.2txt' : '', '.2bed' : '', '.2tab' : ''}
         i=reduce(lambda a, kv: a.replace(*kv), repls.iteritems(), i)
-        column_header.append(i)
         if ':' in i:
             group,j = string.split(i,':')[:2]
             group_number_db[group]=[]
+        elif groupNamesPresent:
+            group_number_db['UNK']=[]
+            i = 'UNK:'+i
+        column_header.append(i)
             
     #import random
     k = 0
@@ -1729,7 +1739,7 @@ def assignGroupColors(t):
     #color_list=[]
     #color_template = [1,1,1,0,0,0,0.5,0.5,0.5,0.25,0.25,0.25,0.75,0.75,0.75]
     t.sort() ### Ensure that all clusters have the same order of groups
-    for i in t:
+    for i in column_header:
         repls = {'.2txt' : '', '.2bed' : '', '.2tab' : ''}
         i=reduce(lambda a, kv: a.replace(*kv), repls.iteritems(), i)
         if ':' in i:
@@ -1747,6 +1757,7 @@ def assignGroupColors(t):
                 k+=1
             group_db[i] = group, color, ko
         #column_header.append(i)
+    
     return group_db, column_header
 
 def verifyFile(filename):
@@ -1818,6 +1829,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     
     #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
     model = TSNE(n_components=2)
+    #model = TSNE(n_components=2, random_state=0, n_iter=10000, early_exaggeration=10)
     scores=model.fit_transform(X)
     #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
     
@@ -1834,8 +1846,14 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         marker_size = 12
     if len(column_header)>40:
         marker_size = 10
-    if len(column_header)>120:
-        marker_size = 6
+    if len(column_header)>150:
+        marker_size = 7
+    if len(column_header)>500:
+        marker_size = 5
+    if len(column_header)>1000:
+        marker_size = 4
+    if len(column_header)>2000:
+        marker_size = 3
         
     ### Color By Gene
     if colorByGene != None:
@@ -1972,7 +1990,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             group_names[group_name] = color
         except Exception:
             color = 'r'; label=None
-        ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label)
+        ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
         #except Exception: print i, len(scores[pcB]);kill
         if showLabels:
             try: sample_name = '   '+string.split(sample_name,':')[1]
@@ -2191,6 +2209,12 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         marker_size = 10
     if len(column_header)>150:
         marker_size = 7
+    if len(column_header)>500:
+        marker_size = 5
+    if len(column_header)>1000:
+        marker_size = 4
+    if len(column_header)>2000:
+        marker_size = 3
     #marker_size = 9
         
     #samples = list(column_header)
@@ -2328,7 +2352,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             group_names[group_name] = color
         except Exception:
             color = 'r'; label=None
-        try: ax.plot(scores[pcA][i],scores[1][i],color=color,marker='o',markersize=marker_size,label=label)
+        try: ax.plot(scores[pcA][i],scores[1][i],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
         except Exception, e: print e; print i, len(scores[pcB]);kill
         if showLabels:
             try: sample_name = '   '+string.split(sample_name,':')[1]
@@ -2404,8 +2428,14 @@ def ica(filename):
         marker_size = 12
     if len(column_header)>40:
         marker_size = 10
-    if len(column_header)>120:
-        marker_size = 6
+    if len(column_header)>150:
+        marker_size = 7
+    if len(column_header)>500:
+        marker_size = 5
+    if len(column_header)>1000:
+        marker_size = 4
+    if len(column_header)>2000:
+        marker_size = 3
         
     group_names={}
     i=0
@@ -2721,7 +2751,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
         except Exception:
             color = 'r'; label=None
 
-        ax.plot([scores[0][i]],[scores[1][i]],[scores[2][i]],color=color,marker='o',markersize=markersize,label=label,markeredgewidth=0.1) #markeredgecolor=color
+        ax.plot([scores[0][i]],[scores[1][i]],[scores[2][i]],color=color,marker='o',markersize=markersize,label=label,markeredgewidth=0,picker=True) #markeredgecolor=color
         if showLabels:
             #try: sample_name = '   '+string.split(sample_name,':')[1]
             #except Exception: pass
@@ -4972,6 +5002,24 @@ def CountKallistoAlignedJunctions(filename):
     print counts, len(unique)
     ea.close()
     
+def filterRandomFile(filename,col1,col2):
+    fn = filepath(filename)
+    firstRow=True
+    
+    counts=0
+    ea = export.ExportFile(filename[:-4]+'-columns.txt')
+    for line in open(fn,'rU').xreadlines():
+        if line[0]!='#':
+            data = line.rstrip()
+            t = string.split(data,',')
+            #print t[col1-1]+'\t'+t[col2-1];sys.exit()
+            if ' ' in t[col2-1]:
+                t[col2-1] = string.split(t[col2-1],' ')[2]
+            ea.write(t[col1-1]+'\t'+t[col2-1]+'\n')
+            counts+=1
+    #print counts, len(unique)
+    ea.close()
+    
 def getBlockExonPositions():
     fn = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart65/ensembl/Mm/Mm_Ensembl_exon.txt'
     firstRow=True
@@ -5075,16 +5123,17 @@ def compareFusions(fn):
     ea.close()
     
 if __name__ == '__main__':
-    compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
+    #compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
     #combineVariants('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_known_variants.txt');sys.exit()
     #customClean('/Users/saljh8/Desktop/demo/Amit/ExpressionInput/exp.GSE72857_umitab-cleaned-output.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()
+    filterRandomFile('/Users/saljh8/Downloads/HuGene-1_1-st-v1.na36.hg19.transcript2.csv',1,8);sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/GEC14078/MergedFiles.txt'
-    CountKallistoAlignedJunctions(filename);sys.exit()
+    #CountKallistoAlignedJunctions(filename);sys.exit()
     filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/Mm/junction1/junction_critical-junction-seq.txt'
-    MakeJunctionFasta(filename);sys.exit()
+    #MakeJunctionFasta(filename);sys.exit()
     filename = '/Users/saljh8/Downloads/CoexpressionAtlas.txt'
-    ToppGeneFilter(filename); sys.exit()
+    #ToppGeneFilter(filename); sys.exit()
     #countIntronsExons(filename);sys.exit()
     #filterForJunctions(filename);sys.exit()
     #filename = '/Users/saljh8/Desktop/Grimes/GEC14074/ExpressionOutput/LineageCorrelations-test-protein_coding-zscores.txt'
@@ -5129,7 +5178,7 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/Grimes/Comb-plots/AML_genes-interest.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/AML_combplots.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/KO_genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/T-Cell_Single-Cell/DNMT3A_KO/ExpressionInput/Genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/Grimes/KashishNormalization/8-22-2016/LSK-DNDP/ExpressionInput/comb_plot.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -5137,7 +5186,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/Grimes/Comb-plots/exp.AML_single-cell-output.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/exp.AML.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/exp.KO-output.txt'
-    filename = '/Users/saljh8/Desktop/T-Cell_Single-Cell/DNMT3A_KO/ExpressionInput/exp.KO-Sorted_EffectorMemory2.txt'
+    filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/8-22-2016/LSK-DNDP/ExpressionInput/exp.LSK-SLAM_expanded-clustered.txt'
     print genesets
     for gene_list in genesets:
         multipleSubPlots(filename,gene_list,SubPlotType='column')
