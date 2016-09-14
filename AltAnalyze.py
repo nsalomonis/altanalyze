@@ -8030,30 +8030,17 @@ if __name__ == '__main__':
     if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)
 
     """ To do list:
-    0) (done) Integrate new network visualizationality in clustering
     1) RNA-Seq and LineageProfiler: threshold based RPKM expression filtering for binary absent present gene and exon calls
-    2) (demo) Splicing graph/isoform visualization
     3) SQLite for gene-set databases prior to clustering and network visualization
-    4) (done) Gene-level correlation queries for clustering
     5) (explored - not good) Optional algorithm type of PCA
-    6) (done) Optional normalization of expression data for clustering
     7) (partially) Integrate splicing factor enrichment analysis (separate module?)
-    8) (done) Venn diagram option
-    9) (done) Additional Analyses: (A) combine lists, (B) annotate ID list, (C) run marker finder directly, (D) any graph from table option, (E) network from SIF, (F) inference networks from gene-lists (protein-protein, protein-DNA, protein-splicing)
-    10) Optional denominator option for GO-Elite (create from input and ID system IDs)
     11) Update fields in summary combined alt.exon files (key by probeset)
     12) Check field names for junction, exon, RNA-Seq in summary alt.exon report
-    13) (done) Support additional ID types for initial import (ID select option and pulldown - Other)
     14) Proper FDR p-value for alt.exon analyses (include all computed p-values)
     15) Add all major clustering and LineageProfiler options to UI along with stats filtering by default
-    16) (done) Make GO-Elite analysis the default
     17) Support R check (and response that they need it) along with GUI gcrma, agilent array, hopach, combat
     18) Probe-level annotations from Ensembl (partial code in place) and probe-level RMA in R (or possibly APT) - google pgf for U133 array
-    19) (done) Include various gene databases for LineageProfiler in download and allow for custom databases to be used (markerFinder based)
-    20) (done) Quantile normalization option for any non-Affy, non-RNASeq data (check box)
-    21) (done) Import agilent from Feature extraction files (pull-down option)
-    
-    22) Update the software from the software
+    19) Update the software from the software
     
     Advantages of this tool kit:
     0) Easiest to use, hands down
@@ -8067,10 +8054,8 @@ if __name__ == '__main__':
     Primary Engineer Work:
     0) C-library calls and/or multithreading where applicable to improve peformance.
     1) MySQL or equivalent transition for all large database queries (e.g., HuEx 2.1 on-the-fly coordinate mapping).
-    2) Splicing-domain visualization (matplotlib).
     3) Isoform-domain network visualization and WP overlays.
     4) Webservice calls to in silico protein translation, domain prediction, splicing factor regulation.
-    5) Stand-alone integration with bedtools, QC tools, TopHat, Cufflinks, Miso (optional).
     
     ### 2.0.9
     moncole integration
