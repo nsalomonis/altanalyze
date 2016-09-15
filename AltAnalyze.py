@@ -6125,7 +6125,7 @@ def commandLineRun():
     runICGS=False
     IDtype=None
     runKallisto = False
-
+    
     original_arguments = sys.argv
     arguments=[]
     for arg in original_arguments:
@@ -6308,6 +6308,14 @@ def commandLineRun():
                 print_out += "exon-level mapping file location (--exonMapFile C:/mapping.txt) to perform alternative exon analyses for this platform."
         ### Will need to check here to see if the platform is supported (local or online files) OR wait until an error is encountered later
         
+    """ Check to see if a database is already installed """
+    try: current_species_dirs = unique.read_directory('/AltDatabase')
+    except Exception: current_species_dirs=[]
+    if len(current_species_dirs)==0 and update_dbs != 'yes':
+        print "Please install a database before running AltAnalyze. Please note, AltAnalyze may need to install additional files later for RNASeq and LineageProfiler for some species, automatically. Make sure to list your platform as RNASeq if analyzing RNA-Seq data (--platform RNASeq)."
+        print "Example:\n"
+        print 'python AltAnalyze.py --species Hs --update Official --version EnsMart72';sys.exit()
+
     ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
     if len(image_export) > 0 or len(accessoryAnalysis)>0 or runICGS:
         if runICGS:
@@ -6438,7 +6446,7 @@ def commandLineRun():
             if wpid==None:
                 print 'Please provide a valid WikiPathways ID (e.g., WP1234)';sys.exit()
             if species==None:
-                print 'Please provide a valid species ID for an installed database (to install: --update Official --species Hs --version EnsMart62Plus)';sys.exit()
+                print 'Please provide a valid species ID for an installed database (to install: --update Official --species Hs --version EnsMart72Plus)';sys.exit()
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input IDs (also needs to inlcude system code and value column)';sys.exit()
             import WikiPathways_webservice
@@ -6460,7 +6468,7 @@ def commandLineRun():
                     print '\nUnable to run!!! Input ID file does not contain a valid system code\n'
                 elif 'goelite' in traceback.format_exc():
                     print '\nUnable to run!!! A valid species database needs to first be installed. For example, run:'
-                    print 'python AltAnalyze.py --update Official --species Hs --version EnsMart65\n'
+                    print 'python AltAnalyze.py --update Official --species Hs --version EnsMart72\n'
                 else:
                     print traceback.format_exc()
                     print '\nError generating the pathway "%s"' % wpid,'\n'
@@ -7507,7 +7515,7 @@ def commandLineRun():
                 try: UI.checkForLocalArraySupport(species,array_type,specific_array_type,'command-line')
                 except Exception:
                     print 'Please install a valid gene database before proceeding.\n'
-                    print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart65';sys.exit()
+                    print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart72';sys.exit()
                 status = UI.verifyLineageProfilerDatabases(species,'command-line')
                 print "Finished adding database"
             sys.exit()
@@ -7570,7 +7578,7 @@ def commandLineRun():
             except ValueError:
                 ### Occurs due to if int(gene_database[-2:]) < 65: - ValueError: invalid literal for int() with base 10: ''
                     print '\nPlease install a valid gene database before proceeding.\n'
-                    print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart65\n';sys.exit()
+                    print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart72\n';sys.exit()
             if status == False:
                 print 'Please note: LineageProfiler not currently supported for this species...';sys.exit()
                 
@@ -7598,7 +7606,7 @@ def commandLineRun():
             try: UI.checkForLocalArraySupport(species,array_type,specific_array_type,'command-line')
             except Exception:
                 print 'Please install a valid gene database before proceeding.\n'
-                print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart65';sys.exit()
+                print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart72';sys.exit()
                     
         probeset_types = ['full','core','extended']
         if return_all == 'yes': ### Perform no alternative exon filtering when annotating existing FIRMA or MADS results
@@ -7834,7 +7842,7 @@ def commandLineRun():
         try: dirs = unique.read_directory('/AltDatabase')
         except Exception: dirs=[]
         if species not in dirs:
-            print '\n'+species,'species not yet installed. Please install before proceeding (e.g., "python AltAnalyze.py --update Official --species',species,'--version EnsMart65").'
+            print '\n'+species,'species not yet installed. Please install before proceeding (e.g., "python AltAnalyze.py --update Official --species',species,'--version EnsMart75").'
         global commandLineMode; commandLineMode = 'yes'
         AltAnalyzeMain(expr_var, alt_var, goelite_var, additional_var, exp_file_location_db,None)
     else:
