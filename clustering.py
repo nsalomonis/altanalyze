@@ -31,10 +31,16 @@ try:
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
         import matplotlib
-        try: matplotlib.use('TkAgg')
-        except Exception: pass
         if commandLine==False:
+            try: matplotlib.use('TkAgg')
+            except Exception: pass
             try: matplotlib.rcParams['backend'] = 'TkAgg'
+            except Exception: pass
+        else:
+            ### TkAgg doesn't work when AltAnalyze is run on the command-line
+            try: matplotlib.use('Agg')
+            except Exception: pass
+            try: matplotlib.rcParams['backend'] = 'Agg'
             except Exception: pass
         try:
             import matplotlib.pyplot as pylab
@@ -5125,7 +5131,7 @@ def compareFusions(fn):
 if __name__ == '__main__':
     #compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
     #combineVariants('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_known_variants.txt');sys.exit()
-    #customClean('/Users/saljh8/Desktop/demo/Amit/ExpressionInput/exp.GSE72857_umitab-cleaned-output.txt');sys.exit()
+    customClean('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/2000_run1708A_normalized.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()
     filterRandomFile('/Users/saljh8/Downloads/HuGene-1_1-st-v1.na36.hg19.transcript2.csv',1,8);sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/GEC14078/MergedFiles.txt'
