@@ -1,2 +1,2 @@
-AltResults/AlternativeOutput/Search:PSI.txt
+AltResults/AlternativeOutput/Search:PSI
 Restriction:.txt

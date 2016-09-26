@@ -253,6 +253,76 @@ def cleanFile(source_file,removeExtra=None):
     os.remove(temp_file)
     print 'copied',file
     
+def cleanAndFilterAllFiles(source_dir,output_dir,filter_file):
+    fn=filepath(filter_file)
+    filter_ids={} ### gene, protein and transcript IDs
+    for line in open(fn,'rU').xreadlines():
+        line = cleanUpLine(line)
+        filter_ids[line]=[]
+        
+    #source_file = '/Users/saljh8/Desktop/testX/AltAnalyze/AltXDatabase/EnsMart72/goelite/Hs/gene-interactions/Ensembl-BioGRID.txt'
+    #destination_file = '/Users/saljh8/Desktop/testX/AltAnalyze/AltXDatabase/EnsMart72_filtered/goelite/Hs/gene-interactions/Ensembl-BioGRID.txt'
+    #cleanAndFilterFile(source_file,destination_file,filter_ids);sys.exit()
+    
+    exclude_names = ['.DS','EntrezGene', 'HMDB', 'DrugBank']
+    for root, subFolders, files in os.walk(source_dir):
+        for f in files:
+            exclude = False
+            for i in exclude_names:
+                if i in f: exclude = True
+            if exclude==False:
+                source_file = root+'/'+f
+                destination_file = string.replace(source_file,source_dir,output_dir)
+                cleanAndFilterFile(source_file,destination_file,filter_ids)
+        
+def cleanAndFilterFile(source_file,destination_file,filter_ids):
+
+    data = ExportFile(destination_file)
+    count=0
+    firstLine=True
+    for line in open(source_file,'rU').xreadlines():
+        if firstLine:
+            data.write(line)
+            firstLine=False
+        else:
+            writeOut=False
+            line = cleanUpLine(line)
+            t = string.split(line,'\t')
+            if t[0] in filter_ids:
+                writeOut=True
+            elif ':' in t[0]:
+                uid = string.split(t[0],':')[0]
+                if uid in filter_ids:
+                    writeOut=True
+            else:
+                if len(t)>1:
+                    if t[1] in filter_ids:
+                        writeOut=True
+                    elif ':' in t[1]:
+                        uid = string.split(t[1],':')[0]
+                        if uid in filter_ids:
+                            writeOut=True
+                if len(t)>2:
+                    if t[2] in filter_ids:
+                        writeOut=True
+                if len(t)>3:
+                    if t[3] in filter_ids:
+                        writeOut=True
+                if len(t)>4:
+                    if t[4] in filter_ids:
+                        writeOut=True
+                if len(t)>5:
+                    if t[5] in filter_ids:
+                        writeOut=True
+            if writeOut:
+                data.write(line+'\n')
+                count+=1
+    data.close()
+    print 'copied',source_file
+    if count==0: ### There are no relevant entries in the file, so copy over the entire file
+        print '*****',source_file
+        copyFile(source_file,destination_file)
+    
 def copyFile(source_file,destination_file):
     dir = findParentDir(destination_file)
     try: createExportFolder(dir)
@@ -277,6 +347,29 @@ def deleteFolder(dir):
     except OSError: return 'failed'
 
 if __name__ == '__main__':
+    import getopt
+    source_dir=None
+    filter_file=None
+    output_dir=None
+    print 'Filtering AltAnalyze Database based on supplied Ensembl gene, protein and transcript IDs'
+    if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
+        print 'please provide sufficient arguments (--source, --destination, --filter)',sys.exit()
+        
+        #Filtering samples in a datasets
+        #python SampleSelect.py --i /Users/saljh8/Desktop/C4-hESC/ExpressionInput/exp.C4.txt --f /Users/saljh8/Desktop/C4-hESC/ExpressionInput/groups.C4.txt
+    else:
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['source=','destination=','filter='])
+        #print sys.argv[1:]
+        for opt, arg in options:
+            if opt == '--source': source_dir=arg
+            elif opt == '--destination': output_dir=arg
+            elif opt == '--filter': filter_rows=True
+            
+    output_file = input_file[:-4]+'-filtered.txt'
+    if filter_file != None and source_dir != None and output_dir != None:
+        cleanAndFilterAllFiles(source_dir,output_dir,filter_file)
+    sys.exit()
+
     customFileCopy('/Volumes/SEQ-DATA/IlluminaBodyMap/pooled/pooled/Thyroid-ERR030872__exons.bed','/Volumes/SEQ-DATA/IlluminaBodyMap/pooled/Thyroid-ERR030872__exons.bed');sys.exit()
     createExportFolder('Databases/null/null'); sys.exit()
     createExportDir('C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/RNASeq/hESC-NP/TopHat-hESC_differentiation/AltExpression/pre-filtered/counts/a.txt','C:/Users/Nathan Salomonis/Desktop/Gladstone/1-datasets/RNASeq/hESC-NP/TopHat-hESC_differentiation/AltExpression/pre-filtered/counts'); sys.exit()

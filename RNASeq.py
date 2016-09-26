@@ -2675,7 +2675,15 @@ def getMaxCounts(fn,cutoff,filterExport=False,filterExportDir=False):
                 try: uid, coordinates = string.split(key,'=')
                 except Exception: uid = key
                 try: maxExp = max(map(lambda x: float(x), t[1:]))
-                except Exception: maxExp=cutoff+1
+                except Exception:
+                    if 'NA' in t[1:]:
+                        tn = [0 if x=='NA' else x for x in t[1:]] ### Replace NAs
+                        maxExp = max(map(lambda x: float(x), tn))
+                    elif '' in t[1:]:
+                        tn = [0 if x=='' else x for x in t[1:]] ### Replace blanks
+                        maxExp = max(map(lambda x: float(x), tn))
+                    else:
+                        maxExp=cutoff+1
     
                 #gene = string.split(uid,':')[0]
                 if maxExp > cutoff:
@@ -3021,18 +3029,30 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
             except Exception: uid = key
             try: values = map(lambda x: float(x), t[1:])
             except Exception:
-                values=[]
-                for value in t[1:]:
-                    try: values.append(float(value))
-                    except Exception: values.append(-9999)
-                values = numpy.ma.masked_values(values, -9999.)
+                values = t[1:]
+                if 'NA' in values:
+                    values = [0 if x=='NA' else x for x in values] ### Replace NAs
+                    values = map(lambda x: float(x), values)
+                else:  
+                    values=[]
+                    for value in t[1:]:
+                        try: values.append(float(value))
+                        except Exception: values.append(-9999)
+                    values = numpy.ma.masked_values(values, -9999.)
             #gene = string.split(uid,':')[0]
             #if uid == 'ENSMUSG00000041515': print 'IRF8'
             if uid in expressed_uids:
                 #slope_exp_ratio = determinePattern(vs)
                 #if slope_exp_ratio<2 and slope_exp_ratio>0.5:
                 if platform == 'RNASeq':
-                    values = map(lambda x: math.log(x+1,2),values)
+                    try: values = map(lambda x: math.log(x+1,2),values)
+                    except Exception:
+                        if 'NA' in values:
+                            values = [0 if x=='NA' else x for x in values] ### Replace NAs
+                            values = map(lambda x: math.log(x+1,2),values)
+                        elif '' in values:
+                            values = [0 if x=='' else x for x in values] ### Replace NAs
+                            values = map(lambda x: math.log(x+1,2),values)
                     vs = list(values); vs.sort()
                     if (vs[-1*samplesDiffering]-vs[samplesDiffering-1])>math.log(fold,2): ### Ensures that atleast 4 samples are significantly different in the set
                         expressed_values[uid] = values
@@ -4648,6 +4668,12 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 ### If installed globally
                 retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
     
+    reimportExistingKallistoOutput = False
+
+    if reimportExistingKallistoOutput:
+        ### Just get the existing Kallisto output folders
+        fastq_paths = read_directory(output_dir)
+
     kallisto_folders=[]
     expMatrix={}
     countMatrix={}
@@ -4656,34 +4682,35 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     for n in fastq_paths:
         output_path = output_dir+n
         kallisto_folders.append(output_path)
-        begin_time = time.time()
-        print 'Running kallisto on:',n,
-        p=fastq_paths[n]
-        b=[" > "+n+'.sam']
-        #"""
-        if paired == 'paired':
-            try:
-                #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
-                retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
-            except Exception:
-                retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)
-        else:
-            if os.name == 'nt':
+        if reimportExistingKallistoOutput == False:
+            begin_time = time.time()
+            print 'Running kallisto on:',n,
+            p=fastq_paths[n]
+            b=[" > "+n+'.sam']
+            #"""
+            if paired == 'paired':
                 try:
-                    try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
-                    except Exception: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+                    #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
+                    retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
                 except Exception:
-                    try: retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
+                    retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)
+            else:
+                if os.name == 'nt':
+                    try:
+                        try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
+                        except Exception: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+                    except Exception:
+                        try: retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
+                        except Exception:
+                            retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
+                else:
+                    try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
                     except Exception:
                         retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
-            else:
-                try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
-                except Exception:
-                    retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
-        if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
-        else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
+            if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
+            else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
 
-        #"""
+            #"""
         input_path = output_path+'/abundance.txt'
         try:
             try: expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
@@ -4901,9 +4928,9 @@ if __name__ == '__main__':
     
     filename = '/Users/saljh8/Downloads/counts.GSE81682_HTSeq.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
+    #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
-    runKallisto('Dr','Etv2 GFP Single Cell','/Volumes/Seagate Exp/Single Cell RNA seq Run 1696 FASTQ','/Volumes/Seagate Exp/');sys.exit()
+    runKallisto('Hs','BC','/Volumes/salomonis2/GSE45419-Breast-Cancer-cell-line/RestrictedAnalysis/','/Volumes/salomonis2/GSE45419-Breast-Cancer-cell-line/RestrictedAnalysis/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

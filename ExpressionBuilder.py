@@ -112,6 +112,8 @@ def checkExpressionFileFormat(expFile,reportNegatives=False):
             except Exception: uid = key
             if '' in t[1:]:
                 values = [0 if x=='' else x for x in t[startIndex:]]
+            elif 'NA' in t[1:]:
+                values = [0 if x=='NA' else x for x in t[startIndex:]]
             else:
                 values = t[1:]
             try: values = map(lambda x: float(x), values)

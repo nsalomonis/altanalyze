@@ -17,8 +17,7 @@ def filterFile(input_file,output_file,filter_names):
     export_object = open(output_file,'w')
     firstLine = True
     for line in open(input_file,'rU').xreadlines():
-        data = line.rstrip()
-        data = string.replace(data,'"','')
+        data = cleanUpLine(line)
         if '.csv' in input_file:
             values = string.split(data,',')
         else:
@@ -45,7 +44,7 @@ def filterRows(input_file,output_file,filterDB=None):
     export_object = open(output_file,'w')
     firstLine = True
     for line in open(input_file,'rU').xreadlines():
-        data = line.rstrip()
+        data = cleanUpLine(line)
         values = string.split(data,'\t')
         if firstLine:
             firstLine = False
@@ -66,12 +65,19 @@ def filterRows(input_file,output_file,filterDB=None):
 def getFilters(filter_file):
     filter_list=[]
     for line in open(filter_file,'rU').xreadlines():
-        data = line.rstrip()
+        data = cleanUpLine(line)
         sample = string.split(data,'\t')[0]
         filter_list.append(sample)
     return filter_list
 
 """" Filter a dataset based on number of genes with expression above the indicated threshold"""
+
+def cleanUpLine(line):
+    line = string.replace(line,'\n','')
+    line = string.replace(line,'\c','')
+    data = string.replace(line,'\r','')
+    data = string.replace(data,'"','')
+    return data
 
 def statisticallyFilterFile(input_file,output_file,threshold):
     if 'exp.' in input_file:
@@ -83,7 +89,7 @@ def statisticallyFilterFile(input_file,output_file,threshold):
     junction_max=[]
     count_sum_array=[]
     for line in open(input_file,'rU').xreadlines():
-        data = line.rstrip()
+        data = cleanUpLine(line)
         if '.csv' in input_file:
             t = string.split(data,',')
         else:
@@ -93,7 +99,15 @@ def statisticallyFilterFile(input_file,output_file,threshold):
             header=False
             count_sum_array=[0]*len(samples)
         else:
-            values = map(float,t[1:])
+            try: values = map(float,t[1:])
+            except Exception:
+                if 'NA' in t[1:]:
+                    tn = [0 if x=='NA' else x for x in t[1:]] ### Replace NAs
+                    values = map(float,tn)
+                else:
+                    tn = [0 if x=='' else x for x in t[1:]] ### Replace NAs
+                    values = map(float,tn)       
+                
             binarized_values = []
             for v in values:
                 if v>threshold: binarized_values.append(1)
@@ -148,7 +162,7 @@ def combineDropSeq(input_dir):
         header=True
         if '.txt' in input_file:
             for line in open(input_dir+'/'+input_file,'rU').xreadlines():
-                data = line.rstrip()
+                data = cleanUpLine(line)
                 t = string.split(data,'\t')
                 if header:
                     header_row = line
@@ -174,7 +188,7 @@ def combineDropSeq(input_dir):
 
 if __name__ == '__main__':
     ################  Comand-line arguments ################
-    #statisticallyFilterFile('a','b',1)
+    #statisticallyFilterFile('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/ExpressionInput/exp.2000_run1708B_normalized.txt','/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/ExpressionInput/exp.2000_run1708B_normalized2.txt',1)
     import getopt
     filter_rows=False
     filter_file=None

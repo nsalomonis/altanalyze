@@ -2856,7 +2856,6 @@ def Kmeans(features, column_header, row_header):
     The variance is returned but we don't really need it since the SciPy implementation computes several runs (default is 20) and selects the one with smallest variance for us. Now you can check where each data point is assigned using the vector quantization function in the SciPy package.
     By checking the value of code we can see if there are any incorrect assignments. To visualize, we can plot the points and the final centroids.
     """
-    import pylab
     pylab.plot([p[0] for p in class1],[p[1] for p in class1],'*')
     pylab.plot([p[0] for p in class2],[p[1] for p in class2],'r*') 
     pylab.plot([p[0] for p in centroids],[p[1] for p in centroids],'go') 
@@ -5127,10 +5126,39 @@ def compareFusions(fn):
         print [fusion]
         ea.write(fusion+'\t'+string.join(fusion_db[fusion],'\t')+'\n')
     ea.close()
+
+def customCleanSupplemental(filename):
+    fn = filepath(filename)
+    firstRow=True
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
     
+    found = False
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        line = string.split(data,', ')
+        gene_data=[]
+        for gene in line:
+            gene = string.replace(gene,' ','')
+            if '/' in gene:
+                genes = string.split(gene,'/')
+                gene_data.append(genes[0])
+                for i in genes[1:]:
+                    gene_data.append(genes[0][:len(genes[1])*-1]+i)
+            elif '(' in gene:
+                genes = string.split(gene[:-1],'(')
+                gene_data+=genes
+            else:
+                gene_data.append(gene)
+            
+        ea.write(string.join(gene_data,' ')+'\n')
+    ea.close()
+
+
 if __name__ == '__main__':
     #compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
     #combineVariants('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_known_variants.txt');sys.exit()
+    customCleanSupplemental('/Users/saljh8/Desktop/dataAnalysis/CPMC/TCGA_MM/MM_genes_published.txt');sys.exit()
     customClean('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/2000_run1708A_normalized.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()
     filterRandomFile('/Users/saljh8/Downloads/HuGene-1_1-st-v1.na36.hg19.transcript2.csv',1,8);sys.exit()

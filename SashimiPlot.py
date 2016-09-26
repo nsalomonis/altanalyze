@@ -173,24 +173,67 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=None):
             #print traceback.format_exc()
             pass
 
-    processed_events = formatAndSubmitSplicingEventsToSashimiPlot(PSIFilename,bamdir,splicing_events,sample_group_db,groups,expandedSearch)
-    mopup_events=[]
+    processed_events = formatAndSubmitSplicingEventsToSashimiPlot(PSIFilename, bamdir, splicing_events, sample_group_db, groups, False)
+    mopup_events = getMopUpEvents(splicing_events, processed_events)
+
+    ### Do the same for supplied gene queries or junctions that didn't map above using the gene expression values as a guide
+    #print len(splicing_events),len(processed_events),len(mopup_events)
+    processed_events = formatAndSubmitSplicingEventsToSashimiPlot(steady_state_exp_file,bamdir,mopup_events,sample_group_db,groups,expandedSearch)
+    if len(processed_events)>0:
+        mopup_events = getMopUpEvents(mopup_events, processed_events)
+        processed_events = formatAndSubmitSplicingEventsToSashimiPlot(PSIFilename, bamdir, mopup_events, sample_group_db, groups, True)
+    return gene_to_symbol
+
+def getMopUpEvents(splicing_events, processed_events):
+    mopup_events = []
     for event in splicing_events:
         add = True
         if event in processed_events:
             add = False
         if ' ' in event:
             try:
-                j1,j2 = string.split(event,' ')
-                if j1 in processed_events: add = False
-                if j2 in processed_events: add = False
-            except Exception: pass
-        if add: mopup_events.append(event)
+                j1, j2 = string.split(event, ' ')
+                if j1 in processed_events:
+                    add = False
+                if j2 in processed_events:
+                    add = False
+            except Exception:
+                pass
+        if add:
+            mopup_events.append(event)
+    return mopup_events
 
-    ### Do the same for supplied gene queries or junctions that didn't map above using the gene expression values as a guide
-    #print len(splicing_events),len(processed_events),len(mopup_events)
-    processed_events = formatAndSubmitSplicingEventsToSashimiPlot(steady_state_exp_file,bamdir,mopup_events,sample_group_db,groups,expandedSearch)
-    return gene_to_symbol
+def reorderEvents(events):
+    splicing_events = events
+    index = 0
+    for e in events:
+        j1o, j2o = string.split(e, ' ')
+        gene, j1 = string.split(j1o, ':')
+        gene, j2 = string.split(j2o, ':')
+        if '-' in j1 and '-' in j2:
+            j1a, j1b = string.split(j1, '-')
+            j2a, j2b = string.split(j2, '-')
+            j1a_block, j1a_region = string.split(j1a[1:], '.')
+            j2a_block, j2a_region = string.split(j2a[1:], '.')
+            j1b_block, j1b_region = string.split(j1b[1:], '.')
+            j2b_block, j2b_region = string.split(j2b[1:], '.')
+            if int(j1b_block) < int(j2b_block) and int(j1a_block) < int(j2a_block):
+                pass ### Occurs for complex cassette exon splicing events but matches SashimiIndex's selection for exclusion
+            elif int(j1b_block) > int(j2b_block):
+                new_e = j2o + ' ' + j1o
+                splicing_events[index] = new_e
+            elif int(j1a_block) < int(j2a_block):
+                new_e = j2o + ' ' + j1o
+                splicing_events[index] = new_e
+            elif int(j1b_region) > int(j2b_region):
+                new_e = j2o + ' ' + j1o
+                splicing_events[index] = new_e
+            elif int(j1a_region) < int(j2a_region):
+                new_e = j2o + ' ' + j1o
+                splicing_events[index] = new_e
+
+        index += 1
+    return splicing_events
 
 def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,sample_group_db,groups,expandedSearch):
     ### Begin exporting parameters and events for SashimiPlot visualization
@@ -235,15 +278,15 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
             else:
                 sampleIndexBegin = 1
                 sample_headers = t[sampleIndexBegin:]
-		if '.bed' not in sample_headers[0]: ### Add .bed if removed manually
-		    sample_headers = map(lambda s: s+'.bed',sample_headers)
+                if '.bed' not in sample_headers[0]: ### Add .bed if removed manually
+                    sample_headers = map(lambda s: s+'.bed',sample_headers)
             index=0
             sample_group_index={}
             for s in sample_headers:
                 group = sample_group_db[s]
                 sample_group_index[index]=group
                 try: sampleReadDepth[index]=count_sum_array_db[s]
-		except Exception: sampleReadDepth[index]=count_sum_array_db[s]
+                except Exception: sampleReadDepth[index]=count_sum_array_db[s]
                 index+=1
             firstLine = False
         else:
@@ -308,13 +351,17 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                         group_psi_values['low']=filtered_group_index1
                         group_psi_values['high']=filtered_group_index2
                     else:
-			gn=0
+                        gn=0
                         for group in groups:
 			    gn+=1
 			    #if gn>4: break
                             if group in initial_group_psi_values:
                                 initial_group_psi_values[group].sort()
-				if len(groups)>3:
+				if len(groups)>7:
+				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:1])
+				elif len(groups)>5:
+				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:2])
+				elif len(groups)>3:
 				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:4])
 				else:
 				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:5])
@@ -323,8 +370,15 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
 		    except Exception:
 			print 'Cannot update the settings file. Likely permissions issue.'
 
+		    try:
+			reordered = reorderEvents([t[2] + ' ' + t[3]])
+			reordered = string.split(reordered[0], ' ')
+		    except Exception:
+			reordered = [t[2] + ' ' + t[3]]
+			reordered = string.split(reordered[0], ' ')
+		    #print reordered
                     if 'PSI' in filename:
-                        try: formatted_splice_event=string.replace(t[3],':','__')
+                        try: formatted_splice_event = string.replace(reordered[1], ':', '__')
                         except Exception: pass
                         ### Submit the query
                         try: ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir); success = True
@@ -342,13 +396,14 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                                 except Exception:
                                     success = False
                                     #print traceback.format_exc()
-
+		    """
                     ### Second attempt
                     if 'PSI' in filename and success==False: ### Only relevant when parsing the junction pairs but not genes
-                        try: formatted_splice_event=string.replace(t[2],':','__')
+                        try: formatted_splice_event=string.replace(reordered[0],':','__')
                         except Exception: pass
                         try: ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir); # print 'success'
-                        except Exception: pass    
+                        except Exception: pass
+		    """
     return processed_events
 
 def findParentDir(filename):
@@ -491,11 +546,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = 'C:/Users/Nathan Salomonis/Desktop/BAMS/'
+    root_dir = '/Volumes/SEQ-DATA/BreastCancerTargetted/BAMs/'
     events = ['Aldh3a2']
-    #events = None
-    eventsToVisualizeFilename = 'C:/Users/Nathan Salomonis/Desktop/BAMS/AltResults/Clustering/top50/Combined-junction-exon-evidence.txt'
+    events = None
     eventsToVisualizeFilename = None
+    eventsToVisualizeFilename = '/Volumes/SEQ-DATA/BreastCancerTargetted/BAMs/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust-pairwise.txt'
     bamdir = root_dir
-    remoteSashimiPlot('Mm',root_dir,bamdir,eventsToVisualizeFilename,events=events,show=False)
+    remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

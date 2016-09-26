@@ -1374,6 +1374,8 @@ class GUI:
         else:
             try:
                 self.graphic_link = WikiPathways_webservice.visualizePathwayAssociations(filename,species_code,mod_type,wpid)
+                if len(self.graphic_link)==0:
+                    force_no_matching_error
                 self.wp_status = 'Pathway images colored and saved to disk by webservice\n(see image title for location)'
                 self.label_status_name.set(self.wp_status)
                 tl = Toplevel()

@@ -138,7 +138,7 @@ def plot_event(event_name, pickle_dir, settings_filename,
         raise Exception, "Cannot find file %s. Are you sure the events " \
                          "were indexed with the latest version of index_gff.py?" \
                          %(genes_filename)
-    
+
     event_to_filenames = shelve.open(genes_filename)
     if event_name not in event_to_filenames:
         raise Exception, "Event %s not found in pickled directory %s. " \
@@ -146,6 +146,11 @@ def plot_event(event_name, pickle_dir, settings_filename,
               %(event_name, pickle_dir)
     
     pickle_filename = event_to_filenames[event_name]
+    if pickle_dir not in pickle_filename:
+        import string
+        pickle_filename = string.replace(pickle_filename,'\\','/')
+        pickle_filename = pickle_dir + string.split(pickle_filename,'sashimi_index')[1]
+
     import string
     #pickle_filename = string.replace(pickle_filename,' 1','')
     if no_posteriors:

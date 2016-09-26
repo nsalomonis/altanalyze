@@ -184,6 +184,7 @@ def checkForDuplicateIDs(input_file):
     return input_file
 
 def importHopachOutput(filename):
+    print filename
     """ Import the ID order information """
     db={} ### Used to store the cluster data
     hopach_clusters=[]
