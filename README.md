@@ -2,6 +2,6 @@ AltAnalyze is a freely available, open-source and cross-platform program that al
 
 [AltAnalyze documentation](http://www.altanalyze.org/help_main.htm), installers are provided on this website as well as at http://www.altanalyze.org. For questions not addressed here, please [contact us](wiki/ContactUs).
 
-**News Update** [9/18/14](wiki/News)
+**News Update** [8/31/16](wiki/News)
 
 ![http://www.altanalyze.org/image/AltAnalyze_structure_v3.jpg](http://www.altanalyze.org/image/AltAnalyze_structure_v3.jpg)
