@@ -197,6 +197,6 @@ def exportExpressionData(filename,sample_db):
     export_text.close()
     
 if __name__ == '__main__':
-    filename = "/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt"
+    filename = "/Volumes/salomonis1/projects/Beena2/fastq/ExpressionInput/exp.AF.txt'"
     normalizeDataset(filename,normalization='Group')
     #normalizeDataset(filename)

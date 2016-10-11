@@ -209,11 +209,11 @@ def runPyCombat(fl):
 ########  End AltAnalyze Functions  ######## 
 
 if __name__ == "__main__":
-    expfile = '/Users/saljh8/Desktop/dataAnalysis/Heping/4-runs/ExpressionInput/exp.singh-results-317.txt'
+    expfile = '/Volumes/salomonis1/projects/Beena2/fastq/ExpressionInput/exp.AF.txt'
     groupsfile = string.replace(expfile,'exp.','groups.')
     import UI
     fl = UI.ExpressionFileLocationData(expfile,'',groupsfile,'')
-    runPyCombat(fl);sys.exit()
+    #runPyCombat(fl);sys.exit()
     # NOTE: run this first to get the bladder batch stuff written to files.
     
     """

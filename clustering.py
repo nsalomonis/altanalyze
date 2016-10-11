@@ -1814,8 +1814,25 @@ def exportCustomGeneSet(geneSetName,species,allGenes):
     else:
         print 'Could not store since no species name provided.'
 
-    
-def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,row_header=None,colorByGene=None,species=None):
+def writetSNEScores(scores,outputdir):
+    export_obj = export.ExportFile(outputdir)
+    for matrix_row in scores:
+        matrix_row = map(str,matrix_row)
+        export_obj.write(string.join(matrix_row,'\t')+'\n')
+    export_obj.close()
+
+def importtSNEScores(inputdir):
+    scores=[]
+    ### Imports tSNE scores to allow for different visualizations of the same scatter plot
+    for line in open(inputdir,'rU').xreadlines():         
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        t=map(float,t)
+        scores.append(t)
+    return scores
+
+def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,
+         row_header=None,colorByGene=None,species=None,reimportModelScores=True):
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
     try:
@@ -1830,14 +1847,24 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         #print e
         group_db={}
 
-    from sklearn.manifold import TSNE
-    X=matrix.T
-    
-    #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
-    model = TSNE(n_components=2)
-    #model = TSNE(n_components=2, random_state=0, n_iter=10000, early_exaggeration=10)
-    scores=model.fit_transform(X)
-    #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
+    if reimportModelScores:
+        print 'Re-importing t-SNE model scores rather than calculating from scratch',
+        try: scores = importtSNEScores(root_dir+dataset_name+'-tSNE_scores.txt'); print '...import finished'
+        except Exception:
+            reimportModelScores=False; print '...import failed'
+        
+    if reimportModelScores==False:
+        from sklearn.manifold import TSNE
+        X=matrix.T
+        
+        #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
+        model = TSNE(n_components=2)
+        #model = TSNE(n_components=2, random_state=0, n_iter=10000, early_exaggeration=10)
+        scores=model.fit_transform(X)
+        
+        ### Export the results for optional re-import later
+        writetSNEScores(scores,root_dir+dataset_name+'-tSNE_scores.txt')
+        #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
     
     fig = pylab.figure()
     ax = fig.add_subplot(111)
@@ -3769,7 +3796,9 @@ def runHCOnly(filename,graphics,Normalize=False):
                 row_method, row_metric, column_method, column_metric, color_gradient, display=False, Normalize=Normalize)
     return graphic_link
 
-def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None):
+def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,
+               algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None,
+               reimportModelScores=True):
     global root_dir
     global graphic_link
     graphic_link=graphics ### Store all locations of pngs
@@ -3786,7 +3815,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
         column_header, row_header = row_header, column_header
-    if len(column_header)>1000 or len(row_header)>1000:
+    if len(column_header)>1000 or len(row_header)>1000 and algorithm != 't-SNE':
         print 'Performing Principal Component Analysis (please be patient)...'
     #PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=True)
     with warnings.catch_warnings():
@@ -3794,14 +3823,22 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         if algorithm == 't-SNE':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
             column_header, row_header = row_header, column_header   
-            tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species)
+            tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
+                 showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
+                 reimportModelScores=reimportModelScores)
         elif plotType == '3D':
-            try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species, colorByGene=colorByGene)
+            try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db,
+                       display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName,
+                       species=species, colorByGene=colorByGene)
             except Exception:
                 print traceback.format_exc()
-                PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species, colorByGene=colorByGene)
+                PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header,
+                        dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm,
+                        geneSetName=geneSetName, species=species, colorByGene=colorByGene)
         else:
-            PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName, species=species, colorByGene=colorByGene)
+            PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name,
+                        group_db, display=display, showLabels=showLabels, algorithm=algorithm,
+                        geneSetName=geneSetName, species=species, colorByGene=colorByGene)
 
     return graphic_link
 
@@ -5158,10 +5195,10 @@ def customCleanSupplemental(filename):
 if __name__ == '__main__':
     #compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
     #combineVariants('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_known_variants.txt');sys.exit()
-    customCleanSupplemental('/Users/saljh8/Desktop/dataAnalysis/CPMC/TCGA_MM/MM_genes_published.txt');sys.exit()
-    customClean('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/2000_run1708A_normalized.txt');sys.exit()
+    #customCleanSupplemental('/Users/saljh8/Desktop/dataAnalysis/CPMC/TCGA_MM/MM_genes_published.txt');sys.exit()
+    #customClean('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/2000_run1708A_normalized.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()
-    filterRandomFile('/Users/saljh8/Downloads/HuGene-1_1-st-v1.na36.hg19.transcript2.csv',1,8);sys.exit()
+    #filterRandomFile('/Users/saljh8/Downloads/HuGene-1_1-st-v1.na36.hg19.transcript2.csv',1,8);sys.exit()
     filename = '/Users/saljh8/Desktop/Grimes/GEC14078/MergedFiles.txt'
     #CountKallistoAlignedJunctions(filename);sys.exit()
     filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/Mm/junction1/junction_critical-junction-seq.txt'
@@ -5212,7 +5249,7 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/Grimes/Comb-plots/AML_genes-interest.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/AML_combplots.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/KO_genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/Grimes/KashishNormalization/8-22-2016/LSK-DNDP/ExpressionInput/comb_plot.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot2.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -5220,7 +5257,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/Grimes/Comb-plots/exp.AML_single-cell-output.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/exp.AML.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/exp.KO-output.txt'
-    filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/8-22-2016/LSK-DNDP/ExpressionInput/exp.LSK-SLAM_expanded-clustered.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/exp.Lsk_panorama.txt'
     print genesets
     for gene_list in genesets:
         multipleSubPlots(filename,gene_list,SubPlotType='column')

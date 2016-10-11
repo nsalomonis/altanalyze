@@ -7986,7 +7986,7 @@ def dependencyCheck():
     from pkgutil import iter_modules
     modules = set(x[1] for x in iter_modules())  ### all installed modules
     dependent_modules = ['string','csv','base64','getpass','requests']
-    dependent_modules += ['math','warnings','sklearn','time','os','webbrowser']
+    dependent_modules += ['warnings','sklearn','os','webbrowser']
     dependent_modules += ['scipy','numpy','matplotlib','igraph','pandas','patsy']
     dependent_modules += ['ImageTk','PIL','cairo','wx','fastcluster','pysam', 'Tkinter']
     print ''

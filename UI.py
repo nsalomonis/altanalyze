@@ -425,9 +425,9 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, self._parent))
             except Exception,e: createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose,contrast,None)
         if analysis_type == 'performPCA':
-            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene = info_list
-            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene))
-            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene)
+            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores = info_list
+            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores))
+            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores)
         if analysis_type == 'runLineageProfiler':
             fl, filename, vendor, custom_markerFinder, geneModel_file, modelDiscovery = info_list
             try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent, modelSize=modelDiscovery))
@@ -905,15 +905,19 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
         except Exception: None
 
     
-def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,geneSetName=None, species=None, zscore=True, colorByGene=None):
+def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,
+            geneSetName=None, species=None, zscore=True, colorByGene=None, reimportModelScores=True):
     import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
     else: pca_labels=False
     if zscore=='yes': zscore = True
     elif zscore=='no': zscore = False
+
     try:
-        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels, plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene)
+        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels,
+                    plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName,
+                    species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores)
         try: print'Finished building PCA.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -5133,6 +5137,11 @@ def getUserParameters(run_parameter,Multi=None):
                     zscore = gu.Results()['zscore']
                     transpose = gu.Results()['transpose']
                     geneSetName = gu.Results()['pcaGeneSets']
+                    reimportModelScores = gu.Results()['reimportModelScores']
+                    if reimportModelScores == 'yes':
+                        reimportModelScores = True
+                    else:
+                        reimportModelScores = False
                     try:
                         colorByGene = gu.Results()['colorByGene']
                         colorByGene_temp = string.replace(colorByGene,' ','')
@@ -5154,7 +5163,7 @@ def getUserParameters(run_parameter,Multi=None):
                         analysis = 'performPCA'
                         if transpose == 'yes': transpose = True
                         else: transpose = False
-                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene
+                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:

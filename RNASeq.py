@@ -2696,6 +2696,8 @@ def importBiologicalRelationships(species):
     custom_annotation_dbase={}
     try: coding_db = ExpressionBuilder.importTranscriptBiotypeAnnotations(species)
     except Exception: coding_db = {}
+    try: gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
+    except Exception: gene_to_symbol_db = {}
     for gene in coding_db:
         #coding_type = string.split(coding_db[gene][-1],'|')
         coding_type = coding_db[gene][-1]
@@ -2703,6 +2705,11 @@ def importBiologicalRelationships(species):
             coding_type = 'protein_coding'
         else:
             coding_type = 'ncRNA'
+        if gene in gene_to_symbol_db:
+            symbol = string.lower(gene_to_symbol_db[gene][0])
+            ### The below genes cause issues with many single cell datasets in terms of being highly correlated
+            if 'rpl'==symbol[:3] or 'rps'==symbol[:3] or 'mt-'==symbol[:3] or '.' in symbol or 'gm'==symbol[:2]:
+                coding_type = 'ncRNA'
         try: gene_db = custom_annotation_dbase[coding_type]; gene_db[gene]=[]
         except Exception: custom_annotation_dbase[coding_type] = {gene:[]}
         
@@ -4668,7 +4675,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 ### If installed globally
                 retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
     
-    reimportExistingKallistoOutput = False
+    reimportExistingKallistoOutput = True
 
     if reimportExistingKallistoOutput:
         ### Just get the existing Kallisto output folders
@@ -4930,7 +4937,8 @@ if __name__ == '__main__':
     #fastRPKMCalculate(filename);sys.exit()
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
-    runKallisto('Hs','BC','/Volumes/salomonis2/GSE45419-Breast-Cancer-cell-line/RestrictedAnalysis/','/Volumes/salomonis2/GSE45419-Breast-Cancer-cell-line/RestrictedAnalysis/');sys.exit()
+
+    runKallisto('Mm','tom','/Volumes/Grimes/run1695-Mm/run_tdTomato/','/Volumes/Grimes/run1695-Mm/run_tdTomato/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

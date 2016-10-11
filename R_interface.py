@@ -335,10 +335,10 @@ class RScripts:
         print 'Loading monocle package in R'
         print_out = r('library("monocle")')
         if "Error" in print_out:
-            print 'Installing the R package "affy" in Config/R'
+            print 'Installing the R package "monocle" in Config/R'
             print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("monocle")')
             print print_out
-        print_out = r('library("monocle")')
+            print_out = r('library("monocle")')
         if "Error" in print_out: print 'unable to download the package "monocle"';  
         print_out = r('library("monocle")')
         print "Reading Monocle data..."
@@ -365,7 +365,7 @@ class RScripts:
         #print [gene_exp]
         try:print_out = r(gene_exp)
         except Exception:
-                    print "expression genes"
+                print "expression genes"
         print_out=r('length(expressed_genes)')
         print print_out
 
@@ -946,6 +946,66 @@ def reformatHeatmapFile(input_file):
             eo.write(values)
     return export_file, len(unique_clusters)
 
+def run_JTKcycle(expFile,annotFile,Time_range1, Time_range2,No_of_Timepoints,No_of_replicates,timepoint_difference):
+    
+    print 'Loading JTK-Cycle package in R'
+    path='"'+r_package_path+'/JTK_CYCLE.R"'
+    print [path]
+    line = 'source(%s)' %  path
+    print_out = r(line)
+    """
+    if "Error" in print_out:
+        print 'Installing the R package "JTK_CYCLE.R" in Config/R'
+        print_out = r('install.packages("devtools")')
+        
+        print print_out
+        print_out = r('library(devtools)')
+        print print_out
+        print_out = r('install_github("mfcovington/jtk-cycle")')
+        #print_out = r('source("http://bioconductor.org/biocLite.R"); biocLite("jtk-cycle")')
+        print print_out
+        print_out = r('library("JTK_CYCLE.R")')
+    sys,exit()
+    print_out = r('source("/Users/ram5ge/Desktop/Krithika/JTK_Cycle/JTK_CYCLE.R")');print print_out
+    if "Error" in print_out: print "JTK_CYCLE.R is missing"
+    else: print 'Loading JTK Cycle'
+    """
+    
+    print_out = r('project <- "JTK_output"')   
+    print_out = r('options(stringsAsFactors=FALSE)');print print_out
+  
+    read_annot = 'annot <- read.delim(%s)' % '"'+annotFile+'"'
+    print [read_annot]
+    print_out = r(read_annot);print print_out
+    read_data = 'input_data <- read.delim(%s)' % '"'+expFile+'"'
+    print read_data
+    print_out = r(read_data);print print_out
+    
+    print_out = r('rownames(input_data) <- input_data[,1]');print print_out
+    print_out = r('input_data <- input_data[,-1]');print print_out
+    #dist_calc = r('jtkdist(24,1)')
+    
+    dist_calc = 'jtkdist(%s,%s)' %('"'+str(No_of_Timepoints)+'"', '"'+str(No_of_replicates)+'"')
+    print_out = r(dist_calc);print print_out
+    
+    period_calc = 'periods <- %s:%s' %('"'+str(Time_range1)+'"', '"'+str(Time_range2)+'"')
+    print_out = r(period_calc);print print_out
+    jtk_calc = 'jtk.init(periods,%s)' % '"'+timepoint_difference+'"'
+    print_out = r(jtk_calc);print print_out
+    
+    print_out = r('cat("JTK analysis started on",date(),"\n")');print print_out
+    print_out = r('flush.console()');print print_out
+
+    print_out = r('st <- system.time({res <- apply(data,1,function(z) {jtkx(z); c(JTK.ADJP,JTK.PERIOD,JTK.LAG,JTK.AMP)}); res <- as.data.frame(t(res)); bhq <- p.adjust(unlist(res[,1]),"BH"); res <- cbind(bhq,res); colnames(res) <- c("BH.Q","ADJ.P","PER","LAG","AMP"); results <- cbind(annot,res,data); results <- results[order(res$ADJ.P,-res$AMP),]})'); print print_out
+
+    #print_out = r('dim(X)');print print_out
+
+    print_out = r('print(st)');print print_out
+    
+    print_out = r('save(results,file=paste("JTK",project,"rda",sep="."))');print print_out
+    print_out = r('write.table(results,file=paste("JTK",project,"txt",sep="."),row.names=F,col.names=T,quote=F,sep="\t")');print print_out
+    
+    
 def performMonocleAnalysisFromHeatmap(species,heatmap_output_dir,rawExpressionFile):
     numGroups=10
     if 'Clustering-' in heatmap_output_dir:
@@ -957,6 +1017,17 @@ def performMonocleAnalysisFromHeatmap(species,heatmap_output_dir,rawExpressionFi
     remoteMonocle(export_file,expPercent=5,pval=0.05,numGroups=numGroups)
     
 if __name__ == '__main__':
+    expFile = '/Users/ram5ge/Desktop/Krithika/JTK_Cycle/Liver_Smoothed_exp_steady_state.txt'
+    annotFile = '/Users/ram5ge/Desktop/Krithika/JTK_Cycle/Liver_annot.txt'
+    Time_range1 = '10'
+    Time_range2 = '12'
+    No_of_Timepoints = '24'
+    No_of_replicates = '1'
+    timepoint_difference = '2'
+    run_JTKcycle(expFile,annotFile,Time_range1, Time_range2,No_of_Timepoints,No_of_replicates,timepoint_difference);sys.exit()
+ 
+    
+    
     errors = []
     cluster_method='array';metric_gene="";force_gene='';metric_array="euclid";force_array=''
     analysis_method='hopach'; multtest_type = 'f'
