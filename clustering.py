@@ -1580,6 +1580,14 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
             priorRowClusters=[]
         elif 'EWEIGHT' in t: pass
         else:
+            gene = t[0]
+            if geneFilter==None:
+                proceed = True
+            elif gene in geneFilter:
+                proceed = True
+            else:
+                proceed = False
+            if proceed:
                 nullsPresent = False
                 #if ' ' not in t and '' not in t: ### Occurs for rows with missing data
                 try: s = map(float,t[start:])
@@ -1610,7 +1618,6 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                     else:
                         s = map(lambda x: x-avg,s) ### normalize to the mean
                 
-                gene = t[0]
                 if ' ' in gene:
                     try:
                         g1,g2 = string.split(gene,' ')
@@ -1889,7 +1896,9 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         marker_size = 3
         
     ### Color By Gene
-    if colorByGene != None:
+    if colorByGene != None and len(matrix)==0:
+        print 'Gene %s not found in the imported dataset... Coloring by groups.' % colorByGene
+    if colorByGene != None and len(matrix)>0:
         gene_translation_db={}
         matrix = numpy.array(matrix)
         min_val = matrix.min()  ### min val
@@ -3811,7 +3820,22 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     except Exception: None
         
     ### Transpose matrix and build PCA
-    matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore)
+    geneFilter=None
+    if algorithm == 't-SNE' and reimportModelScores:
+        dataset_name = string.split(filename,'/')[-1][:-4]
+        try:
+            ### if the scores are present, we only need to import the genes of interest (save time importing large matrices)
+            importtSNEScores(root_dir+dataset_name+'-tSNE_scores.txt')
+            if len(colorByGene)==None:
+                geneFilter = [''] ### It won't import the matrix, basically
+            elif ' ' in colorByGene:
+                geneFilter = string.split(colorByGene,' ')
+            else:
+                geneFilter = [colorByGene]
+        except Exception:
+            geneFilter = [''] ### It won't import the matrix, basically
+            
+    matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,geneFilter=geneFilter)
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
         column_header, row_header = row_header, column_header
