@@ -57,6 +57,9 @@ def reimportFeatures(featureFile):
 def writegene(chromosome,junction_start,junction_end,strand,uid):
     #junction_start = str(int(junction_start)-1000)
     #junction_end = str(int(junction_end)+2000)
+    temp = [int(junction_start),int(junction_end)]
+    temp.sort()
+    junction_start,junction_end = str(temp[0]),str(temp[1])
     if 'M' not in chromosome:
 	gff_export_obj.write(chromosome+'\t'+'SE'+'\t'+'gene'+'\t'+junction_start+'\t'+junction_end+'\t'+'.'+'\t'+strand+'\t'+'.'+'\t'+'ID='+uid+';'+'Name='+uid+';'+'\n')
 	gff_export_obj.write(chromosome+'\t'+'SE'+'\t'+'mRNA'+'\t'+junction_start+'\t'+junction_end+'\t'+'.'+'\t'+strand+'\t'+'.'+'\t'+'ID='+uid+'.STRAND;'+'Parent='+uid+';'+'\n')
@@ -357,9 +360,9 @@ def obtainTopGeneResults():
     pass
 
 if __name__ == '__main__':
-    Species = 'Mm'
-    root = '/Volumes/salomonis1/projects/Grimes/Grimes_Single_cell_bams/'
-    root = '/Users/saljh8/Desktop/Grimes/GEC14074/'
+    Species = 'Hs'
+    root = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/'
+    #root = '/Users/saljh8/Desktop/Grimes/GEC14074/'
     remoteIndexing(Species,root)
     sys.exit()
     #"""

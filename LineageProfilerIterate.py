@@ -2291,10 +2291,10 @@ def importExpressionFile(input_file,ignoreClusters=False):
             
 if __name__ == '__main__':
     #"""
-    reference_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Potter/Kidney/DropSeq-2k/r3/WT_Kidney_MarkerFinder_reference60.txt'
-    query_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Potter/Kidney/HoxClustersAD-gone/ExpressionInput/exp.Mut-OutliersRemoved.txt'
-    classification_file= '/Users/saljh8/Desktop/dataAnalysis/Potter/Kidney/HoxClustersAD-gone/ExpressionInput/SampleClassification/Mut-OutliersRemoved-SampleClassification.txt'
-    harmonizeClassifiedSamples('Mm',reference_exp_file,query_exp_file,classification_file);sys.exit()
+    reference_exp_file = '/Users/saljh8/Documents/1-grants/BD2K R01 - 2015/Resubmission-2016/PBMC-10X-33k/1k-deeper/1k_PBMC_reference.txt'
+    query_exp_file = '/Users/saljh8/Documents/1-grants/BD2K R01 - 2015/Resubmission-2016/PBMC-10X-33k/1k-deeper/exp.33k_CPTT_matrix-GeneFiltered.txt'
+    classification_file= '/Users/saljh8/Documents/1-grants/BD2K R01 - 2015/Resubmission-2016/PBMC-10X-33k/1k-deeper/SampleClassification/33k_CPTT_matrix-GeneFiltered-SampleClassification.txt'
+    harmonizeClassifiedSamples('Hs',reference_exp_file,query_exp_file,classification_file);sys.exit()
     #"""
     #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()
     #allPairwiseSampleCorrelation('/Users/saljh8/Desktop/Sarwal-New/UCRM_bx.txt');sys.exit()

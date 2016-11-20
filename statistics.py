@@ -1112,10 +1112,7 @@ if __name__ == '__main__':
     dirfile = unique
     filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
     filename = '/Volumes/SEQ-DATA/Jared/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    #filename = '/Volumes/SEQ-DATA/SingleCell-Churko/Filtered/Unsupervised-AllExons/NewVersion/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    #filename = '/Volumes/SEQ-DATA/SRSF2_human-GSE65349/SRSF2/Hs/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    filename = '/Volumes/salomonis2/Placenta/Combined_SingleCell-RNASeq-Placenta/bams/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Volumes/SEQ-DATA/Grimeslab/Grimeslab/BAM files//AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
     #filename = '/Volumes/salomonis2/Grimes/tophat SKI KO/bams/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
     matrix,compared_groups,original_data = matrixImport(filename)
     matrix_pvalues=runANOVA(filename,matrix,compared_groups)

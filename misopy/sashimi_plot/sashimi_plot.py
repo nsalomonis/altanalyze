@@ -149,7 +149,10 @@ def plot_event(event_name, pickle_dir, settings_filename,
     if pickle_dir not in pickle_filename:
         import string
         pickle_filename = string.replace(pickle_filename,'\\','/')
-        pickle_filename = pickle_dir + string.split(pickle_filename,'sashimi_index')[1]
+        if 'sashimi_index' in pickle_filename:
+            pickle_filename = pickle_dir + string.split(pickle_filename,'sashimi_index')[1]
+        else:
+            pickle_filename = pickle_dir + string.split(pickle_filename,'trial_index')[1]
 
     import string
     #pickle_filename = string.replace(pickle_filename,' 1','')

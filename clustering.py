@@ -414,12 +414,18 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     # Plot distance matrix.
     axm = fig.add_axes([axm_x, axm_y, axm_w, axm_h])  # axes for the data matrix
     xt = x
+    
     if column_method != None:
         idx2 = Z2['leaves'] ### apply the clustering for the array-dendrograms to the actual matrix data
         xt = xt[:,idx2]
         #ind2 = ind2[:,idx2] ### reorder the flat cluster to match the order of the leaves the dendrogram
         """ Error can occur here if hopach was selected in a prior run but now running NONE """
-        ind2 = [ind2[i] for i in idx2] ### replaces the above due to numpy specific windows version issue
+        try: ind2 = [ind2[i] for i in idx2] ### replaces the above due to numpy specific windows version issue
+        except Exception:
+            column_method=None
+            xt = x
+            ind2 = ['NA']*len(column_header) ### Used for exporting the flat cluster data
+            ind1 = ['NA']*len(row_header) ### Used for exporting the flat cluster data
     if row_method != None:
         idx1 = Z1['leaves'] ### apply the clustering for the gene-dendrograms to the actual matrix data
         prior_xt = xt
@@ -1052,7 +1058,8 @@ def importGOEliteResults(elite_dir):
                     cluster = string.join(string.split(values[0],'-')[:-1],'-')
                 term = values[2]
                 all_term_length.append(len(term))
-                pval = float(values[9])
+                pval = float(values[9]) ### adjusted is values[10]
+                #pval = float(values[10]) ### adjusted is values[10]
                 try: cluster_elite_terms[cluster].append([pval,term])
                 except Exception: cluster_elite_terms[cluster] = [[pval,term]]
                 if symbol_index!=None:
@@ -1829,6 +1836,7 @@ def writetSNEScores(scores,outputdir):
     export_obj.close()
 
 def importtSNEScores(inputdir):
+    #print inputdir
     scores=[]
     ### Imports tSNE scores to allow for different visualizations of the same scatter plot
     for line in open(inputdir,'rU').xreadlines():         
@@ -1856,6 +1864,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
 
     if reimportModelScores:
         print 'Re-importing t-SNE model scores rather than calculating from scratch',
+        print root_dir+dataset_name+'-tSNE_scores.txt'
         try: scores = importtSNEScores(root_dir+dataset_name+'-tSNE_scores.txt'); print '...import finished'
         except Exception:
             reimportModelScores=False; print '...import failed'
@@ -3005,7 +3014,7 @@ def runHierarchicalClustering(matrix, row_header, column_header, dataset_name,
     color_gradient = 'green_white_purple'
     """
     try:
-        if allowLargeClusters: maxSize = 20000
+        if allowLargeClusters: maxSize = 50000
         else: maxSize = 7000
     except Exception: maxSize = 7000
     
@@ -3167,14 +3176,14 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     GroupDB = group_db
     inputFilename = string.replace(inputFilename,'.cdt','.txt')
     originalFilename = inputFilename
-    
-    try:
-        if len(priorColumnClusters)>0 and priorRowClusters>0 and row_method==None and column_method == None:
-            try: justShowTheseIDs = importPriorDrivers(inputFilename)
-            except Exception: pass #justShowTheseIDs=[]
-    except Exception:
-        #print traceback.format_exc()
-        pass
+    if len(justShowTheseIDs)==0:
+        try:
+            if len(priorColumnClusters)>0 and priorRowClusters>0 and row_method==None and column_method == None:
+                try: justShowTheseIDs = importPriorDrivers(inputFilename)
+                except Exception: pass #justShowTheseIDs=[]
+        except Exception:
+            #print traceback.format_exc()
+            pass
 
     #print len(matrix),;print len(column_header),;print len(row_header)
     if filterIDs:
@@ -3807,7 +3816,7 @@ def runHCOnly(filename,graphics,Normalize=False):
 
 def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,
                algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None,
-               reimportModelScores=True):
+               reimportModelScores=True, separateGenePlots=False):
     global root_dir
     global graphic_link
     graphic_link=graphics ### Store all locations of pngs
@@ -3828,13 +3837,14 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
             importtSNEScores(root_dir+dataset_name+'-tSNE_scores.txt')
             if len(colorByGene)==None:
                 geneFilter = [''] ### It won't import the matrix, basically
-            elif ' ' in colorByGene:
+            elif ' ' in colorByGene or ',' in colorByGene:
+                colorByGene = string.replace(colorByGene,',',' ')
                 geneFilter = string.split(colorByGene,' ')
             else:
                 geneFilter = [colorByGene]
         except Exception:
-            geneFilter = [''] ### It won't import the matrix, basically
-            
+            geneFilter = None ### It won't import the matrix, basically
+
     matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,geneFilter=geneFilter)
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
@@ -3846,10 +3856,21 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
         if algorithm == 't-SNE':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
-            column_header, row_header = row_header, column_header   
-            tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
-                 showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
-                 reimportModelScores=reimportModelScores)
+            column_header, row_header = row_header, column_header
+            if separateGenePlots and len(colorByGene)>0:
+                for gene in geneFilter:
+                    tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=False,
+                         showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
+                         reimportModelScores=reimportModelScores)
+                if display:
+                    ### Show the last one
+                    tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=True,
+                        showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
+                        reimportModelScores=reimportModelScores)    
+            else:
+                tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
+                     showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
+                     reimportModelScores=reimportModelScores)
         elif plotType == '3D':
             try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db,
                        display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName,
@@ -5215,8 +5236,74 @@ def customCleanSupplemental(filename):
         ea.write(string.join(gene_data,' ')+'\n')
     ea.close()
 
-
+class MarkerFinderInfo:
+    def __init__(self,gene,rho,tissue):
+        self.gene = gene
+        self.rho = rho
+        self.tissue = tissue
+    def Gene(self): return self.gene
+    def Rho(self): return self.rho
+    def Tissue(self): return self.tissue
+    
+def ReceptorLigandCellInteractions(species,lig_receptor_dir,cell_type_gene_dir):
+    ligand_db={}
+    receptor_db={}
+    fn = filepath(lig_receptor_dir)    
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        ligand,receptor = string.split(data,'\t')
+        if species=='Mm':
+            ligand = ligand[0]+string.lower(ligand[1:])
+            receptor = receptor[0]+string.lower(receptor[1:])
+        try: ligand_db[ligand].apepnd(receptor)
+        except Exception: ligand_db[ligand] = [receptor]
+        try: receptor_db[receptor].append(ligand)
+        except Exception: receptor_db[receptor] = [ligand]
+    
+    firstRow=True
+    filename = cell_type_gene_dir[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    cell_specific_ligands={}
+    cell_specific_receptor={}
+    fn = filepath(cell_type_gene_dir) 
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        gene, rho, tissue, notes, order = string.split(data,'\t')
+        mf = MarkerFinderInfo(gene, rho, tissue)
+        if gene in ligand_db:
+            cell_specific_ligands[gene]=mf
+        if gene in receptor_db:
+            cell_specific_receptor[gene]=mf
+    
+    ligand_receptor_pairs=[]
+    for gene in cell_specific_ligands:
+        receptors = ligand_db[gene]
+        for receptor in receptors:
+            if receptor in cell_specific_receptor:
+                rmf = cell_specific_receptor[receptor]
+                lmf = cell_specific_ligands[gene]
+                gene_data = [gene,lmf.Tissue(),lmf.Rho(),receptor,rmf.Tissue(),rmf.Rho()]
+                pair = gene,receptor
+                if pair not in ligand_receptor_pairs:
+                    ea.write(string.join(gene_data,'\t')+'\n')
+                    ligand_receptor_pairs.append(pair)
+    for receptor in cell_specific_receptor:
+        ligands = receptor_db[receptor]
+        for gene in ligands:
+            if gene in cell_specific_ligands:
+                rmf = cell_specific_receptor[receptor]
+                lmf = cell_specific_ligands[gene]
+                gene_data = [gene,lmf.Tissue(),lmf.Rho(),receptor,rmf.Tissue(),rmf.Rho()]
+                pair = gene,receptor
+                if pair not in ligand_receptor_pairs:
+                    ea.write(string.join(gene_data,'\t')+'\n')
+                    ligand_receptor_pairs.append(pair)
+    ea.close()
+    
 if __name__ == '__main__':
+    ReceptorLigandCellInteractions('Mm','/Users/saljh8/Downloads/ncomms8866-s3.txt','/Users/saljh8/Downloads/Round3-MarkerFinder_All-Genes.txt');sys.exit()
     #compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
     #combineVariants('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_known_variants.txt');sys.exit()
     #customCleanSupplemental('/Users/saljh8/Desktop/dataAnalysis/CPMC/TCGA_MM/MM_genes_published.txt');sys.exit()

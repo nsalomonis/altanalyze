@@ -6183,7 +6183,8 @@ def commandLineRun():
                                                          'clusterGOElite=','geneSetName=','runICGS=','IDtype=',
                                                          'CountsCutoff=','FoldDiff=','SamplesDiffering=','removeOutliers='
                                                          'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
-                                                         'excludeCellCycle=','runKallisto=','fastq_dir=','FDR='])
+                                                         'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
+                                                         'reimportModelScores=','separateGenePlots='])
     
     except Exception:
         print traceback.format_exc()
@@ -6587,8 +6588,9 @@ def commandLineRun():
             #import clustering; clustering.outputClusters([input_file_dir],[])
             sys.exit()
             
-        if 'PCA' in image_export:
+        if 'PCA' in image_export or 't-SNE' in image_export:
             #AltAnalyze.py --input "/Users/nsalomonis/Desktop/folds.txt" --image PCA --plotType 3D --display True --labels yes
+            #python AltAnalyze.py --input "/Users/nsalomonis/Desktop/log2_expression.txt" --image "t-SNE" --plotType 2D --display True --labels no --genes "ACTG2 ARHDIA KRT18 KRT8 ATP2B1 ARHGDIB" --species Hs --platform RNASeq --separateGenePlots True --zscore no
             #--algorithm "t-SNE"
             include_labels = 'yes'
             plotType = '2D'
@@ -6596,7 +6598,11 @@ def commandLineRun():
             geneSetName = None
             zscore = True
             colorByGene=None
+            reimportModelScores = True
+            if 't-SNE' in image_export:
+                pca_algorithm = 't-SNE'
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
+                #print opt,arg
                 if opt == '--labels':
                     include_labels=arg
                     if include_labels == 'True' or include_labels == 'yes':
@@ -6607,6 +6613,16 @@ def commandLineRun():
                 if opt == '--algorithm': pca_algorithm=arg
                 if opt == '--geneSetName': geneSetName=arg
                 if opt == '--genes': colorByGene=arg
+                if opt == '--reimportModelScores':
+                    if arg == 'yes' or arg == 'True' or arg == 'true':
+                        reimportModelScores = True
+                    else:
+                        reimportModelScores = False
+                if opt == '--separateGenePlots':
+                    if arg=='yes' or arg=='True' or arg == 'true':
+                        separateGenePlots = True
+                    else:
+                        separateGenePlots = False
                 if opt == '--zscore':
                     if arg=='yes' or arg=='True' or arg == 'true':
                         zscore=True
@@ -6615,11 +6631,10 @@ def commandLineRun():
                 if opt == '--display':
                     if arg=='yes' or arg=='True' or arg == 'true':
                         display=True
-
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
             UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
-                          plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene)
+                          plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots)
             sys.exit()
 
         if 'VennDiagram' in image_export:

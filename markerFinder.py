@@ -469,7 +469,7 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
         try: RPKM_threshold = AdditionalParameters.RPKMThreshold() ### Used for exclusion of non-expressed genes
         except Exception: RPKM_threshold = 1; logTransform = True
 
-    correlationDirection = 1.00 ### Correlate to a positive or negative idealized pattern
+    correlationDirection = -1.00 ### Correlate to a positive or negative idealized pattern
     try:
         if AdditionalParameters.CorrelationDirection() != 'up' and AdditionalParameters.CorrelationDirection() != 'positive':
             correlationDirection = -1.00
@@ -1986,7 +1986,7 @@ def importAndAverageExport(expr_input,platform,annotationDB=None,annotationHeade
 
 if __name__ == '__main__':
     Species='Mm'
-    filename = ('/Users/saljh8/Desktop/Grimes/Kallisto/ExpressionInput/exp.kallisto.txt','/Users/saljh8/Desktop/Grimes/Kallisto/ExpressionOutput/AVERAGE-kallisto.txt')
+    filename = ('/Users/saljh8/Desktop/dataAnalysis/Damien/Revised/Guide1/PopulationComparisons/4mo/ExpressionInput/exp.restricted.txt','/Users/saljh8/Desktop/dataAnalysis/Damien/Revised/Guide1/PopulationComparisons/4mo/ExpressionOutput/AVERAGE-restricted.txt')
     analyzeData(filename,Species,"RNASeq","protein_coding",geneToReport=60,correlateAll=True,AdditionalParameters=None,logTransform=True)
     sys.exit()
     averageNIValues('/Users/saljh8/Desktop/LineageProfiler/AltResults/RawSpliceData/Hs/splicing-index/meta-average.txt','/Users/saljh8/Desktop/LineageProfiler/ExpressionInput/stats.meta-steady-state.txt',{});sys.exit()

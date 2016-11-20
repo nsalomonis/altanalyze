@@ -268,6 +268,8 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
     import collections
     analyzed_junctions=[]
     processed_events=[]
+    #restrictToTheseGroups=['D005','D015', 'D030', 'D060', 'D360', 'Fetal_ventricle', 'Adult_heart'] #Meg HSCP-1 , Myelocyte Mono
+    restrictToTheseGroups = None
     for line in open(filename,'rU').xreadlines():
         line = cleanUpLine(line)
         t = string.split(line,'\t')
@@ -342,6 +344,16 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                             #print traceback.format_exc();sys.exit()
                             pass ### Ignore the NULL values
                         index+=1
+                    if restrictToTheseGroups !=None: ### Exclude unwanted groups
+                        initial_group_psi_values2={}
+			groups2 = collections.OrderedDict()
+                        for group in groups:
+			    if group in initial_group_psi_values:
+				if group in restrictToTheseGroups:
+				    initial_group_psi_values2[group]=initial_group_psi_values[group]
+				    groups2[group]=[]
+                        initial_group_psi_values = initial_group_psi_values2
+			groups = groups2
                     ### limit the number of events reported and sort based on the PSI values in each group
                     if 'None' in groups and len(groups)==1:
                         initial_group_psi_values['None'].sort()
@@ -353,6 +365,7 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                     else:
                         gn=0
                         for group in groups:
+			    print group
 			    gn+=1
 			    #if gn>4: break
                             if group in initial_group_psi_values:
@@ -546,11 +559,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Volumes/SEQ-DATA/BreastCancerTargetted/BAMs/'
+    root_dir = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/'
     events = ['Aldh3a2']
     events = None
     eventsToVisualizeFilename = None
-    eventsToVisualizeFilename = '/Volumes/SEQ-DATA/BreastCancerTargetted/BAMs/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust-pairwise.txt'
+    eventsToVisualizeFilename = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/AltResults/AlternativeOutput/top50/candidates.txt'
     bamdir = root_dir
     remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

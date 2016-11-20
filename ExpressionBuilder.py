@@ -3050,7 +3050,7 @@ def expressionRatio(incl_exp,excl_exp,num_incl_events,num_excl_events):
         max_ratio = max(incl_exp)/max(excl_exp)
     return max_ratio
 
-def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_events=0,med_events=0): # 4 9
+def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_events=-1,med_events=-1): # 4 9
     """ This is prototype code to identify critical splicing events (SI-exon-level) from single cell data prior to group assignment """
     begin_time = time.time()
     if platform == 'RNASeq': avg_all_for_SS = 'yes'

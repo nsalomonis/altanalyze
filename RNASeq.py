@@ -3184,6 +3184,8 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
         if len(expressed_values)<1000:
             row_method = 'hopach'; row_metric = 'correlation'
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
+        if len(headers)>7000: ### For very ultra-large datasets
+            column_method = 'average'
         cc_graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
         cell_cycle_id_list = genericRowIDImport(string.replace(cc_graphic_links[0][-1],'.png','.txt'))
         expressed_values2 = {}
@@ -3697,18 +3699,24 @@ def remoteGetDriverGenes(Species,platform,results_file,numSamplesClustered=3,exc
     guideGenes = string.join(guideGenes.keys(),' ')+' amplify positive'
     return guideGenes
     
-def correlateClusteredGenes(platform,results_file,stringency='medium',numSamplesClustered=3,excludeCellCycle=False,graphics=[],ColumnMethod='hopach',rhoCuttOff=0.2):
+def correlateClusteredGenes(platform,results_file,stringency='medium',numSamplesClustered=3,
+                excludeCellCycle=False,graphics=[],ColumnMethod='hopach',rhoCuttOff=0.2, transpose=False,
+                includeMoreCells=False):
     
     if numSamplesClustered<1: numSamplesClustered=1
         ### Get all highly variably but low complexity differences, typically one or two samples that are really different
     if stringency == 'medium':
         new_results_file = string.replace(results_file,'.txt','-filtered.txt')
         new_results_file = string.replace(new_results_file,'.cdt','-filtered.txt')
-        eo = export.ExportFile(new_results_file)    
-        medVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=3,hits_to_report=6)
-        medVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=3,hits_to_report=6) #hits_cutoff=6
-        highVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.5,hits_cutoff=1,hits_to_report=4)
-        highVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.2,hits_cutoff=1,hits_to_report=6,filter=True,numSamplesClustered=numSamplesClustered)
+        eo = export.ExportFile(new_results_file)
+        medVarHighComplexity=[]; medVarLowComplexity=[]; highVarHighComplexity=[]; highVarLowComplexity=[]
+        if transpose==False or includeMoreCells:
+            medVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=3,hits_to_report=6,transpose=transpose)
+            medVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=3,hits_to_report=6,transpose=transpose) #hits_cutoff=6
+            highVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.5,hits_cutoff=1,hits_to_report=4,transpose=transpose)
+            highVarHighComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.2,hits_cutoff=1,hits_to_report=6,filter=True,numSamplesClustered=numSamplesClustered,transpose=transpose)
+        else:
+            highVarLowComplexity, column_header = correlateClusteredGenesParameters(results_file,rho_cutoff=0.5,hits_cutoff=1,hits_to_report=4,transpose=transpose)
         #combined_results = dict(medVarLowComplexity.items() + medVarLowComplexity.items() + highVarLowComplexity.items() + highVarHighComplexity.items())
         combined_results={}
         
@@ -3751,7 +3759,7 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
     eo.close()
 
     cluster = True
-    if cluster == True:
+    if cluster == True and transpose==False:
         import clustering
         if ColumnMethod == 'hopach':
             row_method = 'hopach'
@@ -3774,7 +3782,9 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
         #exportGroupsFromClusters(cluster_file,expFile,platform)
     return graphics, new_results_file
         
-def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=5,filter=False,geneFilter=None,numSamplesClustered=3,excludeCellCycle=False,restrictTFs=False,forceOutput=False):
+def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=5,
+            filter=False,geneFilter=None,numSamplesClustered=3,excludeCellCycle=False,restrictTFs=False,
+            forceOutput=False,transpose=False):
     import clustering
     addition_cell_cycle_associated=[]
     
@@ -3786,6 +3796,11 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
     
     matrix, column_header, row_header, dataset_name, group_db = clustering.importData(results_file,geneFilter=geneFilter)
 
+    if transpose: ### If performing reduce cluster heterogeneity on cells rather than on genes
+        #print 'Transposing matrix'
+        matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
+        column_header, row_header = row_header, column_header
+        
     Platform = None
     for i in row_header:
         if 'ENS' in i and '-' in i and ':' in i: Platform = 'exons'
@@ -4649,10 +4664,20 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     dir_list = read_directory(fastq_folder)
     fastq_paths = []
     for file in dir_list:
-        if 'fastq' in file and '._' not in file[:4]: ### Hidden files
+        file_lower = string.lower(file)
+        if 'fastq' in file_lower and '._' not in file[:4]: ### Hidden files
             fastq_paths.append(fastq_folder+file)
     fastq_paths,paired = findPairs(fastq_paths)
 
+    ### Check to see if Kallisto files already exist and use these if so (could be problematic but allows for outside quantification)
+    kallisto_tsv_paths=[]
+    dir_list = read_directory(output_dir)
+    for folder in dir_list:
+        kallisto_outdir = output_dir+folder+'/abundance.tsv'
+        status = os.path.isfile(kallisto_outdir)
+        if status:
+            kallisto_tsv_paths.append(fastq_folder+file)
+            
     if returnSampleNames:
         return fastq_paths
     
@@ -4675,8 +4700,14 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                 ### If installed globally
                 retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
     
-    reimportExistingKallistoOutput = True
+    if len(kallisto_tsv_paths) == len(fastq_paths):
+        reimportExistingKallistoOutput = True
+    elif len(kallisto_tsv_paths) > len(fastq_paths):
+        reimportExistingKallistoOutput = True ### If working with a directory of kallisto results
+    else:
+        reimportExistingKallistoOutput = False
 
+    print reimportExistingKallistoOutput
     if reimportExistingKallistoOutput:
         ### Just get the existing Kallisto output folders
         fastq_paths = read_directory(output_dir)
@@ -4700,6 +4731,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                     #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
                     retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
                 except Exception:
+                    print traceback.format_exc()
                     retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)
             else:
                 if os.name == 'nt':
@@ -4918,7 +4950,17 @@ def getFASTAFile(species):
     return fasta_file
 
 if __name__ == '__main__':
-    
+    samplesDiffering = 3
+    column_method = 'hopach'
+    species = 'Hs'
+    excludeCellCycle = False
+    platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
+    """
+    graphic_links,new_results_file = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',
+                    numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,graphics=graphic_links,
+                    ColumnMethod=column_method, transpose=True, includeMoreCells=True)
+    """
+    #sys.exit()
     species='Hs'; platform = "3'array"; vendor = "3'array"
     import UI; import multiprocessing as mlp
     gsp = UI.GeneSelectionParameters(species,platform,vendor)
@@ -4938,7 +4980,7 @@ if __name__ == '__main__':
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
 
-    runKallisto('Mm','tom','/Volumes/Grimes/run1695-Mm/run_tdTomato/','/Volumes/Grimes/run1695-Mm/run_tdTomato/');sys.exit()
+    runKallisto('Mm','scRNA-Seq','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

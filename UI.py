@@ -906,7 +906,8 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
 
     
 def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,
-            geneSetName=None, species=None, zscore=True, colorByGene=None, reimportModelScores=True):
+            geneSetName=None, species=None, zscore=True, colorByGene=None, reimportModelScores=True,
+            separateGenePlots=False):
     import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
@@ -917,7 +918,8 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
     try:
         clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels,
                     plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName,
-                    species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores)
+                    species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores,
+                    separateGenePlots=separateGenePlots)
         try: print'Finished building PCA.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -1584,12 +1586,12 @@ class GUI:
         if defaults != 'null':
             height = 350; width = 400
             if defaults == 'groups':
-                notes = "For each file, type in a name for the group it belongs to\n(e.g., 24hrs, 48hrs, 4days, etc.)."
+                notes = "For each sample, type in a name for the group it belongs to\n(e.g., 24hrs, 48hrs, 4days, etc.)."
                 Label(self._parent,text=notes).pack(); label_text_str = 'AltAnalyze Group Names'
                 if len(option_list)<15: height = 320; width = 400
 
             elif defaults == 'batch':
-                notes = "For each file, type in a name for the BATCH it belongs to\n(e.g., batch1, batch2, batch3 etc.)."
+                notes = "For each sample, type in a name for the BATCH it belongs to\n(e.g., batch1, batch2, batch3 etc.)."
                 Label(self._parent,text=notes).pack(); label_text_str = 'AltAnalyze Group Names'
                 if len(option_list)<15: height = 320; width = 400
             elif defaults == 'comps':
@@ -3302,7 +3304,13 @@ def importDefaultFileLocations():
         line = string.replace(line,',','\t') ### Make tab-delimited (had to make CSV since Excel would impoperly parse otherwise)
         data = cleanUpLine(line)
         ###Species can be multiple species - still keep in one field
-        app,status,location,species = string.split(data,'\t')
+        try: app,status,location,species = string.split(data,'\t')
+        except Exception:
+            try:
+                t = string.split(data,'\t')
+                app=t[0]; status=t[1]; location=t[2]; species=t[3]
+            except Exception:
+                continue
         fl = FileLocationData(status, location, species)
         if species == 'all': file_location_defaults[app] = fl
         else:
@@ -5997,7 +6005,11 @@ def getUserParameters(run_parameter,Multi=None):
         
         if len(array_group_list)>0: ### Thus we are not analyzing the default (ExpressionInput) directory of expression, group and comp data.
             original_option_db,original_option_list = option_db,option_list
-            option_db,option_list = formatArrayGroupsForGUI(array_group_list)
+            if len(array_group_list)>200:
+                ### Only display the top 200 and don't record edits
+                option_db,option_list = formatArrayGroupsForGUI(array_group_list[:200])
+            else:
+                option_db,option_list = formatArrayGroupsForGUI(array_group_list)
             ###Force this GUI to repeat until the user fills in each entry, but record what they did add
             user_variables_long={}
             while len(user_variables_long) != len(option_db):
@@ -6017,20 +6029,29 @@ def getUserParameters(run_parameter,Multi=None):
                 
                 ###Store the group names and assign group numbers
                 group_name_db={}; group_name_list = []; group_number = 1
-                for cel_file in option_list['GroupArrays']: ### start we these CEL files, since they are ordered according to their order in the expression dataset
-                    group_name = gu.Results()[cel_file]
-                    if group_name not in group_name_db:
-                        if group_name != 'yes' and group_name !='no': ### Results for PredictGroups
-                            group_name_db[group_name]=group_number; group_number+=1
-                            group_name_list.append(group_name)
+                if len(array_group_list)<=200:
+                    for cel_file in option_list['GroupArrays']: ### start we these CEL files, since they are ordered according to their order in the expression dataset
+                        group_name = gu.Results()[cel_file]
+                        if group_name not in group_name_db:
+                            if group_name != 'yes' and group_name !='no': ### Results for PredictGroups
+                                group_name_db[group_name]=group_number; group_number+=1
+                                group_name_list.append(group_name)
+                else:
+                    ### For very large datasets with hundreds of samples
+                    for agd in array_group_list:
+                        if agd.GroupName() not in group_name_list:
+                            group_name_list.append(agd.GroupName())
+                            group_name_db[agd.GroupName()]=agd.Group()
+
                 if len(group_name_db)==2: analyze_all_conditions = 'pairwise' ### Don't allow multiple comparison analysis if only two conditions present
                 
-                ###Store the group names and numbers with each array_id in memory   
-                for agd in array_group_list:
-                    cel_file = agd.Array()
-                    group_name = gu.Results()[cel_file] ###Lookup the new group assignment entered by the user
-                    group_number = group_name_db[group_name]
-                    agd.setGroupName(group_name); agd.setGroup(group_number)
+                ###Store the group names and numbers with each array_id in memory
+                if len(array_group_list)<=200:
+                    for agd in array_group_list:
+                        cel_file = agd.Array()
+                        group_name = gu.Results()[cel_file] ###Lookup the new group assignment entered by the user
+                        group_number = group_name_db[group_name]
+                        agd.setGroupName(group_name); agd.setGroup(group_number)
                 if predictGroups == 'yes':
                     predictGroups = True; break
                 elif predictGroups == 'no': predictGroups = False
@@ -6041,17 +6062,21 @@ def getUserParameters(run_parameter,Multi=None):
                         print_out = "Not all arrays have been assigned a group. Please\nassign to a group before proceeding (required)."
                     IndicatorWindow(print_out,'Continue')   
                     option_db,option_list = formatArrayGroupsForGUI(array_group_list) ### array_group_list at this point will be updated with any changes made in the GUI by the user
+
             if predictGroups == False:
                 exported = 0 ### Export Groups file
-                while exported == 0:
-                    try:
-                        fl = exp_file_location_db[dataset_name]; groups_file = fl.GroupsFile()
-                        exportGroups(exp_file_location_db,array_group_list)
-                        exported = 1
-                    except Exception:                 
-                        print_out = "The file:\n"+groups_file+"\nis still open. This file must be closed before proceeding"
-                        IndicatorWindow(print_out,'Continue')                 
-                exported = 0
+                if len(array_group_list)>200:
+                    print 'Not storing groups due to length'
+                else:
+                    while exported == 0:
+                        try:
+                            fl = exp_file_location_db[dataset_name]; groups_file = fl.GroupsFile()
+                            exportGroups(exp_file_location_db,array_group_list)
+                            exported = 1
+                        except Exception:                 
+                            print_out = "The file:\n"+groups_file+"\nis still open. This file must be closed before proceeding"
+                            IndicatorWindow(print_out,'Continue')                 
+                    exported = 0
                 
                 if batch_effects == 'yes' or normalize_gene_data == 'group':
                     option_db,option_list = formatArrayGroupsForGUI(array_batch_list, category = 'BatchArrays')
@@ -6104,11 +6129,11 @@ def getUserParameters(run_parameter,Multi=None):
                             IndicatorWindow(print_out,'Continue')                 
                     exported = 0
                 i=2; px=0 ###Determine the number of possible comparisons based on the number of groups
+
                 while i<=len(group_name_list): px = px + i - 1; i+=1
                 group_name_list.reverse(); group_name_list.append(''); group_name_list.reverse() ### add a null entry first
                 if px > 150: px = 150 ### With very large datasets, AltAnalyze stalls
                 possible_comps = px
-            
                 ### Format input for GUI like the imported options.txt Config file, except allow for custom fields in the GUI class
                 category = 'SetupComps'; option_db={}; option_list={}; cn = 0 #; user_variables={}
                 while cn < px:

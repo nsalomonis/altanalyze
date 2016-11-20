@@ -1,5 +1,6 @@
 import sys,string
 import os
+import math
 
 def makeTestFile():
     all_data = [['name','harold','bob','frank','sally','kim','jim'],
@@ -40,7 +41,7 @@ def filterFile(input_file,output_file,filter_names):
     export_object.close()
     print 'Filtered columns printed to:',output_file
 
-def filterRows(input_file,output_file,filterDB=None):
+def filterRows(input_file,output_file,filterDB=None,logData=False):
     export_object = open(output_file,'w')
     firstLine = True
     for line in open(input_file,'rU').xreadlines():
@@ -52,11 +53,13 @@ def filterRows(input_file,output_file,filterDB=None):
         else:
             if filterDB!=None:
                 if values[0] in filterDB:
+                    if logData:
+                        line = string.join([values[0]]+map(str,(map(lambda x: math.log(float(x)+1,2),values[1:]))),'\t')+'\n'
                     export_object.write(line)
             else:
                 max_val = max(map(float,values[1:]))
                 #min_val = min(map(float,values[1:]))
-                #if max_val>5:
+                #if max_val>0.1:
                 if max_val < 0.1:
                     export_object.write(line)
     export_object.close()
@@ -207,10 +210,11 @@ if __name__ == '__main__':
             elif opt == '--r': filter_rows=True
             
     output_file = input_file[:-4]+'-filtered.txt'
-    if filter_file ==None:
+    if filter_rows:
+        filter_names = getFilters(filter_file)
+        filterRows(input_file,output_file,filterDB=filter_names,logData=False)
+    elif filter_file ==None:
         combineDropSeq(input_file)
-    elif filter_rows:
-        filterRows(input_file,output_file)
     else:
         filter_names = getFilters(filter_file)
         filterFile(input_file,output_file,filter_names)
