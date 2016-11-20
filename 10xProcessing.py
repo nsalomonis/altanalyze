@@ -66,7 +66,7 @@ if __name__ == '__main__':
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
         #Filtering samples in a datasets
-        #python SampleSelect.py --i /Users/saljh8/Desktop/C4-hESC/ExpressionInput/exp.C4.txt --f /Users/saljh8/Desktop/C4-hESC/ExpressionInput/groups.C4.txt
+        #python 10XProcessing.py --i /Users/test/10X/outs/filtered_gene_bc_matrices/ --g hg19 --n My10XExperiment
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','n='])
         #print sys.argv[1:]
