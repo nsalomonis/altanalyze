@@ -958,7 +958,10 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
         groups_dir = string.replace(filename,'exp.','groups.')
         if platform != "3'array" and platform != "AltMouse":
             ### This is the extension for gene-level results for exon sensitive platfomrs
-            filename = string.replace(filename,'.txt','-steady-state.txt')
+            filename1 = string.replace(filename,'.txt','-steady-state.txt')
+            status = verifyFile(filename1)
+            if status == 'yes':
+                filename = filename1
         status = verifyFile(filename)
 
         if status != 'yes':

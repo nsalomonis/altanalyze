@@ -124,7 +124,11 @@ def returnFilesNoReplace(dir):
 def identifyCELfiles(dir,array_type,vendor):
     dir_list = read_directory(dir); dir_list2=[]; full_dir_list=[]
     datatype = 'arrays'
+    valid_10X_directory_found=False
     types={}
+    if array_type=='10XGenomics':
+        if 'filtered_gene_bc_matrices' in dir:
+            valid_10X_directory_found=True
     for file in dir_list:
         original_file = file
         file_lower = string.lower(file); proceed = 'no'
@@ -1562,6 +1566,7 @@ class GUI:
         if 'input_cel_dir' in option_list:
             filename = 'Config/aa_0.gif'
             if array_type == 'RNASeq': filename = 'Config/aa_0_rs.gif'
+            if array_type == '10XGenomics': filename = 'Config/aa_0_rs.gif'
         if 'include_raw_data' in option_list:
             filename = 'Config/aa_1.gif'; orient_type = 'top'
             if array_type == 'RNASeq': filename = 'Config/aa_1_rs.gif'
@@ -3480,6 +3485,8 @@ def importUserOptions(array_type,vendor=None):
             data = string.replace(data,'probeset','junction')
             data = string.replace(data,'probe set','junction, exon or gene')
             data = string.replace(data,'CEL file','BED, BAM, TAB or TCGA junction file')
+        if array_type == '10XGenomics':
+            data = string.replace(data,'CEL file','Chromium filtered sparse-matrix file')
         if vendor != 'Affymetrix':
             data = string.replace(data,'probe set','gene')      
         if vendor == 'Agilent':
@@ -4682,7 +4689,7 @@ def getUserParameters(run_parameter,Multi=None):
                     vendor = 'other:Symbol'
                 else:
                     vendor = 'other:'+array_full ### Ensembl linked system name
-        if array_full == 'Normalized externally':
+        if array_full == '10X Genomics aligned':
             array_type = "3'array"
             vendor = 'other:'+array_full ### Ensembl linked system name
         
@@ -5234,7 +5241,7 @@ def getUserParameters(run_parameter,Multi=None):
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
             
-        if 'CEL files' in run_from_scratch or 'RNA-seq reads' in run_from_scratch or 'Feature Extraction' in run_from_scratch:
+        if 'CEL files' in run_from_scratch or 'RNA-seq reads' in run_from_scratch or 'Feature Extraction' in run_from_scratch or 'Chromium' in run_from_scratch:
             """Designate CEL, Agilent or BED file directory, Dataset Name and Output Directory"""
             assinged = 'no'
             while assinged == 'no': ### Assigned indicates whether or not the CEL directory and CDF files are defined
@@ -5243,9 +5250,14 @@ def getUserParameters(run_parameter,Multi=None):
                 if backSelect == 'no' or 'InputCELFiles' == selected_parameters[-1]:
                     selected_parameters.append('InputCELFiles'); backSelect = 'no'
                     root = Tk()
-                    if array_type == 'RNASeq': root.title('AltAnalyze: Select Exon and/or Junction files to analyze'); import_file = 'BED, BAM, TAB or TCGA'
-                    elif vendor == 'Agilent': root.title('AltAnalyze: Select Agilent Feature Extraction text files to analyze'); import_file = '.txt'
-                    else: root.title('AltAnalyze: Select CEL files for APT'); import_file = '.CEL'
+                    if array_type == 'RNASeq':
+                        root.title('AltAnalyze: Select Exon and/or Junction files to analyze'); import_file = 'BED, BAM, TAB or TCGA'
+                    elif array_type =='10XGenomics':
+                        root.title('AltAnalyze: Select Chromium Sparse Matrix Filtered Directory'); import_file = 'Filtered Directory'
+                    elif vendor == 'Agilent':
+                        root.title('AltAnalyze: Select Agilent Feature Extraction text files to analyze'); import_file = '.txt'
+                    else:
+                        root.title('AltAnalyze: Select CEL files for APT'); import_file = '.CEL'
                     gu = GUI(root,option_db,option_list['InputCELFiles'],'')
                 else: gu = PreviousResults(old_options)
                 dataset_name = gu.Results()['dataset_name']
@@ -5894,7 +5906,7 @@ def getUserParameters(run_parameter,Multi=None):
     original_comp_group_list=[]; array_group_list=[]; group_name_list=[]
     if run_from_scratch != 'Process AltAnalyze filtered' and run_from_scratch != 'Annotate External Results': ### Groups and Comps already defined
 
-        if run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or 'Feature Extraction' in run_from_scratch:
+        if run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or 'Feature Extraction' in run_from_scratch or 'Process Chromium Sparse Matrix' in run_from_scratch:
             if 'exp.' not in dataset_name: dataset_name = 'exp.'+dataset_name+'.txt'
             
             groups_name = string.replace(dataset_name,'exp.','groups.')
@@ -5997,7 +6009,6 @@ def getUserParameters(run_parameter,Multi=None):
                         #print print_out
                         original_comp_group_list=[]
                         
-                    
         else:
             for cel_file in cel_files:
                 group = ''; group_name = ''    

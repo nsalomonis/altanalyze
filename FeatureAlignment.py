@@ -346,6 +346,8 @@ def importEnsemblProtSeqFasta(filename):
                 ### Parse new line                      
                 t= string.split(data[1:],' '); sequence=''
                 ensembl_prot = t[0]
+                if '.' in ensembl_prot: ### Introduced after Ensembl versoin 77
+                    ensembl_prot = string.split(ensembl_prot,'.')[0]
         except IndexError: continue
         try:
             if data[0] != '>': sequence = sequence + data

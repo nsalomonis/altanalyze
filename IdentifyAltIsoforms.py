@@ -232,6 +232,10 @@ def compareExonComposition(species,array_type):
     ### Identifying isforms containing and not containing the probeset
     probeset_transcript_db={}; match_pairs_missing=0; valid_transcript_pairs={}; ok_transcript_pairs={}; probesets_not_found=0
 
+    print len(probeset_exon_coor_db)
+    print len(ens_transcript_exon_db)
+    print len(ens_gene_transcript_db)
+    print len(ens_gene_exon_db)
     for probeset in probeset_exon_coor_db:
         geneid = probeset_gene_db[probeset][0]
         transcripts = ens_gene_transcript_db[geneid]
@@ -239,10 +243,12 @@ def compareExonComposition(species,array_type):
         for coordinates in probeset_exon_coor_db[probeset]: ### Multiple exons may align
             for transcript in transcripts:
                 ### Build a cursory list of matching and non-matching transcripts
+
                 if coordinates in ens_transcript_exon_db[transcript]:
                     matching_transcripts.append(transcript)
                 else:
                     not_matching_transcripts.append(transcript)
+                
                     
         ### Filter large non-matching transcript sets to facilate processing
         not_matching_transcripts = mRNASeqAlign.filterNullMatch(not_matching_transcripts,matching_transcripts)
@@ -277,7 +283,7 @@ def compareExonComposition(species,array_type):
                     other_coordinate_list = convertListsToTuple(other_coordinate_list)
                     not_matching[tuple(other_coordinate_list)]=transcript
                         
-        #print '\n',matching_transcripts, not_matching_transcripts;kill
+        #print '\n',len(matching_transcripts), len(not_matching_transcripts);kill
         ### Can't have transcripts in matching and not matching
         not_matching_transcripts2=[]; not_matching2={} 
         for transcript in not_matching_transcripts:
@@ -338,8 +344,9 @@ def compareExonComposition(species,array_type):
     print match_pairs_missing,'probesets missing either an alinging or non-alinging transcript'
     print len(valid_transcript_pairs),'probesets with a single exon difference aligning to two isoforms'
     print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
-    data.close()
 
+    data.close()
+    sys.exit()
     if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
     else:
@@ -480,7 +487,9 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
         
     else:
         try: missing_protein_ACs_UniProt = importUniProtSeqeunces(species,{},{})
-        except Exception: null=[]
+        except Exception, e:
+            print e
+            null=[]
 
     ### Export Ensembl protein sequences for matching isoforms and identify transcripts without protein seqeunce
     ensembl_protein_seq_db, missing_protein_ACs_Ensembl = importEnsemblProteinSeqData(species,unique_ens_transcripts)
@@ -491,7 +500,7 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
         ac_list = []
         for ac in unique_transcripts: ac_list.append(ac)
 
-        try: ### Get rid of the second file which will not be immediately over-written and readin before regenerating
+        try: ### Get rid of the second file which will not be immediately over-written and reading before regenerating
             output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-Protein_sequences_'+str(2)+'.txt'
             fn=filepath(output_file); os.remove(fn)
         except Exception: null=[]
@@ -812,7 +821,8 @@ def importEnsemblProteinSeqData(species,unique_ens_transcripts):
     for transcript in ens_transcript_protein_db:
         if transcript in unique_ens_transcripts:
             protein_id = ens_transcript_protein_db[transcript]
-            unique_ens_proteins[protein_id] = transcript
+            if len(protein_id)>1:
+                unique_ens_proteins[protein_id] = transcript
     ensembl_protein_seq_db = importEnsemblProtSeq(protein_seq_fasta,unique_ens_proteins)
 
     transcript_with_prot_seq = {}
@@ -848,11 +858,13 @@ def importEnsemblProtSeq(filename,unique_ens_proteins):
                 ### Parse new line
                 t= string.split(data[1:],' '); sequence=''
                 ensembl_prot = t[0]
+                if '.' in ensembl_prot:
+                    ensembl_prot = string.split(ensembl_prot,'.')[0] ### Added to Ensembl after version 77
         except IndexError: continue
         try:
             if data[0] != '>': sequence = sequence + data
         except IndexError:  continue
-
+    
     if ensembl_prot in unique_ens_proteins:
         mRNA_AC = unique_ens_proteins[ensembl_prot]
         values = string.join([mRNA_AC,ensembl_prot,sequence],'\t')+'\n'
@@ -866,7 +878,8 @@ def importUniProtSeqeunces(species,transcripts_with_uniprots,transcripts_to_anal
 
     export_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-UniProt_sequences.txt'
     export_data = export.ExportFile(export_file)
-    filename = 'AltDatabase/'+species+'/SequenceData/'+'uniprot_trembl_sequence.txt'           
+    #filename = 'AltDatabase/'+species+'/SequenceData/'+'uniprot_trembl_sequence.txt'
+    filename = 'AltDatabase/uniprot/'+species+'/uniprot_sequence.txt'    
     fn=filepath(filename); transcript_to_uniprot={}
     unigene_ensembl_up = {}
     for line in open(fn,'r').readlines():
@@ -874,7 +887,7 @@ def importUniProtSeqeunces(species,transcripts_with_uniprots,transcripts_to_anal
         t = string.split(data,'\t')
         id=t[0];ac=t[1];ensembls=t[4];seq=t[2];type=t[6];unigenes=t[7];embls=t[9]
         ac=string.split(ac,','); embls=string.split(embls,',') #; ensembls=string.split(ensembls,','); unigenes=string.split(unigenes,',')
-        if type != 'swissprot':
+        if type != 'swissprot1': ### unclear why this condition was excluding swissprot so added 1 - version 2.1.1
             ### Note: These associations are based on of UCSC, which in some cases don't look correct: see AY429540	and Q75N08 from the KgXref file.
             ### Possibly exclude
             ac = ac[0]
@@ -904,8 +917,10 @@ def importUniProtSeqeunces(species,transcripts_with_uniprots,transcripts_to_anal
         mRNA_ACs = transcripts_with_uniprots[protein_AC]
         for mRNA_AC in mRNA_ACs:
             if mRNA_AC not in transcript_to_uniprot: missing_protein_ACs[mRNA_AC]=[]
-
-    print len(missing_protein_ACs), 'missing protein ACs for associated UniProt mRNAs and', len(transcript_to_uniprot), 'found.'      
+            
+    if len(transcripts_to_analyze)>0: ### Have to submitt ACs to report them
+        print len(missing_protein_ACs), 'missing protein ACs for associated UniProt mRNAs and', len(transcript_to_uniprot), 'found.'
+    print len(n_terminal_seq),len(c_terminal_seq),'N and C terminal, respectively...'
     return missing_protein_ACs
            
 def BuildInSilicoTranslations(mRNA_db):
@@ -1284,7 +1299,7 @@ def runProgramTest(Species,Array_type,Data_type,translate_seq,run_seqcomp):
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'; data_type = 'exon'
     species = 'Mm'; array_type = 'RNASeq'; translate='yes'
-    #species = 'Mm'; array_type = 'RNASeq'; translate='yes'
+    species = 'Dr'; array_type = 'RNASeq'; translate='yes'; data_type = 'junction'
     test='no'
     
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    

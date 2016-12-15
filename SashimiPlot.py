@@ -120,6 +120,8 @@ def importSplicingEventsToVisualize(eventsToVisualizeFilename):
                 splicing_events.append(a+'-'+b +' '+ c+'-'+d)
                 splicing_events.append(c+'-'+d +' '+ a+'-'+b)
             except Exception: pass
+	else:
+	   splicing_events.append(t[0])
     splicing_events = unique.unique(splicing_events)
     return splicing_events,expandedSearch
 
@@ -127,7 +129,7 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=None):
     import gene_associations
     gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
     import OBO_import; symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
-    
+
     if events==None:
         splicing_events,expandedSearch = importSplicingEventsToVisualize(eventsToVisualizeFilename)
     else:
@@ -268,7 +270,7 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
     import collections
     analyzed_junctions=[]
     processed_events=[]
-    #restrictToTheseGroups=['D005','D015', 'D030', 'D060', 'D360', 'Fetal_ventricle', 'Adult_heart'] #Meg HSCP-1 , Myelocyte Mono
+    #restrictToTheseGroups=['D008','D060'] #Meg HSCP-1 , Myelocyte Mono
     restrictToTheseGroups = None
     for line in open(filename,'rU').xreadlines():
         line = cleanUpLine(line)
@@ -365,7 +367,7 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                     else:
                         gn=0
                         for group in groups:
-			    print group
+			    #print group
 			    gn+=1
 			    #if gn>4: break
                             if group in initial_group_psi_values:
@@ -559,11 +561,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/'
-    events = ['Aldh3a2']
+    root_dir = '/Volumes/salomonis2-1/Ichi_data/bams/Focused Analysis'
+    events = ['ENSG00000131149:E11.6-E13.1']
     events = None
     eventsToVisualizeFilename = None
-    eventsToVisualizeFilename = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/AltResults/AlternativeOutput/top50/candidates.txt'
+    eventsToVisualizeFilename = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/AltResults/AlternativeOutput/Top_insertion_common_events3.txt'
     bamdir = root_dir
     remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

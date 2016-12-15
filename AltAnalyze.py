@@ -3381,7 +3381,10 @@ def importProbesetProteinCompDomains(exon_db,report_type,comp_type):
                     except KeyError: gene_protein_ft_db[gene]=[domain]
             elif proceed == 'yes':
                 for domain_data in probeset_aligning_db[probeset]:
-                    domain,call = string.split(domain_data,'|')
+                    try: domain,call = string.split(domain_data,'|')
+                    except Exception:
+                        values = string.split(domain_data,'|')
+                        domain = values[0]; call = values[-1]
                     new_domain_list.append((domain,call))
                     #new_domain_list = string.join(new_domain_list,', ')
                 gene_protein_ft_db[gene,original_probeset] = new_domain_list
@@ -6380,7 +6383,10 @@ def commandLineRun():
                 elif opt == '--CountsCutoff':CountsCutoff=int(float(arg))
                 elif opt == '--FoldDiff':FoldDiff=int(float(arg))
                 elif opt == '--SamplesDiffering':SamplesDiffering=int(float(arg))
-                elif opt == '--removeOutliers':removeOutliers=arg
+                elif opt == '--removeOutliers':
+                    removeOutliers=arg
+                    if removeOutliers=='yes' or removeOutliers=='True':
+                        removeOutliers = True
                 elif opt == '--featurestoEvaluate':featurestoEvaluate=arg
                 elif opt == '--restrictBy':restrictBy=arg
                 elif opt == '--excludeCellCycle':
@@ -6419,13 +6425,19 @@ def commandLineRun():
                 else:
                     ### Copy over expression file to ExpressionInput
                     expdir2 = string.replace(input_exp_file,'exp.','')
-                    root_dir = export.findParentDir(expFile)
+                    root_dir = export.findParentDir(input_exp_file)
                     expFile = root_dir+'/ExpressionInput/exp.'+export.findFilename(expdir2)
                     export.copyFile(input_exp_file, expFile)
                     
             global log_file
             root_dir = export.findParentDir(expFile)
             root_dir = string.replace(root_dir,'/ExpressionInput','')
+                    
+            fl = UI.ExpressionFileLocationData('','','',''); fl.setFeatureNormalization('none')
+            fl.setExpFile(expFile); fl.setArrayType(array_type); fl.setOutputDir(root_dir)
+            fl.setMultiThreading(multiThreading)
+            exp_file_location_db={}; exp_file_location_db[exp_name]=fl
+            
             time_stamp = timestamp()    
             log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
@@ -6434,10 +6446,16 @@ def commandLineRun():
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'
             elif array_type=='RNASeq':
-                ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
-                values = species,exp_file_location_db,dataset,mlp_instance
-                StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
-                expFile = expFile[:-4]+'-steady-state.txt'
+                try:
+                    ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
+                    values = species,exp_file_location_db,exp_name,mlp_instance
+                    UI.StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
+                    expFile = expFile[:-4]+'-steady-state.txt'  
+                except Exception:
+                    ### RNASeq is an official datatype that requires a steady-state file. However, for scRNA-Seq, usually the input is a text file or FASTQ which gets
+                    ### changed to "3'array". We correct for this by excepting this error without doing anything else
+                    pass
+
             print [excludeCellCycle]
             UI.RemotePredictSampleExpGroups(expFile, mlp_instance, gsp,(species,array_type)) ### proceed to run the full discovery analysis here!!!
             sys.exit()

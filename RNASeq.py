@@ -4975,12 +4975,12 @@ if __name__ == '__main__':
     expFile = '/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/exp.GBM_scRNA-Seq-steady-state.txt'
     #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
-    filename = '/Users/saljh8/Downloads/counts.GSE81682_HTSeq.txt'
+    filename = '/Volumes/SEQ-DATA/Jared/ExpressionInput/counts.CM-steady-state.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
+    calculateRPKMsFromGeneCounts(filename,'Hs',AdjustExpression=True);sys.exit()
     #copyICGSfiles('','');sys.exit()
 
-    runKallisto('Mm','scRNA-Seq','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/','/Users/saljh8/Desktop/dataAnalysis/grimes_fastq/test/');sys.exit()
+    runKallisto('Hs','scRNA-Seq','/Users/saljh8/kallisto_files/','/Users/saljh8/kallisto_files/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

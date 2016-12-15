@@ -2163,7 +2163,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     for refUID in ref_exp_db: break
     for queryUID in query_exp_db: break
     
-    if 'ENS' in refUID or 'ENS' in queryUID:
+    if ('ENS' in refUID or 'ENS' in queryUID) and '.' not in refUID:
         ### Covert one or both to gene symbol
         try:
             import gene_associations
@@ -2291,9 +2291,9 @@ def importExpressionFile(input_file,ignoreClusters=False):
             
 if __name__ == '__main__':
     #"""
-    reference_exp_file = '/Users/saljh8/Documents/1-grants/BD2K R01 - 2015/Resubmission-2016/PBMC-10X-33k/1k-deeper/1k_PBMC_reference.txt'
-    query_exp_file = '/Users/saljh8/Documents/1-grants/BD2K R01 - 2015/Resubmission-2016/PBMC-10X-33k/1k-deeper/exp.33k_CPTT_matrix-GeneFiltered.txt'
-    classification_file= '/Users/saljh8/Documents/1-grants/BD2K R01 - 2015/Resubmission-2016/PBMC-10X-33k/1k-deeper/SampleClassification/33k_CPTT_matrix-GeneFiltered-SampleClassification.txt'
+    reference_exp_file = '/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/bams/GBM/TCGA_classifiers/TCGA_splicing_MarkerFinder_ref.txt'
+    query_exp_file = '/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/bams/GBM/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust2.txt'
+    classification_file= '/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/bams/GBM/AltResults/AlternativeOutput/SampleClassification/Hs_RNASeq_top_alt_junctions-PSI-clust2-SampleClassification.txt'
     harmonizeClassifiedSamples('Hs',reference_exp_file,query_exp_file,classification_file);sys.exit()
     #"""
     #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()

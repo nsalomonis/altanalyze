@@ -1057,14 +1057,16 @@ def importGOEliteResults(elite_dir):
                 except Exception:
                     cluster = string.join(string.split(values[0],'-')[:-1],'-')
                 term = values[2]
+                num_genes_changed = int(values[3])
                 all_term_length.append(len(term))
                 pval = float(values[9]) ### adjusted is values[10]
                 #pval = float(values[10]) ### adjusted is values[10]
-                try: cluster_elite_terms[cluster].append([pval,term])
-                except Exception: cluster_elite_terms[cluster] = [[pval,term]]
-                if symbol_index!=None:
-                    symbols = string.split(values[symbol_index],'|')
-                    cluster_elite_terms[cluster,term] = symbols
+                if num_genes_changed>2:
+                    try: cluster_elite_terms[cluster].append([pval,term])
+                    except Exception: cluster_elite_terms[cluster] = [[pval,term]]
+                    if symbol_index!=None:
+                        symbols = string.split(values[symbol_index],'|')
+                        cluster_elite_terms[cluster,term] = symbols
             except Exception,e: pass
     for cluster in cluster_elite_terms:
         cluster_elite_terms[cluster].sort()
@@ -3451,6 +3453,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     row_header2=[]
     matrix_db={} ### Used to optionally sort according to the original order
     multipleGenes = False
+    intersecting_ids=[]
     i=0
         
     ### If multiple genes entered, just display these
@@ -3466,6 +3469,9 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         targetGenes = string.split(targetGene,delim)
 
         if row_method != None: targetGenes.sort()
+        
+        intersecting_ids = [val for val in targetGenes if val in row_header]
+        
         for row_id in row_header:
             original_rowid = row_id
             symbol=row_id
@@ -3521,6 +3527,8 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     else: limit = 140 # lower limit is 132
     print 'limit:',limit
 
+    #print len(intersecting_ids),len(targetGenes), multipleGenes
+        
     if multipleGenes==False or 'amplify' in targetGene or 'correlated' in targetGene:
         row_header3=[] ### Convert to symbol if possible
         if multipleGenes==False:
@@ -5236,6 +5244,29 @@ def customCleanSupplemental(filename):
         ea.write(string.join(gene_data,' ')+'\n')
     ea.close()
 
+def customCleanBinomial(filename):
+    fn = filepath(filename)
+    firstRow=True
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    import statistics
+    found = False
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            headers = t
+            firstRow = False
+            ea.write(string.join(['uid']+headers,'\t')+'\n')
+        else:
+            gene = t[0]
+            values = map(float,t[1:])
+            min_val = abs(min(values))
+            values = map(lambda x: x+min_val,values)
+            values = map(str,values)
+            ea.write(string.join([gene]+values,'\t')+'\n')
+    ea.close()
+
 class MarkerFinderInfo:
     def __init__(self,gene,rho,tissue):
         self.gene = gene
@@ -5302,10 +5333,99 @@ def ReceptorLigandCellInteractions(species,lig_receptor_dir,cell_type_gene_dir):
                     ligand_receptor_pairs.append(pair)
     ea.close()
     
+def findReciprocal(filename):
+    fn = filepath(filename)
+    firstRow=True
+    filename = filename[:-4]+'-filtered.txt'
+    ea = export.ExportFile(filename)
+    
+    found = False
+    gene_ko={}; gene_oe={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            firstRow = False
+            headers={}
+            TFs={}
+            i=0
+            for v in t[1:]:
+                TF,direction = string.split(v,'-')
+                headers[i]=TF,direction,v
+                i+=1
+                if v not in TFs:
+                    f = filename[:-4]+'-'+v+'-up.txt'
+                    tea = export.ExportFile(f)
+                    TFs[v+'-up']=tea
+                    tea.write('GeneID\tEn\n')
+                    f = filename[:-4]+'-'+v+'-down.txt'
+                    tea = export.ExportFile(f)
+                    TFs[v+'-down']=tea
+                    tea.write('GeneID\tEn\n')
+        else:
+            values = map(float,t[1:])
+            gene = t[0]
+            i=0
+            for v in values:
+                TF,direction,name = headers[i]
+                if 'KO' in direction:
+                    if v > 1:
+                        gene_ko[gene,TF,1]=[]
+                        tea = TFs[name+'-up']
+                        tea.write(gene+'\tEn\n')
+                    else:
+                        gene_ko[gene,TF,-1]=[]
+                        tea = TFs[name+'-down']
+                        tea.write(gene+'\tEn\n')
+                if 'OE' in direction:
+                    if v > 1:
+                        gene_oe[gene,TF,1]=[]
+                        tea = TFs[name+'-up']
+                        tea.write(gene+'\tEn\n')
+                    else:
+                        gene_oe[gene,TF,-1]=[]
+                        tea = TFs[name+'-down']
+                        tea.write(gene+'\tEn\n')
+                i+=1
+
+    print len(gene_oe)
+    for (gene,TF,direction) in gene_oe:
+        alt_dir=direction*-1
+        if (gene,TF,alt_dir) in gene_ko:
+            ea.write(string.join([TF,gene,str(direction)],'\t')+'\n')
+    
+    ea.close()
+    for TF in TFs:
+        TFs[TF].close()
+    
+def effectsPrioritization(filename):
+    fn = filepath(filename)
+    firstRow=True
+    filename = filename[:-4]+'-new.txt'
+    ea = export.ExportFile(filename)
+    import statistics
+    found = False
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            headers = t[1:]
+            firstRow = False
+        else:
+            gene = t[0]
+            values = map(float,t[1:])
+            max_val = abs(max(values))
+            max_header = headers[values.index(max_val)]
+            ea.write(gene+'\t'+max_header+'\t'+str(max_val)+'\n')
+    ea.close()
+    
 if __name__ == '__main__':
-    ReceptorLigandCellInteractions('Mm','/Users/saljh8/Downloads/ncomms8866-s3.txt','/Users/saljh8/Downloads/Round3-MarkerFinder_All-Genes.txt');sys.exit()
+    effectsPrioritization('/Users/saljh8/Documents/1-dataAnalysis/RBM20-collaboration/RBM20-BAG3_splicing/Missing Values-Splicing/Effects.txt');sys.exit()
+    #customCleanBinomial('/Volumes/salomonis2-1/Lab backup/Theresa-Microbiome-DropSeq/NegBinomial/ExpressionInput/exp.Instesinal_microbiome2.txt');sys.exit()
+    #findReciprocal('/Volumes/HomeBackup/CCHMC/Jared-KO/BatchCorrectedFiltered/exp.CM-KO-steady-state.txt');sys.exit()
+    #ReceptorLigandCellInteractions('Mm','/Users/saljh8/Downloads/ncomms8866-s3.txt','/Users/saljh8/Downloads/Round3-MarkerFinder_All-Genes.txt');sys.exit()
     #compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
-    #combineVariants('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_known_variants.txt');sys.exit()
+    #combineVariants('/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/Complete_analysis/Variant_results/GBM/Variants_HighModerate-GBM_selected.txt');sys.exit()
     #customCleanSupplemental('/Users/saljh8/Desktop/dataAnalysis/CPMC/TCGA_MM/MM_genes_published.txt');sys.exit()
     #customClean('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/2000_run1708A_normalized.txt');sys.exit()
     #simpleFilter('/Volumes/SEQ-DATA 1/all_10.5_mapped_norm_GC.csv');sys.exit()

@@ -361,7 +361,7 @@ def obtainTopGeneResults():
 
 if __name__ == '__main__':
     Species = 'Hs'
-    root = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/'
+    root = '/Volumes/salomonis2-1/Ichi_data/bams/Insertion_analysis/'
     #root = '/Users/saljh8/Desktop/Grimes/GEC14074/'
     remoteIndexing(Species,root)
     sys.exit()

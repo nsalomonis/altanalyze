@@ -469,7 +469,7 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
         try: RPKM_threshold = AdditionalParameters.RPKMThreshold() ### Used for exclusion of non-expressed genes
         except Exception: RPKM_threshold = 1; logTransform = True
 
-    correlationDirection = -1.00 ### Correlate to a positive or negative idealized pattern
+    correlationDirection = 1.00 ### Correlate to a positive or negative idealized pattern
     try:
         if AdditionalParameters.CorrelationDirection() != 'up' and AdditionalParameters.CorrelationDirection() != 'positive':
             correlationDirection = -1.00
