@@ -1349,7 +1349,7 @@ class GeneIDInfo:
         except Exception: null=[]
     def GeneID(self): return str(self.geneID)
     def System(self): return str(self.system_name)
-    def Pathway(self): return str(self.pathway)
+    def Pathway(self): return self.pathway ## Returning str() threw an error for non-ASCII characters in HsWikiPathways
     def setGraphID(self,graphID): self.graphID = graphID
     def setGroupID(self,groupid): self.groupid = groupid
     def GraphID(self): return self.graphID
@@ -1396,6 +1396,7 @@ def exportWikiPathwayData(species_name,pathway_db,type):
         values +=[wpd.Uniprot(), wpd.Unigene(), wpd.Refseq(), wpd.MOD(), wpd.Pubchem(), wpd.CAS(), wpd.Chebi()]
         values = string.join(values,'\t')
         values = string.replace(values,'\n','') ###Included by mistake
+        values = values.encode('UTF-8', 'replace') ## Need this line to prevent non-ASCII characters from HsWikiPathways throwing an error
         export_data.write(values+'\n')
     export_data.close()
     #print 'WikiPathways data exported to:',export_dir
