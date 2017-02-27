@@ -270,8 +270,8 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
     import collections
     analyzed_junctions=[]
     processed_events=[]
-    #restrictToTheseGroups=['D008','D060'] #Meg HSCP-1 , Myelocyte Mono
-    restrictToTheseGroups = None
+    #restrictToTheseGroups=['WT','R636S_Het','BAG3_KO'] #Meg HSCP-1 , Myelocyte Mono
+    #restrictToTheseGroups = None
     for line in open(filename,'rU').xreadlines():
         line = cleanUpLine(line)
         t = string.split(line,'\t')
@@ -561,11 +561,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis2-1/Ichi_data/bams/Focused Analysis'
-    events = ['ENSG00000131149:E11.6-E13.1']
-    events = None
+    root_dir = '/Volumes/salomonis2-3/Ichi_data/bams/'
+    events = ['ENSG00000171962:E1.10-E2.4']
+    #events = None
     eventsToVisualizeFilename = None
-    eventsToVisualizeFilename = '/Volumes/salomonis1/projects/Spindler/bams/Final-BAMs/AltResults/AlternativeOutput/Top_insertion_common_events3.txt'
+    #eventsToVisualizeFilename = '/Volumes/salomonis2-3/Ichi_data/bams/Queries/BAG3-HET-R636S_common_events.txt'
     bamdir = root_dir
     remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

@@ -178,12 +178,19 @@ def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
                             gene_not_found.append(ensembl_id)
                     t= string.split(data[1:],':'); sequence=''
                     transid_data = string.split(t[0],' '); transid = transid_data[0]; ensembl_id = t[-1]
+                    if '.' in transid:
+                        transid = string.split(transid,'.')[0] ### versioned IDs will cause matching issues
                     ind=0
                     #>ENST00000593546 cdna:known chromosome:GRCh37:HG27_PATCH:26597180:26600278:1 gene:ENSG00000268612 gene_biotype:protein_coding transcript_biotype:protein_coding
                     for item in t:
-                        if 'gene' in item and 'gene_' not in item:
+                        if 'gene_biotype' in item:
+                            ensembl_id = string.split(item,' ')[0] ### In the following field
+                            break
+                        elif 'gene' in item and 'gene_' not in item:
                             ensembl_id = string.split(t[ind+1],' ')[0] ### In the following field
                         ind+=1
+                    if '.' in ensembl_id:
+                        ensembl_id = string.split(ensembl_id,'.')[0] ### versioned IDs will cause matching issues
                     """
                     if 'gene' in t[-3]:
                         ensembl_id = string.split(t[-2],' ')[0] ### Case in Zm for plant and probably other cDNA files (different fields here!!!)

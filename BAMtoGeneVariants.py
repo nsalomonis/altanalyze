@@ -29,7 +29,8 @@ import getopt
 def findGeneVariants(species,symbols,bam_dir,variants=None):
     global insertion_db
     insertion_db={}
-    
+    print symbols
+    print bam_dir
     if len(symbols)>0:
         ### Search for genes not for coordinates
         search_locations = geneCoordinates(species,symbols)
@@ -178,7 +179,7 @@ def pileupAnalysis(bam_dir,search_locations,multi=False):
     #https://www.biostars.org/p/76119/
     variant_db={}
     o = open (string.replace(bam_dir,'.bam','__variant.txt'),"w")
-    entries = ['chr','position','rare-allele frq','type','depth','gene']
+    entries = ['chr','position','rare-allele frq','type','depth','gene','variant_info','alt_frq']
     o.write(string.join(entries,'\t')+'\n')
     #print 'Analyzing',len(search_locations),'variants'
     for (chr,pos,symbol) in search_locations: ### read each line one-at-a-time rather than loading all in memory
@@ -200,10 +201,13 @@ def pileupAnalysis(bam_dir,search_locations,multi=False):
                     try: nucleotide_frequency[nt]+=1
                     except Exception: nucleotide_frequency[nt]=1
         nt_freq_list=[]
+        nt_freq_list_tuple=[]
         for nt in nucleotide_frequency:
             nt_freq_list.append(nucleotide_frequency[nt])
+            nt_freq_list_tuple.append([nucleotide_frequency[nt],nt])
         s = sum(nt_freq_list)
         nt_freq_list.sort()
+        nt_freq_list_tuple.sort()
         
         try:
             frq = float(search_locations[chr,pos,symbol])/s ### This fixes that (number of insertions from before)
@@ -221,7 +225,16 @@ def pileupAnalysis(bam_dir,search_locations,multi=False):
         if len(nt_freq_list)>1 or call == 'insertion':
             if frq>0.01:
                 frq = str(frq)[:4]
-                entries = [chr,str(pos),str(frq),call,str(s),symbol]
+                most_frequent_frq,most_frequent_nt = nt_freq_list_tuple[-1]
+                try:
+                    second_most_frequent_frq,second_most_frequent_nt = nt_freq_list_tuple[-2]
+                    alt_frq = str(float(second_most_frequent_frq)/most_frequent_frq)
+                except Exception:
+                    second_most_frequent_frq = 'NA'; second_most_frequent_nt='NA'
+                    alt_frq = 'NA'
+                
+                variant_info = most_frequent_nt+'('+str(most_frequent_frq)+')|'+second_most_frequent_nt+'('+str(second_most_frequent_frq)+')'
+                entries = [chr,str(pos),str(frq),call,str(s),symbol,variant_info,alt_frq]
                 o.write(string.join(entries,'\t')+'\n')
                 output_bed_rows+=1
     

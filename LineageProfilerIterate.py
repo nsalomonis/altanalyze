@@ -2195,6 +2195,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     input_file=output_dir
     output_file = input_file[:-4]+'-ReOrdered.txt'
     filter_names = new_headers
+    print filter_names
     sampleIndexSelection.filterFile(input_file,output_file,filter_names)
     return output_file
     
@@ -2291,9 +2292,10 @@ def importExpressionFile(input_file,ignoreClusters=False):
             
 if __name__ == '__main__':
     #"""
-    reference_exp_file = '/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/bams/GBM/TCGA_classifiers/TCGA_splicing_MarkerFinder_ref.txt'
-    query_exp_file = '/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/bams/GBM/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust2.txt'
-    classification_file= '/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/bams/GBM/AltResults/AlternativeOutput/SampleClassification/Hs_RNASeq_top_alt_junctions-PSI-clust2-SampleClassification.txt'
+    reference_exp_file = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/Gottgens_HarmonizeReference.txt'
+    query_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/DataPlots/Fluidigm-all_Gottgens_reference.txt'
+    classification_file= '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/DataPlots/SampleClassification/Fluidigm-all_Gottgens_reference-SampleClassification.txt'
+    
     harmonizeClassifiedSamples('Hs',reference_exp_file,query_exp_file,classification_file);sys.exit()
     #"""
     #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()

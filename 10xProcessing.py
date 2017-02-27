@@ -56,6 +56,53 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name):
     outfile.close()
     print 'CPTT written to file:'
     print norm_path
+
+def normalizeTabMatrix(exp_dir):
+    gene_names=[]
+    mat_array=[]
+    firstRow=True
+    for line in open(exp_dir,'rU').xreadlines():         
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            firstRow=False
+            barcodes = t
+        else:
+            gene_names.append(t[0])
+            values = map(lambda x: int(float(x)),t[1:])
+            mat_array.append(values)
+    
+    if len(barcodes)!=len(t):
+        barcodes = ['UID']+barcodes
+    mat_array = numpy.array(mat_array)
+
+    outfile = open(exp_dir[:-4]+'-CPTT.txt', 'w')
+    outfile.write(string.join(barcodes,'\t')+'\n')
+    
+    mat_array_t = mat_array.transpose()
+
+    print 'Normalizing gene counts to counts per ten thousand (CPTT)'
+    barcode_sum=[]
+    for k in mat_array_t:
+        barcode_sum.append(sum(k))
+    
+    i=0
+    for k in mat_array:
+        gene = gene_names[i]
+        l=0; cpms=[]
+        for x in k:
+            if x!= 0:
+                value = (float(x)/barcode_sum[l])*10000
+                cpms.append(str(value))
+                l+=1
+            else:
+                cpms.append('0')
+        outfile.write(string.join([gene]+cpms,'\t')+'\n')
+        i+=1
+    
+    outfile.close()
+    print 'CPTT written to file:'
+    print norm_path
     
 if __name__ == '__main__':
     import getopt

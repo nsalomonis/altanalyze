@@ -558,7 +558,9 @@ def formatAttributeForExport(attribute_db,filename):
     export_db={}
     for (gene,probeset) in attribute_db:
         attribute_list = attribute_db[(gene,probeset)]; attribute_list2=[]
-        for (attribute,direction) in attribute_list: attribute_list2.append(attribute+'|'+direction)
+        for (attribute,direction) in attribute_list:
+            attribute = string.replace(attribute,'|',' ')
+            attribute_list2.append(attribute+'|'+direction)
         export_db[probeset]=attribute_list2
     print 'Exporting:',filename
     IdentifyAltIsoforms.exportSimple(export_db,filename,'')

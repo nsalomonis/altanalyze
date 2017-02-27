@@ -6184,7 +6184,7 @@ def commandLineRun():
                                                          'correlateAll=','normalization=','justShowTheseIDs=',
                                                          'direction=','analysisType=','algorithm=','rho=',
                                                          'clusterGOElite=','geneSetName=','runICGS=','IDtype=',
-                                                         'CountsCutoff=','FoldDiff=','SamplesDiffering=','removeOutliers='
+                                                         'CountsCutoff=','FoldDiff=','SamplesDiffering=','removeOutliers=',
                                                          'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
                                                          'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
                                                          'reimportModelScores=','separateGenePlots='])
@@ -6323,6 +6323,7 @@ def commandLineRun():
     ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
     if len(image_export) > 0 or len(accessoryAnalysis)>0 or runICGS:
         if runICGS:
+            #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Hs --column_method hopach --column_metric euclidean --rho 0.3 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 3 --restrictBy protein_coding --excludeCellCycle conservative --removeOutliers yes --expdir /RNA-Seq/run1891_normalized.txt
             #python AltAnalyze.py --runICGS yes --expdir "/Users/saljh8/Desktop/demo/Myoblast/ExpressionInput/exp.myoblast.txt" --platform "3'array" --species Hs --GeneSetSelection BioMarkers --PathwaySelection Heart --column_method hopach --rho 0.4 --ExpressionCutoff 200 --justShowTheseIDs "NKX2-5 T TBX5" --FoldDiff 10 --SamplesDiffering 3 --excludeCellCycle conservative
             try: species = species
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'

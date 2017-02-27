@@ -1681,7 +1681,7 @@ class GUI:
         for option in option_list:
           i+=1 ####Keep track of index - if options are deleted, count these to select the appropriate default from defaults
           if option in option_db:
-            od = option_db[option]; self.title = od.Display(); notes = od.Notes()      
+            od = option_db[option]; self.title = od.Display(); notes = od.Notes()
             self.display_options = od.ArrayOptions()
             try: override_default = od.DefaultOption()
             except Exception: override_default = ''
@@ -1745,6 +1745,8 @@ class GUI:
             if ('folder' in od.DisplayObject() or 'file' in od.DisplayObject()) and self.display_options != ['NA']:
               if use_scroll == 'yes': parent_type = self.sf.interior()
               else: parent_type = self._parent
+              if 'sparse-matrix' in self.title:
+                od.setDisplayObject('file') ### set the object equal to a file
               proceed = 'yes'
               #if option == 'raw_input': proceed = 'no'
               if proceed == 'yes':
@@ -2500,7 +2502,20 @@ class GUI:
         self._user_variables[option] = tag.name
         
     def getPath(self,option):
-        if 'dir' in option or 'folder' in option:
+        
+        try: ### Below is used to change a designated folder path to a filepath
+            if option == 'input_cel_dir' and array_type == '10XGenomics':
+                print 'here'
+                processFile = True
+            else:
+                forceException
+        except Exception:
+            if 'dir' in option or 'folder' in option:
+                processFile = False
+            else:
+                processFile = True
+        print option, processFile
+        if ('dir' in option or 'folder' in option) and processFile ==False:
             try: dirPath = tkFileDialog.askdirectory(parent=self._parent,initialdir=self.default_dir)
             except Exception: 
                 self.default_dir = ''
@@ -2531,7 +2546,7 @@ class GUI:
             try: exportDefaultFileLocations(file_location_defaults)
             except Exception: pass
 
-        if 'file' in option:
+        if 'file' in option or processFile:
             try: tag = tkFileDialog.askopenfile(parent=self._parent,initialdir=self.default_file)
             except Exception: 
                 self.default_file = ''
@@ -3464,6 +3479,7 @@ class OptionData:
     def VariableName(self): return self._option
     def Display(self): return self._displayed_title
     def setDisplay(self,display_title): self._displayed_title = display_title
+    def setDisplayObject(self,display_object): self._display_object = display_object
     def DisplayObject(self): return self._display_object
     def Notes(self): return self._notes
     def setNotes(self,notes): self._notes = notes
@@ -3486,7 +3502,7 @@ def importUserOptions(array_type,vendor=None):
             data = string.replace(data,'probe set','junction, exon or gene')
             data = string.replace(data,'CEL file','BED, BAM, TAB or TCGA junction file')
         if array_type == '10XGenomics':
-            data = string.replace(data,'CEL file','Chromium filtered sparse-matrix file')
+            data = string.replace(data,'CEL file containing folder','Chromium filtered sparse-matrix file')
         if vendor != 'Affymetrix':
             data = string.replace(data,'probe set','gene')      
         if vendor == 'Agilent':

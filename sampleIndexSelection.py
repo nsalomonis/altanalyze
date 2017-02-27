@@ -137,10 +137,15 @@ def statisticallyFilterFile(input_file,output_file,threshold):
     if cutoff<0:
         if (stdev-avg)>0:
             cutoff = avg - (stdev/2); dev = 0.5
+            print cutoff, 'genes expressed selected as a default cutoff to include cells (2-stdev away)'
         else:
             cutoff = avg - stdev; dev = 1
+            print cutoff, 'genes expressed selected as a default cutoff to include cells (1-stdev away)'
     if min_exp>cutoff:
         cutoff = avg - stdev; dev = 1
+    
+    print 'Using a default cutoff of >=1,000 genes per cell expressed/cell'
+    cutoff = 999
     import export
     eo = export.ExportFile(counts_file)
     eo.write('Sample\tGenes Expressed(threshold:'+str(threshold)+')\n')
@@ -191,7 +196,7 @@ def combineDropSeq(input_dir):
 
 if __name__ == '__main__':
     ################  Comand-line arguments ################
-    #statisticallyFilterFile('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/ExpressionInput/exp.2000_run1708B_normalized.txt','/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/ExpressionInput/exp.2000_run1708B_normalized2.txt',1)
+    #statisticallyFilterFile('/Volumes/SEQ-DATA/scRNA-Seq_Mm_heart/Seidman/ExpressionInput/exp.Seidman.txt','/Volumes/SEQ-DATA/scRNA-Seq_Mm_heart/Seidman/ExpressionInput/exp.Seidman2.txt',1); sys.exit()
     import getopt
     filter_rows=False
     filter_file=None

@@ -93,9 +93,9 @@ def collapseNoveExonBoundaries(novel_exon_coordinates,dataset_dir):
         ji,side,coord2 = novel_exon_coordinates[(chr,coord)]
         try:
             if side == 'left': ### left corresponds to the position of coord
-                intron = string.split(ji.ExonRegionID(),'-')[1][:2]
+                intron = string.split(string.split(ji.ExonRegionID(),'-')[1][:2],'.')[0]
             else:
-                intron = string.split(ji.ExonRegionID(),'-')[0][:2]
+                intron = string.split(string.split(ji.ExonRegionID(),'-'),'.')[0]
             ls = [coord,coord2]
             ls.sort() ### The order of this is variable
             if ji.Strand() == '-':
@@ -2520,8 +2520,12 @@ def alignReadsToExons(novel_exon_db,ens_exon_db,testImport=False):
                                     else: rd = prd
                             except Exception: null=[]                               
                         ed.setExonRegionData(rd); aligned_exons+=1; aligned_status=1
-                        ed.setExonRegionID(rd.ExonRegionIDs()+'_'+str(ed.ReadStart()))
-                        #print rd.ExonRegionIDs()+'_'+str(ed.ReadStart())
+                        if rd.ExonStop()==ed.ReadStart():
+                            ed.setExonRegionID(rd.ExonRegionIDs())
+                        elif rd.ExonStart()==ed.ReadStart():
+                            ed.setExonRegionID(rd.ExonRegionIDs())
+                        else:
+                            ed.setExonRegionID(rd.ExonRegionIDs()+'_'+str(ed.ReadStart()))
                         break
                 if aligned_status == 0: ### non-exon/intron alinging sequences
                     region_numbers.sort(); region_starts.sort(); region_stops.sort()
@@ -2798,6 +2802,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
             import shutil
             print '***Removing outlier samples***'
             import sampleIndexSelection
+            reload(sampleIndexSelection)
             output_file = expFile[:-4]+'-OutliersRemoved.txt'
             sampleIndexSelection.statisticallyFilterFile(expFile,output_file,rpkm_threshold)
             if 'exp.' in expFile:
@@ -4707,7 +4712,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     else:
         reimportExistingKallistoOutput = False
 
-    print reimportExistingKallistoOutput
+    print 'Reimport existing kallisto output:',reimportExistingKallistoOutput
     if reimportExistingKallistoOutput:
         ### Just get the existing Kallisto output folders
         fastq_paths = read_directory(output_dir)
@@ -4818,8 +4823,12 @@ def calculateGeneTPMs(species,expMatrix):
     gene_matrix = {}
     present_gene_transcripts={}
     for transcript in expMatrix:
-        if transcript in transcript_to_gene_db:
-            gene = transcript_to_gene_db[transcript][0]
+        if '.' in transcript:
+            transcript_alt = string.split(transcript,'.')[0]
+        else:
+            transcript_alt = transcript
+        if transcript_alt in transcript_to_gene_db:
+            gene = transcript_to_gene_db[transcript_alt][0]
             try: present_gene_transcripts[gene].append(transcript)
             except Exception: present_gene_transcripts[gene] = [transcript]
         else: pass ### could keep track of the missing transcripts
@@ -4847,6 +4856,8 @@ def importTPMs(sample,input_path,expMatrix,countMatrix):
             header = string.split(data,'\t')
         else:
             target_id,length,eff_length,est_counts,tpm = string.split(data,'\t')
+            if '.' in target_id:
+                target_id = string.split(target_id,'.')[0] ### Ensembl isoform IDs in more recent Ensembl builds
             try: expMatrix[target_id].append(tpm)
             except Exception: expMatrix[target_id]=[tpm]
             try: countMatrix[sample]+=float(est_counts)
@@ -4977,10 +4988,10 @@ if __name__ == '__main__':
     
     filename = '/Volumes/SEQ-DATA/Jared/ExpressionInput/counts.CM-steady-state.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    calculateRPKMsFromGeneCounts(filename,'Hs',AdjustExpression=True);sys.exit()
+    #calculateRPKMsFromGeneCounts(filename,'Hs',AdjustExpression=True);sys.exit()
     #copyICGSfiles('','');sys.exit()
 
-    runKallisto('Hs','scRNA-Seq','/Users/saljh8/kallisto_files/','/Users/saljh8/kallisto_files/');sys.exit()
+    runKallisto('Hs','Conklin','/Volumes/salomonis2/Ichi_data/Combined_FASTQ/KallistoAnalysis/','/Volumes/salomonis2/Ichi_data/Combined_FASTQ/KallistoAnalysis/');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

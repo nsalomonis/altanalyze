@@ -236,7 +236,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         cmap=pylab.cm.PiYG_r
     if color_gradient == 'coolwarm':
         cmap=pylab.cm.coolwarm
-    
+    if color_gradient == 'Greys':
+        cmap=pylab.cm.Greys
+        
     vmin=x.min()
     vmax=x.max()
     vmax = max([vmax,abs(vmin)])
@@ -804,12 +806,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
         #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
         if len(unique.unique(ind2))==2: ### cmap_c is too few colors
-            #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+            cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
             cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
         elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
             cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
         elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
             cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18'])
+            #cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w'])
         elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
             cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
         elif len(unique.unique(ind2))==6: ### cmap_c is too few colors
@@ -820,7 +823,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'k', 'w','w','w'])
             #cmap_c = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
-        #elif len(unique.unique(ind2))==10:  cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'k'])
+        #elif len(unique.unique(ind2))==9:  cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w'])
         elif len(unique.unique(ind2))==11: 
             cmap_c = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
         elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
@@ -899,6 +902,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             im_c = axd.matshow(dc, aspect='auto', origin='lower', cmap=cmap_d)
             axd.set_yticks([])
             #axd.set_xticklabels(group_names, rotation=45, ha='left')
+            #if len(group_names)<200:
             pylab.xticks(range(len(group_names)),group_names,rotation=45,ha='left')
             #cmap_c = matplotlib.colors.ListedColormap(map(lambda x: GroupDB[x][-1], new_column_header))
 
@@ -1315,6 +1319,8 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
                     sc = 'Ae'
             if '&' in id:
                 sc = 'Ae'
+            if (len(id)==9 and "SRS" in id) or (len(id)==15 and "TCGA-" in id):
+                sc = 'En'
             try: export_elite.write(id+'\t'+sc+'\n')
             except Exception: export_elite.write(id+'\n') ### if no System Code known
             allGenes[id]=[]
@@ -2456,6 +2462,41 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             pass### when run in headless mode
     fig.clf()
 
+def simpleScatter(fn):
+    import matplotlib.patches as mpatches
+    values=[]
+    legends={}
+    colors={}
+    skip=True
+    scale = 100.0
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if skip:
+            x_header, y_header, color_header,label_header, shape_header = string.split(data,'\t')
+            skip=False
+        else:
+            x, y, color,label,shape = string.split(data,'\t')
+            if color in colors:
+                xval,yval,label,shape = colors[color]
+                xval.append(float(x)); yval.append(float(y))
+            else:
+                xval = [float(x)]; yval = [float(y)]
+                colors[color] = xval,yval,label,shape
+    
+    for color in colors:
+        xval,yval,label,shape = colors[color]
+        pylab.scatter(xval, yval, s=scale, c=color, alpha=0.75, label=label, marker=shape,edgecolor="none")
+
+    pylab.legend(loc='upper left')
+    
+    pylab.title(fn)
+    pylab.xlabel(x_header, fontsize=15)
+    pylab.ylabel(y_header, fontsize=15)
+    marker_size = 7
+    
+    #pylab.grid(True)
+    pylab.show()
+    
 def ica(filename):
     showLabels=True
     X, column_header, row_header, dataset_name, group_db = importData(filename)
@@ -3448,7 +3489,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
                     symbol = gene_to_symbol[gid][0]
                     try: gene_to_symbol[uid].append(symbol)
                     except Exception: gene_to_symbol[uid] = [symbol]
-        
+
     matrix2=[]
     row_header2=[]
     matrix_db={} ### Used to optionally sort according to the original order
@@ -3475,6 +3516,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         for row_id in row_header:
             original_rowid = row_id
             symbol=row_id
+            new_symbol = symbol
             if ':' in row_id:
                 a,b = string.split(row_id,':')[:2]
                 if 'ENS' in a or len(a)==17:
@@ -3493,11 +3535,12 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
                 except Exception:
                     if 'ENS' not in original_rowid:
                         row_id, symbol = row_id, row_id
+                new_symbol = symbol
             if 'ENS' not in original_rowid and len(original_rowid)!=17:
                 if original_rowid != symbol:
                     symbol = original_rowid+' '+symbol
             for gene in targetGenes:
-                if string.lower(gene) == string.lower(row_id) or string.lower(gene) == string.lower(symbol) or string.lower(original_rowid)==string.lower(gene):
+                if string.lower(gene) == string.lower(row_id) or string.lower(gene) == string.lower(symbol) or string.lower(original_rowid)==string.lower(gene) or string.lower(gene) == string.lower(new_symbol):
                     matrix2.append(matrix[i]) ### Values for the row
                     row_header2.append(symbol)
                     matrix_db[symbol]=matrix[i]
@@ -3528,7 +3571,6 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     print 'limit:',limit
 
     #print len(intersecting_ids),len(targetGenes), multipleGenes
-        
     if multipleGenes==False or 'amplify' in targetGene or 'correlated' in targetGene:
         row_header3=[] ### Convert to symbol if possible
         if multipleGenes==False:
@@ -3688,8 +3730,10 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         if row_id not in exclude:
             exportData.write(string.join([row_id]+map(str,matrix2[i]),'\t')+'\n') ### export values
         i+=1
-
-    print len(row_header2), 'top-correlated IDs'
+    if 'amplify' not in targetGene and 'correlated' not in targetGene:
+        print len(row_header2), 'input gene IDs found'
+    else:
+        print len(row_header2), 'top-correlated IDs'
     exportData.close()
 
     return matrix2,row_header2,column_header,row_method
@@ -4488,8 +4532,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
             cm = matplotlib.colors.ListedColormap(['#80C241', '#118943', '#6FC8BB', '#ED1D30', '#F26E21','#8051A0', '#4684C5', '#FBD019','#3A52A4'])
         elif len(groups)==3:
             cm = matplotlib.colors.ListedColormap(['#4684C4','#FAD01C','#7D7D7F'])
-        elif len(groups)==5:
-            cm = matplotlib.colors.ListedColormap(['#41449B','#6182C1','#9DDAEA','#42AED0','#7F7F7F'])
+        #elif len(groups)==5: cm = matplotlib.colors.ListedColormap(['#41449B','#6182C1','#9DDAEA','#42AED0','#7F7F7F'])
         else:
             cm = pylab.cm.get_cmap('gist_rainbow') #gist_ncar
         for i in range(len(groups)):
@@ -4717,7 +4760,7 @@ def coincentIncedenceTest(exp_file,TFs):
             values = map(float,t[1:])
             gene_data[gene] = values
                 
-    filename = TFs[:-4]+'-all-coincident-4z.txt'
+    filename = TFs[:-4]+'-all-coincident-5z.txt'
     ea = export.ExportFile(filename)    
     comparison_db={}
     for comparison in comparisons:
@@ -4853,12 +4896,12 @@ def geneMethylationOutput(filename):
     ea.close()
     
 def coincidentIncedence(filename,genes):
-    exportPairs=False
+    exportPairs=True
     gene_data=[]
     firstLine=True
     fn = filepath(filename)
     if exportPairs:
-        filename = filename[:-4]+'_'+genes[0]+'-'+genes[1]+'.txt'
+        filename = filename[:-4]+'_'+genes[0]+'-'+genes[1]+'2.txt'
         ea = export.ExportFile(filename)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -5197,11 +5240,24 @@ def compareFusions(fn):
     sample_list=[]
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        sample, fusion = string.split(data,'\t')
-        try: fusion_db[fusion].append(sample)
-        except Exception: fusion_db[fusion] = [sample]
-        if sample not in sample_list: sample_list.append(sample)
-    
+        if 'Gene_Fusion_Pair' in line:
+            headers = string.split(data,'\t')[1:]
+        try:
+            sample, fusion = string.split(data,'\t')
+            try: fusion_db[fusion].append(sample)
+            except Exception: fusion_db[fusion] = [sample]
+            if sample not in sample_list: sample_list.append(sample)    
+        except Exception:
+            t = string.split(data,'\t')
+            fusion = t[0]
+            index=0
+            for i in t[1:]:
+                if i=='1':
+                    sample = headers[index]
+                    try: fusion_db[fusion].append(sample)
+                    except Exception: fusion_db[fusion] = [sample]
+                    if sample not in sample_list: sample_list.append(sample)    
+                index+=1 
     fusion_db2=[]
     for fusion in fusion_db:
         samples = fusion_db[fusion]
@@ -5419,12 +5475,200 @@ def effectsPrioritization(filename):
             ea.write(gene+'\t'+max_header+'\t'+str(max_val)+'\n')
     ea.close()
     
+def simpleCombine(folder):
+    filename = folder+'/combined/combined.txt'
+    ea = export.ExportFile(filename)
+    headers=['UID']
+    data_db={}
+    files = UI.read_directory(folder)
+    for file in files: #:70895507-70895600
+        if '.txt' in file:
+            fn = filepath(folder+'/'+file)
+            print fn
+            firstRow=True
+            for line in open(fn,'rU').xreadlines():
+                data = cleanUpLine(line)
+                t = string.split(data,'\t')
+                if firstRow:
+                    for i in t[1:]:
+                        headers.append(i+'.'+file[:-4])
+                    firstRow = False
+                else:
+                    gene = t[0]
+                    try: data_db[gene]+=t[1:]
+                    except Exception: data_db[gene] = t[1:]
+
+    len_db={}
+    ea.write(string.join(headers,'\t')+'\n')
+    for gene in data_db:
+        if len(data_db[gene])==(len(headers)-1):
+            values = map(float,data_db[gene])
+            count=0
+            for i in values:
+                if i>0.9: count+=1
+            if count>7:
+                ea.write(string.join([gene]+data_db[gene],'\t')+'\n')
+        len_db[len(data_db[gene])]=[]
+    print len(len_db)
+    for i in len_db:
+        print i
+    
+    ea.close()
+    
+def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGenes,state,query=None):
+    """Predict multi-lineage cells and their associated coincident lineage-defining TFs"""
+    
+    ### Import all genes with TPM values for all cells
+    matrix, column_header, row_header, dataset_name, group_db = importData(all_genes_TPM)
+    group_index={}
+    for sampleName in group_db:
+        ICGS_state = group_db[sampleName][0]
+        try: group_index[ICGS_state].append(column_header.index(sampleName))
+        except Exception: group_index[ICGS_state] = [column_header.index(sampleName)]
+    for ICGS_state in group_index:
+        group_index[ICGS_state].sort()
+
+    def importGeneLists(fn):
+        genes={}
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            gene,cluster = string.split(data,'\t')[0:2]
+            genes[gene]=cluster
+        return genes
+    
+    def importMarkerFinderHits(fn):
+        genes={}
+        skip=True
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            if skip: skip=False
+            else:
+                gene,symbol,rho,ICGS_State = string.split(data,'\t')
+                if ICGS_State!=state and float(rho)>0.0:
+                    genes[gene]=float(rho) ### Retain all population specific genes (lax)
+                    genes[symbol]=float(rho)
+        return genes
+    
+    def importQueryDataset(fn):
+        matrix, column_header, row_header, dataset_name, group_db = importData(fn)
+        return matrix, column_header, row_header, dataset_name, group_db
+    
+    signatureGenes = importGeneLists(SignatureGenes)
+    markerFinderGenes = importMarkerFinderHits(MarkerFinder)
+    #print len(signatureGenes),len(markerFinderGenes)
+
+    ### Determine for each gene, its population frequency per cell state
+    index=0
+    expressedGenesPerState={}
+    for row in matrix:
+        ICGS_state_gene_frq={}
+        gene = row_header[index]
+        for ICGS_state in group_index:
+            state_values = map(lambda i: row[i],group_index[ICGS_state])    
+            def freqCheck(x):
+                if x>1: return 1 ### minimum expression cutoff
+                else: return 0
+                
+            expStateCells = sum(map(lambda x: freqCheck(x),state_values))
+            statePercentage = (float(expStateCells)/len(group_index[ICGS_state]))
+            ICGS_state_gene_frq[ICGS_state] = statePercentage
+        
+        multilin_frq = ICGS_state_gene_frq[state]
+ 
+        all_states_frq = map(lambda x: ICGS_state_gene_frq[x],ICGS_state_gene_frq)
+        all_states_frq.sort() ### frequencies of all non-multilin states
+        rank = all_states_frq.index(multilin_frq)
+        if multilin_frq > 0.25 and rank>0:
+            if 'Rik' not in gene and 'Gm' not in gene:
+                if gene in signatureGenes:# and gene in markerFinderGenes:
+                    ICGS_State = signatureGenes[gene]
+                    if gene in markerFinderGenes:
+                        score = int(markerFinderGenes[gene]*100*multilin_frq)*(float(rank)/len(all_states_frq))
+                        try: expressedGenesPerState[ICGS_State].append((score,gene))
+                        except Exception: expressedGenesPerState[ICGS_State]=[(score,gene)] #(rank*multilin_frq)
+        index+=1
+
+    if query!=None:
+        matrix, column_header, row_header, dataset_name, group_db = importQueryDataset(query)
+        
+    createPseudoCell=True
+    ### The expressedGenesPerState defines genes and modules co-expressed in the multi-Lin
+    ### Next, find the cells that are most frequent in mulitple states
+    representativeMarkers={}
+    for ICGS_State in expressedGenesPerState:
+        expressedGenesPerState[ICGS_State].sort()
+        expressedGenesPerState[ICGS_State].reverse()
+        if 'Multi' not in ICGS_State:
+            markers = expressedGenesPerState[ICGS_State][:5]
+            print ICGS_State,":",string.join(map(lambda x: x[1],list(markers)),', ')
+            if createPseudoCell:
+                for gene in markers:
+                    def getBinary(x):
+                        if x>1: return 1
+                        else: return 0
+                    if gene[1] in row_header: ### Only for query datasets
+                        row_index = row_header.index(gene[1])
+                        binaryValues = map(lambda x: getBinary(x), matrix[row_index])
+                        #if gene[1]=='S100a8': print binaryValues;sys.exit()
+                        try: representativeMarkers[ICGS_State].append(binaryValues)
+                        except Exception: representativeMarkers[ICGS_State] = [binaryValues]    
+            else:
+                representativeMarkers[ICGS_State]=markers[0][-1]
+        #int(len(markers)*.25)>5:
+        #print ICGS_State, markers
+    #sys.exit()
+    
+    for ICGS_State in representativeMarkers:
+        if createPseudoCell:
+            signature_values = representativeMarkers[ICGS_State]
+            signature_values = [int(numpy.median(value)) for value in zip(*signature_values)]
+            representativeMarkers[ICGS_State] = signature_values
+        else:
+            gene = representativeMarkers[ICGS_State]
+            row_index = row_header.index(gene)
+            gene_values = matrix[row_index]
+            representativeMarkers[ICGS_State] = gene_values
+        
+    ### Determine for each gene, its population frequency per cell state
+    expressedStatesPerCell={}
+    for ICGS_State in representativeMarkers:
+        gene_values = representativeMarkers[ICGS_State]
+        index=0
+        for cell in column_header:
+            log2_tpm = gene_values[index]
+            if log2_tpm>=1:
+                try: expressedStatesPerCell[cell].append(ICGS_State)
+                except Exception: expressedStatesPerCell[cell] = [ICGS_State]
+            index+=1
+    
+    cell_mutlilin_ranking=[]   
+    for cell in expressedStatesPerCell:
+        lineageCount = expressedStatesPerCell[cell]
+        cell_mutlilin_ranking.append((len(lineageCount),cell))
+    cell_mutlilin_ranking.sort()
+    cell_mutlilin_ranking.reverse()
+    for cell in cell_mutlilin_ranking:
+        print cell[0], cell[1], string.join(expressedStatesPerCell[cell[1]],'|')
+    
 if __name__ == '__main__':
-    effectsPrioritization('/Users/saljh8/Documents/1-dataAnalysis/RBM20-collaboration/RBM20-BAG3_splicing/Missing Values-Splicing/Effects.txt');sys.exit()
+    #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()
+    query_dataset = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
+    all_tpm = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
+    markerfinder = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionOutput1/MarkerFinder/AllGenes_correlations-ReplicateBasedOriginal.txt'
+    signature_genes = '/Users/saljh8/Desktop/Grimes/KashishNormalization/test/Panorama.txt'
+    state = 'Multi-Lin'
+    query_dataset = None
+    all_tpm = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/MultiLin/Gottgens_HarmonizeReference.txt'
+    signature_genes = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/MultiLin/Gottgens_HarmonizeReference.txt'
+    markerfinder = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
+    state = 'Eryth_Multi-Lin'
+    evaluateMultiLinRegulatoryStructure(all_tpm,markerfinder,signature_genes,state,query = query_dataset);sys.exit()
+    #simpleCombine("/Volumes/My Passport/Ari-10X/input");sys.exit()
+    #effectsPrioritization('/Users/saljh8/Documents/1-dataAnalysis/RBM20-collaboration/RBM20-BAG3_splicing/Missing Values-Splicing/Effects.txt');sys.exit()
     #customCleanBinomial('/Volumes/salomonis2-1/Lab backup/Theresa-Microbiome-DropSeq/NegBinomial/ExpressionInput/exp.Instesinal_microbiome2.txt');sys.exit()
     #findReciprocal('/Volumes/HomeBackup/CCHMC/Jared-KO/BatchCorrectedFiltered/exp.CM-KO-steady-state.txt');sys.exit()
     #ReceptorLigandCellInteractions('Mm','/Users/saljh8/Downloads/ncomms8866-s3.txt','/Users/saljh8/Downloads/Round3-MarkerFinder_All-Genes.txt');sys.exit()
-    #compareFusions('/Users/saljh8/Documents/1-collaborations/CPMC/GMP-MM_r2/MM_fusion_result.txt');sys.exit()
+    #compareFusions('/Volumes/salomonis2-2/CPMC_Melanoma-GBM/Third-batch-files/Complete_analysis/temp/Combined_Fusion_GBM.txt');sys.exit()
     #combineVariants('/Volumes/salomonis2/CPMC_Melanoma-GBM/Third-batch-files/Complete_analysis/Variant_results/GBM/Variants_HighModerate-GBM_selected.txt');sys.exit()
     #customCleanSupplemental('/Users/saljh8/Desktop/dataAnalysis/CPMC/TCGA_MM/MM_genes_published.txt');sys.exit()
     #customClean('/Users/saljh8/Desktop/dataAnalysis/Driscoll/R3/2000_run1708A_normalized.txt');sys.exit()
@@ -5453,7 +5697,6 @@ if __name__ == '__main__':
     IGH_gene_file = '/Volumes/salomonis2/SinghLab/20150715_single_GCBCell/bams/ExpressionInput/IGH_genes.txt'
     #extractFeatures(countinp,IGH_gene_file);sys.exit()
     
-
     import UI
     #geneMethylationOutput(filename);sys.exit()
     #ica(filename);sys.exit()
@@ -5463,9 +5706,9 @@ if __name__ == '__main__':
     
     #filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/6-5-2015/ExpressionInput/amplify/exp.All-wt-output.txt'
     #getlastexon(filename);sys.exit()
-    TFs = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/TF-by-gene_matrix/all-TFs.txt'
+    TFs = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/TF-by-gene_matrix/all-TFs2.txt'
     folder = '/Users/saljh8/Downloads/BLASTX2_Gecko.tab'
-    genes = ['Cebpe','Gfi1']
+    genes = ['Gfi1', 'Irf8'] #'Cebpe', 'Mecom', 'Vwf', 'Itga2b', 'Meis1', 'Gata2','Ctsg','Elane', 'Klf4','Gata1']
     #genes = ['Gata1','Gfi1b']
     #coincentIncedenceTest(filename,TFs);sys.exit()
     #coincidentIncedence(filename,genes);sys.exit()
@@ -5480,7 +5723,9 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/Grimes/Comb-plots/AML_genes-interest.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/AML_combplots.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/KO_genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot2.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/MDS-array/Comb-plot genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot3.txt'
+    gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -5488,7 +5733,10 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/Grimes/Comb-plots/exp.AML_single-cell-output.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/exp.AML.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/exp.KO-output.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/MDS-array/comb-plot/input.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/exp.Lsk_panorama.txt'
+    filename = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
+    filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
     print genesets
     for gene_list in genesets:
         multipleSubPlots(filename,gene_list,SubPlotType='column')

@@ -1962,6 +1962,7 @@ def compareJunctions(species,putative_as_junction_db,exon_regions,rootdir=None,s
         #critical_exon_db_original = manualDeepCopy(critical_exon_db) ### won't work because it is the object that is chagned
     
     alternative_exon_db={}; critical_junction_db={}; critical_gene_junction_db={}
+    alternative_terminal_exon={}
     for gene in critical_exon_db:
         critical_exon_junctions={}; critical_exon_splice_type={}
         for sd in critical_exon_db[gene]:
@@ -1969,7 +1970,7 @@ def compareJunctions(species,putative_as_junction_db,exon_regions,rootdir=None,s
                 try: critical_exon_junctions[critical_exon]+=sd.Junctions()
                 except KeyError: critical_exon_junctions[critical_exon]=sd.Junctions()
                 try: critical_exon_splice_type[critical_exon].append(sd.SpliceType())
-                except KeyError: critical_exon_splice_type[critical_exon]=[sd.SpliceType()]
+                except KeyError: critical_exon_splice_type[critical_exon]=[sd.SpliceType()]                
                 for junction in sd.Junctions():
                     try: critical_junction_db[tuple(junction)].append(junction)
                     except KeyError: critical_junction_db[tuple(junction)]=[sd.SpliceType()]
@@ -1986,11 +1987,17 @@ def compareJunctions(species,putative_as_junction_db,exon_regions,rootdir=None,s
                 if len(critical_exon_junctions[critical_exon])<3 or cassette_status == 'no': ###Thus, it is not supported by 3 independent junctions
                     if len(exons_blocks_joined_to_critical)<2 or cassette_status == 'no':
                         if cj[0][1] == cj[1][1]:
-                            splice_events = ['alt-N-term']; second_critical_exon = add_to_for_terminal_exons[gene,critical_exon[0]]; status = 'add_another'
+                            splice_events = ['alt-N-term']
+                            second_critical_exon = add_to_for_terminal_exons[gene,critical_exon[0]]; status = 'add_another'
+                            alternative_terminal_exon[gene,critical_exon] = 'alt-N-term'
                         elif cj[0][0] == cj[1][0]:
-                            splice_events = ['alt-C-term']; second_critical_exon = add_to_for_terminal_exons[gene,critical_exon[0]]; status = 'add_another'
+                            splice_events = ['alt-C-term']
+                            second_critical_exon = add_to_for_terminal_exons[gene,critical_exon[0]]; status = 'add_another'
+                            alternative_terminal_exon[gene,critical_exon] = 'alt-C-term'
                         else:
-                            if critical_exon == cj[0][1]: splice_events = ['alt-C-term'] ###this should be the only alt-exon
+                            if critical_exon == cj[0][1]:
+                                splice_events = ['alt-C-term'] ###this should be the only alt-exon
+                                alternative_terminal_exon[gene,critical_exon] = 'alt-C-term'
                 elif (gene,critical_exon[0]) in complex3prime_event_db:
                     #print '3prime',splice_events,critical_exon
                     if (gene,critical_exon[0]) in add_to_for_terminal_exons:
@@ -1998,6 +2005,7 @@ def compareJunctions(species,putative_as_junction_db,exon_regions,rootdir=None,s
                         if len(exons_blocks_joined_to_critical)<2 or cassette_status == 'no':
                             second_critical_exon = add_to_for_terminal_exons[gene,critical_exon[0]]
                             splice_events = ['alt-N-term']; status = 'add_another'
+                            alternative_terminal_exon[gene,critical_exon] = 'alt-N-term'
                 elif (gene,critical_exon[0]) in complex5prime_event_db:
                     #print '5prime',splice_events,critical_exon
                     if (gene,critical_exon[0]) in add_to_for_terminal_exons:
@@ -2005,6 +2013,7 @@ def compareJunctions(species,putative_as_junction_db,exon_regions,rootdir=None,s
                         if len(exons_blocks_joined_to_critical)<2 or cassette_status == 'no':
                             second_critical_exon = add_to_for_terminal_exons[gene,critical_exon[0]]
                             splice_events = ['alt-C-term']; status = 'add_another'
+                            alternative_terminal_exon[gene,critical_exon] = 'alt-C-term'
                 """if 'mx-mx' in splice_events and (gene,critical_exon) in mx_event_db:
                     ###if one exon is a true cassette exon, then the mx-mx is not valid
                     if (gene,critical_exon[0]) in add_to_for_terminal_exons:
@@ -2071,6 +2080,8 @@ def compareJunctions(species,putative_as_junction_db,exon_regions,rootdir=None,s
                     block_db = {}; block_db[critical_exon_block]=[rd]
                     alternative_exon_db[gene]=block_db"""
             except Exception: null=[] ### Occurs when analyzing novel junctions, rather than Ensembl
+            
+    #alternative_terminal_exon[gene,critical_exon] = 'alt-C-term'
     ###Since setSpliceData will update the existing instance, we can just re-roder the region db for easy searching in downstream modules
     ### (note: the commented out code above could be useful for exon-structure output)
     for gene in exon_regions:

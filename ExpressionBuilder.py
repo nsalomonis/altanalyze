@@ -2389,35 +2389,6 @@ def calculateNormalizedIntensities(root_dir, species, array_type, avg_all_for_SS
         print exon_entries, 'found with',saved_entries,'entries normalized.'
     return alt_exon_output_dir
 
-def predictSplicingEventTypes(junction1,junction2):
-    j1a,j1b = string.split(junction1,'-')
-    j2a,j2b = string.split(junction2,'-')
-    j1a = string.split(j1a,':')[1][1:]
-    j2a = string.split(j2a,':')[1][1:]  
-    
-    j1a,r1a = string.split(j1a,'.')
-    j1b,r1b = string.split(j1b[1:],'.')
-
-    j2a,r2a = string.split(j2a,'.')
-    j2b,r2b = string.split(j2b[1:],'.')
-    
-    ### convert to integers
-    j1a,r1a,j1b,r1b,j2a,r2a,j2b,r2b = map(lambda x: int(float(x)),[j1a,r1a,j1b,r1b,j2a,r2a,j2b,r2b])
-    
-    splice_event=[]
-    if j1a == j2a and j1b==j2b: ### alt-splice site
-        if r1a == r2a: splice_event.append("three-prime")
-        else: splice_event.append("five-prime")
-    elif j1a == j2a: splice_event.append("cassette-exon")
-    elif j1b==j2b:
-        if 'E1.' in junction1: splice_event.append("altPromoter")
-        else: splice_event.append("cassette-exon")
-    elif 'E1.' in junction1 or 'E1.1' in junction2:
-        splice_event.append("altPromoter")
-            
-    print splice_event
-    print [j1a,r1a,j1b,r1b,j2a,r2a,j2b,r2b];sys.exit()
-
 def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expFile,min_events=0,med_events=0):
     expFile = exportSorted(expFile, 0) ### Sort the expression file
     print expFile
@@ -2966,7 +2937,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
         if firstLine:
             firstLine = False
             ge_header = t
-            additional_headers = string.join(['Symbol','Description','Minor-Isoform','Major Isoform','AltExons',"PME","dPSI",'rho','Max Inclusion PSI','Coordinates','feature']+t[1:],'\t')+'\n'
+            additional_headers = string.join(['Symbol','Description','Examined-Junction','Background-Major-Junction','AltExons',"PME","dPSI",'rho','Max Inclusion PSI','Coordinates','feature']+t[1:],'\t')+'\n'
             export_data.write(additional_headers)
             clust_export_data.write(line)
         else:
@@ -3888,8 +3859,8 @@ def convertPSIJunctionIDsToPositions(psi_file,regulated_file):
         t = string.split(data,'\t')
         if x==0:
             symbol = t.index('Symbol')
-            minor = t.index('Minor-Isoform')
-            major = t.index('Major Isoform')
+            minor = t.index('Examined-Junction')
+            major = t.index('Background-Major-Junction')
             coord = t.index('Coordinates')
             x=1
         else:
