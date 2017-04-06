@@ -148,7 +148,8 @@ def correctGeneDatabaseDir(fn):
         if proceed == 'yes':
             fn = string.replace(fn,'Databases','Databases/'+gene_database_dir)
             if 'AltDatabase/affymetrix' not in fn and 'NoVersion' not in fn and 'AltDatabase/primer3' not in fn \
-                    and 'AltDatabase/TreeView' not in fn and 'AltDatabase/kallisto' not in fn and 'AltDatabase/tools' not in fn:
+                    and 'AltDatabase/TreeView' not in fn and 'AltDatabase/kallisto' not in fn and 'AltDatabase/tools' not in fn \
+                    and 'AltDatabase/subreads' not in fn:
                 if 'AltDatabase' in fn:
                     fn = string.replace(fn,'AltDatabase','AltDatabase/'+gene_database_dir)
         fn = string.replace(fn,'NoVersion','') ### When the text 'NoVersion' is in a filepath, is tells the program to ignore it for adding the database version

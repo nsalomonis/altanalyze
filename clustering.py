@@ -31,16 +31,16 @@ try:
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
         import matplotlib
-        if commandLine==False:
-            try: matplotlib.use('TkAgg')
-            except Exception: pass
-            try: matplotlib.rcParams['backend'] = 'TkAgg'
-            except Exception: pass
-        else:
-            ### TkAgg doesn't work when AltAnalyze is run on the command-line
+        if commandLine and 'linux' in sys.platform:
+            ### TkAgg doesn't work when AltAnalyze is run remotely (ssh or sh script)
             try: matplotlib.use('Agg')
             except Exception: pass
             try: matplotlib.rcParams['backend'] = 'Agg'
+            except Exception: pass
+        else:
+            try: matplotlib.use('TkAgg')
+            except Exception: pass
+            try: matplotlib.rcParams['backend'] = 'TkAgg'
             except Exception: pass
         try:
             import matplotlib.pyplot as pylab
@@ -85,6 +85,7 @@ import export
 import webbrowser
 import warnings
 import UI
+use_default_colors = False
 
 try:
     warnings.simplefilter("ignore", numpy.ComplexWarning)
@@ -123,7 +124,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     show_color_bars = True ### Currently, the color bars don't exactly reflect the dendrogram colors
     try: ExportCorreleationMatrix = exportCorreleationMatrix
     except Exception: ExportCorreleationMatrix = False
-
+    
     try: os.mkdir(root_dir) ### May need to create this directory
     except Exception: None
     if display == False:
@@ -804,30 +805,33 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if (column_method != None or 'column' in cb_status) and show_color_bars == True:
         axc = fig.add_axes([axc_x, axc_y, axc_w, axc_h])  # axes for column side colorbar
         cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
-        #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
-        if len(unique.unique(ind2))==2: ### cmap_c is too few colors
-            cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
-            cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
-        elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
-            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
-        elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
-            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18'])
-            #cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w'])
-        elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
-            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
-        elif len(unique.unique(ind2))==6: ### cmap_c is too few colors
-            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-            #cmap_c = matplotlib.colors.ListedColormap(['w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
-            #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'k', 'w','w','w'])
-        elif len(unique.unique(ind2))==7: ### cmap_c is too few colors
-            cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-            #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'k', 'w','w','w'])
-            #cmap_c = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
-        #elif len(unique.unique(ind2))==9:  cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w'])
-        elif len(unique.unique(ind2))==11: 
-            cmap_c = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
-        elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
+        if use_default_colors:
             cmap_c = pylab.cm.gist_rainbow
+        else:
+            #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
+            if len(unique.unique(ind2))==2: ### cmap_c is too few colors
+                cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
+            elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
+                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+            elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
+                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18'])
+                #cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w'])
+            elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
+                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+            elif len(unique.unique(ind2))==6: ### cmap_c is too few colors
+                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                #cmap_c = matplotlib.colors.ListedColormap(['w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
+                #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'k', 'w','w','w'])
+            elif len(unique.unique(ind2))==7: ### cmap_c is too few colors
+                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'k', 'w','w','w'])
+                #cmap_c = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
+            #elif len(unique.unique(ind2))==9:  cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w'])
+            elif len(unique.unique(ind2))==11: 
+                cmap_c = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
+            elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
+                cmap_c = pylab.cm.gist_rainbow
     
         dc = numpy.array(ind2, dtype=int)
         dc.shape = (1,len(ind2)) 
@@ -844,29 +848,32 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 axcd = fig.add_axes([ax2_x, ax2_y, ax2_w, color_bar_w])  # dendrogram coordinates with color_bar_w substituted - can use because dendrogram is not used
                 cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
                 #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
-                if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
-                    #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
-                    cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
-                elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
-                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
-                elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
-                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
-                elif len(unique.unique(ind2_clust))==5: ### cmap_c is too few colors
-                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
-                elif len(unique.unique(ind2_clust))==6: ### cmap_c is too few colors
-                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-                elif len(unique.unique(ind2_clust))==7: ### cmap_c is too few colors
-                    cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-                elif len(unique.unique(ind2_clust))>0: ### cmap_c is too few colors
+                if use_default_colors:
                     cmap_c = pylab.cm.gist_rainbow
-                dc = numpy.array(ind2_clust, dtype=int)
-                dc.shape = (1,len(ind2_clust)) 
-                im_cd = axcd.matshow(dc, aspect='auto', origin='lower', cmap=cmap_c)
-                #axcd.text(-1,-1,'clusters')
-                axcd.set_yticklabels(['','Clusters'],fontsize=10)
-                #pylab.yticks(range(1),['HOPACH clusters'])
-                axcd.set_xticks([]) ### Hides ticks
-                #axcd.set_yticks([])
+                else:
+                    if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
+                        #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                        cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
+                    elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
+                        cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                    elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
+                        cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
+                    elif len(unique.unique(ind2_clust))==5: ### cmap_c is too few colors
+                        cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
+                    elif len(unique.unique(ind2_clust))==6: ### cmap_c is too few colors
+                        cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                    elif len(unique.unique(ind2_clust))==7: ### cmap_c is too few colors
+                        cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                    elif len(unique.unique(ind2_clust))>0: ### cmap_c is too few colors
+                        cmap_c = pylab.cm.gist_rainbow
+                    dc = numpy.array(ind2_clust, dtype=int)
+                    dc.shape = (1,len(ind2_clust)) 
+                    im_cd = axcd.matshow(dc, aspect='auto', origin='lower', cmap=cmap_c)
+                    #axcd.text(-1,-1,'clusters')
+                    axcd.set_yticklabels(['','Clusters'],fontsize=10)
+                    #pylab.yticks(range(1),['HOPACH clusters'])
+                    axcd.set_xticks([]) ### Hides ticks
+                    #axcd.set_yticks([])
    
             axd = fig.add_axes([axcc_x, axcc_y, axcc_w, axcc_h])
             group_name_list.sort()
@@ -980,6 +987,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         graphic_link.append(['Hierarchical Clustering - AltExon',root_dir+filename])
     else:
         graphic_link.append(['Hierarchical Clustering - Significant Genes',root_dir+filename])
+    
     if display:
         proceed=True
         try:
@@ -988,6 +996,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         except Exception: pass
         if proceed:
             print 'Exporting:',filename
+            
             try: pylab.show()
             except Exception: None ### when run in headless mode
     fig.clf()
@@ -1028,8 +1037,9 @@ def remoteGOElite(elite_dir,SystemCode = None):
             variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,enrichmentAnalysisType,root
             try: GO_Elite.remoteAnalysis(variables,'non-UI Heatmap')
             except Exception: 'GO-Elite failed for:',elite_dir
-            try: UI.openDirectory(elite_dir+'/GO-Elite_results')
-            except Exception: None
+            if commandLine==False:
+                try: UI.openDirectory(elite_dir+'/GO-Elite_results') 
+                except Exception: None
             cluster_elite_terms,top_genes = importGOEliteResults(elite_dir)
             return cluster_elite_terms,top_genes
         else:
@@ -1890,12 +1900,28 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         writetSNEScores(scores,root_dir+dataset_name+'-tSNE_scores.txt')
         #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
     
+    ### Exclude samples with high TSNE deviations
+    scoresT = zip(*scores)
+    exclude={}
+    try:
+        for vector in scoresT:
+            lower1th,median_val,upper99th,int_qrt_range = statistics.iqr(list(vector),k1=99.9,k2=0.1)
+            index=0
+            for i in vector:
+                if (i > upper99th+1) or (i<lower1th-1):
+                    exclude[index]=None
+                index+=1    
+    except Exception:
+        pass
+
+    print 'Not showing',len(exclude),'outlier samples.'
+            
     fig = pylab.figure()
     ax = fig.add_subplot(111)
     pylab.xlabel('TSNE-X')
     pylab.ylabel('TSNE-Y')
 
-    axes = getAxesTransposed(scores) ### adds buffer space to the end of each axis and creates room for a legend
+    axes = getAxesTransposed(scores,exclude=exclude) ### adds buffer space to the end of each axis and creates room for a legend
     pylab.axis(axes)
 
     marker_size = 15
@@ -2049,12 +2075,13 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             group_names[group_name] = color
         except Exception:
             color = 'r'; label=None
-        ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
-        #except Exception: print i, len(scores[pcB]);kill
-        if showLabels:
-            try: sample_name = '   '+string.split(sample_name,':')[1]
-            except Exception: pass
-            ax.text(scores[i][0],scores[i][1],sample_name,fontsize=11)
+        if i not in exclude:
+            ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
+            #except Exception: print i, len(scores[pcB]);kill
+            if showLabels:
+                try: sample_name = '   '+string.split(sample_name,':')[1]
+                except Exception: pass
+                ax.text(scores[i][0],scores[i][1],sample_name,fontsize=11)
         i+=1
 
     group_count = []
@@ -2092,11 +2119,13 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     try: pylab.savefig(root_dir + filename) #dpi=200
     except Exception: None ### Rare error
     graphic_link.append(['Principal Component Analysis',root_dir+filename])
+
     if display:
         print 'Exporting:',filename
         try:
             pylab.show()
         except Exception:
+            #print traceback.format_exc()
             pass### when run in headless mode
 
 def excludeHighlyCorrelatedHits(x,row_header):
@@ -2461,6 +2490,76 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         except Exception:
             pass### when run in headless mode
     fig.clf()
+  
+def ViolinPlot():
+    def readData(filename):
+      all_data = {}
+      headers={}
+      groups=[]
+      firstRow=True
+      for line in open(filename,'rU').xreadlines():         
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            if firstRow:
+              firstRow=False
+              i=0
+              for x in t[1:]:
+                try: g,h = string.split(x,':')
+                except Exception: g=x; h=x
+                headers[i] = g      
+                if g not in groups: groups.append(g)
+                i+=1
+            else:
+              #all_data.append(map(lambda x: math.log(math.pow(2,float(x))-1+0.001,2), t[1:]))
+              t = map(lambda x: float(x), t[1:])
+              i = 0
+              for x in t:
+                try: g = headers[i]
+                except Exception: print i;sys.exit()
+                try: all_data[g].append(x)
+                except Exception: all_data[g] = [x]
+                i+=1
+      all_data2=[]
+      print groups
+      for group in groups:
+        all_data2.append(all_data[group])
+      return all_data2
+    
+    def violin_plot(ax, data, pos, bp=False):
+        '''      
+        create violin plots on an axis   
+        '''
+        from scipy.stats import gaussian_kde
+        from numpy import arange
+        dist = max(pos)-min(pos)
+        w = min(0.15*max(dist,1.0),0.5)
+        for d,p in zip(data,pos):
+            k = gaussian_kde(d) #calculates the kernel density   
+            m = k.dataset.min() #lower bound of violin           
+            M = k.dataset.max() #upper bound of violin           
+            x = arange(m,M,(M-m)/100.) # support for violin      
+            v = k.evaluate(x) #violin profile (density curve)    
+            v = v/v.max()*w #scaling the violin to the available space       
+            ax.fill_betweenx(x,p,v+p,facecolor='y',alpha=0.3)
+            ax.fill_betweenx(x,p,-v+p,facecolor='y',alpha=0.3)
+        if bp:
+            ax.boxplot(data,notch=1,positions=pos,vert=1)
+        
+    def draw_all(data, output):
+      pos = [1,2,3]
+      fig = pylab.figure()
+      ax = fig.add_subplot(111)
+      violin_plot(ax, data, pos)
+      pylab.show()
+      pylab.savefig(output+'.pdf')
+  
+    all_data = []
+    all_data = readData('/Users/saljh8/Downloads/TPM_cobound.txt')
+    import numpy
+    #all_data = map(numpy.array, zip(*all_data))
+    #failed_data = map(numpy.array, zip(*failed_data))
+    draw_all(all_data, 'alldata')   
+
 
 def simpleScatter(fn):
     import matplotlib.patches as mpatches
@@ -2915,12 +3014,18 @@ def getAxes(scores,PlotType=None):
         None
     return [x_axis_min, x_axis_max, y_axis_min, y_axis_max]
 
-def getAxesTransposed(scores):
+def getAxesTransposed(scores,exclude={}):
     """ Adjust these axes to account for (A) legend size (left hand upper corner)
     and (B) long sample name extending to the right
     """
-    
+    scores_filtered=[]
+
+    for i in range(len(scores)):
+        if i not in exclude:
+            scores_filtered.append(scores[i])
+    scores = scores_filtered
     scores = map(numpy.array, zip(*scores))
+
     try:
         x_range = max(scores[0])-min(scores[0])
         y_range = max(scores[1])-min(scores[1])
@@ -3299,7 +3404,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     
     if len(column_header)>1000 or len(row_header)>1000:
         print 'Performing hierarchical clustering (please be patient)...'
-    
+
     runHierarchicalClustering(matrix, row_header, column_header, dataset_name, row_method, row_metric,
                               column_method, column_metric, color_gradient, display=display,contrast=contrast,
                               allowAxisCompression=allowAxisCompression, Normalize=Normalize)
@@ -3873,6 +3978,8 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     global graphic_link
     graphic_link=graphics ### Store all locations of pngs
     root_dir = findParentDir(filename)
+    root_dir = string.replace(root_dir,'/DataPlots','')
+    root_dir = string.replace(root_dir,'/amplify','')
     root_dir = string.replace(root_dir,'ExpressionOutput/Clustering','DataPlots')
     root_dir = string.replace(root_dir,'ExpressionInput','DataPlots')
     if 'DataPlots' not in root_dir:
@@ -3909,7 +4016,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         if algorithm == 't-SNE':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
             column_header, row_header = row_header, column_header
-            if separateGenePlots and len(colorByGene)>0:
+            if separateGenePlots and (len(colorByGene)>0 or colorByGene==None):
                 for gene in geneFilter:
                     tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=False,
                          showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
@@ -5518,16 +5625,20 @@ def simpleCombine(folder):
 def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGenes,state,query=None):
     """Predict multi-lineage cells and their associated coincident lineage-defining TFs"""
     
+    ICGS_State_as_Row = False
     ### Import all genes with TPM values for all cells
     matrix, column_header, row_header, dataset_name, group_db = importData(all_genes_TPM)
     group_index={}
+    all_indexes=[]
     for sampleName in group_db:
         ICGS_state = group_db[sampleName][0]
         try: group_index[ICGS_state].append(column_header.index(sampleName))
         except Exception: group_index[ICGS_state] = [column_header.index(sampleName)]
+        all_indexes.append(column_header.index(sampleName))
     for ICGS_state in group_index:
         group_index[ICGS_state].sort()
-
+    all_indexes.sort()
+        
     def importGeneLists(fn):
         genes={}
         for line in open(fn,'rU').xreadlines():
@@ -5544,9 +5655,10 @@ def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGene
             if skip: skip=False
             else:
                 gene,symbol,rho,ICGS_State = string.split(data,'\t')
-                if ICGS_State!=state and float(rho)>0.0:
-                    genes[gene]=float(rho) ### Retain all population specific genes (lax)
-                    genes[symbol]=float(rho)
+                #if ICGS_State!=state and float(rho)>0.0:
+                if float(rho)>0.0:
+                    genes[gene]=float(rho),ICGS_State ### Retain all population specific genes (lax)
+                    genes[symbol]=float(rho),ICGS_State
         return genes
     
     def importQueryDataset(fn):
@@ -5560,6 +5672,11 @@ def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGene
     ### Determine for each gene, its population frequency per cell state
     index=0
     expressedGenesPerState={}
+    
+    def freqCutoff(x,cutoff):
+        if x>cutoff: return 1 ### minimum expression cutoff
+        else: return 0
+        
     for row in matrix:
         ICGS_state_gene_frq={}
         gene = row_header[index]
@@ -5575,15 +5692,24 @@ def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGene
         
         multilin_frq = ICGS_state_gene_frq[state]
  
+        datasets_values = map(lambda i: row[i],all_indexes)    
+        all_cells_frq = sum(map(lambda x: freqCheck(x),datasets_values))/(len(datasets_values)*1.0)
         all_states_frq = map(lambda x: ICGS_state_gene_frq[x],ICGS_state_gene_frq)
         all_states_frq.sort() ### frequencies of all non-multilin states
         rank = all_states_frq.index(multilin_frq)
-        if multilin_frq > 0.25 and rank>0:
+        states_expressed = sum(map(lambda x: freqCutoff(x,0.5),all_states_frq))/(len(all_states_frq)*1.0)
+
+        if multilin_frq > 0.25 and rank>0: #and states_expressed<0.75 #and all_cells_frq>0.75
             if 'Rik' not in gene and 'Gm' not in gene:
                 if gene in signatureGenes:# and gene in markerFinderGenes:
-                    ICGS_State = signatureGenes[gene]
+                    if ICGS_State_as_Row:
+                        ICGS_State = signatureGenes[gene]
                     if gene in markerFinderGenes:
-                        score = int(markerFinderGenes[gene]*100*multilin_frq)*(float(rank)/len(all_states_frq))
+                        if ICGS_State_as_Row == False:
+                            rho, ICGS_State = markerFinderGenes[gene]
+                        else:
+                            rho, ICGS_Cell_State = markerFinderGenes[gene]
+                        score = int(rho*100*multilin_frq)*(float(rank)/len(all_states_frq))
                         try: expressedGenesPerState[ICGS_State].append((score,gene))
                         except Exception: expressedGenesPerState[ICGS_State]=[(score,gene)] #(rank*multilin_frq)
         index+=1
@@ -5598,7 +5724,7 @@ def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGene
     for ICGS_State in expressedGenesPerState:
         expressedGenesPerState[ICGS_State].sort()
         expressedGenesPerState[ICGS_State].reverse()
-        if 'Multi' not in ICGS_State:
+        if '1Multi' not in ICGS_State:
             markers = expressedGenesPerState[ICGS_State][:5]
             print ICGS_State,":",string.join(map(lambda x: x[1],list(markers)),', ')
             if createPseudoCell:
@@ -5651,18 +5777,20 @@ def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGene
         print cell[0], cell[1], string.join(expressedStatesPerCell[cell[1]],'|')
     
 if __name__ == '__main__':
+    #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()
     query_dataset = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
     all_tpm = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
     markerfinder = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionOutput1/MarkerFinder/AllGenes_correlations-ReplicateBasedOriginal.txt'
     signature_genes = '/Users/saljh8/Desktop/Grimes/KashishNormalization/test/Panorama.txt'
     state = 'Multi-Lin'
+    #evaluateMultiLinRegulatoryStructure(all_tpm,markerfinder,signature_genes,state);sys.exit()
     query_dataset = None
     all_tpm = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/MultiLin/Gottgens_HarmonizeReference.txt'
     signature_genes = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/MultiLin/Gottgens_HarmonizeReference.txt'
     markerfinder = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
     state = 'Eryth_Multi-Lin'
-    evaluateMultiLinRegulatoryStructure(all_tpm,markerfinder,signature_genes,state,query = query_dataset);sys.exit()
+    #evaluateMultiLinRegulatoryStructure(all_tpm,markerfinder,signature_genes,state,query = query_dataset);sys.exit()
     #simpleCombine("/Volumes/My Passport/Ari-10X/input");sys.exit()
     #effectsPrioritization('/Users/saljh8/Documents/1-dataAnalysis/RBM20-collaboration/RBM20-BAG3_splicing/Missing Values-Splicing/Effects.txt');sys.exit()
     #customCleanBinomial('/Volumes/salomonis2-1/Lab backup/Theresa-Microbiome-DropSeq/NegBinomial/ExpressionInput/exp.Instesinal_microbiome2.txt');sys.exit()
@@ -5722,21 +5850,21 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/demo/Amit/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/Comb-plots/AML_genes-interest.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/AML_combplots.txt'
-    gene_list_file = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/KO_genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/MDS-array/Comb-plot genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot3.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/wt_panorama/Super.Panorama.v4_1-5-2015/ExpressionInput/Markers2.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
     filename = '/Users/saljh8/Desktop/Grimes/Comb-plots/exp.AML_single-cell-output.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/Mm_Sara-single-cell-AML/alt/AdditionalHOPACH/ExpressionInput/exp.AML.txt'
-    filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/12-16-15/AllelicSeries/ExpressionInput/exp.KO-output.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/MDS-array/comb-plot/input.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/exp.Lsk_panorama.txt'
     filename = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
     filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/wt_panorama/Super.Panorama.v4_1-5-2015/ExpressionInput/exp.SuperPanorama_v5-SLAM-LSK.txt'
     print genesets
     for gene_list in genesets:
         multipleSubPlots(filename,gene_list,SubPlotType='column')

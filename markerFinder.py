@@ -583,7 +583,7 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
         title_row = ['UID']+annotation_headers+['marker-in']+original_tissue_headers2
         export_dir = exportMarkerGeneProfiles(filename,annotations,expression_relative,title_row)
     except Exception,e:
-        print traceback.format_exc()
+        #print traceback.format_exc()
         pass
 
     exportCorrelations(filename,interim_correlations)

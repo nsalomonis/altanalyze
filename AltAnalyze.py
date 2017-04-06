@@ -6128,6 +6128,8 @@ def commandLineRun():
     runICGS=False
     IDtype=None
     runKallisto = False
+    input_fastq_dir = ''
+    ChromiumSparseMatrix=''
     
     original_arguments = sys.argv
     arguments=[]
@@ -6187,8 +6189,7 @@ def commandLineRun():
                                                          'CountsCutoff=','FoldDiff=','SamplesDiffering=','removeOutliers=',
                                                          'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
                                                          'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
-                                                         'reimportModelScores=','separateGenePlots='])
-    
+                                                         'reimportModelScores=','separateGenePlots=','ChromiumSparseMatrix='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6210,6 +6211,9 @@ def commandLineRun():
         elif opt == '--bedDir':
             arg = verifyPath(arg)
             cel_file_dir=arg
+        elif opt == '--ChromiumSparseMatrix':
+            arg = verifyPath(arg)
+            ChromiumSparseMatrix=arg
         elif opt == '--FEdir':
             arg = verifyPath(arg)
             cel_file_dir = arg
@@ -6329,10 +6333,9 @@ def commandLineRun():
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
             try: array_type = array_type
             except Exception: 'Please designate a species before continuing (e.g., --species Hs)'
-            if len(cel_file_dir)>0:
-                values = species,exp_file_location_db,dataset,mlp_instance
-                StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
-            
+            if len(cel_file_dir)>0: ### For BED files or BAM files
+                if len(cel_file_dir) > 0: pass
+                else: 'Please indicate a source folder (e.g., --bedDir /data/BAMFiles)'
             else:
                 if len(input_exp_file) > 0: pass
                 else: 'Please indicate a source folder or expression file (e.g., --expdir /dataset/singleCells.txt)'
@@ -6414,13 +6417,15 @@ def commandLineRun():
                 gsp.setJustShowTheseIDs(JustShowTheseIDs)
                 gsp.setNormalize('median')
                 gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,   
-                        removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff) 
+                    removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff) 
                 
             import RNASeq
             mlp_instance = mlp
             
             if cel_file_dir != '':
                 expFile = cel_file_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
+            elif ChromiumSparseMatrix != '':
+                expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
             elif input_exp_file !='':
                 if 'ExpressionInput' in input_exp_file: expFile = input_exp_file
                 else:
@@ -6431,14 +6436,49 @@ def commandLineRun():
                     export.copyFile(input_exp_file, expFile)
                     
             global log_file
-            root_dir = export.findParentDir(expFile)
+            try: root_dir = export.findParentDir(expFile)
+            except Exception:
+                try: root_dir = output_dir
+                except Exception:
+                    print 'Please include an output directory for the AltAnalyze results (e.g., --output /Data/Results)';sys.exit()
             root_dir = string.replace(root_dir,'/ExpressionInput','')
                     
             fl = UI.ExpressionFileLocationData('','','',''); fl.setFeatureNormalization('none')
-            fl.setExpFile(expFile); fl.setArrayType(array_type); fl.setOutputDir(root_dir)
+            try: fl.setExpFile(expFile)
+            except Exception:
+                expFile = root_dir+'/ExpressionInput/exp.'+exp_name+'.txt'
+                fl.setExpFile(expFile)
+            fl.setArrayType(array_type)
+            fl.setOutputDir(root_dir)
             fl.setMultiThreading(multiThreading)
             exp_file_location_db={}; exp_file_location_db[exp_name]=fl
             
+            ### Assign variables needed to run Kallisto from FASTQ files
+            if runKallisto and len(input_fastq_dir)==0:
+                #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --fastq_dir /Users/saljh8/Desktop/Grimes/GEC14074 
+                print 'Please include the flag "--fastq_dir" in the command-line arguments with an appropriate path';sys.exit()
+            elif len(input_fastq_dir)>0:
+                fl.setRunKallisto(input_fastq_dir)
+                fl.setArrayType("3'array")
+
+            ### Assign variables needed to run BAMtoBED and/or BED file count analysis
+            if len(cel_file_dir)>0 and array_type=='RNASeq':
+                #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --bedDir /Users/saljh8/Desktop/Grimes/GEC14074 --multiProcessing no
+                fl.setCELFileDir(cel_file_dir)
+                fl.setMultiThreading(multiThreading)
+                fl.setExonBedBuildStatus('yes')
+                fl.setFeatureNormalization('none')
+                fl.setArrayType(array_type)
+                array_type = "3'array"
+                fl.setRootDir(root_dir)
+            elif len(ChromiumSparseMatrix)>0:
+                #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --ChromiumSparseMatrix /Users/saljh8/Desktop/Grimes/GEC14074 --multiProcessing no
+                fl.setChromiumSparseMatrix(ChromiumSparseMatrix)
+                fl.setMultiThreading(multiThreading)
+                fl.setArrayType("3'array")
+                array_type = "3'array"
+                fl.setRootDir(root_dir)
+                
             time_stamp = timestamp()    
             log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
@@ -6446,20 +6486,37 @@ def commandLineRun():
             count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'
-            elif array_type=='RNASeq':
+            elif array_type=='RNASeq' or len(ChromiumSparseMatrix)>0 or len(input_fastq_dir)>0:
                 try:
                     ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
                     values = species,exp_file_location_db,exp_name,mlp_instance
+                    ### proceed to run the full discovery analysis here (Kallisto, BAM, BED, Chromium matrix)
                     UI.StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
-                    expFile = expFile[:-4]+'-steady-state.txt'  
+                    SteadyStateFile = expFile[:-4]+'-steady-state.txt'
+                    status = verifyFile(SteadyStateFile)
+                    if status == "found":
+                        fl.setExpFile(SteadyStateFile) ### If a steady-state file created, use it as the Expression file instead
                 except Exception:
                     ### RNASeq is an official datatype that requires a steady-state file. However, for scRNA-Seq, usually the input is a text file or FASTQ which gets
                     ### changed to "3'array". We correct for this by excepting this error without doing anything else
+                    #print traceback.format_exc();sys.exit()
                     pass
 
-            print [excludeCellCycle]
-            UI.RemotePredictSampleExpGroups(expFile, mlp_instance, gsp,(species,array_type)) ### proceed to run the full discovery analysis here!!!
-            sys.exit()
+            if excludeCellCycle != False:
+                print "Excluding Cell Cycle effects status:",excludeCellCycle
+            graphic_links = UI.RemotePredictSampleExpGroups(expFile, mlp_instance, gsp,(species,array_type)) ### proceed to run the full discovery analysis here!!!
+
+            ### Export Guide3 Groups automatically
+            Guide3_results = graphic_links[-1][-1][:-4]+'.txt'
+            RNASeq.exportGroupsFromClusters(Guide3_results,fl.ExpFile(),array_type)
+            
+            ### Build-tSNE plot
+            UI.performPCA(Guide3_results, 'no', 't-SNE', False, None, plotType='2D',
+                display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False, separateGenePlots=False)
+            
+            ### force MarkerFinder to be run
+            input_exp_file = fl.ExpFile()
+            update_method = ['markers'] 
             
         if 'WikiPathways' in image_export:
             #python AltAnalyze.py --input /Users/test/input/criterion1.txt --image WikiPathways --mod Ensembl --species Hs --wpid WP536
@@ -6573,7 +6630,6 @@ def commandLineRun():
                         display=True
                     else:
                         display=False
-
             if len(GeneSetSelection)>0 or GeneSelection != '':
                 gsp = UI.GeneSelectionParameters(species,array_type,vendor)
                 gsp.setGeneSet(GeneSetSelection)
@@ -6606,7 +6662,7 @@ def commandLineRun():
                 UI.createHeatMap(input_file_dir, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, None, display=display)
             #import clustering; clustering.outputClusters([input_file_dir],[])
             sys.exit()
-            
+                        
         if 'PCA' in image_export or 't-SNE' in image_export:
             #AltAnalyze.py --input "/Users/nsalomonis/Desktop/folds.txt" --image PCA --plotType 3D --display True --labels yes
             #python AltAnalyze.py --input "/Users/nsalomonis/Desktop/log2_expression.txt" --image "t-SNE" --plotType 2D --display True --labels no --genes "ACTG2 ARHDIA KRT18 KRT8 ATP2B1 ARHGDIB" --species Hs --platform RNASeq --separateGenePlots True --zscore no
@@ -6617,6 +6673,7 @@ def commandLineRun():
             geneSetName = None
             zscore = True
             colorByGene=None
+            separateGenePlots = False
             reimportModelScores = True
             if 't-SNE' in image_export:
                 pca_algorithm = 't-SNE'
@@ -6652,6 +6709,7 @@ def commandLineRun():
                         display=True
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
+
             UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
                           plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots)
             sys.exit()

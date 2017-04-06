@@ -2852,6 +2852,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         print 'Missing annotation file in:','AltDatabase/uniprot/'+species+'/custom_annotations.txt !!!!!'
 
     if restrictBy !=None:
+        print 'Attempting to restrict analysis to protein coding genes only (flag --RestrictBy protein_coding)'
         genes = biological_categories['protein_coding']
         genes_temp=dict(genes)
         for gene in genes_temp:
@@ -2891,6 +2892,8 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
                 except Exception: expressed_uids = getOverlappingKeys(guide_genes,expressed_uids_db2)
 
     if len(expressed_uids)<10:
+        print 'NOTE: The input IDs do not sufficiently map to annotated protein coding genes...',
+        print 'skipping protein coding annotation filtering.'
         expressed_uids=[]
         for uid in expressed_uids_db:
             expressed_uids.append(uid)
@@ -3747,7 +3750,7 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
             if guideGenes == 'TooFewBlocks':
                 guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.2,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,forceOutput=True)
         if len(guideGenes)>200:
-            print 'Too many drivers (>200)... performing more stringent filtering...'
+            print 'Too many guides selected (>200)... performing more stringent filtering...'
             guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,restrictTFs=True)
         return guideGenes, addition_cell_cycle_associated
     #B4galt6, Prom1
@@ -4645,6 +4648,24 @@ def importAltAnalyzeExonResults(dir_list,novel_exon_junction_db,results_dir):
     #print '!!!!Within comparison evidence'
     #returnLargeGlobalVars()
         
+def FeatureCounts(bed_ref, bam_file):
+    output = bam_file[:-4]+'__FeatureCounts.bed'
+    import subprocess
+    #if '/bin' in kallisto_dir: kallisto_file = kallisto_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
+    kallisto_dir= 'AltDatabase/subreads/'
+    if os.name == 'nt':
+        featurecounts_file = kallisto_dir + 'PC/featureCounts.exe'; plat = 'Windows'
+    elif 'darwin' in sys.platform:
+        featurecounts_file = kallisto_dir + 'Mac/featureCounts'; plat = 'MacOSX'
+    elif 'linux' in sys.platform:
+        featurecounts_file = kallisto_dir + '/Linux/featureCounts'; plat = 'linux'
+    print 'Using',featurecounts_file
+    featurecounts_file = filepath(featurecounts_file)
+    featurecounts_root = string.split(featurecounts_file,'bin/featureCounts')[0]
+    featurecounts_file = filepath(featurecounts_file)
+    print [featurecounts_file,"-a", "-F", "SAF",bed_ref, "-o", output, bam_file]
+    retcode = subprocess.call([featurecounts_file,"-a",bed_ref, "-F", "SAF", "-o", output, bam_file])
+    
 def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=False):
     #print 'Running Kallisto...please be patient'
     import subprocess
@@ -4712,7 +4733,8 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     else:
         reimportExistingKallistoOutput = False
 
-    print 'Reimport existing kallisto output:',reimportExistingKallistoOutput
+    print 'NOTE: Re-import PREVIOUSLY GENERATED kallisto output:',reimportExistingKallistoOutput
+    print '...To force re-analysis of FASTQ files, delete the folder "kallisto" in "ExpressionInput"'
     if reimportExistingKallistoOutput:
         ### Just get the existing Kallisto output folders
         fastq_paths = read_directory(output_dir)
@@ -4803,8 +4825,8 @@ def calculateGeneTPMs(species,expMatrix):
     import gene_associations
     try:
         gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
-        if len(gene_to_transcript_db)==0:
-            kill
+        if len(gene_to_transcript_db)<10:
+            raise ValueError('Ensembl-EnsTranscript file missing, forcing download of this file')
     except Exception:
         try:
             print 'Missing transcript-to-gene associations... downloading from Ensembl.'
@@ -4817,6 +4839,8 @@ def calculateGeneTPMs(species,expMatrix):
             print 'Ensembl-EnsTranscripts required for gene conversion... downloading from the web...'
             GeneSetDownloader.remoteDownloadEnsemblTranscriptAssocations(species)
             gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
+    if len(gene_to_transcript_db)<10:
+        print 'NOTE: No valid Ensembl-EnsTranscripts available, proceeding with the analysis of transcripts rather than genes...'
     import OBO_import
     transcript_to_gene_db = OBO_import.swapKeyValues(gene_to_transcript_db)
     
@@ -4839,7 +4863,11 @@ def calculateGeneTPMs(species,expMatrix):
         gene_tpms = [sum(value) for value in zip(*gene_values)] ### sum of all transcript tmp's per sample
         gene_tpms = map(str,gene_tpms)
         gene_matrix[gene] = gene_tpms
-    return gene_matrix
+    if len(gene_matrix)>0:
+        return gene_matrix
+    else:
+        print "NOTE: No valid transcript-gene associations available... proceeding with Transcript IDs rather than gene."
+        return expMatrix
     
 def exportMatrix(eo,headers,matrix):
     eo.write(string.join(headers,'\t')+'\n')
@@ -4973,6 +5001,8 @@ if __name__ == '__main__':
     """
     #sys.exit()
     species='Hs'; platform = "3'array"; vendor = "3'array"
+    #FeatureCounts('/Users/saljh8/Downloads/subread-1.5.2-MaxOSX-x86_64/annotation/mm10_AltAnalyze.txt', '/Users/saljh8/Desktop/Grimes/GEC14074/Grimes_092914_Cell12.bam')
+    #sys.exit()
     import UI; import multiprocessing as mlp
     gsp = UI.GeneSelectionParameters(species,platform,vendor)
     gsp.setGeneSet('None Selected')
@@ -4986,9 +5016,9 @@ if __name__ == '__main__':
     expFile = '/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/exp.GBM_scRNA-Seq-steady-state.txt'
     #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
-    filename = '/Volumes/SEQ-DATA/Jared/ExpressionInput/counts.CM-steady-state.txt'
+    filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/FCU/ExpressionInput/counts.test.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    #calculateRPKMsFromGeneCounts(filename,'Hs',AdjustExpression=True);sys.exit()
+    calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
 
     runKallisto('Hs','Conklin','/Volumes/salomonis2/Ichi_data/Combined_FASTQ/KallistoAnalysis/','/Volumes/salomonis2/Ichi_data/Combined_FASTQ/KallistoAnalysis/');sys.exit()

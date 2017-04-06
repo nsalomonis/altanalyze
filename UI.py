@@ -124,11 +124,8 @@ def returnFilesNoReplace(dir):
 def identifyCELfiles(dir,array_type,vendor):
     dir_list = read_directory(dir); dir_list2=[]; full_dir_list=[]
     datatype = 'arrays'
-    valid_10X_directory_found=False
     types={}
-    if array_type=='10XGenomics':
-        if 'filtered_gene_bc_matrices' in dir:
-            valid_10X_directory_found=True
+
     for file in dir_list:
         original_file = file
         file_lower = string.lower(file); proceed = 'no'
@@ -463,7 +460,8 @@ class StatusWindow:
             except Exception,e: predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, None)
         if analysis_type == 'preProcessRNASeq':
             species,exp_file_location_db,dataset,mlp_instance  = info_list
-            sys.stdout = status; root.after(100,preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance, self._parent))
+            try: sys.stdout = status; root.after(100,preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance, self._parent))
+            except Exception,e: preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance, None)
 
         try:
             self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
@@ -495,13 +493,31 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         count = verifyFileLength(expFile)
         try: fastq_folder = flx.RunKallisto()
         except Exception: fastq_folder = []
-        if len(fastq_folder)>0 and count<2:
+        try: matrix_file = flx.ChromiumSparseMatrix()
+        except Exception: matrix_file = []
+        if len(matrix_file)>0:
+            print 'Exporting Chromium sparse matrix file to tab-delimited-text'
+            try:
+                #print expFile, 'expFile'
+                #print flx.RootDir(), 'root_dir'
+                output_dir = export.findParentDir(expFile)
+                try: os.mkdir(output_dir)
+                except Exception: pass
+                matrix_dir = export.findParentDir(matrix_file)
+                genome = export.findFilename(matrix_dir[:-1])
+                parent_dir = export.findParentDir(matrix_dir[:-1])
+                import ChromiumProcessing
+                ChromiumProcessing.import10XSparseMatrix(parent_dir,genome,dataset,expFile=expFile)
+            except Exception:
+                print 'Chromium export failed due to:',traceback.format_exc()
+            try: root.destroy()
+            except Exception: pass
+            return None
+        elif len(fastq_folder)>0 and count<2:
             print 'Pre-processing input files'
             try:
                 parent_dir = export.findParentDir(expFile)
-                flx = exp_file_location_db[dataset]; flx.setRootDir(parent_dir)
-                fastq_folder = flx.RunKallisto()
-                runKallisto = True
+                flx.setRootDir(parent_dir)
                 RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False)   
             except Exception:
                 print 'Kallisto failed due to:',traceback.format_exc()
@@ -513,7 +529,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             except Exception: pass
             return None ### Already run
         elif count<2:
-            print 'Pre-processing input files'
+            print 'Pre-processing input BED/BAM files\n'
             analyzeBAMs=False
             bedFilesPresent=False
             dir_list = unique.read_directory(flx.BEDFileDir())
@@ -539,7 +555,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             biotypes = getBiotypes(expFile)
         else:
             biotypes = getBiotypes(expFile)
-        array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',array_type)
+        array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',flx.setArrayType())
         steady_state_export = expFile[:-4]+'-steady-state.txt'
         normalize_feature_exp = flx.FeatureNormalization()
         try: excludeLowExpressionExons = flx.excludeLowExpressionExons()
@@ -638,6 +654,8 @@ def RemotePredictSampleExpGroups(expFile, mlp_instance, gsp, globalVars):
     global array_type
     species, array_type = globalVars
     predictSampleExpGroups(expFile, mlp_instance, gsp, False, None)
+    return graphic_links
+
 
 def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root):
     global graphic_links; graphic_links=[];
@@ -667,8 +685,8 @@ def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root):
         if 'score_ls' in error:
             error = 'Unknown error likely due to too few genes resulting from the filtering options.'
         if 'options_result_in_no_genes' in error:
-            error = 'No genes differentially expressed with the input criterion'
-        print_out = 'Predicted sample export failed..\n',error
+            error = 'ERROR: No genes differentially expressed with the input criterion'
+        print_out = 'Predicted sample export failed..\n'+error
         try: print print_out
         except Exception: pass ### Windows issue with the Tk status window stalling after pylab.show is called
         try: WarningWindow(print_out,'Continue')
@@ -924,7 +942,7 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
                     plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName,
                     species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores,
                     separateGenePlots=separateGenePlots)
-        try: print'Finished building PCA.'
+        try: print'Finished building exporting plot.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
         if 'importData' in traceback.format_exc():
@@ -1065,12 +1083,15 @@ class GUI:
             filenames.append('clusters '+str(i))
             i+=1
         
+        filenames_ls = list(filenames)
+        filenames_ls.reverse()
         self.title = 'Select cluster groups for further analysis'
         self.option = 'group_select' ### choose a variable name here
-        self.options = filenames
+        self.options = filenames_ls
         self.default_option = 0
         self.comboBox() ### This is where the cluster group gets selected and stored
         
+  
         # create a frame and pack it
         frame1 = Tkinter.Frame(self.parent_type)
         frame1.pack(side=Tkinter.TOP, fill=Tkinter.X)
@@ -1566,7 +1587,7 @@ class GUI:
         if 'input_cel_dir' in option_list:
             filename = 'Config/aa_0.gif'
             if array_type == 'RNASeq': filename = 'Config/aa_0_rs.gif'
-            if array_type == '10XGenomics': filename = 'Config/aa_0_rs.gif'
+            if '10X' in vendor: filename = 'Config/aa_0_rs.gif'
         if 'include_raw_data' in option_list:
             filename = 'Config/aa_1.gif'; orient_type = 'top'
             if array_type == 'RNASeq': filename = 'Config/aa_1_rs.gif'
@@ -1652,7 +1673,7 @@ class GUI:
                 self.group_tag = 'Exon/Junction Filtering Options'
                 od = option_db['expression_threshold']
                 if od.ArrayOptions() == ['NA']: create_group = 'no'
-                if 'rpkm_threshold' in option_list and create_group== 'no':
+                if ('rpkm_threshold' in option_list and create_group== 'no'):
                     create_group='yes'
                     self.group_tag = 'Gene Expression Filtering Options'
                     od = option_db['rpkm_threshold']
@@ -2504,17 +2525,17 @@ class GUI:
     def getPath(self,option):
         
         try: ### Below is used to change a designated folder path to a filepath
-            if option == 'input_cel_dir' and array_type == '10XGenomics':
-                print 'here'
+            if option == 'input_cel_dir' and '10X' in vendor:
                 processFile = True
             else:
                 forceException
         except Exception:
+            #print traceback.format_exc()
             if 'dir' in option or 'folder' in option:
                 processFile = False
             else:
                 processFile = True
-        print option, processFile
+        #print option, processFile
         if ('dir' in option or 'folder' in option) and processFile ==False:
             try: dirPath = tkFileDialog.askdirectory(parent=self._parent,initialdir=self.default_dir)
             except Exception: 
@@ -3501,15 +3522,19 @@ def importUserOptions(array_type,vendor=None):
             data = string.replace(data,'probeset','junction')
             data = string.replace(data,'probe set','junction, exon or gene')
             data = string.replace(data,'CEL file','BED, BAM, TAB or TCGA junction file')
-        if array_type == '10XGenomics':
-            data = string.replace(data,'CEL file containing folder','Chromium filtered sparse-matrix file')
         if vendor != 'Affymetrix':
             data = string.replace(data,'probe set','gene')      
         if vendor == 'Agilent':
             if 'CEL file' in data:
                 data = string.replace(data,'CEL file','Feature Extraction file')
                 data = string.replace(data,' (required)','')
-
+        if array_type == '10XGenomics':
+            data = string.replace(data,'CEL file containing folder','Chromium filtered matrix.mtx file')
+        try:
+            if '10X' in vendor:
+                data = string.replace(data,'CEL file containing folder','Chromium filtered matrix.mtx file')
+        except Exception: pass
+        
         t = string.split(data,'\t')
         #option,mac_displayed_title,pc_displayed_title,pc_display2,linux_displayed_title,display_object,group,notes,description,global_default = t[:10]
         option,displayed_title,display_object,group,notes,description,global_default = t[:7]
@@ -3524,6 +3549,16 @@ def importUserOptions(array_type,vendor=None):
         elif 'linux' in sys.platform: displayed_title = linux_displayed_title
         else: displayed_title = linux_displayed_title
         """
+        try:
+            if option == 'rho_cutoff' and '10X' in vendor:
+                global_default = '0.3'
+            if option == 'restrictBy' and '10X' in vendor:
+                global_default = 'yes'
+            if option == 'column_metric_predict' and '10X' in vendor:
+                global_default = 'euclidean'    
+        except Exception:
+            pass
+ 
         if 'junction' in displayed_title: displayed_title+=' '
         """if array_type == 'RNASeq':
             if option == 'dabg_p': ### substitute the text for the alternatitve text in notes
@@ -4030,6 +4065,8 @@ class ExpressionFileLocationData:
     def setExonBedBuildStatus(self,bed_build_status): self.bed_build_status = bed_build_status
     def setRunKallisto(self, runKallisto): self.runKallisto = runKallisto
     def RunKallisto(self): return self.runKallisto
+    def setChromiumSparseMatrix(self, chromiumSparseMatrix): self.chromiumSparseMatrix = chromiumSparseMatrix
+    def ChromiumSparseMatrix(self): return self.chromiumSparseMatrix
     def setChannelToExtract(self,channel_to_extract): self.channel_to_extract = channel_to_extract
     def ExonBedBuildStatus(self): return self.bed_build_status
     def ChannelToExtract(self): return self.channel_to_extract
@@ -4493,7 +4530,7 @@ def getUserParameters(run_parameter,Multi=None):
     run_MiDAS=no; analyze_functional_attributes=no; microRNA_prediction_method=na
     gene_expression_cutoff=na; cel_file_dir=na; input_exp_file=na; input_stats_file=na; filter_for_AS=no
     remove_intronic_junctions=na; build_exon_bedfile=no; input_cdf_file = na; bgp_file = na
-    clf_file = na; remove_xhyb = na; multiThreading = True; input_fastq_dir = ''
+    clf_file = na; remove_xhyb = na; multiThreading = True; input_fastq_dir = ''; sparse_matrix_file=''
     
     compendiumType = 'protein_coding'; compendiumPlatform = 'gene'
     calculate_splicing_index_p=no; run_goelite=no; ge_ptype = 'rawp'; probability_algorithm = na
@@ -4705,10 +4742,7 @@ def getUserParameters(run_parameter,Multi=None):
                     vendor = 'other:Symbol'
                 else:
                     vendor = 'other:'+array_full ### Ensembl linked system name
-        if array_full == '10X Genomics aligned':
-            array_type = "3'array"
-            vendor = 'other:'+array_full ### Ensembl linked system name
-        
+
         if array_type == 'gene':
             try: gene_database = unique.getCurrentGeneDatabaseVersion()
             except Exception: gene_database='00'
@@ -4726,10 +4760,13 @@ def getUserParameters(run_parameter,Multi=None):
                 print_out = 'Valid database directories were not found for this array.\nPlease re-install database.'
                 IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
 
+        if '10X' in vendor:
+            ### Needed when the the back button is selected for the 10X platform
+            array_type = '10XGenomics'
+            array_full == '10X Genomics sparse matrix'
         option_list,option_db = importUserOptions(array_type,vendor=vendor)  ##Initially used to just get the info for species and array_type
 
-
-        if array_type == "3'array":
+        if array_type == "3'array" and '10X' not in vendor:
             if species == 'Hs': compendiumPlatform = "3'array"
             for i in option_db['run_from_scratch'].ArrayOptions():
                 if 'AltAnalyze' not in i:
@@ -4754,6 +4791,11 @@ def getUserParameters(run_parameter,Multi=None):
         try: constitutive_source = array_codes[array_full].ConstitutiveSource()
         except Exception: constitutive_source = vendor
 
+        if array_full == '10X Genomics sparse matrix':
+            array_type = "3'array"
+            vendor = 'other:'+array_full ### Ensembl linked system name
+            #option_list,option_db = importUserOptions(array_type,vendor=vendor)  ##Initially used to just get the info for species and array_type
+            
         if backSelect == 'yes':
             for option in old_options: ### Set options to user selected
                 try: option_db[option].setDefaultOption(old_options[option])
@@ -5268,7 +5310,7 @@ def getUserParameters(run_parameter,Multi=None):
                     root = Tk()
                     if array_type == 'RNASeq':
                         root.title('AltAnalyze: Select Exon and/or Junction files to analyze'); import_file = 'BED, BAM, TAB or TCGA'
-                    elif array_type =='10XGenomics':
+                    elif '10X' in vendor:
                         root.title('AltAnalyze: Select Chromium Sparse Matrix Filtered Directory'); import_file = 'Filtered Directory'
                     elif vendor == 'Agilent':
                         root.title('AltAnalyze: Select Agilent Feature Extraction text files to analyze'); import_file = '.txt'
@@ -5316,7 +5358,18 @@ def getUserParameters(run_parameter,Multi=None):
                         assinged = 'yes'
                     else:
                         cel_file_dir = gu.Results()['input_cel_dir']
-                        cel_files,cel_files_fn=identifyCELfiles(cel_file_dir,array_type,vendor)
+                        if '10X' in vendor:
+                            sparse_matrix_file = gu.Results()['input_cel_dir'] # 'filtered_gene_bc_matrices'
+                            def import10XSparseMatrixHeaders(matrix_file):
+                                import csv
+                                barcodes_path = string.replace(matrix_file,'matrix.mtx','barcodes.tsv' )
+                                barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
+                                barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
+                                return barcodes
+                            barcodes = import10XSparseMatrixHeaders(sparse_matrix_file)
+                            cel_files = barcodes
+                        else:
+                            cel_files,cel_files_fn=identifyCELfiles(cel_file_dir,array_type,vendor)
                         try: output_dir = gu.Results()['output_CEL_dir']
                         except KeyError: output_dir = cel_file_dir
                         if len(output_dir)==0: output_dir = cel_file_dir
@@ -5329,7 +5382,7 @@ def getUserParameters(run_parameter,Multi=None):
                     print_out = "The directory containing "+import_file+" files has not\nbeen assigned! Select a directory before proceeding."
                     IndicatorWindow(print_out,'Continue')
 
-            if array_type != 'RNASeq' and vendor != 'Agilent' and len(input_fastq_dir)==0:
+            if array_type != 'RNASeq' and vendor != 'Agilent' and len(input_fastq_dir)==0 and '10X' not in vendor:
                 ### Specific to Affymetrix CEL files
                 cel_file_list_dir = exportCELFileList(cel_files_fn,cel_file_dir)
                 """Determine if Library and Annotations for the array exist, if not, download or prompt for selection"""
@@ -5493,7 +5546,6 @@ def getUserParameters(run_parameter,Multi=None):
                                         continue ### Occurs if the file is open... not critical to worry about       
 
         if run_from_scratch == 'Process Expression file':
-                
             status = 'repeat'
             while status == 'repeat':
                 if backSelect == 'no' or 'InputExpFiles' == selected_parameters[-1]:
@@ -5529,7 +5581,7 @@ def getUserParameters(run_parameter,Multi=None):
                     if 'ExpressionInput' in input_exp_file: i = -2
                     else: i = -1
                     output_dir = string.join(string.split(input_exp_file,'/')[:i],'/')
-
+                
             try: prior_platform = user_variables['prior_platform']
             except Exception: prior_platform = None
             if array_type == 'RNASeq' or prior_platform == 'RNASeq':
@@ -5547,14 +5599,12 @@ def getUserParameters(run_parameter,Multi=None):
                         option_list,option_db = importUserOptions(array_type) ### will re-set the paramater values, so not good for back select
                         user_variables['array_type'] = array_type
                         
-            #print array_type, vendor
             if array_type == "3'array":
                 ### This is the new option for expression filtering of non-RNASeq classified data
                 try:
-                    #print option_db['rpkm_threshold'].DefaultOption()
+                    #print option_db['rpkm_threshold'].DefaultOption(),1
                     if 'rpkm_threshold' in option_db:
                         option_db['rpkm_threshold'].setArrayOptions('1')
-                        print vendor
                         if "other:Symbol" in vendor or "other:Ensembl" in vendor:
                             option_db['rpkm_threshold'].setDefaultOption('1')
                         if option_db['rpkm_threshold'].DefaultOption() == ['NA']:
@@ -5588,9 +5638,11 @@ def getUserParameters(run_parameter,Multi=None):
                         input_stats_file = moved_stats_dir
                 except Exception: None
                     
-
         if run_from_scratch != 'buildExonExportFiles': ### Update DBs is an option which has been removed from 1.1. Should be a separate menu item soon.
             expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = importDefaults(array_type,species)
+            #print vendor
+            if '10X' in vendor:
+                option_db['rpkm_threshold'].setDefaultOption('1')
             if vendor == 'Affymetrix' or vendor == 'RNASeq':
                 option_db['normalize_gene_data'].setArrayOptions(['NA']) ### Only use this option when processing Feature Extraction files or non-Affy non-RNA-Seq data
             if vendor == 'Agilent' and 'Feature Extraction' in run_from_scratch:
@@ -5922,7 +5974,7 @@ def getUserParameters(run_parameter,Multi=None):
     original_comp_group_list=[]; array_group_list=[]; group_name_list=[]
     if run_from_scratch != 'Process AltAnalyze filtered' and run_from_scratch != 'Annotate External Results': ### Groups and Comps already defined
 
-        if run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or 'Feature Extraction' in run_from_scratch or 'Process Chromium Sparse Matrix' in run_from_scratch:
+        if run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or 'Feature Extraction' in run_from_scratch or 'Process Chromium Matrix' in run_from_scratch:
             if 'exp.' not in dataset_name: dataset_name = 'exp.'+dataset_name+'.txt'
             
             groups_name = string.replace(dataset_name,'exp.','groups.')
@@ -6271,6 +6323,9 @@ def getUserParameters(run_parameter,Multi=None):
             fl.setInputCDFFile(input_cdf_file); fl.setCLFFile(clf_file); fl.setBGPFile(bgp_file); fl.setXHybRemoval(remove_xhyb)
             fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
             fl.setChannelToExtract(channel_to_extract)
+        elif 'Chromium' in run_from_scratch:
+            fl.setChromiumSparseMatrix(sparse_matrix_file)
+            #print fl.ChromiumSparseMatrix()
         elif run_from_scratch == 'Process RNA-seq reads':
             fl.setCELFileDir(cel_file_dir); fl.setOutputDir(output_dir); fl.setExonBedBuildStatus(build_exon_bedfile)
             fl.setRunKallisto(input_fastq_dir);
@@ -6347,7 +6402,7 @@ def getUserParameters(run_parameter,Multi=None):
 
         if count>1:
             expFile = expFile[:-4]+'-steady-state.txt'
-        elif array_type=='RNASeq' or len(input_fastq_dir)>0:
+        elif array_type=='RNASeq' or len(input_fastq_dir)>0 or len(sparse_matrix_file)>0:
             ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
             values = species,exp_file_location_db,dataset,mlp_instance
             StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!

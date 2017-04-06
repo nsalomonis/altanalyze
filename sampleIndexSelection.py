@@ -196,7 +196,7 @@ def combineDropSeq(input_dir):
 
 if __name__ == '__main__':
     ################  Comand-line arguments ################
-    #statisticallyFilterFile('/Volumes/SEQ-DATA/scRNA-Seq_Mm_heart/Seidman/ExpressionInput/exp.Seidman.txt','/Volumes/SEQ-DATA/scRNA-Seq_Mm_heart/Seidman/ExpressionInput/exp.Seidman2.txt',1); sys.exit()
+    #statisticallyFilterFile('/Volumes/salomonis2/Driscoll/DriscollPREPOST/run1964_PRE_normalized.txt','/Volumes/salomonis2/Driscoll/DriscollPREPOST/run1964_PRE_normalized2.txt',1); sys.exit()
     import getopt
     filter_rows=False
     filter_file=None

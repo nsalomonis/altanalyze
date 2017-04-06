@@ -96,6 +96,16 @@ def writeIsoformFile(isoform_junctions,o):
     if '+' in coord:
         sys.exit()
     
+def verifyFileLength(filename):
+    count = 0
+    try:
+        fn=filepath(filename)
+        for line in open(fn,'rU').xreadlines():
+            count+=1
+            if count>9: break
+    except Exception: null=[]
+    return count
+
 def retreiveAllKnownSpliceSites():
     ### Uses a priori strand information when none present
     import export, unique
@@ -113,9 +123,17 @@ def retreiveAllKnownSpliceSites():
                     species = string.split(line,species_tag)[1]
     if species == None:
         species = IndicatedSpecies
-
+    
     splicesite_db={}
-    refExonCoordinateFile = unique.filepath('AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt')
+    try:
+        exon_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt'
+        length = verifyFileLength(exon_dir)
+    except Exception:
+        length = 0
+    if length==0:
+        exon_dir = ExonReference
+    refExonCoordinateFile = unique.filepath(exon_dir)
+
     firstLine=True
     for line in open(refExonCoordinateFile,'rU').xreadlines():
         if firstLine: firstLine=False
@@ -132,16 +150,19 @@ def retreiveAllKnownSpliceSites():
     
     return splicesite_db,chromosomes_found
 
-def parseJunctionEntries(bam_dir,multi=False, Species=None):
+def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
     global bam_file
     global splicesite_db
     global IndicatedSpecies
+    global ExonReference
     IndicatedSpecies = Species
+    ExonReference = ReferenceDir
     bam_file = bam_dir
     try: splicesite_db,chromosomes_found = retreiveAllKnownSpliceSites()
-    except Exception: splicesite_db={}; chromosomes_found={}
+    except Exception:
+        #print traceback.format_exc()
+        splicesite_db={}; chromosomes_found={}
     start = time.time()
-    
     try: import collections; junction_db=collections.OrderedDict()
     except Exception:
         try: import ordereddict; junction_db = ordereddict.OrderedDict()
@@ -272,14 +293,15 @@ if __name__ == "__main__":
         sys.exit()
     else:
         Species = None
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','species='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','species=','r='])
         for opt, arg in options:
             if opt == '--i': bam_dir=arg ### full path of a BAM file
-            elif opt == '--species': Species=arg ### full path of a BAM file
+            elif opt == '--species': Species=arg ### species for STAR analysis to get strand
+            elif opt == '--r': reference_dir=arg ### An exon.bed reference file (created by AltAnalyze from junctions, multiBAMtoBED.py or other) - required for STAR to get strand if XS field is empty
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
             
-    try: parseJunctionEntries(bam_dir,Species=Species)
+    try: parseJunctionEntries(bam_dir,Species=Species,ReferenceDir=reference_dir)
     except ZeroDivisionError:
         print [sys.argv[1:]],'error'; error
 

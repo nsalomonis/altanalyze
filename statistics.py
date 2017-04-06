@@ -556,9 +556,7 @@ def int_check(value):
         integer_check = 'no'
     return integer_check
     
-def iqr(array):
-    k1 = 75
-    k2 = 25
+def iqr(array, k1=75, k2=25):
     array.sort()
     n = len(array)
     value1 = float((n*k1)/100)

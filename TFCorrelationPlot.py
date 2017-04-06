@@ -18,16 +18,16 @@ correc=dict()
 lis2=[]
 
 def create_corr_matrix(lines,tfs, gene_labels):
- print len(lines),len(tfs)
- for l in range(len(lines)):
-    t=string.split(lines[l],'\t')
-    t1=t[0]
-    
-    
-    if t1 in tfs:
-        t=t[1:]
+   #print len(lines),len(tfs)
+   for l in range(len(lines)):
+      t=string.split(lines[l],'\t')
+      t1=t[0]
+          
+          
+      if t1 in tfs:
+         t=t[1:]
         
-        for k in range(len(lines)):
+         for k in range(len(lines)):
             if k ==0:
                 continue
             
@@ -38,23 +38,23 @@ def create_corr_matrix(lines,tfs, gene_labels):
             
             p=p[1:]
             for i in range(len(t)-1):
-                if(t[i]!='' and p[i]!=''):
-                    ind.append(i)
-                else:
-                    continue
+               if(t[i]!='' and p[i]!=''):
+                  ind.append(i)
+               else:
+                  continue
             for i in range(len(ind)-1):
-                list1.append(float(t[ind[i]]))
-                list2.append(float(p[ind[i]]))
+               list1.append(float(t[ind[i]]))
+               list2.append(float(p[ind[i]]))
             if len(list1)==0 or len(list2)==0:
-                print l;sys.exit()
-                correc[t1,gene_labels[k-1]]=0
-                continue
+               print l;sys.exit()
+               correc[t1,gene_labels[k-1]]=0
+               continue
             else:
-                coefr=pearsonr(list1,list2)
-                coef=coefr[0]
-		correc[t1,gene_labels[k-1]]=coef
-              
- return correc
+               if (max(list1)-min(list1))>0 and (max(list2)-min(list2)):
+                  coefr=pearsonr(list1,list2)
+                  coef=coefr[0]
+                  correc[t1,gene_labels[k-1]]=coef
+   return correc
 
 def strip_first_col(fname, delimiter=None):
     with open(fname, 'r') as fin:
@@ -65,21 +65,20 @@ def strip_first_col(fname, delimiter=None):
             except IndexError:
                continue
 
-def genelist(fname):
-    head=0
-    lis=[]
-    for line in open(fname,'rU').xreadlines():
+def genelist(fname,Filter=None):
+   head=0
+   genes=[]
+   for line in open(fname,'rU').xreadlines():
         
-        line = line.rstrip(os.linesep)
-        t=string.split(line,'\t')
-	val=t[0]
-        if t[0]=='UID':
-            continue
-        else:
-           lis.append(val)
-    #print lis
- 
-    return lis
+      line = line.rstrip(os.linesep)
+      t=string.split(line,'\t')
+      gene=t[0]
+      if Filter!=None:
+         if gene in Filter:
+            genes.append(gene)
+      else:    
+         genes.append(gene)
+   return genes
 
 def sample(fname):
     head=0
@@ -130,11 +129,11 @@ def runTFCorrelationAnalysis(query_exp_file,query_tf_file):
     print "Number or rows in file:",len(lines)
     query_data.close()
 
-    tfs=genelist(query_tf_file)
-    gene_labels=genelist(query_exp_file)
+    genes=genelist(query_exp_file)
+    tfs=genelist(query_tf_file,Filter=genes) ### Require that the TF is in the gene list
     
-    correc=create_corr_matrix(lines,tfs,gene_labels)
-    create_corr_files(correc,query_exp_file,tfs,gene_labels)
+    correc=create_corr_matrix(lines,tfs,genes)
+    create_corr_files(correc,query_exp_file,tfs,genes)
 
 if __name__ == '__main__':
     import getopt

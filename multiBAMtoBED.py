@@ -71,7 +71,6 @@ def getFolders(sub_dir):
 def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,analysisType=[],useMultiProcessing=False,MLP=None,root=None):
     paths_to_run=[]
     errors=[]
-    
     if '.bam' in directory:
         ### Allow a single BAM file to be specifically analyzed (e.g., bsub operation)
         bam_file = directory
@@ -92,7 +91,7 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
             output_filename = string.replace(output_filename,'=','_')
             destination_file = directory+'/'+output_filename+'__exon.bed'
             destination_file = filepath(destination_file)
-            paths_to_run.append((source_file,bed_reference_dir,destination_file))
+            paths_to_run.append((source_file,refExonCoordinateFile,bed_reference_dir,destination_file))
 
     ### Otherwise, check subdirectories for BAM files
     folders = getFolders(directory)
@@ -106,7 +105,7 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
                         source_file = filepath(source_file)
                         destination_file = directory+'/'+top_level+'__exon.bed'
                         destination_file = filepath(destination_file)
-                        paths_to_run.append((source_file,bed_reference_dir,destination_file))
+                        paths_to_run.append((source_file,refExonCoordinateFile,bed_reference_dir,destination_file))
             except Exception: pass
     
     ### If a single BAM file is indicated
@@ -114,7 +113,7 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
         output_filename = string.replace(bam_file,'.bam','')
         output_filename = string.replace(output_filename,'=','_')
         destination_file = output_filename+'__exon.bed'
-        paths_to_run = [(bam_file,bed_reference_dir,destination_file)]
+        paths_to_run = [(bam_file,refExonCoordinateFile,bed_reference_dir,destination_file)]
 
     if 'reference' in analysisType and len(analysisType)==1:
         augmentExonReferences(directory,refExonCoordinateFile,outputExonCoordinateRefBEDfile)
@@ -177,15 +176,15 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
                 runBAMtoExonBED(i)
 
 def runBAMtoJunctionBED(paths_to_run):
-    bamfile_dir,bed_reference_dir,output_bedfile_path = paths_to_run
+    bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path = paths_to_run
     output_bedfile_path = string.replace(bamfile_dir,'.bam','__junction.bed')
     #if os.path.exists(output_bedfile_path) == False: ### Only run if the file doesn't exist
-    results = BAMtoJunctionBED.parseJunctionEntries(bamfile_dir,multi=True)
+    results = BAMtoJunctionBED.parseJunctionEntries(bamfile_dir,multi=True,ReferenceDir=refExonCoordinateFile)
     #else: print output_bedfile_path, 'already exists.'
     return results
     
 def runBAMtoExonBED(paths_to_run):
-    bamfile_dir,bed_reference_dir,output_bedfile_path = paths_to_run
+    bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path = paths_to_run
     if os.path.exists(output_bedfile_path) == False: ### Only run if the file doesn't exist
         BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True)
     else:
@@ -343,6 +342,8 @@ def augmentExonReferences(directory,refExonCoordinateFile,outputExonCoordinateRe
 
 if __name__ == '__main__':
     import multiprocessing as mlp
+    refExonCoordinateFile = ''
+    outputExonCoordinateRefBEDfile = ''
     #bam_dir = "H9.102.2.6.bam"
     #outputExonCoordinateRefBEDfile = 'H9.102.2.6__exon.bed'
     
@@ -367,15 +368,6 @@ if __name__ == '__main__':
                 else: useMultiProcessing=False
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
-        if len(analysisType) == 1 and 'junction' in analysisType:
-            refExonCoordinateFile = ''
-            outputExonCoordinateRefBEDfile = ''
-        if len(analysisType) == 1 and 'exon' in analysisType:
-            refExonCoordinateFile = ''
-        if len(analysisType) == 2 and 'junction' in analysisType and 'exon' in analysisType:
-            refExonCoordinateFile = ''
-        if len(analysisType) == 1 and 'reference':
-            refExonCoordinateFile = ''
         if len(analysisType) == 0:
             analysisType = ['exon','junction','reference']
             try:

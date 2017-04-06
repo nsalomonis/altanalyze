@@ -11,6 +11,7 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name):
     gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
     barcodes_path = os.path.join(human_matrix_dir, "barcodes.tsv")
     barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
+    barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
         
     ### Write out raw data matrix
     counts_path = matrices_dir+'/'+dataset_name+'_matrix.txt'

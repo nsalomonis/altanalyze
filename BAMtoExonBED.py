@@ -42,24 +42,52 @@ def verifyFile(filename):
     except Exception: status = 'not found'
     return status
 
-def parseExonReferences(bam_dir,reference_exon_bed,multi=False):
+class IntronRetenionReads():
+    def __init__(self):
+        self.spanning=0
+        self.containing=0
+    def setCombinedPositions(self,combined_pos):
+        self.combined_pos = combined_pos
+    def setIntronSpanningRead(self,read_pos):
+        self.read_pos = read_pos
+        self.spanning=1
+    def setIntronMateRead(self):
+        self.containing=1
+    def IntronSpanningRead(self):
+        return self.read_pos
+    def CombinedPositions(self):
+        return self.combined_pos
+    def For_and_Rev_Present(self, ):
+        if (self.containing+self.spanning)==2:
+            return True
+        else:
+            return False
+
+def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOnly=False, MateSearch=False):
     start_time = time.time()    
     bamfile = pysam.Samfile(bam_dir, "rb" )
     reference_rows=0
     output_bed_rows=0
     o = open (string.replace(bam_dir,'.bam','__exon.bed'),"w")
-    io = AppendOrWrite(string.replace(bam_dir,'.bam','__junction.bed'))
+    #io = AppendOrWrite(string.replace(bam_dir,'.bam','__junction.bed'))
+    io = open (string.replace(bam_dir,'.bam','__intronJunction.bed'),"w")
+    intron_count=0
     for line in open(reference_exon_bed,'rU').xreadlines(): ### read each line one-at-a-time rather than loading all in memory
         line = line.rstrip('\n')
         reference_rows+=1
+        #if reference_rows==6000: break
         ref_entries = string.split(line,'\t'); #'12', '6998470', '6998522', 'ENSG00000111671:E1.1_ENSE00001754003', '0', '-'
         chr,start,stop,exon,null,strand = ref_entries[:6]
         read_count=0;
         five_intron_junction_count=0
         three_intron_junction_count=0
+        intronJunction={}
         try:    
             #if exon == 'ENSMUSG00000001472:E17.1':
             #chr = '12'; start = '6998470'; stop = '6998522'
+            if intronRetentionOnly:
+                if ':E' in exon:
+                    continue
             for alignedread in bamfile.fetch(chr, int(start),int(stop)):
                 proceed = True
                 try: cigarstring = alignedread.cigarstring
@@ -78,35 +106,71 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False):
                     else:
                         ### Exclude junction reads ("N")
                         if 'N' in cigarstring:
-                            X=int(alignedread.pos)
-                            Y=int(alignedread.pos+alignedread.alen)
-                            start= int(start)
-                            stop = int(stop)
-                            proceed = False
-                            a = [X,Y]; a.sort()
-                            b = [X,Y,start,stop]; b.sort()
-                            if a[0]==b[1] or a[1]==b[2]: ### Hence, the read starts or ends in that interval
-                                proceed = True
-                            if proceed == False:
-                                ### Also search for cases were part of the read is contained within the exon
-                                import BAMtoJunctionBED
-                                coordinates,up_to_intron_dist = BAMtoJunctionBED.getSpliceSites(alignedread.cigar,X)
-                                for (five_prime_ss,three_prime_ss) in coordinates:
-                                    five_prime_ss,three_prime_ss=int(five_prime_ss),int(three_prime_ss)
-                                    if five_prime_ss==start or three_prime_ss==start or five_prime_ss==stop or three_prime_ss==stop:
-                                        proceed = True
-                                        #print five_prime_ss, three_prime_ss, start, stop;sys.exit()
+                            if intronRetentionOnly==False:
+                                X=int(alignedread.pos)
+                                Y=int(alignedread.pos+alignedread.alen)
+                                start= int(start)
+                                stop = int(stop)
+                                proceed = False
+                                a = [X,Y]; a.sort()
+                                b = [X,Y,start,stop]; b.sort()
+                                if a[0]==b[1] or a[1]==b[2]: ### Hence, the read starts or ends in that interval
+                                    proceed = True
+                                if proceed == False:
+                                    ### Also search for cases were part of the read is contained within the exon
+                                    import BAMtoJunctionBED
+                                    coordinates,up_to_intron_dist = BAMtoJunctionBED.getSpliceSites(alignedread.cigar,X)
+                                    for (five_prime_ss,three_prime_ss) in coordinates:
+                                        five_prime_ss,three_prime_ss=int(five_prime_ss),int(three_prime_ss)
+                                        if five_prime_ss==start or three_prime_ss==start or five_prime_ss==stop or three_prime_ss==stop:
+                                            proceed = True
+                                            #print five_prime_ss, three_prime_ss, start, stop;sys.exit()
                         else:
                             ### Below code is for more accurate estimation of intron retention
+                            #"""
                             try:
                                 if 'I' in exon:
                                     X=int(alignedread.pos)
                                     Y=int(alignedread.pos+alignedread.alen)
                                     start= int(start)
                                     stop = int(stop)
-                                    a1 = [X,Y]; a1.sort()
-                                    b1 = [X,Y,start,stop]; b1.sort()
-                                    if a1[0]==b1[0] or a1[1]==b1[-1]: ### Hence, the read starts or ends OUTSIDE of that interval
+                                    read_pos = [X,Y]; read_pos.sort()
+                                    combined_pos = [X,Y,start,stop]; combined_pos.sort()
+                                    if MateSearch==False:
+                                        if read_pos[0]==combined_pos[0] or read_pos[1]==combined_pos[-1]:
+                                            ### Hence, the read starts or ends OUTSIDE of that interval (Store the overlap read coordinates)
+                                            if alignedread.query_name in intronJunction:
+                                                ir = intronJunction[alignedread.query_name]
+                                                ir.setIntronSpanningRead(read_pos)
+                                                ir.setCombinedPositions(combined_pos)
+                                            else:
+                                                ir = IntronRetenionReads()
+                                                ir.setIntronSpanningRead(read_pos)
+                                                ir.setCombinedPositions(combined_pos)
+                                                intronJunction[alignedread.query_name] = ir
+                                        else:
+                                            intron_boundaries = [start,stop]; intron_boundaries.sort()
+                                            if intron_boundaries[0]==combined_pos[0] and intron_boundaries[-1]==combined_pos[-1]: ### Hence, the read occurs entirely within the intron
+                                                ### Store the "MATE" information (intron contained read)
+                                                if alignedread.query_name in intronJunction:
+                                                    ir = intronJunction[alignedread.query_name]
+                                                    ir.setIntronMateRead()
+                                                else:
+                                                    ir = IntronRetenionReads()
+                                                    ir.setIntronMateRead()
+                                                    intronJunction[alignedread.query_name] = ir
+                                        if alignedread.query_name in intronJunction:
+                                            ir = intronJunction[alignedread.query_name]
+                                            found = ir.For_and_Rev_Present()
+                                            if found:
+                                                combined_pos = ir.CombinedPositions()
+                                                read_pos = ir.IntronSpanningRead()
+                                                if read_pos[0]==combined_pos[0]:
+                                                    five_intron_junction_count+=1 ### intron junction read that spans the 5' intron-exon
+                                                    #print alignedread.query_name, exon, start, stop, X, Y, strand;sys.exit()
+                                                elif read_pos[1]==combined_pos[-1]:
+                                                    three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon
+                                    else:
                                         mate = bamfile.mate(alignedread) ### looup the paired-end mate for this read
                                         try: cigarstring = mate.cigarstring
                                         except Exception:
@@ -116,26 +180,30 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False):
                                         if 'N' not in cigarstring:
                                             RX=int(mate.pos)
                                             RY=int(mate.pos+mate.alen)
-                                            a2 = [start,stop]; a2.sort()
-                                            b2 = [RX,RY,start,stop]; b2.sort()
-                                            if a2[0]==b2[0] and a2[-1]==b2[-1]:
-                                                if a1[0]==b1[0]:
+                                            intron_boundaries = [start,stop]; intron_boundaries.sort()
+                                            combined_pos2 = [RX,RY,start,stop]; combined_pos2.sort()
+                                            if intron_boundaries[0]==combined_pos2[0] and intron_boundaries[-1]==combined_pos2[-1]:
+                                                if read_pos[0]==intron_boundaries[0]:
                                                     five_intron_junction_count+=1 ### intron junction read that spans the 5' intron-exon
-                                                    #print exon, start, stop, X, Y, RX, RY, strand, read_strand;sys.exit()
-                                                elif a1[1]==b1[-1]:
+                                                    #print alignedread.query_name,exon, start, stop, X, Y, RX, RY, strand, read_strand;sys.exit()
+                                                elif read_pos[1]==intron_boundaries[-1]:
                                                     three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon
+                                        
                             except Exception,e: ### Usually an unmapped read
                                 #print traceback.format_exc();sys.exit()
                                 pass
-    
+                             #"""
                     if proceed: read_count+=1
             entries = [chr,str(start),str(stop),exon,null,strand,str(read_count),'0',str(int(stop)-int(start)),'0']
             o.write(string.join(entries,'\t')+'\n')
             output_bed_rows+=1
-            
+            if 'I' in exon and five_intron_junction_count>0 and three_intron_junction_count>0:
+                intron_count+=1
+            #"""
             if 'I' in exon and five_intron_junction_count>0 and three_intron_junction_count>0:
                 if strand=='-': increment = -1
                 else: increment = -1
+                total_count = five_intron_junction_count+three_intron_junction_count
                 outlier_start = start-10+increment; outlier_end = start+10+increment
                 junction_id = exon+'-'+str(start)
                 exon_lengths = '10,10'; dist = '0,0'
@@ -150,7 +218,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False):
                 exon_lengths = '10,10'; dist = '0,0'
                 entries = [chr,str(outlier_start),str(outlier_end),junction_id,str(three_intron_junction_count),strand,str(outlier_start),str(outlier_end),'255,0,0\t2',exon_lengths,'0,'+dist]
                 io.write(string.join(entries,'\t')+'\n')
-
+            #"""
         except Exception,e:
             #print e;sys.exit()
             ### Occurs also due to non-chromosome contigs in the annotation file
@@ -178,5 +246,5 @@ if __name__ == "__main__":
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
 
-    parseExonReferences(bam_dir,reference_dir)
+    parseExonReferences(bam_dir,reference_dir,intronRetentionOnly=False)
 

@@ -382,7 +382,7 @@ class RScripts:
         print_out=r(gene_ord); print print_out
         print_out=r('write.table(ordering_genes,file="ordering_genes.txt")')  ### Writing out the informative genes used
         print print_out
-        print_out=r('length(ordering_genes)'); print print_out
+        print_out=r('length(ordering_genes)'); print 'number or ordering genes',print_out
         
         print_out=r('ordering_genes <- intersect(ordering_genes, expressed_genes)'); print print_out
         print_out=r('URMM <- setOrderingFilter(URMM, ordering_genes)'); print print_out
@@ -407,10 +407,12 @@ class RScripts:
         print print_out
         print_out=r('plot_spanning_tree(URMM)'); print print_out
         print_out=r('dev.off()')
+        """
         print_out=r('pdf("Monocle/monoclePseudotimeOriginalGroups.pdf")');
         print print_out
         print_out=r('plot_spanning_tree(URMM), color_by = "originalGroups"'); print print_out
         print_out=r('dev.off()')
+        """
         print_out=r('write.table(pData(URMM),file="Monocle/monoclePseudotime.txt")') 
         print " completed"
     
