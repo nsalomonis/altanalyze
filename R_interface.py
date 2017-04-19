@@ -14,7 +14,9 @@ try:
     s = open(loc,'r')
     useStaticLocation=s.read()
     #print useStaticLocation
-    #print 'Using the Config designated location'
+    #print 'Using the Config designated location
+    if '/data/salomonis' in loc: ### This is not ideal - need to use system R on some clusters
+        useStaticLocation = False
 except Exception:
     #print 'NOT using the Config designated location'
     useStaticLocation = False
@@ -780,8 +782,13 @@ def setWorkingDirectory(filename):
     ### Set R's working directory when calling this module remotely
     working_dir = findParentDir(filename)
     setwd = 'setwd("%s")' % working_dir
-    r(setwd)
-    
+    try: r(setwd)
+    except Exception:
+        print [filename]
+        print [working_dir]
+        print traceback.format_exc()
+        kill
+        
 def read_directory(sub_dir):
     dir=os.path.dirname(__file__) 
     #print "Working Directory:", r('getwd()')

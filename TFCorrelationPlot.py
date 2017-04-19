@@ -97,9 +97,11 @@ def sample(fname):
 def create_corr_files(correc,filename, tfs, gene_labels):
     export_corrmat=open(filename[:-4]+'-corr.txt','w')
     #export_corrmat=open('correlation_matrix_up.txt','w')
+    temp = ['UID']
     for li in range(len(gene_labels)):
-        export_corrmat.write('\t'+gene_labels[li])
-    export_corrmat.write('\n')
+      temp.append(gene_labels[li])
+    
+    export_corrmat.write(string.join(temp,'\t')+'\n')
     for i in range(len(tfs)):
         export_corrmat.write(tfs[i]+'\t')
         
@@ -108,7 +110,7 @@ def create_corr_files(correc,filename, tfs, gene_labels):
 	        export_corrmat.write(str(correc[tfs[i],gene_labels[li]])+'\t')
 	    except Exception:
                print traceback.format_exc()
-               export_corrmat.write('NA')
+               #export_corrmat.write('NA')
 	  #else:
 	   # export_corrmat.write(str(0)+'\t')
 	export_corrmat.write('\n')
@@ -130,6 +132,7 @@ def runTFCorrelationAnalysis(query_exp_file,query_tf_file):
     query_data.close()
 
     genes=genelist(query_exp_file)
+    genes = genes[1:]
     tfs=genelist(query_tf_file,Filter=genes) ### Require that the TF is in the gene list
     
     correc=create_corr_matrix(lines,tfs,genes)

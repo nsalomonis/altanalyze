@@ -555,7 +555,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             biotypes = getBiotypes(expFile)
         else:
             biotypes = getBiotypes(expFile)
-        array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',flx.setArrayType())
+        array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',flx.ArrayType())
         steady_state_export = expFile[:-4]+'-steady-state.txt'
         normalize_feature_exp = flx.FeatureNormalization()
         try: excludeLowExpressionExons = flx.excludeLowExpressionExons()

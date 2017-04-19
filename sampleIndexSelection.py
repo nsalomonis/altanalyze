@@ -14,7 +14,7 @@ def makeTestFile():
     export_object.close()
     return input_file
 
-def filterFile(input_file,output_file,filter_names):
+def filterFile(input_file,output_file,filter_names,force=False):
     export_object = open(output_file,'w')
     firstLine = True
     for line in open(input_file,'rU').xreadlines():
@@ -25,6 +25,11 @@ def filterFile(input_file,output_file,filter_names):
             values = string.split(data,'\t')
         if firstLine:
             if data[0]!='#':
+                if force:
+                    filter_names2=[]
+                    for f in filter_names:
+                        if f in values: filter_names2.append(f)
+                    filter_names = filter_names2
                 sample_index_list = map(lambda x: values.index(x), filter_names)
                 firstLine = False   
                 header = values
@@ -200,6 +205,7 @@ if __name__ == '__main__':
     import getopt
     filter_rows=False
     filter_file=None
+    force=False
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         filter_names = ['bob','sally','jim']
         input_file = makeTestFile()
@@ -207,12 +213,13 @@ if __name__ == '__main__':
         #Filtering samples in a datasets
         #python SampleSelect.py --i /Users/saljh8/Desktop/C4-hESC/ExpressionInput/exp.C4.txt --f /Users/saljh8/Desktop/C4-hESC/ExpressionInput/groups.C4.txt
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','force='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
             elif opt == '--f': filter_file=arg
             elif opt == '--r': filter_rows=True
+            elif opt == '--force': force=True
             
     output_file = input_file[:-4]+'-filtered.txt'
     if filter_rows:
@@ -222,5 +229,5 @@ if __name__ == '__main__':
         combineDropSeq(input_file)
     else:
         filter_names = getFilters(filter_file)
-        filterFile(input_file,output_file,filter_names)
+        filterFile(input_file,output_file,filter_names,force=force)
 

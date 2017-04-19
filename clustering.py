@@ -505,6 +505,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if '-hierarchical' in dataset_name:
         dataset_name = string.split(dataset_name,'-hierarchical')[0]
     filename = 'Clustering-%s-hierarchical_%s_%s.pdf' % (dataset_name,column_metric,row_metric)
+    if 'MarkerGenes' in dataset_name:
+        time_stamp = timestamp() ### Don't overwrite the previous version
+        filename = string.replace(filename,'hierarchical',time_stamp)
 
     elite_dir, cdt_file, SystemCode = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display)
 
@@ -813,7 +816,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
             elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
-                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                cmap_c = matplotlib.colors.ListedColormap(['w', '#3D3181', '#EE2C3C'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18'])
                 #cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w'])
@@ -829,7 +832,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 #cmap_c = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
             #elif len(unique.unique(ind2))==9:  cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w'])
             elif len(unique.unique(ind2))==11: 
-                cmap_c = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
+                cmap_c = matplotlib.colors.ListedColormap(['w', '#DC2342', '#0B9B48', '#FDDF5E', '#E0B724', 'k', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
                 cmap_c = pylab.cm.gist_rainbow
     
@@ -1663,6 +1666,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                         std = 0.1
                     try: s = map(lambda x: (x-avg)/std,s)
                     except Exception: pass
+                    
                 if geneFilter==None:
                     matrix.append(s)
                     row_header.append(gene)
@@ -1694,10 +1698,18 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                         avg = numpy.average(s)
                     else: avg = avg = numpy.median(s)
                 s = map(lambda x: x-avg,s) ### normalize to the mean
+            if zscore: ### The above z-score does not impact the original_matrix which is analyzed
+                ### convert to z-scores for normalization prior to PCA
+                avg = numpy.mean(s)
+                std = numpy.std(s)
+                if std ==0:
+                    std = 0.1
+                try: s = map(lambda x: (x-avg)/std,s)
+                except Exception: pass
             matrix.append(s)
             k+=1
         del original_matrix
-        
+
     if zscore: print 'Converting values to normalized z-scores...'
     #reverseOrder = True ### Cluster order is background (this is a temporary workaround)
     if reverseOrder == True:
@@ -2199,6 +2211,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     
     if algorithm == 'SVD': use_svd = True
     else: use_svd = False
+    #Mdif = matrix-matrix.mean(axis=0)# subtract the mean (along columns)
     #M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
     Mdif = matrix/matrix.std()
     Mdif = Mdif.T
@@ -3971,6 +3984,15 @@ def runHCOnly(filename,graphics,Normalize=False):
                 row_method, row_metric, column_method, column_metric, color_gradient, display=False, Normalize=Normalize)
     return graphic_link
 
+def timestamp():
+    import datetime
+    today = str(datetime.date.today()); today = string.split(today,'-'); today = today[0]+''+today[1]+''+today[2]
+    time_stamp = string.replace(time.ctime(),':','')
+    time_stamp = string.replace(time_stamp,'  ',' ')
+    time_stamp = string.split(time_stamp,' ') ###Use a time-stamp as the output dir (minus the day)
+    time_stamp = today+'-'+time_stamp[3]
+    return time_stamp
+
 def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,
                algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None,
                reimportModelScores=True, separateGenePlots=False):
@@ -5625,7 +5647,7 @@ def simpleCombine(folder):
 def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGenes,state,query=None):
     """Predict multi-lineage cells and their associated coincident lineage-defining TFs"""
     
-    ICGS_State_as_Row = False
+    ICGS_State_as_Row = True
     ### Import all genes with TPM values for all cells
     matrix, column_header, row_header, dataset_name, group_db = importData(all_genes_TPM)
     group_index={}

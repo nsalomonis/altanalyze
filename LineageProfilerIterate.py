@@ -2042,7 +2042,7 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     Outlier samples with low correlations will ultimately need to be represented outside of the reference
     sample continuum. The function attempts to propagate sample group labels from the reference and query sets
     (if avaialble, in the sample headers or in a groups file), and indicate original gene and column clusters
-    if available.
+    if available. We call this approach cellHarmony.
     
     Alternative description: To represent new cells/samples within the continuum of established scRNA-Seq profiles
     we have developed a robust and fast data harmonization function. This data harmonization approach applies a
@@ -2226,7 +2226,7 @@ def checkForGroupsFile(filename,headers):
     return new_headers
 
 def importExpressionFile(input_file,ignoreClusters=False):
-    """ Import the expression value and harmonize to log, non-fold values """
+    """ Import the expression value and harmonize (cellHarmony) to log, non-fold values """
     import collections
     expression_db=collections.OrderedDict()
     column_cluster_index=collections.OrderedDict()
