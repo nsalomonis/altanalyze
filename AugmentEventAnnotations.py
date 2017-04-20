@@ -183,9 +183,22 @@ def importIsoformAnnotations(species,platform,psievents,annotType=None,junctionP
     print count, 'protein predictions added'
     return junctionPairFeatures
 
+def DetermineIntronRetention(coordinates):
+    intronRetention = False
+    coordinates1,coordinates2 = string.split(coordinates,'|')
+    coordinates1 = string.split(coordinates1,':')[1]
+    coordinate1a, coordinate1b = string.split(coordinates1,'-')
+    coordinate1_diff = abs(float(coordinate1a)-float(coordinate1b))
+    coordinates2 = string.split(coordinates2,':')[1]
+    coordinate2a, coordinate2b = string.split(coordinates2,'-')
+    coordinate2_diff = abs(float(coordinate2a)-float(coordinate2b))
+    if coordinate1_diff==1 or coordinate2_diff==1:
+        intronRetention = True
+    return intronRetention    
+    
 def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures):
     # write the updated psi file with the annotations into a new file and annotate events that have not been annotated by the junction files
-    print len(psievents)
+    #print len(psievents)
     header=True
     export=open(PSIpath[:-4]+'_EventAnnotation.txt','w')
     count=0
@@ -196,6 +209,7 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
             fI = values.index('feature')
             aI = values.index('AltExons')
             pI = values.index('PME')
+            cI = values.index('Coordinates')
             values[fI] = 'EventAnnotation'
             values[pI] = 'ProteinPredictions'
             export.write(string.join(values,'\t')+'\n')
@@ -214,6 +228,8 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
         else:
             proteinAnnotation = ''
         values[pI] = proteinAnnotation
+        intronRetention = DetermineIntronRetention(values[cI])
+        
         if critical_exon in terminal_exons:
             event = terminal_exons[critical_exon]
         try:
@@ -237,7 +253,11 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
                             export.write(string.join(values,'\t')+'\n')
                             continue
                     try: event = predictSplicingEventTypes(psiJunction_primary,psiJunction_secondary)
-                    except Exception: event = ''
+                    except Exception:
+                        if intronRetention:
+                            event = 'intron-retention'
+                        else:
+                            event = ''
                     values[fI] = event
                     export.write(string.join(values,'\t')+'\n')
                     continue
@@ -250,7 +270,7 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
         except Exception():
             values[fI] = ''
             export.write(string.join(values,'\t')+'\n')
-    print count
+    #print count
 
 def predictSplicingEventTypes(junction1,junction2):
     if 'I' not in junction1 and '_' in junction1:

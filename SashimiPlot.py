@@ -126,9 +126,13 @@ def importSplicingEventsToVisualize(eventsToVisualizeFilename):
     return splicing_events,expandedSearch
 
 def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=None):
-    import gene_associations
-    gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
-    import OBO_import; symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+    try:
+	import gene_associations
+	gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+	import OBO_import; symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)	
+    except Exception:
+	symbol_to_gene={}
+
 
     if events==None:
         splicing_events,expandedSearch = importSplicingEventsToVisualize(eventsToVisualizeFilename)
@@ -561,11 +565,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis2/Ichi_data/bams/'
-    events = ['ENSG00000065534:E35.1-E36.1','ENSG00000182667:E18.2-E22.1','ENSG00000213047:E3.1-E5.1']
+    root_dir = '/Users/saljh8/Desktop/Grimes/GEC14074/'
+    events = ['ENSMUSG00000000171:I2.1-E3.1']
     #events = None
     eventsToVisualizeFilename = None
     #eventsToVisualizeFilename = '/Volumes/salomonis2/Ichi_data/bams/AltResults/AlternativeOutput/top50/top_pvalue.txt'
     bamdir = root_dir
-    remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
+    remoteSashimiPlot('Mm', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

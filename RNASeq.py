@@ -1511,7 +1511,9 @@ class AlignExonsAndJunctionsToEnsembl:
                                         #print ji.Chr(),ji.GeneID(), ji.SecondaryGeneID(), ji.Exon1Stop(), ji.Exon2Start()
                                         self.trans_splicing_reads+=1
                                         if ji.checkExonPosition(coordinate) == 'right': geneid = ji.SecondaryGeneID()
-                                    exon_data = (coordinate,ji.Chr()+'-'+str(coordinate),'novel')
+                                    if abs(exon2_start-exon1_stop)==1: eventType = 'novel-exon-intron' ### Indicates intron-exon boundary (intron retention)
+                                    else: eventType = 'novel'
+                                    exon_data = (coordinate,ji.Chr()+'-'+str(coordinate),eventType)
                                     try: novel_exon_db[geneid].append(exon_data)
                                     except KeyError: novel_exon_db[geneid] = [exon_data]
                                     
@@ -2520,10 +2522,13 @@ def alignReadsToExons(novel_exon_db,ens_exon_db,testImport=False):
                                     else: rd = prd
                             except Exception: null=[]                               
                         ed.setExonRegionData(rd); aligned_exons+=1; aligned_status=1
+                        
                         if rd.ExonStop()==ed.ReadStart():
                             ed.setExonRegionID(rd.ExonRegionIDs())
                         elif rd.ExonStart()==ed.ReadStart():
                             ed.setExonRegionID(rd.ExonRegionIDs())
+                        elif 'exon-intron' in ed.Annotation(): ### intron retention
+                            ed.setExonRegionID(rd.ExonRegionIDs()) ### Hence there is a 1nt difference between read
                         else:
                             ed.setExonRegionID(rd.ExonRegionIDs()+'_'+str(ed.ReadStart()))
                         break

@@ -186,10 +186,10 @@ def runBAMtoJunctionBED(paths_to_run):
 def runBAMtoExonBED(paths_to_run):
     bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path = paths_to_run
     if os.path.exists(output_bedfile_path) == False: ### Only run if the file doesn't exist
-        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True)
+        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=False)
     else:
         print output_bedfile_path, 'already exists... re-writing'
-        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True)
+        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=False)
 
 def getChrFormat(directory):
     ### Determine if the chromosomes have 'chr' or nothing
@@ -368,7 +368,7 @@ if __name__ == '__main__':
                 else: useMultiProcessing=False
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
-        if len(analysisType) == 0:
+        if len(analysisType) == 0 or 'all' in analysisType:
             analysisType = ['exon','junction','reference']
             try:
                 refExonCoordinateFile = refExonCoordinateFile
@@ -378,7 +378,7 @@ if __name__ == '__main__':
                 analysisType = ['junction']
                 refExonCoordinateFile = ''
                 outputExonCoordinateRefBEDfile = ''
-            
+
     try: bam_dir = bam_dir
     except Exception: print 'You must specify a directory of BAM files or a single bam file with --i';sys.exit()
     try: refExonCoordinateFile = refExonCoordinateFile

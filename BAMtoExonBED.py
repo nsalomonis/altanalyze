@@ -68,7 +68,8 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
     bamfile = pysam.Samfile(bam_dir, "rb" )
     reference_rows=0
     output_bed_rows=0
-    o = open (string.replace(bam_dir,'.bam','__exon.bed'),"w")
+    if intronRetentionOnly==False:
+        o = open (string.replace(bam_dir,'.bam','__exon.bed'),"w")
     #io = AppendOrWrite(string.replace(bam_dir,'.bam','__junction.bed'))
     io = open (string.replace(bam_dir,'.bam','__intronJunction.bed'),"w")
     intron_count=0
@@ -194,8 +195,9 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                 pass
                              #"""
                     if proceed: read_count+=1
-            entries = [chr,str(start),str(stop),exon,null,strand,str(read_count),'0',str(int(stop)-int(start)),'0']
-            o.write(string.join(entries,'\t')+'\n')
+            if intronRetentionOnly==False:
+                entries = [chr,str(start),str(stop),exon,null,strand,str(read_count),'0',str(int(stop)-int(start)),'0']
+                o.write(string.join(entries,'\t')+'\n')
             output_bed_rows+=1
             if 'I' in exon and five_intron_junction_count>0 and three_intron_junction_count>0:
                 intron_count+=1

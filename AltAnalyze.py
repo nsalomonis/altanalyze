@@ -5737,7 +5737,11 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           try:
              graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
                     species,array_type,expFile=fl.CountsFile(),min_events=0,med_events=1)
-          except Exception: pass
+             import AugmentEventAnnotations
+             AugmentEventAnnotations.parse_junctionfiles(fl.RootDir()+'/AltResults/AlternativeOutput/',species,array_type) ### Added in 2.1.1 - adds cassette and domains annotations
+          except Exception:
+            print traceback.format_exc()
+            pass
           #"""
           inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_'+array_type+'_top_alt_junctions-PSI-clust.txt'
           
