@@ -196,6 +196,56 @@ def DetermineIntronRetention(coordinates):
         intronRetention = True
     return intronRetention    
     
+class SplicingAnnotations(object):
+    def __init__(self, symbol, description,junc1,junc2,altExons,proteinPredictions,eventAnnotation,coordinates):
+        self.symbol = symbol
+        self.description = description
+        self.junc1 = junc1
+        self.junc2 = junc2
+        self.altExons = altExons
+        self.proteinPredictions = proteinPredictions
+        self.eventAnnotation = eventAnnotation
+        self.coordinates = coordinates
+    def Symbol(self): return self.symbol
+    def Description(self): return self.description
+    def Junc1(self): return self.junc1
+    def Junc2(self): return self.junc2
+    def AltExons(self): return self.altExons
+    def ProteinPredictions(self): return self.proteinPredictions
+    def EventAnnotation(self): return self.eventAnnotation
+    def Coordinates(self): return self.coordinates
+
+def importPSIAnnotations(PSIpath):
+    header=True
+    count=0
+    annotations={}
+    for line in open(PSIpath,'rU').xreadlines():
+        line = line.rstrip('\n')
+        values = string.split(line,'\t')
+        if header:
+            sI = values.index('Symbol')
+            dI = values.index('Description')
+            eI = values.index('Examined-Junction')
+            bI = values.index('Background-Major-Junction')
+            aI = values.index('AltExons')
+            pI = values.index('ProteinPredictions')
+            vI = values.index('EventAnnotation')
+            cI = values.index('Coordinates')
+            header=False
+        else:
+            symbol = values[sI]
+            description = values[dI]
+            junc1 = values[eI]
+            junc2 = values[bI]
+            altExons = values[aI]
+            proteinPredictions = values[pI]
+            eventAnnotation = values[vI]
+            coordinates = values[cI]
+            key = symbol+':'+junc1+"|"+junc2
+            sa = SplicingAnnotations(symbol, description,junc1,junc2,altExons,proteinPredictions,eventAnnotation,coordinates)
+            annotations[key] = sa
+    return annotations
+            
 def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures):
     # write the updated psi file with the annotations into a new file and annotate events that have not been annotated by the junction files
     #print len(psievents)
@@ -232,6 +282,8 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
         
         if critical_exon in terminal_exons:
             event = terminal_exons[critical_exon]
+        if intronRetention:
+            event = 'intron-retention'
         try:
             if event==None:
                 primary_exons=string.split(psiJunction[2],":")
@@ -254,10 +306,7 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
                             continue
                     try: event = predictSplicingEventTypes(psiJunction_primary,psiJunction_secondary)
                     except Exception:
-                        if intronRetention:
-                            event = 'intron-retention'
-                        else:
-                            event = ''
+                        event = ''
                     values[fI] = event
                     export.write(string.join(values,'\t')+'\n')
                     continue

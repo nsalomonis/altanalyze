@@ -22,7 +22,7 @@ file for exon coordinates (genomic bins for which to sum unique read counts).
 Excludes junction reads within each interval"""
 
 import pysam
-import string,os,sys,copy
+import string,os,sys,copy,math
 import time
 import getopt
 import traceback
@@ -63,11 +63,18 @@ class IntronRetenionReads():
         else:
             return False
 
-def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOnly=False, MateSearch=False):
+def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOnly=False, MateSearch=False, species=None):
     start_time = time.time()    
     bamfile = pysam.Samfile(bam_dir, "rb" )
     reference_rows=0
     output_bed_rows=0
+    
+    try:
+        import BAMtoJunctionBED
+        retainedIntrons, chrm_found = BAMtoJunctionBED.retreiveAllKnownSpliceSites(returnExonRetention=True,DesignatedSpecies=species,path=bam_dir)
+    except Exception:
+        #print traceback.format_exc();sys.exit()
+        retainedIntrons={}
     if intronRetentionOnly==False:
         o = open (string.replace(bam_dir,'.bam','__exon.bed'),"w")
     #io = AppendOrWrite(string.replace(bam_dir,'.bam','__junction.bed'))
@@ -87,10 +94,18 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
             #if exon == 'ENSMUSG00000001472:E17.1':
             #chr = '12'; start = '6998470'; stop = '6998522'
             if intronRetentionOnly:
-                if ':E' in exon:
+                if ':E' in exon and exon not in retainedIntrons:
                     continue
-            for alignedread in bamfile.fetch(chr, int(start),int(stop)):
+            if 'I' in exon or exon in retainedIntrons:
+                INTRON = True
+            else:
+                INTRON = False
+            start,stop=int(start),int(stop)
+            regionLen = abs(start-stop)
+            interval_read_count=0
+            for alignedread in bamfile.fetch(chr, start,stop):
                 proceed = True
+                interval_read_count+=1
                 try: cigarstring = alignedread.cigarstring
                 except Exception:
                     codes = map(lambda x: x[0],alignedread.cigar)
@@ -110,8 +125,6 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                             if intronRetentionOnly==False:
                                 X=int(alignedread.pos)
                                 Y=int(alignedread.pos+alignedread.alen)
-                                start= int(start)
-                                stop = int(stop)
                                 proceed = False
                                 a = [X,Y]; a.sort()
                                 b = [X,Y,start,stop]; b.sort()
@@ -130,22 +143,20 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                             ### Below code is for more accurate estimation of intron retention
                             #"""
                             try:
-                                if 'I' in exon:
+                                if INTRON:
                                     X=int(alignedread.pos)
                                     Y=int(alignedread.pos+alignedread.alen)
-                                    start= int(start)
-                                    stop = int(stop)
                                     read_pos = [X,Y]; read_pos.sort()
                                     combined_pos = [X,Y,start,stop]; combined_pos.sort()
                                     if MateSearch==False:
                                         if read_pos[0]==combined_pos[0] or read_pos[1]==combined_pos[-1]:
                                             ### Hence, the read starts or ends OUTSIDE of that interval (Store the overlap read coordinates)
-                                            if alignedread.query_name in intronJunction:
+                                            if alignedread.query_name in intronJunction: ### occurs when the other mate has been stored to this dictionary
                                                 ir = intronJunction[alignedread.query_name]
                                                 ir.setIntronSpanningRead(read_pos)
                                                 ir.setCombinedPositions(combined_pos)
                                             else:
-                                                ir = IntronRetenionReads()
+                                                ir = IntronRetenionReads() ### first time the read-name added to this dictionary
                                                 ir.setIntronSpanningRead(read_pos)
                                                 ir.setCombinedPositions(combined_pos)
                                                 intronJunction[alignedread.query_name] = ir
@@ -156,6 +167,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                                 if alignedread.query_name in intronJunction:
                                                     ir = intronJunction[alignedread.query_name]
                                                     ir.setIntronMateRead()
+                                                    found = ir.For_and_Rev_Present()
                                                 else:
                                                     ir = IntronRetenionReads()
                                                     ir.setIntronMateRead()
@@ -163,12 +175,12 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                         if alignedread.query_name in intronJunction:
                                             ir = intronJunction[alignedread.query_name]
                                             found = ir.For_and_Rev_Present()
-                                            if found:
+                                            if found or regionLen<500: ### if the intron is less 500 (CAN CAUSE ISSUES IF READS BLEED OVER ON BOTH SIDES OF THE INTRON)
                                                 combined_pos = ir.CombinedPositions()
                                                 read_pos = ir.IntronSpanningRead()
                                                 if read_pos[0]==combined_pos[0]:
                                                     five_intron_junction_count+=1 ### intron junction read that spans the 5' intron-exon
-                                                    #print alignedread.query_name, exon, start, stop, X, Y, strand;sys.exit()
+                                                    #print alignedread.query_name, exon, start, stop, X, Y, strand, read_pos, combined_pos
                                                 elif read_pos[1]==combined_pos[-1]:
                                                     three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon
                                     else:
@@ -198,36 +210,42 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
             if intronRetentionOnly==False:
                 entries = [chr,str(start),str(stop),exon,null,strand,str(read_count),'0',str(int(stop)-int(start)),'0']
                 o.write(string.join(entries,'\t')+'\n')
-            output_bed_rows+=1
-            if 'I' in exon and five_intron_junction_count>0 and three_intron_junction_count>0:
-                intron_count+=1
+                output_bed_rows+=1
             #"""
-            if 'I' in exon and five_intron_junction_count>0 and three_intron_junction_count>0:
-                if strand=='-': increment = -1
-                else: increment = -1
-                total_count = five_intron_junction_count+three_intron_junction_count
-                outlier_start = start-10+increment; outlier_end = start+10+increment
-                junction_id = exon+'-'+str(start)
-                exon_lengths = '10,10'; dist = '0,0'
-                entries = [chr,str(outlier_start),str(outlier_end),junction_id,str(five_intron_junction_count),strand,str(outlier_start),str(outlier_end),'255,0,0\t2',exon_lengths,'0,'+dist]
-                io.write(string.join(entries,'\t')+'\n')
-                
-                ### 3' junction
-                if strand=='-': increment = 0
-                else: increment = 0
-                outlier_start = stop-10+increment; outlier_end = stop+10+increment
-                junction_id = exon+'-'+str(stop)
-                exon_lengths = '10,10'; dist = '0,0'
-                entries = [chr,str(outlier_start),str(outlier_end),junction_id,str(three_intron_junction_count),strand,str(outlier_start),str(outlier_end),'255,0,0\t2',exon_lengths,'0,'+dist]
-                io.write(string.join(entries,'\t')+'\n')
+            if INTRON and five_intron_junction_count>0 and three_intron_junction_count>0:
+                interval_read_count = interval_read_count/2 ### if paired-end reads
+                #print interval_read_count, five_intron_junction_count, three_intron_junction_count
+                #print abs((math.log(five_intron_junction_count,2)-math.log(three_intron_junction_count,2)))
+                if abs((math.log(five_intron_junction_count,2)-math.log(three_intron_junction_count,2)))<2: ### if > 4 fold difference
+                    if strand=='-': increment = -1
+                    else: increment = -1
+                    total_count = five_intron_junction_count+three_intron_junction_count
+                    outlier_start = start-10+increment; outlier_end = start+10+increment
+                    junction_id = exon+'-'+str(start)
+                    exon_lengths = '10,10'; dist = '0,0'
+                    entries = [chr,str(outlier_start),str(outlier_end),junction_id,str(five_intron_junction_count),strand,str(outlier_start),str(outlier_end),'255,0,0\t2',exon_lengths,'0,'+dist]
+                    io.write(string.join(entries,'\t')+'\n')
+                    
+                    ### 3' junction
+                    if strand=='-': increment = 0
+                    else: increment = 0
+                    outlier_start = stop-10+increment; outlier_end = stop+10+increment
+                    junction_id = exon+'-'+str(stop)
+                    exon_lengths = '10,10'; dist = '0,0'
+                    entries = [chr,str(outlier_start),str(outlier_end),junction_id,str(three_intron_junction_count),strand,str(outlier_start),str(outlier_end),'255,0,0\t2',exon_lengths,'0,'+dist]
+                    io.write(string.join(entries,'\t')+'\n')
+                    intron_count+=1
+                    output_bed_rows+=1
             #"""
         except Exception,e:
             #print e;sys.exit()
             ### Occurs also due to non-chromosome contigs in the annotation file
             if 'bamfile without index' in e:
                 print 'Please ensure an index exists for the bam file:',bam_dir;sys.exit()
-    o.close()
-    io.close()
+    try: o.close()
+    except Exception: pass
+    try: io.close()
+    except Exception: pass
     bamfile.close()
     if multi==False:
         print time.time()-start_time, 'seconds to assign reads for %d entries from %d reference entries' % (output_bed_rows,reference_rows)
@@ -236,17 +254,19 @@ if __name__ == "__main__":
     #bam_dir = "H9.102.2.6.bam"
     #reference_dir = 'H9.102.2.6__exon.bed'
     ################  Comand-line arguments ################
+    species = None
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Warning! Please designate a BAM file as input in the command-line"
         print "Example: python BAMtoExonBED.py --i /Users/me/sample1.bam --r /Users/me/Hs_exon-cancer_hg19.bed"
         sys.exit()
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','r='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','r=','s='])
         for opt, arg in options:
             if opt == '--i': bam_dir=arg ### A single BAM file location (full path)
+            elif opt == '--s': species = arg
             elif opt == '--r': reference_dir=arg ### An exon.bed reference file (created by AltAnalyze from junctions, multiBAMtoBED.py or other)
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
 
-    parseExonReferences(bam_dir,reference_dir,intronRetentionOnly=False)
+    parseExonReferences(bam_dir,reference_dir,intronRetentionOnly=True,species=species)
 

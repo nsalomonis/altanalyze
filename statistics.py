@@ -911,6 +911,7 @@ def matrixImport(filename):
     compared_groups={} ### track which values correspond to which groups for pairwise group comparisons
     original_data={}
     headerRow=True
+    
     for line in open(filename,'rU').xreadlines():
         original_line = line
         data = line.rstrip()
@@ -984,6 +985,14 @@ def matrixImport(filename):
     return matrix,compared_groups,original_data
 
 def runANOVA(filename,matrix,compared_groups):
+    try:
+        import AugmentEventAnnotations
+        annotationFile = string.replace(filename,'-clust.txt','_EventAnnotation.txt')
+        eventAnnotations = AugmentEventAnnotations.importPSIAnnotations(annotationFile)
+    except Exception:
+        #print traceback.format_exc();sys.exit()
+        eventAnnotations={}
+        
     import export
     matrix_pvalues={}
     all_matrix_pvalues={}
@@ -992,9 +1001,31 @@ def runANOVA(filename,matrix,compared_groups):
     useAdjusted=False
     pvals=[]
     eo = export.ExportFile(filename[:-4]+'-pairwise.txt')
-    eo.write(string.join(['UID','Group1','Group2','rawp','G1-PSI','G2-PSI'],'\t')+'\n')
+    eo.write(string.join(['UID','Symbol','Description','Coordinates','Examined-Junction','Background-Major-Junction','AltExons','ProteinPredictions','EventAnnotation','Group1','Group2','rawp','G1-PSI','G2-PSI'],'\t')+'\n')
     for key in matrix:
         filtered_groups = []
+        ### Import and add annotations for each event
+        try:
+            ea = eventAnnotations[key]
+            Symbol = ea.Symbol()
+            Description = ea.Description()
+            Junc1 = ea.Junc1()
+            Junc2 = ea.Junc2()
+            AltExons = ea.AltExons()
+            Coordinates = ea.Coordinates()
+            ProteinPredictions = ea.ProteinPredictions()
+            EventAnnotation = ea.EventAnnotation()
+        except Exception:
+            #print traceback.format_exc(); sys.exit()
+            Symbol = ''
+            Description = ''
+            Junc1 = ''
+            Junc2 = ''
+            AltExons = ''
+            ProteinPredictions = ''
+            EventAnnotation = ''
+            Coordinates = ''
+ 
         for group in matrix[key]:
             if len(group)>1:
                 filtered_groups.append(group)
@@ -1035,7 +1066,15 @@ def runANOVA(filename,matrix,compared_groups):
                                                 except Exception: comparisons[group1] = [group2]
                                                 try: comparisons[group2].append(group1)
                                                 except Exception: comparisons[group2] = [group1]
-                                                values = string.join([key,group_names[gi1],group_names[gi2],str(pairwise_p),str(avg(g1)),str(avg(g2))],'\t')+'\n'
+                                                if g2<g1:
+                                                    instance_proteinPredictions = string.replace(ProteinPredictions,'+','^^')
+                                                    instance_proteinPredictions = string.replace(instance_proteinPredictions,'-','+')
+                                                    instance_proteinPredictions = string.replace(instance_proteinPredictions,'^^','-')
+                                                else:
+                                                    instance_proteinPredictions = ProteinPredictions
+                                                values = string.join([key,Symbol,Description,Coordinates,Junc1,Junc2,AltExons,
+                                                            instance_proteinPredictions,EventAnnotation,group_names[gi1],group_names[gi2],
+                                                            str(pairwise_p),str(avg(g1)),str(avg(g2))],'\t')+'\n'
                                                 eo.write(values)
                                                 #pairwise_matrix[key,group_names[gi1],group_names[gi2]] = pairwise_p,avg(g1),avg(g2)
                         major_group_list=[]
@@ -1110,7 +1149,7 @@ if __name__ == '__main__':
     dirfile = unique
     filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
     filename = '/Volumes/SEQ-DATA/Jared/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
-    filename = '/Volumes/SEQ-DATA/Grimeslab/Grimeslab/BAM files//AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Mm_Simulation_AltAnalyze/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
     #filename = '/Volumes/salomonis2/Grimes/tophat SKI KO/bams/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
     matrix,compared_groups,original_data = matrixImport(filename)
     matrix_pvalues=runANOVA(filename,matrix,compared_groups)

@@ -24,6 +24,8 @@ command_args = string.join(sys.argv,' ')
 if len(sys.argv[1:])>0 and '--' in command_args: commandLine=True
 else: commandLine=False
 
+display_label_names = True
+
 import traceback
 try:
     import math
@@ -386,7 +388,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 ax1 = fig.add_axes([ax1_x, ax1_y, ax1_w, ax1_h], frame_on=False) # frame_on may be False - this window conflicts with GO-Elite labels
         except Exception:
             ax1 = fig.add_axes([ax1_x, ax1_y, ax1_w, ax1_h], frame_on=False) # frame_on may be False
-        try: Z1 = sch.dendrogram(Y1, orientation='right',no_plot=no_plot) ### This is where plotting occurs
+        try: Z1 = sch.dendrogram(Y1, orientation='left',no_plot=no_plot) ### This is where plotting occurs - orientation 'right' in old matplotlib
         except Exception:
             row_method = 'average'
             try:
@@ -661,13 +663,17 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             except Exception: pass
             try:
                 if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in top_genes):
-                    axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
-                    #axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
+                    if display_label_names:
+                        axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
+                    else:
+                        axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                 elif ' ' in row_header[new_index]:
                     symbol = string.split(row_header[new_index], ' ')[-1]
                     if symbol in justShowTheseIDs:
-                        axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
-                        #axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True)
+                        if display_label_names:
+                            axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
+                        else:
+                            axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True)
             except Exception: pass
                     
         if cluster in cluster_elite_terms:
@@ -814,9 +820,10 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
             if len(unique.unique(ind2))==2: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                #cmap_c = matplotlib.colors.ListedColormap(['#7CFC00','k'])
                 cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
             elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
-                cmap_c = matplotlib.colors.ListedColormap(['w', '#3D3181', '#EE2C3C'])
+                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18'])
                 #cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w'])
@@ -1565,6 +1572,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
     matrix=[]
     original_matrix=[]
     row_header=[]
+    overwriteGroupNotations=True
     x=0; inputMax=0; inputMin=100
     filename = string.replace(filename,'\\','/')
     dataset_name = string.split(filename,'/')[-1][:-4]
@@ -1578,11 +1586,20 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
             if t[1] == 'row_clusters-flat':
                 t = t = [t[0]]+t[2:]
             ### color samples by annotated groups if an expression file
-            if ('exp.' in filename or 'filteredExp.' in filename) and ':' not in data:
+            new_headers=[]
+            if ('exp.' in filename or 'filteredExp.' in filename):# and ':' not in data:
+                if overwriteGroupNotations:
+                    ### Use groups file annotations over any header sample separation with a ":"
+                    for i in t:
+                        if ':' in i:
+                            new_headers.append(string.split(i,':')[1])
+                        else: new_headers.append(i)
                 filename = string.replace(filename,'-steady-state.txt','.txt')
                 try:
                     import ExpressionBuilder
                     sample_group_db = ExpressionBuilder.simplerGroupImport(filename)
+                    if len(new_headers)>0:
+                        t = new_headers
                     new_headers = []
                     for v in t:
                         if v in sample_group_db:
@@ -1592,7 +1609,6 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                 except Exception:
                     #print traceback.format_exc()
                     pass
-
             group_db, column_header = assignGroupColors(t[1:])
             x=1
         elif 'column_clusters-flat' in t:
@@ -1602,7 +1618,6 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                 priorColumnClusters = prior
             except Exception:
                 pass
-
             start = 2
             getRowClusters = True
             priorRowClusters=[]
@@ -3619,13 +3634,13 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     targetGenes=[targetGene]
     if ' ' in targetGene or ',' in targetGene or '|' in targetGene or '\n' in targetGene or '\r' in targetGene:
         multipleGenes = True
-        if ' ' in targetGene: delim = ' '
-        if ',' in targetGene: delim = ','
-        if '|' in targetGene and 'alt_junction' not in originalFilename: delim = '|'
-        if '\n' in targetGene: delim = '\n'
-        if '\r' in targetGene: delim = '\r'
+        if '  ' in targetGene: targetGene = string.replace(targetGene,'  ', ' ')
+        if ',' in targetGene: targetGene = string.replace(targetGene,',', ' ')
+        if '|' in targetGene and 'alt_junction' not in originalFilename: targetGene = string.replace(targetGene,'|', ' ')
+        if '\n' in targetGene: targetGene = string.replace(targetGene,'\n', ' ')
+        if '\r' in targetGene: targetGene = string.replace(targetGene,'\r', ' ')
 
-        targetGenes = string.split(targetGene,delim)
+        targetGenes = string.split(targetGene,' ')
 
         if row_method != None: targetGenes.sort()
         
@@ -3641,7 +3656,8 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
                     try:
                         row_id = a
                         symbol = gene_to_symbol[row_id][0]
-                    except Exception: symbol =''
+                    except Exception:
+                        symbol =''
                 elif 'ENS' not in b and len(a)!=17:
                     row_id = b
                 elif 'ENS' in b:
@@ -5224,7 +5240,7 @@ def MakeJunctionFasta(filename):
     
 def ToppGeneFilter(filename):
     import gene_associations, OBO_import
-    gene_to_symbol = gene_associations.getGeneToUid('Mm',('hide','Ensembl-Symbol'))
+    gene_to_symbol = gene_associations.getGeneToUid('Hs',('hide','Ensembl-Symbol'))
     symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
     
     fn = filepath(filename)
@@ -5798,7 +5814,55 @@ def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGene
     for cell in cell_mutlilin_ranking:
         print cell[0], cell[1], string.join(expressedStatesPerCell[cell[1]],'|')
     
+def compareGenomicLocationAndICGSClusters():
+    species = 'Mm'
+    array_type = 'RNASeq'
+    import EnsemblImport
+    gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,array_type,'key_by_array')
+
+    markerfinder = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionOutput/MarkerFinder/AllCorrelationsAnnotated-ProteinCodingOnly.txt'
+    eo = export.ExportFile(markerfinder[:-4]+'-bidirectional_promoters.txt')
+    firstRow=True
+    chr_cellTypeSpecific={}
+    for line in open(markerfinder,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        symbol = t[1]
+        ensembl = t[0]
+        try: rho = float(t[6])
+        except Exception: pass
+        cellType = t[7]
+        if firstRow:
+            firstRow = False
+        else:
+            if ensembl in gene_location_db and rho>0.2:
+                chr,strand,start,end = gene_location_db[ensembl]
+                start = int(start)
+                end = int(end)
+                #region = start[:-5]
+                try:
+                    db = chr_cellTypeSpecific[chr,cellType]
+                    try: db[strand].append([start,end,symbol,ensembl])
+                    except Exception: db[strand] = [[start,end,symbol,ensembl]]
+                except Exception:
+                    db={}
+                    db[strand] = [[start,end,symbol,ensembl]]
+                    chr_cellTypeSpecific[chr,cellType] = db
+
+    bidirectional={}
+    eo.write(string.join(['CellType','Chr','Ensembl1','Symbol1','Start1','End1','Strand1','Ensembl2','Symbol2','Start2','End2','Strand2'],'\t')+'\n')
+    for (chr,cellType) in chr_cellTypeSpecific:
+        db = chr_cellTypeSpecific[chr,cellType]
+        if len(db)>1: ### hence two strands
+            for (start,end,symbol,ens) in db['+']:
+                for (start2,end2,symbol2,ens2) in db['-']:
+                    if abs(start-end2)<100000 and start>end2:
+                        eo.write(string.join([cellType,chr,ens,symbol,str(start),str(end),'+',ens2,symbol2,str(end2),str(start2),'-'],'\t')+'\n')
+                        try: bidirectional[chr,cellType].append([start,end,symbol,ens,start2,end2,symbol2,ens2])
+                        except Exception: bidirectional[chr,cellType] = [[start,end,symbol,ens,start2,end2,symbol2,ens2]]
+    eo.close()
 if __name__ == '__main__':
+    compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()
     query_dataset = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
@@ -5835,11 +5899,13 @@ if __name__ == '__main__':
     #filename = '/Users/saljh8/Desktop/Grimes/GEC14074/ExpressionOutput/LineageCorrelations-test-protein_coding-zscores.txt'
     #runHCOnly(filename,[]); sys.exit()
     folder = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/ensembl/Hs'
-    files = UI.read_directory(folder)
-    for file in files: #:70895507-70895600
-        if '.bed' in file:
-            #BedFileCheck(folder+'/'+file)
-            pass
+    try:
+        files = UI.read_directory(folder)
+        for file in files: #:70895507-70895600
+            if '.bed' in file:
+                #BedFileCheck(folder+'/'+file)
+                pass
+    except Exception: pass
     #sys.exit()
     #runPCAonly(filename,[],False,showLabels=False,plotType='2D');sys.exit()
     
@@ -5875,7 +5941,7 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/MDS-array/Comb-plot genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot3.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/wt_panorama/Super.Panorama.v4_1-5-2015/ExpressionInput/Markers2.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Goodridge/iMo/Combined-iMo-pMo/ExpressionInput/genes.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -5886,7 +5952,8 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/exp.Lsk_panorama.txt'
     filename = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
     filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/wt_panorama/Super.Panorama.v4_1-5-2015/ExpressionInput/exp.SuperPanorama_v5-SLAM-LSK.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Goodridge/iMo/Combined-iMo-pMo/ExpressionInput/exp.combined.txt'
+    
     print genesets
     for gene_list in genesets:
         multipleSubPlots(filename,gene_list,SubPlotType='column')

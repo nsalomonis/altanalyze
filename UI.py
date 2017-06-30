@@ -72,8 +72,10 @@ except Exception:
     None
 
 command_args = string.join(sys.argv,' ')
-if len(sys.argv[1:])>1 and '-' in command_args and '--GUI' not in command_args: pass
+if len(sys.argv[1:])>1 and '-' in command_args and '--GUI' not in command_args:
+    runningCommandLine = True
 else:
+    runningCommandLine = False
     try:
         import Tkinter 
         #import bwidget; from bwidget import *
@@ -560,7 +562,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         normalize_feature_exp = flx.FeatureNormalization()
         try: excludeLowExpressionExons = flx.excludeLowExpressionExons()
         except Exception: excludeLowExpressionExons = True
-
+ 
         if flx.useJunctionsForGeneExpression():
             if 'junction' in biotypes:
                 feature = 'junction'
@@ -590,10 +592,11 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         except Exception:
             None
         print_out = 'Expression quantification failed..\n',error
-        try: print print_out
-        except Exception: pass ### Windows issue with the Tk status window stalling after pylab.show is called
-        try: WarningWindow(print_out,'Continue')
-        except Exception: pass
+        if runningCommandLine==False:
+            try: print print_out
+            except Exception: pass ### Windows issue with the Tk status window stalling after pylab.show is called
+            try: WarningWindow(print_out,'Continue')
+            except Exception: pass
         try: root.destroy()
         except Exception: pass
 
@@ -1072,7 +1075,11 @@ class GUI:
     def PredictGroups(self):
         self.button_flag = True
         self.graphic_link = {}
-        import Image
+        try: import ImageTk
+        except Exception:
+            from PIL import ImageTk
+            from PIL import Image
+        
         self.toplevel_list=[] ### Keep track to kill later
         
         self.filename_db={}
@@ -1090,7 +1097,6 @@ class GUI:
         self.options = filenames_ls
         self.default_option = 0
         self.comboBox() ### This is where the cluster group gets selected and stored
-        
   
         # create a frame and pack it
         frame1 = Tkinter.Frame(self.parent_type)
@@ -1540,7 +1546,9 @@ class GUI:
         
     def viewPNGFile(self,tl):
         """ View PNG file within a PMW Tkinter frame """
-        import ImageTk ### HAVE TO CALL HERE TO TRIGGER AN ERROR - DON'T WANT THE TopLevel to open otherwise
+        try: import ImageTk ### HAVE TO CALL HERE TO TRIGGER AN ERROR - DON'T WANT THE TopLevel to open otherwise
+        except Exception:
+            from PIL import ImageTk
         png_file_dir = self.graphic_link['WP']
         img = ImageTk.PhotoImage(file=png_file_dir)
         
@@ -3612,8 +3620,11 @@ class FeedbackWindow:
         self._user_variables={}
         
         filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
-        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
-        can.create_image(2, 2, image=img, anchor=NW)
+            
+        try:
+            can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())
+            can.create_image(2, 2, image=img, anchor=NW)
+        except Exception: pass
         
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()
         text_button = Button(parent, text=self.button_text, command=self.button1); text_button.pack(side = 'bottom', padx = 5, pady = 5)
@@ -3634,8 +3645,10 @@ class IndicatorWindowSimple:
         parent = Tk(); self._parent = parent; nulls = '\t\t\t\t\t\t\t'; parent.title('Attention!!!')
 
         filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
-        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
-        can.create_image(2, 2, image=img, anchor=NW)
+        try: 
+            can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
+            can.create_image(2, 2, image=img, anchor=NW)
+        except Exception: pass
         
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
         text_button = Button(parent, text=self.button_text, command=parent.destroy); text_button.pack(side = 'bottom', padx = 5, pady = 5)
@@ -3647,8 +3660,10 @@ class IndicatorWindow:
         parent = Tk(); self._parent = parent; nulls = '\t\t\t\t\t\t\t'; parent.title('Attention!!!')
 
         filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
-        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
-        can.create_image(2, 2, image=img, anchor=NW)
+        try:
+            can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
+            can.create_image(2, 2, image=img, anchor=NW)
+        except Exception: pass
         
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
         quit_button = Button(parent, text='Quit', command=self.quit); quit_button.pack(side = 'bottom', padx = 5, pady = 5)
@@ -3759,8 +3774,17 @@ class MacConsiderations:
         self._parent = parent
         parent.title('AltAnalyze: Considerations for Mac OSX')
         self._user_variables={}
-        filename = 'Config/MacOSX.png'; #fn=filepath(filename); img = PhotoImage(file=fn)
-        img = ImageTk.PhotoImage(file=filepath(filename))
+        filename = 'Config/MacOSX.png'
+        try:
+            import ImageTk
+            img = ImageTk.PhotoImage(file=filepath(filename))
+        except Exception:
+            try:
+                from PIL import ImageTk
+                img = ImageTk.PhotoImage(file=filepath(filename))
+            except Exception: 
+                filename = 'Config/MacOSX.gif'
+                fn=filepath(filename); img = PhotoImage(file=fn)
         can = Canvas(parent); can.pack(side='top',fill=BOTH); can.config(width=img.width(), height=img.height())        
         can.create_image(2, 2, image=img, anchor=NW)
 
@@ -4519,7 +4543,9 @@ def getUserParameters(run_parameter,Multi=None):
 
     if os.name == 'posix' and run_parameter == 'yes':
         try: MacConsiderations()
-        except Exception: pass
+        except Exception:
+            print traceback.format_exc()
+            sys.exit()
     ### Get default options for ExpressionBuilder and AltAnalyze
 
     na = 'NA'; log = 'log'; no = 'no'

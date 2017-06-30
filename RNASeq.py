@@ -602,7 +602,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                             chr = 'chr'+chr
                         if searchChr == chr or ('BioScope' in algorithm and searchChr == t[1]): proceed = True
                         elif searchChr == 'chrMT' and ('BioScope' not in algorithm):
-                            if 'M' in chr: proceed = True
+                            if 'M' in chr and len(chr)<6: proceed = True ### If you don't have the length, any random thing with an M will get included
                             else: proceed = False
                         else: proceed = False
                     except IndexError:
@@ -1085,7 +1085,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name,Mu
     junctionCompFile = p.junctionCompFile()
     novelJunctionAnnotations = p.novelJunctionAnnotations()
     
-    #chromosomes = ['chr1']
+    #chromosomes = ['chrMT']
     #p('chrY'); p('chr1'); p('chr2')
     #chromosomes = ['chr8','chr17']
     multiprocessing_pipe = True
@@ -2132,7 +2132,19 @@ def formatID(id):
     ### JunctionArray methods handle IDs with ":" different than those that lack this
     return string.replace(id,':','@')
 
-            
+def filterChromosomes(chromosome_names):
+    ### If transcriptome only aligned to Ensembl reference, many chromosomes are not real
+    updated_chromosomes=[]
+    chr_count=0
+    for chr in chromosome_names:
+        if 'chr' in chr and len(chr)<7:
+            chr_count+=1
+            updated_chromosomes.append(chr)
+    if chr_count>1:
+        return updated_chromosomes
+    else:
+        return chromosome_names
+        
 def getChromosomeStrandCoordinates(species,testImport):
     ### For novel junctions with no known-splice site, map to genes
     gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,'RNASeq','key_by_array')
@@ -2149,6 +2161,7 @@ def getChromosomeStrandCoordinates(species,testImport):
             if chr=='chrMT': chromosome_names[chr]=[] ### Gene rich chromosome
         elif len(chr)<7: chromosome_names[chr]=[]
         all_chromosomes[chr]=[]
+    #chromosome_names = filterChromosomes(chromosome_names)
     ### Some organisms aren't organized into classical chromosomes (why I don't know)
     if len(chromosome_names)<10 and len(all_chromosomes)>9 and testImport=='no': chromosome_names = all_chromosomes
     return chr_strand_gene_db,location_gene_db,chromosome_names,gene_location_db
@@ -2438,7 +2451,8 @@ def annotateNovelJunctions(novel_junction_db,novel_exon_db,exons_to_export):
                 if e1 in novel_exon_lookup_db and e2 in novel_exon_lookup_db:
                     proceed = 'yes'
                     try: ed1 = novel_exon_lookup_db[e1]; red1 = ed1.ExonRegionData(); gene1 = e1[0]
-                    except Exception: print e1; kill
+                    except Exception:
+                        print chr, key, e1; kill
                     ed2 = novel_exon_lookup_db[e2]; red2 = ed2.ExonRegionData(); gene2 = e2[0]
                     ### If the splice-site was a match to a known junciton splice site, use it instead of that identified by exon-region location overlapp
                     if ji.LeftExonAnnotations() != None: region1 = ji.LeftExonAnnotations()
@@ -2669,7 +2683,7 @@ def getMaxCounts(fn,cutoff,filterExport=False,filterExportDir=False):
         eo=export.ExportFile(filterExportDir)
         
     for line in open(fn,'rU').xreadlines():
-        Line = line.rstrip('\n')
+        Line = cleanUpLine(line)
         t = string.split(Line,'\t')
         key = t[0]
         if firstLine:
@@ -3818,14 +3832,15 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
     for i in row_header:
         if 'ENS' in i and '-' in i and ':' in i: Platform = 'exons'
             
-    
+    #print hits_to_report
     if hits_to_report == 1:
         ### Select the best gene using correlation counts and TFs
         try:
             import OBO_import; import ExpressionBuilder
             gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
             symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)            
-            TFs = importGeneSets('Biotypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
+            try: TFs = importGeneSets('Biotypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
+            except Exception: TFs = importGeneSets('BioTypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
             if excludeCellCycle == True or excludeCellCycle == 'strict':
                 cell_cycle = importGeneSets('KEGG',filterType='Cell cycle:',geneAnnotations=gene_to_symbol_db)
                 cell_cycle_go = importGeneSets('GeneOntology',filterType='GO:0022402',geneAnnotations=gene_to_symbol_db)
@@ -3836,6 +3851,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 cell_cycle={}
 
         except Exception:
+            print traceback.format_exc()
             symbol_to_gene={}; TFs={}; cell_cycle={}
         gene_corr_counts = numpyCorrelationMatrixCount(matrix,row_header,cutoff=0.4,geneTypeReport=TFs)
         
@@ -5021,7 +5037,7 @@ if __name__ == '__main__':
     expFile = '/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/exp.GBM_scRNA-Seq-steady-state.txt'
     #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
-    filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/FCU/ExpressionInput/counts.test.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Trumpp-HSC-2017/counts.rawTrumpp.txt'
     #fastRPKMCalculate(filename);sys.exit()
     calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()

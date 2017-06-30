@@ -5447,6 +5447,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             outputExonCoordinateRefBEDfile = bam_dir+'/BedRef/'+species+'_'+string.replace(dataset,'exp.','')
             analysisType = ['exon','junction','reference']
             #analysisType = ['junction']
+            #print [fl.multiThreading()]
             multiBAMtoBED.parallelBAMProcessing(bam_dir,refExonCoordinateFile,outputExonCoordinateRefBEDfile,analysisType=analysisType,useMultiProcessing=fl.multiThreading(),MLP=mlp,root=root)
     
           biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp)
@@ -6487,6 +6488,8 @@ def commandLineRun():
             log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
             sys.stdout = Logger('')
+            try: print string.join(arguments,' ')
+            except Exception: pass
             count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'
@@ -7318,6 +7321,9 @@ def commandLineRun():
             print e
             print 'Please designate an output directory before proceeding (e.g., --output "C:\RNASeq)';sys.exit()
 
+    try: print string.join(arguments,' ')
+    except Exception: pass
+            
     if mappedExonAnalysis:
         array_type = 'RNASeq' ### Although this is not the actual platform, the resulting data will be treated as RNA-Seq with parameters most suitable for arrays
 
