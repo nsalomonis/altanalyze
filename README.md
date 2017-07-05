@@ -4,4 +4,4 @@ AltAnalyze is an extreemly user-friendly and open-source analysis tool that can 
 
 **News Update** [8/31/16](News)
 
-![http://www.altanalyze.org/image/AltAnalyze_structure_v4.jpg](http://www.altanalyze.org/image/AltAnalyze_structure_v4.jpg)
+![http://altanalyze.readthedocs.io/en/latest/images/AltAnalyzeOverview.gif](http://altanalyze.readthedocs.io/en/latest/images/AltAnalyzeOverview.gif)
