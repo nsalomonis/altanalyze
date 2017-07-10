@@ -486,7 +486,7 @@ def importPhenotypeOntologyGeneAssociations():
         t = string.split(data,'\t')
         hs_symbol=t[0]; hs_entrez=t[1]; mm_symbol=t[2]; mgi=t[3]; pheno_ids=t[4]
         if 'MP' not in pheno_ids:
-            try: pheno_ids = t[5]
+            try: mm_symbol=t[3]; mgi=t[4]; pheno_ids=t[5]
             except Exception: pass
         hs_symbol = string.lower(hs_symbol)
         mm_symbol = string.lower(mm_symbol)
