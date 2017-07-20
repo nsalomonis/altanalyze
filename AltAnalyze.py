@@ -6551,17 +6551,12 @@ def commandLineRun():
             log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
             sys.stdout = Logger('')
-<<<<<<< HEAD
             
             print "\nFull commandline:"
             try: print string.join(arguments,' ')
             except Exception: pass
             print ''
 
-=======
-            try: print string.join(arguments,' ')
-            except Exception: pass
->>>>>>> origin/master
             count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'
@@ -6587,17 +6582,27 @@ def commandLineRun():
                 print "Excluding Cell Cycle effects status:",excludeCellCycle
 
             graphic_links = UI.RemotePredictSampleExpGroups(expFile, mlp_instance, gsp,(species,array_type)) ### proceed to run the full discovery analysis here!!!
-            
+                        
             ### Export Guide3 Groups automatically
             Guide3_results = graphic_links[-1][-1][:-4]+'.txt'
-            RNASeq.exportGroupsFromClusters(Guide3_results,fl.ExpFile(),array_type)
             
+            new_groups_dir = RNASeq.exportGroupsFromClusters(Guide3_results,fl.ExpFile(),array_type,suffix='ICGS')
+
+            from import_scripts import sampleIndexSelection
+            newExpFile = expFile[:-4]+'-ICGS.txt'
+            print '||||||||||||',fl.ExpFile()
+            print '||||||||||||',newExpFile
+            ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
+            sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
+            fl.setExpFile(newExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
+
+            new_groups_dir
             ### Build-tSNE plot
             UI.performPCA(Guide3_results, 'no', 't-SNE', False, None, plotType='2D',
                 display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False, separateGenePlots=False)
             
             ### force MarkerFinder to be run
-            input_exp_file = expFile
+            input_exp_file = newExpFile  ### Point MarkerFinder to the new ICGS ordered copied expression file
 
             update_method = ['markers'] 
             

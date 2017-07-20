@@ -45,6 +45,7 @@ def filterFile(input_file,output_file,filter_names,force=False):
         export_object.write(string.join([values[0]]+filtered_values,'\t')+'\n')
     export_object.close()
     print 'Filtered columns printed to:',output_file
+    return output_file
 
 def filterRows(input_file,output_file,filterDB=None,logData=False):
     export_object = open(output_file,'w')

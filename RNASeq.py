@@ -4012,7 +4012,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
 
     return final_rows, column_header
 
-def exportGroupsFromClusters(cluster_file,expFile,platform):
+def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
     lineNum=1
     for line in open(cluster_file,'rU').xreadlines():
         line = line[:-1]
@@ -4023,7 +4023,10 @@ def exportGroupsFromClusters(cluster_file,expFile,platform):
 
     unique_clusters=[] ### Export groups
     
-    out_obj = export.ExportFile(string.replace(expFile,'exp.','groups.'))
+    new_groups_dir = string.replace(expFile,'exp.','groups.')
+    if suffix != None:
+        new_groups_dir = new_groups_dir[:-4]+'-'+suffix+'.txt' ###Usually end in ICGS
+    out_obj = export.ExportFile(new_groups_dir)
     for name in names:
         cluster = clusters[names.index(name)]
         if platform == 'RNASeq':
@@ -4045,6 +4048,7 @@ def exportGroupsFromClusters(cluster_file,expFile,platform):
                 out_obj.write(str(temp[0])+'\t'+str(temp[1])+'\n')
                 comps.append(temp)
     out_obj.close()
+    return new_groups_dir
 
 def logTransform(value):
     try: v = math.log(value,2)
@@ -5079,10 +5083,8 @@ if __name__ == '__main__':
     #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Trumpp-HSC-2017/counts.rawTrumpp.txt'
-<<<<<<< HEAD
     filename = '/Volumes/salomonis2/Erica-data/GSE98451/counts.GSE98451_uterus_single_cell_RNA-Seq_counts-Ensembl.txt'
-=======
->>>>>>> origin/master
+
     #fastRPKMCalculate(filename);sys.exit()
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()

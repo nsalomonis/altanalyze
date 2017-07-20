@@ -6482,7 +6482,15 @@ def getUserParameters(run_parameter,Multi=None):
                     fl.setCompsFile(comps_file)
                     exp_file_location_db={}
                     exp_file_location_db[dataset_name+'-OutliersRemoved'] = fl
-                RNASeq.exportGroupsFromClusters(group_selected,fl.ExpFile(),array_type)
+                ### Create the new groups file but don't over-write the old
+                new_groups_dir = RNASeq.exportGroupsFromClusters(group_selected,fl.ExpFile(),array_type,suffix='ICGS')
+                from import_scripts import sampleIndexSelection
+                newExpFile = expFile[:-4]+'-ICGS.txt'
+                ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
+                sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
+                print '||||||||||||',fl.expFile()
+                print '||||||||||||',newExpFile
+                fl.setExpFile(newExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
                 run_from_scratch = 'Process Expression file'
             else:
                 #print 're-initializing window'
