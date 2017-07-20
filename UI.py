@@ -6488,8 +6488,8 @@ def getUserParameters(run_parameter,Multi=None):
                 newExpFile = expFile[:-4]+'-ICGS.txt'
                 ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
                 sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
-                print '||||||||||||',fl.expFile()
-                print '||||||||||||',newExpFile
+                #print '||||||||||||',fl.expFile()
+                #print '||||||||||||',newExpFile
                 fl.setExpFile(newExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
                 run_from_scratch = 'Process Expression file'
             else:

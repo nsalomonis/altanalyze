@@ -4043,12 +4043,19 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
     out_obj.close()
     comps=[] #Export comps
     out_obj = export.ExportFile(new_comps_dir)
+    """ ### All possible pairwise group comparisons
     for c1 in unique_clusters:
         for c2 in unique_clusters:
             temp=[int(c2),int(c1)]; temp.sort(); temp.reverse()
             if c1 != c2 and temp not in comps:
                 out_obj.write(str(temp[0])+'\t'+str(temp[1])+'\n')
                 comps.append(temp)
+    """
+    ### Simple method comparing each subsequent ordered cluster (HOPACH orders based on relative similarity)
+    last_cluster = None
+    for c1 in unique_clusters:
+        if last_cluster !=None:
+            out_obj.write(c1+'\t'+last_cluster+'\n')
     out_obj.close()
     return new_groups_dir
 

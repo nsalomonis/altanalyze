@@ -6590,8 +6590,7 @@ def commandLineRun():
 
             from import_scripts import sampleIndexSelection
             newExpFile = expFile[:-4]+'-ICGS.txt'
-            print '||||||||||||',fl.ExpFile()
-            print '||||||||||||',newExpFile
+            
             ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
             sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
             fl.setExpFile(newExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
