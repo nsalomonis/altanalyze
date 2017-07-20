@@ -5079,7 +5079,10 @@ if __name__ == '__main__':
     #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Trumpp-HSC-2017/counts.rawTrumpp.txt'
+<<<<<<< HEAD
     filename = '/Volumes/salomonis2/Erica-data/GSE98451/counts.GSE98451_uterus_single_cell_RNA-Seq_counts-Ensembl.txt'
+=======
+>>>>>>> origin/master
     #fastRPKMCalculate(filename);sys.exit()
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()

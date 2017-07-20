@@ -6551,12 +6551,17 @@ def commandLineRun():
             log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
             sys.stdout = Logger('')
+<<<<<<< HEAD
             
             print "\nFull commandline:"
             try: print string.join(arguments,' ')
             except Exception: pass
             print ''
 
+=======
+            try: print string.join(arguments,' ')
+            except Exception: pass
+>>>>>>> origin/master
             count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'

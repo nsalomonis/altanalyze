@@ -68,10 +68,17 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
     bamfile = pysam.Samfile(bam_dir, "rb" )
     reference_rows=0
     output_bed_rows=0
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
     exportCoordinates=True
     try:
         from import_scripts import BAMtoJunctionBED
         retainedIntrons, chrm_found, gene_coord_db = BAMtoJunctionBED.retreiveAllKnownSpliceSites(returnExonRetention=True,DesignatedSpecies=species,path=bam_dir)
+=======
+    
+    try:
+        import BAMtoJunctionBED
+        retainedIntrons, chrm_found = BAMtoJunctionBED.retreiveAllKnownSpliceSites(returnExonRetention=True,DesignatedSpecies=species,path=bam_dir)
+>>>>>>> origin/master:BAMtoExonBED.py
     except Exception:
         #print traceback.format_exc();sys.exit()
         retainedIntrons={}
@@ -193,13 +200,18 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
             if intronRetentionOnly:
                 if ':E' in exon and exon not in retainedIntrons:
                     continue
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
             if ':I' in exon or exon in retainedIntrons:
+=======
+            if 'I' in exon or exon in retainedIntrons:
+>>>>>>> origin/master:BAMtoExonBED.py
                 INTRON = True
             else:
                 INTRON = False
             start,stop=int(start),int(stop)
             regionLen = abs(start-stop)
             interval_read_count=0
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
             if exportCoordinates:
                 if regionLen<700:
                     exportIntervals = [[start-50,stop+50]] ### Buffer intron into the exon
@@ -210,6 +222,8 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                     interval = map(str,interval)
                     eo.write(string.join([chr]+interval+[exon,'',strand],'\t')+'\n')
                 #chr = '*'
+=======
+>>>>>>> origin/master:BAMtoExonBED.py
             for alignedread in bamfile.fetch(chr, start,stop):
                 proceed = True
                 interval_read_count+=1
@@ -282,7 +296,11 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                         if alignedread.query_name in intronJunction:
                                             ir = intronJunction[alignedread.query_name]
                                             found = ir.For_and_Rev_Present()
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
                                             if found: ### if the intron is less 500 (CAN CAUSE ISSUES IF READS BLEED OVER ON BOTH SIDES OF THE INTRON)
+=======
+                                            if found or regionLen<500: ### if the intron is less 500 (CAN CAUSE ISSUES IF READS BLEED OVER ON BOTH SIDES OF THE INTRON)
+>>>>>>> origin/master:BAMtoExonBED.py
                                                 combined_pos = ir.CombinedPositions()
                                                 read_pos = ir.IntronSpanningRead()
                                                 if read_pos[0]==combined_pos[0]:
@@ -331,7 +349,11 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                 o.write(string.join(entries,'\t')+'\n')
                 output_bed_rows+=1
             #"""
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
             if INTRON and five_intron_junction_count>4 and three_intron_junction_count>4:
+=======
+            if INTRON and five_intron_junction_count>0 and three_intron_junction_count>0:
+>>>>>>> origin/master:BAMtoExonBED.py
                 interval_read_count = interval_read_count/2 ### if paired-end reads
                 #print interval_read_count, five_intron_junction_count, three_intron_junction_count
                 #print abs((math.log(five_intron_junction_count,2)-math.log(three_intron_junction_count,2)))
@@ -355,7 +377,10 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                     io.write(string.join(entries,'\t')+'\n')
                     intron_count+=1
                     output_bed_rows+=1
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
                     #if output_bed_rows==1000: break
+=======
+>>>>>>> origin/master:BAMtoExonBED.py
             #"""
         except Exception,e:
             #print e;sys.exit()
@@ -364,8 +389,11 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                 print 'Please ensure an index exists for the bam file:',bam_dir;sys.exit()
     try: o.close()
     except Exception: pass
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
     try: eo.close()
     except Exception: pass
+=======
+>>>>>>> origin/master:BAMtoExonBED.py
     try: io.close()
     except Exception: pass
     bamfile.close()
@@ -382,11 +410,18 @@ if __name__ == "__main__":
         print "Example: python BAMtoExonBED.py --i /Users/me/sample1.bam --r /Users/me/Hs_exon-cancer_hg19.bed"
         sys.exit()
     else:
+<<<<<<< HEAD:import_scripts/BAMtoExonBED.py
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','r=','s=','species='])
         for opt, arg in options:
             if opt == '--i': bam_dir=arg ### A single BAM file location (full path)
             elif opt == '--s': species = arg
             elif opt == '--species': species = arg
+=======
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','r=','s='])
+        for opt, arg in options:
+            if opt == '--i': bam_dir=arg ### A single BAM file location (full path)
+            elif opt == '--s': species = arg
+>>>>>>> origin/master:BAMtoExonBED.py
             elif opt == '--r': reference_dir=arg ### An exon.bed reference file (created by AltAnalyze from junctions, multiBAMtoBED.py or other)
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()

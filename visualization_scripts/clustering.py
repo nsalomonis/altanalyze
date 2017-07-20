@@ -24,7 +24,11 @@ command_args = string.join(sys.argv,' ')
 if len(sys.argv[1:])>0 and '--' in command_args: commandLine=True
 else: commandLine=False
 
+<<<<<<< HEAD:visualization_scripts/clustering.py
 display_label_names = False
+=======
+display_label_names = True
+>>>>>>> origin/master:clustering.py
 
 import traceback
 try:
@@ -5827,7 +5831,11 @@ def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGene
 def compareGenomicLocationAndICGSClusters():
     species = 'Mm'
     array_type = 'RNASeq'
+<<<<<<< HEAD:visualization_scripts/clustering.py
     from build_scripts import EnsemblImport
+=======
+    import EnsemblImport
+>>>>>>> origin/master:clustering.py
     gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,array_type,'key_by_array')
 
     markerfinder = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionOutput/MarkerFinder/AllCorrelationsAnnotated-ProteinCodingOnly.txt'
@@ -5871,6 +5879,7 @@ def compareGenomicLocationAndICGSClusters():
                         try: bidirectional[chr,cellType].append([start,end,symbol,ens,start2,end2,symbol2,ens2])
                         except Exception: bidirectional[chr,cellType] = [[start,end,symbol,ens,start2,end2,symbol2,ens2]]
     eo.close()
+<<<<<<< HEAD:visualization_scripts/clustering.py
     
 def filterCountsFile(filename):
     fn = filepath(filename)
@@ -5901,6 +5910,9 @@ def filterCountsFile(filename):
     
 if __name__ == '__main__':
     filterCountsFile('/data/salomonis2/Leucegene_project/combined_bams/ExpressionInput/counts.Leucegene.txt');sys.exit()
+=======
+if __name__ == '__main__':
+>>>>>>> origin/master:clustering.py
     compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()

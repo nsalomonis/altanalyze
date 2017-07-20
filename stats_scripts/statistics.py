@@ -987,7 +987,11 @@ def matrixImport(filename):
 
 def runANOVA(filename,matrix,compared_groups):
     try:
+<<<<<<< HEAD:stats_scripts/statistics.py
         from import_scripts import AugmentEventAnnotations
+=======
+        import AugmentEventAnnotations
+>>>>>>> origin/master:statistics.py
         annotationFile = string.replace(filename,'-clust.txt','_EventAnnotation.txt')
         eventAnnotations = AugmentEventAnnotations.importPSIAnnotations(annotationFile)
     except Exception:
