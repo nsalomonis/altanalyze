@@ -23,9 +23,8 @@ import sys, string
 import os.path
 import unique
 import math
-import statistics
-import gene_associations
-import OBO_import
+from stats_scripts import statistics
+from import_scripts import OBO_import
 import export
 import re
 

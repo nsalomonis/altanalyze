@@ -19,7 +19,7 @@
 import sys, string
 import os.path
 import unique
-import statistics
+from stats_scripts import statistics
 import math
 
 def filepath(filename):
@@ -327,7 +327,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
             statistics.adjustPermuteStats(pval_db)
         else:
             ### Calculate a qvalue (https://github.com/nfusi/qvalue)
-            import numpy; import qvalue; pvals = []; keys = []
+            import numpy; from stats_scripts import qvalue; pvals = []; keys = []
             for key in pval_db: pvals.append(pval_db[key].Pval()); keys.append(key)
             pvals = numpy.array(pvals)
             pvals = qvalue.estimate(pvals)

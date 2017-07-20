@@ -48,7 +48,7 @@ except Exception: None
 try: import export ### Not required (used in AltAnalyze)
 except Exception: None
 
-#import salstat_stats; reload(salstat_stats)
+#from stats_scripts import salstat_stats; reload(salstat_stats)
 try:
     from scipy import stats
     use_scipy = True
@@ -1489,7 +1489,7 @@ def PearsonCorrelationAnalysis(sample_exp_db,tissue_exp_db):
                     pearson_list.append(rho)
                 except Exception: None ### Occurs when an invalid string is present - ignore and move onto the next model
             """
-            import salstat_stats
+            from stats_scripts import salstat_stats
             tst = salstat_stats.TwoSampleTests(tissue_expression_list,sample_expression_list)
             pp,pr = tst.PearsonsCorrelation()
             sp,sr = tst.SpearmansCorrelation()
@@ -1535,7 +1535,7 @@ def adjustPValues():
         Currently this method is not employed since the p-values are not sufficiently
         stringent or appropriate for this type of analysis """
         
-    import statistics
+    from stats_scripts import statistics
     all_sample_data={}
     for tissue in tissue_comparison_scores:
         for (r,p,sample) in tissue_comparison_scores[tissue]:
@@ -1677,7 +1677,7 @@ def exportCorrelationResults():
     return zscore_output_dir, tissue_scores
 
 def visualizeLineageZscores(zscore_output_dir,grouped_lineage_zscore_dir,graphic_links):
-    import clustering
+    from visualization_scripts import clustering
     ### Perform hierarchical clustering on the LineageProfiler Zscores
     graphic_links = clustering.runHCOnly(zscore_output_dir,graphic_links)   
     return graphic_links
@@ -2004,7 +2004,7 @@ def allPairwiseSampleCorrelation(fn):
     def subtract(values):
         return values[0]-values[1]
     
-    import statistics
+    from stats_scripts import statistics
     results=[]
     n = len(all_samples_names)
     e = len(exp_set)
@@ -2059,7 +2059,7 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     """
     
     output_file = importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,classification_file)
-    import clustering
+    from visualization_scripts import clustering
     row_method = None; row_metric = 'cosine'; column_method = None; column_metric = 'euclidean'; color_gradient = 'yellow_black_blue'
     transpose = False; Normalize='median'
     graphics = clustering.runHCexplicit(output_file, [], row_method, row_metric,
@@ -2071,8 +2071,7 @@ class ClassificationData:
     def Sample(self): return self.sample
     def Score(self): return self.score
     def AssignedClass(self): return self.assigned_class
-    
-    
+      
 def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,classification_file):
     """Harmonize the numerical types and feature IDs of the input files, then combine """
     
@@ -2191,7 +2190,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     
     """ Re-order the samples based on the classification analysis """
     ### The ref_headers has the original reference sample order used to guide the query samples
-    import sampleIndexSelection
+    from import_scripts import sampleIndexSelection
     input_file=output_dir
     output_file = input_file[:-4]+'-ReOrdered.txt'
     filter_names = new_headers
@@ -2290,6 +2289,18 @@ def importExpressionFile(input_file,ignoreClusters=False):
                 expression_db[uid] = numericVals
     return expression_db, header_row, column_cluster_index
             
+def convertICGSClustersToExpression(heatmap_file):
+    """This function will import an ICGS row normalized heatmap and return raw
+    expression values substituted for the values. """
+    from visualization_scripts import clustering
+    graphic_links=[]
+    row_method='hopach'
+    column_method='hopach'
+    column_metric = None
+    row_metric = None
+    cc_graphic_links = clustering.runHCexplicit(heatmap_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
+
+
 if __name__ == '__main__':
     #"""
     reference_exp_file = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/Gottgens_HarmonizeReference.txt'

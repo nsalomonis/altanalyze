@@ -324,7 +324,7 @@ def importqueryResults(species,dir_file,id_db):
             print traceback.format_exc()
             print 'No valid directories or IDs provided. Exiting.'; kill
         if translated==0:
-            import WikiPathways_webservice
+            from visualization_scripts import WikiPathways_webservice
             try: query_db = WikiPathways_webservice.importDataSimple(dir_file,None,MOD='Ensembl',Species=species)[0]
             except Exception: ### If metabolomics
                 query_db = WikiPathways_webservice.importDataSimple(dir_file,None,MOD='HMDB',Species=species)[0]
@@ -780,7 +780,7 @@ def exportSelectedIDs(input_IDs):
     return expressionFile
     
 def exportGraphImage(species,sif_file,expressionFile):
-    import clustering
+    from visualization_scripts import clustering
     output_filename = clustering.buildGraphFromSIF('Ensembl',species,sif_file,expressionFile)
     return output_filename
 

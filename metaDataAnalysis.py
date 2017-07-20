@@ -3,7 +3,7 @@ import os, re
 import unique
 import export
 import math
-import statistics
+from stats_scripts import statistics
 import traceback
 
 """
@@ -273,7 +273,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,sample_met
     
     try:
         gene_to_symbol,system_code = getAnnotations(species,platform)
-        import OBO_import
+        from import_scripts import OBO_import
         symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
     except ZeroDivisionError: gene_to_symbol={}; system_code=''
     
@@ -502,7 +502,7 @@ def getAnnotations(species,platform):
         gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
         system_code = 'En'
         if platform == 'miRSeq':
-            import OBO_import
+            from import_scripts import OBO_import
             gene_to_symbol = OBO_import.swapKeyValues(gene_to_symbol)
     if platform == 'methylation':
         gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
@@ -512,7 +512,7 @@ def getAnnotations(species,platform):
 
 def importMethylationAnnotations(species,gene_to_symbol):
     filename = 'AltDatabase/ucsc/'+species+'/illumina_genes.txt'
-    import OBO_import
+    from import_scripts import OBO_import
     symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
     firstLine=True
     probe_gene_db={}
@@ -854,7 +854,7 @@ def identifyCommonGenes(resultsDirectory):
                     nonUniqueDonorGenes = importResultsSummary(filepath,comparison,nonUniqueDonorGenes)
 
     #nonUniqueDonorGenes = uniqueDonorGenes
-    import EnsemblImport
+    from build_scripts import EnsemblImport
     try: gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,platform,'key_by_array')
     except Exception: gene_location_db={}
     
@@ -1238,7 +1238,7 @@ if __name__ == '__main__':
         if diffStateQuery != 'all': diffState_set = [diffStateQuery]
         print 'Filtering on adjusted p-value:',use_adjusted_p
 
-        import EnsemblImport
+        from build_scripts import EnsemblImport
         try: gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,platform,'key_by_array')
         except Exception: gene_location_db={}
         

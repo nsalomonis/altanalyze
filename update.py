@@ -27,7 +27,7 @@ import sys
 import unique
 import string
 import export
-try: import ExonArray
+try: from build_scripts import ExonArray
 except Exception: null=[]
 
 def filepath(filename):
@@ -104,8 +104,8 @@ def buildJunctionExonAnnotations(species,array_type,specific_array_type,force,ge
     #buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
 
     ### Get genomic locations and initial annotations for exon sequences (exon pobesets and junctions)    
-    import JunctionArray
-    import JunctionArrayEnsemblRules
+    from build_scripts import JunctionArray
+    from build_scripts import JunctionArrayEnsemblRules
     """ The following functions:
     1) Extract transcript cluster-to-gene annotations
     2) Extract exon sequences for junctions and exon probesets from the Affymetrix annotation file (version 2.0),
@@ -142,14 +142,14 @@ def buildAltMouseExonAnnotations(species,array_type,force,genomic_build):
     written as "Mm_AltMouse_Ensembl_probeset.txt".
     """
     
-    import JunctionArray
-    import JunctionArrayEnsemblRules    
+    from build_scripts import JunctionArray
+    from build_scripts import JunctionArrayEnsemblRules    
     rederive_exonseq = 'no'
     ### Only needs to be run once, to export exon sequence for AltMouse array the original (1 and 2 above)
     if rederive_exonseq == 'yes':
         import AltAnalyze
-        import ExonAnnotate_module
-        import ExonAnalyze_module
+        from import_scripts import ExonAnnotate_module
+        from build_scripts import ExonAnalyze_module
         agglomerate_inclusion_probesets = 'no'; onlyAnalyzeJunctions='no'
         probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+"/"+"MASTER-probeset-transcript.txt"
         verifyFile(probeset_annotations_file,array_type) ### Will force download if missing
@@ -188,7 +188,7 @@ def buildExonArrayExonAnnotations(species, array_type, force):
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'
     export_all_associations = 'no' ### YES only for protein prediction analysis
     buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
-    import ExonArrayEnsemblRules; reload(ExonArrayEnsemblRules)
+    from build_scripts import ExonArrayEnsemblRules; reload(ExonArrayEnsemblRules)
     process_from_scratch='yes'
     constitutive_source='default'
     ### Build the databases and return the variables (not used here)
@@ -259,7 +259,7 @@ def buildUniProtFunctAnnotations(species,force):
         if species in ui.Species(): uniprot_filename_url = ui.Location()
     species_codes = importSpeciesInfo(); species_full = species_codes[species].SpeciesName()
     
-    import ExtractUniProtFunctAnnot; reload(ExtractUniProtFunctAnnot)
+    from build_scripts import ExtractUniProtFunctAnnot; reload(ExtractUniProtFunctAnnot)
     ExtractUniProtFunctAnnot.runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_url,force)
 
 class SpeciesData:
@@ -475,7 +475,7 @@ def buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_s
         filename = 'AltDatabase/ucsc/'+species+'/'+species+'_UCSC_transcript_structure_COMPLETE-mrna.txt'
     counts = verifyFile(filename,'counts')
     if counts<9:
-        import UCSCImport
+        from build_scripts import UCSCImport
         try: UCSCImport.runUCSCEnsemblAssociations(species,mRNA_Type,export_all_associations,run_from_scratch,force)
         except Exception: UCSCImport.exportNullDatabases(species) ### used for species not supported by UCSC
         
@@ -487,7 +487,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
         update_uniprot='yes'; update_ensembl='yes'; update_probeset_to_ensembl='yes'; update_domain='yes'; update_miRs = 'yes'
         
     if update_ensembl == 'yes':
-        import EnsemblSQL; reload(EnsemblSQL)
+        from build_scripts import EnsemblSQL; reload(EnsemblSQL)
 
         """ Used to grab all essential Ensembl annotations previously obtained via BioMart"""        
         configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''
@@ -524,16 +524,16 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
 
         if (species == 'Mm' and array_type == 'AltMouse'):
             """Imports and re-exports array-Ensembl annotations"""
-            import JunctionArray
+            from build_scripts import JunctionArray
             null = JunctionArray.importArrayAnnotations(species,array_type); null={}
         if (species == 'Mm' and array_type == 'AltMouse') or array_type == 'junction' or array_type == 'RNASeq':
             """Performs probeset sequence aligment to Ensembl and UCSC transcripts. To do: Need to setup download if files missing"""
-            import mRNASeqAlign; analysis_type = 'reciprocal'
+            from build_scripts import mRNASeqAlign; analysis_type = 'reciprocal'
             mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,analysis_type,force)
        
-        import IdentifyAltIsoforms; run_seqcomp = 'no'
+        from build_scripts import IdentifyAltIsoforms; run_seqcomp = 'no'
         IdentifyAltIsoforms.runProgram(species,array_type,'null',force,run_seqcomp)
-        import FeatureAlignment; import JunctionArray
+        from build_scripts import FeatureAlignment; from build_scripts import JunctionArray
         FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'null')
         
         if array_type == 'junction' or array_type == 'RNASeq':
@@ -560,11 +560,11 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
                 
     if update_miRs == 'yes':
         if update_miR_seq == 'yes':
-            import MatchMiRTargetPredictions; only_add_sequence_to_previous_results = 'no'
+            from build_scripts import MatchMiRTargetPredictions; only_add_sequence_to_previous_results = 'no'
             MatchMiRTargetPredictions.runProgram(species,force,only_add_sequence_to_previous_results)
 
         if array_type == 'exon' or array_type == 'gene':        
-            import ExonSeqModule
+            from build_scripts import ExonSeqModule
             stringency = 'strict'; process_microRNA_predictions = 'yes'; mir_source = 'multiple'
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             stringency = 'lax'
@@ -579,14 +579,14 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
 
     if array_type == 'junction':
         try:
-            import JunctionArray; import JunctionArrayEnsemblRules
+            from build_scripts import JunctionArray; from build_scripts import JunctionArrayEnsemblRules
             JunctionArray.filterForCriticalExons(species,array_type)
             JunctionArray.overRideExonEntriesWithJunctions(species,array_type)
             JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
             ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
         except IOError: print 'No built junction files to analyze';sys.exit()
     if array_type == 'RNASeq' and (species == 'Hs' or species == 'Mm' or species == 'Rn'):
-        import JunctionArray; import JunctionArrayEnsemblRules
+        from build_scripts import JunctionArray; from build_scripts import JunctionArrayEnsemblRules
         try: JunctionArrayEnsemblRules.annotateJunctionIDsAsExon(species,array_type)
         except IOError: print 'No Ensembl_exons.txt file to analyze';sys.exit()
     
@@ -655,7 +655,7 @@ if __name__ == '__main__':
     filename = string.replace(filename,'junction','junction/hGlue') ### Due this also for the hGlue array
     #verifyFile(filename,'junction/hGlue')
     #print filename; sys.exit()
-    #import IdentifyAltIsoforms
+    #from build_scripts import IdentifyAltIsoforms
     #IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp); sys.exit()
             
     import UI

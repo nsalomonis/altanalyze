@@ -27,14 +27,14 @@ import unique
 import math
 import time
 import gene_associations; reload(gene_associations)
-import OBO_import
+from import_scripts import OBO_import
 import GO_Elite
-import statistics
+from stats_scripts import statistics
 import random
 import UI
 import export; reload(export)
 import re
-import fishers_exact_test
+from stats_scripts import fishers_exact_test
 import traceback
 import warnings
 
@@ -1072,7 +1072,7 @@ def FishersExactTest(r,n,R,N):
 
     """
     print a,b; print c,d
-    import fishers_exact_test; table = [[a,b], [c,d]]
+    from stats_scripts import fishers_exact_test; table = [[a,b], [c,d]]
     ft = fishers_exact_test.FishersExactTest(table)
     print ft.probability_of_table(table); print ft.two_tail_p()
     print ft.right_tail_p(); print ft.left_tail_p()

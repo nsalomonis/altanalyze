@@ -15,8 +15,11 @@ try:
     useStaticLocation=s.read()
     #print useStaticLocation
     #print 'Using the Config designated location
-    if '/data/salomonis' in loc: ### This is not ideal - need to use system R on some clusters
-        useStaticLocation = False
+    for p in os.environ['PATH'].split(':'): ### For Unix cluster environments
+        if os.path.exists(p + '/R'):
+            #path = p + '/R'
+            useStaticLocation = False
+            
 except Exception:
     #print 'NOT using the Config designated location'
     useStaticLocation = False
@@ -32,7 +35,7 @@ except Exception:
     ### Running the wrong one once is fine, but multiple times causes it to stall in a single session
     try:
         try:
-            if 'Xdarwin' in sys.platform:
+            if 'Xdarwin' in sys.platform: ### Xdarwin is indicated since this if statement is invalid without a stand-alone Mac R package (ideal)
                 #print 'Using AltAnalyze local version of R'
                 #print 'A'
                 path = unique.filepath("AltDatabase/tools/R/Mac/R")
@@ -63,11 +66,11 @@ except Exception:
             r = R(use_numpy=True)
 
     except Exception:
-        #print traceback.format_exc()
+        print traceback.format_exc()
         r = None
         R_present=False
         pass
-    
+
 LegacyMode = True
 ### Create a Directory for R packages in the AltAnalyze program directory (in non-existant)
 r_package_path = string.replace(os.getcwd()+'/Config/R','\\','/') ### R doesn't link \\
@@ -118,9 +121,23 @@ def remoteAffyNormalization(input_file,normalization_method,probe_level,batch_ef
     z = RScripts(input_file)
     z.AffyNormalization(normalization_method,probe_level,batch_effects)
     
-def checkForDuplicateIDs(input_file):
+def checkForDuplicateIDs(input_file, useOrderedDict=True):
+    
+    if 'SamplePrediction' in input_file or '-Guide' in input_file:
+        ### OrderedDict is prefered but will alter prior ICGS results
+        useOrderedDict = False
     first_row = True
-    key_db={}
+    import collections
+    if useOrderedDict:
+        try: key_db = collections.OrderedDict()
+        except Exception:
+            try:
+                import ordereddict
+                key_db = ordereddict.OrderedDict()
+            except Exception:
+                key_db={}
+    else:
+        key_db={}
     key_list=[]
     fn=filepath(input_file)
     offset=0
@@ -627,7 +644,6 @@ class RScripts:
                 distmata = 'distmata'
                 array_output = self.HopachArrayOutputFilename(metric_array,str(force_array))
                 output = 'out<-makeoutput(t(data),hopa,file=%s)' % array_output
-                #print output
                 print_out = r(output)
                 output_file = r['out']
                 status = 'stop'

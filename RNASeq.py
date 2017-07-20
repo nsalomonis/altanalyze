@@ -17,7 +17,7 @@
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sys, string, os
-import statistics
+from stats_scripts import statistics
 import math
 import os.path
 import unique
@@ -25,16 +25,19 @@ import update
 import copy
 import time
 import export
-import EnsemblImport; reload(EnsemblImport)
-import JunctionArrayEnsemblRules
-import JunctionArray; reload(JunctionArray)
-import ExonArrayEnsemblRules
+from build_scripts import EnsemblImport; reload(EnsemblImport)
+try: from build_scripts import JunctionArrayEnsemblRules
+except Exception: pass ### occurs with circular imports
+try: from build_scripts import JunctionArray; reload(JunctionArray)
+except Exception: pass ### occurs with circular imports
+try: from build_scripts import ExonArrayEnsemblRules
+except Exception: pass ### occurs with circular imports
 import multiprocessing
 import logging
 import traceback
 import warnings
 import bisect
-import clustering; reload(clustering)
+from visualization_scripts import clustering; reload(clustering)
 try:
     import scipy
     import scipy.cluster.hierarchy as sch
@@ -365,7 +368,7 @@ def getCriticalJunctionSequences(filename,species,ensembl_exon_db):
 
 def getEnsemblAssociations(species,data_type,test_status,force):
     ### Get UCSC associations (download databases if necessary)
-    import UCSCImport
+    from build_scripts import UCSCImport
     mRNA_Type = 'mrna'; run_from_scratch = 'yes'
     export_all_associations = 'no' ### YES only for protein prediction analysis
     update.buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
@@ -602,7 +605,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                             chr = 'chr'+chr
                         if searchChr == chr or ('BioScope' in algorithm and searchChr == t[1]): proceed = True
                         elif searchChr == 'chrMT' and ('BioScope' not in algorithm):
-                            if 'M' in chr: proceed = True
+                            if 'M' in chr and len(chr)<6: proceed = True ### If you don't have the length, any random thing with an M will get included
                             else: proceed = False
                         else: proceed = False
                     except IndexError:
@@ -1074,6 +1077,11 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name,Mu
     normalize_feature_exp = fl.FeatureNormalization()
     
     testImport='no'
+    if 'demo_data' in fl.ExpFile():
+        ### If the input files are in the AltAnalyze test directory, only analyze select chromosomes
+        print 'Running AltAnalyze in TEST MODE... restricting to select chromosomes only!!!!!'
+        testImport='yes' 
+        
     rnaseq_begin_time = time.time()
     p = AlignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name,testImport)
     chromosomes = p.getChromosomes()
@@ -1085,7 +1093,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name,Mu
     junctionCompFile = p.junctionCompFile()
     novelJunctionAnnotations = p.novelJunctionAnnotations()
     
-    #chromosomes = ['chr1']
+    #chromosomes = ['chrMT']
     #p('chrY'); p('chr1'); p('chr2')
     #chromosomes = ['chr8','chr17']
     multiprocessing_pipe = True
@@ -1169,7 +1177,7 @@ def alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset_name,Mu
     catFiles(novelJunctionAnnotations,'denovo')
     
     if normalize_feature_exp == 'RPKM':
-        fastRPKMCalculate(countsFile)
+        fastRPKMCalculate(countsFile) 
     
     rnaseq_end_time = time.time()
     print '...RNA-seq import completed in',int(rnaseq_end_time-rnaseq_begin_time),'seconds\n'
@@ -2132,7 +2140,19 @@ def formatID(id):
     ### JunctionArray methods handle IDs with ":" different than those that lack this
     return string.replace(id,':','@')
 
-            
+def filterChromosomes(chromosome_names):
+    ### If transcriptome only aligned to Ensembl reference, many chromosomes are not real
+    updated_chromosomes=[]
+    chr_count=0
+    for chr in chromosome_names:
+        if 'chr' in chr and len(chr)<7:
+            chr_count+=1
+            updated_chromosomes.append(chr)
+    if chr_count>1:
+        return updated_chromosomes
+    else:
+        return chromosome_names
+        
 def getChromosomeStrandCoordinates(species,testImport):
     ### For novel junctions with no known-splice site, map to genes
     gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,'RNASeq','key_by_array')
@@ -2145,10 +2165,11 @@ def getChromosomeStrandCoordinates(species,testImport):
         except KeyError: chr_strand_gene_db[chr,strand] = [(int(start),int(end))]
         if testImport == 'yes':
             if chr=='chr1': chromosome_names[chr]=[]
-            if chr=='chr19': chromosome_names[chr]=[] ### Gene rich chromosome
-            if chr=='chrMT': chromosome_names[chr]=[] ### Gene rich chromosome
+            #if chr=='chr19': chromosome_names[chr]=[] ### Gene rich chromosome
+            #if chr=='chrMT': chromosome_names[chr]=[] ### Gene rich chromosome
         elif len(chr)<7: chromosome_names[chr]=[]
         all_chromosomes[chr]=[]
+    #chromosome_names = filterChromosomes(chromosome_names)
     ### Some organisms aren't organized into classical chromosomes (why I don't know)
     if len(chromosome_names)<10 and len(all_chromosomes)>9 and testImport=='no': chromosome_names = all_chromosomes
     return chr_strand_gene_db,location_gene_db,chromosome_names,gene_location_db
@@ -2438,7 +2459,8 @@ def annotateNovelJunctions(novel_junction_db,novel_exon_db,exons_to_export):
                 if e1 in novel_exon_lookup_db and e2 in novel_exon_lookup_db:
                     proceed = 'yes'
                     try: ed1 = novel_exon_lookup_db[e1]; red1 = ed1.ExonRegionData(); gene1 = e1[0]
-                    except Exception: print e1; kill
+                    except Exception:
+                        print chr, key, e1; kill
                     ed2 = novel_exon_lookup_db[e2]; red2 = ed2.ExonRegionData(); gene2 = e2[0]
                     ### If the splice-site was a match to a known junciton splice site, use it instead of that identified by exon-region location overlapp
                     if ji.LeftExonAnnotations() != None: region1 = ji.LeftExonAnnotations()
@@ -2669,7 +2691,7 @@ def getMaxCounts(fn,cutoff,filterExport=False,filterExportDir=False):
         eo=export.ExportFile(filterExportDir)
         
     for line in open(fn,'rU').xreadlines():
-        Line = line.rstrip('\n')
+        Line = cleanUpLine(line)
         t = string.split(Line,'\t')
         key = t[0]
         if firstLine:
@@ -2683,8 +2705,9 @@ def getMaxCounts(fn,cutoff,filterExport=False,filterExportDir=False):
             else:
                 try: uid, coordinates = string.split(key,'=')
                 except Exception: uid = key
-                try: maxExp = max(map(lambda x: float(x), t[1:]))
+                try: maxExp = max(map(lambda x: float(x), t[1:])); #print maxExp;sys.exit()
                 except Exception:
+                    #print t[1:];sys.exit()
                     if 'NA' in t[1:]:
                         tn = [0 if x=='NA' else x for x in t[1:]] ### Replace NAs
                         maxExp = max(map(lambda x: float(x), tn))
@@ -2806,7 +2829,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         try:
             import shutil
             print '***Removing outlier samples***'
-            import sampleIndexSelection
+            from import_scripts import sampleIndexSelection
             reload(sampleIndexSelection)
             output_file = expFile[:-4]+'-OutliersRemoved.txt'
             sampleIndexSelection.statisticallyFilterFile(expFile,output_file,rpkm_threshold)
@@ -2847,7 +2870,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     print len(expressed_uids), 'expressed genes by RPKM/TPM (%d) and counts (%d)' % (rpkm_threshold,exp_threshold)
     #"""
 
-    import OBO_import; import ExpressionBuilder
+    from import_scripts import OBO_import; import ExpressionBuilder
     gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
     
     try: biological_categories = importBiologicalRelationships(species)
@@ -3150,7 +3173,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
             parameters.setGeneSelection('')
             parameters.setClusterGOElite('')
         excludeCellCycle = parameters.ExcludeCellCycle()
-        import clustering
+        from visualization_scripts import clustering
         row_metric = 'correlation'; row_method = 'average'
         column_metric = parameters.ColumnMetric(); column_method = parameters.ColumnMethod()
         original_column_metric = column_metric
@@ -3181,7 +3204,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
         print 'Evaluating',len(expressed_values),'genes, differentially expressed',fold,'fold for at least',samplesDiffering*2,'samples'
     #sys.exit()
     
-    import OBO_import; import ExpressionBuilder
+    from import_scripts import OBO_import; import ExpressionBuilder
     gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
     symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)
     
@@ -3247,7 +3270,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
         if column_method != 'hopach': row_method = 'average' ### needed due to PC errors
         graphic_links = clustering.runHCexplicit(filtered_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
         #return graphic_links
-        import clustering
+        from visualization_scripts import clustering
         matrix, column_header, row_header, dataset_name, group_db = clustering.importData(graphic_links[-1][-1][:-4]+'.txt')
         headers = ['UID']+column_header
         expressed_values2={}
@@ -3459,7 +3482,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     #print row_method, row_metric
     correlateByArrayDirectly = False
     if correlateByArrayDirectly:
-        import clustering
+        from visualization_scripts import clustering
     
         matrix, column_header, row_header, dataset_name, group_db = clustering.importData(results_file)
         
@@ -3483,7 +3506,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
                # print len(linked_lists), linked_lists
     else:
         try:
-            import clustering
+            from visualization_scripts import clustering
             if platform == 'exons': color_gradient = 'yellow_black_blue'
             transpose = False
             if column_method != 'hopach': row_method = 'average' ### needed due to PC errors (possibly outside of LegacyMode)
@@ -3773,7 +3796,7 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
 
     cluster = True
     if cluster == True and transpose==False:
-        import clustering
+        from visualization_scripts import clustering
         if ColumnMethod == 'hopach':
             row_method = 'hopach'
             column_method = 'hopach'
@@ -3798,7 +3821,7 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
 def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=5,
             filter=False,geneFilter=None,numSamplesClustered=3,excludeCellCycle=False,restrictTFs=False,
             forceOutput=False,transpose=False):
-    import clustering
+    from visualization_scripts import clustering
     addition_cell_cycle_associated=[]
     
     if geneFilter != None:
@@ -3818,14 +3841,15 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
     for i in row_header:
         if 'ENS' in i and '-' in i and ':' in i: Platform = 'exons'
             
-    
+    #print hits_to_report
     if hits_to_report == 1:
         ### Select the best gene using correlation counts and TFs
         try:
-            import OBO_import; import ExpressionBuilder
+            from import_scripts import OBO_import; import ExpressionBuilder
             gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
             symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol_db)            
-            TFs = importGeneSets('Biotypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
+            try: TFs = importGeneSets('Biotypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
+            except Exception: TFs = importGeneSets('BioTypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
             if excludeCellCycle == True or excludeCellCycle == 'strict':
                 cell_cycle = importGeneSets('KEGG',filterType='Cell cycle:',geneAnnotations=gene_to_symbol_db)
                 cell_cycle_go = importGeneSets('GeneOntology',filterType='GO:0022402',geneAnnotations=gene_to_symbol_db)
@@ -3836,6 +3860,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 cell_cycle={}
 
         except Exception:
+            print traceback.format_exc()
             symbol_to_gene={}; TFs={}; cell_cycle={}
         gene_corr_counts = numpyCorrelationMatrixCount(matrix,row_header,cutoff=0.4,geneTypeReport=TFs)
         
@@ -3997,6 +4022,7 @@ def exportGroupsFromClusters(cluster_file,expFile,platform):
         else: break
 
     unique_clusters=[] ### Export groups
+    
     out_obj = export.ExportFile(string.replace(expFile,'exp.','groups.'))
     for name in names:
         cluster = clusters[names.index(name)]
@@ -4671,11 +4697,17 @@ def FeatureCounts(bed_ref, bam_file):
     print [featurecounts_file,"-a", "-F", "SAF",bed_ref, "-o", output, bam_file]
     retcode = subprocess.call([featurecounts_file,"-a",bed_ref, "-F", "SAF", "-o", output, bam_file])
     
-def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=False):
+def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=False,customFASTA=None):
     #print 'Running Kallisto...please be patient'
     import subprocess
-    #if '/bin' in kallisto_dir: kallisto_file = kallisto_dir +'/apt-probeset-summarize' ### if the user selects an APT directory
-    kallisto_dir= 'AltDatabase/kallisto/0.42.1/'
+
+    kallisto_dir_objects = os.listdir(unique.filepath('AltDatabase/kallisto'))
+    ### Determine version
+    version = '0.42.1'
+    for subdir in kallisto_dir_objects:
+        if subdir.count('.')>1: version = subdir
+    kallisto_dir= 'AltDatabase/kallisto/'+version+'/'
+
     if os.name == 'nt':
         kallisto_file = kallisto_dir + 'PC/bin/kallisto.exe'; plat = 'Windows'
     elif 'darwin' in sys.platform:
@@ -4686,6 +4718,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     kallisto_file = filepath(kallisto_file)
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
     fn = filepath(kallisto_file)
+    
     output_dir=root_dir+'/ExpressionInput/kallisto/'
     try: os.mkdir(root_dir+'/ExpressionInput')
     except Exception: pass
@@ -4712,43 +4745,59 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     if returnSampleNames:
         return fastq_paths
     
-    indexFile =  kallisto_root+species
+    ### Store/retreive the Kallisto index in the Ensembl specific SequenceData location
+    kallisto_index_root = 'AltDatabase/'+species+'/SequenceData/'
+    try: os.mkdir(filepath(kallisto_index_root))
+    except Exception: pass
+    indexFile =  filepath(kallisto_index_root+species)
+
     indexStatus = os.path.isfile(indexFile)
-    if indexStatus == False:
+    if indexStatus == False or customFASTA!=None:
         try: fasta_file = getFASTAFile(species)
         except Exception: fasta_file = None
-        if fasta_file==None:
+        index_file = filepath(kallisto_index_root+species)
+        if fasta_file==None and customFASTA==None:
             ###download Ensembl fasta file to the above directory
-            import EnsemblSQL
+            from build_scripts import EnsemblSQL
             ensembl_version = string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','')
             EnsemblSQL.getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA')
             fasta_file = getFASTAFile(species)
+        elif customFASTA!=None:  ### Custom FASTA file supplied by the user
+            fasta_file = customFASTA
+            indexFile = filepath(kallisto_index_root+species+'-custom')
+            try: os.remove(indexFile) ### erase any pre-existing custom index
+            except Exception: pass
+
         if fasta_file!=None:
             print 'Building kallisto index file...'
-            try: retcode = subprocess.call([kallisto_file, "index","-i", kallisto_root+species, fasta_file])
+            try: retcode = subprocess.call([kallisto_file, "index","-i", indexFile, fasta_file])
             except Exception:
                 print traceback.format_exc()
-                ### If installed globally
-                retcode = subprocess.call(['kallisto', "index","-i", kallisto_root+species, fasta_file])
+                ### If installed on the local OS
+                retcode = subprocess.call(['kallisto', "index","-i", indexFile, fasta_file])
     
-    if len(kallisto_tsv_paths) == len(fastq_paths):
+    if customFASTA!=None:
+        reimportExistingKallistoOutput = False
+    elif len(kallisto_tsv_paths) == len(fastq_paths):
         reimportExistingKallistoOutput = True
     elif len(kallisto_tsv_paths) > len(fastq_paths):
         reimportExistingKallistoOutput = True ### If working with a directory of kallisto results
     else:
         reimportExistingKallistoOutput = False
 
-    print 'NOTE: Re-import PREVIOUSLY GENERATED kallisto output:',reimportExistingKallistoOutput
-    print '...To force re-analysis of FASTQ files, delete the folder "kallisto" in "ExpressionInput"'
     if reimportExistingKallistoOutput:
+        print 'NOTE: Re-import PREVIOUSLY GENERATED kallisto output:',reimportExistingKallistoOutput
+        print '...To force re-analysis of FASTQ files, delete the folder "kallisto" in "ExpressionInput"'
         ### Just get the existing Kallisto output folders
         fastq_paths = read_directory(output_dir)
 
     kallisto_folders=[]
     expMatrix={}
     countMatrix={}
+    countSampleMatrix={}
     sample_total_counts={}
     headers=['UID']
+    
     for n in fastq_paths:
         output_path = output_dir+n
         kallisto_folders.append(output_path)
@@ -4784,10 +4833,10 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             #"""
         input_path = output_path+'/abundance.txt'
         try:
-            try: expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
+            try: expMatrix,countMatrix,countSampleMatrix=importTPMs(n,input_path,expMatrix,countMatrix,countSampleMatrix)
             except Exception:
                 input_path = output_path+'/abundance.tsv'
-                expMatrix,countMatrix=importTPMs(n,input_path,expMatrix,countMatrix)
+                expMatrix,countMatrix,countSampleMatrix=importTPMs(n,input_path,expMatrix,countMatrix,countSampleMatrix)
             headers.append(n)
             sample_total_counts = importTotalReadCounts(n,output_path+'/run_info.json',sample_total_counts)
         except Exception:
@@ -4802,8 +4851,8 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
                     print '\n'
                     
     ### Summarize alignment information
-    for sample in countMatrix:
-        try: estCounts = int(float(countMatrix[sample]))
+    for sample in countSampleMatrix:
+        try: estCounts = int(float(countSampleMatrix[sample]))
         except Exception: estCounts='NA'
         try: totalCounts = sample_total_counts[sample]
         except Exception: totalCounts = 'NA'
@@ -4811,20 +4860,26 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         except Exception: aligned = 'NA'
         try: aligned =  string.split(aligned,'.')[0]+'.'+string.split(aligned,'.')[1][:2]
         except Exception: aligned = 'NA'
-        countMatrix[sample] = [str(estCounts),totalCounts,aligned]
+        countSampleMatrix[sample] = [str(estCounts),totalCounts,aligned]
     
     dataset_name = string.replace(dataset_name,'exp.','')
     to = export.ExportFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt')
+    ico = export.ExportFile(root_dir+'/ExpressionInput/isoCounts.'+dataset_name+'.txt')
     go = export.ExportFile(root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
+    co = export.ExportFile(root_dir+'/ExpressionInput/counts.'+dataset_name+'.txt')
     so = export.ExportFile(root_dir+'/ExpressionInput/summary.'+dataset_name+'.txt')
     exportMatrix(to,headers,expMatrix) ### Export transcript expression matrix
+    exportMatrix(ico,headers,countMatrix) ### Export transcript count matrix
+    
     try:
         geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
+        countsGeneMatrix = calculateGeneTPMs(species,countMatrix) ### calculate combined gene level TPMs
         exportMatrix(go,headers,geneMatrix) ### export gene expression matrix
+        exportMatrix(co,headers,countsGeneMatrix) ### export gene expression matrix
     except Exception: 
         print 'AltAnalyze was unable to summarize gene TPMs from transcripts, proceeding with transcripts.'
         export.copyFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt',root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
-    exportMatrix(so,['SampleID','Estimated Counts','Total Fragments','Percent Aligned'],countMatrix) ### export gene expression matrix
+    exportMatrix(so,['SampleID','Estimated Counts','Total Fragments','Percent Aligned'],countSampleMatrix) ### export gene expression matrix
     
 def calculateGeneTPMs(species,expMatrix):
     import gene_associations
@@ -4835,18 +4890,18 @@ def calculateGeneTPMs(species,expMatrix):
     except Exception:
         try:
             print 'Missing transcript-to-gene associations... downloading from Ensembl.'
-            import EnsemblSQL
+            from build_scripts import EnsemblSQL
             db_version = unique.getCurrentGeneDatabaseVersion()
             EnsemblSQL.getGeneTranscriptOnly(species,'Basic',db_version,'yes')
             gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
         except Exception:
-            import GeneSetDownloader
+            from build_scripts import GeneSetDownloader
             print 'Ensembl-EnsTranscripts required for gene conversion... downloading from the web...'
             GeneSetDownloader.remoteDownloadEnsemblTranscriptAssocations(species)
             gene_to_transcript_db = gene_associations.getGeneToUid(species,('hide','Ensembl-EnsTranscript'))
     if len(gene_to_transcript_db)<10:
         print 'NOTE: No valid Ensembl-EnsTranscripts available, proceeding with the analysis of transcripts rather than genes...'
-    import OBO_import
+    from import_scripts import OBO_import
     transcript_to_gene_db = OBO_import.swapKeyValues(gene_to_transcript_db)
     
     gene_matrix = {}
@@ -4880,7 +4935,7 @@ def exportMatrix(eo,headers,matrix):
         eo.write(string.join([gene]+matrix[gene],'\t')+'\n')
     eo.close()
 
-def importTPMs(sample,input_path,expMatrix,countMatrix):
+def importTPMs(sample,input_path,expMatrix,countMatrix,countSampleMatrix):
     firstLine=True
     for line in open(input_path,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -4893,9 +4948,11 @@ def importTPMs(sample,input_path,expMatrix,countMatrix):
                 target_id = string.split(target_id,'.')[0] ### Ensembl isoform IDs in more recent Ensembl builds
             try: expMatrix[target_id].append(tpm)
             except Exception: expMatrix[target_id]=[tpm]
-            try: countMatrix[sample]+=float(est_counts)
-            except Exception: countMatrix[sample]=float(est_counts)
-    return expMatrix,countMatrix
+            try: countSampleMatrix[sample]+=float(est_counts)
+            except Exception: countSampleMatrix[sample]=float(est_counts)
+            try: countMatrix[target_id].append(est_counts)
+            except Exception: countMatrix[target_id]=[est_counts]
+    return expMatrix,countMatrix,countSampleMatrix
 
 def importTotalReadCounts(sample,input_path,sample_total_counts):
     ### Import from Kallisto Json file
@@ -5021,12 +5078,13 @@ if __name__ == '__main__':
     expFile = '/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/exp.GBM_scRNA-Seq-steady-state.txt'
     #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
-    filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/FCU/ExpressionInput/counts.test.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Trumpp-HSC-2017/counts.rawTrumpp.txt'
+    filename = '/Volumes/salomonis2/Erica-data/GSE98451/counts.GSE98451_uterus_single_cell_RNA-Seq_counts-Ensembl.txt'
     #fastRPKMCalculate(filename);sys.exit()
-    calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
+    #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
 
-    runKallisto('Hs','Conklin','/Volumes/salomonis2/Ichi_data/Combined_FASTQ/KallistoAnalysis/','/Volumes/salomonis2/Ichi_data/Combined_FASTQ/KallistoAnalysis/');sys.exit()
+    runKallisto('Hs','test','tests/demo_data/FASTQ','tests/demo_data/FASTQ');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

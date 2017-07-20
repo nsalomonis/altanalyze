@@ -33,7 +33,7 @@ currentDirectory = unique.filepath(str(os.getcwd())) + "/" + "Config/" ### NS-91
 currentDirectory = string.replace(currentDirectory,'AltAnalyzeViewer.app/Contents/Resources','')
 os.chdir(currentDirectory)
 parentDirectory = str(os.getcwd())  ### NS-91615 gives the parent AltAnalyze directory
-sys.path.insert(1,parentDirectory)  ### NS-91615 adds the AltAnalyze modules to the system path to import clustering and others
+sys.path.insert(1,parentDirectory)  ### NS-91615 adds the AltAnalyze modules to the system path to from visualization_scripts import clustering and others
 import UI
 
 #These classes set up the "tab" feature in the program, allowing you to switch the viewer to different modes.
@@ -461,7 +461,7 @@ class Main(wx.Frame):
             except Exception: break
         #print [geneID]
         self.control.write("Plotting... " + geneID + "\n")
-        import ExPlot
+        from visualization_scripts import ExPlot
         reload(ExPlot)
         ExPlot.remoteGene(geneID,self.species,self.main_results_directory,self.CurrentFile)
         #Q = subprocess.Popen(['python', 'ExPlot13.py', str(R)])
@@ -509,7 +509,7 @@ class Main(wx.Frame):
             spliced_junctions = [geneID]
         if 'DATASET' in self.DirFileTxt:
             spliced_junctions = [geneID]
-        import SashimiPlot
+        from visualization_scripts import SashimiPlot
         reload(SashimiPlot)
         self.control.write("Attempting to build SashimiPlots for " + str(spliced_junctions[0]) + "\n")
         SashimiPlot.remoteSashimiPlot(self.species,datasetDir,datasetDir,None,events=spliced_junctions,show=True) ### assuming the bam files are in the root-dir

@@ -537,7 +537,7 @@ def alignAllDomainsToTranscripts(species,platform):
     try: importEnsExonStructureData(filename,option)
     except Exception: None ### Not available for all species - needs to be built prior to transcript model creation
     
-    import FeatureAlignment
+    from build_scripts import FeatureAlignment
     ucsc_transcripts={}
     gene_db = {}
     gene_transcript_db = FeatureAlignment.eliminateRedundant(gene_transcript_db)
@@ -563,7 +563,7 @@ def alignAllDomainsToTranscripts(species,platform):
     #ucsc_transcripts['AK309510']=[] ### in silico translated
     #ens_transcript_protein_db={}
     ### Download or translate ANY AND ALL mRNAs considered by AltAnalyze via in silico translation
-    import IdentifyAltIsoforms
+    from build_scripts import IdentifyAltIsoforms
     analysis_type = 'fetch_new' # analysis_type = 'fetch' ???
 
     #IdentifyAltIsoforms.remoteTranslateRNAs(species,ucsc_transcripts,ens_transcript_protein_db,analysis_type)
@@ -581,7 +581,7 @@ def alignAllDomainsToTranscripts(species,platform):
         y+=1
     """
     protein_ft_db,domain_gene_counts = FeatureAlignment.grab_exon_level_feature_calls(species,platform,gene_db)
-    import ExonAnalyze_module
+    from build_scripts import ExonAnalyze_module
     seq_files, mRNA_protein_seq_db = IdentifyAltIsoforms.importProteinSequences(species,'getSequence') ### Import all available protein sequences (downloaded or in silico)
     coordinate_type = 'genomic'; #coordinate_type = 'protein'
     ExonAnalyze_module.getFeatureIsoformGenomePositions(species,protein_ft_db,mRNA_protein_seq_db,gene_transcript_db,coordinate_type)
@@ -612,7 +612,7 @@ def importEnsemblTranscriptAssociations(species):
 def getCodingGenomicCoordinates(species):
     global cds_location_db
     global cds_genomic_db
-    import IdentifyAltIsoforms
+    from build_scripts import IdentifyAltIsoforms
     cds_location_db = IdentifyAltIsoforms.importCDScoordinates(species)
     #print cds_location_db['ENST00000436739'];sys.exit()
     cds_genomic_db={}

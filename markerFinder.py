@@ -27,7 +27,7 @@ try:
     import warnings
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
-        import statistics
+        from stats_scripts import statistics
         import math
         from scipy import stats
         use_scipy = True
@@ -365,7 +365,7 @@ def getOrderedGroups(filename):
     return group_list
         
 def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Species=None):
-    import clustering
+    from visualization_scripts import clustering
     """ From the generated marker sets, output the replicate input data """
     marker_root_dir = fl.OutputDir()+'/'+'ExpressionOutput/MarkerFinder'
     #print 1,fl.DatasetFile()
@@ -406,7 +406,7 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Spec
 
 def reorderMultiLevelExpressionFile(input_file):
     ### Takes an input file and re-orders it based on the order in the groups file... needed for multi-level expression file with replicates
-    import sampleIndexSelection
+    from import_scripts import sampleIndexSelection
     output_file = input_file[:-4]+'-output.txt'
     filter_file = string.replace(input_file,'-steady-state','')
     filter_file = string.replace(filter_file,'exp.','groups.')
@@ -662,7 +662,7 @@ def identifyMarkers(filename,cluster_comps):
     
     count=0
 
-    import gene_associations; import OBO_import
+    import gene_associations; from import_scripts import OBO_import
     gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
     symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
               
@@ -1081,7 +1081,7 @@ def getAverageExonExpression(species,platform,input_exp_file):
 
     ### Get gene-level annotations
     gene_annotation_file = "AltDatabase/ensembl/"+species+"/"+species+"_Ensembl-annotations.txt"
-    import ExonAnalyze_module; global annotate_db
+    from build_scripts import ExonAnalyze_module; global annotate_db
     annotate_db = ExonAnalyze_module.import_annotations(gene_annotation_file,platform)
     
     importRawSpliceData(input_exp_file)
@@ -1409,7 +1409,7 @@ def calculateSplicingIndexForExpressedConditions(species,dabg_gene_dir,regulated
         
 def filterRNASeqSpliceEvents(Species,Platform,fl,psi_file_dir):
     global species; import AltAnalyze
-    global platform; import sampleIndexSelection
+    global platform; from import_scripts import sampleIndexSelection
     global max_exp_exon_db
     global evaluatedGenes; evaluatedGenes={'Gene_ID':[]}
     species = Species
@@ -1423,7 +1423,7 @@ def filterRNASeqSpliceEvents(Species,Platform,fl,psi_file_dir):
 
 def filterDetectionPvalues(Species,Platform,fl,dabg_gene_dir):
     global species; import AltAnalyze
-    global platform; import sampleIndexSelection
+    global platform; from import_scripts import sampleIndexSelection
     global max_exp_exon_db; global prior_altExons
     global evaluatedGenes; evaluatedGenes={'Gene_ID':[]}
     global prior_altExons

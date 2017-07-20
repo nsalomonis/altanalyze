@@ -32,12 +32,12 @@ try:
     import shutil
     import webbrowser
     import gene_associations; reload(gene_associations)
-    import OBO_import; reload(OBO_import)
+    from import_scripts import OBO_import; reload(OBO_import)
     import export
     import UI
     import mappfinder; reload(mappfinder)
     import datetime
-    import WikiPathways_webservice
+    from visualization_scripts import WikiPathways_webservice
 except Exception:
     print_out = "\nWarning!!! Critical Python incompatiblity encoutered.\nThis can occur if the users calls the GO-Elite "
     print_out += "python source code WITHIN A COMPILED version directory which results in critical conflicts between "
@@ -80,7 +80,7 @@ else:
     try:
         import Tkinter
         from Tkinter import *
-        import PmwFreeze
+        from visualization_scripts import PmwFreeze
         use_Tkinter = 'yes'
     except ImportError:
         use_Tkinter = 'yes'
@@ -900,7 +900,7 @@ def outputOverlappingResults(combined_results,ora_dir):
         fn2 = string.replace(fn,'CompleteResults/ORA_pruned','')
         try:
             export.customFileMove(fn,fn2)
-            import clustering
+            from visualization_scripts import clustering
             clustering.clusterPathwayZscores(fn2) ### outputs the overlapping results as a heatmap
         except Exception,e:
             #print e
@@ -1605,7 +1605,7 @@ def exportFilteredSIF(mod,species_code,collapsed_term_list,mappfinder_input_dir,
     sif.close()
     
     try:
-        import clustering
+        from visualization_scripts import clustering
         try:
             criterion_name = export.findFilename(mappfinder_input_dir)
             ora_input_dir = oraDirTogeneDir[criterion_name] ### This is ONLY needed for transcription factor graph visualization
@@ -2216,7 +2216,7 @@ def commandLineRun():
                 print 'Please provide a valid species ID for an installed database (to install: --update Official --species Hs --version EnsMart62Plus)';sys.exit()
             if criterion_input_folder==None:
                 print 'Please provide a valid file location for your input IDs (also needs to inlcude system code and value column)';sys.exit()
-            import WikiPathways_webservice
+            from visualization_scripts import WikiPathways_webservice
             try:
                 print 'Attempting to output a WikiPathways colored image from user data'
                 print 'mod:',mod
@@ -2297,7 +2297,7 @@ def commandLineRun():
         print '\nInsufficient flags entered (requires --species or --speciesfull)'; sys.exit()
     elif (update_dbs == 'yes' or buildNested == 'yes') and (species_code != None or species_full != None or update_method == ['Ontology']):
     
-        import BuildAffymetrixAssociations; import update; import EnsemblSQL; import UI
+        from import_scripts import BuildAffymetrixAssociations; import update; from build_scripts import EnsemblSQL; import UI
         file_location_defaults = UI.importDefaultFileLocations()
         speciesData(); species_codes = UI.importSpeciesInfo(); species_code_list=[]
         if len(species_codes) == 0:
@@ -2460,7 +2460,7 @@ def commandLineRun():
             ### Attempt to download additional Ontologies and GeneSets
             if 'AdditionalResources' in update_method:
                 try:
-                    import GeneSetDownloader
+                    from build_scripts import GeneSetDownloader
                     print 'Adding supplemental GeneSet and Ontology Collections'
                     if 'all' in additional_resources:
                         additionalResources = UI.importResourceList() ### Get's all additional possible resources
@@ -2512,7 +2512,7 @@ def commandLineRun():
                 
                 overwrite_previous = 'over-write previous'
                 configType = 'Basic'; iteration=0
-                import EnsemblSQL; reload(EnsemblSQL)
+                from build_scripts import EnsemblSQL; reload(EnsemblSQL)
                 if 'arrays' not in update_ensrel:
                     try: all_external_ids = EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,'GO',configType,'GeneAndExternal',overwrite_previous,replaceDB,external_system,force); iteration+=1
                     except Exception, e:
@@ -2527,7 +2527,7 @@ def commandLineRun():
                 for externalDBName in externalDBName_list:
                     if externalDBName != ' ':
                         if force == 'yes' and iteration == 1: force = 'no'
-                        import EnsemblSQL; reload(EnsemblSQL)
+                        from build_scripts import EnsemblSQL; reload(EnsemblSQL)
                         
                         output_dir = 'BuildDBs/EnsemblSQL/'+species_code+'/'
                         if force == 'yes': ### Delete any existing data in the destination directory that can muck up tables from a new Ensembl build

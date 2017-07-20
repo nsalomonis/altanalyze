@@ -1,1 +1,0 @@
-./primer3_core < test_input.txt > output.txt

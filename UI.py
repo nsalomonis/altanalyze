@@ -17,7 +17,7 @@
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import math
-import statistics
+from stats_scripts import statistics
 import sys, string
 import shutil
 import os.path
@@ -42,7 +42,7 @@ import matplotlib.pyplot as pylab
 
 try:
     try:
-        import WikiPathways_webservice
+        from visualization_scripts import WikiPathways_webservice
     except Exception:
         #print traceback.format_exc()
         if 'URLError' in traceback.format_exc():
@@ -72,13 +72,15 @@ except Exception:
     None
 
 command_args = string.join(sys.argv,' ')
-if len(sys.argv[1:])>1 and '-' in command_args and '--GUI' not in command_args: pass
+if len(sys.argv[1:])>1 and '-' in command_args and '--GUI' not in command_args:
+    runningCommandLine = True
 else:
+    runningCommandLine = False
     try:
         import Tkinter 
         #import bwidget; from bwidget import *
         from Tkinter import *
-        import PmwFreeze
+        from visualization_scripts import PmwFreeze
         from Tkconstants import LEFT
         import tkMessageBox
         import tkFileDialog
@@ -488,11 +490,14 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
     else: display=True
     runKallisto = False
     try:
-        import RNASeq, ExonArray
+        import RNASeq
+        from build_scripts import ExonArray
         expFile = flx.ExpFile()
         count = verifyFileLength(expFile)
         try: fastq_folder = flx.RunKallisto()
         except Exception: fastq_folder = []
+        try: customFASTA = flx.CustomFASTA()
+        except Exception: customFASTA = None
         try: matrix_file = flx.ChromiumSparseMatrix()
         except Exception: matrix_file = []
         if len(matrix_file)>0:
@@ -506,7 +511,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
                 matrix_dir = export.findParentDir(matrix_file)
                 genome = export.findFilename(matrix_dir[:-1])
                 parent_dir = export.findParentDir(matrix_dir[:-1])
-                import ChromiumProcessing
+                from import_scripts import ChromiumProcessing
                 ChromiumProcessing.import10XSparseMatrix(parent_dir,genome,dataset,expFile=expFile)
             except Exception:
                 print 'Chromium export failed due to:',traceback.format_exc()
@@ -518,7 +523,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             try:
                 parent_dir = export.findParentDir(expFile)
                 flx.setRootDir(parent_dir)
-                RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False)   
+                RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False,customFASTA=customFASTA)   
             except Exception:
                 print 'Kallisto failed due to:',traceback.format_exc()
             try: root.destroy()
@@ -540,7 +545,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
                     bedFilesPresent=True
             if analyzeBAMs and bedFilesPresent==False:
                 print 'No bed files present, deriving from BAM files'
-                import multiBAMtoBED
+                from import_scripts import multiBAMtoBED
                 bam_dir = flx.BEDFileDir()
                 refExonCoordinateFile = filepath('AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt')
                 outputExonCoordinateRefBEDfile = bam_dir+'/BedRef/'+species+'_'+string.replace(dataset,'exp.','')
@@ -555,12 +560,13 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             biotypes = getBiotypes(expFile)
         else:
             biotypes = getBiotypes(expFile)
+        
         array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',flx.ArrayType())
         steady_state_export = expFile[:-4]+'-steady-state.txt'
         normalize_feature_exp = flx.FeatureNormalization()
         try: excludeLowExpressionExons = flx.excludeLowExpressionExons()
         except Exception: excludeLowExpressionExons = True
-
+ 
         if flx.useJunctionsForGeneExpression():
             if 'junction' in biotypes:
                 feature = 'junction'
@@ -572,9 +578,9 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
                 feature = 'exon'
             else:
                 feature = 'junction'
-        probeset_db = getAllKnownFeatures(feature)
+        probeset_db = getAllKnownFeatures(feature,species,flx.ArrayType(),flx.Vendor(),flx)
         print 'Calculating gene-level expression values from',feature+'s'
-        RNASeq.calculateGeneLevelStatistics(steady_state_export,species,probeset_db,normalize_feature_exp,array_names,fl,excludeLowExp=excludeLowExpressionExons,exportRPKMs=True)
+        RNASeq.calculateGeneLevelStatistics(steady_state_export,species,probeset_db,normalize_feature_exp,array_names,flx,excludeLowExp=excludeLowExpressionExons,exportRPKMs=True)
         
         #if display == False: print print_out
         #try: InfoWindow(print_out, 'Continue')
@@ -583,6 +589,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         except Exception: pass
     except Exception:
         error = traceback.format_exc()
+        #print error
         try:
             logfile = filepath(fl.RootDir()+'Error.log')
             log_report = open(logfile,'a')
@@ -590,10 +597,11 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         except Exception:
             None
         print_out = 'Expression quantification failed..\n',error
-        try: print print_out
-        except Exception: pass ### Windows issue with the Tk status window stalling after pylab.show is called
-        try: WarningWindow(print_out,'Continue')
-        except Exception: pass
+        if runningCommandLine==False:
+            try: print print_out
+            except Exception: pass ### Windows issue with the Tk status window stalling after pylab.show is called
+            try: WarningWindow(print_out,'Continue')
+            except Exception: pass
         try: root.destroy()
         except Exception: pass
 
@@ -616,9 +624,9 @@ def getBiotypes(filename):
     except Exception: pass
     return biotypes
 
-def getAllKnownFeatures(feature):
+def getAllKnownFeatures(feature,species,array_type,vendor,fl):
     ### Simple method to extract gene features of interest
-    import ExonArrayEnsemblRules
+    from build_scripts import ExonArrayEnsemblRules
 
     source_biotype = 'mRNA'
     if array_type == 'gene': source_biotype = 'gene'
@@ -764,7 +772,7 @@ def networkBuilder(inputDir,inputType,outputdir,interactionDirs_short,degrees,ex
     except Exception: None
     
 def vennDiagram(files_to_merge, output_venn_dir, root, display=True):
-    import VennDiagram
+    from visualization_scripts import VennDiagram
     if root == None and display==False: display=False
     else: display=True
     try:
@@ -780,7 +788,7 @@ def vennDiagram(files_to_merge, output_venn_dir, root, display=True):
     except Exception: None
     
 def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root):
-    import QC
+    from visualization_scripts import QC
     transpose=True
     if root == None: display = False
     else: display = True
@@ -788,10 +796,10 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
         showEvent = False
         try:
             ### Create sashimi plot index
-            import SashimiIndex
+            from visualization_scripts import SashimiIndex
             print 'Indexing splicing-events'
             SashimiIndex.remoteIndexing(species,exp_file)
-            import SashimiPlot
+            from visualization_scripts import SashimiPlot
             #reload(SashimiPlot)
             print 'Running Sashimi-Plot...'
             genes=None
@@ -830,7 +838,7 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
         except Exception: None
     
 def MergeFiles(files_to_merge, join_option, ID_option, output_merge_dir, root):
-    import mergeFiles
+    from import_scripts import mergeFiles
     try: outputfile = mergeFiles.joinFiles(files_to_merge, join_option, ID_option, output_merge_dir)
     except Exception:
         outputfile = 'failed'
@@ -930,7 +938,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
 def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,
             geneSetName=None, species=None, zscore=True, colorByGene=None, reimportModelScores=True,
             separateGenePlots=False):
-    import clustering; reload(clustering)
+    from visualization_scripts import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
     else: pca_labels=False
@@ -963,7 +971,7 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
 def createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, root, display=True):
     graphics = []
     try:
-        import clustering; reload(clustering)
+        from visualization_scripts import clustering; reload(clustering)
         clustering.runHCexplicit(filename, graphics, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, contrast = contrast)
         print_out = 'Finished building heatmap.'
         try: print print_out
@@ -994,7 +1002,7 @@ def getAdditionalOnlineResources(species_code,additional_resources,root):
     else: additional_resources = [additional_resources]
     try:
         print 'Adding supplemental GeneSet and Ontology Collections'
-        import GeneSetDownloader; force = 'yes'
+        from build_scripts import GeneSetDownloader; force = 'yes'
         GeneSetDownloader.buildAccessoryPathwayDatabases([species_code],additional_resources,force)
         try: print'Finished incorporating additional resources.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
@@ -1072,7 +1080,11 @@ class GUI:
     def PredictGroups(self):
         self.button_flag = True
         self.graphic_link = {}
-        import Image
+        try: import ImageTk
+        except Exception:
+            from PIL import ImageTk
+            from PIL import Image
+        
         self.toplevel_list=[] ### Keep track to kill later
         
         self.filename_db={}
@@ -1090,7 +1102,6 @@ class GUI:
         self.options = filenames_ls
         self.default_option = 0
         self.comboBox() ### This is where the cluster group gets selected and stored
-        
   
         # create a frame and pack it
         frame1 = Tkinter.Frame(self.parent_type)
@@ -1540,7 +1551,9 @@ class GUI:
         
     def viewPNGFile(self,tl):
         """ View PNG file within a PMW Tkinter frame """
-        import ImageTk ### HAVE TO CALL HERE TO TRIGGER AN ERROR - DON'T WANT THE TopLevel to open otherwise
+        try: import ImageTk ### HAVE TO CALL HERE TO TRIGGER AN ERROR - DON'T WANT THE TopLevel to open otherwise
+        except Exception:
+            from PIL import ImageTk
         png_file_dir = self.graphic_link['WP']
         img = ImageTk.PhotoImage(file=png_file_dir)
         
@@ -3612,8 +3625,11 @@ class FeedbackWindow:
         self._user_variables={}
         
         filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
-        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
-        can.create_image(2, 2, image=img, anchor=NW)
+            
+        try:
+            can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())
+            can.create_image(2, 2, image=img, anchor=NW)
+        except Exception: pass
         
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()
         text_button = Button(parent, text=self.button_text, command=self.button1); text_button.pack(side = 'bottom', padx = 5, pady = 5)
@@ -3634,8 +3650,10 @@ class IndicatorWindowSimple:
         parent = Tk(); self._parent = parent; nulls = '\t\t\t\t\t\t\t'; parent.title('Attention!!!')
 
         filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
-        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
-        can.create_image(2, 2, image=img, anchor=NW)
+        try: 
+            can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
+            can.create_image(2, 2, image=img, anchor=NW)
+        except Exception: pass
         
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
         text_button = Button(parent, text=self.button_text, command=parent.destroy); text_button.pack(side = 'bottom', padx = 5, pady = 5)
@@ -3647,8 +3665,10 @@ class IndicatorWindow:
         parent = Tk(); self._parent = parent; nulls = '\t\t\t\t\t\t\t'; parent.title('Attention!!!')
 
         filename = 'Config/warning_big.gif'; fn=filepath(filename); img = PhotoImage(file=fn)
-        can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
-        can.create_image(2, 2, image=img, anchor=NW)
+        try:
+            can = Canvas(parent); can.pack(side='left',padx = 10); can.config(width=img.width(), height=img.height())        
+            can.create_image(2, 2, image=img, anchor=NW)
+        except Exception: pass
         
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
         quit_button = Button(parent, text='Quit', command=self.quit); quit_button.pack(side = 'bottom', padx = 5, pady = 5)
@@ -3723,7 +3743,7 @@ class IndicatorChooseWindow:
     def chooseDirectory(self,option):
         tag = tkFileDialog.askdirectory(parent=self._parent)
         ### Below is code specific for grabbing the APT location
-        import ResultsExport_module
+        from import_scripts import ResultsExport_module
         apt_location = ResultsExport_module.getAPTDir(tag)
         if 'bin' not in apt_location:
             print_out = "WARNING!!! Unable to find a valid Affymetrix Power Tools directory."
@@ -3759,8 +3779,17 @@ class MacConsiderations:
         self._parent = parent
         parent.title('AltAnalyze: Considerations for Mac OSX')
         self._user_variables={}
-        filename = 'Config/MacOSX.png'; #fn=filepath(filename); img = PhotoImage(file=fn)
-        img = ImageTk.PhotoImage(file=filepath(filename))
+        filename = 'Config/MacOSX.png'
+        try:
+            import ImageTk
+            img = ImageTk.PhotoImage(file=filepath(filename))
+        except Exception:
+            try:
+                from PIL import ImageTk
+                img = ImageTk.PhotoImage(file=filepath(filename))
+            except Exception: 
+                filename = 'Config/MacOSX.gif'
+                fn=filepath(filename); img = PhotoImage(file=fn)
         can = Canvas(parent); can.pack(side='top',fill=BOTH); can.config(width=img.width(), height=img.height())        
         can.create_image(2, 2, image=img, anchor=NW)
 
@@ -4065,6 +4094,8 @@ class ExpressionFileLocationData:
     def setExonBedBuildStatus(self,bed_build_status): self.bed_build_status = bed_build_status
     def setRunKallisto(self, runKallisto): self.runKallisto = runKallisto
     def RunKallisto(self): return self.runKallisto
+    def setCustomFASTA(self, customFASTA): self.customFASTA = customFASTA
+    def CustomFASTA(self): return self.customFASTA
     def setChromiumSparseMatrix(self, chromiumSparseMatrix): self.chromiumSparseMatrix = chromiumSparseMatrix
     def ChromiumSparseMatrix(self): return self.chromiumSparseMatrix
     def setChannelToExtract(self,channel_to_extract): self.channel_to_extract = channel_to_extract
@@ -4084,9 +4115,13 @@ class ExpressionFileLocationData:
     def BGPFile(self): return self._bgp_file
     def CELFileDir(self): return self._cel_file_dir
     def BEDFileDir(self): return self._cel_file_dir+'/'
-    def ArrayType(self): return self._array_type
+    def ArrayType(self):
+        try: return self._array_type
+        except Exception: return 'RNASeq'
     def OutputDir(self): return self._output_dir
-    def Vendor(self): return self.vendor
+    def Vendor(self):
+        try: return self.vendor
+        except Exception: return 'RNASeq'
     def setSpecies(self, species): self.species = species
     def Species(self): return self.species
     def setPlatformType(self, platformType): self.platformType = platformType
@@ -4357,6 +4392,8 @@ def getArraysAndVendors(species,vendor):
     manufacturer_list = unique.unique(manufacturer_list)
     array_list2 = unique.unique(array_list2) ### Filtered based on compatible species arrays
     array_list2.sort(); manufacturer_list.sort()
+    if vendor == 'RNASeq':
+        array_list2.reverse()
     return array_list2, manufacturer_list
 
 def getSpeciesForArray(array_type):
@@ -4414,7 +4451,7 @@ def verifyLineageProfilerDatabases(species,run_mode):
                 if file_length>0: installed = True
                 else:
                     try:
-                        import GeneSetDownloader
+                        from build_scripts import GeneSetDownloader
                         GeneSetDownloader.translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species)
                     except Exception:
                         None
@@ -4443,7 +4480,7 @@ def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
                 if file_problem == 'yes':
                     print_out = 'Unknown installation error occured.\nPlease try again.'
                 else:
-                    print_out = 'To perform a '+array_type+' analysis AltAnalyze must\nfirst download the appropriate database.'
+                    print_out = 'To perform an '+array_type+' analysis allow AltAnalyze \nto download the appropriate database now.'
                 if run_mode == 'GUI': IndicatorWindow(print_out,'Download')
                 else: print print_out  ### Occurs in command-line mode
                 if array_type == 'RNASeq': filename = 'AltDatabase/'+species+'_'+array_type+'.zip'
@@ -4519,7 +4556,9 @@ def getUserParameters(run_parameter,Multi=None):
 
     if os.name == 'posix' and run_parameter == 'yes':
         try: MacConsiderations()
-        except Exception: pass
+        except Exception:
+            print traceback.format_exc()
+            sys.exit()
     ### Get default options for ExpressionBuilder and AltAnalyze
 
     na = 'NA'; log = 'log'; no = 'no'
@@ -4622,9 +4661,10 @@ def getUserParameters(run_parameter,Multi=None):
         
         #default_vendor = 'RNASeq'
         #default_specific_array = 'RNA-seq aligned read counts'
-        default_vendor = 'Affymetrix'
-        default_specific_array='Affymetrix expression array'
+        default_vendor = 'RNASeq'
+        default_specific_array='Raw sequence or processed'
         
+        """
         try: ### If the users have already analyzed Affy data, make this the default
             affymetrix_library_dir = 'AltDatabase/affymetrix/LibraryFiles'
             affy_dir_list = read_directory(filepath(affymetrix_library_dir))
@@ -4633,12 +4673,18 @@ def getUserParameters(run_parameter,Multi=None):
                 default_specific_array='Affymetrix expression array'
         except Exception:
             None ### Occurs if this directory is missing (possible in future versions)
-
-        if run_parameter == 'Add Species': species_full = 'Homo sapiens'; species = 'Hs'; vendor = 'Affymetrix'; specific_array = 'Exon 1.0 ST array'
-        if backSelect == 'yes' and 'array_type' in old_options: pass
-        elif 'Homo sapiens' in current_species_names: species_full = 'Homo sapiens'; species = 'Hs'; vendor = default_vendor; specific_array = default_specific_array
-        elif 'Mus musculus' in current_species_names: species_full = 'Mus musculus'; species = 'Mm'; vendor = default_vendor; specific_array = default_specific_array
-        elif 'Rattus norvegicus' in current_species_names: species_full = 'Rattus norvegicus'; species = 'Rn'; vendor = default_vendor; specific_array = default_specific_array
+        """
+        
+        if run_parameter == 'Add Species':
+            species_full = 'Homo sapiens'; species = 'Hs'; vendor = 'Affymetrix'; specific_array = 'Exon 1.0 ST array'
+        if backSelect == 'yes' and 'array_type' in old_options:
+            pass
+        elif 'Homo sapiens' in current_species_names:
+            species_full = 'Homo sapiens'; species = 'Hs'; vendor = default_vendor; specific_array = default_specific_array
+        elif 'Mus musculus' in current_species_names:
+            species_full = 'Mus musculus'; species = 'Mm'; vendor = default_vendor; specific_array = default_specific_array
+        elif 'Rattus norvegicus' in current_species_names:
+            species_full = 'Rattus norvegicus'; species = 'Rn'; vendor = default_vendor; specific_array = default_specific_array
         else:
             for species_full in current_species_names:
                 species = species_codes[species_full].SpeciesCode()
@@ -6452,7 +6498,7 @@ def getUserParameters(run_parameter,Multi=None):
     return expr_var, alt_var, additional_var, goelite_var, exp_file_location_db
 
 def getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS):
-    import ResultsExport_module
+    from import_scripts import ResultsExport_module
     if 'APT' in file_location_defaults:
         fl = file_location_defaults['APT']
         apt_location = fl.Location() ###Only one entry for all species
@@ -6471,7 +6517,7 @@ def getAPTLocations(file_location_defaults,run_from_scratch,run_MiDAS):
 def check_moderated_support(option_db):
     """ Excludes moderated t-test support when module import fails... shouldn't fail """
     try:
-        import mpmath
+        from stats_scripts import mpmath
     except Exception,e:
         a = traceback.format_exc()
         GUIcriticalError(a)

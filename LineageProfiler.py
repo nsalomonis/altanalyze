@@ -17,7 +17,7 @@
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sys, string
-import statistics
+from stats_scripts import statistics
 import math
 import os.path
 import unique
@@ -26,7 +26,7 @@ import time
 import export
 import traceback
 import warnings
-#import salstat_stats; reload(salstat_stats)
+#from stats_scripts import salstat_stats; reload(salstat_stats)
 try:
     from scipy import stats
     use_scipy = True
@@ -194,7 +194,7 @@ def importVendorToEnsemblTranslations(species,vendor,exp_input):
         except Exception: None
     """
     translation_db={}
-    import BuildAffymetrixAssociations
+    from import_scripts import BuildAffymetrixAssociations
     
     ### Use the same annotation method that is used to create the ExpressionOutput annotations
     use_go = 'yes'
@@ -681,7 +681,7 @@ def exportCorrelationResults(exp_input):
     return zscore_output_dir
 
 def visualizeLineageZscores(zscore_output_dir,grouped_lineage_zscore_dir,graphic_links):
-    import clustering
+    from visualization_scripts import clustering
     ### Perform hierarchical clustering on the LineageProfiler Zscores
     graphic_links = clustering.runHCOnly(zscore_output_dir,graphic_links)   
     return graphic_links
