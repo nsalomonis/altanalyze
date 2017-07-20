@@ -4024,8 +4024,10 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
     unique_clusters=[] ### Export groups
     
     new_groups_dir = string.replace(expFile,'exp.','groups.')
+    new_comps_dir = string.replace(expFile,'exp.','comps.')
     if suffix != None:
         new_groups_dir = new_groups_dir[:-4]+'-'+suffix+'.txt' ###Usually end in ICGS
+        new_comps_dir = new_comps_dir[:-4]+'-'+suffix+'.txt'
     out_obj = export.ExportFile(new_groups_dir)
     for name in names:
         cluster = clusters[names.index(name)]
@@ -4040,7 +4042,7 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
         if cluster not in unique_clusters: unique_clusters.append(cluster)
     out_obj.close()
     comps=[] #Export comps
-    out_obj = export.ExportFile(string.replace(expFile,'exp.','comps.'))
+    out_obj = export.ExportFile(new_comps_dir)
     for c1 in unique_clusters:
         for c2 in unique_clusters:
             temp=[int(c2),int(c1)]; temp.sort(); temp.reverse()
