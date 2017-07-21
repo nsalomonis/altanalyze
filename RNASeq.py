@@ -2838,16 +2838,16 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
                 groups_file = string.replace(expFile,'exp.','groups.')
                 groups_file = string.replace(groups_file,'-steady-state','')
                 groups_filtered_file = groups_file[:-4]+'-OutliersRemoved.txt'
-                comps_file = string.replace(groups_file,'groups.','comps.')
-                comps_filtered_file = string.replace(groups_filtered_file,'groups.','comps.')
-                counts_file = string.replace(expFile,'exp.','counts.')
-                counts_filtered_file = string.replace(output_file,'exp.','counts.')
-                try: os.rename(groups_file,groups_filtered_file) ### if present copy over
+                #comps_file = string.replace(groups_file,'groups.','comps.')
+                #comps_filtered_file = string.replace(groups_filtered_file,'groups.','comps.')
+                #counts_file = string.replace(expFile,'exp.','counts.')
+                #counts_filtered_file = string.replace(output_file,'exp.','counts.')
+                try: shutil.copyfile(groups_file,groups_filtered_file) ### if present copy over
                 except Exception: pass
-                try: os.rename(comps_file,comps_filtered_file) ### if present copy over
+                try: shutil.copyfile(comps_file,comps_filtered_file) ### if present copy over
                 except Exception: pass
-                try: shutil.copyfile(counts_file,counts_filtered_file) ### if present copy over
-                except Exception: pass
+                #try: shutil.copyfile(counts_file,counts_filtered_file) ### if present copy over
+                #except Exception: pass
             expFile = output_file
             print ''
         except Exception:
@@ -4056,6 +4056,7 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
     for c1 in unique_clusters:
         if last_cluster !=None:
             out_obj.write(c1+'\t'+last_cluster+'\n')
+        last_cluster=c1
     out_obj.close()
     return new_groups_dir
 

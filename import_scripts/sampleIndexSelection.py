@@ -161,7 +161,9 @@ def statisticallyFilterFile(input_file,output_file,threshold):
         else:
             samples_to_exclude.append(sample)
         eo.write(sample+'\t'+str(count_sum_array_db[sample])+'\n')
-        
+
+    if len(samples_to_retain)<4: ### Don't remove any if too few samples
+        samples_to_retain+=samples_to_exclude
     eo.close()
     print len(samples_to_exclude), 'samples removed (< 500 genes expressed)' # (%s)' % (dev,string.join(samples_to_exclude,', '))
     print 'Exporting the filtered expression file to:'

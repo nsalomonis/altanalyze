@@ -52,10 +52,11 @@ def runICGStest(testType = "complete",inputData = "BAM"):
         species = "Mm"
         SamplesDiffering = "4"
         excludeCellCycle = "conservative"
-        restrictBy = "protein_coding"
+        restrictBy = "None"
         input_path = unique.filepath(os.getcwd()+"/tests/demo_data/"+inputDataType+"/input/BoneMarrow-scRNASeq.txt")
         expname = "BoneMarrow-scRNASeq"
         expdir = "--expdir"
+        removeOutliers = "yes"
     elif inputData == "BAM":
         species = "Hs"
         inputDataType = inputData

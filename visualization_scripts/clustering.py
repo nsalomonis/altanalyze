@@ -24,7 +24,7 @@ command_args = string.join(sys.argv,' ')
 if len(sys.argv[1:])>0 and '--' in command_args: commandLine=True
 else: commandLine=False
 
-display_label_names = False
+display_label_names = True
 
 import traceback
 try:

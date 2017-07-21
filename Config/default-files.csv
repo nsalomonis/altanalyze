@@ -5,7 +5,7 @@
 "PathDir","local","/Users/saljh8/Desktop/dataAnalysis/Collaborative/Inigo/Tac/final","all"
 "Program/Download","Status","Location","Species"
 "url","url","http://altanalyze.org/archiveDBs/","all"
-"PathFile","local","/Users/saljh8/Desktop/dataAnalysis/Collaborative/Inigo/Tac/final/ExpressionInput","all"
+"PathFile","local","/Users/saljh8/GitHub/altanalyze/tests/demo_data/BAM/output/ExpressionInput/SamplePrediction","all"
 "TrEMBL","ftp","ftp://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/taxonomic_divisions/uniprot_trembl_human.dat.gz","Hs"
 "TrEMBL","ftp","ftp://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/taxonomic_divisions/uniprot_trembl_rodents.dat.gz","Mm|Rn"
 "APT","local","AltDatabase/affymetrix/APT","all"

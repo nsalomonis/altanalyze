@@ -618,6 +618,7 @@ class RScripts:
                 output = 'out<-makeoutput(data,hopg,file=%s)' % gene_output
                 #print output
                 print_out = r(output)
+                #print print_out
                 output_file = r['out']
                 status = 'stop'
                 if 'clustering' in hopach_run:

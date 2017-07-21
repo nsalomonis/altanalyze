@@ -6479,7 +6479,7 @@ def commandLineRun():
             try:
                 groups_file = string.replace(expFile,'exp.','groups.') ### destination file
                 export.copyFile(initial_groups, groups_file)
-                print 'Moved groups file to ExpressionInput folder in the output directory'
+                print 'Copied the groups file to ExpressionInput folder in the output directory'
             except Exception:
                 print 'No groups file present in the input file folder.'
 
@@ -6545,7 +6545,9 @@ def commandLineRun():
                 fl.setRootDir(root_dir)
             elif len(input_exp_file)>0:
                 ### Dealing with an expression file which should not be treated as RNASeq workflow
-                array_type = "3'array"
+                count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
+                if count<2:
+                    array_type = "3'array" ### No steady-state file, must be an standard gene-level analysis
                 
             time_stamp = timestamp()    
             log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
@@ -6558,6 +6560,7 @@ def commandLineRun():
             print ''
 
             count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
+            exonExpFile = str(expFile)
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'
             elif array_type=='RNASeq' or len(ChromiumSparseMatrix)>0 or len(input_fastq_dir)>0:
@@ -6585,24 +6588,53 @@ def commandLineRun():
                         
             ### Export Guide3 Groups automatically
             Guide3_results = graphic_links[-1][-1][:-4]+'.txt'
-            
             new_groups_dir = RNASeq.exportGroupsFromClusters(Guide3_results,fl.ExpFile(),array_type,suffix='ICGS')
-
-            from import_scripts import sampleIndexSelection
-            newExpFile = expFile[:-4]+'-ICGS.txt'
             
-            ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
-            sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
-            fl.setExpFile(newExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
-
-            new_groups_dir
             ### Build-tSNE plot
             UI.performPCA(Guide3_results, 'no', 't-SNE', False, None, plotType='2D',
                 display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False, separateGenePlots=False)
             
+            ### Rename and reorder the resulting ICGS files for downstream anlaysis (preserving the original files)
+            from import_scripts import sampleIndexSelection
+            ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
+            if '-steady-state' in expFile:
+                ssCountsFile = string.replace(expFile,'exp.','counts.')
+                newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
+                newssCountsFile = string.replace(newExpFile,'exp.','counts.')
+                exonExpFile = string.replace(expFile,'-steady-state','')
+                exonCountFile = string.replace(newExpFile,'exp.','counts.')
+                newExonExpFile = string.replace(newExpFile,'-steady-state','')
+                newExonCountsFile = string.replace(newExonExpFile,'exp.','counts.')
+                originalExonCountsFile = string.replace(exonExpFile,'-ICGS','')
+                sampleIndexSelection.filterFile(ssCountsFile,newssCountsFile,ICGS_order)
+                sampleIndexSelection.filterFile(exonExpFile,newExonExpFile,ICGS_order)
+                sampleIndexSelection.filterFile(exonCountFile,newExonCountsFile,ICGS_order)
+            else:
+                newExpFile = expFile[:-4]+'-ICGS.txt'
+                
+            if 'OutliersRemoved' in Guide3_results:
+                try: os.remove(expFile[:-4]+'-OutliersRemoved.txt')
+                except Exception: pass
+                try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','groups.'))
+                except Exception: pass
+                try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','comps.'))
+                except Exception: pass
+                filtered_exp_file = string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','filteredExp.')
+                new_filtered_exp_file = string.replace(filtered_exp_file,'-OutliersRemoved','')
+                #try: os.rename(filtered_exp_file,new_filtered_exp_file) ### if present copy over
+                #except Exception: pass
+                
+            fl.setExpFile(newExpFile) ### set this to the outlier removed version
+            groups_file = string.replace(newExpFile,'exp.','groups.')
+            comps_file = string.replace(newExpFile,'exp.','comps.')
+            fl.setGroupsFile(groups_file)
+            fl.setCompsFile(comps_file)
+            exp_file_location_db[exp_name+'-ICGS'] = fl
+                
+            sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
+            
             ### force MarkerFinder to be run
             input_exp_file = newExpFile  ### Point MarkerFinder to the new ICGS ordered copied expression file
-
             update_method = ['markers'] 
             
         if 'WikiPathways' in image_export:
@@ -8152,13 +8184,23 @@ class Logger(object):
 def verifyPath(filename):
     ### See if the file is in the current working directory
     new_filename = filename
+    cwd = os.getcwd()
     try:
-        cwd = os.getcwd()
         files = unique.read_directory(cwd)
         if filename in files:
             new_filename = cwd+'/'+new_filename
     except Exception:
         pass
+    try:
+         ### For local AltAnalyze directories
+        if os.path.isfile(cwd+'/'+filename):
+            new_filename = cwd+'/'+filename
+        else:
+            files = unique.read_directory(cwd+'/'+filename)
+            new_filename = cwd+'/'+filename
+    except Exception:
+            #print traceback.format_exc()
+            pass
 
     return new_filename
     
