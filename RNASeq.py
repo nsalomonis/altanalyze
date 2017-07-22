@@ -4806,10 +4806,24 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         fastq_paths = read_directory(output_dir)
 
     kallisto_folders=[]
-    expMatrix={}
-    countMatrix={}
-    countSampleMatrix={}
-    sample_total_counts={}
+    try:
+        import collections
+        expMatrix = collections.OrderedDict()
+        countMatrix = collections.OrderedDict()
+        countSampleMatrix = collections.OrderedDict()
+        sample_total_counts = collections.OrderedDict()
+    except Exception:
+        try:
+            import ordereddict
+            expMatrix = ordereddict.OrderedDict()
+            countMatrix = ordereddict.OrderedDict()
+            countSampleMatrix = ordereddict.OrderedDict()
+            sample_total_counts = ordereddict.OrderedDict()
+        except Exception:
+            expMatrix={}
+            countMatrix={}
+            countSampleMatrix={}
+            sample_total_counts={}
     headers=['UID']
     
     for n in fastq_paths:
@@ -4958,6 +4972,10 @@ def importTPMs(sample,input_path,expMatrix,countMatrix,countSampleMatrix):
             header = string.split(data,'\t')
         else:
             target_id,length,eff_length,est_counts,tpm = string.split(data,'\t')
+            try: float(est_counts); 
+            except Exception: ### nan instead of float found due to lack of alignment
+                est_counts = '0.0'
+                tpm = '0.0'
             if '.' in target_id:
                 target_id = string.split(target_id,'.')[0] ### Ensembl isoform IDs in more recent Ensembl builds
             try: expMatrix[target_id].append(tpm)
@@ -5054,8 +5072,38 @@ def findPairs(fastq_paths):
                 pass
             else:
                 paired = 'single'
+        new_names = checkForMultipleLanes(new_names)
         return new_names, paired
-            
+    
+def checkForMultipleLanes(new_names):
+    """ This function further aggregates samples run across multiple flowcells """
+    read_count = 0
+    lane_count = 0
+    updated_names={}
+    for sample in new_names:
+        reads = new_names[sample]
+        count=0
+        for read in reads:
+            read_count+=1
+            if '_L00' in read and '_001':
+                ### assumes no more than 9 lanes/sample
+                count+=1
+        if len(reads) == count: ### Multiple lanes run per sample
+            lane_count+=count
+    if lane_count==read_count:
+        for sample in new_names:
+            sample_v1 = string.replace(sample,'_001','')
+            sample_v1 = string.split(sample_v1,'_L00')
+            if len(sample_v1[-1])==1: ### lane number
+                sample_v1 = sample_v1[0]
+                if sample_v1 in updated_names:
+                    updated_names[sample_v1]+=new_names[sample]
+                else:
+                    updated_names[sample_v1]=new_names[sample]
+    if len(updated_names)==0:
+        updated_names = new_names
+    return updated_names
+        
 def getFASTAFile(species):
     fasta_file=None
     fasta_folder = 'AltDatabase/'+species+'/SequenceData/'

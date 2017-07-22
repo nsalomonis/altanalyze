@@ -6472,16 +6472,18 @@ def getUserParameters(run_parameter,Multi=None):
             if nextStep == 'UseSelected':
                 group_selected = group_selected[:-4]+'.txt'
                 exp_file = fl.ExpFile()
-                ### We have to update the OutlierRemoved file if the original expression file was filtered
+                
+                ### Remove OutlierRemoved files (they will otherwise cluster up the directory)
                 if 'OutliersRemoved' in group_selected and 'OutliersRemoved' not in exp_file:
-                    exp_file = exp_file[:-4]+'-OutliersRemoved.txt'
-                    fl.setExpFile(exp_file) ### set this to the outlier removed version
-                    groups_file = string.replace(exp_file,'exp.','groups.')
-                    comps_file = string.replace(exp_file,'exp.','comps.')
-                    fl.setGroupsFile(groups_file)
-                    fl.setCompsFile(comps_file)
-                    exp_file_location_db={}
-                    exp_file_location_db[dataset_name+'-ICGS'] = fl
+                    try: os.remove(expFile[:-4]+'-OutliersRemoved.txt')
+                    except Exception: pass
+                    try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','groups.'))
+                    except Exception: pass
+                    try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','comps.'))
+                    except Exception: pass
+                    filtered_exp_file = string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','filteredExp.')
+                    new_filtered_exp_file = string.replace(filtered_exp_file,'-OutliersRemoved','')
+                    
                 ### Create the new groups file but don't over-write the old
                 new_groups_dir = RNASeq.exportGroupsFromClusters(group_selected,fl.ExpFile(),array_type,suffix='ICGS')
                 from import_scripts import sampleIndexSelection
@@ -6489,11 +6491,33 @@ def getUserParameters(run_parameter,Multi=None):
                     newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
                     ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
                     sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
+                    
+                    ### Copy the steady-state files for ICGS downstream-specific analyses
+                    ssCountsFile = string.replace(expFile,'exp.','counts.')
+                    newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
+                    newssCountsFile = string.replace(newExpFile,'exp.','counts.')                    
+                    exonExpFile = string.replace(expFile,'-steady-state','')
+                    exonCountFile = string.replace(exonExpFile,'exp.','counts.')
+                    newExonExpFile = string.replace(newExpFile,'-steady-state','')
+                    newExonCountsFile = string.replace(newExonExpFile,'exp.','counts.')
+
+                    sampleIndexSelection.filterFile(ssCountsFile,newssCountsFile,ICGS_order)
+                    sampleIndexSelection.filterFile(exonExpFile,newExonExpFile,ICGS_order)
+                    sampleIndexSelection.filterFile(exonCountFile,newExonCountsFile,ICGS_order)
+                    exonExpFile = exonExpFile[:-4]+'-ICGS.txt'
                 else:
                     newExpFile = expFile[:-4]+'-ICGS.txt'
                     ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
                     sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
-                fl.setExpFile(newExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
+                    exonExpFile = newExpFile
+                    
+                fl.setExpFile(exonExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
+                comps_file = string.replace(newExpFile,'exp.','comps.')
+                fl.setGroupsFile(new_groups_dir)
+                fl.setCompsFile(string.replace(new_groups_dir,'groups.','comps.'))
+                del exp_file_location_db[exp_name]
+                exp_file_location_db[exp_name+'-ICGS'] = fl
+                                    
                 run_from_scratch = 'Process Expression file'
             else:
                 #print 're-initializing window'

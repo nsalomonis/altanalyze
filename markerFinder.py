@@ -98,7 +98,6 @@ def expressedIndexes(values):
         i+=1
     return filtered_indexes
     
-
 def advancedPearsonCorrelationAnalysis(uid,data_list1,tissue_template_db):
     expIndexes = expressedIndexes(data_list1)
     Queried[uid]=[]
@@ -108,8 +107,10 @@ def advancedPearsonCorrelationAnalysis(uid,data_list1,tissue_template_db):
         if max_diff>-1000 and max(data_list)>-1000:
             if correlateAllGenes:
                 min_rho = -1
+                min_p = 1
             else:
                 min_rho = 0.3
+                min_p = 0.05
             for tissue in tissue_template_db:
                 tissue_template = tissue_template_db[tissue]
                 c1 = tissue_template.count(1)
@@ -117,42 +118,47 @@ def advancedPearsonCorrelationAnalysis(uid,data_list1,tissue_template_db):
                 c2 = filtered_template.count(1)
                 if len(data_list)!= len(filtered_template): kill
                 if c1 == c2 or c1 != c2: ### If number of 1's in list1 matches list2
-                    rho = rhoCalculation(data_list,filtered_template)
+                    rho,p = rhoCalculation(data_list,filtered_template)
                     if tissue == 'Housekeeping':
-                        print tissue, rho, uid;sys.exit()
-                    if rho>min_rho:
+                        print tissue, p, uid;sys.exit()
+                    #if rho>min_rho:
+                    if p<min_p and rho>min_rho:
                         Added[uid]=[]
-                        try: tissue_scores[tissue].append([rho,uid])
-                        except Exception: tissue_scores[tissue] = [[rho,uid]]
-
+                        try: tissue_scores[tissue].append([(rho,p),uid])
+                        except Exception: tissue_scores[tissue] = [[(rho,p),uid]]
 
 def PearsonCorrelationAnalysis(uid,data_list1,tissue_template_db):
     if correlateAllGenes:
         min_rho = -2
+        min_p = 1
     else:
         min_rho = 0.3
+        min_p = 0.05
     for tissue in tissue_template_db:
         tissue_template = tissue_template_db[tissue]
-        rho = rhoCalculation(data_list1,tissue_template)
+        rho,p = rhoCalculation(data_list1,tissue_template)
         #print rho, uid, tissue
         if tissue == 'Housekeeping':
             print tissue, rho, uid;sys.exit()
-        if rho>min_rho:
-            try: tissue_scores[tissue].append([rho,uid])
-            except Exception: tissue_scores[tissue] = [[rho,uid]]
+        #if rho>min_rho:
+        if p<min_p and rho>min_rho:
+            try: tissue_scores[tissue].append([(rho,p),uid])
+            except Exception: tissue_scores[tissue] = [[(rho,p),uid]]
 
 def rhoCalculation(data_list1,tissue_template):
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
-            try: rho,p = stats.pearsonr(data_list1,tissue_template)
+            try:
+                rho,p = stats.pearsonr(data_list1,tissue_template)
+                return rho,p
             except Exception:
                 #data_list_alt = [0 if x==None else x for x in data_list1]
                 #rho,p = stats.pearsonr(data_list1,tissue_template)
                 kill
     except Exception:
         rho = pearson(data_list1,tissue_template)
-    return rho
+        return rho
 
 def simpleScipyPearson(query_lists,reference_list):
     """ Get the top correlated values referenced by index of the query_lists (e.g., data matrix) """
@@ -164,7 +170,7 @@ def simpleScipyPearson(query_lists,reference_list):
             rho,p = stats.pearsonr(query_list,reference_list)
             #if query_list == reference_list: print query_list,reference_list, rho;sys.exit()
         if str(rho)!='nan':
-            rho_results.append([float(rho),i])
+            rho_results.append([(float(rho),float(p)),i])
         i+=1
     rho_results.sort()
     rho_results.reverse()
@@ -256,14 +262,13 @@ def importMarkerProfiles(filename,fl):
         if x==0:
             x=1
         else:
-            uid,symbol,rho,condition=t
+            uid,symbol,rho,p,condition=t
             probeset_symbol_db[uid]=symbol
             try: marker_db[condition].append(uid)
             except Exception: marker_db[condition] = [uid]
             if condition not in condition_list:
                 condition_list.append(condition)
     marker_condition_db={}
-    
     
     try: condition_list = getOrderedGroups(fl.DatasetFile()) ### Order this set with the same way as the samples on the opposite axis
     except Exception,e:
@@ -381,6 +386,12 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Spec
             print len(probeset_symbol_db)
             print custom_path
             print convertNonLogToLog
+            print Species
+            print platform
+            print len(probeset_symbol_db)
+            print custom_path
+            print fl.Vendor()
+            print convertNonLogToLog
             """
             ExpressionBuilder.exportGeometricFolds(fl.DatasetFile(),platform,marker_list,probeset_symbol_db,exportOutliers=False,exportRelative=False,customPath=custom_path,convertNonLogToLog=convertNonLogToLog)
             reorderInputFile(custom_path,marker_list, marker_condition_db)
@@ -396,7 +407,14 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Spec
             gsp.setNormalize('median')
             gsp.setGeneSelection('')
             gsp.setClusterGOElite('GeneOntology')
-
+            """
+            print custom_path
+            print graphics
+            print row_method
+            print column_method
+            print column_metric
+            """
+            reload(clustering)
             try:
                 graphics = clustering.runHCexplicit(custom_path, graphics, row_method, row_metric, column_method, column_metric, color_gradient, gsp, display=False)
             except Exception:
@@ -544,9 +562,9 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
             for probeset in tissue_specific_IDs_combined[tissue]:
                 try: tissue_specific_IDs[probeset].append(tissue)
                 except Exception: tissue_specific_IDs[probeset] = [tissue]
-            for (probeset,symbol,rho) in correlations_combined[tissue]:
-                try: interim_correlations[tissue].append([probeset,symbol,rho])
-                except Exception: interim_correlations[tissue] = [[probeset,symbol,rho]]
+            for (probeset,symbol,(rho,p)) in correlations_combined[tissue]:
+                try: interim_correlations[tissue].append([probeset,symbol,(rho,p)])
+                except Exception: interim_correlations[tissue] = [[probeset,symbol,(rho,p)]]
         analyze_housekeeping = 'yes'; compare_clusters = 'no'
         original_tissue_headers2 = original_tissue_headers ### The last function will overwrite the group~ replacement
         #identifyMarkers(filename,[]) ### Used to get housekeeping genes for all conditions
@@ -558,14 +576,14 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
     for (stdev,(probeset,symbol)) in housekeeping:
         if probeset not in tissue_specific_IDs: ### Shouldn't be if it is a housekeeping gene
             if symbol not in ranked_list:
-                ranked_list.append(symbol); ranked_lookup.append([probeset,symbol,stdev])
+                ranked_list.append(symbol); ranked_lookup.append([probeset,symbol,(stdev,0)])
 
     ### Replicates code in identifyMarkers - but only applied to housekeeping genes to add those in addition to the existing ones in tissue_specific_IDs
-    for (probeset,symbol,stdev) in ranked_lookup[:genesToReport]:
+    for (probeset,symbol,(stdev,p)) in ranked_lookup[:genesToReport]:
         try: tissue_specific_IDs[probeset].append(tissue)
         except Exception: tissue_specific_IDs[probeset] = [tissue]
-        try: interim_correlations[tissue].append([probeset,symbol,stdev])
-        except Exception: interim_correlations[tissue] = [[probeset,symbol,stdev]]
+        try: interim_correlations[tissue].append([probeset,symbol,(stdev,p)])
+        except Exception: interim_correlations[tissue] = [[probeset,symbol,(stdev,p)]]
     ### If no mean file provided
     #print [use_replicates, filename, tissue]
     if use_replicates:
@@ -825,26 +843,26 @@ def identifyMarkers(filename,cluster_comps):
         tissue_scores[tissue].reverse()
         ranked_list=[]; ranked_lookup=[]
         
-        for (rho,(probeset,symbol)) in tissue_scores[tissue]:
+        for ((rho,p),(probeset,symbol)) in tissue_scores[tissue]:
             if symbol == '': symbol = probeset
             #print tissue, tissue_scores[tissue];sys.exit()
             if symbol not in ranked_list:
-                ranked_list.append(symbol); ranked_lookup.append([probeset,symbol,rho])
-        for (probeset,symbol,rho) in ranked_lookup[:genesToReport]:  ### Here is where we would compare rho values between tissues with the same probesets
-            if rho>0.1:
+                ranked_list.append(symbol); ranked_lookup.append([probeset,symbol,(rho,p)])
+        for (probeset,symbol,(rho,p)) in ranked_lookup[:genesToReport]:  ### Here is where we would compare rho values between tissues with the same probesets
+            if rho>0.1 and p<0.1:
                 if compare_clusters == 'yes':
                     try: tissue_specific_IDs[tissue].append(probeset)
                     except Exception: tissue_specific_IDs[tissue] = [probeset]
                 else:
                     try: tissue_specific_IDs[probeset].append(tissue)
                     except Exception: tissue_specific_IDs[probeset] = [tissue]
-                try: interim_correlations[tissue].append([probeset,symbol,rho])
-                except Exception: interim_correlations[tissue] = [[probeset,symbol,rho]]    
+                try: interim_correlations[tissue].append([probeset,symbol,(rho,p)])
+                except Exception: interim_correlations[tissue] = [[probeset,symbol,(rho,p)]]    
         if correlateAllGenes:
             for tissue in tissue_scores:
-                for (rho,(probeset,symbol)) in tissue_scores[tissue]:
-                    try: all_genes_ranked[probeset,symbol].append([rho,tissue])
-                    except Exception:all_genes_ranked[probeset,symbol] = [[rho,tissue]]
+                for ((rho,p),(probeset,symbol)) in tissue_scores[tissue]:
+                    try: all_genes_ranked[probeset,symbol].append([(rho,p),tissue])
+                    except Exception:all_genes_ranked[probeset,symbol] = [[(rho,p),tissue]]
     """
     for ID in all_genes_ranked:
         ag = all_genes_ranked[ID]
@@ -890,15 +908,15 @@ def exportAllGeneCorrelations(filename,allGenesRanked):
             filename = string.replace(filename,'.txt','-MeanBased.txt')
     except Exception: pass
     data = export.ExportFile(filename)
-    title_row = string.join(['UID','Symbol','rho','tissue'],'\t')
+    title_row = string.join(['UID','Symbol','Pearson rho','Pearson p-value','Cell State'],'\t')
     data.write(title_row+'\n')
     for (probeset,symbol) in allGenesRanked:
-        try: rho,tissue = allGenesRanked[(probeset,symbol)]
+        try: (rho,p),tissue = allGenesRanked[(probeset,symbol)]
         except Exception:
             ### Applies to tiered analysis
             allGenesRanked[(probeset,symbol)].sort()
-            rho,tissue = allGenesRanked[(probeset,symbol)][-1]
-        values = string.join([probeset,symbol,str(rho),tissue],'\t')+'\n'
+            (rho,p),tissue = allGenesRanked[(probeset,symbol)][-1]
+        values = string.join([probeset,symbol,str(rho),str(p),tissue],'\t')+'\n'
         data.write(values)
     data.close()
     
@@ -919,11 +937,13 @@ def exportCorrelations(original_filename,interim_correlations):
             filename = string.replace(filename,'.txt','-MeanBased.txt')
     except Exception: pass
     data = export.ExportFile(filename)
-    title_row = string.join(['UID','Symbol','rho','tissue'],'\t')
+    title_row = string.join(['UID','Symbol','Pearson rho','Pearson p-value','Cell State'],'\t')
     data.write(title_row+'\n')
     for tissue in interim_correlations:
-        for (probeset,symbol,rho) in interim_correlations[tissue]:
-            values = string.join([probeset,symbol,str(rho),tissue],'\t')+'\n'
+        for key in interim_correlations[tissue]:
+            probeset,symbol,rho_p = key
+            rho,p = rho_p
+            values = string.join([probeset,symbol,str(rho),str(p),tissue],'\t')+'\n'
             data.write(values)
     data.close()
     #print 'exported:',filepath(filename)
@@ -1796,7 +1816,7 @@ def exportSimple(filename,expression_data,title_row):
 def returnCommonProfiles(species):
     ###Looks at exon and gene array AltExon predictions to see which are in common
 
-    targetPlatforms = ['exon','gene']; tissue_to_gene={}; rho_threshold = 0
+    targetPlatforms = ['exon','gene']; tissue_to_gene={}; rho_threshold = 0; p_threshold = 0.2
     import TissueProfiler
     gene_translation_db = TissueProfiler.remoteImportExonIDTranslations('gene',species,'no','exon')
     for targetPlatform in targetPlatforms:
@@ -1809,11 +1829,11 @@ def returnCommonProfiles(species):
             data = cleanUpLine(line)
             if x==0: x=1 ### Ignore header line
             else:
-                uid,symbol,rho,tissue = string.split(data,'\t')
+                uid,symbol,(rho,p),tissue = string.split(data,'\t')
                 if targetPlatform=='gene':
                     try: uid = gene_translation_db[uid] ### translate from gene to exon array probesets
                     except Exception: uid = ''
-                if float(rho)>rho_threshold and len(uid)>0: ### Variable used for testing different thresholds internally
+                if float(rho)>rho_threshold and float(p)<p_threshold and len(uid)>0 : ### Variable used for testing different thresholds internally
                     try: tissue_to_gene[tissue,uid,symbol]+=1
                     except Exception: tissue_to_gene[tissue,uid,symbol] = 1
                     

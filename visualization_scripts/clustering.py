@@ -1577,6 +1577,11 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
     
     global priorColumnClusters 
     global priorRowClusters
+    try: 
+        if len(priorColumnClusters)>0:
+            priorColumnClusters = None
+            priorRowClusters = None
+    except Exception: pass
     getRowClusters=False
     start_time = time.time()
     fn = filepath(filename)
@@ -1754,7 +1759,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
     #if '.cdt' in filename: matrix.reverse(); row_header.reverse()
     for i in group_db2:
         if i not in group_db: group_db[i] = group_db2[i]
-
+            
     return matrix, column_header, row_header, dataset_name, group_db
 
 def importSIF(filename):
@@ -2711,6 +2716,7 @@ def plot_samples(S, axis_list=None):
 def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
           display=False, showLabels=True, algorithm='SVD',geneSetName=None,
           species=None,colorByGene=None):
+
     from numpy import mean,cov,double,cumsum,dot,linalg,array,rank
     fig = pylab.figure()
     ax = fig.add_subplot(111, projection='3d')

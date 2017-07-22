@@ -40,6 +40,9 @@ import unique
 
 def runICGStest(testType = "complete",inputData = "BAM"):
     
+    import UI
+    species_names = UI.getSpeciesInfo()
+    
     additional=None
     genes = ''
     genes_option = "--genes"
@@ -48,6 +51,8 @@ def runICGStest(testType = "complete",inputData = "BAM"):
     removeOutliers = "no"
     
     if inputData == "text":
+        if 'Mm' not in species_names:
+            return 'WARNING!!! Species Mm database not installed.'
         inputDataType = "Fluidigim_TPM"
         species = "Mm"
         SamplesDiffering = "4"
@@ -56,8 +61,10 @@ def runICGStest(testType = "complete",inputData = "BAM"):
         input_path = unique.filepath(os.getcwd()+"/tests/demo_data/"+inputDataType+"/input/BoneMarrow-scRNASeq.txt")
         expname = "BoneMarrow-scRNASeq"
         expdir = "--expdir"
-        removeOutliers = "yes"
+        removeOutliers = "no"
     elif inputData == "BAM":
+        if 'Hs' not in species_names:
+            return 'WARNING!!! Species Hs database not installed.'
         species = "Hs"
         inputDataType = inputData
         SamplesDiffering = "3"
@@ -67,6 +74,8 @@ def runICGStest(testType = "complete",inputData = "BAM"):
         expname = "test"
         input_path = unique.filepath(os.getcwd()+"/tests/demo_data/"+inputDataType+"/input")
     elif inputData == 'FASTQ':
+        if 'Hs' not in species_names:
+            return 'WARNING!!! Species Hs database not installed.'
         species = "Hs"
         inputDataType = inputData
         SamplesDiffering = "3"
@@ -78,6 +87,8 @@ def runICGStest(testType = "complete",inputData = "BAM"):
         custom_FASTA_path = unique.filepath(os.getcwd()+"/tests/demo_data/FASTA/Homo_sapiens.GRCh37.72.cdna.all.filtered.fa")
         additional = ["--runKallisto","True","--customFASTA",custom_FASTA_path]
     elif inputData == '10X':
+        if 'Mm' not in species_names:
+            return 'WARNING!!! Species Hs database not installed.'
         species = "Mm"
         inputDataType = inputData
         SamplesDiffering = "4"

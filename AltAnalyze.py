@@ -6602,10 +6602,10 @@ def commandLineRun():
                 newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
                 newssCountsFile = string.replace(newExpFile,'exp.','counts.')
                 exonExpFile = string.replace(expFile,'-steady-state','')
-                exonCountFile = string.replace(newExpFile,'exp.','counts.')
+                exonCountFile = string.replace(exonExpFile,'exp.','counts.')
                 newExonExpFile = string.replace(newExpFile,'-steady-state','')
                 newExonCountsFile = string.replace(newExonExpFile,'exp.','counts.')
-                originalExonCountsFile = string.replace(exonExpFile,'-ICGS','')
+
                 sampleIndexSelection.filterFile(ssCountsFile,newssCountsFile,ICGS_order)
                 sampleIndexSelection.filterFile(exonExpFile,newExonExpFile,ICGS_order)
                 sampleIndexSelection.filterFile(exonCountFile,newExonCountsFile,ICGS_order)
