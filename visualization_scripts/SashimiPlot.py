@@ -2,8 +2,9 @@
 
 import numpy as np
 import pylab as pl
-import sys,string
-import os
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import misopy
 from misopy.sashimi_plot import sashimi_plot as ssp
 import subprocess

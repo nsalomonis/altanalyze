@@ -1,13 +1,12 @@
-import sys,string,os,re
+import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
-#import altanalyze.unique as unique
 
+import re
 import unique
 import export
 import math
 from stats_scripts import statistics
 import traceback
-import junctionGraph
 
 """
     This script takes existing formatted metadata (C4 PCBC approved fields) and filters them to determine unique and non-unique
@@ -19,285 +18,278 @@ def BatchCheck(sample_id,nonpreferential_batchs,preferential_samples,platform):
     for batch in nonpreferential_batchs:
         if batch in sample_id:
             priority=1
-    if platform == 'RNASeq' or platform == 'PSI':
+    if platform == 'RNASeq' or platform == 'exon':
         if sample_id not in preferential_samples: priority = 1
         elif sample_id in preferential_samples: priority = 0
     return priority
-        
-class MetaDataQuery:
-    def __init__(self, field_name, field_type, field_values):
-        self.field_name = field_name
-        self.field_type = field_type
-        self.field_values = field_values
-    def FieldName(self): return self.field_name
-    def FieldType(self): return self.field_type
-    def FieldValues(self): ### can be a list of values
-        if self.field_type == 'NumFilter':
-            cutoff = float(self.field_values[1:])
-            if self.field_values[0]=='>':
-                direction = '>'
-            else:
-                direction = '<'
-            return cutoff, direction
-        else:
-            ls_results = string.split(self.field_values,',')
-            return ls_results
-    def __repr__(self): return self.FieldName(), self.FieldName(), self.FieldType(),FieldValues()
     
-def importMetaDataDescriptions(field_description_file):
-    ###Import the looks ups to indicate which fields to consider for metadata filtering
-    metadata_filters={}
-    for line in open(field_description_file,'rU').xreadlines():
-        data = line.rstrip()
-        data = string.replace(data,'"','')
-        values = string.split(data,'\t')
-        if len(values)>1: ### Hence this field should be considered for filtering
-            field_name = values[0]
-            field_type = values[1]
-            field_values = values[2]
-            mdq = MetaDataQuery(field_name,field_type,field_values)
-            metadata_filters[field_name] = mdq
-    return metadata_filters
-
-def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
-    """Import the metadata and include/exclude fields/samples based on the user inputs"""
+class MetaData:
+    def __init__(self,cellLine,donor_id,sex,diffState,quality,coi,vector,genes,lab,public,priority):
+        self.donor_id = donor_id; self.sex = sex; self.diffState = diffState; self.quality = quality; self.coi = coi
+        self.cellLine = cellLine; self.vector = vector; self.genes = genes ; self.lab = lab; self.public = public
+        self.priority = priority
+    def CellLine(self): return self.cellLine
+    def Gender(self): return self.sex
+    def DiffState(self): return self.diffState
+    def Quality(self): return self.quality
+    def COI(self): return self.coi
+    def Vector(self): return self.vector
+    def Genes(self): return self.genes
+    def Lab(self): return self.lab
+    def Public(self): return self.public
+    def Priority(self): return self.priority
+    def __repr__(self): return self.CellLine()
     
+def prepareComparisonData(input_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=None,compDiffState=None,restrictCovariateTerm=None):
+    removeConfoundedCovariates=True
     firstLine = True
-    samplesToRetain=[]
-    samplesToRemove=[]
-    uniqueDB={}
-    indexesToFilterOn={}
-    covariateSamples={}
-    for line in open(metadata_file,'rU').xreadlines():
+    notation_db={}; donor_sex_db={}
+    failed_QC = ['FAIL','bad','EXCLUDE']
+    nonpreferential_batchs = ['.144.7.','.144.6.','.219.2','.219.5','H9'] ### used when removing non-unique donors
+    preferential_samples = ['SC11-004A.133.1.7', 'SC11-008B.149.3.14', 'SC11-010A.149.5.16', 'SC11-010B.149.5.18', 'SC11-012A.149.5.19', 'SC11-012B.149.5.20', 'SC11-013A.149.5.21', 'SC11-013B.149.5.22', 'SC12-002A.154.1.4', 'SC12-005A.144.7.19', 'SC12-005B.144.7.21', 'SC12-007.181.7.1', 'SC13-043.420.12.3', 'SC13-044.219.2.9', 'SC13-045.219.5.10', 'SC14-066.558.12.18', 'SC14-067.558.12.19', 'SC14-069.569.12.25', 'IPS18-4-1.102.2.2', 'IPS18-4-2.102.2.4', 'SC11-005B.119.5.9', 'SC11-006A.119.1.4', 'SC11-006B.119.1.10', 'SC11-007A.119.3.5', 'SC11-007B.119.3.1', 'SC11-014A.133.1.13', 'SC11-014B.133.2.4', 'SC11-015A.133.1.14', 'SC11-015B.133.2.5', 'SC11-016A.133.1.8', 'SC11-016B.133.2.15', 'SC11-017A.144.6.16', 'SC11-017B.154.1.2', 'SC11-018A.144.6.18', 'SC11-018B.154.1.3', 'SC12-006A.144.7.22', 'SC12-006B.144.7.23', 'SC12-019.181.7.2', 'SC12-020.181.7.3', 'SC12-022A.172.5.8', 'SC12-024.219.2.7', 'SC12-025A.172.5.9', 'SC12-028.181.7.5', 'SC12-029.181.7.6', 'SC12-030.181.7.4', 'SC12-031.181.7.7', 'SC12-034.182.1.7', 'SC12-035.569.12.16', 'SC12-036.182.2.20', 'SC12-037.182.1.12', 'SC12-038.420.12.1', 'SC13-049.219.2.8']
+    preferential_samples += ['SC11-010BEB.144.6.6', 'SC13-045EB.219.6.11', 'SC12-005EB.585.2.13', 'SC11-013EB.558.12.7', 'SC13-043BEB.419.12.13', 'SC14-067EB.558.12.1', 'SC13-044EB.219.6.10', 'SC11-012BEB.144.6.7', 'SC14-066EB.585.2.14'] # variable XIST 'SC11-009A.133.3.5', 'SC11-009A.149.5.15'
+    preferential_samples += ['H9.119.3.7']
+    unique_covariate_samples={}
+    covariate_samples={}
+    sample_metadata={}
+    cellLineIDs={}
+    uniqueDonor_db={}
+    donor_db={}
+    allCovariateSamples={}
+    blood = ['CD34+ cells','mononuclear']
+    integrating = ['lentivirus','retrovirus']
+    nonintegrating = ['plasmid','RNA','Sendai Virus']
+
+    for line in open(input_file,'rU').xreadlines():
         data = line.rstrip()
-        data = string.replace(data,'"','')
         values = string.split(data,'\t')
         if firstLine:
+            if 'Cell_Line_Type' in data:
+                values = string.replace(data,'_',' ')
+                values = string.replace(values,'"','')
+                values = string.split(values,'\t')
             headers = values
             covariateIndex=None
+            mergeBlood = False
             index=0
             for h in headers:
-                if h in metadata_filters:
-                    md = metadata_filters[h]
-                    if md.FieldType()=='UID':
-                        uid_index = index
-                    else:
-                        indexesToFilterOn[index] = md
+                if 'CellType' in h or 'Diffname short' in h: cellTypeIndex = index ### diff-state
+                #if 'uid' in h: uidIndex = index
+                if 'Sample' == h or 'Decorated Name' == h: uidIndex = index
+                if 'CellLine' in h or 'C4 Cell Line ID' in h: cellLineIndex = index
+                if 'Pass QC' in h: qualityIndex = index
+                if 'Cell Type of Origin' in h: coiIndex = index
+                if 'Reprogramming Vector Type' in h: vectorIndex = index
+                if 'Reprogramming Gene Combination' in h: geneIndex = index
+                if 'Gender' in h: sex_index = index
+                if 'originating lab' in h or 'Originating Lab' in h: labIndex = index
+                if 'High Confidence Donor ID (HCDID)' in h or 'Donor ID' == h:
+                    unique_donor_index = index
+                if 'ublic' in h: publicIndex = index
+                if 'C4 Karyotype Result' in h: karyotypeIndex = index
+                if 'Donor Life Stage' in h: donorStageIndex = index
+                if 'Other Conditions During Reprogramming' in h: otherConditionIndex = index
+                if 'Small Molecules' in h: smallMoleculeIndex = index
+                if CovariateQuery == h: covariateIndex = index
+                if 'UID' == h: uidIndexAlt = index 
                 index+=1
             firstLine = False
+            if CovariateQuery == 'Cell Type of Origin Combined' and covariateIndex==None:
+                covariateIndex = headers.index('Cell Type of Origin')
+                mergeBlood = True
+            if CovariateQuery == 'originating lab' and covariateIndex==None:
+                covariateIndex = headers.index('Originating Lab ID')
         else:
+            try: sample_id = values[uidIndex]
+            except Exception:
+                uidIndex = uidIndexAlt
+                sample_id = values[uidIndex]
+            cellLine = values[cellLineIndex]
+            try: donor_id = values[unique_donor_index]
+            except Exception:
+                #print values
+                continue
+                #print len(values), unique_donor_index;sys.exit()
+            if donor_id == '': donor_id = cellLine
+            sex = values[sex_index]
+            diffState = values[cellTypeIndex]
+            try: quality = values[qualityIndex]
+            except Exception: quality = ''
+            COI = values[coiIndex]
+            vector = values[vectorIndex]
+            genes = values[geneIndex]
+            lab = values[labIndex]
+            public = values[publicIndex]
+            karyotype = values[karyotypeIndex]
+            priority = BatchCheck(sample_id,nonpreferential_batchs,preferential_samples,platform)
+            md = MetaData(cellLine,donor_id,sex,diffState,quality,COI,vector,genes,lab,public,priority)
+            sample_metadata[sample_id] = md ### store all relevant metadata for future access (e.g., comparing omics types)
             try:  covariateType =  values[covariateIndex]
             except Exception: covariateType = None
-            
-            sampleID = values[uid_index] ### Must always be present
-            if '.bed' in sampleID:
-                sampleID = string.replace(sampleID,'.bed','')
-                
-            for index in indexesToFilterOn:
-                sample_value = values[index]
-                md = indexesToFilterOn[index]
-                if md.FieldType() == 'Unique' and 'TRUE' in md.FieldValues():
-                    uniqueID_sample_name = values[index]
-                    ### For example, unique donor ID (remove duplicate samples)
-                    try: uniqueDB[uniqueID_sample_name].append(sampleID) 
-                    except Exception: uniqueDB[uniqueID_sample_name] = [sampleID]
-                elif md.FieldType() == 'Restrict':
-                    if sample_value in md.FieldValues():
-                        samplesToRetain.append(sampleID)
-                    else:
-                        #if 'M' not in md.FieldValues() and 'Training' not in md.FieldValues() and 'Bone marrow' not in md.FieldValues():
-                        #print md.FieldValues(), md.FieldType(), sample_value, sampleID;sys.exit()
-                        samplesToRemove.append(sampleID)
-                        #if sampleID == 'SRS874639':
-                        #print md.FieldValues(), md.FieldType(), [sample_value], sampleID;sys.exit()
-                elif md.FieldType() == 'Exclude': 
-                    if sample_value in md.FieldValues():
-                        samplesToRemove.append(sampleID)
-                elif md.FieldType() == 'Covariate':
-                    """ This is the field we are deriving our groups and comps from """
-                    ### If the covariateSamples key already present
-                    if sample_value in md.FieldValues():
-                        ### Hence, this sample is TRUE to the field name (e.g., diseaseX)
-                        sample_type = md.FieldName() 
-                    else:
-                        sample_type = 'Others'
-                    if md.FieldName() in covariateSamples:
-                        groups = covariateSamples[md.FieldName()]
-                    else:
-                        groups={}
-                    if sample_type in groups:
-                        groups[sample_type].append(sampleID)
-                    else:
-                        groups[sample_type] = [sampleID]
-                    covariateSamples[md.FieldName()]=groups
-                elif md.FieldType() == 'NumFilter':
-                    cutoff,direction = md.FieldValues()
-                    try:
-                        if direction==">": 
-                            if float(sample_value)>cutoff:
-                                samplesToRetain.append(sampleID)
+            if CovariateQuery == 'integrating vectors': ### Build this covariate type interactively
+                if values[vectorIndex] in integrating:
+                    covariateType = 'integrating'
+                elif values[vectorIndex] in nonintegrating:
+                    covariateType = 'non-integrating'
+                else:
+                    covariateType = 'NA'
+                #print covariateType, values[vectorIndex]
+            #print covariateType, CovariateQuery, diffState, diffStateQuery, public, sample_id;sys.exit()
+            if covariateType!=None:
+                try: covariateType =  values[covariateIndex] ### e.g., COI
+                except Exception: pass
+                if mergeBlood:
+                    if covariateType in blood: covariateType = 'blood'
+                if covariateType == 'N/A': covariateType = 'NA'
+                elif covariateType == '': covariateType = 'NA'
+                elif '/' in covariateType: covariateType = string.replace(covariateType,'/','-')
+                if (diffState==diffStateQuery or diffState==compDiffState or diffStateQuery=='NA') and (public == 'yes' or public == 'TRUE') and '_PE' not in sample_id and karyotype != 'abnormal':
+                    if quality not in failed_QC:
+                        proceed=True
+                        if genderRestricted!=None:
+                            if genderRestricted == sex: proceed = True
+                            else: proceed = False
+                        if restrictCovariateTerm != None:
+                            if restrictCovariateTerm == covariateType:
+                                proceed = True
+                                if diffState==compDiffState:
+                                    covariateType = compDiffState +' '+covariateType ### Make this a unique name
+                                else:
+                                    covariateType = diffStateQuery +' '+covariateType ### Make this a unique name
                             else:
-                                samplesToRemove.append(sampleID)
-                        if direction=="<": 
-                            if float(sample_value)<cutoff:
-                                samplesToRetain.append(sampleID)
-                            else:
-                                samplesToRemove.append(sampleID)
-                    except Exception: ### Sample value not a float
-                        samplesToRemove.append(sampleID)
-    #print len(list(set(samplesToRetain)))
-    #print len(list(set(samplesToRemove)));sys.exit()
-    for unique_donor_id in uniqueDB:
-        if len(uniqueDB[unique_donor_id])>1:
-            ### This method needs to be updated with a prioritization schema for duplicates, based on metadata
-            for sample in uniqueDB[unique_donor_id][1:]:
-                samplesToRemove.append(sample)
-    samplesToRetainFinal=[]
-    for sample in samplesToRetain:
-        if sample not in samplesToRemove:
-            samplesToRetainFinal.append(sample)
-            
-    for field in covariateSamples:
-        groups = covariateSamples[field]
-        for group_id in groups:
-            updated_samples = []
-            #print field, group_id, len(groups[group_id]), 
-            for sample in groups[group_id]:
-                if sample in samplesToRetainFinal:
-                    updated_samples.append(sample)
-            #print len(updated_samples)
-            groups[group_id] = updated_samples
-        groups_db[field] = covariateSamples[field]
-    
-    ### Determine comparisons
-    for field in groups_db:
-        group_names=[]
-        comps=[]
-        groups = groups_db[field]
-        for group_id in groups:
-            if len(groups[group_id])>1: ### Ensure sufficient samples to compare
-                if group_id not in group_names:
-                    group_names.append(group_id)
-        if len(group_names) == 2:
-            if 'Others'== group_names[1]:
-                comps.append(tuple(group_names))
-            if 'Others'not in group_names:
-                comps.append(tuple(group_names))
+                                proceed = False
+                        if proceed:
+                            try:
+                                donor_db = unique_covariate_samples[covariateType]
+                                try: donor_db[donor_id].append((priority,sample_id))
+                                except Exception: donor_db[donor_id] = [(priority,sample_id)]
+                            except Exception:
+                                ### get unique donor samples sorted by priority
+                                donor_db={donor_id:[(priority,sample_id)]}
+                                unique_covariate_samples[covariateType] = donor_db
+                            try: ### do the same for non-unique data
+                                covariate_samples[covariateType].append(sample_id)
+                            except Exception:
+                                covariate_samples[covariateType] = [sample_id]
+            else:
+                if len(cellLine)>0 and diffState==diffStateQuery and public == 'yes' and '_PE' not in sample_id and quality not in failed_QC:
+                    proceed=True
+                    if genderRestricted!=None:
+                        if genderRestricted == sex: proceed = True
+                        else: proceed = False
+                    if proceed:
+                        try: cellLineIDs[cellLine].append((priority,sample_id))
+                        except Exception: cellLineIDs[cellLine] = [(priority,sample_id)]
+                        try: uniqueDonor_db[donor_id].append(cellLine)
+                        except Exception: uniqueDonor_db[donor_id] = [cellLine]
+                        try: donor_db[donor_id].append((priority,cellLine))
+                        except Exception: donor_db[donor_id] = [(priority,cellLine)]
+            ### Now, do an exhaustive search to exclude covariateType that are confounded by another covariate such that either could attribute to the effect
+            ### Only do this relative to the CovariateQuery being compared
+            if removeConfoundedCovariates:
+                index=0
+                for value in values:
+                    header = headers[index]
+                    if len(value)>0:
+                        try: allCovariateSamples[header+':'+value].append(sample_id)
+                        except Exception: allCovariateSamples[header+':'+value] = [sample_id]
+                    index+=1
+
+    if len(covariate_samples)==0:
+        cellLinesPerUniqueDonor={}
+        for cellLine in cellLineIDs:
+            cellLineIDs[cellLine].sort()
+            cellLineIDs[cellLine] = cellLineIDs[cellLine][0][1]
+        for donor_id in uniqueDonor_db:
+            for cellLine in uniqueDonor_db[donor_id]:
+                cellLinesPerUniqueDonor[cellLine]=donor_id
+        return cellLineIDs,sample_metadata,cellLinesPerUniqueDonor, donor_db
+
+    if uniqueDonors:
+        ### Select a single representative sample for each donor
+        allUniqueDonors={}
+        for covariateType in unique_covariate_samples:
+            unique_donors=[]
+            donor_db = unique_covariate_samples[covariateType]
+            #print covariateType, donor_db
+            for donor_id in donor_db:
+                donor_db[donor_id].sort() ### should now be consistent between different types of covariate analyses in terms of ranking
+                #print donor_db[donor_id]
+                uniqueDonorSample = donor_db[donor_id][0][1]
+                unique_donors.append(uniqueDonorSample)
+                allUniqueDonors[uniqueDonorSample]=None
+            covariate_samples[covariateType] = unique_donors
+
+    ### Check to see which covariates completely conflict
+    conflictingCovariates={}
+    for variable in allCovariateSamples:
+        samples=[]
+        if uniqueDonors:
+            for sample in allCovariateSamples[variable]:
+                if sample in allUniqueDonors: samples.append(sample)
         else:
-            for group1 in group_names:
-                for group2 in group_names:
-                    if group1!=group2:
-                        if (group2,group1) not in comps:
-                            comps.append((group1,group2))
-        comps_db[field]=comps
-                        
-    print len(list(set(samplesToRetainFinal))), 'samples considered for analysis.', len(list(set(samplesToRemove))), 'removed.'
-    return groups_db,comps_db
+            samples = allCovariateSamples[variable]
+        samples.sort()
+        try: conflictingCovariates[tuple(samples)].append(variable)
+        except Exception: conflictingCovariates[tuple(samples)] = [variable]
+    conflicting=[]
+    for samples in conflictingCovariates:
+        if len(conflictingCovariates[samples])>1:
+            if variable not in conflicting:
+                if 'Run' not in variable and 'uid' not in variable and 'Sample' not in variable:
+                    if 'other conditions during reprogramming:N/A' not in variable:
+                        conflicting.append(variable)
+    if len(conflicting)>0:
+        print 'There were conflicting covariates present:',conflicting
 
-def cleanUpLine(line):
-    line = string.replace(line,'\n','')
-    line = string.replace(line,'\c','')
-    data = string.replace(line,'\r','')
-    data = string.replace(data,'"','')
-    return data
-
-def importGroupsComps(groups_file):
-    initial_groups={}
-    group_id_lookup={}
-    groups_db={}
+    covariates_to_consider=[]
+    for covariateType in covariate_samples:
+        if len(covariate_samples[covariateType])>1: ### Thus at least two samples to compare
+            covariates_to_consider.append(covariateType)
     comps_db={}
-    for line in open(groups_file,'rU').xreadlines():
-        data = cleanUpLine(line)
-        sample,ID,group_name = string.split(data,'\t')
-        sample = string.replace(sample,'.bed','')
-        group_id_lookup[ID]=group_name
-        try: initial_groups[group_name].append(sample)
-        except Exception: initial_groups[group_name] = [sample]
-    groups_db[1] = initial_groups
+    for covariateType in covariates_to_consider:
+        covariatePairs=[]
+        for covariateType2 in covariates_to_consider:
+            if covariateType!=covariateType2:
+                covariatePairs = [covariateType,covariateType2]
+                covariatePairs.sort()
+                comps_db[tuple(covariatePairs)]=None
     
-    comps=[]
-    comps_file = string.replace(groups_file,'groups.','comps.')
-    for line in open(comps_file,'rU').xreadlines():
-        data = cleanUpLine(line)
-        g1,g2 = string.split(data,'\t')
-        g1_name = group_id_lookup[g1]
-        g2_name = group_id_lookup[g2]
-        comps.append((g1_name,g2_name))
-    groups_db[1] = initial_groups
-    comps_db[1] = comps
-    return groups_db,comps_db
-        
-class PSIData:
-    def __init__(self, clusterID, altexons, event_annotation, protein_predictions, coordinates):
-        self.clusterID = clusterID
-        self.altexons = altexons
-        self.event_annotation = event_annotation
-        self.protein_predictions = protein_predictions
-        self.coordinates = coordinates
-    def setUpdatedClusterID(self,updated_clusterID):
-        self.updatedClusterID = updated_clusterID ### update this object
-    def ClusterID(self): return self.clusterID
-    def UpdatedClusterID(self): return self.updatedClusterID
-    def AltExons(self): return self.altexons
-    def EventAnnotation(self): return self.event_annotation
-    def ProteinPredictions(self): return self.protein_predictions
-    def Coordinates(self): return self.coordinates
-    def Inclusion(self):
-        """ Determines if the first junction is the inclusion or the second """
-        junction1,junction2=string.split(self.Coordinates(),'|')
-        j1s,j1e = string.split(string.split(junction1,':')[1],'-')
-        j2s,j2e = string.split(string.split(junction2,':')[1],'-')
-        j1_dist = abs(int(j1s)-int(j1e))
-        j2_dist = abs(int(j2s)-int(j2e))
-        if j1_dist>j2_dist:
-            self.junction_type = 'exclusion'
-        else:
-            self.junction_type = 'inclusion'
-        return self.junction_type
-    def RelativeInclusion(self,dPSI):
-        try: junction_type = self.junction_type
-        except Exception: junction_type = self.Inclusion()
-        if junction_type == 'exclusion' and dPSI<0:
-            return 'inclusion'
-        elif junction_type == 'inclusion' and dPSI<0:
-            return 'exclusion'
-        else:
-            return junction_type
-
-def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,comps_db,CovariateQuery,splicingEventTypes={}):
+    groups_db={}
+    for covariateType in covariates_to_consider:
+        groups_db[covariateType] = covariate_samples[covariateType]
+        ### print out the associated unique donor samples
+        for i in covariate_samples[covariateType]: print covariateType,i
+    #sys.exit()
+    return sample_metadata,groups_db,comps_db
+    
+def performDifferentialExpressionAnalysis(species,platform,input_file,sample_metadata,groups_db,comps_db,CovariateQuery,uniqueDonors):
     ### filter the expression file for the samples of interest and immediately calculate comparison statistics
     firstLine = True
     group_index_db={}
     pval_summary_db={}
     group_avg_exp_db={}
     export_object_db={}
-    psi_annotations={}
-    psi_results={}
     rootdir=export.findParentDir(input_file)
     #print rootdir;sys.exit()
-
+    
     try:
         gene_to_symbol,system_code = getAnnotations(species,platform)
         from import_scripts import OBO_import
         symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
     except ZeroDivisionError: gene_to_symbol={}; system_code=''
-
+    
     for groups in comps_db:
         group1, group2 = groups
         pval_summary_db[groups] = {} ### setup this data structure for later
         filename='ExpressionProfiles/'+string.join(groups,'_vs_')+'.txt'
         eo = export.ExportFile(rootdir+filename) ### create and store an export object for the comparison (for raw expression)
         export_object_db[groups] = eo
-    
-    compared_ids={}
-    row_count=0
-    header_db={}
+        
     for line in open(input_file,'rU').xreadlines():
-        row_count+=1
         if '.bed' in line:
             line = string.replace(line,'.bed','')
         data = line.rstrip()
-        data = string.replace(data,'"','')
         values = string.split(data,'\t')
         if firstLine:
             header = values
@@ -314,6 +306,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                         except Exception: pass
                     samplesToEvaluate = filteredSamples
                 groups_db[group] = samplesToEvaluate  
+                #print group, sample_index_list
                 group_index_db[group] = sample_index_list
                 group_avg_exp_db[group] = {}
                 
@@ -324,39 +317,24 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 g2_headers = groups_db[group2]
                 g1_headers = map(lambda x: group1+':'+x,g1_headers)
                 g2_headers = map(lambda x: group2+':'+x,g2_headers)
-                eo.write(string.join(['UID']+g1_headers+g2_headers,'\t')+'\n')
-                header_db[(group1,group2)] = g1_headers, g2_headers
-            index=0
-            uid_header=0
-            for i in header:
-                if i=='UID': uid_header=index
-                if i=='AltExons': alt_exon_header=index
-                if i=='ProteinPredictions': protein_prediction=index
-                if i=='ClusterID': cluster_id_index=index
-                if i=='Coordinates': coordinates_index=index
-                if i=='EventAnnotation': event_annotation_index=index
-                index+=1
+                eo.write(string.join(['GeneID']+g1_headers+g2_headers,'\t')+'\n')
             firstLine = False
         else:
-            uid = values[uid_header]
-            if platform == 'RNASeq':
-                try: uid = symbol_to_gene[uid][0]
+            geneID = values[0]
+            if ',' in geneID:
+                geneID = string.replace(geneID,',','_')
+            if 'ENS' in geneID and '.' in geneID and ':' not in geneID:
+                geneID = string.split(geneID,'.')[0] ### for cufflinks
+            elif platform == 'RNASeq':
+                try: geneID = symbol_to_gene[geneID][0]
                 except Exception: pass
-            elif platform == 'PSI':
-                clusterID = values[cluster_id_index]
-                altexons = values[alt_exon_header]
-                protein_predictions = values[protein_prediction]
-                coordinates = values[coordinates_index]
-                event_annotation = values[event_annotation_index]
-                ps = PSIData(clusterID, altexons, event_annotation, protein_predictions, coordinates)
-                psi_annotations[uid]=ps
             group_expression_values={}
             original_group={}
             for group in group_index_db:
                 sample_index_list = group_index_db[group]
-                if platform != 'PSI':
+                if platform != 'exon':
                     filtered_values = map(lambda x: float(values[x]), sample_index_list) ### simple and fast way to reorganize the samples
-                else: ### for splice-event comparisons where there a missing values at the end of the row
+                else: ### for splice-event comparisons
                     if len(header) != len(values):
                         diff = len(header)-len(values)
                         values+=diff*['']
@@ -369,9 +347,9 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                         if x != '':
                             filtered_values.append(float(x))
                         unfiltered.append(x)
-                    #if uid == 'ENSG00000105321:E3.2-E4.2 ENSG00000105321:E2.3-E4.2' and 'inner cell mass' in group:
+                    #if geneID == 'ENSG00000105321:E3.2-E4.2 ENSG00000105321:E2.3-E4.2' and 'inner cell mass' in group:
                     #print filtered_values;sys.exit()
-                if platform == 'PSI':
+                if platform == 'exon':
                     original_group[group]=unfiltered
                 else:
                     original_group[group]=filtered_values
@@ -380,18 +358,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 group_expression_values[group] = filtered_values
             for groups in comps_db:
                 group1,group2 = groups
-                g1_headers,g2_headers=header_db[groups]
                 data_list1 = group_expression_values[group1]
                 data_list2 = group_expression_values[group2]
-                combined = data_list1+data_list2
-                diff = max(combined)-min(combined) ### Is there any variance?
-                if diff==0:
-                    continue
-                elif (100.00*len(data_list1))/len(g1_headers)>75 and (100.00*len(data_list2))/len(g2_headers)>75:
-                    compared_ids[uid]=[]
-                    pass
-                else:
-                    continue ### Don't analyze
                 if len(data_list1)>1 and len(data_list2)>1: ### For splicing data
                     p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic) ### this is going to just be a oneway anova first
                     avg1 = statistics.avg(data_list1)
@@ -400,32 +368,47 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     if platform == 'RNASeq':# or platform == 'miRSeq':
                         max_avg = math.pow(2,max([avg1,avg2]))-1
                     else: max_avg = 10000
-
+                    #if platform == 'miRSeq': max_avg = 10000
                     valid = True
                     if max_avg<minRPKM:
                         log_fold = 'Insufficient Expression'
                     gs = statistics.GroupStats(log_fold,None,p)
                     gs.setAdditionalStats(data_list1,data_list2) ### Assuming equal variance
                     pval_db = pval_summary_db[groups] ### for calculated adjusted statistics
-                    pval_db[uid] = gs ### store the statistics here
-
+                    pval_db[geneID] = gs ### store the statistics here
+                    proceed = True
                     if len(restricted_gene_denominator)>0:
-                        if uid not in restricted_gene_denominator:
+                        if geneID not in restricted_gene_denominator:
                             proceed = False
+                    if uniqueDonors == False and proceed:
+                        ### store a new instance
+                        gsg = statistics.GroupStats(log_fold,None,p)
+                        gsg.setAdditionalStats(data_list1,data_list2) ### Assuming equal variance
+                        global_adjp_db[CovariateQuery,groups,geneID] = gsg ### for global adjustment across comparisons
+                    #if 'lentivirus' in group1 and geneID == 'ENSG00000184470':
+                    #print groups,log_fold, p, avg1,avg2, max_avg, original_group[group1],original_group[group2]
 
-                    ### store a new instance
-                    gsg = statistics.GroupStats(log_fold,None,p)
-                    gsg.setAdditionalStats(data_list1,data_list2) ### Assuming equal variance
-                    global_adjp_db[CovariateQuery,groups,uid] = gsg ### for global adjustment across comparisons
-
-                    group_avg_exp_db[group1][uid] = avg1 ### store the group expression values
-                    group_avg_exp_db[group2][uid] = avg2 ### store the group expression values
+                    if geneID == 'ENSG00000140416:I1.2-E6.4 ENSG00000140416:E3.6-E6.4' and 'male' in groups and 'female' in groups:
+                        print groups,log_fold, p, avg1,avg2, max_avg, original_group[group1],original_group[group2],data_list1,data_list2
+                    group_avg_exp_db[group1][geneID] = avg1 ### store the group expression values
+                    group_avg_exp_db[group2][geneID] = avg2 ### store the group expression values
+                    #if geneID == 'ENSG00000213973': print log_fold
                     if 'Insufficient Expression2' != log_fold:
+                        if geneID == 'hsa-mir-512-1_hsa-miR-512-3p' and 'CD34+ cells' in groups and 'mononuclear' in groups:
+                            ls1 = map(str,original_group[group1])
+                            ls2 = map(str,original_group[group2])
+                            #print groups, log_fold, logfold_threshold, p, ls1, ls2, avg1, avg2
+                            #print data_list1, data_list2
+                            if abs(log_fold)>logfold_threshold and p<pval_threshold:
+                                print 'yes'
+                            else: print 'no'
+                            #sys.exit()
+                            pass
                         #if abs(log_fold)>logfold_threshold:
                         eo = export_object_db[groups]
                         ls1 = map(str,original_group[group1])
                         ls2 = map(str,original_group[group2])
-                        eo.write(string.join([uid]+ls1+ls2,'\t')+'\n')
+                        eo.write(string.join([geneID]+ls1+ls2,'\t')+'\n')
                             
     for groups in export_object_db:
         export_object_db[groups].close()
@@ -433,47 +416,53 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
     ### Calculate adjusted p-values for all pairwise comparisons
     for groups in pval_summary_db:
         group1,group2 = groups
-        group_comp_name = string.join(groups,'_vs_')
-        filename=CovariateQuery+'/GE.'+group_comp_name+'.txt'
+        if uniqueDonors:
+            filename=CovariateQuery+'/GE.'+string.join(groups,'_vs_')+'-UniqueDonors.txt'
+        else:
+            filename=CovariateQuery+'/GE.'+string.join(groups,'_vs_')+'.txt'
         eo = export.ExportFile(rootdir+'/'+filename)
-        #do = export.ExportFile(rootdir+'/Downregulated/'+filename)
-        #uo = export.ExportFile(rootdir+'/Upregulated/'+filename)
+        do = export.ExportFile(rootdir+'/Downregulated/'+filename)
+        uo = export.ExportFile(rootdir+'/Upregulated/'+filename)
         so = export.ExportFile(rootdir+'PValues/'+CovariateQuery+'-'+string.join(groups,'_vs_')+'.txt')
         header = 'GeneID\tSystemCode\tLogFold\trawp\tadjp\tSymbol\tavg-%s\tavg-%s\n' % (group1,group2)
-        if platform == 'PSI':
-            header = 'UID\tInclusion-Junction\tClusterID\tUpdatedClusterID\tAltExons\tEventAnnotation\tCoordinates\tProteinPredictions\tLogFold\trawp\tadjp\tavg-%s\tavg-%s\n' % (group1,group2)
         eo.write(header)
-        #do.write(header)
-        #uo.write(header)
+        do.write(header)
+        uo.write(header)
         so.write('Gene\tPval\n')
         pval_db = pval_summary_db[groups]
         if 'moderated' in probability_statistic:
             try: statistics.moderateTestStats(pval_db,probability_statistic) ### Moderates the original reported test p-value prior to adjusting
-            except Exception:
-                print 'Moderated test failed... using student t-test instead',group1,group2
-                print traceback.format_exc()
+            except Exception: print 'Moderated test failed... using student t-test instead'
         statistics.adjustPermuteStats(pval_db) ### sets the adjusted p-values for objects
-        for uid in pval_db:
-            gs = pval_db[uid]
-            group1_avg = str(group_avg_exp_db[group1][uid])
-            group2_avg = str(group_avg_exp_db[group2][uid])
+        for geneID in pval_db:
+            gs = pval_db[geneID]
+            group1_avg = str(group_avg_exp_db[group1][geneID])
+            group2_avg = str(group_avg_exp_db[group2][geneID])
             if use_adjusted_p:
                 pval = float(gs.AdjP())
             else:
                 pval = gs.Pval()
             if platform == 'miRSeq':
                 symbol=[]
-                altIDs = getAltID(uid)
+                altID = string.replace(geneID,'hsa-mir-','MIR')
+                altID = string.replace(altID,'hsa-miR-','MIR')
+                altID = string.replace(altID,'3p','')
+                altID = string.replace(altID,'5p','')
+                altID = string.upper(string.replace(altID,'hsa-let-','LET'))
+                altID = string.replace(altID,'-','')
+                altIDs = string.split(altID,'_')
+                altIDs+=string.split(geneID,'_')
+                altIDs = unique.unique(altIDs)
                 for id in altIDs:
                     if id in gene_to_symbol:
                         symbol.append(gene_to_symbol[id][0])
                         symbol.append(id)
                 symbol = string.join(symbol,'|')
-            elif uid in gene_to_symbol:
-                symbols = unique.unique(gene_to_symbol[uid])
+            elif geneID in gene_to_symbol:
+                symbols = unique.unique(gene_to_symbol[geneID])
                 symbol = string.join(symbols,'|')
-            elif 'ENS' in uid and ':' in uid:
-                ens_gene = string.split(uid,':')[0]
+            elif 'ENS' in geneID and ':' in geneID:
+                ens_gene = string.split(geneID,':')[0]
                 try: symbol = gene_to_symbol[ens_gene][0]
                 except Exception: symbol=''
             else:
@@ -481,146 +470,37 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
             proceed = True
             ### Remove genes not a predetermined list (optional)
             if len(restricted_gene_denominator)>0:
-                if uid not in restricted_gene_denominator:
+                if geneID not in restricted_gene_denominator:
                     if symbol not in restricted_gene_denominator:
                         proceed = False
 
+            if geneID == 'ENSG00000105321:E3.2-E4.2 ENSG00000105321:E2.3-E4.2' and 'fibroblast' in groups and 'inner cell mass' in groups:
+                print groups, gs.LogFold(), logfold_threshold, pval, pval_threshold, gs.Pval(), gs.AdjP(), symbol#;sys.exit()
             if 'Insufficient Expression' != gs.LogFold() and proceed:
+                #if geneID == 'hsa-mir-512-1_hsa-miR-512-3p' and 'CD34+ cells' in groups and 'mononuclear' in groups:
+                #print groups, gs.LogFold()
                 if abs(gs.LogFold())>logfold_threshold and pval<pval_threshold:
-                    if platform == 'PSI':
-                        psi_results[uid]=gs,group1_avg,group2_avg
-                        ### Write these out once all entries for that gene have been parsed
-                    else:
-                        values = string.join([uid,system_code,str(gs.LogFold()),str(gs.Pval()),str(gs.AdjP()),symbol,group1_avg,group2_avg],'\t')+'\n'
-                        eo.write(values)
+                    values = string.join([geneID,system_code,str(gs.LogFold()),str(gs.Pval()),str(gs.AdjP()),symbol,group1_avg,group2_avg],'\t')+'\n'
+                    eo.write(values)
+                    try: chr = gene_location_db[ug.GeneID()][0]
+                    except Exception: chr = ''
                     proceed = True
+                    if 'Gender' in filename:
+                        if 'Y' in chr: proceed = False
                     if proceed:
                         if gs.LogFold()>0:
-                            #uo.write(values)
-                            pass
+                            uo.write(values)
                         if gs.LogFold()<0:
-                            #do.write(values)
-                            pass
-            so.write(uid+'\t'+str(gs.Pval())+'\n')
-            
-        if platform == 'PSI':
-            ### Although we could have easily written the results above, we need to update the cluster ID here
-            ### based on the significant results for this comparison only.
-            gene_db={}
-            for uid in psi_results:
-                ps=psi_annotations[uid]
-                geneID = string.split(uid,':')[1]
-                if geneID in gene_db:
-                    event_coordinates = gene_db[geneID]
-                    event_coordinates[uid]=ps.Coordinates()
-                else:
-                    event_coordinates={}
-                    event_coordinates[uid]=ps.Coordinates()
-                    gene_db[geneID] = event_coordinates
-            event_cluster_db=junctionGraph.createFeaturesFromEvents(gene_db)
-            for uid in psi_results:
-                updated_cluster_id=event_cluster_db[uid]
-                ps=psi_annotations[uid]
-                ps.setUpdatedClusterID(updated_cluster_id)
-                gs,group1_avg,group2_avg=psi_results[uid]
-                event_type = ps.RelativeInclusion(gs.LogFold())
-                values = [uid,event_type,ps.ClusterID(),ps.UpdatedClusterID(),ps.AltExons(),ps.EventAnnotation(),ps.Coordinates(),
-                              ps.ProteinPredictions(),str(gs.LogFold()),str(gs.Pval()),str(gs.AdjP()),group1_avg,group2_avg]
-                values = string.join(values,'\t')+'\n'
-                eo.write(values)
-                
-                try: splicingEventTypes[group_comp_name].append((ps.ClusterID(),event_type,ps.EventAnnotation()))
-                except Exception: splicingEventTypes[group_comp_name] = [(ps.ClusterID(),event_type,ps.EventAnnotation())]
+                            do.write(values)
+            so.write(geneID+'\t'+str(gs.Pval())+'\n')
         eo.close()
-        #do.close()
-        #uo.close()
+        do.close()
+        uo.close()
         so.close()
-    print len(compared_ids),'unique IDs compared (denominator).'
-    return rootdir, splicingEventTypes
-
-def outputSplicingSummaries(rootdir,splicingEventTypes):
-    eo = export.ExportFile(rootdir+'/event_summary.txt')
-    header = ['ComparisonName','UniqueJunctionClusters','InclusionEvents','ExclusionEvents']
-    header+= ["alt-3'_exclusion","alt-3'_inclusion","alt-5'_exclusion","alt-5'_inclusion"]
-    header+= ["alt-C-term_exclusion","alt-C-term_inclusion","altPromoter_exclusion","altPromoter_inclusion"]
-    header+= ["cassette-exon_exclusion","cassette-exon_inclusion","intron-retention_exclusion"]
-    header+= ["intron-retention_inclusion","trans-splicing_exclusion","trans-splicing_inclusion"]
-    header = string.join(header,'\t')+'\n'
-    eo.write(header)
-    for comparison in splicingEventTypes:
-        uniqueEvents={}
-        for (clusterID,inclusionType,eventAnnotation) in splicingEventTypes[comparison]:
-            try: uniqueEvents[clusterID].append((eventAnnotation,inclusionType))
-            except Exception: uniqueEvents[clusterID] =[(eventAnnotation,inclusionType)]
-        eventAnnotations={}
-        inclusionEvents={}
-        for clusterID in uniqueEvents:
-            events = uniqueEvents[clusterID]
-            events = list(set(events)) ### get unique (multiple distinct events can occur together)
-            events.sort()
-            ### Try to ignore events for the same clustering without an eventAnnotation
-            for (eventAnnotation,inclusionType) in events:
-                if len(eventAnnotation)>1:
-                    if '|' in eventAnnotation: ### Occurs rarely - alt-3'|cassette-exon
-                        annotations = string.split(eventAnnotation,'|')
-                    else:
-                        annotations = [eventAnnotation]
-                    for annotation in annotations:
-                        try: eventAnnotations[eventAnnotation+'_'+inclusionType]+=1
-                        except Exception: eventAnnotations[eventAnnotation+'_'+inclusionType]=1
-                try: inclusionEvents[inclusionType]+=1
-                except Exception: inclusionEvents[inclusionType]=1
-
-        try: a3e = str(eventAnnotations["alt-3'_exclusion"])
-        except Exception: a3e = "0"
-        try: a3i = str(eventAnnotations["alt-3'_inclusion"])
-        except Exception: a3i = "0"
-        try: a5e = str(eventAnnotations["alt-5'_exclusion"])
-        except Exception: a5e = "0"
-        try: a5i = str(eventAnnotations["alt-5'_inclusion"])
-        except Exception: a5i = "0"
-        try: aCe = str(eventAnnotations["alt-C-term_exclusion"])
-        except Exception: aCe = "0"
-        try: aCi = str(eventAnnotations["alt-C-term_inclusion"])
-        except Exception: aCi = "0"
-        try: ae = str(eventAnnotations["altPromoter_exclusion"])
-        except Exception: ae = "0"
-        try: ai = str(eventAnnotations["altPromoter_inclusion"])
-        except Exception: ai = "0"
-        try: ce = str(eventAnnotations["cassette-exon_exclusion"])
-        except Exception: ce = "0"
-        try: ci = str(eventAnnotations["cassette-exon_inclusion"])
-        except Exception: ci = "0"
-        try: ie = str(eventAnnotations["intron-retention_exclusion"])
-        except Exception: ie = "0"
-        try: ii = str(eventAnnotations["intron-retention_inclusion"])
-        except Exception: ii = "0"
-        try: te = str(eventAnnotations["trans-splicing_exclusion"])
-        except Exception: te = "0"
-        try: ti = str(eventAnnotations["trans-splicing_inclusion"])
-        except Exception: ti = "0"
-        values = [comparison,str(len(uniqueEvents)),str(inclusionEvents['inclusion']),
-                  str(inclusionEvents['exclusion']),a3e,a3i,a5e,a5i,
-                  aCe,aCi,ae,ai,ce,ci,ie,ii,te,ti]
-        values = string.join(values,'\t')+'\n'
-        eo.write(values)
-    eo.close()
-            
-def getAltID(uid):
-    altID = string.replace(uid,'hsa-mir-','MIR')
-    altID = string.replace(altID,'hsa-miR-','MIR')
-    altID = string.replace(altID,'3p','')
-    altID = string.replace(altID,'5p','')
-    altID = string.upper(string.replace(altID,'hsa-let-','LET'))
-    altID = string.replace(altID,'-','')
-    altIDs = string.split(altID,'_')
-    altIDs+=string.split(uid,'_')
-    altIDs = unique.unique(altIDs)
-    return altIDs
-
+        
 def getAnnotations(species,platform):
     import gene_associations
-    if platform == 'RNASeq' or platform == 'PSI' or platform == 'miRSeq':
+    if platform == 'RNASeq' or platform == 'exon' or platform == 'miRSeq':
         gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
         system_code = 'En'
         if platform == 'miRSeq':
@@ -1020,10 +900,10 @@ def identifyCommonGenes(resultsDirectory):
                             ng_adjp = float(gs.AdjP())
                             values+=[str(ng_adjp)]
                         
-                            if platform == 'miRSeq' or platform == 'PSI' and use_adjusted_p == False:
+                            if platform == 'miRSeq' or platform == 'exon' and use_adjusted_p == False:
                                 ng_adjp = float(ug.Rawp())
                         except Exception:
-                            if platform == 'miRSeq' or platform == 'PSI' and use_adjusted_p == False:
+                            if platform == 'miRSeq' or platform == 'exon' and use_adjusted_p == False:
                                 ng_adjp = float(ug.Rawp())
                     else:
                         ng_adjp = float(ug.Rawp())
@@ -1269,22 +1149,22 @@ if __name__ == '__main__':
     runAgain=False
     output_dir=None
     include_only=''
-    meta_description_file=None
-    sampleSetQuery = 'NA'
+    diffStateQuery = 'NA'
     used=[]
     executed_urls=[]
     restricted_gene_denominator={}
     global_adjp_db={}
-    splicingEventTypes={}
-    CovariateQuery = 'Events'
-    
+    covariate_set = ['Cell Type of Origin Combined', 'Cell Type of Origin', 'Cell Line Type','Reprogramming Vector Type']
+    covariate_set+= ['Reprogramming Gene Combination','Gender','originating lab','Donor Life Stage','Culture_Conditions','C4 Karyotype Result','Small Molecules','Other Conditions During Reprogramming','XIST Level']
+    #covariate_set = ['Donor Life Stage','Other Conditions During Reprogramming','C4 Karyotype Result','Small Molecules','Other Conditions During Reprogramming']
+    #covariate_set = ['Cell Line Type']
+    diffState_set = ['SC','ECTO','DE','MESO-5','EB','MESO-15','MESO-30']
     import getopt
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print 'Supply the argument --i location'
         ### python metaDataAnalysis.py --i /Volumes/SEQ-DATA\ 1/PCBC/RNASeq/July2014/MetaData/RNASeq_MetaData_July2014.txt --key "CellType" --value "Cell Type of Origin"
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['m=','i=','d=','c=','u=','p=','s=',
-            'g=','e=','ce=','rc=','cd=','o=','md=','in=','target=','parent=','urls=','used=','mf='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['m=','i=','d=','c=','u=','p=','s=','g=','e=','ce=','rc=','cd=','o=','md=','in=','target=','parent=','urls=','used='])
         for opt, arg in options:
             if opt == '--m': metadata_files.append(arg)
             if opt == '--o':
@@ -1295,7 +1175,7 @@ if __name__ == '__main__':
             if opt == '--i': expression_files.append(arg)
             if opt == '--e': runGOElite=True
             if opt == '--ce': compareEnrichmentProfiles = True
-            if opt == '--d': sampleSetQuery=arg
+            if opt == '--d': diffStateQuery=arg
             if opt == '--c': CovariateQuery=arg
             if opt == '--p': platforms.append(arg)
             if opt == '--g': gender_restricted=arg
@@ -1305,7 +1185,6 @@ if __name__ == '__main__':
             if opt == '--md': mirDataDir=arg
             if opt == '--in': include_only=arg
             if opt == '--target': target_dir=arg
-            if opt == '--mf': meta_description_file=arg
             if opt == '--parent': parent_syn=arg
             if opt == '--urls': executed_urls.append(arg) ### options are: all, junction, exon, reference
             if opt == '--used': used.append(arg)  
@@ -1317,7 +1196,6 @@ if __name__ == '__main__':
                     uniqueDonors = False
                     if string.lower(arg) == 'both':
                         runAgain = True
-
     if len(used)>0:
         ###Upload existing results folder to Synapse
         import synapseclient
@@ -1349,9 +1227,9 @@ if __name__ == '__main__':
                 print 'Is the destination file %s already open?' % include_only;sys.exit()
 
         if len(platforms)>0: platform = platforms[0]
-        if platform == 'PSI' or platform == 'methylation':
-            logfold_threshold=0.15 ### equivalent to a 0.25 dPSI or 0.25 beta differences
-        if platform == 'PSI':
+        if platform == 'exon' or platform == 'methylation':
+            logfold_threshold=math.log(1.1892,2) ### equivalent to a 0.25 dPSI or 0.25 beta differences
+        if platform == 'exon':
             logfold_threshold=math.log(1,2)
             use_adjusted_p = False ### Too many drop-outs with lowdepth seq that adjusting will inherently exclude any significant changes
         if platform == 'methylation':
@@ -1359,65 +1237,38 @@ if __name__ == '__main__':
         if platform == 'miRSeq':
             use_adjusted_p = False
             logfold_threshold=math.log(1,2)
+        if CovariateQuery != 'all': covariate_set = [CovariateQuery]
+        if diffStateQuery != 'all': diffState_set = [diffStateQuery]
         print 'Filtering on adjusted p-value:',use_adjusted_p
 
-        if platform != 'PSI':
-            from build_scripts import EnsemblImport
-            try: gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,platform,'key_by_array')
-            except Exception: gene_location_db={}
+        from build_scripts import EnsemblImport
+        try: gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,platform,'key_by_array')
+        except Exception: gene_location_db={}
         
         if len(include_only)>0:
             restricted_gene_denominator = importRestrictedSetOfGenesToQuery(include_only)
         
-        if meta_description_file !=None:
-            if '.txt' in meta_description_file:
-                meta_description_files = [meta_description_file]
-            else:
-                meta_description_files=[]
-                files = os.listdir(meta_description_file)
-                for file in files:
-                    meta_description_files.append(meta_description_file+'/'+file)
-                    
-        splicingEventTypes={}
-        all_groups_db={}
-        all_comps_db={}
-
-        if 'groups.' in metadata_files[0]:
-            all_groups_db, all_comps_db = importGroupsComps(metadata_files[0])
-        else:
-            for meta_description_file in meta_description_files:
-                metadata_filters = importMetaDataDescriptions(meta_description_file)
-                all_groups_db, all_comps_db = prepareComparisonData(metadata_files[0],metadata_filters,all_groups_db, all_comps_db)
-        
-        for specificCovariate in all_groups_db:
-            comps_db = all_comps_db[specificCovariate]
-            groups_db = all_groups_db[specificCovariate]
-            rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,groups_db,comps_db,CovariateQuery,splicingEventTypes)
-        
-        if platform == 'PSI':
-            outputSplicingSummaries(rootdir,splicingEventTypes)
-        sys.exit()
         for CovariateQuery in covariate_set:
-          for sampleSetQuery in Sample_set:
-            print 'Analyzing the covariate:',CovariateQuery, 'and diffState:',sampleSetQuery, 'unique donor analysis:',uniqueDonors
+          for diffStateQuery in diffState_set:
+            print 'Analyzing the covariate:',CovariateQuery, 'and diffState:',diffStateQuery, 'unique donor analysis:',uniqueDonors
             if 'XIST' in CovariateQuery: gender_restricted='female'
             
             genderRestricted = gender_restricted
             try:
-                sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,metadata_filters,sampleSetQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
-                performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,sampleSetQuery+'-'+CovariateQuery,uniqueDonors)
+                sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
+                performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,diffStateQuery+'-'+CovariateQuery,uniqueDonors)
             except Exception:
                 print traceback.format_exc()
             if runAgain:
                 uniqueDonors=True
                 use_adjusted_p = False
-                print 'Analyzing the covariate:',CovariateQuery, 'and diffState:',sampleSetQuery, 'unique donor analysis:',uniqueDonors
+                print 'Analyzing the covariate:',CovariateQuery, 'and diffState:',diffStateQuery, 'unique donor analysis:',uniqueDonors
                 try:
-                    sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,sampleSetQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
-                    performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,sampleSetQuery+'-'+CovariateQuery,uniqueDonors)
+                    sample_metadata,groups_db,comps_db = prepareComparisonData(metadata_file,diffStateQuery,CovariateQuery,uniqueDonors,genderRestricted,platform=platform,compDiffState=compDiffState,restrictCovariateTerm=restrictCovariateTerm)
+                    performDifferentialExpressionAnalysis(species,platform,expression_file,sample_metadata,groups_db,comps_db,diffStateQuery+'-'+CovariateQuery,uniqueDonors)
                 except Exception: pass
                 uniqueDonors=False; use_adjusted_p = True
-                if platform == 'miRSeq' or platform == 'PSI': use_adjusted_p = False
+                if platform == 'miRSeq' or platform == 'exon': use_adjusted_p = False
             
         if runAgain:
             root_exp_dir=export.findParentDir(expression_file)
@@ -1445,8 +1296,8 @@ if __name__ == '__main__':
         print expression_file1, expression_file2
         print metadata_file1, metadata_file2
         
-        cellLines1,sample_metadata1,uniqueDonor_db,donor_db = prepareComparisonData(metadata_file1,sampleSetQuery,None,uniqueDonors,gender_restricted,platform=platform1)
-        cellLines2,sample_metadata2,uniqueDonor_db,donor_db = prepareComparisonData(metadata_file2,sampleSetQuery,None,uniqueDonors,gender_restricted,platform=platform2)
+        cellLines1,sample_metadata1,uniqueDonor_db,donor_db = prepareComparisonData(metadata_file1,diffStateQuery,None,uniqueDonors,gender_restricted,platform=platform1)
+        cellLines2,sample_metadata2,uniqueDonor_db,donor_db = prepareComparisonData(metadata_file2,diffStateQuery,None,uniqueDonors,gender_restricted,platform=platform2)
         exp_cellLines1 = getDatasetSamples(expression_file1,sample_metadata1,cellLines1)
         exp_cellLines2 = getDatasetSamples(expression_file2,sample_metadata2,cellLines2)
         common_lines = getCommonCellLines(cellLines1,cellLines2,exp_cellLines1,exp_cellLines2,uniqueDonor_db,uniqueDonors,donor_db)

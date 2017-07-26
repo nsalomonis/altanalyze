@@ -2,7 +2,8 @@
 
 """ Genomic coordinate translation helper between genome builds """
 
-import sys, os, string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 def filepath(filename):
     return filename

@@ -20,7 +20,8 @@
 numeric nested hierarchy paths (e.g., reconstructing the directed acyclic graph), importing
 prebuilt hiearchy paths, creating nested Ontology associations from existing gene-Ontology files."""
 
-import sys, string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import export
 import os.path, platform
 import unique

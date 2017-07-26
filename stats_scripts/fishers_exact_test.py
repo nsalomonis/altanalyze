@@ -19,6 +19,8 @@
 ##############################################################################
 
 import math
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 ## From dendropy.mathlib.probability
 def hypergeometric_pmf(x, m, n, k):

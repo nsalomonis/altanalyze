@@ -14,7 +14,9 @@ try:
 except Exception:
     None
     
-import sys,string ### added for AltAnalyze
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 from matplotlib import pyplot as pylab
 from matplotlib.patches import Circle, Ellipse
 from itertools import chain

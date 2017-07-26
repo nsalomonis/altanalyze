@@ -21,7 +21,8 @@ from http://www.affymetrix.com, extracting out various direct and inferred gene 
 downloading, integrating and inferring WikiPathway gene relationships and downloading and
 extracting EntrezGene-Gene Ontology relationships from NCBI."""
 
-import sys, string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import os.path
 import unique
 import datetime

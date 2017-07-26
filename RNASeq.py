@@ -150,7 +150,6 @@ def collapseNoveExonBoundaries(novel_exon_coordinates,dataset_dir):
         del novel_exon_coordinates[key]
     export_data.close()
     return novel_exon_coordinates
-    
 
 def exportNovelExonToBedCoordinates(species,novel_exon_coordinates,chr_status,searchChr=None):
     ### Export the novel exon coordinates based on those in the junction BED file to examine the differential expression of the predicted novel exon

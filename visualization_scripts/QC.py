@@ -1,6 +1,8 @@
 
+import sys,string,os
 import traceback
-import sys
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 try:
     import warnings
     with warnings.catch_warnings():
@@ -16,11 +18,9 @@ try:
 except Exception:
     print traceback.format_exc()
 
-import string
 import time
 import random
 import math
-import sys, os
 from stats_scripts import statistics
 import ExpressionBuilder
 import export

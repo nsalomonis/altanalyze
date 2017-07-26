@@ -18,7 +18,8 @@
 
 """This module contains methods for reading the HMDB and storing relationships"""
 
-import sys, string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import os.path
 import unique
 import export

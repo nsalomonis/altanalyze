@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import sys,string
-import os
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import unique
 
 #Annotate PSI file's splicing events using alternate_juntion  and alternate_junction_de-novo

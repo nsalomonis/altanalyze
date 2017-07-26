@@ -1,6 +1,6 @@
-import sys,string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import csv
-import os
 import scipy.io
 import numpy
 import time

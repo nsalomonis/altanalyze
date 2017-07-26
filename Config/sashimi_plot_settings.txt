@@ -1,6 +1,6 @@
 [data]
-bam_prefix = /Volumes/salomonis2/Ashish_kumar-Run1985/star_results_Ashish_kumar/AltAnalyze//
-bam_files =["64-2.bam","64-1.bam","64-3.bam","NT-1.bam","NT-2.bam","NT-3.bam"]
+bam_prefix = /Volumes/salomonis1/projects/Ware/bams/
+bam_files =["RCM_HV_13_00103_14947.bam","CM0013_14175.bam","CM0014_14946.bam","HV_14_0012b_14942.bam","NDR5_14174.bam","NDR3_14565.bam","NDR4a_14945.bam","NDR8_14566.bam","NDR9_14567.bam"]
 
 [plotting]
 fig_width = 7 
@@ -19,7 +19,7 @@ number_junctions = True
 resolution = .5 
 posterior_bins = 40 
 gene_posterior_ratio = 5 
-colors =["red","red","red","blue","blue","blue"]
-coverages =[3245817,4747098,2115976,4573174,3034758,2451945]
+colors =["red","red","red","red","blue","blue","blue","blue","blue"]
+coverages =[866313,793703,825242,837459,336872,845497,765438,1447379,1577351]
 bar_color = "b" 
 bf_thresholds = [0, 1, 2, 5, 10, 20]

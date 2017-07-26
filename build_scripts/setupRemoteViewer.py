@@ -1,6 +1,7 @@
 #!/usr/local/bin/python2.6
 
-import sys
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 _script = 'AltAnalyzeViewer.py'
 _appName = "AltAnalyzeViewer"

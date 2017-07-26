@@ -22,10 +22,10 @@ folder). Can produce only junction.bed files, only a combined exon reference or 
 exon.bed files optionally. Can run using a single processor or multiple simultaneous
 processes (--m flag)."""
 
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import export
-import string
 import time
-import sys, os
 import shutil
 import unique
 import subprocess

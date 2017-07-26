@@ -19,7 +19,9 @@
 #import matplotlib
 #matplotlib.use('GTKAgg')
 
-import sys, os, string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 command_args = string.join(sys.argv,' ')
 if len(sys.argv[1:])>0 and '--' in command_args: commandLine=True
 else: commandLine=False
@@ -5906,7 +5908,7 @@ def filterCountsFile(filename):
     print len(unique_genes),'unique genes.'
     
 if __name__ == '__main__':
-    filterCountsFile('/data/salomonis2/Leucegene_project/combined_bams/ExpressionInput/counts.Leucegene.txt');sys.exit()
+    filterCountsFile('/Volumes/salomonis2/Leucegene_project/Bed-files-Leucegene-CCLE-SF3B1/ExpressionInput/counts.Leucegene-CCLE-SF3B1.txt');sys.exit()
     compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()

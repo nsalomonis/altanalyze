@@ -21,8 +21,10 @@ from many BAM files in a single directory at once. Requires an exon.bed referenc
 file for exon coordinates (genomic bins for which to sum unique read counts).
 Excludes junction reads within each interval"""
 
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import pysam
-import string,os,sys,copy,math
+import copy,math
 import time
 import getopt
 import traceback

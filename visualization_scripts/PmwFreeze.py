@@ -43,9 +43,9 @@ def installedversions(alpha = 0):
 # Megawidgets are built by creating a class that inherits from either
 # the MegaToplevel or MegaWidget class.
 
-import os
-import string
-import sys
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import traceback
 import types
 import Tkinter

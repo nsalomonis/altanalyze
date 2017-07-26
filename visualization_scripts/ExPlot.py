@@ -1,11 +1,11 @@
 from __future__ import print_function
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import numpy
-import os
 import export
-import string
 import traceback
 import collections as c
-import sys
 import unique
 
 command_args = string.join(sys.argv,' ')

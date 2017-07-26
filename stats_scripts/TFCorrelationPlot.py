@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import numpy as np
-import sys,string
-import os
 import os.path
 from numpy import corrcoef, sum, log, arange
 from scipy.stats.stats import pearsonr

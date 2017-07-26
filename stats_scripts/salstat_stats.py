@@ -14,6 +14,9 @@ Other parts of this code were taken from stats.py by Gary Strangman of
 Harvard University (c) Not sure what year, Gary Strangman, released under the 
 GNU General Public License."""
 
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import math
 import copy
 

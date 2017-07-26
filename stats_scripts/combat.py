@@ -3,13 +3,14 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=UserWarning)
     import pandas ### Some weird issue with dateutils being detected twice (suppress the warning)
     import pandas as pa
-    
+
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import patsy
-import sys
 import numpy.linalg as la
 import numpy as np
 
-import sys, string
 import os.path
 import export
 import time

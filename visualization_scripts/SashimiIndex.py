@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 import numpy as np
 import pylab as pl
-import sys,string
-import os
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 from misopy import index_gff as ifg
 import subprocess
 import multiprocessing

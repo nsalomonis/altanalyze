@@ -17,8 +17,10 @@
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import math
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 from stats_scripts import statistics
-import sys, string
 import os.path
 import unique
 import UI

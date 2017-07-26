@@ -33,8 +33,14 @@
     --ChromiumSparseMatrix tests/demo_data/10X/input/mm10/matrix.mtx
     --output tests/demo_data/10X/output/ --runICGS yes --expname test
 """
-    
-import subprocess, os, sys, string
+import os,sys,string,inspect
+### Import python modules from an upstream directory
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+parentdir = os.path.dirname(parentdir)
+sys.path.insert(0,parentdir)
+
+import subprocess
 import export
 import unique
 

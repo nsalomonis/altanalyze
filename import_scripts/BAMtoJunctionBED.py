@@ -21,8 +21,10 @@ from many BAM files in a single directory at once. Currently uses the Tophat
 predicted Strand notation opt('XS') for each read. This can be substituted with
 strand notations from other aligners (check with the software authors)."""
 
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import pysam
-import string,os,sys,copy,getopt
+import copy,getopt
 import time
 import traceback
 try: import export

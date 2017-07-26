@@ -1,3 +1,6 @@
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import numpy as np
 import scipy as sp
 import sys, pickle, pdb

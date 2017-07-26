@@ -64,6 +64,8 @@ http://kt.era.ee/
 
 Licensed under MIT license.
 '''
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 from scipy.optimize import brentq
 import numpy as np

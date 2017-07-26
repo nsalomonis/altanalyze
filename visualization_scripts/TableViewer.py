@@ -1,3 +1,11 @@
+"""
+Code obtained from: https://github.com/eiinfuva/dynamic-typesetting-ac/blob/master/multilistbox.py
+
+"""
+
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 from Tkinter import *
 import webbrowser
 

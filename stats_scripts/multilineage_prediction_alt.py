@@ -1,4 +1,6 @@
-import sys, os, string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import scipy, numpy
 import statistics
 from visualization_scripts import clustering

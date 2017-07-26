@@ -24,7 +24,8 @@ determine genomic coordinates for the start and end positions of protein domains
 try: clearall()
 except NameError: null = [] ### Occurs when re-running the script to clear all global variables
 
-import sys, string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import os.path
 import unique
 import export

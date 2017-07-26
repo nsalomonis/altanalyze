@@ -2813,7 +2813,6 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                 probeset_gene_db[uid]=gene
                 
     def filterByLocalJunctionExp(gene,features):
-       
         try: symbol,description = gene_annotations[gene]
         except Exception: symbol='';description=''
         global cluster_id
@@ -2826,10 +2825,8 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
         existing=[]
         overlapping_junctions_test={}
         for feature in feature_exp_db:
-           
             feature_exp = feature_exp_db[feature]
             if '-' in feature:
-                
                 pos1,pos2 = junction_locations[feature][0]
                 for f2 in feature_exp_db:
                     flag=False
@@ -2844,9 +2841,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                                 #try: junctions_to_compare[feature].append(f2)
                                 #except Exception: junctions_to_compare[feature] = [f2]
                                 try:
-                                    overlapping_junctions_exp[feature].append([f2_exp,f2])
-                                    
-                                        
+                                    overlapping_junctions_exp[feature].append([f2_exp,f2])               
                                 except Exception:
                                     overlapping_junctions_exp[feature] = [[f2_exp,f2]]
                                 flag=True
@@ -2989,7 +2984,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                 pos = [int(pos1),int(pos2)]
                 pos.sort()
                 junction_locations[uid] = pos,location ### use the to report position and verify compared junctions
-            if gene == 'ENSG00000100650':
+            if gene == 'ENSG00000100650': ### For testing
                 proceed = True
             else: proceed = True
             if platform == 'RNASeq':
@@ -3013,7 +3008,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                 if gene != prior_gene and prior_gene !=None:
                     genes_examined+=1
                     #if len(gene_junction_denom)>0:
-                    if prior_gene == '!ENSG00000198001':
+                    if prior_gene == '!ENSG00000198001': ### For testing
                         
                         filterByLocalJunctionExp(prior_gene,feature_exp_db)
                         #try: gene_junction_denom[prior_gene] = [max(value) for value in zip(*gene_junction_denom[prior_gene])] # sum the junction counts for all junctions across the gene

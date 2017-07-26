@@ -1,5 +1,5 @@
-import sys,string
-import os
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 def importFPKMFile(input_file):
     added_key={}
