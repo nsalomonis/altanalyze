@@ -2808,7 +2808,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         restrictBy = parameters.RestrictBy()
         try: removeOutliers = parameters.RemoveOutliers()
         except Exception: pass
-        if platform == 'exons':
+        if platform == 'exons' or platform == 'PSI':
             rpkm_threshold=0
             exp_threshold=0
     else:
@@ -2816,7 +2816,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         restrictBy = 'protein_coding'
     onlyIncludeDrivers=True
                 
-    if platform != 'exons':
+    if platform != 'exons' and platform != 'PSI':
         platform = checkExpressionFileFormat(expFile,platform)
 
     if platform != 'RNASeq':
@@ -2898,7 +2898,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     """
     expressed_uids_db={}; guide_genes={}
     for id in expressed_uids: expressed_uids_db[id]=[]
-    if platform == 'exons': ### For splicing-index value filtering
+    if platform == 'exons' or platform == 'PSI': ### For splicing-index value filtering
         expressed_uids=[]
         for uid in expressed_uids_db:
             geneID = string.split(uid,':')[0]
@@ -3112,7 +3112,7 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
     elif len(expressed_uids) < 50 and len(expressed_values)>0:
         return expressed_values, fold, samplesDiffering, headers
     elif len(expressed_values)>14000:
-        if platform == 'exons':
+        if platform == 'exons' or platform == 'PSI':
             fold+=0.1
         else:
             fold+=1
@@ -3164,6 +3164,8 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     original_column_method = column_method
     color_gradient = 'yellow_black_blue'; transpose = False; graphic_links=[]
     if parameters != None:
+        try: excludeGuides = parameters.ExcludeGuides() ### Remove signatures
+        except Exception: excludeGuides = None
         fold = parameters.FoldDiff()
         samplesDiffering = parameters.SamplesDiffering()
         amplifyGenes = parameters.amplifyGenes()
@@ -3178,14 +3180,14 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
         original_column_metric = column_metric
         original_column_method = column_method
         color_gradient = 'yellow_black_blue'; graphic_links=[]
-        if platform == 'exons': color_gradient = 'yellow_black_blue'
+        if platform == 'exons' or platform =='PSI': color_gradient = 'yellow_black_blue'
         guide_genes = parameters.JustShowTheseIDs()
         cell_cycle_id_list = []
     else:
         amplifyGenes = False
         excludeCellCycle = False
-        
-    if platform != 'exons':
+    
+    if platform != 'exons'and platform !='PSI':
         platform = checkExpressionFileFormat(expFile,platform)
     else:
         if LegacyMode: pass
@@ -3291,7 +3293,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     
     #results_file = string.replace(expFile[:-4]+'-CORRELATED-FEATURES.txt','exp.','/SamplePrediction/')
     #eo = export.ExportFile(results_file[:-4]+'-genes.txt')
-
+    
     if useNumpyCorr:
         row_ids=[]
         x = []
@@ -3303,23 +3305,33 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
         print 'initial correlations obtained'
         i=0
         correlated_genes={}
-    
-        if 'exons' == platform or 'AltExon' == platform:
+
+        if 'exons' == platform or 'PSI' == platform:
             for score_ls in D1:
+                proceed = True
                 correlated = []
                 geneID = row_ids[i]
                 refgene = string.split(geneID,':')[0]
                 k=0
+                if excludeGuides!=None:
+                    if geneID in excludeGuides: ### skip this main event
+                        proceed=False
+                        continue
                 for v in score_ls:            
                     if v>rho_cutoff:# or v<negative_rho:
                         if refgene not in row_ids[k]:
                             correlated.append((v,row_ids[k]))
+                            if excludeGuides!=None:
+                                if row_ids[k] in excludeGuides: ### skip this main event
+                                    proceed=False
+                                    break
                     k+=1
                 correlated.sort()
                 if LegacyMode == False:
                     correlated.reverse()
-                correlated = map(lambda x:x[1],correlated)
-                correlated_genes[geneID] = correlated
+                if proceed:
+                    correlated = map(lambda x:x[1],correlated)
+                    correlated_genes[geneID] = correlated
                 i+=1
         else:     
             for score_ls in D1:
@@ -3362,7 +3374,8 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
             x=0
             for k in correlated_genes[i]:
                 if x<30: ### cap it at 30
-                    atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
+                    try: atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
+                    except Exception: pass
                 x+=1
 
     if len(atleast_10)<30:
@@ -3370,9 +3383,11 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
         for i in correlated_genes:
             if len(correlated_genes[i])>0:
                 numb_corr.append([len(correlated_genes[i]),i])
-                atleast_10[i]=correlated_genes[i] ### if atleast 10 genes apart of this pattern
+                try: atleast_10[i]=correlated_genes[i] ### if atleast 10 genes apart of this pattern
+                except Exception: pass
                 for k in correlated_genes[i]:
-                    atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
+                    try: atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
+                    except Exception: pass
 
     if len(atleast_10) == 0:
         atleast_10 = expressed_values
@@ -3735,7 +3750,7 @@ def remoteGetDriverGenes(Species,platform,results_file,numSamplesClustered=3,exc
     return guideGenes
     
 def correlateClusteredGenes(platform,results_file,stringency='medium',numSamplesClustered=3,
-                excludeCellCycle=False,graphics=[],ColumnMethod='hopach',rhoCuttOff=0.2, transpose=False,
+                excludeCellCycle=False,graphics=[],ColumnMethod='hopach',rhoCutOff=0.2, transpose=False,
                 includeMoreCells=False):
     
     if numSamplesClustered<1: numSamplesClustered=1
@@ -3771,11 +3786,11 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
         for i in medVarHighComplexity: combined_results[i]=[]
         for i in highVarLowComplexity: combined_results[i]=[]
         for i in highVarHighComplexity: combined_results[i]=[]
-        guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
+        guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCutOff,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
         if guideGenes == 'TooFewBlocks':
-            guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
+            guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCutOff+0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle)
             if guideGenes == 'TooFewBlocks':
-                guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCuttOff+0.2,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,forceOutput=True)
+                guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=rhoCutOff+0.2,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,forceOutput=True)
         if len(guideGenes)>200:
             print 'Too many guides selected (>200)... performing more stringent filtering...'
             guideGenes, addition_cell_cycle_associated = correlateClusteredGenesParameters(results_file,rho_cutoff=0.1,hits_cutoff=0,hits_to_report=1,geneFilter=combined_results,excludeCellCycle=excludeCellCycle,restrictTFs=True)
@@ -3816,10 +3831,128 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
         cluster_file = string.replace(graphics[0][1],'.png','.txt')
         #exportGroupsFromClusters(cluster_file,expFile,platform)
     return graphics, new_results_file
-        
+
+def exportReDefinedClusterBlocks(results_file,block_db,rho_cutoff):
+    ### Re-import the matrix to get the column cluster IDs
+    matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(results_file)
+    
+    new_block_db = {}
+    centroid_blocks=[]
+    centroids = []
+    for block in block_db:
+        if len(block_db[block])>3:
+            new_block_db[block] = block_db[block]  ### Keep track of the row_header indexes associated with each blcok
+            data = map(lambda x: matrix[x],block_db[block])
+            ### Compute an expression centroid from the block (cluster)
+            centroid = [float(sum(col))/len(col) for col in zip(*data)]
+            centroids.append(centroid)
+            centroid_blocks.append(block)
+            
+    ### Compare block centroids
+    D1 = numpy.corrcoef(centroids)
+    i=0
+    correlated_blocks=[]
+    for score_ls in D1:
+        scores = []
+        block = centroid_blocks[i]
+        k=0
+        for v in score_ls:
+            if str(v)!='nan' and v>0.6:
+                if block !=centroid_blocks[k]:
+                    blocks = [block,centroid_blocks[k]]
+                    blocks.sort()
+                    if blocks not in correlated_blocks:
+                        correlated_blocks.append(blocks)
+            k+=1    
+        i+=1
+    
+    newBlock=0
+    existing=[]
+    updated_blocks={}
+    correlated_blocks.sort()
+    print correlated_blocks
+    ### Build a tree of related blocks (based on the code in junctionGraph)
+    for (block1,block2) in correlated_blocks:
+        if block1 not in existing and block2 not in existing:
+            newBlock=newBlock+1
+            updated_blocks[newBlock]=[block1,]
+            updated_blocks[newBlock].append(block2)
+            existing.append(block1)
+            existing.append(block2)
+                
+        elif block1 in existing and block2 not in existing:
+            for i in updated_blocks:
+                if block1 in updated_blocks[i]:
+                    updated_blocks[i].append(block2)
+                    existing.append(block2)
+        elif block2 in existing and block1 not in existing:
+            for i in updated_blocks:
+                if block2 in updated_blocks[i]:
+                    updated_blocks[i].append(block1)
+                    existing.append(block1)   
+        elif block1 in existing and block2 in existing:
+            for i in updated_blocks:
+                if block1 in updated_blocks[i]:
+                        b1=i
+                if block2 in updated_blocks[i]:
+                    b2=i
+            if b1!=b2:
+                for b in updated_blocks[b2]:
+                    if b not in updated_blocks[b1]:
+                        updated_blocks[b1].append(b)
+                del updated_blocks[b2]
+                
+    ### Add blocks not correlated to other blocks (not in correlated_blocks)
+    #print len(existing),len(centroid_blocks)
+    print updated_blocks
+    for block in centroid_blocks:
+        if block not in existing:
+            newBlock+=1
+            updated_blocks[newBlock]=[block]
+    
+    import collections
+    row_order = collections.OrderedDict()
+    for newBlock in updated_blocks:
+        events_in_block=0
+        for block in updated_blocks[newBlock]:
+            for i in new_block_db[block]:
+                events_in_block+=1
+        if events_in_block>5:
+            for block in updated_blocks[newBlock]:
+                for i in new_block_db[block]:
+                    row_order[i] = newBlock ### i is a row_header index - row_header[i] is a UID
+                    #if newBlock==3:
+                    #if row_header[i]=='TAF2&ENSG00000064313&E9.1-I9.1_120807184__ENSG00000064313&E9.1-E10.1':
+                    #print row_header[i]
+    print updated_blocks
+
+    ### Non-clustered block results - Typically not used by good to refer back to when testing
+    original_block_order = collections.OrderedDict()
+    for block in new_block_db:
+        for i in new_block_db[block]:
+            original_block_order[i]=block
+    #row_order = original_block_order
+    
+    ### Export the results
+    row_header.reverse() ### Reverse order is the default
+    priorColumnClusters = map(str,priorColumnClusters)
+    new_results_file = results_file[:-4]+'-BlockIDs.txt'
+    eo = export.ExportFile(new_results_file)
+    eo.write(string.join(['UID','row_clusters-flat']+column_header,'\t')+'\n')
+    eo.write(string.join(['column_clusters-flat','']+priorColumnClusters,'\t')+'\n')
+    
+    for i in row_order:
+        cluster_number = str(row_order[i])
+        uid = row_header[i]
+        values = map(str,matrix[i])
+        eo.write(string.join([uid,cluster_number]+values,'\t')+'\n')
+    eo.close()
+    
+    print 'Filtered, grouped expression clusters exported to:',new_results_file
+
 def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=5,
             filter=False,geneFilter=None,numSamplesClustered=3,excludeCellCycle=False,restrictTFs=False,
-            forceOutput=False,transpose=False):
+            forceOutput=False,ReDefinedClusterBlocks=False,transpose=False):
     from visualization_scripts import clustering
     addition_cell_cycle_associated=[]
     
@@ -3868,7 +4001,12 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
 
     i=0
     block=0
-    block_db={}
+    
+    if ReDefinedClusterBlocks:
+        import collections
+        block_db=collections.OrderedDict() ### seems benign but could alter legacy results
+    else:
+        block_db={}
     for row in matrix:
         if i!=0:
             rho,p = stats.pearsonr(row,matrix[i-1]) ### correlate to the last ordered row
@@ -3896,7 +4034,11 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
         else:
             block_db[block] = [i] ### store the row index
         i+=1
-
+        
+    if ReDefinedClusterBlocks:
+        ### Produces a filtered-down and centroid organized heatmap text file
+        exportReDefinedClusterBlocks(results_file,block_db,rho_cutoff)
+        
     if hits_to_report == 1:
         if len(block_db)<4 and forceOutput==False:
             return 'TooFewBlocks', None
@@ -3993,7 +4135,6 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 final_rows[tuple(ls)]=[]
             for i in indexes:
                 retained_ids[row_header[i]]=[]
-                
                 
     if len(final_rows)==0:
         for block in block_db:
@@ -5122,6 +5263,11 @@ if __name__ == '__main__':
                     numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,graphics=graphic_links,
                     ColumnMethod=column_method, transpose=True, includeMoreCells=True)
     """
+
+    results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
+    correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
+    sys.exit()
+    correlateClusteredGenes('exons',results_file,stringency='strict',rhoCutOff=0.6);sys.exit()
     #sys.exit()
     species='Hs'; platform = "3'array"; vendor = "3'array"
     #FeatureCounts('/Users/saljh8/Downloads/subread-1.5.2-MaxOSX-x86_64/annotation/mm10_AltAnalyze.txt', '/Users/saljh8/Desktop/Grimes/GEC14074/Grimes_092914_Cell12.bam')
@@ -5157,7 +5303,7 @@ if __name__ == '__main__':
     gsp.setJustShowTheseIDs('')
     gsp.setNormalize('median')
     gsp.setSampleDiscoveryParameters(0,0,1.5,3,
-        False,'AltExon','protein_coding',False,'cosine','hopach',0.35)
+        False,'PSI','protein_coding',False,'cosine','hopach',0.35)
     
     #gsp.setSampleDiscoveryParameters(1,1,4,3, True,'Gene','protein_coding',False,'cosine','hopach',0.5)
     filename = '/Volumes/SEQ-DATA/AML_junction/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'

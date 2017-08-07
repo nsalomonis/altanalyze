@@ -124,8 +124,10 @@ class GroupStats:
     
     def setAdditionalStats(self,data_list1,data_list2):
         """ Obtain the statistics for a moderated t-test and store as object variables """
-        sg,n1,n2,avg1,avg2 = FeatureVariance(data_list1,data_list2)
-        self.sg = sg; self.n1 = n1; self.n2 = n2; self.avg1 = avg1; self.avg2 = avg2
+        try:
+            sg,n1,n2,avg1,avg2 = FeatureVariance(data_list1,data_list2)
+            self.sg = sg; self.n1 = n1; self.n2 = n2; self.avg1 = avg1; self.avg2 = avg2
+        except Exception: pass
         del data_list1; del data_list2 ### probably unnecessary
     def setAdditionalWelchStats(self,data_list1,data_list2):
         svar1,svar2,n1,n2,avg1,avg2,df = WelchTestFeatureVariance(data_list1,data_list2)

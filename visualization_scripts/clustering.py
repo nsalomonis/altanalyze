@@ -1575,6 +1575,10 @@ def filepath(filename):
     fn = unique.filepath(filename)
     return fn
 
+def remoteImportData(filename,geneFilter=None):
+    matrix, column_header, row_header, dataset_name, group_db = importData(filename,geneFilter=geneFilter)
+    return matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters
+
 def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore=False):
     
     global priorColumnClusters 
@@ -3655,7 +3659,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
         multipleGenes = True
         if '  ' in targetGene: targetGene = string.replace(targetGene,'  ', ' ')
         if ',' in targetGene: targetGene = string.replace(targetGene,',', ' ')
-        if '|' in targetGene and 'alt_junction' not in originalFilename: targetGene = string.replace(targetGene,'|', ' ')
+        #if '|' in targetGene and 'alt_junction' not in originalFilename: targetGene = string.replace(targetGene,'|', ' ')
         if '\n' in targetGene: targetGene = string.replace(targetGene,'\n', ' ')
         if '\r' in targetGene: targetGene = string.replace(targetGene,'\r', ' ')
 
@@ -3669,7 +3673,7 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             original_rowid = row_id
             symbol=row_id
             new_symbol = symbol
-            if ':' in row_id:
+            if ':' in row_id and '|' not in row_id:
                 a,b = string.split(row_id,':')[:2]
                 if 'ENS' in a or len(a)==17:
                     try:
@@ -3866,13 +3870,13 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
     i=0
 
     for row_id in row_header2:
-        if ':' in row_id:
+        if ':' in row_id and '|' not in row_id:
             a,b = string.split(row_id,':')[:2]
             if 'ENS' in a:
                 try: row_id=string.replace(row_id,a,gene_to_symbol[a][0])
                 except Exception,e: pass
                 row_header2[i] = row_id
-        elif 'ENS' in row_id and ' ' in row_id:
+        elif 'ENS' in row_id and ' ' in row_id and '|' not in row_id:
             row_id = string.split(row_id, ' ')[1]
             row_header2[i] = row_id
         elif ' ' in row_id:
@@ -5907,8 +5911,228 @@ def filterCountsFile(filename):
     ea.close()
     print len(unique_genes),'unique genes.'
     
+def filterPSIValues(filename):
+    fn = filepath(filename)
+    firstRow=True
+          
+    header = True
+    rows=0
+    filtered=0
+    new_file = filename[:-4]+'-99p.txt'
+    new_file_clust = new_file[:-4]+'-clustID.txt'
+    ea = export.ExportFile(new_file)
+    eac = export.ExportFile(new_file_clust)
+    added=[]
+    for line in open(fn,'rU').xreadlines():
+        data = line.rstrip()
+        t = string.split(data,'\t')
+        if header:
+            header = False
+            t = [t[1]]+t[8:]
+            header_length = len(t)-1
+            minimum_values_present = int(header_length)-1
+            not_detected = header_length-minimum_values_present
+            new_line = string.join(t,'\t')+'\n'
+            ea.write(new_line)
+        else:
+            cID = t[5]
+            t = [t[1]]+t[8:]
+            missing_values_at_the_end = (header_length+1)-len(t)
+            missing = missing_values_at_the_end+t.count('')
+            if missing<not_detected:
+                #if cID not in added:
+                added.append(cID)
+                new_line = string.join(t,'\t')+'\n'
+                ea.write(new_line)
+                eac.write(t[0]+'\t'+cID+'\n')
+                filtered+=1
+        rows+=1
+    print rows, filtered
+    ea.close()
+    eac.close()
+    removeRedundantCluster(new_file,new_file_clust)
+
+def removeRedundantCluster(filename,clusterID_file):
+    from scipy import stats
+    import ExpressionBuilder
+    sort_col=0
+    export_count=0
+    ### Sort the filtered PSI model by gene name
+    ExpressionBuilder.exportSorted(filename, sort_col, excludeHeader=True)
+    new_file = filename[:-4]+'-unique.txt'
+    ea = export.ExportFile(new_file)
+    
+    event_clusterID_db={}
+    for line in open(clusterID_file,'rU').xreadlines():
+        data = line.rstrip()
+        eventID,clusterID = string.split(data,'\t')
+        event_clusterID_db[eventID]=clusterID
+
+        def compareEvents(events_to_compare,export_count):
+                ### This is where we compare the events and write out the unique entries
+                if len(events_to_compare)==1:
+                    ea.write(events_to_compare[0][-1])
+                    export_count+=1
+                else:
+                    exclude={}
+                    compared={}
+                    for event1 in events_to_compare:
+                        if event1[0] not in exclude:
+                            ea.write(event1[-1])
+                            exclude[event1[0]]=[]
+                            export_count+=1
+                        for event2 in events_to_compare:
+                            if event2[0] not in exclude:
+                                if event1[0] != event2[0] and (event1[0],event2[0]) not in compared:
+                                    uid1,values1,line1 = event1
+                                    uid2,values2,line2 = event2
+                                    coefr=numpy.ma.corrcoef(values1,values2)
+                                    #rho,p = stats.pearsonr(values1,values2)
+                                    rho = coefr[0][1]
+                                    if rho>0.6 or rho<-0.6:
+                                        exclude[event2[0]]=[]
+                                    compared[event1[0],event2[0]]=[]
+                                    compared[event2[0],event1[0]]=[]
+                                    
+                    for event in events_to_compare:
+                        if event[0] not in exclude:
+                            ea.write(event[-1]) ### write out the line
+                            exclude.append(event[0])
+                            export_count+=1
+                return export_count
+
+    header = True
+    rows=0
+    filtered=0
+    prior_cID = 0
+    events_to_compare=[]
+    for line in open(filename,'rU').xreadlines():
+        data = line.rstrip()
+        t = string.split(data,'\t')
+        if header:
+            ea.write(line)
+            header_row = t
+            header=False
+        else:
+            uid = t[0]
+            cID = event_clusterID_db[uid]
+            empty_offset = len(header_row)-len(t)
+            t+=['']*empty_offset
+            values = ['0.000101' if x=='' else x for x in t[1:]]
+            values = map(float,values)
+            values = numpy.ma.masked_values(values,0.000101)
+            if prior_cID==0: prior_cID = cID ### Occurs for the first entry
+            if cID == prior_cID:
+                ### Replace empty values with 0
+                events_to_compare.append((uid,values,line))
+            else:
+                export_count = compareEvents(events_to_compare,export_count)
+                events_to_compare=[(uid,values,line)]
+            prior_cID = cID
+
+    if len(events_to_compare)>0: ### If the laster cluster set not written out yet
+        export_count = compareEvents(events_to_compare,export_count)
+
+    ea.close()
+    print export_count,'Non-redundant splice-events exported'
+def convertToGOElite(folder):
+    files = UI.read_directory(folder)
+    for file in files:
+        if '.txt' in file:
+            gene_count=0; up_count=0; down_count=0
+            new_filename = string.split(file[3:],"_")[0]+'.txt'
+            ea = export.ExportFile(folder+'/GO-Elite/'+new_filename)
+            fn = folder+'/'+file
+            ea.write('GeneID\tSystemCode\n')
+            firstLine = True
+            for line in open(fn,'rU').xreadlines():
+                if firstLine:
+                    firstLine= False
+                    continue
+                data = line.rstrip()
+                t = string.split(data,'\t')
+                if ':' in t[0]:
+                    ea.write(string.split(t[0],':')[0]+'\tSy\n')
+                else:
+                    gene_count+=1
+                    if '-' in t[2]: down_count+=1
+                    else: up_count+=1
+            ea.close()
+            print file,'\t',gene_count,'\t',up_count,'\t',down_count
+
+def compareEventLists(folder):
+    import collections
+    event_db = collections.OrderedDict()
+    groups_list=['']
+    files = UI.read_directory(folder)
+    for file in files:
+        if '.txt' in file and 'PSI.' in file:
+            ls=[]
+            event_db[file[:-4]]=ls
+            groups_list.append(file[:-4])
+            fn = folder+'/'+file
+            firstLine = True
+            for line in open(fn,'rU').xreadlines():
+                if firstLine:
+                    firstLine= False
+                    continue
+                data = line.rstrip()
+                t = string.split(data,'\t')
+                if 'U2AF1-like' in file:
+                    if t[1] == "inclusion":
+                        ls.append((t[0],t[1]))
+                else:
+                    ls.append((t[0],t[1]))
+
+    def convertEvents(events):
+        opposite_events=[]
+        for (event,direction) in events:
+            if direction == 'exclusion':
+                direction = 'inclusion'
+            else:
+                direction = 'exclusion'
+            opposite_events.append((event,direction))
+        return opposite_events
+        
+    ea1 = export.ExportFile(folder+'/overlaps-same-direction.txt')
+    ea2 = export.ExportFile(folder+'/overlaps-opposite-direction.txt')
+    ea3 = export.ExportFile(folder+'/concordance.txt')
+    ea1.write(string.join(groups_list,'\t')+'\n')
+    ea2.write(string.join(groups_list,'\t')+'\n')
+    ea3.write(string.join(groups_list,'\t')+'\n')
+    comparison_db={}
+    for comparison1 in event_db:
+        events1 = event_db[comparison1]
+        hits1=[comparison1]
+        hits2=[comparison1]
+        hits3=[comparison1]
+        for comparison2 in event_db:
+            events2 = event_db[comparison2]
+            events3 = convertEvents(events2)
+            overlap = len(set(events1).intersection(events2))
+            inverse_overlap = len(set(events1).intersection(events3))
+            min_events1 = min([len(events1),len(events2)])
+            min_events2 = min([len(events1),len(events3)])
+            denom = overlap+inverse_overlap
+            if denom == 0: denom = 0.00001
+            #comparison_db[comparison1,comparison2]=overlap
+            hits1.append(str((1.00*overlap)/min_events1))
+            hits2.append(str((1.00*inverse_overlap)/min_events1))
+            hits3.append(str(1.00*overlap/denom)+'|'+str(1.00*inverse_overlap/denom))
+        ea1.write(string.join(hits1,'\t')+'\n')
+        ea2.write(string.join(hits2,'\t')+'\n')
+        ea3.write(string.join(hits3,'\t')+'\n')
+    ea1.close()
+    ea2.close()
+    ea3.close()
+     
 if __name__ == '__main__':
-    filterCountsFile('/Volumes/salomonis2/Leucegene_project/Bed-files-Leucegene-CCLE-SF3B1/ExpressionInput/counts.Leucegene-CCLE-SF3B1.txt');sys.exit()
+    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
+
+    #removeRedundantCluster(a,b);sys.exit()
+    compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Knockdowns/Events-dPSI_0.1_rawp');sys.exit()
+    #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()
     compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()

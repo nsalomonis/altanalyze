@@ -48,7 +48,7 @@ def filterFile(input_file,output_file,filter_names,force=False):
     print 'Filtered columns printed to:',output_file
     return output_file
 
-def filterRows(input_file,output_file,filterDB=None,logData=False):
+def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False):
     export_object = open(output_file,'w')
     firstLine = True
     for line in open(input_file,'rU').xreadlines():
@@ -62,6 +62,9 @@ def filterRows(input_file,output_file,filterDB=None,logData=False):
                 if values[0] in filterDB:
                     if logData:
                         line = string.join([values[0]]+map(str,(map(lambda x: math.log(float(x)+1,2),values[1:]))),'\t')+'\n'
+                    if exclude==False:
+                        export_object.write(line)
+                elif exclude: ### Only write out the entries NOT in the filter list
                     export_object.write(line)
             else:
                 max_val = max(map(float,values[1:]))
@@ -211,6 +214,7 @@ if __name__ == '__main__':
     filter_rows=False
     filter_file=None
     force=False
+    exclude = False
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         filter_names = ['bob','sally','jim']
         input_file = makeTestFile()
@@ -223,13 +227,18 @@ if __name__ == '__main__':
         for opt, arg in options:
             if opt == '--i': input_file=arg
             elif opt == '--f': filter_file=arg
-            elif opt == '--r': filter_rows=True
+            elif opt == '--r':
+                if arg == 'exclude':
+                    filter_rows=True
+                    exclude=True
+                else:
+                    filter_rows=True
             elif opt == '--force': force=True
             
     output_file = input_file[:-4]+'-filtered.txt'
     if filter_rows:
         filter_names = getFilters(filter_file)
-        filterRows(input_file,output_file,filterDB=filter_names,logData=False)
+        filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)
     elif filter_file ==None:
         combineDropSeq(input_file)
     else:

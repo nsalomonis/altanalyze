@@ -198,8 +198,14 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     pearson_list={}
     #global tissue_specific_db
     
-    print array_type
+    print 'platform:',array_type
+    
     collapse_override = True
+    
+    if 'Clustering-' in customMarkers and 'ICGS' in customMarkers:
+        """ When performing cellHarmony, build an ICGS expression reference with log2 TPM values rather than fold """
+        customMarkers = convertICGSClustersToExpression(customMarkers)
+    
     customMarkerFile = customMarkers
     if geneModels == False or geneModels == None: geneModels = []
     else:
@@ -328,7 +334,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     if len(allPossibleClassifiers)<16:
         print 'Using:'
         for model in allPossibleClassifiers:
-            print 'model',num, 'with',len(model),'genes',model
+            print 'model',num, 'with',len(model),'genes'  #model
             num+=1
             all_models+=model
     
@@ -2194,7 +2200,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     input_file=output_dir
     output_file = input_file[:-4]+'-ReOrdered.txt'
     filter_names = new_headers
-    print filter_names
+    #print filter_names
     sampleIndexSelection.filterFile(input_file,output_file,filter_names)
     return output_file
     
@@ -2292,21 +2298,83 @@ def importExpressionFile(input_file,ignoreClusters=False):
 def convertICGSClustersToExpression(heatmap_file):
     """This function will import an ICGS row normalized heatmap and return raw
     expression values substituted for the values. """
+    
     from visualization_scripts import clustering
     graphic_links=[]
-    row_method='hopach'
-    column_method='hopach'
-    column_metric = None
-    row_metric = None
-    cc_graphic_links = clustering.runHCexplicit(heatmap_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True, JustShowTheseIDs=guide_genes)
 
+    filename = export.findFilename(heatmap_file)
+    ICGS_dir = export.findParentDir(heatmap_file)
+    root_dir = export.findParentDir(ICGS_dir[:-1])
+    files = unique.read_directory(root_dir+'/ExpressionInput')
+    exp_dir_prefix = string.split(string.replace(filename,'Clustering-',''),'-')[0]
+    steady_state_file = None
+    exp_file = None
+    specific_match = None
+    ### Look for the best expression file match
+    for file in files:
+        if 'exp.' in file:
+            exp_file = file
+            if 'steady-state' in file:
+                steady_state_file = file
+            if exp_dir_prefix in file:
+                specific_match = file
+    if specific_match!=None:
+        expdir = root_dir+'/ExpressionInput/'+specific_match
+    elif steady_state_file !=None:
+        expdir = root_dir+'/ExpressionInput/'+steady_state_file
+    else:
+        expdir = root_dir+'/ExpressionInput/'+exp_file
+
+    if '-Guide' in filename:
+        guide = string.split(filename,'-Guide')[1][:1]
+        cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/Guide'+guide+'-cellHarmony-reference.txt'
+    else:
+        cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/ICGS-cellHarmony-reference.txt'
+    eo = export.ExportFile(cellHarmonyReferenceFile)
+    
+    ### Import the heatmap and expression files
+    matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(heatmap_file)
+    matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
+
+    updated_column_header=[]
+    for i in column_header:
+        if ':' in i:
+            i = string.split(i,':')[1]
+        updated_column_header.append(i)
+    column_header = updated_column_header
+    row_header.reverse() ### Reverse order is the default
+    #priorRowClusters.reverse()
+    ### Record the index for each sample name in the ICGS result order in the original expression file (exp.*)
+    priorColumnClusters = map(str,priorColumnClusters)
+    sample_index_list = map(lambda x: column_header_exp.index(x), column_header)
+    eo.write(string.join(['UID','row_clusters-flat']+column_header,'\t')+'\n')
+    eo.write(string.join(['column_clusters-flat','']+priorColumnClusters,'\t')+'\n')
+    index=0
+    for uid in row_header:
+        if uid in row_header_exp:
+            ### Get the heatmap ordered gene entries
+            exp_row_index = row_header_exp.index(uid)
+            ### Re-order the samples according to the heatmap
+            try: reordered_values = map(lambda x: str(matrix_exp[exp_row_index][x]), sample_index_list) ### simple and fast way to reorganize the samples
+            except Exception:
+                ### For PSI files with missing values at the end of each line, often
+                if len(column_header_exp) != len(matrix_exp[exp_row_index]):
+                    diff = len(column_header_exp)-len(matrix_exp[exp_row_index])
+                    matrix_exp[exp_row_index]+=diff*['']
+                reordered_values = map(lambda x: str(matrix_exp[exp_row_index][x]), sample_index_list)
+            eo.write(string.join([uid,str(priorRowClusters[index])]+reordered_values,'\t')+'\n')
+        index+=1
+    eo.close()
+    
+    print 'New ICGS CellHarmony reference saved to:',cellHarmonyReferenceFile
+    return cellHarmonyReferenceFile
 
 if __name__ == '__main__':
     #"""
     reference_exp_file = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/Gottgens_HarmonizeReference.txt'
     query_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/DataPlots/Fluidigm-all_Gottgens_reference.txt'
     classification_file= '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/DataPlots/SampleClassification/Fluidigm-all_Gottgens_reference-SampleClassification.txt'
-    
+    convertICGSClustersToExpression('/Users/saljh8/Desktop/dataAnalysis/Collaborative/10X Cardiac/ICGS/Clustering-exp.10X_CM_days4-14-45-Guide3 LOXL2 FN1 CEBPD MYL9 NUPR1 RAMP2 FHL2 SPARC-hierarchical_euclidean_correlation.txt');sys.exit()
     harmonizeClassifiedSamples('Hs',reference_exp_file,query_exp_file,classification_file);sys.exit()
     #"""
     #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()

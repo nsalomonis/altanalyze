@@ -1,6 +1,6 @@
 [data]
-bam_prefix = /Volumes/salomonis1/projects/Ware/bams/
-bam_files =["RCM_HV_13_00103_14947.bam","CM0013_14175.bam","CM0014_14946.bam","HV_14_0012b_14942.bam","NDR5_14174.bam","NDR3_14565.bam","NDR4a_14945.bam","NDR8_14566.bam","NDR9_14567.bam"]
+bam_prefix = /Users/saljh8/Desktop/Old Mac/Desktop/Grimes/GEC14074/
+bam_files =["Grimes_September_23_Cell_1.bam","Grimes_September_23_Cell_12.bam","Grimes_092914_Cell84.bam","Grimes_092914_Cell12.bam"]
 
 [plotting]
 fig_width = 7 
@@ -19,7 +19,7 @@ number_junctions = True
 resolution = .5 
 posterior_bins = 40 
 gene_posterior_ratio = 5 
-colors =["red","red","red","red","blue","blue","blue","blue","blue"]
-coverages =[866313,793703,825242,837459,336872,845497,765438,1447379,1577351]
+colors =["red","red","blue","blue"]
+coverages =[422128,806630,920983,901706]
 bar_color = "b" 
 bf_thresholds = [0, 1, 2, 5, 10, 20]

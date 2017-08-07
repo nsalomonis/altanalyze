@@ -705,7 +705,9 @@ def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root):
     except Exception: pass
         
 def openDirectory(output_dir):
-    if os.name == 'nt':
+    if runningCommandLine:
+        pass
+    elif os.name == 'nt':
         try: os.startfile('"'+output_dir+'"')
         except Exception:  os.system('open "'+output_dir+'"')
     elif 'darwin' in sys.platform: os.system('open "'+output_dir+'"')
@@ -1579,7 +1581,9 @@ class GUI:
 
     def openPNGImage(self):
         png_file_dir = self.graphic_link['WP']
-        if os.name == 'nt':
+        if runningCommandLine:
+            pass
+        elif os.name == 'nt':
             try: os.startfile('"'+png_file_dir+'"')
             except Exception:  os.system('open "'+png_file_dir+'"')
         elif 'darwin' in sys.platform: os.system('open "'+png_file_dir+'"')
@@ -2482,7 +2486,9 @@ class GUI:
         tl.mainloop()
 
     def openPDFHelp(self):
-        if os.name == 'nt':
+        if runningCommandLine:
+            pass
+        elif os.name == 'nt':
             try: os.startfile('"'+self.pdf_help_file+'"')
             except Exception:  os.system('open "'+self.pdf_help_file+'"')
         elif 'darwin' in sys.platform: os.system('open "'+self.pdf_help_file+'"')
@@ -6649,6 +6655,8 @@ class GeneSelectionParameters:
         if Normalize == 'NA': Normalize = False
         self._Normalize = Normalize
     def Normalize(self): return self._Normalize
+    def setExcludeGuides(self,excludeGuides): self.excludeGuides = excludeGuides
+    def ExcludeGuides(self): return self.excludeGuides
     def setSampleDiscoveryParameters(self,ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,
                 removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff):
         ### For single-cell RNA-Seq data

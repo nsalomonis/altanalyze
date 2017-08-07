@@ -61,6 +61,12 @@ use_Tkinter = 'no'
 debug_mode = 'no'
 analysis_start_time = time.time()
 
+command_args = string.join(sys.argv,' ')
+if len(sys.argv[1:])>1 and '-' in command_args and '--GUI' not in command_args:
+    runningCommandLine = True
+else:
+    runningCommandLine = False
+
 def filepath(filename):
     fn = unique.filepath(filename)
     return fn
@@ -183,7 +189,9 @@ def FindDir(dir,term):
     else: return ''
 
 def openFile(file_dir):
-    if os.name == 'nt':
+    if runningCommandLine:
+        pass
+    elif os.name == 'nt':
         try: os.startfile('"'+file_dir+'"')
         except Exception:  os.system('open "'+file_dir+'"')
     elif 'darwin' in sys.platform: os.system('open "'+file_dir+'"')
@@ -4768,13 +4776,17 @@ class SummaryResultsWindow:
         except Exception: None
         sys.exitfunc()
     def openDirectory(self):
-        if os.name == 'nt':
+        if runningCommandLine:
+            pass
+        elif os.name == 'nt':
             try: os.startfile('"'+self.output_dir+'"')
             except Exception:  os.system('open "'+self.output_dir+'"')
         elif 'darwin' in sys.platform: os.system('open "'+self.output_dir+'"')
         elif 'linux' in sys.platform: os.system('xdg-open "'+self.output_dir+'/"')
     def openSuppliedDirectory(self,dir):
-        if os.name == 'nt':
+        if runningCommandLine:
+            pass
+        elif os.name == 'nt':
             try: os.startfile('"'+self.output_dir+'"')
             except Exception:  os.system('open "'+dir+'"')
         elif 'darwin' in sys.platform: os.system('open "'+dir+'"')
@@ -4839,7 +4851,9 @@ class SummaryResultsWindow:
         tlx.mainloop()
 
     def openPNGImage(self,png_file_dir):
-        if os.name == 'nt':
+        if runningCommandLine:
+            pass
+        elif os.name == 'nt':
             try: os.startfile('"'+png_file_dir+'"')
             except Exception:  os.system('open "'+png_file_dir+'"')
         elif 'darwin' in sys.platform: os.system('open "'+png_file_dir+'"')
@@ -5026,7 +5040,9 @@ class SummaryResultsWindow:
             fl = UI.FileLocationData('', 'PDF', 'all')
             file_location_defaults['HelpChoice'] = fl
         UI.exportDefaultFileLocations(file_location_defaults)
-        if os.name == 'nt':
+        if runningCommandLine:
+            pass
+        elif os.name == 'nt':
             try: os.startfile('"'+self.pdf_file+'"')
             except Exception:  os.system('open "'+self.pdf_file+'"')
         elif 'darwin' in sys.platform: os.system('open "'+self.pdf_file+'"')
@@ -6021,6 +6037,14 @@ def verifyGroupFileFormat(filename):
     except Exception: correct_format = False
     return correct_format
 
+def parseExcludeGuides(excludeGuides):
+    guides=[]
+    for line in open(excludeGuides,'rU').readlines():
+        data = cleanUpLine(line)
+        if 'Guide' not in data:
+            guides.append(data)
+    return guides
+        
 def displayHelp():
     fn=filepath('Documentation/commandline.txt')
     print '\n################################################\nAltAnalyze Command-Line Help'
@@ -6202,7 +6226,8 @@ def commandLineRun():
                                                          'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
                                                          'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
                                                          'reimportModelScores=','separateGenePlots=','ChromiumSparseMatrix=',
-                                                         'test=','testType=','inputTestData=','customFASTA='])
+                                                         'test=','testType=','inputTestData=','customFASTA=',
+                                                         'excludeGuides='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6344,6 +6369,7 @@ def commandLineRun():
             if exonMapFile == None and specific_array_type == None and cel_file_dir == '':
                 print_out = "\nUnable to run!!! Please designate either a specific platfrom (e.g., --specificArray hgU133_2), select CEL files, or an "
                 print_out += "exon-level mapping file location (--exonMapFile C:/mapping.txt) to perform alternative exon analyses for this platform."
+
         ### Will need to check here to see if the platform is supported (local or online files) OR wait until an error is encountered later
         
     """ Check to see if a database is already installed """
@@ -6395,6 +6421,7 @@ def commandLineRun():
             SamplesDiffering = 3
             JustShowTheseIDs=''
             removeOutliers = False
+            excludeGuides = None
             PathwaySelection=[]
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 if opt == '--row_method':
@@ -6415,8 +6442,9 @@ def commandLineRun():
                 elif opt == '--rho': rho_cutoff=float(arg)
                 elif opt == '--clusterGOElite':clusterGOElite=float(arg)
                 elif opt == '--CountsCutoff':CountsCutoff=int(float(arg))
-                elif opt == '--FoldDiff':FoldDiff=int(float(arg))
+                elif opt == '--FoldDiff':FoldDiff=float(arg)
                 elif opt == '--SamplesDiffering':SamplesDiffering=int(float(arg))
+                elif opt == '--excludeGuides': excludeGuides=arg
                 elif opt == '--removeOutliers':
                     removeOutliers=arg
                     if removeOutliers=='yes' or removeOutliers=='True':
@@ -6440,6 +6468,12 @@ def commandLineRun():
                         display=True
                     else:
                         display=False
+            if excludeGuides!=None:
+                if '.txt' in excludeGuides:
+                    try: excludeGuides = parseExcludeGuides(excludeGuides)
+                    except Exception:
+                        print 'Failure to parse input excludeGuides text file. Check to see if the correct file location is provided.'
+                        sys.exit()
             if len(PathwaySelection)==0: PathwaySelection=''
             if len(GeneSetSelection)>0 or GeneSelection != '':
                 gsp = UI.GeneSelectionParameters(species,array_type,vendor)
@@ -6448,11 +6482,17 @@ def commandLineRun():
                 gsp.setGeneSelection(GeneSelection)
                 gsp.setJustShowTheseIDs(JustShowTheseIDs)
                 gsp.setNormalize('median')
+                gsp.setExcludeGuides(excludeGuides)
                 gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,   
                     removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff) 
-                
+
             import RNASeq
             mlp_instance = mlp
+            
+            if exp_name == None:
+                exp_name = export.findFilename(input_exp_file)
+                exp_name = string.replace(exp_name,'.txt','')
+                exp_name = string.replace(exp_name,'exp.','')
             
             if cel_file_dir != '':
                 expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt' ### cel_file_dir will point to the input directory
@@ -6506,7 +6546,7 @@ def commandLineRun():
             fl.setOutputDir(root_dir)
             fl.setMultiThreading(multiThreading)
             exp_file_location_db={}; exp_file_location_db[exp_name]=fl
-            
+
             ### Assign variables needed to run Kallisto from FASTQ files
             if runKallisto and len(input_fastq_dir)==0:
                 #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --fastq_dir /Users/saljh8/Desktop/Grimes/GEC14074 
@@ -6544,11 +6584,13 @@ def commandLineRun():
                 array_type = "3'array"
                 fl.setRootDir(root_dir)
             elif len(input_exp_file)>0:
+
                 ### Dealing with an expression file which should not be treated as RNASeq workflow
                 count = verifyFileLength(expFile[:-4]+'-steady-state.txt')
                 if count<2:
-                    array_type = "3'array" ### No steady-state file, must be an standard gene-level analysis
-                
+                    if array_type != 'PSI' and array_type != 'exons':
+                        array_type = "3'array" ### No steady-state file, must be an standard gene-level analysis
+ 
             time_stamp = timestamp()    
             log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()

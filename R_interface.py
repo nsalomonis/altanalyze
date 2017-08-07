@@ -25,7 +25,7 @@ except Exception:
     useStaticLocation = False
     
 try:
-    forceError ### This doesn't currently work with the compiled version of AltAnalyz
+    forceError ### This doesn't currently work with the compiled version of AltAnalyze
     import rpy2.robjects as robjects
     r = robjects.r
     print "\n---------Using RPY2---------\n"  
@@ -92,13 +92,13 @@ def remoteMonocle(input_file,expPercent,pval,numGroups):
     setWorkingDirectory(input_file)
     z.Monocle(input_file,expPercent,pval,numGroups)
     
-def remoteHopach(input_file,cluster_method,metric_gene,metric_array):
+def remoteHopach(input_file,cluster_method,metric_gene,metric_array,force_array='',force_gene=''):
     """ Run Hopach via a call from an external clustering and visualizaiton module """
     #input_file = input_file[1:] #not sure why, but the '\' needs to be there while reading initally but not while accessing the file late
-    force_array = ''
-    force_gene = ''
     row_order = []
     column_order = []
+    if 'ICGS-SubCluster' in input_file:
+        force_array=2
     input_file = checkForDuplicateIDs(input_file) ### Duplicate IDs will cause R to exit when creating the data matrix
     z = RScripts(input_file)
     setWorkingDirectory(input_file)
@@ -599,8 +599,8 @@ class RScripts:
         dat = r['data']
         #print "Number of columns in matrix:",len(dat)
         force1=''; force2=''; hopg='NULL'; hopa='NULL'; distmatg='NULL'; distmata = 'NULL' ### defaults for tree export
-        if force_gene != '' and force_gene != 0: force1=',kmax='+str(force_gene)+', khigh='+str(force_gene)
-        if force_array != '' and force_array != 0: force2=',kmax='+str(force_array)+', khigh='+str(force_array)
+        if force_gene != '' and force_gene != 0: force1=',kmax='+str(force_gene)+', khigh='+str(force_gene)+', K='+str(force_array)
+        if force_array != '' and force_array != 0: force2=',kmax='+str(force_array)+', khigh='+str(force_array)+', K='+str(force_array)
         if cluster_method == 'both' or cluster_method == 'gene':
             distance_matrix_line = 'distmatg<-distancematrix(data,d=%s)' % metric_g
             #print distance_matrix_line
@@ -638,7 +638,8 @@ class RScripts:
             if len(dat) > 1:
                 dist = r(distance_matrix_line)
                 #print distance_matrix_line
-                print_out = r('hopa<-hopach(t(data),dmat=distmata,ord="own"'+force2+')')
+                print_out = r('hopa<-hopach(t(data),dmat=distmata,ord="own"'+force2+')') #,coll="all"
+                print ['hopa<-hopach(t(data),dmat=distmata,ord="own",'+force2+')']
                 #print 'hopa<-hopach(t(data),dmat=distmata,ord="own"'+force2+')'
                 hopach_run = r['hopa']
                 hopa = 'hopa'
