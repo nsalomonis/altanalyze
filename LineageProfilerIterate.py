@@ -2432,14 +2432,14 @@ def compareICGSpopulationFrequency(folder):
     ea.close()
                 
 if __name__ == '__main__':
-    #"""
+    """
     compareICGSpopulationFrequency('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/cellHarmonyResults/');sys.exit()
     reference_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/iPSC_control-cellHarmony-ref.txt'
     query_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/SCN14C-3/ExpressionInput/exp.run2068_new_normalized-OutliersRemoved.txt'
     classification_file= '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/SCN14C-3/ExpressionInput/SampleClassification/run2068_new_normalized-OutliersRemoved-SampleClassification.txt'
     #convertICGSClustersToExpression('/Users/saljh8/Desktop/dataAnalysis/Collaborative/10X Cardiac/ICGS/Clustering-exp.10X_CM_days4-14-45-Guide3 LOXL2 FN1 CEBPD MYL9 NUPR1 RAMP2 FHL2 SPARC-hierarchical_euclidean_correlation.txt');sys.exit()
     harmonizeClassifiedSamples('Mm',reference_exp_file,query_exp_file,classification_file);sys.exit()
-    #"""
+    """
     #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()
     #allPairwiseSampleCorrelation('/Users/saljh8/Desktop/Sarwal-New/UCRM_bx.txt');sys.exit()
 
