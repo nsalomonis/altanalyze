@@ -23,6 +23,9 @@ and reading the propper Ensembl database version to allow for version specific a
 import sys, string
 import os.path, platform
 import unique ### Import itself as a reference to it's location
+from os.path import expanduser
+userHomeDir = expanduser("~")+'/altanalyze/'
+
 dirfile = unique
 
 py2app_adj = '/GO_Elite.app/Contents/Resources/Python/site-packages.zip'
@@ -56,8 +59,11 @@ if ('linux' in sys.platform or 'posix' in sys.platform) and getattr(sys, 'frozen
     application_path = os.path.dirname(sys.executable)
     #application_path = sys._MEIPASS  ### should be the same as the above
 else:
-    application_path = os.path.dirname(__file__)
-    
+    if '..' in __file__:
+        """ Indicates the file callin unique.py is in a subdirectory """
+        application_path = os.getcwd()
+    else:
+        application_path = os.path.dirname(__file__)
 
 if 'AltAnalyze?' in application_path:
     application_path = string.replace(application_path,'//','/')
@@ -70,6 +76,7 @@ if 'GO_Elite?' in application_path:
     application_path = string.split(application_path,'GO_Elite?')[0]
 
 def filepath(filename):
+    altDatabaseCheck = True
     #dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
     dir = application_path
     if filename== '':  ### Windows will actually recognize '' as the AltAnalyze root in certain situations but not others
@@ -78,10 +85,25 @@ def filepath(filename):
         fn = filename
     else:
         try: dir_list = os.listdir(filename); fn = filename ### test to see if the path can be found (then it is the full path)
-        except Exception: fn=os.path.join(dir,filename)
+        except Exception:
+            fn=os.path.join(dir,filename)
+            fileExists = os.path.isfile(fn)
+            """"When AltAnalyze installed through pypi - AltDatabase and possibly Config in user-directory """
+            if ('Config' in fn):
+                if fileExists == False:
+                    fn=os.path.join(userHomeDir,filename)
+            if 'AltDatabase' in fn:
+                getCurrentGeneDatabaseVersion()
+                fn = correctGeneDatabaseDir(fn)
+                fileExists = os.path.isfile(fn)
+                if fileExists == False:
+                    fn=os.path.join(userHomeDir,filename)
+                    fn = correctGeneDatabaseDir(fn)
+                altDatabaseCheck = False
     if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
-    if 'Databases' in fn or 'AltDatabase' in fn:
+    
+    if (('Databases' in fn) or ('AltDatabase' in fn)) and altDatabaseCheck:
         getCurrentGeneDatabaseVersion()
         fn = correctGeneDatabaseDir(fn)
     fn = string.replace(fn,'.txt.txt','.txt')
@@ -96,7 +118,11 @@ def read_directory(sub_dir):
         getCurrentGeneDatabaseVersion()
         sub_dir = correctGeneDatabaseDir(sub_dir)
     try: dir_list = os.listdir(dir+sub_dir)
-    except Exception: dir_list = os.listdir(sub_dir) ### For linux
+    except Exception:
+        try: dir_list = os.listdir(sub_dir) ### For linux
+        except Exception:
+            dir = userHomeDir  ### When AltAnalyze installed through pypi - AltDatabase in user-directory
+            dir_list = os.listdir(dir+sub_dir)
     try: dir_list.remove('.DS_Store') ### This is needed on a mac
     except Exception: null=[]
     return dir_list

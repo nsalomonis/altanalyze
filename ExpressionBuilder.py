@@ -349,7 +349,9 @@ def simpleGroupImport(group_dir,splitHeaders=False):
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         try: sample_filename,group_number,group_name = string.split(data,'\t')
-        except Exception: print data;kill
+        except Exception:
+            print "\nWARNING!!! Impropper groups file format detected. Terminating AltAnalyze. The groups file must have only three columns (sampleName, groupNumber, groupName).\n"
+            forceGroupsError
         if splitHeaders:
             if '~' in sample_filename: sample_filename = string.split(sample_filename,'~')[-1]
         group_sample_db[sample_filename] = group_name+':'+sample_filename

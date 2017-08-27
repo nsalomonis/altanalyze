@@ -428,6 +428,8 @@ def compareImportedTables(file_list,outputDir,importDir=False,considerNumericDir
                     data = UI.cleanUpLine(line)
                     t = string.split(data,'\t')
                     uid = t[0]
+                    if string.lower(uid) == 'uid':
+                        continue
                     valid = True
                     if data_type != 'first':
                         if data_type == 'comparison':

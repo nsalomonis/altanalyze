@@ -4924,7 +4924,8 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
 
         if fasta_file!=None:
             print 'Building kallisto index file...'
-            try: retcode = subprocess.call([kallisto_file, "index","-i", indexFile, fasta_file])
+            try:
+                retcode = subprocess.call([kallisto_file, "index","-i", indexFile, fasta_file])
             except Exception:
                 print traceback.format_exc()
                 ### If installed on the local OS
@@ -5268,7 +5269,7 @@ if __name__ == '__main__':
     correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
     sys.exit()
     correlateClusteredGenes('exons',results_file,stringency='strict',rhoCutOff=0.6);sys.exit()
-    #sys.exit()
+    sys.exit()
     species='Hs'; platform = "3'array"; vendor = "3'array"
     #FeatureCounts('/Users/saljh8/Downloads/subread-1.5.2-MaxOSX-x86_64/annotation/mm10_AltAnalyze.txt', '/Users/saljh8/Desktop/Grimes/GEC14074/Grimes_092914_Cell12.bam')
     #sys.exit()
@@ -5292,7 +5293,7 @@ if __name__ == '__main__':
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
 
-    runKallisto('Hs','test','tests/demo_data/FASTQ','tests/demo_data/FASTQ');sys.exit()
+    runKallisto('Ma','test','/Volumes/salomonis2/Suhas-Rhesus-mRNAseq/FASTQs','/Volumes/salomonis2/Suhas-Rhesus-mRNAseq/FASTQs');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

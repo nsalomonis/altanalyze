@@ -6227,7 +6227,7 @@ def commandLineRun():
                                                          'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
                                                          'reimportModelScores=','separateGenePlots=','ChromiumSparseMatrix=',
                                                          'test=','testType=','inputTestData=','customFASTA=',
-                                                         'excludeGuides='])
+                                                         'excludeGuides=','cellHarmony='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -7633,7 +7633,9 @@ def commandLineRun():
     for opt, arg in options:
         if opt == '--runGOElite': run_GOElite=arg
         elif opt == '--outputQCPlots': visualize_qc_results=arg
-        elif opt == '--runLineageProfiler': run_lineage_profiler=arg
+        elif opt == '--runLineageProfiler' or opt == '--cellHarmony':
+            if string.lower(arg) == 'yes' or string.lower(arg) == 'true':
+                run_lineage_profiler = 'yes'
         elif opt == '--elitepermut': goelite_permutations=arg
         elif opt == '--method': filter_method=arg
         elif opt == '--zscore': z_threshold=arg
@@ -8291,10 +8293,41 @@ def dependencyCheck():
         print '\nWARNING!!!! Some dependencies are not currently met.'
         print "This may impact AltAnalyze's performance\n"
 
+def unpackConfigFiles():
+    """ When pypi installs AltAnalyze in site-packages, a zip file for the Config
+    and AltDatabase in the pypi installed AltAnalyze library directory. To allow
+    for different flexible database versions to be written, AltDatabase and Config
+    are written to the user home directory in the folder 'altanalyze'."""
+    
+    fn = filepath('Config/options.txt') ### See if a Config folder is already available
+    fileExists = os.path.isfile(fn)
+    if fileExists == False:
+        import subprocess
+        import shutil
+        import site
+        import zipfile
+        from os.path import expanduser
+        userdir = expanduser("~")
+        
+        try:
+            os.mkdir(userdir+"/altanalyze")
+        except:
+            pass
+        
+        config_filepath = filepath("Config.zip")
+        altdatabase_filepath = string.replace(config_filepath,'Config.zip','AltDatabase.zip')
+        print '...Creating Config directory in:',userdir+"/altanalyze",
+        with zipfile.ZipFile(config_filepath,"r") as zip_ref:
+            zip_ref.extractall(userdir+"/altanalyze")
+        with zipfile.ZipFile(altdatabase_filepath,"r") as zip_ref:
+            zip_ref.extractall(userdir+"/altanalyze")
+        print '...written'
+
 if __name__ == '__main__':
     try: mlp.freeze_support()
     except Exception: pass
 
+    unpackConfigFiles()
     #testResultsPanel()
     skip_intro = 'yes'; #sys.exit()
     #skip_intro = 'remoteViewer'

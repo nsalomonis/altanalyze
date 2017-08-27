@@ -3239,7 +3239,11 @@ def importSpeciesInfo():
         else: filename = 'Config/species.txt'
     except Exception: filename = 'Config/species.txt'
     
-    fn=filepath(filename); global species_list; species_list=[]; global species_codes; species_codes={}; x=0
+    fn=filepath(filename)
+    global species_list
+    species_list=[]
+    global species_codes
+    species_codes={}; x=0
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
         try:
@@ -5295,7 +5299,7 @@ def getUserParameters(run_parameter,Multi=None):
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
 
-            if additional_analyses == 'Lineage Analysis':
+            if additional_analyses == 'Lineage Analysis' or additional_analyses == 'Cell State Classification':
                 selected_parameters.append('Lineage Analysis')
                 status = 'repeat'
                 while status == 'repeat':
@@ -5306,7 +5310,7 @@ def getUserParameters(run_parameter,Multi=None):
                         option_db['compendiumPlatform'].setDefaultOption('exon')
                     if array_type == "3'array":
                         option_db['compendiumType'].setArrayOptions(["protein_coding"])
-                    root.title('AltAnalyze: Perform Lineage Profiler Analysis from an Expression Matrix')
+                    root.title('AltAnalyze: Perform CellHarmony and LineageProfiler Analysis')
                     gu = GUI(root,option_db,option_list['LineageProfiler'],'')
                     input_exp_file = gu.Results()['input_lineage_file']
                     compendiumPlatform = gu.Results()['compendiumPlatform']

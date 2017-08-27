@@ -655,6 +655,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             pass
         else:
             feature_id = row_header[new_index]
+            original_feature_id = feature_id
             if ':' in feature_id:
                 if 'ENS' != feature_id[:3] or 'G0000' in feature_id:
                     feature_id = string.split(feature_id,':')[1]
@@ -665,11 +666,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if (' ' in feature_id and ('ENS' in feature_id or 'G0000' in feature_id)):
                 feature_id = string.split(feature_id,' ')[1]
             try:
-                if feature_id in justShowTheseIDs: color = 'red'
+                if feature_id in justShowTheseIDs or original_feature_id in justShowTheseIDs: color = 'red'
                 else: color = 'black'
             except Exception: pass
             try:
-                if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in top_genes):
+                if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in top_genes) or original_feature_id in justShowTheseIDs:
+                    if original_feature_id in justShowTheseIDs:
+                        feature_id = original_feature_id
                     if display_label_names:
                         axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                     else:
@@ -3734,8 +3737,8 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             targetGeneValue_array = [targetGeneValues]
         else:
             targetGeneValue_array = matrix2
-            if len(row_header2)>4 and len(row_header)<20000:
-                print 'Performing all pairwise corelations...',
+            if (len(row_header2)>4) or len(row_header)>15000: # and len(row_header)<20000
+                print 'Performing all iterative pairwise corelations...',
                 corr_matrix = numpyCorrelationMatrixGene(matrix,row_header,row_header2,gene_to_symbol)
                 print 'complete'
             matrix2=[]; original_headers=row_header2; row_header2 = []
@@ -4069,7 +4072,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
         column_header, row_header = row_header, column_header
-    if len(column_header)>1000 or len(row_header)>1000 and algorithm != 't-SNE':
+    if (len(column_header)>1000 or len(row_header)>1000) and algorithm != 't-SNE':
         print 'Performing Principal Component Analysis (please be patient)...'
     #PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=True)
     with warnings.catch_warnings():
@@ -5682,6 +5685,27 @@ def simpleCombine(folder):
     
     ea.close()
     
+def simpleCombineFiles(folder):
+    filename = folder+'/combined/combined.txt'
+    ea = export.ExportFile(filename)
+    files = UI.read_directory(folder)
+    firstRow=True
+    for file in files:
+        if '.txt' in file:
+            fn = filepath(folder+'/'+file)
+            firstRow=True
+            for line in open(fn,'rU').xreadlines():
+                data = cleanUpLine(line)
+                t = string.split(data,'\t')
+                if firstRow:
+                    t.append('Comparison')
+                    ea.write(string.join(t,'\t')+'\n')
+                    firstRow = False
+                else:
+                    t.append(file[:-4])
+                    ea.write(string.join(t,'\t')+'\n')
+    ea.close()
+                    
 def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGenes,state,query=None):
     """Predict multi-lineage cells and their associated coincident lineage-defining TFs"""
     
@@ -6035,6 +6059,7 @@ def removeRedundantCluster(filename,clusterID_file):
 
     ea.close()
     print export_count,'Non-redundant splice-events exported'
+    
 def convertToGOElite(folder):
     files = UI.read_directory(folder)
     for file in files:
@@ -6129,7 +6154,7 @@ def compareEventLists(folder):
 if __name__ == '__main__':
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
-
+    simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
     compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Knockdowns/Events-dPSI_0.1_rawp');sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()

@@ -23,7 +23,8 @@ import unique
 from build_scripts import GO_parsing
 import copy
 import time
-from build_scripts import alignToKnownAlt
+try: from build_scripts import alignToKnownAlt
+except Exception: pass ### circular import error
 import export
 import traceback
 
@@ -2331,7 +2332,7 @@ def importTranscriptExonIDs(species):
     return gene_transcript_structure, protein_db
         
 def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junction,isoform1,isoform2):
-    
+    #print uid,inclusion_junction,exclusion_junction,isoform1,isoform2;sys.exit()
     try:
         x = len(gene_transcript_structure)
         print_outs = False
@@ -2364,14 +2365,22 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
     except Exception:
         mRNA2_s = string.replace(exclusion_junction,'-','|')
     
-
     ex1,ex2 = string.split(exclusion_junction,'-')
+    print ex1,ex2,[mRNA1_s],[mRNA2_s]
     if mRNA1_s != None:
         ex1_pos = string.find(mRNA1_s,ex1+'|') ### This is the location in the string where the exclusion junctions starts
         ex1_pos = ex1_pos+1+string.find(mRNA1_s[ex1_pos:],'|') ### This is the location in the string where the inclusion exon starts
         ex2_pos = string.find(mRNA1_s,ex2+'|')-1 ### This is the location in the string where the inclusion exon ends
-    inclusion_exons = string.split(mRNA1_s[ex1_pos:ex2_pos],'|') ### These are the missing exons from the exclusion junction (in between)
+    if ex2_pos<ex1_pos:
+        if mRNA2_s != None:
+            mRNA1_s = mRNA2_s
+            mRNA1 = mRNA2
+            ex1_pos = string.find(mRNA1_s,ex1+'|') ### This is the location in the string where the exclusion junctions starts
+            ex1_pos = ex1_pos+1+string.find(mRNA1_s[ex1_pos:],'|') ### This is the location in the string where the inclusion exon starts
+            ex2_pos = string.find(mRNA1_s,ex2+'|')-1 ### This is the location in the string where the inclusion exon ends
 
+    print ex1_pos,ex2_pos
+    inclusion_exons = string.split(mRNA1_s[ex1_pos:ex2_pos],'|') ### These are the missing exons from the exclusion junction (in between)
     #if '-' in mRNA1_s:
     common_exons5p = string.split(mRNA1_s[:ex1_pos-1],'|') ### Flanking full 5' region (not just the 5' exclusion exon region)
     if (ex2_pos+1) == -1: ### Hence the 3' exon is the last exon in the mRNA
@@ -2379,12 +2388,14 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
         inclusion_exons = string.split(mRNA1_s[ex1_pos:],'|')[:-1]
     else:
         common_exons3p = string.split(mRNA1_s[ex2_pos+1:],'|')  ### Flanking full 3' region (not just the 3' exclusion exon region)
-    #print mRNA1_s, ex2;sys.exit()
-    #print mRNA1_s;sys.exit()
-    #print inclusion_exons
-    #print common_exons5p, common_exons3p
-    #print mRNA1_s, ex2_pos, ex1, ex2
-    #sys.exit()
+    if gene == 'E1NSG00000205423':
+        #print mRNA1_s, ex2;sys.exit()
+        #print mRNA1_s;sys.exit()
+        print uid,inclusion_junction,exclusion_junction,isoform1,isoform2
+        print inclusion_exons
+        print common_exons5p, common_exons3p
+        print mRNA1_s, ex2_pos, ex1, ex2
+        sys.exit()
     inclusion_exons = map(lambda x: gene+':'+x, inclusion_exons) ### add geneID prefix
     common_exons5p = map(lambda x: gene+':'+x, common_exons5p) ### add geneID prefix
     common_exons3p = map(lambda x: gene+':'+x, common_exons3p) ### add geneID prefix
@@ -2555,14 +2566,32 @@ def importComparisonSplicingData4Primers(filename,species):
             try:
                 if 'comparison' in header:
                     t = t[:-1]
-                exonid = t[0]; symbol = t[2]; confirmed = t[5]; fold_change = abs(float(t[-2])); percent_exp = float(t[-3])
-                print symbol
-                junctions = t[4]; isoforms = t[9]; splice_type = t[8]
+                if 'PSI' not in filename:
+                    exonid = t[0]; symbol = t[2]; confirmed = t[5]; fold_change = abs(float(t[-2])); percent_exp = float(t[-3])
+                    junctions = t[4]; isoforms = t[9]; splice_type = t[8]
+                else:
+                    """ Update the code to work with PSI results files from the metaDataAnalysis script """
+                    #UID,InclusionNotation,ClusterID,UpdatedClusterID,AltExons,EventAnnotation,Coordinates,ProteinPredictions,dPSI,rawp,adjp,avg1,avg2
+                    uid = t[0]
+                    uid_objects = string.split(uid,':')
+                    symbol = uid_objects[0]
+                    junctions = string.join(uid_objects[1:],':')
+                    junctions = string.split(junctions,'|')
+                    fold_change = abs(float(t[-5]))
+                    isoforms = t[7]
+                    splice_type = t[5]
+                    exonid = t[4]
                 #print symbol, fold_change,percent_exp,confirmed;sys.exit()
                 #if fold_change<2 and percent_exp>0.25 and (confirmed == 'yes'):
                 if fold_change < 50:
                     if 'alternative_polyA' not in splice_type and 'altPromoter' not in splice_type:
-                        j1, j2 = string.split(string.split(junctions,'|')[0],' vs. ')
+                        if len(junctions)==2:
+                            j1, j2 = junctions
+                            if 'ENS' in j1:
+                                j1 = string.split(j1,':')[1]
+                                j2 = string.split(j2,':')[1]
+                        else:
+                            j1, j2 = string.split(string.split(junctions,'|')[0],' vs. ')
                         #(-)alt-C-terminus,(-)AA:188(ENSP00000397452)->238(ENSP00000410667),(-)microRNA-target(hsa-miR-599:miRanda,hsa-miR-186:miRanda)
                         iso1, iso2 = string.split(string.split(isoforms,'AA:')[1],')->')
                         iso1 = string.split(iso1,'(')[1]
@@ -2581,18 +2610,20 @@ def importComparisonSplicingData4Primers(filename,species):
                             print traceback.format_exc(),'\n'; #sys.exit()
                     
             except Exception:
-                print traceback.format_exc(),'\n'#;sys.exit()
+                #print traceback.format_exc(),'\n'#;sys.exit()
                 pass
     ei.close()
                 
 if __name__ == '__main__':
     ###KNOWN PROBLEMS: the junction analysis program calls exons as cassette-exons if there a new C-terminal exon occurs downstream of that exon in a different transcript (ENSG00000197991).
-    Species = 'Mm'
+    Species = 'Hs'
     test = 'yes'
     Data_type = 'ncRNA'
     Data_type = 'mRNA'
     #E6.1-E8.2 vs. E5.1-E8.3
-    filename = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/Clustering/Combined-junction-exon-evidence.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/LIMMA_comps.Aug.12.2017/PSI.RBM20.Het.vs.WTC.Aug.13.2018.txt'
+    #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/Combined-junction-exon-evidence.txt'
+    
     #exportTranscriptExonIDAssociations(Species)
     #createExonRegionSequenceDB(Species,'RNASeq'); sys.exit()
     importComparisonSplicingData4Primers(filename,Species); sys.exit()

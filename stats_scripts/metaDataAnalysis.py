@@ -220,9 +220,13 @@ def importGroupsComps(groups_file):
     for line in open(comps_file,'rU').xreadlines():
         data = cleanUpLine(line)
         g1,g2 = string.split(data,'\t')
-        g1_name = group_id_lookup[g1]
-        g2_name = group_id_lookup[g2]
-        comps.append((g1_name,g2_name))
+        try: 
+            g1_name = group_id_lookup[g1]
+            g2_name = group_id_lookup[g2]
+            comps.append((g1_name,g2_name))
+        except Exception:
+            """ The group ID in the comps file does not exist in the groups file """
+            print g1, "or", g2, "groups do not exist in the groups file, but do in the comps."
     groups_db[1] = initial_groups
     comps_db[1] = comps
     return groups_db,comps_db
@@ -396,7 +400,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     continue
                 if diff==0:
                     continue
-                elif (100.00*len(data_list1))/len(g1_headers)>75 and (100.00*len(data_list2))/len(g2_headers)>75:
+                elif (100.00*len(data_list1))/len(g1_headers)>=PercentExp and (100.00*len(data_list2))/len(g2_headers)>=PercentExp:
                     compared_ids[uid]=[]
                     pass
                 else:
@@ -465,7 +469,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
             try: statistics.moderateTestStats(pval_db,probability_statistic) ### Moderates the original reported test p-value prior to adjusting
             except Exception:
                 print 'Moderated test failed... using student t-test instead',group1,group2
-                print traceback.format_exc()
+                #print traceback.format_exc()
         else:
             'Skipping moderated t-test...'
         statistics.adjustPermuteStats(pval_db) ### sets the adjusted p-values for objects   
@@ -1276,6 +1280,7 @@ if __name__ == '__main__':
     probability_statistic = 'moderated t-test'
     #probability_statistic = 'unpaired t-test'
     minRPKM=-1000
+    PercentExp = 75
     logfold_threshold=math.log(2,2)
     pval_threshold=0.05
     use_adjusted_p = False
@@ -1377,7 +1382,7 @@ if __name__ == '__main__':
             try:include_only = downloadSynapseFile(include_only,output_dir)
             except Exception:
                 print 'Is the destination file %s already open?' % include_only;sys.exit()
-
+    
         if len(platforms)>0: platform = platforms[0]
         if platform == 'PSI' or platform == 'methylation':
             if log_fold_cutoff==None:
