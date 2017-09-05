@@ -2363,6 +2363,14 @@ def convertICGSClustersToExpression(heatmap_file):
     matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(heatmap_file)
     matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
 
+    ### Correct fileheader if group prefix present
+    try: column_header_exp = map(lambda x: string.split(x,':')[1],column_header_exp)
+    except Exception: pass ### If no ":" in cell library names
+
+    ### Correct fileheader if group prefix present
+    try: column_header = map(lambda x: string.split(x,':')[1],column_header)
+    except Exception: pass ### If no ":" in cell library names
+    
     updated_column_header=[]
     for i in column_header:
         if ':' in i:
@@ -2373,6 +2381,7 @@ def convertICGSClustersToExpression(heatmap_file):
     #priorRowClusters.reverse()
     ### Record the index for each sample name in the ICGS result order in the original expression file (exp.*)
     priorColumnClusters = map(str,priorColumnClusters)
+
     sample_index_list = map(lambda x: column_header_exp.index(x), column_header)
     eo.write(string.join(['UID','row_clusters-flat']+column_header,'\t')+'\n')
     eo.write(string.join(['column_clusters-flat','']+priorColumnClusters,'\t')+'\n')
@@ -2433,11 +2442,11 @@ def compareICGSpopulationFrequency(folder):
                 
 if __name__ == '__main__':
     """
+    convertICGSClustersToExpression('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ICGS/Clustering-exp.NaturePanorma-Ly6G-Guide3-Augment-F2r-hierarchical_cosine_correlation.txt');sys.exit()
     compareICGSpopulationFrequency('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/cellHarmonyResults/');sys.exit()
     reference_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/iPSC_control-cellHarmony-ref.txt'
     query_exp_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/SCN14C-3/ExpressionInput/exp.run2068_new_normalized-OutliersRemoved.txt'
     classification_file= '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/SCN14C-3/ExpressionInput/SampleClassification/run2068_new_normalized-OutliersRemoved-SampleClassification.txt'
-    #convertICGSClustersToExpression('/Users/saljh8/Desktop/dataAnalysis/Collaborative/10X Cardiac/ICGS/Clustering-exp.10X_CM_days4-14-45-Guide3 LOXL2 FN1 CEBPD MYL9 NUPR1 RAMP2 FHL2 SPARC-hierarchical_euclidean_correlation.txt');sys.exit()
     harmonizeClassifiedSamples('Mm',reference_exp_file,query_exp_file,classification_file);sys.exit()
     """
     #modelScores('/Users/saljh8/Desktop/dataAnalysis/LineageProfiler/Training/SampleClassification');sys.exit()

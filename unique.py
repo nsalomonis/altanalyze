@@ -100,9 +100,9 @@ def filepath(filename):
                     fn=os.path.join(userHomeDir,filename)
                     fn = correctGeneDatabaseDir(fn)
                 altDatabaseCheck = False
-    if '/Volumes/' in filename: filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
+    if '/Volumes/' in filename and altDatabaseCheck:
+        filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
-    
     if (('Databases' in fn) or ('AltDatabase' in fn)) and altDatabaseCheck:
         getCurrentGeneDatabaseVersion()
         fn = correctGeneDatabaseDir(fn)
@@ -117,6 +117,7 @@ def read_directory(sub_dir):
     if 'Databases' in sub_dir or 'AltDatabase' in sub_dir:
         getCurrentGeneDatabaseVersion()
         sub_dir = correctGeneDatabaseDir(sub_dir)
+
     try: dir_list = os.listdir(dir+sub_dir)
     except Exception:
         try: dir_list = os.listdir(sub_dir) ### For linux
@@ -237,7 +238,7 @@ def list(d):
     return t
 
 if __name__ == '__main__':
-    fn = filepath('/home/nsalomonis/Desktop/GO-Elite_v.1.2.4-Ubuntu-1/GO_Elite?42197/GO-Elite_report-20120512-151332.log')
+    fn = filepath('/Volumes/SEQ-DATA/Dan_TRAF6/averaged/AltDatabase/Mm/RNASeq/Mm_Ensembl_junctions.txt')
     print fn; sys.exit()
     fn = filepath('BuildDBs/Amadeus/symbol-Metazoan-Amadeus.txt')
     print fn;sys.exit()

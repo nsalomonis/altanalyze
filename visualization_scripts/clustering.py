@@ -631,7 +631,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 else: color = 'black'
             except Exception: pass
             if len(row_header)<106: ### Don't visualize gene associations when more than 100 rows
-                axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[idx1[i]],fontsize=row_fontsize, color=color, picker=True)
+                if display_label_names == False:
+                    if color=='red':
+                        axm.text(x.shape[1]-0.5, i-radj, '  '+'-',fontsize=row_fontsize, color=color, picker=True)
+                    else:
+                        axm.text(x.shape[1]-0.5, i-radj, '  '+'',fontsize=row_fontsize, color=color, picker=True)
+                else:
+                    axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[idx1[i]],fontsize=row_fontsize, color=color, picker=True)
             new_row_header.append(row_header[idx1[i]])
             new_index = idx1[i]
         else:
@@ -640,7 +646,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 else: color = 'black'
             except Exception: pass
             if len(row_header)<106: ### Don't visualize gene associations when more than 100 rows
-                axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[i],fontsize=row_fontsize, color=color, picker=True) ### When not clustering rows
+                if display_label_names == False:
+                    if color=='red':
+                        axm.text(x.shape[1]-0.5, i-radj, '  '+'-',fontsize=row_fontsize, color=color, picker=True)
+                    else:
+                        axm.text(x.shape[1]-0.5, i-radj, '  '+'',fontsize=row_fontsize, color=color, picker=True)
+                else:
+                    axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[i],fontsize=row_fontsize, color=color, picker=True) ### When not clustering rows
             new_row_header.append(row_header[i])
             new_index = i ### This is different when clustering rows versus not
         if len(row_header)<106:
@@ -6151,14 +6163,43 @@ def compareEventLists(folder):
     ea2.close()
     ea3.close()
      
+def convertGroupsToBinaryMatrix(groups_file,sample_order):
+    eo = export.ExportFile(groups_file[:-4]+'-matrix.txt')
+    firstRow=True
+    samples = []
+    ### Import a file with the sample names in the groups file in the correct order
+    for line in open(sample_order,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        samples.append(t[0])
+        
+    ### Import a groups file
+    sample_groups = {}
+    for line in open(groups_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        sample, groupNum, groupName = t[:3]
+        if sample in samples:
+            si=samples.index(sample) ### Index of the sample
+            try: sample_groups[groupName][si] = '1' ### set that sample to 1
+            except Exception: sample_groups[groupName] = ['0']*len(samples)
+    
+    eo.write(string.join(['GroupName']+samples,'\t')+'\n')
+    for group in sample_groups:
+        eo.write(string.join([group]+sample_groups[group],'\t')+'\n')
+    eo.close()
+    
 if __name__ == '__main__':
+    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/groups.all-Aug2017.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/reordered.txt'
+    #convertGroupsToBinaryMatrix(a,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
-    simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
+    #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
-    compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Knockdowns/Events-dPSI_0.1_rawp');sys.exit()
+    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Knockdowns/Events-dPSI_0.1_rawp');sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()
-    compareGenomicLocationAndICGSClusters();sys.exit()
+    #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()
     query_dataset = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
@@ -6237,7 +6278,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/MDS-array/Comb-plot genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot3.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Goodridge/iMo/Combined-iMo-pMo/ExpressionInput/genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/MultiLin-genes.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -6248,7 +6290,8 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/exp.Lsk_panorama.txt'
     filename = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
     filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Goodridge/iMo/Combined-iMo-pMo/ExpressionInput/exp.combined.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/exp.Guide3_NatureDefaults.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/exp.DropSeq-2k-10-9-5-7.txt'
     
     print genesets
     for gene_list in genesets:

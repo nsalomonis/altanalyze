@@ -203,7 +203,7 @@ def checkForDuplicateIDs(input_file, useOrderedDict=True):
     return input_file
 
 def importHopachOutput(filename):
-    print filename
+    #print filename
     """ Import the ID order information """
     db={} ### Used to store the cluster data
     hopach_clusters=[]
@@ -639,7 +639,7 @@ class RScripts:
                 dist = r(distance_matrix_line)
                 #print distance_matrix_line
                 print_out = r('hopa<-hopach(t(data),dmat=distmata,ord="own"'+force2+')') #,coll="all"
-                print ['hopa<-hopach(t(data),dmat=distmata,ord="own",'+force2+')']
+                #print ['hopa<-hopach(t(data),dmat=distmata,ord="own",'+force2+')']
                 #print 'hopa<-hopach(t(data),dmat=distmata,ord="own"'+force2+')'
                 hopach_run = r['hopa']
                 hopa = 'hopa'

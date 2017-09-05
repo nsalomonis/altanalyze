@@ -265,6 +265,11 @@ class PSIData:
         else:
             self.junction_type = 'inclusion'
         return self.junction_type
+    def InclusionJunction(self):
+        if self.junction_type == 'inclusion':
+            return 'True'
+        else:
+            return 'False'
     def RelativeInclusion(self,dPSI):
         try: junction_type = self.junction_type
         except Exception: junction_type = self.Inclusion()
@@ -459,7 +464,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         so = export.ExportFile(rootdir+'PValues/'+CovariateQuery+'-'+string.join(groups,'_vs_')+'.txt')
         header = 'GeneID\tSystemCode\tLogFold\trawp\tadjp\tSymbol\tavg-%s\tavg-%s\n' % (group1,group2)
         if platform == 'PSI':
-            header = 'UID\tInclusion-Junction\tClusterID\tUpdatedClusterID\tAltExons\tEventAnnotation\tCoordinates\tProteinPredictions\tdPSI\trawp\tadjp\tavg-%s\tavg-%s\n' % (group1,group2)
+            header = 'UID\tInclusion-Junction\tEvent-Direction\tClusterID\tUpdatedClusterID\tAltExons\tEventAnnotation\tCoordinates\tProteinPredictions\tdPSI\trawp\tadjp\tavg-%s\tavg-%s\n' % (group1,group2)
         eo.write(header)
         #do.write(header)
         #uo.write(header)
@@ -544,14 +549,15 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 ps=psi_annotations[uid]
                 ps.setUpdatedClusterID(updated_cluster_id)
                 gs,group1_avg,group2_avg=psi_results[uid]
-                event_type = ps.RelativeInclusion(gs.LogFold())
-                values = [uid,event_type,ps.ClusterID(),ps.UpdatedClusterID(),ps.AltExons(),ps.EventAnnotation(),ps.Coordinates(),
+                event_direction = ps.RelativeInclusion(gs.LogFold())
+                incl_junction = ps.InclusionJunction()
+                values = [uid,incl_junction,event_direction,ps.ClusterID(),ps.UpdatedClusterID(),ps.AltExons(),ps.EventAnnotation(),ps.Coordinates(),
                               ps.ProteinPredictions(gs.LogFold()),str(gs.LogFold()),str(gs.Pval()),str(gs.AdjP()),group1_avg,group2_avg]
                 values = string.join(values,'\t')+'\n'
                 eo.write(values)
                 
-                try: splicingEventTypes[group_comp_name].append((ps.ClusterID(),event_type,ps.EventAnnotation()))
-                except Exception: splicingEventTypes[group_comp_name] = [(ps.ClusterID(),event_type,ps.EventAnnotation())]
+                try: splicingEventTypes[group_comp_name].append((ps.ClusterID(),event_direction,ps.EventAnnotation()))
+                except Exception: splicingEventTypes[group_comp_name] = [(ps.ClusterID(),event_direction,ps.EventAnnotation())]
         eo.close()
         #do.close()
         #uo.close()
@@ -1304,7 +1310,7 @@ if __name__ == '__main__':
     splicingEventTypes={}
     CovariateQuery = 'Events'
     log_fold_cutoff=None
-    
+    print sys.argv[1:]
     import getopt
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print 'Supply the argument --i location'
@@ -1312,7 +1318,7 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['m=','i=','d=','c=','u=','p=','s=','f=',
             'g=','e=','ce=','rc=','cd=','o=','md=','in=','target=','parent=','urls=','used=','mf=',
-            'adjp=','dPSI=','pval='])
+            'adjp=','dPSI=','pval=','percentExp='])
         for opt, arg in options:
             if opt == '--m': metadata_files.append(arg)
             if opt == '--o':
@@ -1339,6 +1345,7 @@ if __name__ == '__main__':
             if opt == '--parent': parent_syn=arg
             if opt == '--urls': executed_urls.append(arg) ### options are: all, junction, exon, reference
             if opt == '--used': used.append(arg)
+            if opt == '--percentExp': PercentExp = int(PercentExp)
             if opt == '--adjp':
                 if string.lower(arg) == 'yes' or string.lower(arg) == 'true':
                     use_adjusted_p = True
