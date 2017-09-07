@@ -27,6 +27,7 @@ import sys
 import unique
 import string
 import export
+import traceback
 try: from build_scripts import ExonArray
 except Exception: null=[]
 
@@ -310,10 +311,10 @@ class download_protocol:
     def __init__(self,url,dir,file_type):
         try: self.suppress = suppress_printouts
         except Exception: self.suppress = 'no'
-        
+        dir = unique.filepath(dir)
         """Copy the contents of a file from a given URL to a local file."""
         filename = url.split('/')[-1]; self.status = ''
-        #print [url, dir]
+        #print [url, dir, file_type]
         if file_type == None: file_type =''
         if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
         output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
@@ -324,8 +325,13 @@ class download_protocol:
         
         self.original_increment = 5
         self.increment = 0
+        import urllib; reload(urllib)  ### https://bugs.python.org/issue1067702 - some machines the socket doesn't close and causes an error - reload to close the socket
         from urllib import urlretrieve
-        webfile, msg = urlretrieve(url, output_filepath,reporthook=self.reporthookFunction)
+        #if 'gene.txt.gz' in url: print [self.reporthookFunction];sys.exit()
+        try: webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
+        except Exception:
+            #print traceback.format_exc();sys.exit()
+            print 'Unknown URL error encountered...'; forceURLError
         if self.suppress == 'no': print ''
         self.testFile()
         if self.suppress == 'no': print self.status
@@ -634,8 +640,8 @@ if __name__ == '__main__':
     array_type = 'gene'; species = 'Mm'
     filename = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
     filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_probeset-probes.txt'
-    verifyFile(filename,array_type);sys.exit()
-    temp(array_type,species); sys.exit()
+    #verifyFile(filename,array_type);sys.exit()
+    #temp(array_type,species); sys.exit()
     
     #unzipFiles(filename,dir); kill
     #zipDirectory('Rn/EnsMart49');kill
@@ -643,7 +649,10 @@ if __name__ == '__main__':
     #filename = 'http://altanalyze.org/archiveDBs/LibraryFiles/Mouse430_2.zip'
     #filename = 'AltDatabase/affymetrix/LibraryFiles/Mouse430_2.zip'
     #downloadCurrentVersionUI(filename,'LibraryFiles','','')
-    #dp = download_protocol('ftp://mirnamap.mbc.nctu.edu.tw/miRNAMap2/miRNA_Targets/Anopheles_gambiae/miRNA_targets_aga.txt.tar.gz','temp/','');sys.exit()
+    import update
+    dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','')
+    dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','');sys.exit()
+
     #kill
     #target_folder = 'Databases/Ci'; zipDirectory(target_folder)
     #unzipFiles('Cs.zip', 'Databases/');kill

@@ -422,8 +422,10 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     else: max_avg = 10000
 
                     valid = True
-                    if max_avg<minRPKM:
-                        log_fold = 'Insufficient Expression'
+                    try:
+                        if max_avg<minRPKM:
+                            log_fold = 'Insufficient Expression'
+                    except Exception: pass
                     gs = statistics.GroupStats(log_fold,None,p)
                     gs.setAdditionalStats(data_list1,data_list2) ### Assuming equal variance
                     pval_db = pval_summary_db[groups] ### for calculated adjusted statistics
@@ -1275,7 +1277,92 @@ def exportGeneSetsFromCombined(filename):
         ro.close()
     aro.close()
 
+def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05):
+    global pval_threshold
+    global PercentExp
+    global restricted_gene_denominator
+    global global_adjp_db
+    global probability_statistic
+    global use_adjusted_p
+    global logfold_threshold
+    logfold_threshold = log_fold_cutoff
+    use_adjusted_p = use_adjusted_pval
+    global_adjp_db={}
+    restricted_gene_denominator={}
+    probability_statistic = 'moderated t-test'
+    PercentExp = 0.5
+    CovariateQuery = 'Events'
+    pval_threshold = pvalThreshold
+    metadata_files = [groups_file]
+    meta_description_file = None
+    
+    if platform == 'PSI' or platform == 'methylation':
+        if log_fold_cutoff==None:
+            logfold_threshold=0.1 ### equivalent to a 0.15 dPSI or 0.15 beta differences
+        else:
+            logfold_threshold= log_fold_cutoff
+    if platform == 'PSI':
+        print 'Using a dPSI of:',logfold_threshold
+    if platform == 'methylation':
+        use_adjusted_p = True
+    if platform == 'miRSeq':
+        use_adjusted_p = False
+        logfold_threshold=math.log(1,2)
+    print 'Filtering on adjusted p-value:',use_adjusted_p
+
+    if platform != 'PSI':
+        from build_scripts import EnsemblImport
+        try: gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,platform,'key_by_array')
+        except Exception: gene_location_db={}
+    
+    if meta_description_file !=None:
+        if '.txt' in meta_description_file:
+            meta_description_files = [meta_description_file]
+        else:
+            meta_description_files=[]
+            files = os.listdir(meta_description_file)
+            for file in files:
+                if '.txt' in file:
+                    meta_description_files.append(meta_description_file+'/'+file)
+                
+    splicingEventTypes={}
+    all_groups_db={}
+    all_comps_db={}
+
+    if 'groups.' in metadata_files[0]:
+        all_groups_db, all_comps_db = importGroupsComps(metadata_files[0])
+    else:
+        for meta_description_file in meta_description_files:
+            metadata_filters = importMetaDataDescriptions(meta_description_file)
+            all_groups_db, all_comps_db = prepareComparisonData(metadata_files[0],metadata_filters,all_groups_db, all_comps_db)
+
+    for i in all_groups_db:
+        #print i
+        for k in all_groups_db[i]: print '  ',k,'\t',len(all_groups_db[i][k])
+    #print all_comps_db
+    
+    if platform == 'PSI':
+        result_type = 'dPSI'
+    else:
+        result_type = 'LogFold'
+    if use_adjusted_p:
+        CovariateQuery += '-'+result_type+'_'+str(logfold_threshold)[:4]+'_adjp'
+    else:
+        CovariateQuery += '-'+result_type+'_'+str(logfold_threshold)+'_rawp'
+
+    for specificCovariate in all_groups_db:
+        comps_db = all_comps_db[specificCovariate]
+        groups_db = all_groups_db[specificCovariate]
+        rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,groups_db,comps_db,CovariateQuery,splicingEventTypes)
+
+    if platform == 'PSI':
+        outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+        
 if __name__ == '__main__':
+    species = 'Hs';
+    expression_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
+    groups_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/groups.KD.txt'
+    #remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05);sys.exit()
     ################  Comand-line arguments ################
     #buildAdditionalMirTargetGeneSets();sys.exit()
     filename = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/CombinedResults/allTopGenes.txt' #DiffStateComps Reprogramming
@@ -1454,7 +1541,7 @@ if __name__ == '__main__':
             rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,groups_db,comps_db,CovariateQuery,splicingEventTypes)
 
         if platform == 'PSI':
-            outputSplicingSummaries(rootdir,splicingEventTypes)
+            outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
         sys.exit()
         for CovariateQuery in covariate_set:
           for sampleSetQuery in Sample_set:

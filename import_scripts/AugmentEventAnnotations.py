@@ -250,7 +250,8 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
     # write the updated psi file with the annotations into a new file and annotate events that have not been annotated by the junction files
     #print len(psievents)
     header=True
-    export=open(PSIpath[:-4]+'_EventAnnotation.txt','w')
+    export_path = PSIpath[:-4]+'_EventAnnotation.txt'
+    export=open(export_path,'w')
     count=0
     for line in open(PSIpath,'rU').xreadlines():
         line = line.rstrip('\n')
@@ -320,6 +321,7 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
             values[fI] = ''
             export.write(string.join(values,'\t')+'\n')
     #print count
+    return export_path
 
 def predictSplicingEventTypes(junction1,junction2):
     if 'I' not in junction1 and '_' in junction1:
@@ -386,7 +388,8 @@ def parse_junctionfiles(resultsDir,species,platform):
     terminal_exons = importDatabaseEventAnnotations(species,platform)
     
     ### Update our PSI annotation file with these improved predictions
-    updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures)
+    export_path = updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures)
+    return export_path
     
 if __name__ == '__main__':
     import multiprocessing as mlp

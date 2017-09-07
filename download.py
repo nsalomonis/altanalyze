@@ -103,6 +103,7 @@ class download_protocol:
         print "Downloading the following file:",filename,' ',
         self.original_increment = 10
         self.increment = 0
+        import urllib; reload(urllib)  ### https://bugs.python.org/issue1067702 - some machines the socket doesn't close and causes an error - reload to close the socket
         from urllib import urlretrieve
         webfile, msg = urlretrieve(url, output_filepath,reporthook=self.reporthookFunction)
         print ''

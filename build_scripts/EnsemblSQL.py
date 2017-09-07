@@ -29,6 +29,7 @@ sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir depend
 import os.path
 import unique
 import export
+import traceback
 import update; reload(update)
 
 def filepath(filename):
@@ -155,9 +156,9 @@ def getEnsemblSQLDir(ensembl_version):
         species_full = species
     
     try: child_dirs, ensembl_species, ensembl_versions = getCurrentEnsemblSpecies(original_version)
-    except Exception,e:
+    except Exception:
         print "\nPlease try a different version. This one does not appear to be valid."
-        print "error:",e;sys.exit()
+        print traceback.format_exc();sys.exit()
     ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
     
     return ensembl_sql_dir, ensembl_sql_description_dir
@@ -1178,7 +1179,7 @@ def updateFiles(ensembl_sql_dir,output_dir,filename,force):
     if len(sql_filepaths)==0:
         if 'stable' in filename: sql_filepaths = 'stable-combined-version' ### For Ensembl 65 and later (changed table organization from previous versions)
         else:
-            print '\nThe file:',filename, 'is missing from Ensembl FTP directory for this version of Ensembl. Contact genmapp@gladstone.ucsf.edu to inform them of this change to the Ensembl database table structure or download the latest version of this software.'; force_exit
+            print '\nThe file:',filename, 'is missing from Ensembl FTP directory for this version of Ensembl. Contact altanalyze@gmail.com to inform our developers of this change to the Ensembl database table structure or download the latest version of this software.'; force_exit
     return sql_filepaths
 
 def importPrimaryEnsemblSQLTables(sql_filepath,filename,sfd):
@@ -1693,6 +1694,11 @@ def verifyFile(filename):
     return file_found
             
 if __name__ == '__main__':
+    import update
+    dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','')
+    reload(update)
+    dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','');sys.exit()
+
     getGeneTranscriptOnly('Gg','Basic','EnsMart65','yes');sys.exit()
     #getChrGeneOnly('Hs','Basic','EnsMart65','yes');sys.exit()
     analysisType = 'GeneAndExternal'; externalDBName_list = ['Ens_Gg_transcript']

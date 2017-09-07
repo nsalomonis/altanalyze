@@ -96,10 +96,15 @@ def filepath(filename):
                 getCurrentGeneDatabaseVersion()
                 fn = correctGeneDatabaseDir(fn)
                 fileExists = os.path.isfile(fn)
+                try:
+                    dir_list = os.listdir(filename)
+                    fileExists=True
+                except Exception: pass
                 if fileExists == False:
                     fn=os.path.join(userHomeDir,filename)
                     fn = correctGeneDatabaseDir(fn)
                 altDatabaseCheck = False
+
     if '/Volumes/' in filename and altDatabaseCheck:
         filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')

@@ -4832,7 +4832,10 @@ class SummaryResultsWindow:
         pylab.show()
     def viewPNGFile(self,png_file_dir):
         """ View PNG file within a PMW Tkinter frame """
-        import ImageTk
+        try: import ImageTk
+        except Exception:
+            from PIL import ImageTk
+            from PIL import Image
         tlx = Toplevel(); self._tlx = tlx
         sf = PmwFreeze.ScrolledFrame(tlx, labelpos = 'n', label_text = '',
                 usehullsize = 1, hull_width = 800, hull_height = 550)
@@ -4840,6 +4843,7 @@ class SummaryResultsWindow:
         frame = sf.interior()
 
         tlx.title(png_file_dir)
+        
         img = ImageTk.PhotoImage(file=png_file_dir)
         can = Canvas(frame)
         can.pack(fill=BOTH, padx = 0, pady = 0)
@@ -5758,21 +5762,34 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
              graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
                     species,array_type,expFile=fl.CountsFile(),min_events=1,med_events=1)
              from import_scripts import AugmentEventAnnotations
-             AugmentEventAnnotations.parse_junctionfiles(fl.RootDir()+'/AltResults/AlternativeOutput/',species,array_type) ### Added in 2.1.1 - adds cassette and domains annotations
+             psi_annotated = AugmentEventAnnotations.parse_junctionfiles(fl.RootDir()+'/AltResults/AlternativeOutput/',species,array_type) ### Added in 2.1.1 - adds cassette and domains annotations
           except Exception:
             print traceback.format_exc()
             pass
           #"""
           inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_'+array_type+'_top_alt_junctions-PSI-clust.txt'
           
+          useAdvancedMetaDataAnalysis = True
           ### Calculate ANOVA p-value stats based on groups
           if array_type !='gene' and array_type != 'exon':
-                matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
-                matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
-                anovaFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
-                graphic_link1 = ExpressionBuilder.exportHeatmap(anovaFilteredDir)
-                try: summary_data_db2['QC']+=graphic_link1
-                except Exception: summary_data_db2['QC']=graphic_link1
+                if useAdvancedMetaDataAnalysis:
+                    from stats_scripts import metaDataAnalysis
+                    if ge_ptype == 'adjp':
+                        use_adjusted_pval = True
+                    else:
+                        use_adjusted_pval = False
+                    try:
+                        metaDataAnalysis.remoteAnalysis(species,psi_annotated,groups_file,
+                                platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=use_adjusted_pval,
+                                pvalThreshold=ge_pvalue_cutoffs)
+                    except Exception: pass
+                else:
+                    matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
+                    matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
+                    significantFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
+                    graphic_link1 = ExpressionBuilder.exportHeatmap(significantFilteredDir)
+                    try: summary_data_db2['QC']+=graphic_link1
+                    except Exception: summary_data_db2['QC']=graphic_link1
       except Exception: print traceback.format_exc()
       
       import RNASeq
@@ -7195,7 +7212,13 @@ def commandLineRun():
                             update_uniprot = 'no'; update_ensembl = 'no'; update_miR_seq = 'no' ### Don't need to do this twice in a row
                             print 'Skipping ensembl, uniprot and mir-sequence file import updates since already completed for this species',array_type,platform_name
                         if ignore_built_species == 'yes': ### Useful for when building all species for a new database build
-                            existing_species_dirs = unique.read_directory('/AltDatabase/ensembl') ### call this here to update with every species - if running multiple instances
+                            try:
+                                ### call this here to update with every species - if running multiple instances
+                                existing_species_dirs = unique.read_directory('/AltDatabase/ensembl') 
+                            except Exception: #ZeroDivisionError
+                                try: os.mkdir(unique.filepath('AltDatabase/'))
+                                except Exception: pass #already exists
+                                existing_species_dirs = []
                         if specific_array_type != None and specific_array_type != platform_name: platform_name+='|'+specific_array_type ### For the hGlue vs. JAY arrays
                         if specific_species not in existing_species_dirs: ### Useful when running multiple instances of AltAnalyze to build all species
                             print 'update_ensembl',update_ensembl
