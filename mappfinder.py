@@ -27,7 +27,8 @@ import unique
 import math
 import time
 import gene_associations; reload(gene_associations)
-from import_scripts import OBO_import
+try: from import_scripts import OBO_import
+except Exception: pass
 import GO_Elite
 from stats_scripts import statistics
 import random

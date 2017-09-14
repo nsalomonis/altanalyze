@@ -716,15 +716,17 @@ def buildEnsemblGeneAnnotationTable(species,xref_db):
         ###Also, create a filter_db that allows for the creation of Ensembl-external gene db tables
     exportEnsemblTable(values_list,headers,output_dir)
     
-def buildEnsemblExternalDBRelationshipTable(external_system,xref_db,object_xref_db,output_id_type,species):
+def buildEnsemblExternalDBRelationshipTable(external_system,xref_db,object_xref_db,output_id_type,species,writeToGOEliteFolder=False):
     ### Get xref annotations (e.g., external geneID) for a set of Ensembl IDs (e.g. gene IDs)
     external_system = string.replace(external_system,'/','-') ###Some external relationship systems have a slash in them which will create unwanted directories
     
     program_type,database_dir = unique.whatProgramIsThis()
-    if program_type == 'AltAnalyze':
+    if program_type == 'AltAnalyze' and writeToGOEliteFolder == False:
         output_dir = 'AltDatabase/'+external_system+'/'+species+'/'+species+'_Ensembl-'+external_system+'.txt'
     else:
-        if 'over-write previous' in overwrite_previous: parent_dir = 'Databases'
+        if program_type == 'AltAnalyze':
+            parent_dir = 'AltDatabase/goelite' ### Build directly with the AltAnalyze database
+        elif 'over-write previous' in overwrite_previous: parent_dir = 'Databases'
         else: parent_dir = 'NewDatabases'
         if external_system == 'GO':
             output_dir = parent_dir+'/'+species+'/gene-go/Ensembl-GeneOntology.txt'
@@ -1319,6 +1321,7 @@ def importSQLDescriptions(import_group,filename,sql_file_db):
 def storeFTPDirs(ftp_server,subdir,dirtype):
     from ftplib import FTP
     ftp = FTP(ftp_server); ftp.login()
+
     try: ftp.cwd(subdir)
     except Exception:
         subdir = string.replace(subdir,'/mysql','') ### Older version don't have this subdir 
@@ -1544,9 +1547,11 @@ def buildGOEliteDBs(Species,ensembl_sql_dir,ensembl_sql_description_dir,External
         external_xref_key_db = xref_db
         if revert_force == 'yes': force = 'yes'
         object_xref_db = importEnsemblSQLFiles(ensembl_sql_dir,ensembl_sql_dir,sql_group_db,sql_file_db,output_dir,'Object-Xref',force)
-        num_relationships_exported = buildEnsemblExternalDBRelationshipTable(externalDBName,xref_db,object_xref_db,output_id_type,species)
+        num_relationships_exported = buildEnsemblExternalDBRelationshipTable(externalDBName,xref_db,
+                                                object_xref_db,output_id_type,species,writeToGOEliteFolder=True)
         if 'EntrezGene' in externalDBName: ### Make a meta DB table for translating WikiPathway primary IDs
-            buildEnsemblExternalDBRelationshipTable('meta',xref_db,object_xref_db,output_id_type,species)
+            buildEnsemblExternalDBRelationshipTable('meta',xref_db,object_xref_db,
+                                                output_id_type,species,writeToGOEliteFolder=True)
 
         ### Add New Systems to the source_data relationships file (only when valid relationships found)
     
@@ -1585,7 +1590,10 @@ def buildEnsemblArrayDBRelationshipTable(xref_db,object_xref_db,output_id_type,e
     external_system = external_system[0]+string.lower(external_system[1:])
     
     print 'Exporting',externalDBName
-    if 'over-write previous' in overwrite_previous: parent_dir = 'Databases'
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze':
+        parent_dir = 'AltDatabase/goelite'
+    elif 'over-write previous' in overwrite_previous: parent_dir = 'Databases'
     else: parent_dir = 'NewDatabases'
     if 'Affy' in external_system:
         output_dir = parent_dir+'/'+species+'/uid-gene/Ensembl-Affymetrix.txt'
@@ -1668,9 +1676,14 @@ def outputProbeGenomicLocations(externalDBName,species):
     
 def buildEnsemblGeneGOEliteTable(species,xref_db,overwrite_previous):
     ### Get Definitions and Symbol for each Ensembl gene ID
-    values_list = [];
-    if 'over-write previous' in overwrite_previous: output_dir = 'Databases/'+species+'/gene/Ensembl.txt'
-    else: output_dir = 'NewDatabases/'+species+'/gene/Ensembl.txt'
+    values_list = []
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze':
+        output_dir = 'AltDatabase/goelite/'+species+'/gene/Ensembl.txt'
+    elif 'over-write previous' in overwrite_previous:
+        output_dir = 'Databases/'+species+'/gene/Ensembl.txt'
+    else:
+        output_dir = 'NewDatabases/'+species+'/gene/Ensembl.txt'
     headers = ['ID','Symbol','Description']
     for geneid in gene_db:
         gi = gene_db[geneid]; display_xref_id = gi.DisplayXrefId(); description = gi.Description()

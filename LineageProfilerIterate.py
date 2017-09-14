@@ -2339,7 +2339,7 @@ def convertICGSClustersToExpression(heatmap_file):
     specific_match = None
     ### Look for the best expression file match
     for file in files:
-        if 'exp.' in file:
+        if 'exp.' in file and '~exp.' not in file:
             exp_file = file
             if 'steady-state' in file:
                 steady_state_file = file
@@ -2360,6 +2360,8 @@ def convertICGSClustersToExpression(heatmap_file):
     eo = export.ExportFile(cellHarmonyReferenceFile)
     
     ### Import the heatmap and expression files
+    print heatmap_file
+    print expdir
     matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(heatmap_file)
     matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
 

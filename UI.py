@@ -3112,7 +3112,114 @@ def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,u
     else:
         if root !='' and root !=None: WarningWindow(status,'Error Encountered!'); root.destroy(); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
         else: print status; root.destroy(); sys.exit()
+    
+def filterExternalDBs(all_external_ids,externalDBName_list,external_ids,array_db):
+    filtered_external_list=[]
+    for name in externalDBName_list:
+        if name in external_ids:
+            id = external_ids[name]
+            if id in all_external_ids:
+                if name != 'GO': filtered_external_list.append(name)
+    for array in array_db:
+        if '\\N_' not in array: filtered_external_list.append(array)
+    return filtered_external_list
+
+def updateOBOfiles(file_location_defaults,update_OBO,OBO_url,root):
+    run_parameter = "Create/Modify Databases"
+    if update_OBO == 'yes':
+        from import_scripts import OBO_import
+        c = OBO_import.GrabFiles()
+        c.setdirectory('/OBO'); file_dirs = c.searchdirectory('.ontology')+c.searchdirectory('.obo')
+        if len(OBO_url)>0: obo = OBO_url
+        else: ### If not present, get the gene-ontology default OBO file
+            obo = file_location_defaults['OBO'].Location()
+        fln,status = update.download(obo,'OBO/','')
+        run_parameter='Create/Modify Databases'
+        if 'Internet' not in status:
+            OBO_import.moveOntologyToArchiveDir()
+
+            print_out = 'Finished downloading the latest Ontology OBO files.'
+            print print_out
+
+            try: system_codes,source_types,mod_types = GO_Elite.getSourceData()
+            except Exception: null=[]
+            
+            if root !='' and root !=None:
+                InfoWindow(print_out,'Update Complete!')
+                continue_to_next_win = Button(text = 'Continue', command = root.destroy)
+                continue_to_next_win.pack(side = 'right', padx = 10, pady = 10); root.mainloop()            
+                GO_Elite.importGOEliteParameters(run_parameter); sys.exit()
+            else: null=[]
+        else:
+            if root !='' and root !=None: WarningWindow(status,'Error Encountered!'); root.destroy(); GO_Elite.importGOEliteParameters(run_parameter); sys.exit()
+            else: print status
+    else:
+        print_out = 'Download Aborted.'
+        if root !='' and root !=None: WarningWindow(print_out,print_out); root.destroy(); GO_Elite.importGOEliteParameters('Create/Modify Databases'); sys.exit()
+        else: print print_out
         
+def importExternalDBs(species_full):
+    filename = 'Config/EnsExternalDBs.txt'
+    fn=filepath(filename); x = 0; external_dbs=[]; external_system={}; all_databases={}; external_ids={}
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        if x==0: x=1
+        else:
+            id, database, species_specific, exclude, system_code = string.split(data,'\t')
+            external_ids[database] = int(id)
+            if database != 'GO':
+                all_databases[database]=system_code
+                if (species_full == species_specific) or len(species_specific)<2:
+                    if len(exclude)<2:
+                        external_system[database] = system_code
+
+    filename = 'Config/external_db.txt'; external_system2={}
+    fn=filepath(filename)
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        try:
+            t = string.split(data,'\t'); id = int(t[0]); database = t[1]
+            external_ids[database] = id
+            if database in external_system:
+                external_system2[database] = external_system[database]
+            elif database not in all_databases: ### Add it if it's new
+                try:
+                    try: system = database[:3]
+                    except Exception: system = database[:2]
+                    external_system2[database] = system
+                except Exception: null=[]
+        except Exception: null=[] ### Occurs when a bad end of line is present
+
+    filename = 'Config/array.txt'
+    global array_db; array_db={}
+    fn=filepath(filename)
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        try:
+            array = t[1]; vendor = t[3]
+            database = vendor+'_'+array; array_db[database]=[]
+            if database in external_system:
+                external_system2[database] = external_system[database]
+            if database in all_databases:
+                external_system2[database] = all_databases[database]
+            elif database not in all_databases: ### Add it if it's new
+                try:
+                    if vendor == 'AFFY': system = 'X'
+                    if vendor == 'ILLUMINA': system = 'Il'
+                    if vendor == 'CODELINK': system = 'Co'
+                    if vendor == 'AGILENT': system = 'Ag'
+                    else: system = 'Ma'  ###Miscelaneous Array type
+                    external_system2[database] = system
+                except Exception: null=[]
+        except Exception: null=[]
+    external_system = external_system2
+    #try: del external_system['GO']
+    #except Exception: null=[]
+    for database in external_system: external_dbs.append(database)
+    external_dbs.append(' '); external_dbs = unique.unique(external_dbs); external_dbs.sort()
+    return external_dbs,external_system,array_db,external_ids
+    
 class SupprotedArrays:
     def __init__(self, array_name, library_file, annotation_file, species, array_type):
         self.array_name = array_name; self.library_file = library_file; self.annotation_file = annotation_file
@@ -3155,11 +3262,15 @@ class SystemData:
     def MOD(self): return self._mod
     def __repr__(self): return self.SystemCode()+'|'+self.SystemName()+'|'+self.MOD()
 
+def remoteSystemInfo():
+    system_codes,system_list,mod_list = importSystemInfo(returnSystemCode=True)
+    return system_codes,system_list,mod_list
+
 def getSystemInfo():
     importSystemInfo()
     return system_codes
 
-def importSystemInfo():
+def importSystemInfo(returnSystemCode=False):
     filename = 'Config/source_data.txt'; x=0
     fn=filepath(filename); global system_list; system_list=[]; global system_codes; system_codes={}; mod_list=[]
     for line in open(fn,'rU').readlines():             
@@ -3187,8 +3298,15 @@ def importSystemInfo():
 	    if len(mod)>1: mod_list.append(sysname)
 	    system_codes[sysname] = ad
 
-    return system_list,mod_list
+    if returnSystemCode:
+        return system_codes,system_list,mod_list
+    else:
+        return system_list,mod_list
 
+def exportSystemInfoRemote(system_code_db):
+    global system_codes; system_codes = system_code_db
+    exportSystemInfo()
+    
 def exportSystemInfo():
     if len(system_codes)>0:
         filename = 'Config/source_data.txt'
@@ -3248,7 +3366,11 @@ def importSpeciesInfo():
         data = cleanUpLine(line)
         try:
             try: abrev,species,algorithms = string.split(data,'\t')
-            except Exception: abrev,species = string.split(data,'\t'); algorithms = ''
+            except Exception:
+                try: abrev,species = string.split(data,'\t'); algorithms = ''
+                except Exception:
+                    abrev,species,taxid,compatible_mods = string.split(data,'\t')
+                    algorithms = ''
         except Exception:
             if '!DOCTYPE': print_out = "A internet connection could not be established.\nPlease fix the problem before proceeding."
             else: print_out = "Unknown file error encountered."
@@ -3260,6 +3382,7 @@ def importSpeciesInfo():
             species_list.append(species)
             sd = SpeciesData(abrev,species,algorithms)
             species_codes[species] = sd
+    return species_codes
 
 def exportSpeciesInfo(species_codes):
     fn=filepath('Config/species.txt'); data = open(fn,'w'); x=0
@@ -3433,6 +3556,13 @@ class Defaults:
     def ArrayName(self): return self._array
     def Species(self): return self._species
     def __repr__(self): return self.Report()
+
+def verifyFile(filename):
+    fn=filepath(filename); file_found = 'yes'
+    try:
+        for line in open(fn,'rU').xreadlines():break
+    except Exception: file_found = 'no'
+    return file_found
 
 def verifyFileLength(filename):
     count = 0

@@ -275,7 +275,8 @@ def importSpeciesInfo():
     fn=filepath(filename); species_codes={}
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
-        abrev,species = string.split(data,'\t')
+        t = string.split(data,'\t')
+        abrev = t[0]; species = t[1]
         if x==0: x=1
         else:
             sd = SpeciesData(abrev,species)

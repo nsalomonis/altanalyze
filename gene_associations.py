@@ -24,7 +24,8 @@ import os.path
 import unique
 import math
 from stats_scripts import statistics
-from import_scripts import OBO_import
+try: from import_scripts import OBO_import
+except Exception: pass
 import export
 import re
 

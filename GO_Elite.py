@@ -32,7 +32,8 @@ try:
     import shutil
     import webbrowser
     import gene_associations; reload(gene_associations)
-    from import_scripts import OBO_import; reload(OBO_import)
+    try: from import_scripts import OBO_import
+    except Exception: pass
     import export
     import UI
     import mappfinder; reload(mappfinder)
@@ -44,7 +45,7 @@ except Exception:
     print_out += "the compiled distributed binaries and the operating systems installed version of python. "
     print_out += "If this applies, either:\n(A) double-click on the executable GO-Elite file (GO-Elite or GO-Elite.exe) "
     print_out += "or\n(B) download the Source-Code version of GO-Elite and run this version (after installing any needed "
-    print_out += "dependencies (see our Wiki or Documentation). Otherwise, contact us at: genmapp@gladstone.ucsf.edu\n\n"
+    print_out += "dependencies (see our Wiki or Documentation). Otherwise, contact us at: altanalyze@gmail.com\n\n"
     print_out += "Installation Wiki: http://code.google.com/p/go-elite/wiki/Installation\n"
     print print_out
     
@@ -160,7 +161,7 @@ def import_path_index():
     try:  built_go_paths, path_goid_db, path_dictionary = OBO_import.remoteImportOntologyTree(ontology_type)
     except IOError:
         ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedOntologyTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
-        print_out = "Unknown error encountered during Gene Ontology Tree import.\nPlease report to genmapp@gladstone.ucsf.edu if this error re-occurs."
+        print_out = "Unknown error encountered during Gene Ontology Tree import.\nPlease report to altanalyze@gmail.com if this error re-occurs."
         try: UI.WarningWindow(print_out,'Error Encountered!'); root.destroy(); sys.exit()
         except Exception: print print_out; sys.exit()
     print 'Imported',ontology_type,'tree-structure for pruning'
@@ -1022,14 +1023,14 @@ def importSpeciesData():
     global species_names; species_names={}
     for line in open(fn,'rU').readlines():             
         data = cleanUpLine(line)
-        t = string.split(data,'\t'); abrev=t[0]; species=t[1]
+        t = string.split(data,'\t')
+        abrev=t[0]; species=t[1]
         if x==0: x=1
         else:
             species_list.append(species)
             species_codes[species] = abrev
             species_names[abrev] = species
-            
-    
+
 def testFileLength(fn):
     x=0
     for line in open(fn,'rU').readlines(): x+=1
@@ -1394,7 +1395,7 @@ def runGOElite(mod):
       #except Exception: print os.name
       #exportLog(log_report)
       ### This exception was added in version 1.2 and replaces the code in OBO_import.buildNestedOntologyTree which resets the OBO version to 0/0/00 and re-runs (see unlisted_variable = kill)
-      print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to genmapp@gladstone.ucsf.edu."
+      print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to altanalyze@gmail.com."
       if root != None:
         program,program_dir = unique.whatProgramIsThis()
         if program!= 'AltAnalyze':
@@ -2074,6 +2075,40 @@ def displayHelp():
     print '\n################################################'
     sys.exit()
     
+class SpeciesData:
+    def __init__(self, abrev, species, systems, taxid):
+        self._abrev = abrev; self._species = species; self._systems = systems; self._taxid = taxid
+    def SpeciesCode(self): return self._abrev
+    def SpeciesName(self): return self._species
+    def Systems(self): return self._systems
+    def TaxID(self): return self._taxid
+    def __repr__(self): return self.SpeciesCode()+'|'+self.SpeciesName()
+        
+def importSpeciesInfo():
+    filename = 'Config/species_all_archive.txt'
+    fn=filepath(filename); global species_list; species_list=[]; global species_codes; species_codes={}; x=0
+    for line in open(fn,'rU').readlines():             
+        data = cleanUpLine(line)
+        try:
+            abrev,species,taxid,compatible_mods = string.split(data,'\t')
+        except Exception:
+            if '!DOCTYPE': print_out = "A internet connection could not be established.\nPlease fix the problem before proceeding."
+            else: print_out = "Unknown file error encountered."
+            raw = export.ExportFile(fn); raw.close(); GO_Elite.importGOEliteParameters('skip'); sys.exit()
+        if x==0: x=1
+        else:
+            compatible_mods = string.split(compatible_mods,'|')
+            species_list.append(species)
+            sd = SpeciesData(abrev,species,compatible_mods,taxid)
+            species_codes[species] = sd
+    return species_codes
+
+def returnDirectoriesNoReplace(dir):
+    dir_list = unique.returnDirectoriesNoReplace(dir); dir_list2 = []
+    for entry in dir_list:
+        if '.' not in entry: dir_list2.append(entry)
+    return dir_list2
+
 ###### Command Line Functions (AKA Headless Mode) ######
 def commandLineRun():
     import getopt
@@ -2243,23 +2278,38 @@ def commandLineRun():
         
     if 'EnsMart' in ensembl_version:
         import UI; UI.exportDBversion(ensembl_version)
-        
+    elif 'Plant' in ensembl_version:
+        import UI; UI.exportDBversion(string.replace(ensembl_version,'Plant','EnsMart'))
+    elif 'Bacteria' in ensembl_version:
+        import UI; UI.exportDBversion(string.replace(ensembl_version,'Bacteria','EnsMart'))
+    elif 'Fung' in ensembl_version:
+        import UI; UI.exportDBversion(string.replace(ensembl_version,'Fungi','EnsMart'))
+
+    program_type,database_dir = unique.whatProgramIsThis()
+    if program_type == 'AltAnalyze': database_dir = '/AltDatabase'; goelite = '/goelite'
+    else: database_dir = '/Databases'; goelite = ''
+
     if archive == 'yes':
         import update; import UI
-        db_versions = UI.returnDirectoriesNoReplace('/Databases')
+        
+        db_versions = UI.returnDirectoriesNoReplace(database_dir)
+
         for version in db_versions:
-            species_dirs = UI.returnDirectoriesNoReplace('/Databases/'+version)
-            for i in species_dirs: update.zipDirectory('Databases/'+version+'/'+i); print 'Zipping',i
+            print database_dir[1:]+'/'+version+goelite
+            species_dirs = returnDirectoriesNoReplace(database_dir+'/'+version+goelite)
+            print species_dirs
+            for i in species_dirs:
+                update.zipDirectory(database_dir[1:]+'/'+version+goelite+'/'+i); print 'Zipping',i
 
     if export_versions_info == 'yes':
         import UI; species_archive_db={}
         speciesData()
-        db_versions = UI.returnDirectoriesNoReplace('/Databases')
+        db_versions = UI.returnDirectoriesNoReplace(database_dir)
         ### Export species names for each Official database version based on zip files in each folder
         #print db_versions
         for version in db_versions:
             #print version
-            species_file_dirs = UI.returnFilesNoReplace('/Databases/'+version)
+            species_file_dirs = UI.returnFilesNoReplace(database_dir+'/'+version+goelite)
             #print species_dirs
             for file in species_file_dirs:
                 if '.zip' in file:
@@ -2275,12 +2325,12 @@ def commandLineRun():
         species_array_db={}
         for version in db_versions:
             #print version
-            species_dirs = UI.returnDirectoriesNoReplace('/Databases/'+version)
+            species_dirs = UI.returnDirectoriesNoReplace(database_dir+'/'+version+goelite)
             for species_dir in species_dirs:
                 supported_arrays=[]
                 if species_dir in species_names:
                     species_name = species_names[species_dir]
-                    species_file_dirs = UI.returnFilesNoReplace('/Databases/'+version+'/'+species_dir+'/uid-gene')
+                    species_file_dirs = UI.returnFilesNoReplace(database_dir+'/'+version+goelite+'/'+species_dir+'/uid-gene')
                     for file in species_file_dirs:
                         if 'Affymetrix' in file: supported_arrays.append('Affymetrix')
                         if 'MiscArray' in file: supported_arrays.append('MiscArray')
@@ -2299,9 +2349,12 @@ def commandLineRun():
     
         from import_scripts import BuildAffymetrixAssociations; import update; from build_scripts import EnsemblSQL; import UI
         file_location_defaults = UI.importDefaultFileLocations()
-        speciesData(); species_codes = UI.importSpeciesInfo(); species_code_list=[]
+        speciesData()
+        species_codes = UI.importSpeciesInfo()
+        species_code_list=[]
         if len(species_codes) == 0:
-            UI.remoteSpeciesInfo('no'); species_codes = UI.importSpeciesInfo() ### Gets the information from the backup version
+            UI.remoteSpeciesInfo('no')
+            species_codes = importSpeciesInfo() ### Gets the information from the backup version
     
         if ensembl_version != 'current' and 'release-' not in ensembl_version and 'EnsMart' not in ensembl_version:
             if 'Plant' not in ensembl_version and 'Fungi' not in ensembl_version:
@@ -2322,9 +2375,10 @@ def commandLineRun():
                 species_full.append(ens_species)
         else: species_code_list = [species_code]
         if 'Official' in update_method:
-            existing_species_codes = UI.importSpeciesInfo()
+            existing_species_codes = importSpeciesInfo()
             if len(existing_species_codes) == 0:
-                UI.remoteSpeciesInfo('no'); existing_species_codes = UI.importSpeciesInfo() ### Gets the information from the backup version
+                UI.remoteSpeciesInfo('no')
+                existing_species_codes = importSpeciesInfo() ### Gets the information from the backup version
                 
             UI.getOnlineEliteConfig(file_location_defaults,'')
             if species_code != None:
@@ -2368,9 +2422,9 @@ def commandLineRun():
             species_code_list = species_code_list2
         
         species_iteration=0
-        speciesData(); species_codes = UI.importSpeciesInfo() ### Re-import the species data updated above
+        speciesData(); species_codes = importSpeciesInfo() ### Re-import the species data updated above
         if len(species_codes) == 0:
-            UI.remoteSpeciesInfo('no'); species_codes = UI.importSpeciesInfo() ### Gets the information from the backup version
+            UI.remoteSpeciesInfo('no'); species_codes = importSpeciesInfo() ### Gets the information from the backup version
         #print species_code_list, update_ensrel
         species_code_list.sort(); species_code_list.reverse()
         
@@ -2478,7 +2532,9 @@ def commandLineRun():
                 try: child_dirs, ensembl_species, ensembl_versions = EnsemblSQL.getCurrentEnsemblSpecies(ensembl_version)
                 except Exception: print "\nPlease try a different version. This one does not appear to be valid."; sys.exit()
                 try: ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species]
-                except Exception: print species,'species not supported in Ensembl'; continue
+                except Exception:
+                    print traceback.format_exc()
+                    print species,'species not supported in Ensembl'; continue
                 ### Download the latest version of Ensembl
                 EnsemblSQL.updateFiles(ensembl_sql_dir,'Config/','external_db.txt','yes')
 
@@ -2738,7 +2794,7 @@ if __name__ == '__main__':
             trace =  traceback.format_exc()
             print '\nWARNING!!! Critical error encountered (see below details)\n'
             print trace
-            print "\n...exiting GO-Elite due to unexpected error (contact genmapp@gladstone.ucsf.edu for assistance)."
+            print "\n...exiting GO-Elite due to unexpected error (contact altanalyze@gmail.com for assistance)."
             time_stamp = timestamp()
             if commandLineMode == 'no':
                 try: log_file = log_file
@@ -2753,7 +2809,7 @@ if __name__ == '__main__':
                 log_report.write(print_out+'\n')
                 log_report.write(trace)
                 
-                print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to genmapp@gladstone.ucsf.edu."
+                print_out = "Unknown error encountered during data processing.\nPlease see logfile in:\n\n"+log_file+"\nand report to altanalyze@gmail.com."
                 if use_Tkinter == 'yes':
                     program,program_dir = unique.whatProgramIsThis()
                     if program!= 'AltAnalyze':

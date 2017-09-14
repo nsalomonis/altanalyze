@@ -29,7 +29,8 @@ import datetime
 import export
 import update
 import gene_associations
-from import_scripts import OBO_import
+try: from import_scripts import OBO_import
+except Exception: import OBO_import
 ################# Parse directory files
 
 def filepath(filename):
@@ -436,7 +437,8 @@ def getUIDAnnotationsFromGOElite(conventional_array_db,species_code,vendor,use_g
     except Exception: eg_annotations = {}
     
     if use_go == 'yes':
-        from import_scripts import OBO_import
+        try: from import_scripts import OBO_import
+        except Exception: import OBO_import
         go_annotations = OBO_import.importPreviousOntologyAnnotations('GeneOntology')
 
         try: gene_to_go_ens = gene_associations.importGeneToOntologyData(species_code,'Ensembl','null','GeneOntology')
@@ -558,7 +560,8 @@ def getEnsemblAnnotationsFromGOElite(species_code):
     try: gene_to_mapp_ens = gene_associations.importGeneMAPPData(species_code,'Ensembl-MAPP.txt')
     except Exception: gene_to_mapp_ens = {}
 
-    from import_scripts import OBO_import
+    try: from import_scripts import OBO_import
+    except Exception: import OBO_import
     go_annotations = OBO_import.importPreviousOntologyAnnotations('GeneOntology')
 
     try: gene_to_go_ens = gene_associations.importGeneToOntologyData(species_code,'Ensembl','null','GeneOntology')
@@ -706,7 +709,10 @@ def exportResultsSummary(dir_list,species,type):
     else: parent_dir = 'Databases'
     
     if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': from import_scripts import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze':
+            try: from import_scripts import OBO_import
+            except Exception: import OBO_import
+            OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
 
     new_file = parent_dir+'/'+species+'/'+type+'_files_summarized.txt'
@@ -726,7 +732,8 @@ def exportMetaGeneData(species):
     if overwrite_previous == 'over-write previous':
         if program_type != 'AltAnalyze':
             null = None
-            #from import_scripts import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
+            #from import_scripts import OBO_import
+            #OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
     
     new_file = parent_dir+'/'+species+'/uid-gene/Ensembl_EntrezGene-meta.txt'
@@ -752,7 +759,10 @@ def exportRelationshipDBs(species):
     else: parent_dir = 'Databases'
     
     if overwrite_previous == 'over-write previous':
-        if program_type != 'AltAnalyze': from import_scripts import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
+        if program_type != 'AltAnalyze':
+            try: from import_scripts import OBO_import
+            except Exception: import OBO_import
+            OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
     else: parent_dir = 'NewDatabases'
   
     x1=0; x2=0; x3=0; x4=0; x5=0; x6=0
@@ -873,9 +883,10 @@ def integratePreviousAssociations():
 def parseGene2GO(tax_id,species,overwrite_prev,rewrite_existing):
     global overwrite_previous; overwrite_previous = overwrite_prev; status = 'run'
     program_type,database_dir = unique.whatProgramIsThis()
-    if program_type == 'AltAnalyze': database_dir = '/AltDatabase'
-    else: database_dir = '/BuildDBs'
+    #if program_type == 'AltAnalyze': database_dir = '/AltDatabase'
+    database_dir = '/BuildDBs'
     import_dir = database_dir+'/Entrez/Gene2GO'
+    
     g = GrabFiles(); g.setdirectory(import_dir)
     filename = g.searchdirectory('gene2go') ###Identify gene files corresponding to a particular MOD
     if len(filename)>1:
@@ -894,7 +905,10 @@ def parseGene2GO(tax_id,species,overwrite_prev,rewrite_existing):
         else: parent_dir = 'Databases'
         
         if overwrite_previous == 'over-write previous':
-            if program_type != 'AltAnalyze': from import_scripts import OBO_import; OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
+            if program_type != 'AltAnalyze':
+                try: from import_scripts import OBO_import
+                except Exception: import OBO_import
+                OBO_import.exportVersionData(0,'0/0/0','/'+species+'/nested/')  ### Erase the existing file so that the database is re-remade
         else: parent_dir = 'NewDatabases'
         new_file = parent_dir+'/'+species+'/gene-go/EntrezGene-GeneOntology.txt'
         today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]

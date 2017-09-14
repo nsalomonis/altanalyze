@@ -1,0 +1,286 @@
+ID	Database	Species_Specific	exclude	SystemCode
+7160	Aedes_ManualAnnotation	Aedes aegypti		Am
+7159	AedesGenBank	Aedes aegypti		Em
+3125	AFFY_Bovine	Bos taurus		X
+3123	AFFY_C_elegans	Caenorhabditis elegans		X
+3117	AFFY_Canine	Canis familiaris		X
+3118	AFFY_Chicken	Gallus gallus		X
+3130	AFFY_CINT06a520380F	Ciona intestinalis		X
+3120	AFFY_DrosGenome1	Drosophila melanogaster		X
+3121	AFFY_Drosophila_2	Drosophila melanogaster		X
+3122	AFFY_HC_G110	Homo sapiens		X
+3113	AFFY_HG_Focus	Homo sapiens		X
+3101	AFFY_HG_U133_all	Homo sapiens		X
+3111	AFFY_HG_U133_Plus_2	Homo sapiens		X
+3102	AFFY_HG_U133A	Homo sapiens		X
+3112	AFFY_HG_U133A_2	Homo sapiens		X
+3103	AFFY_HG_U133B	Homo sapiens		X
+3104	AFFY_HG_U95_all	Homo sapiens		X
+3105	AFFY_HG_U95A	Homo sapiens		X
+3106	AFFY_HG_U95Av2	Homo sapiens		X
+3107	AFFY_HG_U95B	Homo sapiens		X
+3108	AFFY_HG_U95C	Homo sapiens		X
+3109	AFFY_HG_U95D	Homo sapiens		X
+3110	AFFY_HG_U95E	Homo sapiens		X
+3135	AFFY_HuEx_1_0_st_v2	Homo sapiens		X
+3136	AFFY_HuGene_1_0_st_v1	Homo sapiens		X
+3119	AFFY_HuGeneFL	Homo sapiens		X
+3001	AFFY_MG_U74_all	Mus musculus		X
+3002	AFFY_MG_U74A	Mus musculus		X
+3003	AFFY_MG_U74Av2	Mus musculus		X
+3004	AFFY_MG_U74B	Mus musculus		X
+3005	AFFY_MG_U74Bv2	Mus musculus		X
+3006	AFFY_MG_U74C	Mus musculus		X
+3007	AFFY_MG_U74Cv2	Mus musculus		X
+3008	AFFY_MOE430_all	Mus musculus		X
+3009	AFFY_MOE430A	Mus musculus		X
+3010	AFFY_MOE430B	Mus musculus		X
+3133	AFFY_MoEx_1_0_st_v1	Mus musculus		X
+3134	AFFY_MoGene_1_0_st_v1	Mus musculus		X
+3014	AFFY_Mouse430_2	Mus musculus		X
+3015	AFFY_Mouse430A_2	Mus musculus		X
+3011	AFFY_Mu11Ksub_all	Mus musculus		X
+3012	AFFY_Mu11KsubA	Mus musculus		X
+3013	AFFY_Mu11KsubB	Mus musculus		X
+3124	AFFY_Plasmodium_Anopheles	Anopheles gambiae		X
+3051	AFFY_RAE230_all	Rattus norvegicus		X
+3052	AFFY_RAE230A	Rattus norvegicus		X
+3053	AFFY_RAE230B	Rattus norvegicus		X
+3131	AFFY_RaEx_1_0_st_v1	Rattus norvegicus		X
+3137	AFFY_RaGene_1_0_st_v1	Rattus norvegicus		X
+3114	AFFY_Rat230_2	Rattus norvegicus		X
+3054	AFFY_RG_U34_all	Rattus norvegicus		X
+3055	AFFY_RG_U34A	Rattus norvegicus		X
+3056	AFFY_RG_U34B	Rattus norvegicus		X
+3057	AFFY_RG_U34C	Rattus norvegicus		X
+3129	AFFY_Rhesus	Macaca mulatta		X
+3058	AFFY_RN_U34	Rattus norvegicus		X
+3059	AFFY_RT_U34	Rattus norvegicus		X
+3116	AFFY_U133_X3P	Homo sapiens		X
+3132	AFFY_X_tropicalis	Xenopus tropicalis		X
+3128	AFFY_Yeast_2	Saccharomyces cerevisiae		X
+3127	AFFY_YG_S98	Saccharomyces cerevisiae		X
+3115	AFFY_Zebrafish	Danio rerio		X
+3251	AGILENT_G2518A		 	Ag
+3252	AGILENT_G2519F		 	Ag
+4305	AgilentCGH		 	Ag
+4300	AgilentProbe		 	Ag
+210	Anopheles_symbol	Anopheles gambiae	 	As
+3201	ARRAY_EMBL_MMC1_20k_v1		 	Ma
+3202	ARRAY_EMBL_MMC2_12k_v1		 	Ma
+3209	ARRAY_JHSPH_AGGAMBER_15k_v1		 	Ma
+3205	ARRAY_JHU_AEG1_0_20k_v1		 	Ma
+3203	ARRAY_JHU_GAM3_0_21k_v1		 	Ma
+3206	ARRAY_LIV_AEGDETOX_0_25k_v1		 	Ma
+3211	ARRAY_LIV_AEGDETOX_0_25k_v2		 	Ma
+3204	ARRAY_LIV_GAMDETOX_0_25k_v1		 	Ma
+3210	ARRAY_LIV_GAMDETOX_0_25k_v2		 	Ma
+3207	ARRAY_ND_TIGRTC_9_6K_v1		 	Ma
+3208	ARRAY_UCR_GillMgMT_0_2K_v2		 	Ma
+3260	ARRAY_ZFISH_LEIDEN2	Danio rerio	 	Ma
+3261	ARRAY_ZFISH_LEIDEN3	Danio rerio	 	Ma
+880	BDGP_insitu_expr	Drosophila melanogaster	 	Bd
+300	BRIGGSAE_HYBRID		 	Bh
+9000	CaeEle_est		 	Cae
+3800	CCDS		 	Cc
+400	Celera_Gene		 	Cg
+410	Celera_Pep		 	Cp
+420	Celera_Trans		 	Ct
+2610	cint_aniseed_v1		 	Cj
+2611	cint_aniseed_v2		 	Cj
+2601	cint_jgi_v1		 	Cj
+2602	cint_jgi_v2		 	Cj
+8900	CioInt_cdna		 	Cio
+8800	CioInt_est		 	Cio
+9700	CioSav_est	Ciona intestinalis	 	Cio
+12315	Clone_based_ensembl_gene		 	Clb
+12415	Clone_based_ensembl_transcript		 	Clb
+12310	Clone_based_vega_gene		 	Clb
+12410	Clone_based_vega_transcript		 	Clb
+6000	Codelink		 	Co
+11100	Culex_ncRNA			Cr
+12500	DBASS3		 	Dba
+12505	DBASS5		 	Dba
+890	DEDb	Drosophila melanogaster	 	De
+600	DROS_ORTH	Drosophila melanogaster	 	Do
+700	EMBL		 	Em
+701	EMBL_predicted		 	Em
+7120	Ens_Aa_translation	Aedes aegypti	exclude	
+6600	Ens_Ag_gene	Anopheles gambiae	exclude	
+6630	Ens_Am_gene		exclude	
+6660	Ens_Ce_gene	Caenorhabditis elegans	exclude	
+5700	Ens_Cf_gene	Caenorhabditis elegans	exclude	
+5710	Ens_Cf_transcript	Canis familiaris	exclude	
+5720	Ens_Cf_translation	Canis familiaris	exclude	
+6690	Ens_Dm_gene	Drosophila melanogaster	exclude	
+5800	Ens_Dr_gene	Danio rerio	exclude	
+5810	Ens_Dr_transcript	Danio rerio	exclude	
+5820	Ens_Dr_translation	Danio rerio	exclude	
+6720	Ens_Fr_gene		exclude	
+6400	Ens_Gg_gene	Gallus gallus	exclude	
+6410	Ens_Gg_transcript	Gallus gallus	exclude	
+6420	Ens_Gg_translation	Gallus gallus	exclude	
+2700	Ens_Hs_gene	Homo sapiens	exclude	
+2710	Ens_Hs_transcript		exclude	Er
+2710	Ens_Hs_transcript	Homo sapiens	exclude	
+2720	Ens_Hs_translation		exclude	Et
+2720	Ens_Hs_translation	Homo sapiens	exclude	
+5900	Ens_Md_gene		exclude	
+5000	Ens_Mm_gene	Mus musculus	exclude	
+5010	Ens_Mm_transcript	Mus musculus	exclude	
+5020	Ens_Mm_translation	Mus musculus	exclude	
+6300	Ens_Ol_gene		exclude	
+6750	Ens_Pt_gene		exclude	
+6200	Ens_Rn_gene	Rattus norvegicus	exclude	
+6780	Ens_Rn_gene	Rattus norvegicus	exclude	
+6810	Ens_Tn_gene		exclude	
+6820	Ens_Tr_transcript	Takifugu rubripes	exclude	
+4800	ENST		 	Enst
+4820	ENST_CDS		 	Enst
+4810	ENST_ident		 	Enst
+1300	EntrezGene		 	L
+10100	EPD			Epd
+12610	Fantom		 	Fa
+804	flybase_annotation_id	Drosophila melanogaster	 	F
+800	flybase_gene_id	Drosophila melanogaster	 	F
+802	flybase_gff	Drosophila melanogaster	 	F
+807	flybase_name	Drosophila melanogaster	 	F
+803	flybase_polypeptide_id	Drosophila melanogaster	 	F
+805	flybase_symbol	Drosophila melanogaster	 	F
+806	flybase_synonym	Drosophila melanogaster	 	F
+808	flybase_transcript_id	Drosophila melanogaster	 	F
+801	flybase_translation_id	Drosophila melanogaster	 	F
+826	FlyBaseCGID_gene	Drosophila melanogaster	 	F
+827	FlyBaseCGID_transcript	Drosophila melanogaster	 	F
+828	FlyBaseCGID_translation	Drosophila melanogaster	 	F
+821	FlyBaseName_gene	Drosophila melanogaster	 	F
+825	FlyBaseName_transcript	Drosophila melanogaster	 	F
+824	FlyBaseName_translation	Drosophila melanogaster	 	F
+883	FlyReactome	Drosophila melanogaster		Rr
+882	FlyGrid	Drosophila melanogaster	 	Fg
+810	gadfly_gene_cgid	Drosophila melanogaster	 	Gf
+811	gadfly_transcript_cgid	Drosophila melanogaster	 	Gf
+812	gadfly_translation_cgid	Drosophila melanogaster	 	Gf
+8500	GasAcu_cdna		 	Gas
+2600	GeneDB		 	Gd
+10900	GI			Gi
+900	GKB		 	Gk
+1000	GO		 	Go
+10200	GPCR			Gpcr
+6100	Havana_gene		 	Ha
+1100	HGNC	Homo sapiens	 	Hg
+12305	HGNC_automatic_gene	Homo sapiens	 	Hg
+12405	HGNC_automatic_transcript	Homo sapiens	 	Hg
+12300	HGNC_curated_gene	Homo sapiens	 	Hg
+12400	HGNC_curated_transcript	Homo sapiens	 	Hg
+12510	HPA	Homo sapiens	 	Hpa
+3250	Illumina		 	Il
+3255	Illumina_V1		 	Il
+3256	Illumina_V2		 	Il
+6500	IMCB_Tr_gene		 	Ic
+7201	IMGT/GENE_DB		 	Im
+7200	IMGT/LIGM_DB		 	Im
+5100	IMGT_HLA		 	Im
+1200	Interpro		 	Ip
+3500	IPI		 	Ip
+7170	Ixodes_ManualAnnotation		 	Im
+9800	kyotograil_2004	Ciona intestinalis	 	Ky
+9900	kyotograil_2005	Ciona intestinalis	 	Ky
+4700	Medaka	Oryzias latipes	 	Medaka
+4000	MEDLINE		 	Me
+10300	MEROPS			Merops
+1400	MGI	Mus musculus	 	M
+12555	MGI_automatic_gene	Mus musculus	 	M
+12565	MGI_automatic_transcript	Mus musculus	 	M
+12550	MGI_curated_gene	Mus musculus	 	M
+12560	MGI_curated_transcript	Mus musculus	 	M
+1500	MIM		 	Mi
+1510	MIM_GENE		 	Mi
+1520	MIM_MORBID		 	Mi
+3300	miRBase		 	Mb
+3310	miRBase_predicted		 	Mb
+10600	modCB_gene	Caenorhabditis elegans		Mg
+10700	modCE_gene	Caenorhabditis elegans		Mg
+10800	modDD_gene			Mg
+8600	OrnAna_454_cdna	Ornithorhynchus anatinus	 	Orn
+9500	OryLat_est		 	Ol
+4600	OTTG		 	Ot
+4620	OTTP		 	Ot
+4610	OTTT		 	Ot
+5200	Oxford_FGU_Md_gene		 	Of
+5300	Oxford_FGU_Md_tscript		 	Of
+5400	Oxford_FGU_Oa_gene	Ornithorhynchus anatinus	 	Of
+5500	Oxford_FGU_Oa_tscript	Ornithorhynchus anatinus	 	Of
+1600	PDB		 	Pd
+8300	PIR		 	Pir
+3299	Platypus_exon	Ornithorhynchus anatinus	 	Pe
+8100	Platypus_olfactory_receptor	Ornithorhynchus anatinus	 	Pr
+2010	prediction_SPTREMBL		 	S
+8200	PRF		 	Prf
+1700	protein_id		 	Pi
+1701	protein_id_predicted		 	Pi
+3900	PUBMED		 	Pu
+1800	RefSeq_dna		 	Q
+1805	RefSeq_dna_predicted		 	Q
+1830	RefSeq_genomic		 	Q
+1810	RefSeq_peptide		 	Q
+1815	RefSeq_peptide_predicted		 	Q
+1820	RefSeq_rna		 	Q
+1825	RefSeq_rna_predicted		 	Q
+4200	RFAM		 	Rf
+2800	RGD	Rattus norvegicus	exclude	R 
+1900	Sanger_Hver1_2_1		 	Sh
+1901	Sanger_Hver1_3_1		 	Sh
+1910	Sanger_Mver1_1_1		 	Sh
+3400	SGD	Saccharomyces cerevisiae	 	D
+4680	shares_CDS_and_UTR_with_OTTT		 	Sc
+4650	shares_CDS_with		 	Sc
+4660	shares_CDS_with_ENST		 	Sc
+4670	shares_CDS_with_OTTT		 	Sc
+1902	SNGR_Hver		 	Sh
+2100	Superfamily		 	Su
+9210	TakRub_annotation		 	Tak
+8700	TakRub_cdna	Takifugu rubripes	 	Tak
+9200	TakRub_est		 	Tak
+9220	TakRub_seleno_annotation		 	Tak
+4900	TCAG		 	Tc
+8400	TetNig_cdna		 	Tet
+9460	TetNig_chick_econtig	Gallus gallus	 	Tet
+9410	TetNig_fugu_econtig	Takifugu rubripes	 	Tet
+9420	TetNig_human_econtig	Homo sapiens	 	Tet
+9430	TetNig_human_IPI_econtig	Homo sapiens	 	Tet
+9400	TetNig_mouse_econtig	Mus musculus	 	Tet
+9440	TetNig_mouse_IPI_econtig	Mus musculus	 	Tet
+9450	TetNig_rat_econtig	Rattus norvegicus	 	Tet
+12601	Tgut_symbol		 	Ts
+4500	Tiffin		 	Ti
+9600	Trace_archive		 	Trace
+10500	TransFac			Transfac
+11000	UCSC			Ucsc
+4100	UniGene		 	Ug
+2000	Uniprot/SPTREMBL		 	S
+2001	Uniprot/SPTREMBL_predicted		 	S
+2200	Uniprot/SWISSPROT		 	S
+2201	Uniprot/SWISSPROT_predicted		 	S
+2202	Uniprot/Varsplic		 	S
+2250	UniProtKB_all		 	S
+3200	VB_array		 	Ma
+2300	Vega_gene		 	Vg
+2305	Vega_gene_like		 	Vg
+8000	Vega_mouse_transcript	Mus musculus	 	Vt
+2310	Vega_transcript		 	Vr
+2315	Vega_transcript_like		 	Vr
+2320	Vega_translation		 	Vt
+12600	WikiGene		 	Wg
+2400	wormbase_gene	Caenorhabditis elegans	 	Wb
+10000	wormbase_id	Caenorhabditis elegans		Wb
+2440	wormbase_locus	Caenorhabditis elegans	 	Wb
+2430	wormbase_pseudogene	Caenorhabditis elegans	 	Wb
+2410	wormbase_transcript	Caenorhabditis elegans	 	Wb
+2420	wormpep_id	Caenorhabditis elegans	 	Wp
+9120	XenLae_cdna		 	Xen
+4400	Xenopus_Jamboree	Xenopus tropicalis	 	Xj
+9110	XenTro_cdna		 	Xen
+9100	XenTro_Gurdon_EST		 	Xen
+2510	ZFIN_ID	Danio rerio	 	Z
+2530	ZFIN_xpat	Danio rerio	 	Z

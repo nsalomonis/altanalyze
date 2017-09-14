@@ -95,16 +95,19 @@ def filepath(filename):
             if 'AltDatabase' in fn:
                 getCurrentGeneDatabaseVersion()
                 fn = correctGeneDatabaseDir(fn)
-                fileExists = os.path.isfile(fn)
+                altanalyze_dir = string.split(fn,'AltDatabase')[0]+'AltDatabase'
+                ### Check the AltDatabase dir not the fn, since the fn may not exist yet
+                fileExists = os.path.isfile(altanalyze_dir)
                 try:
-                    dir_list = os.listdir(filename)
+                    dir_list = os.listdir(altanalyze_dir)
                     fileExists=True
                 except Exception: pass
+                #print 2, [fn],fileExists
                 if fileExists == False:
                     fn=os.path.join(userHomeDir,filename)
                     fn = correctGeneDatabaseDir(fn)
                 altDatabaseCheck = False
-
+    
     if '/Volumes/' in filename and altDatabaseCheck:
         filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]
     for py2app_dir in py2app_dirs: fn = string.replace(fn,py2app_dir,'')
@@ -150,6 +153,7 @@ def returnDirectoriesNoReplace(sub_dir):
     dir=application_path
     for py2app_dir in py2app_dirs:
         dir = string.replace(dir,py2app_dir,'')
+
     try: dir_list = os.listdir(dir + sub_dir)
     except Exception:
         try: dir_list = os.listdir(sub_dir) ### For linux

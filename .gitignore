@@ -11,3 +11,9 @@ input*
 output*
 .DS_Store
 .DS_Store?
+ArchiveDBs*
+BuildDBs*
+GPML*
+RNASeq_test.py
+ExpressionBuilder_custom.py
+AltDatabase/primer3/temporary-files*

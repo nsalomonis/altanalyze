@@ -99,7 +99,7 @@ class download_protocol:
         if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
         output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
         output_filepath = filepath(dir+filename)
-        
+
         print "Downloading the following file:",filename,' ',
         self.original_increment = 10
         self.increment = 0

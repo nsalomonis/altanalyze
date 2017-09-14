@@ -7069,8 +7069,12 @@ def commandLineRun():
                 try:
                     src = string.replace(src,'_RNASeq.','.'); dstn = string.replace(dstn,'_RNASeq.','.')
                     shutil.move(src, dstn)
-                except Exception: null=[]
-            except Exception: null=[]
+                except Exception:
+                    print traceback.format_exc() 
+                    pass
+            except Exception:
+                print traceback.format_exc() 
+                pass
         sys.exit()
     if update_dbs == 'yes' and 'Official' not in update_method:
         if 'cleanup' in update_method:

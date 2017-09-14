@@ -508,6 +508,14 @@ def moveOntologyToArchiveDir(display=True):
         new_file_dir = string.replace(file_dir,parent_dir+'OBO/',parent_dir+'OBO/archive/')
         if display: print 'Moving:',file_dir,'to:',new_file_dir
         export.customFileMove(file_dir,new_file_dir)
+
+    if len(file_dirs)==0:
+        c.setdirectory('/'+'OBO')
+        file_dirs = c.searchdirectory('.ontology')+c.searchdirectory('.obo')
+        for file_dir in file_dirs:
+            new_file_dir = string.replace(file_dir,'OBO/',parent_dir+'OBO/')
+            if display: print 'Moving:',file_dir,'to:',new_file_dir
+            export.customFileMove(file_dir,new_file_dir)
                 
 def buildNestedOntologyAssociations(species,mod_types,target_ontology_type,display=True):
     global species_code; species_code = species; global verified_nested
