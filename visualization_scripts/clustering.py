@@ -2224,8 +2224,10 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
 
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
+    if prior_clusters == None: prior_clusters=[]
     try:
         if len(prior_clusters)>0 and len(group_db)==0:
+            print 'here'
             newColumnHeader=[]
             i=0
             for sample_name in column_header:
@@ -2233,7 +2235,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
                 i+=1
             group_db, column_header = assignGroupColors(newColumnHeader)    
     except Exception,e:
-        #print e
+        print traceback.format_exc()
         group_db={}
         
     pcA-=1
@@ -2746,6 +2748,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
     
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
+    if prior_clusters == None: prior_clusters=[]
     try:
         if len(prior_clusters)>0 and len(group_db)==0:
             newColumnHeader=[]
@@ -6279,7 +6282,7 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot3.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionInput/symbols.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/cell_cycle.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'

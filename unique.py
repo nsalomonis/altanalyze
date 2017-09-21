@@ -61,7 +61,14 @@ if ('linux' in sys.platform or 'posix' in sys.platform) and getattr(sys, 'frozen
 else:
     if '..' in __file__:
         """ Indicates the file callin unique.py is in a subdirectory """
-        application_path = os.getcwd()
+        try:
+            if '.py' in __file__:
+                import export
+                application_path = export.findParentDir(string.split(__file__,'..')[0][:-1])
+            else:
+                application_path = os.getcwd()
+        except Exception:
+            application_path = os.getcwd()
     else:
         application_path = os.path.dirname(__file__)
 

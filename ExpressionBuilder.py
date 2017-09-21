@@ -23,7 +23,8 @@ import unique
 from stats_scripts import statistics
 import math
 import reorder_arrays
-from build_scripts import ExonArray
+try: from build_scripts import ExonArray
+except: pass
 import export
 import copy
 import time
@@ -35,7 +36,8 @@ from import_scripts import BuildAffymetrixAssociations; reload(BuildAffymetrixAs
 try:
     from scipy import average as Average
 except Exception:
-    from statistics import avg as Average
+    try: from statistics import avg as Average
+    except: pass
 
 use_Tkinter = 'no'
 try:

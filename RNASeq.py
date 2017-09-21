@@ -52,7 +52,8 @@ try:
     from scipy import average as Average
     from  scipy import stats
 except Exception:
-    from statistics import avg as Average
+    try: from statistics import avg as Average
+    except Exception: pass ### occurs with circular imports
     
 def filepath(filename):
     fn = unique.filepath(filename)
