@@ -2573,6 +2573,7 @@ def importComparisonSplicingData4Primers(filename,species):
                     """ Update the code to work with PSI results files from the metaDataAnalysis script """
                     #UID,InclusionNotation,ClusterID,UpdatedClusterID,AltExons,EventAnnotation,Coordinates,ProteinPredictions,dPSI,rawp,adjp,avg1,avg2
                     uid = t[0]
+                    print uid
                     uid_objects = string.split(uid,':')
                     symbol = uid_objects[0]
                     junctions = string.join(uid_objects[1:],':')
@@ -2596,7 +2597,7 @@ def importComparisonSplicingData4Primers(filename,species):
                         iso1, iso2 = string.split(string.split(isoforms,'AA:')[1],')->')
                         iso1 = string.split(iso1,'(')[1]
                         iso2 = string.split(string.split(iso2,'(')[1],')')[0]
-                        #print iso1, iso2 
+                        print iso1, iso2 
                         #print j1, j2
                         #print symbol
                         try:
@@ -2622,6 +2623,7 @@ if __name__ == '__main__':
     Data_type = 'mRNA'
     #E6.1-E8.2 vs. E5.1-E8.3
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/LIMMA_comps.Aug.12.2017/PSI.RBM20.Het.vs.WTC.Aug.13.2018.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Events-dPSI_0.1_adjp/PSI.U2AF1-like_vs_OthersQPCR.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/Combined-junction-exon-evidence.txt'
     
     #exportTranscriptExonIDAssociations(Species)

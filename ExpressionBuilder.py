@@ -318,7 +318,8 @@ def simplerGroupImport(group_dir):
         data = cleanUpLine(line)
         try: sample_filename,group_number,group_name = string.split(data,'\t')
         except Exception:
-            print string.split(data,'\t'), 'more than 3 columns present in groups file'
+            #print 'Non-Standard Groups file or missing relationships'
+            print string.split(data,'\t')[:10], 'more than 3 columns present in groups file'
             kill
         sample_group_db[sample_filename] = group_name
     return sample_group_db

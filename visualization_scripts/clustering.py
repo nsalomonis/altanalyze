@@ -246,6 +246,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         cmap=pylab.cm.coolwarm
     if color_gradient == 'Greys':
         cmap=pylab.cm.Greys
+    if color_gradient == 'yellow_orange_red':
+        cmap=pylab.cm.YlOrRd
         
     vmin=x.min()
     vmax=x.max()
@@ -1624,17 +1626,24 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                 t = t = [t[0]]+t[2:]
             ### color samples by annotated groups if an expression file
             new_headers=[]
-            if ('exp.' in filename or 'filteredExp.' in filename):# and ':' not in data:
+            temp_groups={}
+            if ('exp.' in filename or 'filteredExp.' in filename or 'MarkerGene' in filename):# and ':' not in data:
                 if overwriteGroupNotations:
                     ### Use groups file annotations over any header sample separation with a ":"
                     for i in t:
                         if ':' in i:
-                            new_headers.append(string.split(i,':')[1])
+                            group,i = string.split(i,':')
+                            new_headers.append(i)
+                            temp_groups[i] = group
                         else: new_headers.append(i)
                 filename = string.replace(filename,'-steady-state.txt','.txt')
                 try:
                     import ExpressionBuilder
-                    sample_group_db = ExpressionBuilder.simplerGroupImport(filename)
+                    try: sample_group_db = ExpressionBuilder.simplerGroupImport(filename)
+                    except Exception: sample_group_db={}
+                    if len(temp_groups)>0 and len(sample_group_db)==0:
+                        sample_group_db = temp_groups
+
                     if len(new_headers)>0:
                         t = new_headers
                     new_headers = []
@@ -2054,6 +2063,13 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             else:
                 cm = pylab.cm.get_cmap('gist_rainbow')
+                
+        def get_cmap(n, name='hsv'):
+            '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
+            RGB color; the keyword argument name must be a standard mpl colormap name.'''
+            return pylab.cm.get_cmap(name, n)
+        
+        
         if genePresent:
             dataset_name+='-'+colorByGene
             group_db={}
@@ -2077,6 +2093,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                         ranges.append(r)
                         iz+=bin_size
                     color_db = {}
+                    colors = get_cmap(len(genes))
                     for i in range(len(ranges)):
                         if i==0:
                             color = '#C0C0C0'
@@ -2087,7 +2104,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                                 #color = cm(1.*(i+1)/len(ranges))
                             else:
                                 if i>2:
-                                    color = cm(k)
+                                    if len(genes)<8:
+                                        color = cm(k)
+                                    else:
+                                        color = colors(k)
                                 else:
                                     color = '#C0C0C0'
                         color_db[ranges[i]] = color
@@ -2227,7 +2247,6 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     if prior_clusters == None: prior_clusters=[]
     try:
         if len(prior_clusters)>0 and len(group_db)==0:
-            print 'here'
             newColumnHeader=[]
             i=0
             for sample_name in column_header:
@@ -2421,7 +2440,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             elif numberGenesPresent==7:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             else:
-                cm = pylab.cm.get_cmap('gist_rainbow')
+                cmap_c = pylab.cm.gist_rainbow
         if genePresent:
             dataset_name+='-'+colorByGene
             group_db={}
@@ -6282,7 +6301,7 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/comb_plot3.txt'
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/cell_cycle.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/genes.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -6294,7 +6313,10 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
     filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/exp.Guide3_NatureDefaults.txt'
-    filename = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionInput/exp.Guide3-cellHarmony-revised-missing-LSK-Symbol.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Harinder/scRNASeq_Mm-Plasma/PCA-loading/ExpressionInput/exp.PCA-Symbol.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.Fluidigm-log2-NearestNeighbor-800.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.10X-log2-NearestNeighbor.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     
     print genesets
     for gene_list in genesets:
