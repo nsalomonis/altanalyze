@@ -2,19 +2,20 @@
 
 import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+sys.setrecursionlimit(5000)
 
 _script = 'AltAnalyze.py'
 _appName = "AltAnalyze"
-_appVersion = '2.0.9.4'
+_appVersion = '2.0.1.1'
 _appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to take RNASeq or "
 _appDescription +="relatively raw microarray data (CEL files or normalized), identify predicted alternative splicing or alternative "
 _appDescription +="promoter changes and view how these changes may affect protein sequence, domain composition, and microRNA targeting."
 _authorName = 'Nathan Salomonis'
-_authorEmail = 'nsalomonis@gmail.com'
+_authorEmail = 'altanalyze@gmail.com'
 _authorURL = 'http://www.altanalyze.org'
 _appIcon = "AltAnalyze_W7.ico"
 
-excludes = ['wx'] #["wxPython"] #"numpy","scipy","matplotlib"
+excludes = ['wx','tests','iPython'] #["wxPython"] #"numpy","scipy","matplotlib"
 includes = ["mpmath", "numpy","sklearn.neighbors.typedefs",'sklearn.utils.lgamma','sklearn.manifold',
 	    'sklearn.utils.sparsetools._graph_validation','sklearn.utils.weight_vector',
 	    'pysam.TabProxies','pysam.ctabixproxies','patsy.builtins','dbhash','anydbm']
@@ -43,11 +44,11 @@ if sys.platform.startswith("darwin"):
         import sklearn
         includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath"] #"xml.sax.drivers2.drv_pyexpat"
         """
-        resources = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
-        frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6/pyconfig.h']
-        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/Extras/lib/python/pkg_resources.py']
-        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/distutils/util.py']
-        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/distutils/sysconfig.py']
+        resources = ['/System/Library/Frameworks/Python.framework/Versions/2.7']
+        frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7/pyconfig.h']
+        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/pkg_resources/__init__.py']
+        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/distutils/util.py']
+        frameworks += ['/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/distutils/sysconfig.py']
         import pkg_resources
         import distutils
         import distutils.sysconfig
@@ -58,8 +59,8 @@ if sys.platform.startswith("darwin"):
                      "includes": includes,
                      #"frameworks": frameworks,
                      #"resources": resources,
-                     #argv_emulation = True,
-                     "iconfile": "altanalyze.icns"}
+                     #"argv_emulation": True,
+                     "iconfile": "build_scripts/altanalyze.icns"}
         }
         setup(name=_appName,
                         app=[_script],

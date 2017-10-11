@@ -9,11 +9,15 @@ Config/R*
 *.log
 input*
 output*
+build/*
+AltAnalyze.app*
+dist*
 .DS_Store
 .DS_Store?
 ArchiveDBs*
 BuildDBs*
 GPML*
+CustomGeneSets*
 RNASeq_test.py
 ExpressionBuilder_custom.py
 AltDatabase/primer3/temporary-files*

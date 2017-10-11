@@ -82,10 +82,14 @@ if 'GO_Elite?' in application_path:
     application_path = string.replace(application_path,'\\','/') ### If /// present
     application_path = string.split(application_path,'GO_Elite?')[0]
 
+for py2app_dir in py2app_dirs:
+    application_path = string.replace(application_path,py2app_dir,'')
+    
 def filepath(filename):
     altDatabaseCheck = True
     #dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
     dir = application_path
+
     if filename== '':  ### Windows will actually recognize '' as the AltAnalyze root in certain situations but not others
         fn = dir
     elif ':' in filename:
@@ -94,7 +98,10 @@ def filepath(filename):
         try: dir_list = os.listdir(filename); fn = filename ### test to see if the path can be found (then it is the full path)
         except Exception:
             fn=os.path.join(dir,filename)
+            #print 'dir:',dir
+
             fileExists = os.path.isfile(fn)
+            #print 'filename:',filename, fileExists
             """"When AltAnalyze installed through pypi - AltDatabase and possibly Config in user-directory """
             if ('Config' in fn):
                 if fileExists == False:
@@ -124,6 +131,7 @@ def filepath(filename):
     fn = string.replace(fn,'.txt.txt','.txt')
     fn = string.replace(fn,'//','/')
     fn = string.replace(fn,'//','/') ### If /// present
+    #print fn
     return fn
 
 def read_directory(sub_dir):
@@ -141,6 +149,7 @@ def read_directory(sub_dir):
             dir_list = os.listdir(dir+sub_dir)
     try: dir_list.remove('.DS_Store') ### This is needed on a mac
     except Exception: null=[]
+    #print dir, sub_dir
     return dir_list
     
 def returnDirectories(sub_dir):

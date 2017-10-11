@@ -2348,6 +2348,18 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
     ids = [gene]
     query = "select uid, sequence from ExonSeq where gene = ?"
     uid_sequence_list = SQLInterface.retreiveDatabaseFields(conn,ids,query)
+    
+    ex1,ex2 = string.split(exclusion_junction,'-')
+    ex1b,ex2b = string.split(inclusion_junction,'-')
+
+    exon_seq_db={}
+    for (uid1,seq) in uid_sequence_list:
+        exon_seq_db[uid1] = seq
+    print '('+ex1+')'+exon_seq_db[gene+':'+ex1]
+    print '('+ex2+')'+exon_seq_db[gene+':'+ex2]
+    print '('+ex1b+')'+exon_seq_db[gene+':'+ex1b]
+    print '('+ex2b+')'+exon_seq_db[gene+':'+ex2b]
+    
     if print_outs == True:
         #"""
         for (uid1,seq) in uid_sequence_list:
@@ -2365,7 +2377,6 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
     except Exception:
         mRNA2_s = string.replace(exclusion_junction,'-','|')
     
-    ex1,ex2 = string.split(exclusion_junction,'-')
     print ex1,ex2,[mRNA1_s],[mRNA2_s]
     if mRNA1_s != None:
         ex1_pos = string.find(mRNA1_s,ex1+'|') ### This is the location in the string where the exclusion junctions starts
@@ -2594,10 +2605,14 @@ def importComparisonSplicingData4Primers(filename,species):
                         else:
                             j1, j2 = string.split(string.split(junctions,'|')[0],' vs. ')
                         #(-)alt-C-terminus,(-)AA:188(ENSP00000397452)->238(ENSP00000410667),(-)microRNA-target(hsa-miR-599:miRanda,hsa-miR-186:miRanda)
-                        iso1, iso2 = string.split(string.split(isoforms,'AA:')[1],')->')
-                        iso1 = string.split(iso1,'(')[1]
-                        iso2 = string.split(string.split(iso2,'(')[1],')')[0]
-                        print iso1, iso2 
+                        try:
+                            iso1, iso2 = string.split(string.split(isoforms,'AA:')[1],')->')
+                            iso1 = string.split(iso1,'(')[1]
+                            iso2 = string.split(string.split(iso2,'(')[1],')')[0]
+                            #print iso1, iso2
+                        except:
+                            iso1 = ''
+                            iso2 = ''
                         #print j1, j2
                         #print symbol
                         try:

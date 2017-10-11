@@ -3710,7 +3710,10 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             original_rowid = row_id
             symbol=row_id
             new_symbol = symbol
-            if ':' in row_id and '|' not in row_id:
+            rigorous_search = True
+            if ':' in row_id and '|' in row_id:
+                rigorous_search = False
+            elif ':' in row_id and '|' not in row_id:
                 a,b = string.split(row_id,':')[:2]
                 if 'ENS' in a or len(a)==17:
                     try:
@@ -3723,21 +3726,27 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
                 elif 'ENS' in b:
                     symbol = original_rowid
                     row_id = a
-            try: row_id,symbol = string.split(row_id,' ')[:2] ### standard ID convention is ID space symbol
-            except Exception:
-                try: symbol = gene_to_symbol[row_id][0]
+            if rigorous_search:
+                try: row_id,symbol = string.split(row_id,' ')[:2] ### standard ID convention is ID space symbol
                 except Exception:
-                    if 'ENS' not in original_rowid:
-                        row_id, symbol = row_id, row_id
-                new_symbol = symbol
-            if 'ENS' not in original_rowid and len(original_rowid)!=17:
-                if original_rowid != symbol:
-                    symbol = original_rowid+' '+symbol
-            for gene in targetGenes:
-                if string.lower(gene) == string.lower(row_id) or string.lower(gene) == string.lower(symbol) or string.lower(original_rowid)==string.lower(gene) or string.lower(gene) == string.lower(new_symbol):
-                    matrix2.append(matrix[i]) ### Values for the row
-                    row_header2.append(symbol)
-                    matrix_db[symbol]=matrix[i]
+                    try: symbol = gene_to_symbol[row_id][0]
+                    except Exception:
+                        if 'ENS' not in original_rowid:
+                            row_id, symbol = row_id, row_id
+                    new_symbol = symbol
+                if 'ENS' not in original_rowid and len(original_rowid)!=17:
+                    if original_rowid != symbol:
+                        symbol = original_rowid+' '+symbol
+                for gene in targetGenes:
+                    if string.lower(gene) == string.lower(row_id) or string.lower(gene) == string.lower(symbol) or string.lower(original_rowid)==string.lower(gene) or string.lower(gene) == string.lower(new_symbol):
+                        matrix2.append(matrix[i]) ### Values for the row
+                        row_header2.append(symbol)
+                        matrix_db[symbol]=matrix[i]
+            else:
+                if row_id in targetGenes:
+                    matrix2.append(matrix[i])
+                    row_header2.append(row_id)
+                    matrix_db[row_id]=matrix[i]
             i+=1
         i=0
         #for gene in targetGenes:

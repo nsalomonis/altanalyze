@@ -382,7 +382,7 @@ class StatusWindow:
             else:
                 root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.1.0')
+            root.title('AltAnalyze version 2.1.1')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 300; width = 700

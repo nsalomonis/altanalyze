@@ -7,11 +7,16 @@ Cytoscape*
 *tests/demo_data*
 Config/R*
 *.log
+input*
+output*
+build/*
+dist*
 .DS_Store
 .DS_Store?
 ArchiveDBs*
 BuildDBs*
 GPML*
+CustomGeneSets*
 RNASeq_test.py
 ExpressionBuilder_custom.py
 AltDatabase/primer3/temporary-files*

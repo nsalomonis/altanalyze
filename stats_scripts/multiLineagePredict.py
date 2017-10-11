@@ -251,7 +251,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
 
     scoreMean = numpy.mean(scores)
     scoreSD = numpy.std(scores)
-    oneSD = scoreMean+scoreSD
+    oneSD = scoreMean
     twoSD = scoreMean+scoreSD+scoreSD
     oneStandDeviationAway={}
     twoStandDeviationsAway={}

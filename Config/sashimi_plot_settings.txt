@@ -1,6 +1,6 @@
 [data]
-bam_prefix = /Volumes/SEQ-DATA/Dan_TRAF6/replicates/
-bam_files =["DS1_AGTTCC_L004_R1.bam","DS4_GTCCGC_L004_R1.bam","DS5_GTGGCC_L004_R1.bam","DS3_CCGTCC_L004_R1.bam","DS9_CGATGT_L005_R1.bam","DS8_ATCACG_L005_R1.bam","DS7_CGATGT_L004_R1.bam","DS6_CGTACG_L004_R1.bam"]
+bam_prefix = /Volumes/salomonis2/Ashish_kumar-Run1985/Leucegene-results-AshishKumar
+bam_files =["64-3.bam","64-2.bam","64-1.bam","NT-3.bam","NT-1.bam","NT-2.bam"]
 
 [plotting]
 fig_width = 7 
@@ -19,7 +19,7 @@ number_junctions = True
 resolution = .5 
 posterior_bins = 40 
 gene_posterior_ratio = 5 
-colors =["red","red","red","red","blue","blue","blue","blue"]
-coverages =[45279268,44257357,53184692,42334979,55937287,48111474,64705589,65749986]
+colors =["red","red","red","blue","blue","blue"]
+coverages =[693665,987691,1467992,793685,1372525,907086]
 bar_color = "b" 
 bf_thresholds = [0, 1, 2, 5, 10, 20]
