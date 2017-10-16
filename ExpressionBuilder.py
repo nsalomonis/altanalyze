@@ -3075,7 +3075,12 @@ def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_
     else: avg_all_for_SS = 'no'
     agglomerate_inclusion_probesets = 'no'
     probeset_type = 'core'
-    from build_scripts import JunctionArray; import AltAnalyze
+    try:from build_scripts import JunctionArray
+    except:
+        try: import JunctionArray
+        except: pass
+    try: import AltAnalyze
+    except: pass
     buildFromDeNovoJunctionsOnly=True
     if buildFromDeNovoJunctionsOnly and platform=='RNASeq':
         alt_junction_db={}

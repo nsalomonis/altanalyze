@@ -633,7 +633,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 else: color = 'black'
             except Exception: pass
             if len(row_header)<106: ### Don't visualize gene associations when more than 100 rows
-                if display_label_names == False:
+                if display_label_names == False or 'ticks' in justShowTheseIDs:
                     if color=='red':
                         axm.text(x.shape[1]-0.5, i-radj, '  '+'-',fontsize=row_fontsize, color=color, picker=True)
                     else:
@@ -648,7 +648,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 else: color = 'black'
             except Exception: pass
             if len(row_header)<106: ### Don't visualize gene associations when more than 100 rows
-                if display_label_names == False:
+                if display_label_names == False or 'ticks' in justShowTheseIDs:
                     if color=='red':
                         axm.text(x.shape[1]-0.5, i-radj, '  '+'-',fontsize=row_fontsize, color=color, picker=True)
                     else:
@@ -687,14 +687,14 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in top_genes) or original_feature_id in justShowTheseIDs:
                     if original_feature_id in justShowTheseIDs:
                         feature_id = original_feature_id
-                    if display_label_names:
+                    if display_label_names and 'ticks' not in justShowTheseIDs:
                         axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                     else:
                         axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                 elif ' ' in row_header[new_index]:
                     symbol = string.split(row_header[new_index], ' ')[-1]
                     if symbol in justShowTheseIDs:
-                        if display_label_names:
+                        if display_label_names and 'ticks' not in justShowTheseIDs:
                             axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
                         else:
                             axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True)
@@ -2051,6 +2051,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         else:
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                cm = matplotlib.colors.ListedColormap(['w', 'k'])
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -2429,6 +2430,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         else:
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                cm = matplotlib.colors.ListedColormap(['w', 'k'])
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -2921,6 +2923,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
         else:
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
+                cm = matplotlib.colors.ListedColormap(['w', 'k'])
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:

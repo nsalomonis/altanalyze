@@ -5750,17 +5750,23 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                 if 'exp.' in file and 'steady-state' not in file:
                     fl.setExpFile(fl.RootDir()+'ExpressionInput/'+file)
                     #print [fl.RootDir()+'ExpressionInput/'+file]
+                if 'groups.' in file:
+                    fl.setGroupsFile(search_dir+'/'+file)
       except Exception:
             search_dir = fl.RootDir()+'/ExpressionInput'
             files = unique.read_directory(fl.RootDir()+'/ExpressionInput')
             for file in files:
                 if 'exp.' in file and 'steady-state.txt' not in file:
                     fl.setExpFile(search_dir+'/'+file)
+                if 'groups.' in file:
+                    fl.setGroupsFile(search_dir+'/'+file)
       try:
           #"""
           try:
+             #"""
              graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
                     species,array_type,expFile=fl.CountsFile(),min_events=1,med_events=1)
+             #"""
              from import_scripts import AugmentEventAnnotations
              psi_annotated = AugmentEventAnnotations.parse_junctionfiles(fl.RootDir()+'/AltResults/AlternativeOutput/',species,array_type) ### Added in 2.1.1 - adds cassette and domains annotations
           except Exception:
@@ -5779,10 +5785,11 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     else:
                         use_adjusted_pval = False
                     try:
-                        metaDataAnalysis.remoteAnalysis(species,psi_annotated,groups_file,
+                        metaDataAnalysis.remoteAnalysis(species,psi_annotated,fl.GroupsFile(),
                                 platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=use_adjusted_pval,
                                 pvalThreshold=ge_pvalue_cutoffs)
-                    except Exception: pass
+                    except Exception:
+                        print traceback.format_exc()
                 else:
                     matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
                     matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
