@@ -68,7 +68,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
                 except Exception:
                     gene,symbol,rho,rho_p,ICGS_State = string.split(data,'\t')
                 #if ICGS_State!=state and float(rho)>0.0:
-                if float(rho)>0.3:
+                if float(rho)>0.4:
                     try: ICGS_State_ranked[ICGS_State].append([float(rho),gene,symbol])
                     except Exception: ICGS_State_ranked[ICGS_State] = [[float(rho),gene,symbol]]
 
@@ -92,6 +92,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
     ### Determine for each gene, its population frequency per cell state
     index=0
     expressedGenesPerState={}
+    stateAssociatedMarkers={}
     
     def freqCutoff(x,cutoff):
         if x>cutoff: return 1 ### minimum expression cutoff
@@ -121,7 +122,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
             state_frq = ICGS_state_gene_frq[State]
             rank = all_states_frq.index(state_frq)
             if state_frq > 0.25 and rank>0: #and states_expressed<0.75 #and all_cells_frq>0.75
-                if 'Rik' not in gene and 'Gm' not in gene:
+                if 'Rik' not in gene and 'Gm' not in gene and '-' not in gene:
                     if gene in markerFinderGenes:# and gene in markerFinderGenes:
                         if ICGS_State_as_Row:
                             ICGS_State = signatureGenes[gene]
@@ -133,10 +134,26 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
                             score = int(rho*100*state_frq)*(float(rank)/len(all_states_frq))
                             try: expressedGenesPerState[ICGS_State].append((score,gene))
                             except Exception: expressedGenesPerState[ICGS_State]=[(score,gene)] #(rank*multilin_frq)
+                            try: stateAssociatedMarkers[gene,ICGS_State].append(State)
+                            except Exception: stateAssociatedMarkers[gene,ICGS_State] = [State]
         index+=1
 
     if query!=None:
         matrix, column_header, row_header, dataset_name, group_db = importQueryDataset(query)
+    
+    markers_to_exclude=[]
+    expressedGenesPerState2={}
+    for (gene,ICGS_State) in stateAssociatedMarkers:
+        if len(stateAssociatedMarkers[(gene,ICGS_State)])<2: # or len(stateAssociatedMarkers[(gene,ICGS_State)])>len(ICGS_state_gene_frq)/2.0:
+            markers_to_exclude.append(gene)
+        else:
+            print ICGS_State, gene, stateAssociatedMarkers[(gene,ICGS_State)]
+    for ICGS_State in expressedGenesPerState:
+        for (score,gene) in expressedGenesPerState[ICGS_State]:
+            if gene not in markers_to_exclude:
+                try: expressedGenesPerState2[ICGS_State].append((score,gene))
+                except Exception: expressedGenesPerState2[ICGS_State] = [(score,gene)]
+    expressedGenesPerState = expressedGenesPerState2
         
     createPseudoCell=True
     ### The expressedGenesPerState defines genes and modules co-expressed in the multi-Lin
@@ -251,7 +268,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
 
     scoreMean = numpy.mean(scores)
     scoreSD = numpy.std(scores)
-    oneSD = scoreMean
+    oneSD = scoreMean+scoreSD
     twoSD = scoreMean+scoreSD+scoreSD
     oneStandDeviationAway={}
     twoStandDeviationsAway={}
@@ -327,10 +344,14 @@ def calculateGeneExpressProbilities(values, useZ=False):
 if __name__ == '__main__':
     #query_dataset = '/Users/saljh8/Desktop/Old Mac/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
     all_tpm = '/Users/saljh8/Desktop/Old Mac/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
-    markerfinder = '/Users/saljh8/Desktop/Old Mac/Desktop//demo/BoneMarrow/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
+    markerfinder = '/Users/saljh8/Desktop/Old Mac/Desktop/demo/BoneMarrow/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
     signature_genes = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/KashishNormalization/test/Panorama.txt'
     state = 'DC'
 
+    all_tpm = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/exp.Guide3-cellHarmony-revised.txt'
+    #markerfinder = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
+    signature_genes = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/KashishNormalization/test/Panorama.txt'
+    
     query_dataset = None
     query_dataset = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/exp.NaturePan-PreGM-CD150-.txt'
     query_dataset = None

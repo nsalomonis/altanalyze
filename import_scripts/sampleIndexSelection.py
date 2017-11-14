@@ -25,6 +25,7 @@ def filterFile(input_file,output_file,filter_names,force=False):
         else:
             values = string.split(data,'\t')
         if firstLine:
+            uid_index = 0
             if data[0]!='#':
                 if force:
                     filter_names2=[]
@@ -34,6 +35,8 @@ def filterFile(input_file,output_file,filter_names,force=False):
                 sample_index_list = map(lambda x: values.index(x), filter_names)
                 firstLine = False   
                 header = values
+            if 'PSI_EventAnnotation' in input_file:
+                uid_index = values.index('UID')
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
         except Exception:
             ### For PSI files with missing values at the end of each line, often
@@ -43,7 +46,7 @@ def filterFile(input_file,output_file,filter_names,force=False):
             filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
             #print values[0]; print sample_index_list; print values; print len(values); print len(prior_values);kill
         prior_values=values
-        export_object.write(string.join([values[0]]+filtered_values,'\t')+'\n')
+        export_object.write(string.join([values[uid_index]]+filtered_values,'\t')+'\n')
     export_object.close()
     print 'Filtered columns printed to:',output_file
     return output_file

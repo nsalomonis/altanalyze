@@ -566,8 +566,8 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Users/saljh8/Desktop/Grimes/GEC14074/'
-    events = ['ENSMUSG00000000171:I2.1-E3.1']
+    root_dir = '/Volumes/salomonis2/Starczynowski_TRAF6_KO/bams/'
+    events = ['ENSMUSG00000029687:E14.1-E17.1']
     #events = None
     eventsToVisualizeFilename = None
     #eventsToVisualizeFilename = '/Volumes/salomonis2/Ichi_data/bams/AltResults/AlternativeOutput/top50/top_pvalue.txt'

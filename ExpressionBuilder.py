@@ -3087,7 +3087,7 @@ def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_
     else:
         exon_db, constitutive_probeset_db = AltAnalyze.importSplicingAnnotations(platform,species,probeset_type,avg_all_for_SS,root_dir)
         alt_junction_db,critical_exon_db,exon_dbase,exon_inclusion_db,exon_db = JunctionArray.getPutativeSpliceEvents(species,platform,exon_db,agglomerate_inclusion_probesets,root_dir)
-    print 'Number of Genes with Examined Splice Events:',len(alt_junction_db)
+    #print 'Number of Genes with Examined Splice Events:',len(alt_junction_db)
     
     if platform == 'junction':
         global probeset_junction_db; probeset_junction_db={}

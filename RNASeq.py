@@ -5039,13 +5039,13 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     co = export.ExportFile(root_dir+'/ExpressionInput/counts.'+dataset_name+'.txt')
     so = export.ExportFile(root_dir+'/ExpressionInput/summary.'+dataset_name+'.txt')
     exportMatrix(to,headers,expMatrix) ### Export transcript expression matrix
-    exportMatrix(ico,headers,countMatrix) ### Export transcript count matrix
+    exportMatrix(ico,headers,countMatrix,counts=True) ### Export transcript count matrix
     
     try:
         geneMatrix = calculateGeneTPMs(species,expMatrix) ### calculate combined gene level TPMs
         countsGeneMatrix = calculateGeneTPMs(species,countMatrix) ### calculate combined gene level TPMs
         exportMatrix(go,headers,geneMatrix) ### export gene expression matrix
-        exportMatrix(co,headers,countsGeneMatrix) ### export gene expression matrix
+        exportMatrix(co,headers,countsGeneMatrix,counts=True) ### export gene expression matrix
     except Exception: 
         print 'AltAnalyze was unable to summarize gene TPMs from transcripts, proceeding with transcripts.'
         export.copyFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt',root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
@@ -5099,10 +5099,13 @@ def calculateGeneTPMs(species,expMatrix):
         print "NOTE: No valid transcript-gene associations available... proceeding with Transcript IDs rather than gene."
         return expMatrix
     
-def exportMatrix(eo,headers,matrix):
+def exportMatrix(eo,headers,matrix,counts=False):
     eo.write(string.join(headers,'\t')+'\n')
     for gene in matrix:
-        eo.write(string.join([gene]+matrix[gene],'\t')+'\n')
+        values = matrix[gene]
+        if counts:
+            values = map(str,map(int,map(float,values)))
+        eo.write(string.join([gene]+values,'\t')+'\n')
     eo.close()
 
 def importTPMs(sample,input_path,expMatrix,countMatrix,countSampleMatrix):
@@ -5266,7 +5269,7 @@ if __name__ == '__main__':
                     ColumnMethod=column_method, transpose=True, includeMoreCells=True)
     """
 
-    results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
+    results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
     correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
     sys.exit()
     correlateClusteredGenes('exons',results_file,stringency='strict',rhoCutOff=0.6);sys.exit()
@@ -5317,7 +5320,7 @@ if __name__ == '__main__':
     expFile = '/Users/saljh8/Desktop/dataAnalysis/Mm_Kiddney_tubual/ExpressionInput/exp.E15.5_Adult_IRI Data-output.txt'
     expFile = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/temp/C4Meth450-filtered-SC-3_regulated.txt'
     expFile = '/Volumes/SEQ-DATA/Grimeslab/TopHat/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust-filter.txt'
-    expFile = '/Users/saljh8/Documents/Leucegene_TargetPSIFiles/exp.TArget_psi_noif_uncorr_03-50missing-12high.txt'
+    expFile = '/Users/saljh8/Documents/L_TargetPSIFiles/exp.TArget_psi_noif_uncorr_03-50missing-12high.txt'
     expFile = '/Volumes/BOZEMAN2015/Hs_RNASeq_top_alt_junctions-PSI-clust-filter.txt'
 
     singleCellRNASeqWorkflow('Hs', "exons", expFile, mlp, exp_threshold=0, rpkm_threshold=0, parameters=gsp);sys.exit()

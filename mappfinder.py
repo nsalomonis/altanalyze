@@ -735,7 +735,7 @@ def formatHeaders(gene_file,input_count,input_linked,denom_count,denom_linked,R,
     header_str = string.join(headers,'\n')
     return header_str+'\n'
                                                                
-def exportPathwayData(original_pathway_z_score_data,gene_file,headers,resource_name,pathway_type):
+def exportPathwayData(original_pathway_z_score_data,gene_file,headers,resource_name,pathway_type,altOutputDir=None):
     if resource_name == 'GeneOntology': resource_name = 'GO' ### Makes the output filename compatible with GenMAPP-CS plugin filenames
     if resource_name == 'WikiPathways': resource_name = 'local' ### Makes the output filename compatible with GenMAPP-CS plugin filenames
     new_file = mappfinder_output_dir+'/'+gene_file[:-4]+'-'+resource_name+'.txt'
@@ -785,6 +785,8 @@ class ZScoreData:
     def PermuteP(self): return str(self._permute_p)
     def SetAdjP(self,adjp): self._adj_p = adjp
     def AdjP(self): return str(self._adj_p)
+    def setAssociatedIDs(self,ids): self.ids = ids
+    def AssociatedIDs(self): return self.ids
     def PercentChanged(self):
         try: pc = float(self.Changed())/float(self.Measured())*100
         except Exception: pc = 0

@@ -19,7 +19,7 @@
 #import matplotlib
 #matplotlib.use('GTKAgg')
 
-import sys,string,os
+import sys,string,os,copy
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 command_args = string.join(sys.argv,' ')
@@ -489,12 +489,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             column_fontsize = 10
         if len(justShowTheseIDs)>0:
             additional_symbols=[]
-            import gene_associations, OBO_import
+            import gene_associations
             try:
                 gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
-                #symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
             except Exception: gene_to_symbol={}; symbol_to_gene={}
-    except Exception: pass
+        JustShowTheseIDs = copy.deepcopy(justShowTheseIDs)
+    except Exception:
+        JustShowTheseIDs=[]
 
     # Add text
     new_row_header=[]
@@ -531,7 +532,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     try:
         try:
             temp1=len(justShowTheseIDs)
-            if 'monocle' in justShowTheseIDs and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
+            if 'monocle' in justShowTheseIDs and ('guide' not in justShowTheseIDs):
                 import R_interface
                 print 'Running Monocle through R (be patient, this can take 20 minutes+)'
                 R_interface.performMonocleAnalysisFromHeatmap(species,cdt_file[:-3]+'txt',cdt_file[:-3]+'txt')
@@ -547,7 +548,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     cluster_elite_terms={}; ge_fontsize=11.5; top_genes=[]; proceed=True
     try:
         try:
-            if 'driver' in justShowTheseIDs or 'guide' in justShowTheseIDs: proceed = False
+            if 'guide' in justShowTheseIDs: proceed = False
         except Exception: pass
         if proceed:
             try:
@@ -625,15 +626,16 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             increment=0
         #print cluster,i,row_header[idx1[i]]
         color = 'black'
+        
         if row_method != None:
             try:
-                if row_header[idx1[i]] in justShowTheseIDs:
+                if row_header[idx1[i]] in JustShowTheseIDs:
                     if len(row_header)>len(justShowTheseIDs):
                         color = 'red'
                 else: color = 'black'
             except Exception: pass
             if len(row_header)<106: ### Don't visualize gene associations when more than 100 rows
-                if display_label_names == False or 'ticks' in justShowTheseIDs:
+                if display_label_names == False or 'ticks' in JustShowTheseIDs:
                     if color=='red':
                         axm.text(x.shape[1]-0.5, i-radj, '  '+'-',fontsize=row_fontsize, color=color, picker=True)
                     else:
@@ -644,11 +646,11 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             new_index = idx1[i]
         else:
             try:
-                if row_header[i] in justShowTheseIDs: color = 'red'
+                if row_header[i] in JustShowTheseIDs: color = 'red'
                 else: color = 'black'
             except Exception: pass
             if len(row_header)<106: ### Don't visualize gene associations when more than 100 rows
-                if display_label_names == False or 'ticks' in justShowTheseIDs:
+                if display_label_names == False or 'ticks' in JustShowTheseIDs:
                     if color=='red':
                         axm.text(x.shape[1]-0.5, i-radj, '  '+'-',fontsize=row_fontsize, color=color, picker=True)
                     else:
@@ -680,7 +682,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if (' ' in feature_id and ('ENS' in feature_id or 'G0000' in feature_id)):
                 feature_id = string.split(feature_id,' ')[1]
             try:
-                if feature_id in justShowTheseIDs or original_feature_id in justShowTheseIDs: color = 'red'
+                if feature_id in JustShowTheseIDs or original_feature_id in JustShowTheseIDs: color = 'red'
                 else: color = 'black'
             except Exception: pass
             try:
@@ -852,6 +854,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
             elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                #cmap_c = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18'])
                 #cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w'])
@@ -894,6 +897,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                         cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
                     elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                        #cmap_c = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
                     elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
                     elif len(unique.unique(ind2_clust))==5: ### cmap_c is too few colors
@@ -924,6 +928,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_d = matplotlib.colors.ListedColormap(['w', 'k'])
             elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                #cmap_d = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
             elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
@@ -1029,7 +1034,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if display:
         proceed=True
         try:
-            if 'driver' in justShowTheseIDs or 'guide' in justShowTheseIDs:
+            if 'guide' in justShowTheseIDs:
                 proceed = False
         except Exception: pass
         if proceed:
@@ -1378,7 +1383,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     
     try:
         if storeGeneSetName != None:
-            if len(storeGeneSetName)>0 and ('driver' not in justShowTheseIDs and 'guide' not in justShowTheseIDs):
+            if len(storeGeneSetName)>0 and ('guide' not in justShowTheseIDs):
                 exportCustomGeneSet(storeGeneSetName,species,allGenes)
                 print 'Exported geneset to "StoredGeneSets"'
     except Exception: pass
@@ -2051,7 +2056,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         else:
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
-                cm = matplotlib.colors.ListedColormap(['w', 'k'])
+                #cm = matplotlib.colors.ListedColormap(['w', 'k']) ### If you want to hide one of the groups
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -3502,7 +3507,7 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
     #"""
     #graphic_link = [root_dir+'Clustering-exp.myeloid-steady-state-amplify positive Mki67 Clec4a2 Gria3 Ifitm6 Gfi1b -hierarchical_cosine_cosine.txt']
 
-    if 'driver' in targetGene or 'guide' in targetGene:
+    if 'guide' in targetGene:
         import RNASeq
         input_file = graphic_link[-1][-1][:-4]+'.txt'
         if 'excludeCellCycle' in targetGene: excludeCellCycle = True
@@ -4041,6 +4046,7 @@ def runHCOnly(filename,graphics,Normalize=False):
     global storeGeneSetName
     targetGene=[]
     filterByPathways=False
+    justShowTheseIDs=[]
     ###############
     
     graphic_link=graphics ### Store all locations of pngs
@@ -5988,7 +5994,7 @@ def filterPSIValues(filename):
     header = True
     rows=0
     filtered=0
-    new_file = filename[:-4]+'-99p.txt'
+    new_file = filename[:-4]+'-75p.txt'
     new_file_clust = new_file[:-4]+'-clustID.txt'
     ea = export.ExportFile(new_file)
     eac = export.ExportFile(new_file_clust)
@@ -6000,7 +6006,7 @@ def filterPSIValues(filename):
             header = False
             t = [t[1]]+t[8:]
             header_length = len(t)-1
-            minimum_values_present = int(header_length)-1
+            minimum_values_present = int(0.75*int(header_length))
             not_detected = header_length-minimum_values_present
             new_line = string.join(t,'\t')+'\n'
             ea.write(new_line)
@@ -6020,7 +6026,7 @@ def filterPSIValues(filename):
     print rows, filtered
     ea.close()
     eac.close()
-    removeRedundantCluster(new_file,new_file_clust)
+    #removeRedundantCluster(new_file,new_file_clust)
 
 def removeRedundantCluster(filename,clusterID_file):
     from scipy import stats
@@ -6130,7 +6136,35 @@ def convertToGOElite(folder):
                     else: up_count+=1
             ea.close()
             print file,'\t',gene_count,'\t',up_count,'\t',down_count
-
+            
+def geneExpressionSummary(folder):
+    import collections
+    event_db = collections.OrderedDict()
+    groups_list=['']
+    files = UI.read_directory(folder)
+    for file in files:
+        if '.txt' in file and 'GE.' in file:
+            ls=[]
+            event_db[file[:-4]]=ls
+            groups_list.append(file[:-4])
+            fn = folder+'/'+file
+            firstLine = True
+            for line in open(fn,'rU').xreadlines():
+                data = line.rstrip()
+                t = string.split(data,'\t')
+                if firstLine:
+                    fold_index = t.index('LogFold')
+                    firstLine= False
+                    continue
+                uid = t[0]
+                if float(t[fold_index])>0:
+                    fold_dir = 1
+                else:
+                    fold_dir = -1
+                ls.append((uid,fold_dir))
+    for file in event_db:
+        print file,'\t',len(event_db[file])
+                    
 def compareEventLists(folder):
     import collections
     event_db = collections.OrderedDict()
@@ -6144,16 +6178,18 @@ def compareEventLists(folder):
             fn = folder+'/'+file
             firstLine = True
             for line in open(fn,'rU').xreadlines():
-                if firstLine:
-                    firstLine= False
-                    continue
                 data = line.rstrip()
                 t = string.split(data,'\t')
+                if firstLine:
+                    event_index = t.index('Event-Direction')
+                    firstLine= False
+                    continue
+                uid = t[0]
                 if 'U2AF1-like' in file:
                     if t[1] == "inclusion":
-                        ls.append((t[0],t[1]))
+                        ls.append((uid,t[event_index]))
                 else:
-                    ls.append((t[0],t[1]))
+                    ls.append((uid,t[event_index]))
 
     def convertEvents(events):
         opposite_events=[]
@@ -6205,7 +6241,11 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
     for line in open(sample_order,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        samples.append(t[0])
+        if 'row_clusters-flat' in t:
+            samples = t[2:]
+            break
+        else:
+            samples.append(t[0])
         
     ### Import a groups file
     sample_groups = {}
@@ -6224,15 +6264,16 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
     eo.close()
     
 if __name__ == '__main__':
-    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/CellHarmonyReference/groups.all-wt-R412X.txt'
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/exp.Guide3-cellHarmony-reference__R412X-GMP-ReOrdered-order.txt'
+    #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/Kallisto/Events-LogFold_1.0_adjp');sys.exit()
+    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/ExpressionInput/CellSortedPopulations.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/InitiallyExcluded/exp.Guide3-cellHarmony-reference__initiallyExcluded-ReOrdered.txt'
     #convertGroupsToBinaryMatrix(a,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
-    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Knockdowns/Events-dPSI_0.1_rawp');sys.exit()
-    #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()
+    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Events-dPSI_0.1_adjp');sys.exit()
+    filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()
@@ -6314,6 +6355,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionInput/symbols.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -6324,11 +6367,13 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/Grimes/All-Fluidigm/ExpressionInput/exp.Lsk_panorama.txt'
     filename = '/Users/saljh8/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
     filename = '/Users/saljh8/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/exp.Guide3_NatureDefaults.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Harinder/scRNASeq_Mm-Plasma/PCA-loading/ExpressionInput/exp.PCA-Symbol.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.Fluidigm-log2-NearestNeighbor-800.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.10X-log2-NearestNeighbor.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/exp.supervised.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-ICGS.txt'
+
     
     print genesets
     for gene_list in genesets:

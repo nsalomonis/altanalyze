@@ -22,6 +22,7 @@ and reading the propper Ensembl database version to allow for version specific a
 
 import sys, string
 import os.path, platform
+import traceback
 import unique ### Import itself as a reference to it's location
 from os.path import expanduser
 userHomeDir = expanduser("~")+'/altanalyze/'
@@ -131,7 +132,6 @@ def filepath(filename):
     fn = string.replace(fn,'.txt.txt','.txt')
     fn = string.replace(fn,'//','/')
     fn = string.replace(fn,'//','/') ### If /// present
-    #print fn
     return fn
 
 def read_directory(sub_dir):

@@ -4597,7 +4597,7 @@ class SummaryResultsWindow:
                         try: self.ShowImageMPL(self.LINKS[idx]) ### MatPlotLib based dispaly
                         except Exception:
                             self.openPNGImage(self.LINKS[idx]) ### Native OS PNG viewer
-                            #self.DisplayPlots(self.LINKS[idx]) ### GIF based dispaly
+                            #self.DisplayPlots(self.LINKS[idx]) ### GIF based display
             except Exception:
                 null=[] ### anomalous error
 
@@ -5659,11 +5659,11 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           print "WARNING!!!! Invalid gene expression fold cutoff entered,\nusing the default value of 2, must be greater than 1."
       log_fold_cutoff = math.log(float(gene_expression_cutoff),2)
     
-      if analysis_method != 'ASPIRE' and analysis_method != 'none':
+      if analysis_method != 'ASPIRE' and analysis_method != 'none' and analysis_method != 'MultiPath-PSI':
           if p_threshold <= 0 or p_threshold >1:
               p_threshold = 0.05 ### A number less than one is invalid
               print "WARNING!!!! Invalid alternative exon p-value threshold entered,\nusing the default value of 0.05."              
-          if alt_exon_fold_variable<1:
+          if alt_exon_fold_variable<1: 
               alt_exon_fold_variable = 1 ### A number less than one is invalid
               print "WARNING!!!! Invalid alternative exon fold cutoff entered,\nusing the default value of 2, must be greater than 1."
           try: alt_exon_logfold_cutoff = math.log(float(alt_exon_fold_variable),2)
@@ -5699,7 +5699,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       else: probeset_annotations_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_Ensembl_probesets.txt'
 
       #"""
-      if analysis_method != 'none':
+      if analysis_method != 'none' and  analysis_method != 'MultiPath-PSI':
           analysis_summary = RunAltAnalyze() ### Only run if analysis methods is specified (only available for RNA-Seq and junction analyses)
       else: analysis_summary = None
 
@@ -5784,6 +5784,16 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                         use_adjusted_pval = True
                     else:
                         use_adjusted_pval = False
+                    try:
+                        log_fold_cutoff = float(alt_exon_fold_variable)
+                        if log_fold_cutoff == 0.1:
+                            log_fold_cutoff = 0.1 ### For significant digits
+                    except: log_fold_cutoff = 0.1
+                    try:
+                        if p_threshold <= 0 or p_threshold >1:
+                            pvalThreshold = 0.05 ### A number less than one is invalid
+                        else: pvalThreshold = p_threshold
+                    except: pvalThreshold = ge_pvalue_cutoffs ### Use the gene expression p-value cutoff if NA
                     try:
                         metaDataAnalysis.remoteAnalysis(species,psi_annotated,fl.GroupsFile(),
                                 platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=use_adjusted_pval,
@@ -6325,7 +6335,9 @@ def commandLineRun():
         elif opt == '--force': force=arg
         elif opt == '--input':
             arg = verifyPath(arg)
-            input_file_dir=arg; pipelineAnalysis = False ### If this option is entered, only perform the indicated analysis
+            input_file_dir=arg
+            #input_exp_file=arg
+            pipelineAnalysis = False ### If this option is entered, only perform the indicated analysis
         elif opt == '--image': image_export.append(arg)
         elif opt == '--wpid': wpid=arg
         elif opt == '--mod': mod=arg
@@ -6344,7 +6356,7 @@ def commandLineRun():
                 additional_resources.append(arg)
         elif opt == '--transpose':
             if arg == 'True': transpose = True
-        elif opt == '--runLineageProfiler': ###Variable declared here and later (independent analysis here or pipelined with other analyses later)
+        elif opt == '--runLineageProfiler' or opt == '--cellHarmony': ###Variable declared here and later (independent analysis here or pipelined with other analyses later)
             run_lineage_profiler=arg
         elif opt == '--compendiumType': ### protein-coding, ncRNA, or exon
             compendiumType=arg
@@ -7240,7 +7252,7 @@ def commandLineRun():
                             update.executeParameters(specific_species,platform_name,force,genomic_build,update_uniprot,update_ensembl,update_probeset_to_ensembl,update_domain,update_miRs,update_all,update_miR_seq,ensembl_version)
                         else: print 'ignoring',specific_species 
             sys.exit()
-            
+    
     if 'package' in update_method:
         ### Example: python AltAnalyze.py --update package --species all --platform all --version 65
         
@@ -7500,8 +7512,13 @@ def commandLineRun():
                     print "Setting output directory to the input path:", output_dir
             if output_dir == None and input_filtered_dir>0:
                 output_dir = input_filtered_dir
-            if '/' == output_dir[-1] or '\\' in output_dir[-2]: null=[]
-            else: output_dir +='/'
+            try:
+                if '/' == output_dir[-1] or '\\' in output_dir[-2]: null=[]
+                else: output_dir +='/'
+            except:
+                try: output_dir = export.findParentDir(input_file_dir)
+                except:
+                    output_dir = input_fastq_dir
             log_file = filepath(output_dir+'AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
             sys.stdout = Logger('')
@@ -7663,7 +7680,6 @@ def commandLineRun():
 
     array_type_original = array_type
     #if array_type == 'gene': array_type = "3'array"
-
     for opt, arg in options:
         if opt == '--runGOElite': run_GOElite=arg
         elif opt == '--outputQCPlots': visualize_qc_results=arg
@@ -7739,7 +7755,33 @@ def commandLineRun():
         returnPathways = None
     if pipelineAnalysis == False:
         proceed = 'yes'
-        
+    if len(input_fastq_dir)>0:
+        proceed = 'yes'
+        run_from_scratch = 'Process RNA-seq reads'
+        fl = UI.ExpressionFileLocationData('','','',''); fl.setFeatureNormalization('none')
+        try: root_dir = root_dir
+        except: root_dir = output_dir
+        try: fl.setExpFile(expFile)
+        except Exception:
+            expFile = root_dir+'/ExpressionInput/exp.'+exp_name+'.txt'
+            fl.setExpFile(expFile)
+
+        fl.setArrayType(array_type)
+        fl.setOutputDir(root_dir)
+        fl.setMultiThreading(multiThreading)
+        exp_file_location_db={}; exp_file_location_db[exp_name]=fl
+
+        ### Assign variables needed to run Kallisto from FASTQ files
+        if runKallisto and len(input_fastq_dir)==0:
+            #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --fastq_dir /Users/saljh8/Desktop/Grimes/GEC14074 
+            print 'Please include the flag "--fastq_dir" in the command-line arguments with an appropriate path';sys.exit()
+        elif len(input_fastq_dir)>0:
+            fl.setRunKallisto(input_fastq_dir)
+            fl.setArrayType("3'array")
+            array_type = "3'array"
+            if customFASTA!=None:
+                fl.setCustomFASTA(customFASTA)
+
     if proceed == 'yes':
         species_codes = UI.remoteSpeciesInfo()
         ### Update Ensembl Databases
@@ -7857,8 +7899,8 @@ def commandLineRun():
             status = UI.verifyLineageProfilerDatabases(species,'command-line')
             if status == False:
                 print 'Please note: LineageProfiler not currently supported for this species...'
-        
-        if run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and '--runLineageProfiler' in arguments:
+                
+        if run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and ('--runLineageProfiler' in arguments or '--cellHarmony' in arguments):
             #python AltAnalyze.py --input "/Users/arrays/test.txt" --runLineageProfiler yes --vendor Affymetrix --platform "3'array" --species Mm --output "/Users/nsalomonis/Merrill"
             #python AltAnalyze.py --input "/Users/qPCR/samples.txt" --runLineageProfiler yes --geneModel "/Users/qPCR/models.txt"
             if array_type==None:
@@ -7884,7 +7926,7 @@ def commandLineRun():
                 fl.setCompendiumPlatform(array_type)
                 try: expr_input_dir
                 except Exception: expr_input_dir = input_file_dir
-                UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize)
+                UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize) #,display=display
                 #graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,input_file_dir,array_type,species,manufacturer)
                 print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
                 print print_out
@@ -7935,7 +7977,7 @@ def commandLineRun():
                     print "Invalid expression threshold entered:",expression_threshold,'. Must be > 1'; sys.exit()
                 if p_threshold > 1 or p_threshold <= 0:
                     print "Invalid alternative exon p-value entered:",p_threshold,'. Must be > 0 and <= 1'; sys.exit()
-                if alt_exon_fold_variable < 1 and analysis_method != 'ASPIRE':
+                if alt_exon_fold_variable < 1 and analysis_method != 'ASPIRE' and analysis_method != 'MultiPath-PSI':
                     print "Invalid alternative exon threshold entered:",alt_exon_fold_variable,'. Must be > 1'; sys.exit()
                 if gene_expression_cutoff < 1:
                     print "Invalid gene expression threshold entered:",gene_expression_cutoff,'. Must be > 1'; sys.exit()
@@ -7957,9 +7999,13 @@ def commandLineRun():
             
         additional_algorithms = UI.AdditionalAlgorithms(additional_algorithms); additional_algorithms.setScore(additional_score)
         if array_type == 'RNASeq':
-            manufacturer = 'RNASeq'
-            if 'CEL' in run_from_scratch: run_from_scratch = 'Process RNA-seq reads'
-            if build_exon_bedfile == 'yes': run_from_scratch = 'buildExonExportFiles'
+            try:
+                if 'CEL' in run_from_scratch: run_from_scratch = 'Process RNA-seq reads'
+                if build_exon_bedfile == 'yes': run_from_scratch = 'buildExonExportFiles'
+                manufacturer = 'RNASeq'
+            except Exception:
+                ### When technically 3'array format
+                array_type = "3'array"
 
         if run_from_scratch == 'Process AltAnalyze filtered': expression_data_format = 'log' ### This is switched to log no matter what, after initial import and analysis of CEL or BED files
                   
@@ -7995,7 +8041,7 @@ def commandLineRun():
             fl.setMultiThreading(multiThreading)
             exp_file_location_db={}; exp_file_location_db[dataset_name]=fl; parent_dir = output_dir
             perform_alt_analysis = 'expression'
-             
+
         if run_from_scratch == 'Process Expression file':
             if len(input_exp_file)>0:
                 if groups_file != None and comps_file != None:
@@ -8035,7 +8081,7 @@ def commandLineRun():
             if ((groups_found != 'found' or comps_found != 'found') and analyze_all_conditions != 'all groups') or (analyze_all_conditions == 'all groups' and groups_found != 'found'):
                 files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
                 if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
-                elif run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and '--runLineageProfiler' in arguments: pass 
+                elif run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and ('--runLineageProfiler' in arguments or '--cellHarmony' in arguments): pass 
                 else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
             fl = UI.ExpressionFileLocationData(input_exp_file,input_stats_file,groups_file_dir,comps_file_dir)
             dataset_name = exp_name
@@ -8047,7 +8093,7 @@ def commandLineRun():
                 if len(group_db) == 2: analyze_all_conditions = 'pairwise'
             exp_file_location_db={}; exp_file_location_db[exp_name]=fl
             
-        elif run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or run_from_scratch == 'Process Feature Extraction files': 
+        elif run_from_scratch == 'Process CEL files' or run_from_scratch == 'Process RNA-seq reads' or run_from_scratch == 'Process Feature Extraction files':
             if groups_file != None and comps_file != None:
                 try: shutil.copyfile(groups_file, string.replace(exp_file_dir,'exp.','groups.'))
                 except Exception: print 'Groups file already present in target location OR bad input path.'
@@ -8060,7 +8106,7 @@ def commandLineRun():
             comps_found = verifyFile(comps_file_dir)
             if ((groups_found != 'found' or comps_found != 'found') and analyze_all_conditions != 'all groups') or (analyze_all_conditions == 'all groups' and groups_found != 'found'):
                 if mappedExonAnalysis: pass
-                else:
+                elif len(input_fastq_dir)<0: ### Don't check for FASTQ to allow for fast expression quantification even if groups not present
                     files_exported = UI.predictGroupsAndComps(cel_files,output_dir,exp_name)
                     if files_exported == 'yes': print "AltAnalyze inferred a groups and comps file from the CEL file names."
                     #else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()

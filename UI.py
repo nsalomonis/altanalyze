@@ -916,6 +916,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
         except Exception: None
     else:
         import LineageProfilerIterate
+        reload(LineageProfilerIterate)
         print '\n****Running LineageProfilerIterate****'
         codingtype = 'exon'; compendium_platform = 'exon'
         platform = array_type,vendor
@@ -2678,6 +2679,10 @@ class GUI:
                 try: self.entry_field2.setentry('2')
                 except Exception: pass
                 self._user_variables['alt_exon_fold_cutoff'] = '2'
+            elif tag == 'MultiPath-PSI':
+                try: self.entry_field2.setentry('0.1')
+                except Exception: pass
+                self._user_variables['alt_exon_fold_cutoff'] = '0.1'
         elif option == 'selected_version':
             current_species_names = db_versions[tag]
             current_species_names.sort()
@@ -2770,6 +2775,10 @@ class GUI:
                 try: self.entry_field2.setentry('2')
                 except Exception: pass
                 self._user_variables['alt_exon_fold_cutoff'] = '2'
+            elif tag == 'MultiPath-PSI':
+                try: self.entry_field2.setentry('0.1')
+                except Exception: pass
+                self._user_variables['alt_exon_fold_cutoff'] = '0.1'
         elif 'GeneSetSelection' in option or 'GeneSetSelectionPredict' in option:
             #print option,tag
             if 'network' in option: suffix='_network'

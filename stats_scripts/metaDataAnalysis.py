@@ -88,8 +88,8 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
         else:
             try:  covariateType =  values[covariateIndex]
             except Exception: covariateType = None
-
-            sampleID = values[uid_index] ### Must always be present
+            try: sampleID = values[uid_index] ### Must always be present
+            except: continue ### Typically caused by rows with no values or variable blank values
             if '.bed' in sampleID:
                 sampleID = string.replace(sampleID,'.bed','')
                 
@@ -167,7 +167,8 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
                     updated_samples.append(sample)
             #print len(updated_samples)
             groups[group_id] = updated_samples
-        groups_db[field] = covariateSamples[field]
+        if len(covariateSamples[field])>0:
+            groups_db[field] = covariateSamples[field]
     
     ### Determine comparisons
     for field in groups_db:
@@ -340,6 +341,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 g1_headers = map(lambda x: group1+':'+x,g1_headers)
                 g2_headers = map(lambda x: group2+':'+x,g2_headers)
                 eo.write(string.join(['UID']+g1_headers+g2_headers,'\t')+'\n')
+                #print (group1,group2),len(g1_headers),len(g2_headers)
                 header_db[(group1,group2)] = g1_headers, g2_headers
             index=0
             uid_header=0
@@ -362,7 +364,9 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 altexons = values[alt_exon_header]
                 protein_predictions = values[protein_prediction]
                 coordinates = values[coordinates_index]
-                event_annotation = values[event_annotation_index]
+                try: event_annotation = values[event_annotation_index]
+                except:
+                    continue ### Occurs with a filtered PSI value and no event annotation and anything follwoing
                 ps = PSIData(clusterID, altexons, event_annotation, protein_predictions, coordinates)
                 psi_annotations[uid]=ps
             group_expression_values={}
@@ -399,6 +403,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 data_list1 = group_expression_values[group1]
                 data_list2 = group_expression_values[group2]
                 combined = data_list1+data_list2
+                if g1_headers==0 or g2_headers==0:
+                    continue ### no samples matching the criterion
                 try: diff = max(combined)-min(combined) ### Is there any variance?
                 except Exception:
                     ### No PSI values for this splice-event and these groups
@@ -1277,7 +1283,8 @@ def exportGeneSetsFromCombined(filename):
         ro.close()
     aro.close()
 
-def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05):
+def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
+        log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05):
     global pval_threshold
     global PercentExp
     global restricted_gene_denominator
@@ -1291,7 +1298,10 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
     restricted_gene_denominator={}
     probability_statistic = 'moderated t-test'
     PercentExp = 0.5
-    CovariateQuery = 'Events'
+    if platform == 'PSI':
+        CovariateQuery = 'Events'
+    else:
+        CovariateQuery = 'DEGs'
     pval_threshold = pvalThreshold
     metadata_files = [groups_file]
     meta_description_file = None
@@ -1395,7 +1405,7 @@ if __name__ == '__main__':
     restricted_gene_denominator={}
     global_adjp_db={}
     splicingEventTypes={}
-    CovariateQuery = 'Events'
+    CovariateQuery = None
     log_fold_cutoff=None
     print sys.argv[1:]
     import getopt
@@ -1492,6 +1502,11 @@ if __name__ == '__main__':
             logfold_threshold=math.log(1,2)
         print 'Filtering on adjusted p-value:',use_adjusted_p
 
+        if platform == 'PSI' and CovariateQuery == None:
+            CovariateQuery = 'Events'
+        else:
+            CovariateQuery = 'DEGs'
+        
         if platform != 'PSI':
             from build_scripts import EnsemblImport
             try: gene_location_db = EnsemblImport.getEnsemblGeneLocations(species,platform,'key_by_array')
