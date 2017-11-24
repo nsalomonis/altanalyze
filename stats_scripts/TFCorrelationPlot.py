@@ -19,15 +19,27 @@ correc=dict()
 lis2=[]
 
 def create_corr_matrix(lines,tfs, gene_labels):
+   maskedArray = False
+   header_row = True
    #print len(lines),len(tfs)
    for l in range(len(lines)):
-      t=string.split(lines[l],'\t')
+      line = lines[l]
+
+      line = line.rstrip()
+      t=string.split(line,'\t')
       t1=t[0]
-          
-          
+      if header_row:
+         header_row = False
+         columns = len(t[1:])
       if t1 in tfs:
          t=t[1:]
-        
+         if columns-len(t)>0:
+            t += ['']*(columns-len(t)) ### Add NAs for empty columns
+         if '' in t:
+            maskedArray = True
+            t = ['0.000101' if i=='' else i for i in t]
+            t = map(float,t)
+            t = np.ma.masked_values(t,0.000101)
          for k in range(len(lines)):
             if k ==0:
                 continue
@@ -35,9 +47,17 @@ def create_corr_matrix(lines,tfs, gene_labels):
             list1=[]
             list2=[]
             ind=[]
-            p=string.split(lines[k],'\t')
-            
+            linek = lines[k]
+            linek = linek.rstrip()
+            p=string.split(linek,'\t')
             p=p[1:]
+            if columns-len(p)>0:
+               p += ['']*(columns-len(p)) ### Add NAs for empty columns
+            if '' in p:
+               p = ['0.000101' if i=='' else i for i in p]
+               p = map(float,p)
+               p = np.ma.masked_values(p,0.000101)
+
             for i in range(len(t)-1):
                if(t[i]!='' and p[i]!=''):
                   ind.append(i)
@@ -52,10 +72,14 @@ def create_corr_matrix(lines,tfs, gene_labels):
                continue
             else:
                if (max(list1)-min(list1))>0 and (max(list2)-min(list2)):
-                  coefr=pearsonr(list1,list2)
-                  coef=coefr[0]
+                  if maskedArray:
+                     coefr=np.ma.corrcoef(list1,list2)
+                     coef = coefr[0][1]
+                  else:
+                     coefr=pearsonr(list1,list2)
+                     coef=coefr[0]
                   correc[t1,gene_labels[k-1]]=coef
-   return correc
+   return correc, maskedArray
 
 def strip_first_col(fname, delimiter=None):
     with open(fname, 'r') as fin:
@@ -95,7 +119,7 @@ def sample(fname):
 	    break;
     return samplelis
 
-def create_corr_files(correc,filename, tfs, gene_labels):
+def create_corr_files(correc,filename, tfs, gene_labels,maskedArray=False):
     export_corrmat=open(filename[:-4]+'-corr.txt','w')
     #export_corrmat=open('correlation_matrix_up.txt','w')
     temp = ['UID']
@@ -136,8 +160,8 @@ def runTFCorrelationAnalysis(query_exp_file,query_tf_file):
     genes = genes[1:]
     tfs=genelist(query_tf_file,Filter=genes) ### Require that the TF is in the gene list
     
-    correc=create_corr_matrix(lines,tfs,genes)
-    create_corr_files(correc,query_exp_file,tfs,genes)
+    correc,maskedArray=create_corr_matrix(lines,tfs,genes)
+    create_corr_files(correc,query_exp_file,tfs,genes,maskedArray=maskedArray)
 
 if __name__ == '__main__':
     import getopt

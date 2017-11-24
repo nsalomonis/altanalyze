@@ -20,10 +20,13 @@ import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import os.path
 import unique
-from build_scripts import ExonArrayEnsemblRules
-from build_scripts import EnsemblImport
+try: from build_scripts import ExonArrayEnsemblRules
+except Exception: pass
+try: from build_scripts import EnsemblImport
+except Exception: pass
 import shutil
-from build_scripts import JunctionArray
+try: from build_scripts import JunctionArray
+except Exception: pass
 import update
 
 def filepath(filename):

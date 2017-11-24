@@ -25,6 +25,7 @@ import copy
 import time
 import export; reload(export)
 import update
+import traceback
 
 ################# General File Parsing Functions #################
 
@@ -340,11 +341,11 @@ def importAllJunctionSequences(species,array_type):
     if array_type == 'RNASeq':
         probeset_annotations_file = "AltDatabase/"+species+"/"+array_type+'/'+species+"_Ensembl_junctions.txt"
     junction_db = importSplicingAnnotationDatabase(probeset_annotations_file)
-
+    
     if coordinateBasedMatching and array_type == 'RNASeq':
         probeset_seq_db = {}
     else:
-        filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'  
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_critical-junction-seq.txt'
         probeset_seq_db = importCriticalJunctionSeq(filename,species,array_type)
 
     pairwise_probeset_combinations={}; probeset_gene_seq_db={}
@@ -366,7 +367,7 @@ def importAllJunctionSequences(species,array_type):
     return probeset_gene_seq_db,pairwise_probeset_combinations
 
 def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
-    """This function imports AffyGene-Ensembl relationships, junction probeset sequences, and recipricol junction comparisons.
+    """This function imports GeneID-Ensembl relationships, junction probeset sequences, and recipricol junction comparisons.
     with data stored from this function, we can match probeset sequence to mRNAs and determine which combinations of probesets
     can be used as match-match or match-nulls."""
     
@@ -384,7 +385,7 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
                 try: array_ens_db[array_gene].append(ens_gene)
                 except KeyError: array_ens_db[array_gene]=[ens_gene]
         print len(array_ens_db), 'Ensembl-AltMouse relationships imported.'
-        
+
     if array_type == 'RNASeq' and coordinateBasedMatching == True:
         probeset_seq_db={}
     else:
@@ -396,8 +397,10 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
     if array_type == 'AltMouse':
         filename = 'AltDatabase/'+species+'/'+array_type+'/'+array_type+'_junction-comparisons.txt'
         update.verifyFile(filename,array_type) ### Will force download if missing
-    elif array_type == 'junction': filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps_updated.txt'
-    elif array_type == 'RNASeq': filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps.txt'
+    elif array_type == 'junction':
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps_updated.txt'
+    elif array_type == 'RNASeq':
+        filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_junction_comps.txt'
     fn=filepath(filename); probeset_gene_seq_db={}; added_probesets={}; pairwise_probesets={}; x = 0
     for line in open(fn,'rU').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
@@ -440,6 +443,7 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
 def importCriticalJunctionSeq(filename,species,array_type):
     update.verifyFile(filename,array_type) ### Will force download if missing
     fn=filepath(filename); probeset_seq_db={}; x = 0
+
     for line in open(fn,'rU').xreadlines():
         data, newline = string.split(line,'\n'); t = string.split(data,'\t')
         if x==0: x=1
@@ -573,8 +577,11 @@ def alignProbesetsToTranscripts(species,array_type,Analysis_type,Force, Coordina
     else:
         #matchTranscriptExonIDsToJunctionIDs(species,array_type,probeset_seq_db) ### no sequences in probeset_seq_db, just junctionIDs
         importEnsemblTranscriptSequence(species,array_type,probeset_seq_db)
-        try: mRNASeqAlign.importUCSCTranscriptSequences(species,array_type,probeset_seq_db)
-        except Exception: pass ### If the species not supported by UCSC - the UCSC file is not written, but the other mRNA_alignments files should be available
+        try:
+            importUCSCTranscriptSequences(species,array_type,probeset_seq_db)
+        except Exception:
+            print traceback.format_exc()
+            pass ### If the species not supported by UCSC - the UCSC file is not written, but the other mRNA_alignments files should be available
 
     probeset_seq_db={} ### Re-set db
 

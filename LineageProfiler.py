@@ -30,6 +30,7 @@ import warnings
 try:
     from scipy import stats
     use_scipy = True
+    import numpy
 except Exception:
     use_scipy = False ### scipy is not required but is used as a faster implementation of Fisher Exact Test when present
 
@@ -103,6 +104,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     platform = array_type
     cutoff = 0.01
     global value_type
+    global missingValuesPresent
     
     if 'stats.' in exp_input:
         value_type = 'calls'
@@ -144,6 +146,13 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
         keyed_by = 'ensembl' ### ensembl is not indicated anywhere but avoides key by primaryID and translation -> works for RNASeq
         
     targetPlatform = compendium_platform ### Overides above
+    
+    """ Determine if a PSI file with missing values """
+    if vendor == 'PSI':
+        missingValuesPresent = True
+    else:
+        missingValuesPresent = importTissueSpecificProfiles(species,checkForMissingValues=True)
+        
     try: importTissueSpecificProfiles(species)
     except Exception:
         try:
@@ -158,10 +167,9 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
                     targetPlatform = "3'array"
                     importTissueSpecificProfiles(species)
         except Exception,e:
+            print traceback.format_exc()
             print 'No compatible compendiums present...'
-            print e,'\n'
-            #print traceback.format_exc()
-            forceError
+            forceTissueSpecificProfileError
             
     importGeneExpressionValues(exp_input,tissue_specific_db,translation_db,species=species)
     ### If the incorrect gene system was indicated re-run with generic parameters
@@ -208,7 +216,7 @@ def importVendorToEnsemblTranslations(species,vendor,exp_input):
     
     return translation_db
 
-def importTissueSpecificProfiles(species):
+def importTissueSpecificProfiles(species,checkForMissingValues=False):
     if analysis_type == 'AltExon':
         filename = 'AltDatabase/ensembl/'+species+'/'+species+'_'+targetPlatform +'_tissue-specific_AltExon_protein_coding.txt'
     else:
@@ -216,17 +224,18 @@ def importTissueSpecificProfiles(species):
     if customMarkerFile != False and customMarkerFile != None:
         if len(customMarkerFile)>0:
             filename = customMarkerFile
-            
+
     #filename = 'AltDatabase/ensembl/'+species+'/random.txt'
     #print 'Target platform used for analysis:',species, targetPlatform, coding_type
     if value_type == 'calls':
         filename = string.replace(filename,'.txt','_stats.txt')
     fn=filepath(filename); x=0
+    tissue_index = 1
     tissues_added={}
+    missing_values_present = False
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        
         if x==0:
             print 'Importing the tissue compedium database:',export.findFilename(filename)
             headers = t; x=1; index=0
@@ -246,18 +255,26 @@ def importTissueSpecificProfiles(species):
         else:
             try:
                 gene = t[0]
+                try: gene = string.split(gene,'|')[0] ### Only consider the first listed gene - this gene is the best option based on ExpressionBuilder rankings
+                except Exception: pass
                 tissue_exp = map(float, t[1:])
                 tissue_specific_db[gene]=x,tissue_exp ### Use this to only grab relevant gene expression profiles from the input dataset
             except Exception:
-                try: gene = string.split(t[ens_index],'|')[0] ### Only consider the first listed gene - this gene is the best option based on ExpressionBuilder rankings
+                try: gene = string.split(gene,'|')[0] ### Only consider the first listed gene - this gene is the best option based on ExpressionBuilder rankings
                 except Exception: pass
                 #if 'Pluripotent Stem Cells' in t[marker_in] or 'Heart' in t[marker_in]:
                 #if t[marker_in] not in tissues_added: ### Only add the first instance of a gene for that tissue - used more for testing to quickly run the analysis
-                tissue_exp = map(float, t[tissue_index:])
+                tissue_exp = t[tissue_index:]
+                if '' in tissue_exp:
+                    missing_values_present = True
+                    ### If missing values present (PSI values)
+                    tissue_exp = ['0.000101' if i=='' else i for i in tissue_exp]
+                tissue_exp = map(float,tissue_exp)
                 if value_type == 'calls':
                     tissue_exp = produceDetectionCalls(tissue_exp,platform) ### 0 or 1 calls
                 tissue_specific_db[gene]=x,tissue_exp ### Use this to only grab relevant gene expression profiles from the input dataset
-                tissues_added[t[marker_in]]=[]
+                try: tissues_added[t[marker_in]]=[] ### Not needed currently
+                except Exception: pass
             x+=1
     print len(tissue_specific_db), 'genes in the tissue compendium database'
 
@@ -266,6 +283,8 @@ def importTissueSpecificProfiles(species):
         except Exception:
             null=[]
             #print '\nNo tissue-specific correlations file present. Skipping analysis.'; kill
+    if checkForMissingValues:
+        return missing_values_present
         
 def importTissueCorrelations(filename):
     filename = string.replace(filename,'specific','specific_correlations')
@@ -311,6 +330,8 @@ def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog
                 x=1
         else:
             gene = t[0]
+            try: gene = string.split(t[0],'|')[0]
+            except Exception: pass
             #if '-' not in gene and ':E' in gene: print gene;sys.exit()
             if analysis_type == 'AltExon':
                 try: ens_gene,exon = string.split(gene,'-')[:2]
@@ -330,7 +351,12 @@ def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog
                 except Exception: genes_added[gene]=1
                 proceed=True
                 try:
-                    exp_vals = map(float, t[1:])
+                    exp_vals = t[1:]
+                    if '' in exp_vals:
+                        ### If missing values present (PSI values)
+                        exp_vals = ['0.000101' if i=='' else i for i in exp_vals]
+                        useLog = False
+                    exp_vals = map(float, exp_vals)
                     if platform == 'RNASeq':
                         if max(exp_vals)>max_val: max_val = max(exp_vals)
                         #if max(exp_vals)<3: proceed=False
@@ -348,11 +374,17 @@ def importGeneExpressionValues(filename,tissue_specific_db,translation_db,useLog
                         t[x:x+5]
                         x+=5
                     print 'Formatting error encountered in:',dataset_name; forceError
-
+            """else:
+                for gene in tissue_specific_db:
+                    if 'Ndufa9:ENSMUSG00000000399:I2.1-E3.1' in gene:
+                        print gene, 'dog';sys.exit()
+                print gene;kill"""
+        
     print len(gene_expression_db), 'matching genes in the dataset and tissue compendium database'
     
     for gene in genes_added:
-        if genes_added[gene]>1: del gene_expression_db[gene] ### delete entries that are present in the input set multiple times (not trustworthy)
+        if genes_added[gene]>1:
+            del gene_expression_db[gene] ### delete entries that are present in the input set multiple times (not trustworthy)
         else: expession_subset.append(gene_expression_db[gene]) ### These contain the rank order and expression
     #print len(expession_subset);sys.exit()
     expession_subset.sort() ### This order now matches that of 
@@ -436,6 +468,8 @@ def analyzeTissueSpecificExpressionPatterns(expInput=None):
     for (index,vals) in expession_subset: genes_present[index]=[]
     for gene in tissue_specific_db:
         tissue_specific_sorted.append(tissue_specific_db[gene])
+        # tissue_specific_db[gene][1]
+        #print tissue_specific_db[gene][1].count(0.000101);sys.exit()
         gene_order_db[tissue_specific_db[gene][0]] = gene ### index order (this index was created before filtering)
     tissue_specific_sorted.sort()
 
@@ -451,7 +485,9 @@ def analyzeTissueSpecificExpressionPatterns(expInput=None):
                 except Exception: tissue_exp_db[tissues[i]] = [f]
                 i+=1
             
-        except Exception: null=[] ### Gene is not present in the input dataset
+        except Exception:
+            #print gene;sys.exit()
+            null=[] ### Gene is not present in the input dataset
 
     ### Organize sample expression, with the same gene order as the tissue expression set
     sample_exp_db={}
@@ -540,10 +576,36 @@ def PearsonCorrelationAnalysis(sample_exp_db,tissue_exp_db):
             else: sample_expression_list = sample_exp_db[sample]
             try:
                 ### p-value is likely useful to report (not supreemly accurate but likely sufficient)
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
-                    rho,p = stats.pearsonr(tissue_expression_list,sample_expression_list)
+                if missingValuesPresent:
+                    ### For PSI values
+
+                    tissue_expression_list = numpy.ma.masked_values(tissue_expression_list,0.000101)
+                    #tissue_expression_list = numpy.ma.array([numpy.nan if i==0.000101 else i for i in tissue_expression_list])
+                    sample_expression_list = numpy.ma.masked_values(sample_expression_list,0.000101)
+                    #tissue_expression_list = numpy.ma.array([numpy.nan if i==0.000101 else i for i in tissue_expression_list])
+                    
+                    updated_tissue_expression_list=[]
+                    updated_sample_expression_list=[]
+                    i=0
+                    
+                    coefr=numpy.ma.corrcoef(tissue_expression_list,sample_expression_list)
+                    rho = coefr[0][1]
+                    """
+                    if sample == 'Cmp.21':
+                        #print rho
+                        #print tissue_expression_list[:10]
+                        #print string.join(map(str,tissue_expression_list[:20]),'\t')
+                        #print sample_expression_list[:10]
+                        #print string.join(map(str,sample_expression_list[:20]),'\t')
+                        #coefr=numpy.ma.corrcoef(numpy.array(tissue_expression_list[:10]),numpy.array(sample_expression_list[:10]))
+                        print tissue, sample, rho, len(tissue_expression_list), len(sample_expression_list)
+                        """
+                else:
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
+                        rho,p = stats.pearsonr(tissue_expression_list,sample_expression_list)
             except Exception:
+                #print traceback.format_exc(); sys.exit()
                 ### simple pure python implementation - no scipy required (not as fast though and no p-value)
                 rho = pearson(tissue_expression_list,sample_expression_list)
             #tst = salstat_stats.TwoSampleTests(tissue_expression_list,sample_expression_list)

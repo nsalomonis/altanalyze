@@ -6170,9 +6170,10 @@ def compareEventLists(folder):
     event_db = collections.OrderedDict()
     groups_list=['']
     files = UI.read_directory(folder)
+    file_headers = {}
     for file in files:
         if '.txt' in file and 'PSI.' in file:
-            ls=[]
+            ls={}
             event_db[file[:-4]]=ls
             groups_list.append(file[:-4])
             fn = folder+'/'+file
@@ -6181,15 +6182,17 @@ def compareEventLists(folder):
                 data = line.rstrip()
                 t = string.split(data,'\t')
                 if firstLine:
+                    file_headers[file[:-4]] = t ### Store the headers
                     event_index = t.index('Event-Direction')
                     firstLine= False
                     continue
                 uid = t[0]
-                if 'U2AF1-like' in file:
-                    if t[1] == "inclusion":
-                        ls.append((uid,t[event_index]))
+                uid = string.split(uid,'|')[0]
+                if 'U2AF1-l' in file or 'U2AF1-E' in file:
+                    if t[2] == "inclusion":
+                        ls[(uid,t[event_index])]=t ### Keep the event data for output
                 else:
-                    ls.append((uid,t[event_index]))
+                    ls[(uid,t[event_index])]=t ### Keep the event data for output
 
     def convertEvents(events):
         opposite_events=[]
@@ -6204,9 +6207,11 @@ def compareEventLists(folder):
     ea1 = export.ExportFile(folder+'/overlaps-same-direction.txt')
     ea2 = export.ExportFile(folder+'/overlaps-opposite-direction.txt')
     ea3 = export.ExportFile(folder+'/concordance.txt')
+    ea4 = export.ExportFile(folder+'/overlap-same-direction-events.txt')
     ea1.write(string.join(groups_list,'\t')+'\n')
     ea2.write(string.join(groups_list,'\t')+'\n')
     ea3.write(string.join(groups_list,'\t')+'\n')
+    
     comparison_db={}
     for comparison1 in event_db:
         events1 = event_db[comparison1]
@@ -6216,22 +6221,33 @@ def compareEventLists(folder):
         for comparison2 in event_db:
             events2 = event_db[comparison2]
             events3 = convertEvents(events2)
-            overlap = len(set(events1).intersection(events2))
-            inverse_overlap = len(set(events1).intersection(events3))
-            min_events1 = min([len(events1),len(events2)])
+            overlapping_events = list(set(events1).intersection(events2))                  
+            overlap = len(overlapping_events)
+            inverse_overlap = len(set(events1).intersection(events3)) ### Get opposite events
+            ### Calculate ratios based on the size of the smaller set
+            min_events1 = min([len(events1),len(events2)]) 
             min_events2 = min([len(events1),len(events3)])
             denom = overlap+inverse_overlap
             if denom == 0: denom = 0.00001
             #comparison_db[comparison1,comparison2]=overlap
+            if min_events1 == 0: min_events1 = 1
             hits1.append(str((1.00*overlap)/min_events1))
             hits2.append(str((1.00*inverse_overlap)/min_events1))
             hits3.append(str(1.00*overlap/denom)+'|'+str(1.00*inverse_overlap/denom))
+            if comparison1 != comparison2:
+                if len(overlapping_events)>0:
+                    ea4.write(string.join(['UID',comparison1]+file_headers[comparison1]+[comparison2]+file_headers[comparison2],'\t')+'\n')
+                overlapping_events.sort()
+                for event in overlapping_events:
+                    vals = string.join([event[0],comparison1]+event_db[comparison1][event]+[comparison2]+event_db[comparison2][event],'\t')
+                    ea4.write(vals+'\n')
         ea1.write(string.join(hits1,'\t')+'\n')
         ea2.write(string.join(hits2,'\t')+'\n')
         ea3.write(string.join(hits3,'\t')+'\n')
     ea1.close()
     ea2.close()
     ea3.close()
+    ea4.close()
      
 def convertGroupsToBinaryMatrix(groups_file,sample_order):
     eo = export.ExportFile(groups_file[:-4]+'-matrix.txt')
@@ -6263,17 +6279,71 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
         eo.write(string.join([group]+sample_groups[group],'\t')+'\n')
     eo.close()
     
+def returnIntronJunctionRatio(counts_file):
+    eo = export.ExportFile(counts_file[:-4]+'-intron-ratios.txt')
+    ### Import a groups file
+    header=True
+    prior_gene=[]
+    exon_junction_values=[]
+    intron_junction_values=[]
+    rows=0
+    def logratio(list):
+        try: return list[0]/list[1]
+        except Exception: return 0
+    for line in open(counts_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if header:
+            samples = t[1:]
+            zero_ref =[0]*len(samples)
+            global_intron_ratios = zero_ref
+            header = False
+            continue
+        junctionID = t[0]
+        #ENSMUSG00000027770:I23.1-E24.1=chr3:62470748-62470747
+        gene = string.split(junctionID,':')[0]
+        rows+=1
+        if rows == 1:
+            prior_gene = gene
+        if gene != prior_gene:
+            #print gene
+            ### merge all of the gene level counts for all samples
+            if len(intron_junction_values)==0:
+                #global_intron_ratios = [sum(value) for value in zip(*[global_intron_ratios,zero_ref])]
+                pass
+            else:
+                intron_junction_values = [sum(i) for i in zip(*intron_junction_values)]
+                exon_junction_values = [sum(i) for i in zip(*exon_junction_values)]
+                intron_ratios = [logratio(value) for value in zip(*[intron_junction_values,exon_junction_values])]
+                global_intron_ratios = [sum(value) for value in zip(*[global_intron_ratios,intron_ratios])]
+
+                #break
+            exon_junction_values = []
+            intron_junction_values = []
+            prior_gene = gene
+        values = map(float,t[1:])
+        if 'I' in junctionID and '_' not in junctionID:
+            intron_junction_values.append(values)
+            exon_junction_values.append(values)
+        else:
+            exon_junction_values.append(values)
+    print rows, 'processed'
+    eo.write(string.join(['UID']+samples,'\t')+'\n')
+    eo.write(string.join(['Global-Intron-Retention-Ratio']+map(str,global_intron_ratios),'\t')+'\n')
+    eo.close()
+    
 if __name__ == '__main__':
+    #returnIntronJunctionRatio('/Volumes/salomonis2/GSE81682-Mm-haematopoeitic-stem/fastq/ExpressionInput/counts.Gottgens.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/Kallisto/Events-LogFold_1.0_adjp');sys.exit()
-    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/ExpressionInput/CellSortedPopulations.txt'
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/InitiallyExcluded/exp.Guide3-cellHarmony-reference__initiallyExcluded-ReOrdered.txt'
+    a = '/Volumes/salomonis2/Punam/scRNAseq-Hs-HSC/rsem-results/ExpressionInput/groups.CellHarmony-Human__HSC-ReOrdered.txt'
+    b = '/Volumes/salomonis2/Punam/scRNAseq-Hs-HSC/rsem-results/ExpressionInput/exp.CellHarmony-Human__HSC-ReOrdered-copy.txt'
     #convertGroupsToBinaryMatrix(a,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
-    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Events-dPSI_0.1_adjp');sys.exit()
-    filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()
+    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/Events-dPSI_0.1_rawp/Gottgens-Grimes');sys.exit()
+    #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()
@@ -6356,7 +6426,7 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionInput/symbols.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/cellHarmony-reference-new/genes.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -6372,7 +6442,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.10X-log2-NearestNeighbor.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/exp.supervised.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-ICGS.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/cellHarmony-reference-new/ExpressionInput/exp.SuperPan.10.24.17.supervised.txt'
 
     
     print genesets

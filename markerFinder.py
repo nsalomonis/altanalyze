@@ -962,7 +962,7 @@ def getAverageExpressionValues(filename,platform):
     """ This function imports two file sets: (A) The original raw input expression files and groups and (B) the DATASET file with annotations.
     It outputs a new file with annotations and average stats for all groups (some group avgs can be missing from the DATASET file)."""
 
-    ### Get the original expression input file location    
+    ### Get the original expression input file location
     if 'ExpressionInput' in filename:
         exp_input_dir = filename
     else:
@@ -1915,12 +1915,13 @@ def importAndAverageStatsData(expr_input,compendium_filename,platform):
     export_data.close()
     return export_path
 
-def logTransformWithNAs(values):
+def floatWithNAs(values):
     values2=[]
     for x in values:
-        try: values2.append(math.log(float(x),2))
+        try: values2.append(float(x)) #values2.append(math.log(float(x),2))
         except Exception:
-            values2.append(0.00001)
+            #values2.append(0.00001)
+            values2.append('')
     return values2
 
 def importAndAverageExport(expr_input,platform,annotationDB=None,annotationHeader=None,customExportPath=None):
@@ -1988,11 +1989,16 @@ def importAndAverageExport(expr_input,platform,annotationDB=None,annotationHeade
         else:
             uid = t[0]
             try: values = map(float,t[1:])
-            except Exception: values = logTransformWithNAs(t[1:])
+            except Exception: values = floatWithNAs(t[1:])
             avg_z=[]
             for group_name in group_index_db:
                 group_values = map(lambda x: values[x], group_index_db[group_name]) ### simple and fast way to reorganize the samples
-                avg = statistics.avg(group_values) #stdev
+                group_values = [x for x in group_values if x != ''] ### Remove NAs from the group
+                five_percent_len = int(len(group_values)*0.05)
+                if len(group_values)>five_percent_len:
+                    avg = statistics.avg(group_values) #stdev
+                else:
+                    avg = ''
                 avg_z.append(str(avg))
             if uid in annotationDB:
                 annotations = annotationDB[uid] ### If provided as an option to the function

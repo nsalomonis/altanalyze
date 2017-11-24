@@ -7461,6 +7461,7 @@ def commandLineRun():
                     else:
                         group_exp_file = (input_exp_file,output_dir) ### still analyze the primary sample
                 except Exception:
+                    print traceback.format_exc()
                     ### Work around when performing this analysis on an alternative exon input cluster file
                     group_exp_file = input_exp_file
                 fl = UI.ExpressionFileLocationData(input_exp_file,'','',''); fl.setOutputDir(export.findParentDir(export.findParentDir(input_exp_file)[:-1]))
@@ -7662,6 +7663,9 @@ def commandLineRun():
                 info_list = input_annotation_file,filepath(destination_parent+csv_short); UI.StatusWindow(info_list,'copy')
         except Exception: print "No Affymetrix annotation file provided. AltAnalyze will use any .csv annotations files in AltDatabase/Affymetrix/"+species
 
+    if array_type == 'PSI':
+        array_type = "3'array"
+        vendor = 'PSI'
     if 'Official' in update_method and species != None:
         proceed = 'yes'
     elif array_type != None and species != None:
@@ -7902,7 +7906,7 @@ def commandLineRun():
                 
         if run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and ('--runLineageProfiler' in arguments or '--cellHarmony' in arguments):
             #python AltAnalyze.py --input "/Users/arrays/test.txt" --runLineageProfiler yes --vendor Affymetrix --platform "3'array" --species Mm --output "/Users/nsalomonis/Merrill"
-            #python AltAnalyze.py --input "/Users/qPCR/samples.txt" --runLineageProfiler yes --geneModel "/Users/qPCR/models.txt"
+            #python AltAnalyze.py --input "/Users/qPCR/samples.txt" --runLineageProfiler yes --geneModel "/Users/qPCR/models.txt" --reference "Users/qPCR/reference_profiles.txt"
             if array_type==None:
                 print "Please include a platform name (e.g., --platform RNASeq)";sys.exit()
             if species==None:

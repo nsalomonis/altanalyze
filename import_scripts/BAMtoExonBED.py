@@ -84,10 +84,17 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
     if exportCoordinates:
         eo = open (reference_exon_bed[:-4]+'__minimumIntronIntervals.bed',"w")
     intron_count=0
+    
+    quick_look = 0
+    paired = False ### Indicates if paired-end reads exist in the file
     for entry in bamfile.fetch():
         example_chromosome = bamfile.getrname(entry.rname)
-        break
-    
+        try: mate = bamfile.mate(entry); paired=True
+        except Exception: pass
+        quick_look+=1
+        if quick_look>20: ### Only examine the first 20 reads
+            break
+
     ### Import the gene data and remove introns that overlap with exons on the opposite or same strand
     exonData_db={}
     exon_sorted_list=[]
@@ -269,6 +276,8 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                                 ir.setIntronSpanningRead(read_pos)
                                                 ir.setCombinedPositions(combined_pos)
                                                 intronJunction[alignedread.query_name] = ir
+                                                if paired == False:
+                                                    ir.setIntronMateRead() ### For single-end FASTQ (not accurate)
                                         else:
                                             intron_boundaries = [start,stop]; intron_boundaries.sort()
                                             if intron_boundaries[0]==combined_pos[0] and intron_boundaries[-1]==combined_pos[-1]: ### Hence, the read occurs entirely within the intron

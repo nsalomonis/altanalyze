@@ -2249,79 +2249,83 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     
     """Export a combined groups and comps file to perform apples-to-apples comparisons"""
     if len(final_clusters)>0:
-        final_clusters.sort()
-        new_query_headers=[]
-        groups_file = groups_dir[:-4]+'-AllCells.txt'
-        groups_file = string.replace(groups_file,'OutliersRemoved-','')
-        comps_file  = string.replace(groups_file,'groups.','comps.')
-        expression_file = string.replace(groups_file,'groups.','exp.')
-        export_object = export.ExportFile(groups_file)
-        group_counter=0
-        added_groups={}
-        group_numbers={}
-        for (cluster,source,sample) in final_clusters:
-            cluster_name = 'c'+str(cluster)+'-'+source
-            if cluster_name in added_groups:
-                added_groups[cluster_name]+=1
-                group_number = group_counter
+        try:
+            final_clusters.sort()
+            new_query_headers=[]
+            groups_file = groups_dir[:-4]+'-AllCells.txt'
+            groups_file = string.replace(groups_file,'OutliersRemoved-','')
+            comps_file  = string.replace(groups_file,'groups.','comps.')
+            expression_file = string.replace(groups_file,'groups.','exp.')
+            export_object = export.ExportFile(groups_file)
+            group_counter=0
+            added_groups={}
+            group_numbers={}
+            for (cluster,source,sample) in final_clusters:
+                cluster_name = 'c'+str(cluster)+'-'+source
+                if cluster_name in added_groups:
+                    added_groups[cluster_name]+=1
+                    group_number = group_counter
+                else:
+                    added_groups[cluster_name]=1
+                    group_counter += 1
+                    group_number = group_counter
+                    group_numbers[cluster_name]=group_number
+                export_object.write(sample+'\t'+str(group_number)+'\t'+cluster_name+'\n')
+                new_query_headers.append(sample)
+            export_object.close()
+            expression_file_reordered = expression_file[:-4]+'-reordered.txt'
+            sampleIndexSelection.filterFile(expression_file,expression_file_reordered,new_query_headers)
+            shutil.move(expression_file_reordered,expression_file) ### replace our temporary file
+            
+            export_object = export.ExportFile(comps_file)
+            
+            comps = unique.unique(comps)
+            comps.sort()
+            for (group1,group2) in comps:
+                if added_groups[group1]>3 and added_groups[group2]>3:
+                    ### Atleast 4 cells present in the two compared groups
+                    g1 = str(group_numbers[group1])
+                    g2 = str(group_numbers[group2])
+                    export_object.write(g1+'\t'+g2+'\n')
+            export_object.close()
+            
+            from stats_scripts import metaDataAnalysis
+            if platform == 'RNASeq':
+                log_fold_cutoff=1
+                output_dir = root_dir+'/DEGs-LogFold_1_rawp'
             else:
-                added_groups[cluster_name]=1
-                group_counter += 1
-                group_number = group_counter
-                group_numbers[cluster_name]=group_number
-            export_object.write(sample+'\t'+str(group_number)+'\t'+cluster_name+'\n')
-            new_query_headers.append(sample)
-        export_object.close()
-        expression_file_reordered = expression_file[:-4]+'-reordered.txt'
-        sampleIndexSelection.filterFile(expression_file,expression_file_reordered,new_query_headers)
-        shutil.move(expression_file_reordered,expression_file) ### replace our temporary file
-        
-        export_object = export.ExportFile(comps_file)
-        
-        comps = unique.unique(comps)
-        comps.sort()
-        for (group1,group2) in comps:
-            if added_groups[group1]>3 and added_groups[group2]>3:
-                ### Atleast 4 cells present in the two compared groups
-                g1 = str(group_numbers[group1])
-                g2 = str(group_numbers[group2])
-                export_object.write(g1+'\t'+g2+'\n')
-        export_object.close()
-        
-        from stats_scripts import metaDataAnalysis
-        if platform == 'RNASeq':
-            log_fold_cutoff=1
-            output_dir = root_dir+'/DEGs-LogFold_1_adjp'
-        else:
-            log_fold_cutoff=0.1
-            output_dir = root_dir+'Events-LogFold_0.1_adjp'
-        #metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,
-        #                    log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=True,pvalThreshold=0.05)
-        all_DEGs = aggregateRegulatedGenes(output_dir)
-        display_genes = string.join(list(all_DEGs),' ')
-        ICGS_DEGs_combined = ref_exp_db.keys()
-        for gene in all_DEGs:
-            if gene not in ICGS_DEGs_combined:
-                ICGS_DEGs_combined.append(gene) ### Add these genes at the end
-        ICGS_DEGs_combined.reverse()
-        all_DEGs = string.join(ICGS_DEGs_combined,' ')
-        import UI
-        vendor = 'Ensembl'
-        gsp = UI.GeneSelectionParameters(species,platform,vendor)
-        gsp.setGeneSet('None Selected')
-        gsp.setPathwaySelect('')
-        gsp.setGeneSelection(all_DEGs)
-        gsp.setJustShowTheseIDs(display_genes)
-        gsp.setNormalize('median')
-        transpose = gsp
-        column_method = None #'hopach'
-        column_metric = 'cosine'
-        row_method = None #'hopach'
-        row_metric = 'correlation'
-        graphic_links=[]
-        color_gradient = 'yellow_black_blue'
-        from visualization_scripts import clustering
-        graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True)
+                log_fold_cutoff=0.1
+                output_dir = root_dir+'Events-LogFold_0.1_rawp'
+
+            metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,
+                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=False,pvalThreshold=0.05)
+            all_DEGs = aggregateRegulatedGenes(output_dir)
+            display_genes = string.join(list(all_DEGs),' ')
+            ICGS_DEGs_combined = ref_exp_db.keys()
+            for gene in all_DEGs:
+                if gene not in ICGS_DEGs_combined:
+                    ICGS_DEGs_combined.append(gene) ### Add these genes at the end
+            ICGS_DEGs_combined.reverse()
+            all_DEGs = string.join(ICGS_DEGs_combined,' ')
+            import UI
+            vendor = 'Ensembl'
+            gsp = UI.GeneSelectionParameters(species,platform,vendor)
+            gsp.setGeneSet('None Selected')
+            gsp.setPathwaySelect('')
+            gsp.setGeneSelection(all_DEGs)
+            gsp.setJustShowTheseIDs(display_genes)
+            gsp.setNormalize('median')
+            transpose = gsp
+            column_method = None #'hopach'
+            column_metric = 'cosine'
+            row_method = None #'hopach'
+            row_metric = 'correlation'
+            graphic_links=[]
+            color_gradient = 'yellow_black_blue'
+            from visualization_scripts import clustering
+            graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True)
+        except Exception:
+            print '!!!!! NO merged expression file availble for differential expression analyis (apples-to-apples).'
 
     return output_file, query_output_file
 

@@ -118,7 +118,7 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
                     ### If the covariateSamples key already present
                     if sample_value in md.FieldValues():
                         ### Hence, this sample is TRUE to the field name (e.g., diseaseX)
-                        sample_type = md.FieldName() 
+                        sample_type = md.FieldName()
                     else:
                         sample_type = 'Others'
                     if md.FieldName() in covariateSamples:
@@ -145,6 +145,9 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
                                 samplesToRemove.append(sampleID)
                     except Exception: ### Sample value not a float
                         samplesToRemove.append(sampleID)
+    if len(samplesToRetain)==0 and len(samplesToRemove) ==0:
+        for sample_type in groups:
+            samplesToRetain+=groups[sample_type]
     #print len(list(set(samplesToRetain)))
     #print len(list(set(samplesToRemove)));sys.exit()
     for unique_donor_id in uniqueDB:
@@ -412,6 +415,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 if diff==0:
                     continue
                 elif (100.00*len(data_list1))/len(g1_headers)>=PercentExp and (100.00*len(data_list2))/len(g2_headers)>=PercentExp:
+                    if len(data_list1)<minSampleNumber or len(data_list2)<minSampleNumber:
+                        continue ### Don't analyze
                     compared_ids[uid]=[]
                     pass
                 else:
@@ -1292,6 +1297,8 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
     global probability_statistic
     global use_adjusted_p
     global logfold_threshold
+    global minSampleNumber
+    minSampleNumber = 3
     logfold_threshold = log_fold_cutoff
     use_adjusted_p = use_adjusted_pval
     global_adjp_db={}
@@ -1384,6 +1391,7 @@ if __name__ == '__main__':
     #probability_statistic = 'unpaired t-test'
     minRPKM=-1000
     PercentExp = 75
+    minSampleNumber = 3
     logfold_threshold=math.log(2,2)
     pval_threshold=0.05
     use_adjusted_p = False
@@ -1442,7 +1450,7 @@ if __name__ == '__main__':
             if opt == '--parent': parent_syn=arg
             if opt == '--urls': executed_urls.append(arg) ### options are: all, junction, exon, reference
             if opt == '--used': used.append(arg)
-            if opt == '--percentExp': PercentExp = int(PercentExp)
+            if opt == '--percentExp': PercentExp = int(arg)
             if opt == '--adjp':
                 if string.lower(arg) == 'yes' or string.lower(arg) == 'true':
                     use_adjusted_p = True

@@ -578,7 +578,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
             ExonSeqModule.runProgram(species,array_type,process_microRNA_predictions,mir_source,stringency)
             ExonArray.exportMetaProbesets(array_type,species) ### Export metaprobesets for this build
         else:
-            import JunctionSeqModule
+            from build_scripts  import JunctionSeqModule
             stringency = 'strict'; mir_source = 'multiple'
             JunctionSeqModule.runProgram(species,array_type,mir_source,stringency,force)
             stringency = 'lax'

@@ -348,7 +348,7 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
                     exon_structure_list = transcript_structure_db[accession]
                     try: ensembl_gene_accession_structures[ens_geneid].append((accession,exon_structure_list))
                     except KeyError: ensembl_gene_accession_structures[ens_geneid]= [(accession,exon_structure_list)]
-                    
+
     ###Create a new database for ensembl gene boundaries indexed by ensembl id for quicker reference in the faster lookup chr overlap function
     ensembl_gene_coordinates2={}
     for chr in ensembl_chr_coordinate_db:
@@ -403,11 +403,11 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
                 ###This is the list of Ensembl genes to GenBank accessions and exon coordiantes
                 try: ensembl_gene_accession_structures[ens_geneid].append((accession,exon_structure_list))
                 except KeyError: ensembl_gene_accession_structures[ens_geneid]= [(accession,exon_structure_list)]
-                
+
     ###Verify accession to gene associations for multiple associations or pick the one propper gene call among several incorrect
     """A problem is that if an Ensembl pseudo-transcript (not a real gene), with no exons overlapping with UCSC transcript exists, the accession
     could not be annotated with a gene, but this is not ideal, since the exons in the transcript may just overlap with one gene"""
-    all_accession_gene_associations2 = []; number_of_associated_exons={}; removed=0; ensembl_gene_accession_structures_deleted={}; exon_annotation_del_db={}
+    all_accession_gene_associations2 = []; number_of_associated_exons={}; removed=[]; ensembl_gene_accession_structures_deleted={}; exon_annotation_del_db={}
     for accession in all_accession_gene_associations:
         exon_structure = transcript_structure_db[accession] ###coordinates for 'exons' provided by UCSC
         unique_genes = unique.unique(all_accession_gene_associations[accession])
@@ -440,7 +440,7 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
                     index = 0
                     for accession_data in accession_data_list:
                         if accession in accession_data:
-                            del accession_data_list[index]; removed +=1
+                            del accession_data_list[index]; removed.append(accession)
                             ### add all of the gene accession info to a new db to look for overlap with UCSC annotated alt events
                             if len(ensembl_gene_exons_temp) == 0 and len(unique_genes) == 1: ### This occurs if a transcript has no overlaping ensembl exons, but does contain an annotated event according to UCSC
                                 all_accession_gene_associations[accession] = [gene]  ###although the entry is deleted, probably no issue with exporting the data to LinkEST
@@ -449,7 +449,7 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
                                     try: ensembl_gene_accession_structures_deleted[gene].append((accession,exon_structure_list))
                                     except KeyError: ensembl_gene_accession_structures_deleted[gene]= [(accession,exon_structure_list)]
                                     chr,strand = ensembl_annotations[gene]
-                                    exon_annotation_del_db[(gene,chr,strand)] = exon_structure_list ###This should mimic the Ensembl database used for alignToKnownAlt
+                                    exon_annotation_del_db[(gene,chr,strand)] = exon_structure_list ###This should mimic the Ensembl database used for alignToKnownAlt                                    
                         index += 1
                         
     ###Check to see if any of the unique accession-gene associations that didn't have an ensembl exon overlap with a known UCSC alt-event
@@ -477,7 +477,8 @@ def identifyNewExonsForAnalysis(ensembl_transcript_clusters,no_match_list,transc
                     try: ensembl_gene_accession_structures[gene].append((accession,exon_structure_list))
                     except KeyError: ensembl_gene_accession_structures[gene]= [(accession,exon_structure_list)]
 
-    print removed, "accessions removed from analysis"
+    print len(removed), "accessions removed from analysis"
+
     ###Export all possible transcript to ensembl anntotations
     """This is used by mRNASeqAlign.py for figuring out which UCSC mRNAs can be specifically aligned to which Ensembl genes, based on reciprocal-junctions"""
     export_file = string.replace(input_gene_file,'all',species+'_UCSC-accession-to-gene')
@@ -621,26 +622,31 @@ def exportExonClusters(ensembl_gene_accession_structures,constitutive_gene_db,co
                     ###Verify that the exon corresponds to that gene (some Ensembl exon regions belong to more than one gene)
                     if exonid in ensembl_gene_exon_db[ens_geneid]: ens_exon_count.append(exonid)
                 except KeyError: null = []
-            if len(ens_exon_count) != len(exon_structure):  ###REMOVE TRANSCRIPTS FOR WHICH THERE ARE ONLY ENSEMBL EXONS: This is an issue since we really want to get rid of transcripts with only Ensembl Junctions (too strict)
-                accessions_included+=1
-                for (exon_start,exon_stop) in exon_structure:
-                    ###used to try to emperically determine which exons are constitutive... instead, just trust Ensembl
-                    #if (exon_start,exon_stop) in constitutive_coordinates: constitutive_call = '1'
-                    #else: constitutive_call = '0'
-                    try:
-                        exonid = coordinate_to_ens_exon[(chr,exon_start,exon_stop)]
-                        if exonid in ensembl_gene_exon_db[ens_geneid]: exonid = exonid ###Perform the same check as above
-                        else: exonid = accession+'-'+str(index) 
-                    except KeyError: exonid = accession+'-'+str(index) ###custom ID designating the relative exon position in the exon_structure
-                    if exonid in ensembl_const_exon_db: constitutive_call = ensembl_const_exon_db[exonid]
-                    else: constitutive_call = '0'
-                    values = common_values+[str(exon_start),str(exon_stop),exonid,constitutive_call,accession]
-                    index+=1
-                    values = string.join(values,'\t')+'\n'
-                    data.write(values)
-            else: accessions_exlcuded.append(accession)
+
+            """ LEGACY - REMOVE TRANSCRIPTS FOR WHICH THERE ARE ONLY ENSEMBL EXONS: This is an issue since we really want to get rid of
+            transcripts with only Ensembl Junctions (too strict). This option was removed on 11.22.2017 as it removed novel isoforms
+            with known exons """
+            
+            #if len(ens_exon_count) != len(exon_structure):  
+            accessions_included+=1
+            for (exon_start,exon_stop) in exon_structure:
+                ###used to try to emperically determine which exons are constitutive... instead, just trust Ensembl
+                #if (exon_start,exon_stop) in constitutive_coordinates: constitutive_call = '1'
+                #else: constitutive_call = '0'
+                try:
+                    exonid = coordinate_to_ens_exon[(chr,exon_start,exon_stop)]
+                    if exonid in ensembl_gene_exon_db[ens_geneid]: exonid = exonid ###Perform the same check as above
+                    else: exonid = accession+'-'+str(index) 
+                except KeyError: exonid = accession+'-'+str(index) ###custom ID designating the relative exon position in the exon_structure
+                if exonid in ensembl_const_exon_db: constitutive_call = ensembl_const_exon_db[exonid]
+                else: constitutive_call = '0'
+                values = common_values+[str(exon_start),str(exon_stop),exonid,constitutive_call,accession]
+                index+=1
+                values = string.join(values,'\t')+'\n'
+                data.write(values)
+            #else: accessions_exlcuded.append(accession)
     data.close()
-    
+
     if export_all_associations == 'yes': ### Used in mRNASeqAlign.py
         print len(accessions_exlcuded), "Accession numbers excluded (same as Ensembl transcript), out of",(accessions_included+len(accessions_exlcuded))
         export_file2 = string.replace(input_gene_file,'all',species+'_UCSC-accession-eliminated')
@@ -820,9 +826,9 @@ if __name__ == '__main__':
     species = Species
     mRNA_Type = 'est'
     mRNA_Type = 'mrna'
-    returnConstitutive(species);kill
-    export_all_associations = 'yes' ### YES only for protein prediction analysis
-    #runUCSCEnsemblAssociations(Species,mRNA_Type,export_all_associations,run_from_scratch,force)
+    #returnConstitutive(species);kill
+    export_all_associations = 'no' ### YES only for protein prediction analysis
+    runUCSCEnsemblAssociations(Species,mRNA_Type,export_all_associations,run_from_scratch,force)
     #AK049467
     bp_offset = 100 ###allowed excesive base pairs added to the distal ends of the Ensembl genes
     gap_length = 12 ###maximum allowed gap length to qualify for merging exons

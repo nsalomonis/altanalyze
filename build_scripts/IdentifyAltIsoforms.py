@@ -139,6 +139,7 @@ def importJunctionDatabase(species,array_type):
             
 def importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,filter_transcripts):
     fn=filepath(filename); x=0
+    print fn
     """
     if 'Ensembl' not in filename:
         original_ensembl_transcripts={} ### Keep track of the original ensembl transcripts
@@ -161,6 +162,7 @@ def importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens
                 except KeyError: ens_gene_transcript_db[gene] = db = {ens_transcriptid:[]}
                 try: ens_gene_exon_db[gene][exon_start,exon_end]=[]
                 except KeyError: ens_gene_exon_db[gene] = db = {(exon_start,exon_end):[]}
+
     """
     ### Some transcripts will have the same coordinates - get rid of these (not implemented yet)
     if 'Ensembl' not in filename:
@@ -226,8 +228,10 @@ def compareExonComposition(species,array_type):
     ### Derive probeset to exon associations De Novo
     probeset_exon_coor_db = getProbesetExonCoordinates(probeset_coordinate_db,probeset_gene_db,ens_gene_exon_db)
 
-    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon': export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_all-transcript-matches.txt'  
-    else: export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'                
+    if (array_type == 'junction' or array_type == 'RNASeq') and data_type == 'exon':
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_all-transcript-matches.txt'  
+    else:
+        export_file = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_all-transcript-matches.txt'                
     data = export.ExportFile(export_file)
 
     ### Identifying isforms containing and not containing the probeset
@@ -347,7 +351,7 @@ def compareExonComposition(species,array_type):
     print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
 
     data.close()
-    sys.exit()
+
     if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
     else:
@@ -942,6 +946,8 @@ def BuildInSilicoTranslations(mRNA_db):
     ### Deprecated
     #from Bio.Alphabet import IUPAC
     #from Bio import Translate ### deprecated
+    
+    print 'Begining in silco translation for',len(mRNA_db),'sequences.'
     
     first_time = 1
     for mRNA_AC in mRNA_db:
