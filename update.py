@@ -326,13 +326,20 @@ class download_protocol:
         
         self.original_increment = 5
         self.increment = 0
-        import urllib; reload(urllib)  ### https://bugs.python.org/issue1067702 - some machines the socket doesn't close and causes an error - reload to close the socket
+        import urllib
         from urllib import urlretrieve
         #if 'gene.txt.gz' in url: print [self.reporthookFunction];sys.exit()
-        try: webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
-        except Exception:
-            #print traceback.format_exc();sys.exit()
+        try:
+            try: webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
+            except IOError:
+                if 'Binary' in traceback.format_exc(): #IOError: [Errno ftp error] 200 Switching to Binary mode.
+                    ### https://bugs.python.org/issue1067702 - some machines the socket doesn't close and causes an error - reload to close the socket
+                    reload(urllib)
+                    webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
+                    reload(urllib)
+        except:
             print 'Unknown URL error encountered...'; forceURLError
+            
         if self.suppress == 'no': print ''
         self.testFile()
         if self.suppress == 'no': print self.status
@@ -523,34 +530,44 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
         else: buildExonArrayExonAnnotations(species,array_type,force)
 
     if update_domain == 'yes':
+        if array_type == 'RNASeq':
+            only_rely_on_coordinate_mapping = True ### This will provide more accurate results as many junctions have missing sequences
+        else:
+            only_rely_on_coordinate_mapping = False
 
+        from build_scripts import FeatureAlignment
+        from build_scripts import JunctionArray
+        from build_scripts import mRNASeqAlign
+        from build_scripts import IdentifyAltIsoforms
+        
         ### Get UCSC associations for all Ensembl linked genes (download databases if necessary)        if species == 'Mm' and array_type == 'AltMouse':
         mRNA_Type = 'mrna'; run_from_scratch = 'yes'
         export_all_associations = 'yes' ### YES only for protein prediction analysis
-        buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+        #buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
 
         if (species == 'Mm' and array_type == 'AltMouse'):
             """Imports and re-exports array-Ensembl annotations"""
-            from build_scripts import JunctionArray
             null = JunctionArray.importArrayAnnotations(species,array_type); null={}
         if (species == 'Mm' and array_type == 'AltMouse') or array_type == 'junction' or array_type == 'RNASeq':
-            """Performs probeset sequence aligment to Ensembl and UCSC transcripts. To do: Need to setup download if files missing"""
-            from build_scripts import mRNASeqAlign; analysis_type = 'reciprocal'
-            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,analysis_type,force)
-       
-        from build_scripts import IdentifyAltIsoforms; run_seqcomp = 'no'
-        IdentifyAltIsoforms.runProgram(species,array_type,'null',force,run_seqcomp)
-        from build_scripts import FeatureAlignment; from build_scripts import JunctionArray
-        FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'null')
+            if only_rely_on_coordinate_mapping == False:
+                """Performs probeset sequence aligment to Ensembl and UCSC transcripts. To do: Need to setup download if files missing"""
+                analysis_type = 'reciprocal'
+                mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,analysis_type,force)
+    
+        run_seqcomp = 'no'
+        if only_rely_on_coordinate_mapping == False:
+            IdentifyAltIsoforms.runProgram(species,array_type,'null',force,run_seqcomp)
+            FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'null')
         
         if array_type == 'junction' or array_type == 'RNASeq':
-            ### For junction probeset sequences from mRNASeqAlign(), find and assess alternative proteins - export to the folder 'junction'
-            mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,'single',force)
-            IdentifyAltIsoforms.runProgram(species,array_type,'junction',force,run_seqcomp)
-            FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'junction')
-            ### For exon probesets (and junction exons) align and assess alternative proteins - export to the folder 'exon'
-            IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
-            # FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
+            if only_rely_on_coordinate_mapping == False:
+                ### For junction probeset sequences from mRNASeqAlign(), find and assess alternative proteins - export to the folder 'junction'
+                mRNASeqAlign.alignProbesetsToTranscripts(species,array_type,'single',force)
+                IdentifyAltIsoforms.runProgram(species,array_type,'junction',force,run_seqcomp)
+                FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'junction')
+                ### For exon probesets (and junction exons) align and assess alternative proteins - export to the folder 'exon'
+                IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
+                # FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
             
             """ Repeat above with CoordinateBasedMatching = True """ 
             ### Peform coordinate based junction mapping to transcripts (requires certain sequence files built in IdentifyAltIosofmrs)

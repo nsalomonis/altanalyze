@@ -137,6 +137,8 @@ def matchTranscriptExonIDsToJunctionIDs(species,array_type,gene_junction_db):
                 if x==0: x=1; print junctionIDs, exonIDs
                 if junctionIDs in exonIDs:
                     dataw.write(string.join([jd.Probeset(),'1',transcript],'\t')+'\n')
+                elif 'I' in junctionIDs:
+                    sys.exit()
                 else:
                     dataw.write(string.join([jd.Probeset(),'0',transcript],'\t')+'\n')
     dataw.close()
@@ -436,6 +438,7 @@ def importJunctionAnnotationDatabaseAndSequence(species,array_type,biotype):
                                     except KeyError: probeset_gene_seq_db[ensembl_gene_id] = [probe_data]
                                     added_probesets[probeset_id]=[]
     print len(probeset_gene_seq_db),"genes with probeset sequence associated"
+    print len(pairwise_probesets), "reciprocal junction pairs imported."
     return probeset_gene_seq_db,pairwise_probesets
 
 ################# Import Sequence Match Results and Re-Output #################
@@ -511,7 +514,7 @@ def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset
             elif probeset1 in matching or probeset2 in matching: no_nulls+=1
             else:
                 no_matches+=1
-                #if no_matches<10: print probeset1,probeset2
+                if no_matches<10: print probeset1,probeset2
 
     print matching_in_both, "probeset pairs with matching isoforms for both recipricol probesets."
     print match_and_null, "probeset pairs with a match for one and null for that one."

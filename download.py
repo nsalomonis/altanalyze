@@ -103,9 +103,18 @@ class download_protocol:
         print "Downloading the following file:",filename,' ',
         self.original_increment = 10
         self.increment = 0
-        import urllib; reload(urllib)  ### https://bugs.python.org/issue1067702 - some machines the socket doesn't close and causes an error - reload to close the socket
+        import urllib
         from urllib import urlretrieve
-        webfile, msg = urlretrieve(url, output_filepath,reporthook=self.reporthookFunction)
+        try:
+            try: webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
+            except IOError:
+                if 'Binary' in traceback.format_exc(): #IOError: [Errno ftp error] 200 Switching to Binary mode.
+                    ### https://bugs.python.org/issue1067702 - some machines the socket doesn't close and causes an error - reload to close the socket
+                    reload(urllib)
+                    webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
+                    reload(urllib)
+        except:
+            print 'Unknown URL error encountered...'; forceURLError
         print ''
         print "\nFile downloaded to:",output_filepath
         if '.zip' in filename:

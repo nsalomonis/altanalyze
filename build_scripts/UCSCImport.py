@@ -673,7 +673,7 @@ def exportSimpleDB(results_list,title,output_dir):
     
 def filterBuiltAssociations(species):
     input_gene_file = 'AltDatabase/ucsc/'+species+'/all_mrna.txt'
-    filename = string.replace(input_gene_file,'all',species+'_UCSC_transcript_structure')
+    filename = string.replace(input_gene_file,'all_',species+'_UCSC_transcript_structure_')
 
     ###Re-import the data and filter it to remove junctions that should be present in the Ensembl database (ensembl-ensembl junction)
     fn=filepath(filename); x=0
@@ -692,7 +692,7 @@ def filterBuiltAssociations(species):
             x+=1
             
     keep=[]; k=0
-    ###Remove the terminal portions of the transcripts that are comprised ONLY of continuous Ensembl exons
+    ###Remove the terminal portions of the transcripts that are comprised ONLY of continuous Ensembl exon-exon pairs
     for accession in raw_data:
         #accession = 'AK027479'
         index=0; x = raw_data[accession]
@@ -701,25 +701,31 @@ def filterBuiltAssociations(species):
                 y,n,n = x[index]
                 s,n,n = x[index+1] ###Next exon in transcript
                 #elif 'ENS' in y and 'ENS' in s: k+=1 #; print (y,s),accession;kill
-                if (y,s) in ensembl_exon_pairs or (s,y) in ensembl_exon_pairs: x = x[index+1:]; index = -1
+                if (y,s) in ensembl_exon_pairs or (s,y) in ensembl_exon_pairs:
+                    x = x[index+1:]; index = -1
                 else: break
             except IndexError: break
             index+=1
         index=0; x.reverse()
-        while index<(len(x)-1): ###for each exon in the accession
+        while index<(len(x)-1): ### for each exon in the accession
             try:
                 y,n,n = x[index]
                 s,n,n = x[index+1] ###Next exon in transcript
                 #elif 'ENS' in y and 'ENS' in s: k+=1#; print (y,s),accession;kill
-                if (y,s) in ensembl_exon_pairs or (s,y) in ensembl_exon_pairs: x = x[index+1:]; index = -1
-                else: x.reverse(); raw_data[accession] = x; break
+                if (y,s) in ensembl_exon_pairs or (s,y) in ensembl_exon_pairs:
+                    x = x[index+1:]; index = -1
+                else:
+                    x.reverse()
+                    raw_data[accession] = x; break
             except IndexError: break
             index+=1
-        for (exonid,i,line) in raw_data[accession]: keep.append((i,line))
+        for (exonid,i,line) in raw_data[accession]:
+            keep.append((i,line))
     keep = unique.unique(keep); keep.sort()
-    #print k, "exon pairs that contained two ensembl exons not paired in an Ensembl transcript";kill
+    print k, "exon pairs that contained two ensembl exons not paired in an Ensembl transcript"
     
     if export_all_associations == 'no': ### Only used by EnsemblImport.py
+        print 'post filtering',input_gene_file
         exportSimple(keep,title,input_gene_file)
 
 def returnConstitutive(species):

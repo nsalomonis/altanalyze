@@ -29,6 +29,7 @@ from build_scripts import FeatureAlignment; reload(FeatureAlignment)
 from Bio import Entrez
 from build_scripts import ExonAnalyze_module
 from build_scripts import mRNASeqAlign
+import traceback
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -75,7 +76,7 @@ def importSplicingAnnotationDatabase(array_type,species,import_coordinates):
     if array_type == 'exon' or array_type == 'gene': filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_probesets.txt"    
     elif array_type == 'junction': filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_"+array_type+"_probesets.txt"
     elif array_type == 'RNASeq': filename = "AltDatabase/"+species+"/"+array_type+"/"+species+"_Ensembl_exons.txt"
-        
+    
     fn=filepath(filename); x=0; probeset_gene_db={}; probeset_coordinate_db={}
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
@@ -509,7 +510,10 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
             output_file = 'AltDatabase/'+species+'/SequenceData/output/sequences/Transcript-Protein_sequences_'+str(2)+'.txt'
             fn=filepath(output_file); os.remove(fn)
         except Exception: null=[]
-        fetchSeq(ac_list,'nucleotide',1)
+        try: fetchSeq(ac_list,'nucleotide',1)
+        except Exception:
+            print traceback.format_exc(),'\n'
+            print 'WARNING!!!!! NCBI webservice connectivity failed due to the above error!!!!!\n'
         
     ###Import protein sequences
     seq_files, transcript_protein_db = importProteinSequences(species,just_get_ids=True)
@@ -528,9 +532,15 @@ def translateRNAs(unique_transcripts,unique_ens_transcripts,analysis_type):
         try: missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
         except Exception:
             print 'Exception encountered:',e
-            missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
+            try: missing_gi_list = searchEntrez(missing_protein_data,'nucleotide')
+            except Exception:
+                print traceback.format_exc(),'\n'
+                print 'WARNING!!!!! NCBI webservice connectivity failed due to the above error!!!!!\n'
 
-    fetchSeq(missing_gi_list,'nucleotide',len(seq_files)-2)
+    try: fetchSeq(missing_gi_list,'nucleotide',len(seq_files)-2)
+    except Exception:
+        print traceback.format_exc(),'\n'
+        print 'WARNING!!!!! NCBI webservice connectivity failed due to the above error!!!!!\n'
     seq_files, transcript_protein_seq_db = importProteinSequences(species)
     print len(unique_ens_transcripts)+len(unique_transcripts), 'examined transcripts.'
     print len(transcript_protein_seq_db),'transcripts with associated protein sequence.'
@@ -637,6 +647,7 @@ def importProbesetTranscriptMatches(species,array_type,compare_all_features):
         if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
             filename = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
         else: filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'
+
     fn=filepath(filename); probeset_transcript_db={}; unique_transcripts={}; unique_ens_transcripts={}; all_transcripts={}
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
@@ -789,6 +800,8 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
                     #>ENST00000400685 cdna:known supercontig::NT_113903:9607:12778:1 gene:ENSG00000215618
                     t= string.split(data[1:],':'); sequence=''
                     transid_data = string.split(t[0],' '); transid = transid_data[0]
+                    if '.' in transid:
+                        transid = string.split(transid,'.')[0]
                     #try: ensembl_id,chr,strand,transid,prot_id = t
                     #except ValueError: ensembl_id,chr,strand,transid = t
         except IndexError: continue
@@ -812,10 +825,11 @@ def importEnsemblTranscriptSequence(missing_protein_ACs):
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "Ensembl transcript sequences analyzed in %d seconds" % time_diff
 
-    missing_protein_ACs_inSilico={}
+    missing_protein_ACs_inSilico=[]
     for mRNA_AC in missing_protein_ACs:
-        if mRNA_AC not in translated_mRNAs: missing_protein_ACs_inSilico[mRNA_AC]=[]
-    print len(missing_protein_ACs_inSilico), 'Ensembl mRNAs without mRNA sequence that were NOT translated into protein'    
+        if mRNA_AC not in translated_mRNAs:
+            missing_protein_ACs_inSilico.append(mRNA_AC)
+    print len(missing_protein_ACs_inSilico), 'Ensembl mRNAs without mRNA sequence NOT in silico translated (e.g., lncRNAs)', missing_protein_ACs_inSilico[:10]
 
 def importEnsemblProteinSeqData(species,unique_ens_transcripts):
     from build_scripts import FeatureAlignment
@@ -939,16 +953,26 @@ def BuildInSilicoTranslations(mRNA_db):
     translation_db={}
     
     from Bio.Seq import Seq
-    
+
     ### New Biopython methods - http://biopython.org/wiki/Seq
     from Bio.Alphabet import generic_dna
     
     ### Deprecated
     #from Bio.Alphabet import IUPAC
     #from Bio import Translate ### deprecated
+
+    #print 'Begining in silco translation for',len(mRNA_db),'sequences.'
     
-    print 'Begining in silco translation for',len(mRNA_db),'sequences.'
-    
+    def cleanSeq(input_seq):
+        """Wrapper for Biopython translate function.  Bio.Seq.translate will complain if input sequence is 
+        not a mulitple of 3.  This wrapper function passes an acceptable input to Bio.Seq.translate in order to
+        avoid this warning."""
+        #https://github.com/broadinstitute/oncotator/pull/265/commits/94b20aabff48741a92b3f9e608e159957af6af30
+        trailing_bases = len(input_seq) % 3
+        if trailing_bases:
+            input_seq = ''.join([input_seq, 'NN']) if trailing_bases == 1 else ''.join([input_seq, 'N'])
+        return input_seq
+ 
     first_time = 1
     for mRNA_AC in mRNA_db:
         if mRNA_AC == 'AK025306': print '@@@@@@@@@@^^^^AK025306...attempting in silico translation'
@@ -966,7 +990,8 @@ def BuildInSilicoTranslations(mRNA_db):
             sequence_met = sequence[x:]  #x gives us the position where the first Met* is.
             
             ### New Biopython methods - http://biopython.org/wiki/Seq
-            dna_seq = Seq(sequence_met, generic_dna)
+            dna_clean = cleanSeq(sequence_met)
+            dna_seq = Seq(dna_clean, generic_dna)
             prot_seq = dna_seq.translate(to_stop=True)
             
             ### Deprecated code
@@ -975,7 +1000,8 @@ def BuildInSilicoTranslations(mRNA_db):
             #standard_translator = Translate.unambiguous_dna_by_id[1]
             #prot_seq = standard_translator.translate_to_stop(dna_seq) #convert the dna to protein sequence
             
-            prot_seq_string = prot_seq.tostring()
+            #prot_seq_string = prot_seq.tostring()
+            prot_seq_string = str(prot_seq)
             prot_seq_tuple = len(prot_seq_string),y,prot_seq_string,dna_seq  #added DNA sequence to determine which exon we're in later  
             temp_protein_list.append(prot_seq_tuple) #create a list of protein sequences to select the longest one
             sequence = sequence_met[3:]  # sequence_met is the sequence after the first or proceeduring methionine, reset the sequence for the next loop
@@ -1022,7 +1048,8 @@ def BuildInSilicoTranslations(mRNA_db):
                     else: break
                 else: break ###do not need to keep looking
             dl = (len(prot_seq_string))*3  #figure out what the DNA coding sequence length is
-            dna_seq_string_coding_to_end = coding_dna_seq_string.tostring()
+            #dna_seq_string_coding_to_end = coding_dna_seq_string.tostring()
+            dna_seq_string_coding_to_end = str(coding_dna_seq_string)
             coding_dna_seq_string = dna_seq_string_coding_to_end[0:dl]
             cds_location = str(pos1+1)+'..'+str(pos1+len(prot_seq_string)*3+3)
             ### Determine if a stop codon is in the sequence or there's a premature end
@@ -1258,10 +1285,11 @@ def importUCSCSequences(missing_protein_ACs):
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "UCSC mRNA sequences analyzed in %d seconds" % time_diff
 
-    missing_protein_ACs_inSilico={}
+    missing_protein_ACs_inSilico=[]
     for mRNA_AC in missing_protein_ACs:
-        if mRNA_AC not in translated_mRNAs: missing_protein_ACs_inSilico[mRNA_AC]=[]
-    print len(missing_protein_ACs_inSilico), 'mRNAs without mRNA sequence that were NOT translated into protein'
+        if mRNA_AC not in translated_mRNAs:
+            missing_protein_ACs_inSilico.append(mRNA_AC)
+    print len(missing_protein_ACs_inSilico), 'mRNAs without mRNA sequence NOT in silico translated (e.g., lncRNAs)',missing_protein_ACs_inSilico[:10]
     return missing_protein_ACs_inSilico
 
 ############# END Code currently not used (LOCAL PROTEIN SEQUENCE ANALYSIS) ##############
@@ -1306,9 +1334,10 @@ def runProgramTest(Species,Array_type,Data_type,translate_seq,run_seqcomp):
 if __name__ == '__main__':
     species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'; data_type = 'exon'
     species = 'Mm'; array_type = 'RNASeq'; translate='yes'
-    species = 'Dr'; array_type = 'RNASeq'; translate='yes'; data_type = 'junction'
+    #species = 'Dr'; array_type = 'RNASeq'; translate='yes'; data_type = 'junction'
     test='no'
-    
+    a = ['ENSMUST00000138102', 'ENSMUST00000193415', 'ENSMUST00000124412', 'ENSMUST00000200569']
+    importEnsemblTranscriptSequence(a);sys.exit()
     filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'    
     ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,{},{},{},{})
     #print len(ens_transcript_exon_db), len(ens_gene_transcript_db), len(ens_gene_exon_db);sys.exit()
