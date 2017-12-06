@@ -7926,6 +7926,10 @@ def commandLineRun():
                 fl.setVendor(manufacturer)
                 fl.setPlatformType(array_type)
                 fl.setCompendiumType('protein_coding')
+                if '--cellHarmony' in arguments:
+                    fl.setClassificationAnalysis('cellHarmony')
+                else:
+                    fl.setClassificationAnalysis('LineageProfiler')
                 #fl.setCompendiumType('AltExon')
                 fl.setCompendiumPlatform(array_type)
                 try: expr_input_dir

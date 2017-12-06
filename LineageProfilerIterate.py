@@ -225,7 +225,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     
     delim = "/"
     
-    print '\nRunning LineageProfiler analysis on',string.split(exp_input,delim)[-1][:-4]
+    print '\nRunning cellHarmony analysis on',string.split(exp_input,delim)[-1][:-4]
     
     global correlate_by_order; correlate_by_order = 'no'
     global rho_threshold; rho_threshold = -1
@@ -426,6 +426,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     ar=[]
     non=[]
     no_intermediate_accuracy=[]
+    verboseReport = False
     for sample in prognostic_class_db:
         if len(tissues)==2:
             class1_score = prognostic_class1_db[sample]
@@ -446,8 +447,10 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             try: correlations.append(float(i))
             except Exception: None ### Occurs for 'NA's
         median_correlation = scipy.median(correlations)
-        if median_correlation<0.8:
+        if median_correlation<0.8 and verboseReport:
             print 'Sample: %s has a low median model Pearson correlation coefficient (%s)' % (sample,str(median_correlation))
+        if verboseReport==False:
+            print '.',
         class_db = prognostic_class_db[sample]
         class_scores=[]; class_scores_str=[]; class_scores_refs=[]; collapsed_pheno_scores={}
         
@@ -515,12 +518,15 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
         sorted_results.append([float(overall_prog_score),sum_score,values])
         sample_diff_z[sample] = dist_list
 
-    print len(no_intermediate_accuracy)
-    print no_intermediate_accuracy
-    print 'Overall Acuracy:',Average(accuracy)*100
-    print 'Sensititivity:', sum(ar), len(ar)
-    print 'Specificity:', sum(non), len(non)
-    print str(Average(accuracy)*100)+'\t'+str(Average(ar)*100)+'\t'+str(Average(non)*100)+'\t'+str(Average(no_intermediate_accuracy)*100)+'\t'+str(sum(ar))+'\t'+str(len(ar))+'\t'+str(sum(non))+'\t'+str(len(non))
+    if verboseReport:
+        print len(no_intermediate_accuracy)
+        print no_intermediate_accuracy
+        print 'Overall Acuracy:',Average(accuracy)*100
+        print 'Sensititivity:', sum(ar), len(ar)
+        print 'Specificity:', sum(non), len(non)
+        print str(Average(accuracy)*100)+'\t'+str(Average(ar)*100)+'\t'+str(Average(non)*100)+'\t'+str(Average(no_intermediate_accuracy)*100)+'\t'+str(sum(ar))+'\t'+str(len(ar))+'\t'+str(sum(non))+'\t'+str(len(non))
+    else:
+        print '\nClassification analysis completed...'
     sorted_results.sort()
     sorted_results.reverse()
     for i in sorted_results:
@@ -635,11 +641,11 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             """
 
     print 'Average Pearson correlation coefficient:', avg_pearson_rho
-    if avg_pearson_rho<0.9:
+    if avg_pearson_rho<0.9 and verboseReport:
         print '\n\nWARNING!!!!!!!!!'
         print '\tThe average Pearson correlation coefficient for all example models is less than 0.9.'
         print '\tYour data may not be comparable to the provided reference (quality control may be needed).\n\n'
-    else:
+    elif verboseReport:
         print 'No unusual warning.\n'
         
     reference_exp_file = customMarkers
@@ -830,7 +836,7 @@ def iterateLineageProfiler(exp_input,tissue_specific_db,allPossibleClassifiers,t
             for sample in sample_diff_z:
                 if len(sample_diff_z[sample]) != (times-1): ### Occurs when there is missing data for a sample from the analyzed model
                     sample_diff_z[sample].append(('NA','NA')) ### add a null result
-    print Average(mean_percent_positive), '\tAverage'
+    #print Average(mean_percent_positive), '\tAverage'
     return hit_list, hits, fails, prognostic_class_db, sample_diff_z, evaluate_size, prognostic_class1_db, prognostic_class2_db
 
 def factorial(n):
@@ -2120,7 +2126,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     if len(ref_col_clusters)>0:
         for sample in ref_col_clusters:
             column_clusters.append(ref_col_clusters[sample]) ### this is an ordered dictionary
-            final_clusters.append([int(float(ref_col_clusters[sample])),ref_filename_clean,sample]) ### used later for creating the apples-to-apples group file
+            final_clusters.append([ref_filename_clean,int(float(ref_col_clusters[sample])),sample]) ### used later for creating the apples-to-apples group file
         
     """ Store an alternative reference for each header """
     ### In case a ":" is in one header but not in another, create an alternative reference set
@@ -2172,9 +2178,11 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
         if sample in query_header_proppegated_clusters:
             ref_sample = query_header_proppegated_clusters[sample]
             if ref_sample in ref_col_clusters:
+                if ':' in sample:
+                    sample = string.split(sample,':')[1]
                 cluster = ref_col_clusters[ref_sample]
                 column_clusters.append(cluster) ### Assign a predicted cluster label to the query sample
-                final_clusters.append([int(float(cluster)),query_filename_clean,sample]) ### used later for creating the apples-to-apples group file
+                final_clusters.append([query_filename_clean,int(float(cluster)),sample]) ### used later for creating the apples-to-apples group file
                 comps.append(['c'+cluster+'-'+query_filename_clean,'c'+cluster+'-'+ref_filename_clean])
                 
     for assigned_class in sample_classes:
@@ -2260,7 +2268,8 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             group_counter=0
             added_groups={}
             group_numbers={}
-            for (cluster,source,sample) in final_clusters:
+            ### The below tuple order controls which clusters and groups are listed in which orders
+            for (source,cluster,sample) in final_clusters:
                 cluster_name = 'c'+str(cluster)+'-'+source
                 if cluster_name in added_groups:
                     added_groups[cluster_name]+=1
@@ -2291,14 +2300,14 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             
             from stats_scripts import metaDataAnalysis
             if platform == 'RNASeq':
-                log_fold_cutoff=1
-                output_dir = root_dir+'/DEGs-LogFold_1_rawp'
+                log_fold_cutoff=0.585
+                output_dir = root_dir+'/DEGs-LogFold_0.585_rawp'
             else:
                 log_fold_cutoff=0.1
                 output_dir = root_dir+'Events-LogFold_0.1_rawp'
 
             metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,
-                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=False,pvalThreshold=0.05)
+                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=False,pvalThreshold=0.01)
             all_DEGs = aggregateRegulatedGenes(output_dir)
             display_genes = string.join(list(all_DEGs),' ')
             ICGS_DEGs_combined = ref_exp_db.keys()
@@ -2323,8 +2332,13 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             graphic_links=[]
             color_gradient = 'yellow_black_blue'
             from visualization_scripts import clustering
-            graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=False, Normalize=True)
+            if runningCommandLine:
+                display = False
+            else:
+                display = True
+            graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, Normalize=True)
         except Exception:
+            print traceback.format_exc()
             print '!!!!! NO merged expression file availble for differential expression analyis (apples-to-apples).'
 
     return output_file, query_output_file
@@ -2445,7 +2459,9 @@ def importExpressionFile(input_file,ignoreClusters=False):
                 try: numericVals = map(lambda x: math.log(x+increment,2), numericVals) ### log2 and increment
                 except Exception:
                     print 'increment',increment
-                    print numericVals[0:10],numericVals[-10:];sys.exit()
+                    print numericVals[0:10],numericVals[-10:]
+                    print traceback.format_exc()
+                    kill
             numericVals = map(str,numericVals) ### we are saving to a file
             if inputFormat == 'Clustering' and ignoreClusters==False:
                 expression_db[uid] = [values[1]]+numericVals

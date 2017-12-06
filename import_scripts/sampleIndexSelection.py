@@ -93,6 +93,8 @@ def cleanUpLine(line):
     line = string.replace(line,'\c','')
     data = string.replace(line,'\r','')
     data = string.replace(data,'"','')
+    #https://stackoverflow.com/questions/36598136/remove-all-hex-characters-from-string-in-python
+    data = data.decode('utf8').encode('ascii', errors='ignore') ### get rid of bad quotes
     return data
 
 def statisticallyFilterFile(input_file,output_file,threshold):
@@ -111,10 +113,17 @@ def statisticallyFilterFile(input_file,output_file,threshold):
         else:
             t = string.split(data,'\t')
         if header:
+            header_len = len(t)
+            full_header = t
             samples = t[1:]
             header=False
             count_sum_array=[0]*len(samples)
         else:
+            if len(t)==(header_len+1):
+                ### Correct header with a missing UID column
+                samples = full_header
+                count_sum_array=[0]*len(samples)
+                print 'fixing bad header'
             try: values = map(float,t[1:])
             except Exception:
                 if 'NA' in t[1:]:
@@ -212,7 +221,7 @@ def combineDropSeq(input_dir):
 
 if __name__ == '__main__':
     ################  Comand-line arguments ################
-    #statisticallyFilterFile('/Volumes/salomonis2/Driscoll/DriscollPREPOST/run1964_PRE_normalized.txt','/Volumes/salomonis2/Driscoll/DriscollPREPOST/run1964_PRE_normalized2.txt',1); sys.exit()
+    #statisticallyFilterFile('/Volumes/salomonis2/Inigo-dropseq/tac/ExpressionInput/exp.run1976_lane12_TAC_normalized.txt','/Volumes/salomonis2/Inigo-dropseq/tac/ExpressionInput/exp.run1976_lane12_TAC_normalized2.txt',1); sys.exit()
     import getopt
     filter_rows=False
     filter_file=None

@@ -889,9 +889,19 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     if modelSize != None and modelSize != 'no':
         try: modelSize = int(modelSize)
         except Exception: modelSize = 'optimize'
+    try:
+        classificationAnalysis = fl.ClassificationAnalysis()
+        if custom_markerFinder == False and classificationAnalysis == 'cellHarmony':
+            classificationAnalysis = 'LineageProfiler'
+    except Exception:
+        if custom_markerFinder == False:
+            classificationAnalysis = 'LineageProfiler'
+        else:  
+            classificationAnalysis = 'cellHarmony'
 
-    if (geneModel == None or geneModel == False) and (modelSize == None or modelSize == 'no') and custom_markerFinder == False:
-        import ExpressionBuilder
+    if ((geneModel == None or geneModel == False) and (modelSize == None or modelSize == 'no')) and classificationAnalysis != 'cellHarmony':
+        print 'LineageProfiler'
+        import ExpressionBuilder; reload(ExpressionBuilder)
         compendium_type = fl.CompendiumType()
         compendium_platform = fl.CompendiumPlatform()
         if 'exp.' in expr_input_dir:
@@ -901,7 +911,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
                     expr_input_dir = string.replace(expr_input_dir,'.txt','-steady-state.txt')
     
         print '\n****Running LineageProfiler****'
-        graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder,specificPlatform=True)
+        graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder,specificPlatform=True,visualizeNetworks=False)
         if len(graphic_links)>0:
             print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
             try: InfoWindow(print_out, 'Continue')
@@ -917,7 +927,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     else:
         import LineageProfilerIterate
         reload(LineageProfilerIterate)
-        print '\n****Running LineageProfilerIterate****'
+        print '\n****Running cellHarmony****'
         codingtype = 'exon'; compendium_platform = 'exon'
         platform = array_type,vendor
         try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel,modelSize=modelSize)
@@ -1895,6 +1905,7 @@ class GUI:
                         print self.display_options, selected_default, option, option_list;kill
                     if option == 'selected_version':
                         notes = 'Note: Available species may vary based on database selection    \n'
+                        notes += 'Different Ensembl versions will relate to different genome builds\n'
                         ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
                     if option == 'probability_algorithm':
                         notes = 'Note: Moderated tests only run for gene-expression analyses      \n'
@@ -4185,6 +4196,7 @@ class ExpressionFileLocationData:
     def setPerformLineageProfiler(self, run_lineage_profiler): self.run_lineage_profiler = run_lineage_profiler
     def setCompendiumType(self,compendiumType): self.compendiumType = compendiumType
     def setCompendiumPlatform(self,compendiumPlatform): self.compendiumPlatform = compendiumPlatform
+    def setClassificationAnalysis(self, classificationAnalysis): self.classificationAnalysis = classificationAnalysis
     def setMultiThreading(self, multithreading): self.multithreading = multithreading
     def setVendor(self,vendor): self.vendor = vendor
     def setPredictGroups(self, predictGroups): self.predictGroups = predictGroups
@@ -4229,6 +4241,7 @@ class ExpressionFileLocationData:
     def PerformLineageProfiler(self): return self.run_lineage_profiler
     def CompendiumType(self): return self.compendiumType
     def CompendiumPlatform(self): return self.compendiumPlatform
+    def ClassificationAnalysis(self): return self.classificationAnalysis
     def GraphicLinks(self): return self.graphic_links
     def setArrayType(self,array_type): self._array_type = array_type
     def setOutputDir(self,output_dir): self._output_dir = output_dir
@@ -5453,6 +5466,8 @@ def getUserParameters(run_parameter,Multi=None):
                     gu = GUI(root,option_db,option_list['LineageProfiler'],'')
                     input_exp_file = gu.Results()['input_lineage_file']
                     compendiumPlatform = gu.Results()['compendiumPlatform']
+                    try: classificationAnalysis = gu.Results()['classificationAnalysis']
+                    except: classificationAnalysis = 'cellHarmony'
                     compendiumType = gu.Results()['compendiumType']
                     markerFinder_file = gu.Results()['markerFinder_file']
                     geneModel_file = gu.Results()['geneModel_file']
@@ -5464,6 +5479,7 @@ def getUserParameters(run_parameter,Multi=None):
                         fl = ExpressionFileLocationData('','','','') ### Create this object to store additional parameters for LineageProfiler
                         fl.setCompendiumType(compendiumType)
                         fl.setCompendiumPlatform(compendiumPlatform)
+                        fl.setClassificationAnalysis(classificationAnalysis)
                         values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file, modelDiscovery
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()

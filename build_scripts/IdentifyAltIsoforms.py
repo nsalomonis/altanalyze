@@ -372,6 +372,7 @@ def compareExonComposition(species,array_type):
     export_data.close()
 
 def compareExonCompositionJunctionArray(species,array_type):
+    print 'Finding optimal isoform matches for splicing events.'
     ###Import sequence aligned transcript associations for individual or probeset-pairs. Pairs provided for match-match
     probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts = importProbesetTranscriptMatches(species,array_type,'yes')
     
@@ -383,16 +384,67 @@ def compareExonCompositionJunctionArray(species,array_type):
         ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db = importEnsExonStructureDataSimple(filename,species,ens_transcript_exon_db,ens_gene_transcript_db,ens_gene_exon_db,all_transcripts)
     except Exception: pass
     
+    """ Used to prioritize isoform pairs for further analysis. This file is re-written as AltAnalyze
+    builds it's database, hence, protein coding potential information accumulates as it runs."""
+    seq_files, protein_coding_isoforms = importProteinSequences(species,just_get_ids=False,just_get_length=True)
+
+    def isoformPrioritization(exon_match_data):
+        """ Prioritize based on the composition and whether the isoform is an Ensembl protein coding isoform.
+        Introduced 11/26/2017(2.1.1)."""
+
+        exon_match_data.sort(); exon_match_data.reverse()
+        coding_match=[]
+        ens_match=[]
+        alt_match=[]
+        for (unique_count,common_count,match,non) in exon_match_data:
+            ### First pair is the best match
+            alt_match.append([match,non])
+            if 'ENS' in match and 'ENS' in non:
+                try: ens_match_count = protein_coding_isoforms[match]
+                except: ens_match_count = 10000
+                try: ens_non_count = protein_coding_isoforms[non]
+                except: ens_non_count = -10000
+                coding_diff = abs(ens_match_count-ens_non_count)
+                count_ratio = (coding_diff*1.00)/max(ens_match_count,ens_non_count)
+                ens_match.append([count_ratio,coding_diff,ens_match_count,match,non])
+            if match in protein_coding_isoforms and non in protein_coding_isoforms:
+                ### Rank by AA differing
+                match_count = protein_coding_isoforms[match]
+                non_count = protein_coding_isoforms[non]
+                coding_diff = abs(match_count-non_count)
+                count_ratio = (coding_diff*1.00)/max(match_count,non_count)
+                coding_match.append([count_ratio,coding_diff,match_count,match,non])
+        coding_match.sort(); ens_match.sort()
+        if len(coding_match)>0: ### Prioritize minimal coding differences   
+            count_ratio,diff,count,final_match,final_non = coding_match[0]
+        elif len(ens_match)>0:
+            count_ratio,diff,count,final_match,final_non = ens_match[0]
+        else:
+            final_match,final_non = alt_match[0]
+        """
+        if len(coding_match)>0 and len(ens_match)>0:
+            if len(coding_match)!= len(ens_match):
+                print coding_match
+                print ens_match
+                print alt_match
+                if 'ENS' not in final_match:
+                    print final_match,final_non
+                    sys.exit()"""
+        return final_match,final_non
+
     print len(probeset_transcript_db), "probesets with multiple pairs of matching-matching or matching-null transcripts."
     ### Identifying isoforms containing and not containing the probeset
     global transcripts_not_found; marker = 5000; increment = 5000
     match_pairs_missing=0; ok_transcript_pairs={}; transcripts_not_found={}
-    for probesets in probeset_transcript_db:
+    for probesets in probeset_transcript_db: 
         exon_match_data=[]; start_time = time.time()
+        ### Examine all valid matches and non-matches
         match_transcripts,not_match_transcripts = probeset_transcript_db[probesets]
+        match_transcripts = unique.unique(match_transcripts)
+        not_match_transcripts = unique.unique(not_match_transcripts)
         for matching_transcript in match_transcripts:
-            if matching_transcript in ens_transcript_exon_db:
-                transcript_match_coord = ens_transcript_exon_db[matching_transcript]
+            if matching_transcript in ens_transcript_exon_db: ### If in the Ensembl or UCSC transcript database
+                transcript_match_coord = ens_transcript_exon_db[matching_transcript] ### Get the coordinates
                 for not_matching_transcript in not_match_transcripts:
                     if not_matching_transcript in ens_transcript_exon_db:
                         transcript_null_coord = ens_transcript_exon_db[not_matching_transcript]
@@ -408,27 +460,34 @@ def compareExonCompositionJunctionArray(species,array_type):
                             num_trans_present = unique_exon_count_db[exon_coor]
                             try: exon_count_db[num_trans_present]+=1
                             except KeyError: exon_count_db[num_trans_present]=1
-                        try:
-                            exon_count_results = [exon_count_db[1],-1*(exon_count_db[2]),matching_transcript,not_matching_transcript]
-                            exon_match_data.append(exon_count_results)
-                        except KeyError:
-                            null =[] ###Occurs if no exons are found in common (2)
+                            
+                        """ 11/26/2017(2.1.1): The below required that for two isoforms (matching/non-matching to an event),
+                        that at least one exon was unique to a transcript and that at least one exon was in common to both.
+                        This is not always the case, for example with complete intron retention, the coordinates in the
+                        intron retained transcript will be distinct from the non-retained. The requirement was eleminated."""
+                        try: iso_unique_exon_count = exon_count_db[1]
+                        except: iso_unique_exon_count = 0
+                        try: iso_common_exon_count = exon_count_db[2]
+                        except: iso_common_exon_count = 0
+                        exon_count_results = [iso_unique_exon_count,-1*iso_common_exon_count,matching_transcript,not_matching_transcript]
+                        exon_match_data.append(exon_count_results)
                         #if probeset == '3431530': print '3431530b', exon_count_results
-            else: transcripts_not_found[matching_transcript]=[]
-        if len(exon_match_data)>0:
-            exon_match_data.sort()
-            matching_transcript = exon_match_data[0][-2]
-            not_matching_transcript = exon_match_data[0][-1]
-            end_time = time.time()
-            #if end_time - start_time>2: print len(ok_transcript_pairs),probesets,match_transcripts,not_match_transcripts;kill
-            ok_transcript_pairs[probesets] = matching_transcript, not_matching_transcript
-            #if probeset == '3431530': print '3431530', matching_transcript, not_matching_transcript
-            if len(ok_transcript_pairs) == marker: marker+= increment; print '*',
-        else: match_pairs_missing+=1
+            else:
+                ### Should rarely occur since accession would be missing from the databases
+                transcripts_not_found[matching_transcript]=[]
                 
-    print match_pairs_missing,'probesets missing either an alinging or non-alinging transcript'
+        """ Compare each isoform matching-nonmatching pair in terms of composition """
+        try:
+            matching_transcript,not_matching_transcript = isoformPrioritization(exon_match_data)
+            ok_transcript_pairs[probesets] = matching_transcript, not_matching_transcript
+        except Exception: pass
+        end_time = time.time()
+        if len(ok_transcript_pairs) == marker:
+            marker+= increment; print '*',
+                
+    print match_pairs_missing,'junctions missing either an alinging or non-alinging transcript'
     print len(transcripts_not_found),'transcripts not found'
-    print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
+    #print len(ok_transcript_pairs),'probesets with more than one exon difference aligning to two isoforms'
 
     if (array_type == 'junction' or array_type == 'RNASeq') and data_type != 'null': 
         export_file = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'  
@@ -441,16 +500,33 @@ def compareExonCompositionJunctionArray(species,array_type):
         export_data.write(values)
         #if probeset == '3431530': print '3431530d', matching_transcript,not_matching_transcript
     export_data.close()
-        
+    
 def compareProteinComposition(species,array_type,translate,compare_all_features):
-    probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts = importProbesetTranscriptMatches(species,array_type,compare_all_features)
+    """ Objectives 11/26/2017(2.1.1):
+    1) Import ALL isoform matches for each junction or reciprocal junction pair
+    2) Obtain protein translations for ALL imported isoforms
+    3) With the protein isoform information, compare exon composition and protein coding length to pick two representative isoforms
+    4) Find protein compositional differences between these pairs
+    
+    This is a modification of the previous workflow which returned fewer hits that were likely less carefully selected."""
+    
+    probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts = importProbesetTranscriptMatches(species,array_type,'yes')
     all_transcripts=[]
 
-    if translate == 'yes1': ### Used if we want to re-derive all transcript-protein sequences - set to yes1 when we want to disable this option
+    """if translate == 'yes': ### Used if we want to re-derive all transcript-protein sequences - set to yes1 when we want to disable this option
         transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch')
-    else: transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch_new')
-        
-    probeset_protein_db,protein_seq_db = convertTranscriptToProteinAssociations(probeset_transcript_db,transcript_protein_seq_db,compare_all_features)
+    else: """
+    
+    ### Translate all mRNA seqeunces to proteins where possible
+    transcript_protein_seq_db = translateRNAs(unique_transcripts,unique_ens_transcripts,'fetch_new')
+    
+    ### Find the best isoform pairs for each splicing event
+    compareExonCompositionJunctionArray(species,array_type)
+    
+    ### Re-import isoform associations for the top events exported from the above function (top versus all isoforms)
+    probeset_transcript_db,unique_ens_transcripts,unique_transcripts,all_transcripts = importProbesetTranscriptMatches(species,array_type,'no')
+    
+    probeset_protein_db,protein_seq_db = convertTranscriptToProteinAssociations(probeset_transcript_db,transcript_protein_seq_db,'no')
     transcript_protein_seq_db=[]
 
     global protein_ft_db
@@ -580,7 +656,7 @@ def convertTranscriptToProteinAssociations(probeset_transcript_db,transcript_pro
     
     return probeset_protein_db,protein_seq_db
             
-def importProteinSequences(species,just_get_ids=False):
+def importProteinSequences(species,just_get_ids=False,just_get_length=False):
     transcript_protein_seq_db={}
     import_dir = '/AltDatabase/'+species+'/SequenceData/output/sequences' ### Multi-species fiel
     g = GrabFiles(); g.setdirectory(import_dir)
@@ -590,8 +666,11 @@ def importProteinSequences(species,just_get_ids=False):
         for line in open(fn,'rU').xreadlines():             
             probeset_data = cleanUpLine(line)  #remove endline
             mRNA_AC,protein_AC,protein_seq = string.split(probeset_data,'\t')
-            if just_get_ids==True:
-                transcript_protein_seq_db[mRNA_AC]=protein_AC
+            if just_get_ids or just_get_length:
+                if just_get_length:
+                    transcript_protein_seq_db[mRNA_AC]=len(protein_seq)
+                else:
+                    transcript_protein_seq_db[mRNA_AC]=protein_AC
             else: transcript_protein_seq_db[mRNA_AC] = protein_AC,protein_seq
     return seq_files, transcript_protein_seq_db
         
@@ -648,6 +727,7 @@ def importProbesetTranscriptMatches(species,array_type,compare_all_features):
             filename = 'AltDatabase/'+species+'/'+array_type+'/'+data_type+'/'+species+'_top-transcript-matches.txt'
         else: filename = 'AltDatabase/'+species+'/'+array_type+'/'+species+'_top-transcript-matches.txt'
 
+    print 'Imported:',filename
     fn=filepath(filename); probeset_transcript_db={}; unique_transcripts={}; unique_ens_transcripts={}; all_transcripts={}
     for line in open(fn,'rU').xreadlines():             
         probeset_data = cleanUpLine(line)  #remove endline
@@ -1299,18 +1379,20 @@ def runProgram(Species,Array_type,Data_type,translate_seq,run_seqcomp):
     species = Species; array_type = Array_type; translate = translate_seq; data_type = Data_type
     test = 'no'; test_genes = ['ENSMUSG00000029467']
     if array_type == 'gene' or array_type == 'exon' or data_type == 'exon':
-        compareExonComposition(species,array_type)
-        compare_all_features = 'no'
+        #compareExonComposition(species,array_type)
+        compare_all_features = 'no' 
         print 'Begin Exon-based compareProteinComposition'
         compareProteinComposition(species,array_type,translate,compare_all_features)
         if run_seqcomp == 'yes':
             compare_all_features = 'yes'; translate = 'no'
             compareProteinComposition(species,array_type,translate,compare_all_features)
     elif array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq':
-        compareExonCompositionJunctionArray(species,array_type)
-        compare_all_features = 'no'
+        """ Modified on 11/26/2017(2.1.1) - integrated compareExonComposition and compareProteinComposition
+        with the goal of getting protein sequences for ALL UCSC and Ensembl transcripts (known + in silico)
+        to look at protein length differences before picking the top two compared isoforms. """
+        compare_all_features = 'no' 
         print 'Begin Junction-based compareProteinComposition'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
+        compareProteinComposition(species,array_type,translate,compare_all_features) 
         if run_seqcomp == 'yes':
             compare_all_features = 'yes'; translate = 'no'
             compareProteinComposition(species,array_type,translate,compare_all_features)

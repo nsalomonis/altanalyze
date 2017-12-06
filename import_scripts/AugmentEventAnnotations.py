@@ -18,6 +18,8 @@ class SplicingEventAnnotation:
         self.event = event; self.critical_exon = critical_exon
     def Event(self): return self.event
     def CriticalExon(self): return self.critical_exon
+    def setJunctions(self,junctions): self.junctions = junctions
+    def Junctions(self): return self.junctions
     def ExonOnly(self):
         try: exon = string.split(self.critical_exon,':')[1]
         except Exception: exon = self.critical_exon
@@ -28,6 +30,7 @@ def importPSIevents(PSIpath,species):
     count=0;count1=0;
     initial_events={}
     psievents={}
+    psijunctions={}
     # Create a dictionary for the psi event dict[min_isoform,major_isoform] and value will be the annotation that will assigned later in the code
     for line in open(PSIpath,'rU').xreadlines():
         line = line.rstrip('\n')
@@ -41,9 +44,12 @@ def importPSIevents(PSIpath,species):
         secondary_junction = values[3]
         critical_exon = values[aI]
         se = SplicingEventAnnotation(None,critical_exon)
+        se.setJunctions([primary_junction,secondary_junction])
         psievents[primary_junction,secondary_junction] = se
+        psijunctions[(primary_junction,)] = se ### format for importing protein annotations
+        psijunctions[(secondary_junction,)] = se
     print"PSI events imported..."
-    return psievents
+    return psievents,psijunctions
 
 def importEventAnnotations(resultsDir,species,psievents,annotationType=None):
     # Parse to the de-novo junction file and update the value of the psi events in the dictionary 
@@ -159,12 +165,18 @@ def formatFeatures(features):
         features2.append(f)
     return features2
 
-def importIsoformAnnotations(species,platform,psievents,annotType=None,junctionPairFeatures={}):
+def importIsoformAnnotations(species,platform,psievents,annotType=None,junctionPairFeatures={},dataType='reciprocal'):
     count=0
     if annotType == 'domain':
-        fn = 'AltDatabase/'+species+'/'+platform+'/'+'probeset-domain-annotations-exoncomp.txt'
+        if dataType == 'reciprocal':
+            fn = 'AltDatabase/'+species+'/'+platform+'/'+'probeset-domain-annotations-exoncomp.txt'
+        else:
+            fn = 'AltDatabase/'+species+'/'+platform+'/junction/'+'probeset-domain-annotations-exoncomp.txt'
     else:
-        fn = 'AltDatabase/'+species+'/'+platform+'/'+'probeset-protein-annotations-exoncomp.txt'
+        if dataType == 'reciprocal':
+            fn = 'AltDatabase/'+species+'/'+platform+'/'+'probeset-protein-annotations-exoncomp.txt'
+        else:
+            fn = 'AltDatabase/'+species+'/'+platform+'/junction/'+'probeset-protein-annotations-exoncomp.txt'
     fn = unique.filepath(fn)
     for line in open(fn,'rU'):
         line = line.rstrip('\n')
@@ -175,10 +187,11 @@ def importIsoformAnnotations(species,platform,psievents,annotType=None,junctionP
         if tuple(junctions) in psievents:
             try: junctionPairFeatures[tuple(junctions)].append(string.join(features,', '))
             except Exception: junctionPairFeatures[tuple(junctions)] = [string.join(features,', ')]
-        junctions.reverse()
-        if tuple(junctions) in psievents:
-            try: junctionPairFeatures[tuple(junctions)].append(string.join(antiFeatures,', '))
-            except Exception: junctionPairFeatures[tuple(junctions)] = [string.join(antiFeatures,', ')]
+        if dataType == 'reciprocal':
+            junctions.reverse()
+            if tuple(junctions) in psievents:
+                try: junctionPairFeatures[tuple(junctions)].append(string.join(antiFeatures,', '))
+                except Exception: junctionPairFeatures[tuple(junctions)] = [string.join(antiFeatures,', ')]
         count+=1
     print count, 'protein predictions added'
     return junctionPairFeatures
@@ -246,7 +259,7 @@ def importPSIAnnotations(PSIpath):
             annotations[key] = sa
     return annotations
             
-def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures):
+def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures, junctionFeatures):
     # write the updated psi file with the annotations into a new file and annotate events that have not been annotated by the junction files
     #print len(psievents)
     header=True
@@ -276,8 +289,12 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
         critical_exon = psievents[key].CriticalExon()
         if key in junctionPairFeatures:
             proteinAnnotation = string.join(junctionPairFeatures[key],'|')
+        elif (psiJunction_primary,) in junctionFeatures:
+            proteinAnnotation = string.join(junctionPairFeatures[(psiJunction_primary,)],'|')
+        #elif (psiJunction_secondary,) in junctionFeatures:
+            #proteinAnnotation = string.join(junctionPairFeatures[(psiJunction_secondary,)],'|')"""
         else:
-            proteinAnnotation = ''
+            proteinAnnotation=''
         values[pI] = proteinAnnotation
         intronRetention = DetermineIntronRetention(values[cI])
         
@@ -374,11 +391,14 @@ def parse_junctionfiles(resultsDir,species,platform):
         PSIpath = resultsDir
     
     ### Get all splice-junction pairs
-    psievents = importPSIevents(PSIpath,species)
+    psievents,psijunctions = importPSIevents(PSIpath,species)
     
     ### Get domain/protein predictions
     junctionPairFeatures = importIsoformAnnotations(species,platform,psievents)
     junctionPairFeatures = importIsoformAnnotations(species,platform,psievents,annotType='domain',junctionPairFeatures=junctionPairFeatures)
+
+    junctionFeatures = importIsoformAnnotations(species,platform,psijunctions,dataType='junction')
+    junctionFeatures = importIsoformAnnotations(species,platform,psijunctions,annotType='domain',junctionPairFeatures=junctionFeatures,dataType='junction')
     
     ### Get all de novo junction anntations (includes novel junctions) 
     psievents = importEventAnnotations(resultsDir,species,psievents,annotationType='de novo')
@@ -388,7 +408,7 @@ def parse_junctionfiles(resultsDir,species,platform):
     terminal_exons = importDatabaseEventAnnotations(species,platform)
     
     ### Update our PSI annotation file with these improved predictions
-    export_path = updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures)
+    export_path = updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPairFeatures, junctionFeatures)
     return export_path
     
 if __name__ == '__main__':

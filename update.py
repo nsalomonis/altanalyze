@@ -543,7 +543,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
         ### Get UCSC associations for all Ensembl linked genes (download databases if necessary)        if species == 'Mm' and array_type == 'AltMouse':
         mRNA_Type = 'mrna'; run_from_scratch = 'yes'
         export_all_associations = 'yes' ### YES only for protein prediction analysis
-        #buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
+        buildUCSCAnnoationFiles(species,mRNA_Type,export_all_associations,run_from_scratch,force)
 
         if (species == 'Mm' and array_type == 'AltMouse'):
             """Imports and re-exports array-Ensembl annotations"""
@@ -567,7 +567,7 @@ def executeParameters(species,array_type,force,genomic_build,update_uniprot,upda
                 FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'junction')
                 ### For exon probesets (and junction exons) align and assess alternative proteins - export to the folder 'exon'
                 IdentifyAltIsoforms.runProgram(species,array_type,'exon',force,run_seqcomp)
-                # FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
+                FeatureAlignment.findDomainsByGenomeCoordinates(species,array_type,'exon') # not needed
             
             """ Repeat above with CoordinateBasedMatching = True """ 
             ### Peform coordinate based junction mapping to transcripts (requires certain sequence files built in IdentifyAltIosofmrs)

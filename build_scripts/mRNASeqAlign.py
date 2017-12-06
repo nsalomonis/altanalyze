@@ -125,6 +125,9 @@ def matchTranscriptExonIDsToJunctionIDs(species,array_type,gene_junction_db):
     filename = 'AltDatabase/ensembl/'+species+'/mRNA-ExonIDs.txt'
     fn=filepath(filename)
     x = 0
+    all={}
+    found=[] ### Junctions found within known mRNAs
+    missing=[] ### Junctions cannot be found within known mRNAs
     for line in open(fn,'rU').xreadlines():
         data = line.strip()
         gene,transcript,protein,exonIDs = string.split(data,'\t')
@@ -132,16 +135,22 @@ def matchTranscriptExonIDsToJunctionIDs(species,array_type,gene_junction_db):
         if gene in gene_junction_db:
             junctions_data = gene_junction_db[gene]
             for jd in junctions_data:
+                all[jd.Probeset()]=[]
                 junctionIDs = string.split(jd.Probeset()+'|',':')[-1]
                 junctionIDs = string.replace(junctionIDs,'-','|') ### this is the format of the transcript ExonID string
-                if x==0: x=1; print junctionIDs, exonIDs
+                if x==0: x=1 #; print junctionIDs, exonIDs
                 if junctionIDs in exonIDs:
                     dataw.write(string.join([jd.Probeset(),'1',transcript],'\t')+'\n')
-                elif 'I' in junctionIDs:
-                    sys.exit()
+                    found.append(jd.Probeset())
                 else:
                     dataw.write(string.join([jd.Probeset(),'0',transcript],'\t')+'\n')
     dataw.close()
+    
+    for junction in all:
+        if junction not in found:
+            if junction not in missing:
+                missing.append(junction)
+    return missing
 
 def importEnsemblTranscriptSequence(Species,Array_type,probeset_seq_db):
     global species; global array_type
@@ -499,6 +508,8 @@ def reAnalyzeRNAProbesetMatches(align_files,species,array_type,pairwise_probeset
             match2 = string.join(matching[probeset2],'|')
             if match1 != match2:
                 probeset_matching_pairs[probeset1+'|'+probeset2] = [match1,match2]
+            """else:
+                print probeset1, probeset2, match1, match2;kill1"""
             matching_in_both+=1
         else:
             if probeset1 in matching and probeset1 in not_matching:

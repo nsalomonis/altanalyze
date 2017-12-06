@@ -2350,7 +2350,7 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
     except Exception:
         gene_transcript_structure, protein_db = importTranscriptExonIDs(species)
         print_outs = True
-        
+
     gene,region = string.split(uid,':')
     isoform_db = copy.deepcopy(gene_transcript_structure[gene])
     
@@ -2600,7 +2600,7 @@ def importComparisonSplicingData4Primers(filename,species):
                     symbol = uid_objects[0]
                     junctions = string.join(uid_objects[1:],':')
                     junctions = string.split(junctions,'|')
-                    fold_change = abs(float(t[-5]))
+                    fold_change = abs(float(t[8]))
                     isoforms = t[7]
                     splice_type = t[5]
                     exonid = t[4]
@@ -2634,7 +2634,7 @@ def importComparisonSplicingData4Primers(filename,species):
                             #sys.exit()
                         except Exception:
                             pass
-                            print traceback.format_exc(),'\n'; #sys.exit()
+                            #print traceback.format_exc(),'\n'; sys.exit()
                     
             except Exception:
                 #print traceback.format_exc(),'\n'#;sys.exit()
@@ -2643,16 +2643,16 @@ def importComparisonSplicingData4Primers(filename,species):
                 
 if __name__ == '__main__':
     ###KNOWN PROBLEMS: the junction analysis program calls exons as cassette-exons if there a new C-terminal exon occurs downstream of that exon in a different transcript (ENSG00000197991).
-    Species = 'Mm'
+    Species = 'Hs'
     test = 'yes'
     Data_type = 'ncRNA'
     Data_type = 'mRNA'
     #E6.1-E8.2 vs. E5.1-E8.3
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/LIMMA_comps.Aug.12.2017/PSI.RBM20.Het.vs.WTC.Aug.13.2018.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Events-dPSI_0.1_adjp/PSI.U2AF1-like_vs_OthersQPCR.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.0_rawp/MergedFiles2.txt'
+    #filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Events-dPSI_0.1_adjp/PSI.U2AF1-like_vs_OthersQPCR.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/Combined-junction-exon-evidence.txt'
     
-    exportTranscriptExonIDAssociations(Species);sys.exit()
+    #exportTranscriptExonIDAssociations(Species);sys.exit()
     #createExonRegionSequenceDB(Species,'RNASeq'); sys.exit()
     importComparisonSplicingData4Primers(filename,Species); sys.exit()
     

@@ -135,7 +135,9 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             ### When no ExpressionOutput files provided (user supplied matrix)
             translation_db = importVendorToEnsemblTranslations(species,vendor,exp_input)
         else:
-            translation_db = importGeneIDTranslations(exp_output)
+            try: translation_db = importGeneIDTranslations(exp_output)
+            except: translation_db = importVendorToEnsemblTranslations(species,'Symbol',exp_input)
+                
         keyed_by = 'translation'
         targetPlatform = compendium_platform
         analysis_type = 'geneLevel'
@@ -171,7 +173,12 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             print 'No compatible compendiums present...'
             forceTissueSpecificProfileError
             
-    importGeneExpressionValues(exp_input,tissue_specific_db,translation_db,species=species)
+    try: importGeneExpressionValues(exp_input,tissue_specific_db,translation_db,species=species)
+    except:
+        print "Changing platform to 3'array"
+        array_type = "3'array"
+        exp_input = string.replace(exp_input,'-steady-state.txt','.txt')
+        importGeneExpressionValues(exp_input,tissue_specific_db,translation_db,species=species)
     ### If the incorrect gene system was indicated re-run with generic parameters
 
     if len(expession_subset)==0 and (array_type == "3'array" or array_type == 'AltMouse' or array_type == 'Other'):

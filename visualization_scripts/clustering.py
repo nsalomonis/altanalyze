@@ -6260,8 +6260,9 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
         if 'row_clusters-flat' in t:
             samples = t[2:]
             break
-        else:
-            samples.append(t[0])
+        elif firstRow:
+            samples = t[1:]
+            firstRow=False
         
     ### Import a groups file
     sample_groups = {}
@@ -6273,7 +6274,7 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
             si=samples.index(sample) ### Index of the sample
             try: sample_groups[groupName][si] = '1' ### set that sample to 1
             except Exception: sample_groups[groupName] = ['0']*len(samples)
-    
+
     eo.write(string.join(['GroupName']+samples,'\t')+'\n')
     for group in sample_groups:
         eo.write(string.join([group]+sample_groups[group],'\t')+'\n')
@@ -6287,6 +6288,7 @@ def returnIntronJunctionRatio(counts_file):
     exon_junction_values=[]
     intron_junction_values=[]
     rows=0
+    cell_ratio_count={}
     def logratio(list):
         try: return list[0]/list[1]
         except Exception: return 0
@@ -6314,6 +6316,12 @@ def returnIntronJunctionRatio(counts_file):
             else:
                 intron_junction_values = [sum(i) for i in zip(*intron_junction_values)]
                 exon_junction_values = [sum(i) for i in zip(*exon_junction_values)]
+                i=0
+                for x in exon_junction_values:
+                    if x!=0:
+                        try: cell_ratio_count[i]+=1
+                        except Exception: cell_ratio_count[i]=1
+                    i+=1
                 intron_ratios = [logratio(value) for value in zip(*[intron_junction_values,exon_junction_values])]
                 global_intron_ratios = [sum(value) for value in zip(*[global_intron_ratios,intron_ratios])]
 
@@ -6335,8 +6343,8 @@ def returnIntronJunctionRatio(counts_file):
 if __name__ == '__main__':
     #returnIntronJunctionRatio('/Volumes/salomonis2/GSE81682-Mm-haematopoeitic-stem/fastq/ExpressionInput/counts.Gottgens.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/Kallisto/Events-LogFold_1.0_adjp');sys.exit()
-    a = '/Volumes/salomonis2/Punam/scRNAseq-Hs-HSC/rsem-results/ExpressionInput/groups.CellHarmony-Human__HSC-ReOrdered.txt'
-    b = '/Volumes/salomonis2/Punam/scRNAseq-Hs-HSC/rsem-results/ExpressionInput/exp.CellHarmony-Human__HSC-ReOrdered-copy.txt'
+    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/groups.all-Nov2017.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-filtered.txt'
     #convertGroupsToBinaryMatrix(a,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
@@ -6425,8 +6433,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/cellHarmony-reference-new/genes.txt'
+    gene_list_file = '/Users/saljh8/Downloads/fusiongenesdata/genes.txt'
+    #gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/genes.txt'
     genesets = importGeneList(gene_list_file)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
@@ -6441,10 +6449,9 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.Fluidigm-log2-NearestNeighbor-800.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.10X-log2-NearestNeighbor.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/exp.supervised.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/Final/cellHarmony-reference-new/ExpressionInput/exp.SuperPan.10.24.17.supervised.txt'
+    filename = '/Users/saljh8/Downloads/fusiongenesdata/TARGET_Genes.txt'
+    #filename = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/R412X/exp.R412X-RSEM-order.txt'
 
-    
     print genesets
     for gene_list in genesets:
         multipleSubPlots(filename,gene_list,SubPlotType='column')

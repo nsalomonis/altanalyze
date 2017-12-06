@@ -68,7 +68,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
                 except Exception:
                     gene,symbol,rho,rho_p,ICGS_State = string.split(data,'\t')
                 #if ICGS_State!=state and float(rho)>0.0:
-                if float(rho)>0.4:
+                if float(rho)>0.3:
                     try: ICGS_State_ranked[ICGS_State].append([float(rho),gene,symbol])
                     except Exception: ICGS_State_ranked[ICGS_State] = [[float(rho),gene,symbol]]
 

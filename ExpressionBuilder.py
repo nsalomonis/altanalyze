@@ -1525,7 +1525,7 @@ def parse_custom_annotations(filename):
     print len(custom_array_db), "custom array entries process"
     return custom_array_db
 
-def remoteLineageProfiler(params,expr_input_dir,ArrayType,Species,Vendor,customMarkers=False,specificPlatform=False):
+def remoteLineageProfiler(params,expr_input_dir,ArrayType,Species,Vendor,customMarkers=False,specificPlatform=False,visualizeNetworks=True):
     global species
     global array_type
     global vendor
@@ -1553,13 +1553,13 @@ def remoteLineageProfiler(params,expr_input_dir,ArrayType,Species,Vendor,customM
         #print traceback.format_exc()
         None
     
-    graphic_links = performLineageProfiler(expr_input_dir,graphics_links,customMarkers,specificPlatform=specificPlatform)
+    graphic_links = performLineageProfiler(expr_input_dir,graphics_links,customMarkers,specificPlatform=specificPlatform,visualizeNetworks=visualizeNetworks)
     return graphic_links
     
-def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False,specificPlatform=False):
+def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False,specificPlatform=False,visualizeNetworks=True):
     try:
         from visualization_scripts import WikiPathways_webservice
-        import LineageProfiler
+        import LineageProfiler; reload(LineageProfiler)
         start_time = time.time()
         try:
             compendium_type = fl.CompendiumType()
@@ -1591,8 +1591,14 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False,spec
         print compendium_platform
         print customMarkers
         """
+        if 'steady-state.txt' in expr_input_dir:
+            status = verifyFile(expr_input_dir)
+            if status != 'yes':
+                expr_input_dir = string.replace(expr_input_dir,'-steady-state.txt','.txt')
+                array_type_data = "3'array"
         try:
-            zscore_output_dir1 = LineageProfiler.runLineageProfiler(species,array_type_data,expr_input_dir, exp_output,compendium_type,compendium_platform,customMarkers); status = True
+            zscore_output_dir1 = LineageProfiler.runLineageProfiler(species,array_type_data,
+                    expr_input_dir,exp_output,compendium_type,compendium_platform,customMarkers); status = True
             #zscore_output_dir1 = None
         except Exception:
             print traceback.format_exc(),'\n'
@@ -1632,7 +1638,7 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False,spec
                 except Exception: pass
                 
             ### Color the TissueMap from WikiPathways using their webservice
-            if customMarkers==False:
+            if customMarkers==False and visualizeNetworks:
                 print 'Coloring LineageMap profiles using WikiPathways webservice...'
                 graphic_links = WikiPathways_webservice.viewLineageProfilerResults(export_path,graphic_links)
     except Exception:
