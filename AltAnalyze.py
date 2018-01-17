@@ -6395,6 +6395,13 @@ def commandLineRun():
         ### python AltAnalyze.py --test --testType ICGS --inputTestData BAM
         ### python AltAnalyze.py --test --testType ICGS --inputTestData FASTQ
         ### python AltAnalyze.py --test --testType ICGS --inputTestData 10X
+        count = verifyFileLength('AltDatabase/demo_data/ReadMe.txt')
+        if count==0:
+            file_location_defaults = UI.importDefaultFileLocations()
+            goelite_url = file_location_defaults['goelite'].Location()
+            fln,status = update.download(goelite_url+'TestData/demo_data.zip','AltDatabase/NoVersion','')
+            if 'Internet' not in status: print "Demo data downloaded."
+        
         if 'ICGS' in perform_tests:
             from tests.scripts import ICGS_test
             if runKallisto:
