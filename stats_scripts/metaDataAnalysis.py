@@ -7,6 +7,7 @@ import export
 import math
 from stats_scripts import statistics
 import traceback
+import collections
 import junctionGraph
 
 """
@@ -294,7 +295,16 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
     psi_annotations={}
     rootdir=export.findParentDir(input_file)
     #print rootdir;sys.exit()
-
+    if platform != 'PSI':
+        try:
+            import ExpressionBuilder
+            expressionDataFormat,increment,convertNonLogToLog = ExpressionBuilder.checkExpressionFileFormat(input_file)
+        except:
+            increment = 0
+            convertNonLogToLog=True
+    else:
+        convertNonLogToLog=True
+        
     try:
         gene_to_symbol,system_code = getAnnotations(species,platform)
         from import_scripts import OBO_import
@@ -398,7 +408,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 else:
                     original_group[group]=filtered_values
                 if platform == 'RNASeq':# or platform == 'miRSeq':
-                    filtered_values = map(lambda x: math.log(x+1,2),filtered_values) ### increment and log2 adjusted
+                    if convertNonLogToLog:
+                        filtered_values = map(lambda x: math.log(x+increment,2),filtered_values) ### increment and log2 adjusted
                 group_expression_values[group] = filtered_values
             for groups in comps_db:
                 group1,group2 = groups
@@ -463,8 +474,11 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         export_object_db[groups].close()
     
     ### Calculate adjusted p-values for all pairwise comparisons
+    global_count=0
+    try: to = export.ExportFile(rootdir+'/top50/MultiPath-PSI.txt')
+    except: pass
     for groups in pval_summary_db:
-        psi_results={}
+        psi_results = collections.OrderedDict()
         group1,group2 = groups
         group_comp_name = string.join(groups,'_vs_')
         if platform == 'PSI':
@@ -490,9 +504,22 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 #print traceback.format_exc()
         else:
             'Skipping moderated t-test...'
-        statistics.adjustPermuteStats(pval_db) ### sets the adjusted p-values for objects   
+        statistics.adjustPermuteStats(pval_db) ### sets the adjusted p-values for objects
+        
+        pval_sort=[]
         for uid in pval_db:
             gs = pval_db[uid]
+            pval_sort.append((gs.Pval(),uid))
+        pval_sort.sort()
+
+        ranked_count = 0
+        for (pval,uid) in pval_sort:
+            if ranked_count<11 and global_count<51:
+                try: to.write(uid+'\n')
+                except: pass
+            gs = pval_db[uid]
+            ranked_count+=1
+            global_count+=1
             group1_avg = str(group_avg_exp_db[group1][uid])
             group2_avg = str(group_avg_exp_db[group2][uid])
             if use_adjusted_p:
@@ -530,6 +557,10 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                         psi_results[uid]=gs,group1_avg,group2_avg
                         ### Write these out once all entries for that gene have been parsed
                     else:
+                        if gs.LogFold()>0: fold = 'upregulated'
+                        else: fold = 'downregulated'
+                        try: splicingEventTypes[group_comp_name].append(fold)
+                        except Exception: splicingEventTypes[group_comp_name] = [fold]
                         values = string.join([uid,system_code,str(gs.LogFold()),str(gs.Pval()),str(gs.AdjP()),symbol,group1_avg,group2_avg],'\t')+'\n'
                         eo.write(values)
                     proceed = True
@@ -571,13 +602,32 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 
                 try: splicingEventTypes[group_comp_name].append((ps.ClusterID(),event_direction,ps.EventAnnotation()))
                 except Exception: splicingEventTypes[group_comp_name] = [(ps.ClusterID(),event_direction,ps.EventAnnotation())]
+
         eo.close()
         #do.close()
         #uo.close()
         so.close()
+        to.close()
     print len(compared_ids),'unique IDs compared (denominator).'
     return rootdir, splicingEventTypes
 
+def outputGeneExpressionSummaries(rootdir,DEGs):
+    eo = export.ExportFile(rootdir+'/gene_summary.txt')
+    header = ['ComparisonName','RegulatedGenes','Upregulated','Downregulated']
+    eo.write(string.join(header,'\t')+'\n')
+    for comparison in DEGs:
+        folds={}
+        genes = DEGs[comparison]
+        for fold in genes:
+            try: folds[fold]+=1
+            except Exception: folds[fold]=1
+        try: up = folds['upregulated']
+        except: up = 0
+        try: down = folds['downregulated']
+        except: down = 0
+        eo.write(string.join([comparison,str(len(genes)),str(up),str(down)],'\t')+'\n')
+    eo.close()
+    
 def outputSplicingSummaries(rootdir,splicingEventTypes):
     eo = export.ExportFile(rootdir+'/event_summary.txt')
     header = ['ComparisonName','UniqueJunctionClusters','InclusionEvents','ExclusionEvents']
@@ -1298,7 +1348,7 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
     global use_adjusted_p
     global logfold_threshold
     global minSampleNumber
-    minSampleNumber = 3
+    minSampleNumber = 2
     logfold_threshold = log_fold_cutoff
     use_adjusted_p = use_adjusted_pval
     global_adjp_db={}
@@ -1374,6 +1424,9 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
 
     if platform == 'PSI':
         outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+    else:
+        outputGeneExpressionSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+        #except: pass
         
 if __name__ == '__main__':
     species = 'Hs';
@@ -1391,7 +1444,7 @@ if __name__ == '__main__':
     #probability_statistic = 'unpaired t-test'
     minRPKM=-1000
     PercentExp = 75
-    minSampleNumber = 3
+    minSampleNumber = 2
     logfold_threshold=math.log(2,2)
     pval_threshold=0.05
     use_adjusted_p = False
@@ -1565,6 +1618,10 @@ if __name__ == '__main__':
 
         if platform == 'PSI':
             outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+        else:
+            outputGeneExpressionSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+            #except: pass
+            
         sys.exit()
         for CovariateQuery in covariate_set:
           for sampleSetQuery in Sample_set:

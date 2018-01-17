@@ -337,6 +337,7 @@ def reorderInputFile(custom_path,marker_list,marker_condition_db):
     ### Over-write read in file
     export_obj = export.ExportFile(custom_path)
     export_obj.write(header)
+    marker_list.reverse() ### Reverse the order of the MarkerFinder results
     for uid in marker_list:
         condition = marker_condition_db[uid]
         new_uid = condition+':'+uid
@@ -407,6 +408,7 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Spec
             gsp.setNormalize('median')
             gsp.setGeneSelection('')
             gsp.setClusterGOElite('GeneOntology')
+            #gsp.setClusterGOElite('BioMarkers')
             """
             print custom_path
             print graphics
@@ -416,7 +418,8 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Spec
             """
             reload(clustering)
             try:
-                graphics = clustering.runHCexplicit(custom_path, graphics, row_method, row_metric, column_method, column_metric, color_gradient, gsp, display=False)
+                graphics = clustering.runHCexplicit(custom_path, graphics, row_method, row_metric,
+                                    column_method, column_metric, color_gradient, gsp, contrast=4, display=False)
             except Exception:
                 print traceback.format_exc()
                 print 'Error occured in generated MarkerGene clusters... see ExpressionOutput/MarkerFinder files.'
@@ -901,6 +904,7 @@ def exportMarkerGeneProfiles(original_filename,annotations,expression_relative,t
 def exportAllGeneCorrelations(filename,allGenesRanked):
     destination_dir = export.findParentDir(filename)
     filename = destination_dir+'MarkerFinder/AllGenes_correlations.txt'
+    filename = string.replace(filename,'ExpressionInput','ExpressionOutput')
     try:
         if use_replicates:
             filename = string.replace(filename,'.txt','-ReplicateBased.txt')

@@ -69,37 +69,40 @@ def runICGStest(testType = "complete",inputData = "BAM"):
         expdir = "--expdir"
         removeOutliers = "no"
     elif inputData == "BAM":
-        if 'Hs' not in species_names:
-            return 'WARNING!!! Species Hs database not installed.'
-        species = "Hs"
+        if 'Mm' not in species_names:
+            return 'WARNING!!! Species Mm database not installed.'
+        species = "Mm"
         inputDataType = inputData
         SamplesDiffering = "3"
         excludeCellCycle = "no"
         restrictBy = "None"
         expdir = "--bedDir"
         expname = "test"
+        rho = "0.6"
         input_path = unique.filepath(os.getcwd()+"/tests/demo_data/"+inputDataType+"/input")
     elif inputData == 'FASTQ':
-        if 'Hs' not in species_names:
-            return 'WARNING!!! Species Hs database not installed.'
-        species = "Hs"
+        if 'Mm' not in species_names:
+            return 'WARNING!!! Species Mm database not installed.'
+        species = "Mm"
         inputDataType = inputData
         SamplesDiffering = "3"
         excludeCellCycle = "no"
         restrictBy = "None"
+        rho = "0.6"
         expdir = "--fastq_dir"
         expname = "test"
         input_path = unique.filepath(os.getcwd()+"/tests/demo_data/"+inputDataType+"/input")
         custom_FASTA_path = unique.filepath(os.getcwd()+"/tests/demo_data/FASTA/Homo_sapiens.GRCh37.72.cdna.all.filtered.fa")
         additional = ["--runKallisto","True","--customFASTA",custom_FASTA_path]
+        additional = []
     elif inputData == '10X':
         if 'Mm' not in species_names:
-            return 'WARNING!!! Species Hs database not installed.'
+            return 'WARNING!!! Species Mm database not installed.'
         species = "Mm"
         inputDataType = inputData
         SamplesDiffering = "4"
         rho = "0.3"
-        excludeCellCycle = "no"
+        excludeCellCycle = "conservative"
         removeOutliers = "yes"
         restrictBy = "protein_coding"
         expdir = "--ChromiumSparseMatrix"

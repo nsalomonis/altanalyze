@@ -2,6 +2,7 @@ import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import os
 import math
+import traceback
 
 def makeTestFile():
     all_data = [['name','harold','bob','frank','sally','kim','jim'],
@@ -39,6 +40,8 @@ def filterFile(input_file,output_file,filter_names,force=False):
                 uid_index = values.index('UID')
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
         except Exception:
+            print traceback.format_exc()
+            print values;sys.exit()
             ### For PSI files with missing values at the end of each line, often
             if len(header) != len(values):
                 diff = len(header)-len(values)

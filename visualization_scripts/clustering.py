@@ -827,11 +827,15 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             adji = i-0.25 ### adjust the relative position of the column label horizontally
         if len(column_header)>35:
             adji = i-0.3 ### adjust the relative position of the column label horizontally
+        if len(column_header)>200:
+            column_fontsize = 2
         if column_method != None:
-            axm.text(adji, cadj, ''+column_header[idx2[i]], rotation=270, verticalalignment="top",fontsize=column_fontsize) # rotation could also be degrees
+            if len(column_header)<300: ### Don't show the headers when too many values exist
+                axm.text(adji, cadj, ''+column_header[idx2[i]], rotation=270, verticalalignment="top",fontsize=column_fontsize) # rotation could also be degrees
             new_column_header.append(column_header[idx2[i]])
         else: ### When not clustering columns
-            axm.text(adji, cadj, ''+column_header[i], rotation=270, verticalalignment="top",fontsize=column_fontsize)
+            if len(column_header)<300: ### Don't show the headers when too many values exist
+                axm.text(adji, cadj, ''+column_header[i], rotation=270, verticalalignment="top",fontsize=column_fontsize)
             new_column_header.append(column_header[i])
 
     # Plot colside colors
@@ -1599,7 +1603,10 @@ def filepath(filename):
 
 def remoteImportData(filename,geneFilter=None):
     matrix, column_header, row_header, dataset_name, group_db = importData(filename,geneFilter=geneFilter)
-    return matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters
+    try:
+        return matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters
+    except:
+        return matrix, column_header, row_header, dataset_name, group_db, [], []
 
 def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore=False):
     
@@ -1968,9 +1975,17 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     if reimportModelScores==False:
         from sklearn.manifold import TSNE
         X=matrix.T
+        """
+        from tsne import bh_sne
+        X = np.asarray(X).astype('float64')
+        X = X.reshape((X.shape[0], -1))
+        x_data = x_data.reshape((x_data.shape[0], -1))
+        scores = bh_sne(X)"""
         
         #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
         model = TSNE(n_components=2)
+        #model = TSNE(n_components=2,init='pca', random_state=0, verbose=1, perplexity=40, n_iter=300)
+        #model = TSNE(n_components=2,verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2, random_state=0, n_iter=10000, early_exaggeration=10)
         scores=model.fit_transform(X)
         
@@ -1981,6 +1996,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     ### Exclude samples with high TSNE deviations
     scoresT = zip(*scores)
     exclude={}
+    
     try:
         for vector in scoresT:
             lower1th,median_val,upper99th,int_qrt_range = statistics.iqr(list(vector),k1=99.9,k2=0.1)
@@ -2202,6 +2218,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         pylab.legend(loc="upper left", prop={'size': 10})
   
     filename = 'Clustering-%s-t-SNE.pdf' % dataset_name
+    filename = string.replace(filename,'Clustering-Clustering','Clustering')
     try: pylab.savefig(root_dir + filename)
     except Exception: None ### Rare error
     #print 'Exporting:',filename
@@ -4090,6 +4107,7 @@ def timestamp():
 def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,
                algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None,
                reimportModelScores=True, separateGenePlots=False):
+
     global root_dir
     global graphic_link
     graphic_link=graphics ### Store all locations of pngs
@@ -4118,6 +4136,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
             else:
                 geneFilter = [colorByGene]
         except Exception:
+            #print traceback.format_exc();sys.exit()
             geneFilter = None ### It won't import the matrix, basically
 
     matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,geneFilter=geneFilter)
@@ -4762,7 +4781,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
             color_list.append(cm(1.*i/len(groups)))  # color will now be an RGBA tuple
             
     for i in range(len(matrix)):
-        ax = pylab.subplot(5,1,1+i)
+        ax = pylab.subplot(20,1,1+i)
         OY = matrix[i]
         pylab.xlim(0,len(OY))
         pylab.subplots_adjust(right=0.85)
@@ -4778,7 +4797,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
         if SubPlotType=='plot':
             pylab.plot(x,y)
 
-        ax.text(matrix.shape[1]-0.5, i, '  '+row_header[i],fontsize=16)
+        ax.text(matrix.shape[1]-0.5, i, '  '+row_header[i],fontsize=8)
         
         fig.autofmt_xdate()
         pylab.subplots_adjust(hspace = .001)
@@ -4793,7 +4812,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
         #pylab.setp(xtickNames, rotation=90, fontsize=10)
         
     #pylab.show()
-    pylab.savefig(filename[:-4]+'-'+str_uids+'.pdf')
+    pylab.savefig(filename[:-4]+'-1'+str_uids+'.pdf')
 
 def simpleTranspose(filename):
     fn = filepath(filename)
@@ -5263,17 +5282,17 @@ def countIntronsExons(filename):
             
     print len(exon_db)+1, len(intron_db)+1
              
-def importGeneList(gene_list_file):
+def importGeneList(gene_list_file,n=20):
     genesets=[]
     genes=[]
     for line in open(gene_list_file,'rU').xreadlines():
         gene = line.rstrip()
         genes.append(gene)
-        if len(genes)==5:
+        if len(genes)==n:
             genesets.append(genes)
             genes=[]
-    if len(genes)>0 and len(genes)<6:
-        genes+=(5-len(genes))*[gene]
+    if len(genes)>0 and len(genes)<(n+1):
+        genes+=(n-len(genes))*[gene]
         genesets.append(genes)
     return genesets
             
@@ -6183,7 +6202,10 @@ def compareEventLists(folder):
                 t = string.split(data,'\t')
                 if firstLine:
                     file_headers[file[:-4]] = t ### Store the headers
-                    event_index = t.index('Event-Direction')
+                    try: event_index = t.index('Event-Direction')
+                    except:
+                        try: event_index = t.index('Inclusion-Junction') ### legacy
+                        except: print file, 'Event-Direction error';sys.exit()
                     firstLine= False
                     continue
                 uid = t[0]
@@ -6260,12 +6282,15 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
         if 'row_clusters-flat' in t:
             samples = t[2:]
             break
+        elif groups_file == sample_order:
+            samples.append(t[0])
         elif firstRow:
             samples = t[1:]
             firstRow=False
         
     ### Import a groups file
-    sample_groups = {}
+    import collections
+    sample_groups = collections.OrderedDict()
     for line in open(groups_file,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -6273,7 +6298,9 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
         if sample in samples:
             si=samples.index(sample) ### Index of the sample
             try: sample_groups[groupName][si] = '1' ### set that sample to 1
-            except Exception: sample_groups[groupName] = ['0']*len(samples)
+            except Exception:
+                sample_groups[groupName] = ['0']*len(samples)
+                sample_groups[groupName][si] = '1' ### set that sample to 1
 
     eo.write(string.join(['GroupName']+samples,'\t')+'\n')
     for group in sample_groups:
@@ -6288,7 +6315,6 @@ def returnIntronJunctionRatio(counts_file):
     exon_junction_values=[]
     intron_junction_values=[]
     rows=0
-    cell_ratio_count={}
     def logratio(list):
         try: return list[0]/list[1]
         except Exception: return 0
@@ -6297,8 +6323,12 @@ def returnIntronJunctionRatio(counts_file):
         t = string.split(data,'\t')
         if header:
             samples = t[1:]
-            zero_ref =[0]*len(samples)
-            global_intron_ratios = zero_ref
+            #zero_ref =[0]*len(samples)
+            global_intron_ratios={}
+            i=0
+            for val in samples:
+                global_intron_ratios[i]=[]
+                i+=1
             header = False
             continue
         junctionID = t[0]
@@ -6316,16 +6346,13 @@ def returnIntronJunctionRatio(counts_file):
             else:
                 intron_junction_values = [sum(i) for i in zip(*intron_junction_values)]
                 exon_junction_values = [sum(i) for i in zip(*exon_junction_values)]
-                i=0
-                for x in exon_junction_values:
-                    if x!=0:
-                        try: cell_ratio_count[i]+=1
-                        except Exception: cell_ratio_count[i]=1
-                    i+=1
                 intron_ratios = [logratio(value) for value in zip(*[intron_junction_values,exon_junction_values])]
-                global_intron_ratios = [sum(value) for value in zip(*[global_intron_ratios,intron_ratios])]
+                i = 0
+                for val in intron_ratios:
+                    if exon_junction_values[i]!=0: ### Only consider values with a non-zero denominator
+                        global_intron_ratios[i].append(intron_ratios[i])
+                    i+=1
 
-                #break
             exon_junction_values = []
             intron_junction_values = []
             prior_gene = gene
@@ -6336,22 +6363,29 @@ def returnIntronJunctionRatio(counts_file):
         else:
             exon_junction_values.append(values)
     print rows, 'processed'
+
+    import numpy
+    i=0; global_intron_ratios_values=[]
+    for val in samples:
+        global_intron_ratios_values.append(100*numpy.mean(global_intron_ratios[i])) ### list of lists
+        i+=1
+        
     eo.write(string.join(['UID']+samples,'\t')+'\n')
-    eo.write(string.join(['Global-Intron-Retention-Ratio']+map(str,global_intron_ratios),'\t')+'\n')
+    eo.write(string.join(['Global-Intron-Retention-Ratio']+map(str,global_intron_ratios_values),'\t')+'\n')
     eo.close()
     
 if __name__ == '__main__':
-    #returnIntronJunctionRatio('/Volumes/salomonis2/GSE81682-Mm-haematopoeitic-stem/fastq/ExpressionInput/counts.Gottgens.txt');sys.exit()
-    #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/Kallisto/Events-LogFold_1.0_adjp');sys.exit()
+    #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
+    #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/groups.all-Nov2017.txt'
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-filtered.txt'
-    #convertGroupsToBinaryMatrix(a,b);sys.exit()
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Krause-Will/Nov.9.2017/ExpressionInput/groups.MEP-all-cellHarmony-original-names.txt'
+    #convertGroupsToBinaryMatrix(b,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
-    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/Events-dPSI_0.1_rawp/Gottgens-Grimes');sys.exit()
-    #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-367-Leucegene.txt');sys.exit()
+    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/ENCODE-KD/junctions/AltResults/AlternativeOutput/Events-dPSI_0.1_rawp');sys.exit()
+    #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/CORNEL-AML/PSI/exp.Cornell-Bulk.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
     #simpleScatter('/Users/saljh8/Downloads/CMdiff_paper/calcium_data-KO4.txt');sys.exit()
@@ -6433,9 +6467,12 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/Grimes/MultiLin-Code/MultiLin-TFs.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/genes.txt'
-    gene_list_file = '/Users/saljh8/Downloads/fusiongenesdata/genes.txt'
-    #gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/genes.txt'
-    genesets = importGeneList(gene_list_file)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/TFs/Myelo_TFs2.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/customGenes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Krause-Will/Nov.9.2017/ExpressionInput/MultiLin_genes-Will.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Hildeman/EEC-10X/ExpressionInput/genes.txt'
+    genesets = importGeneList(gene_list_file,n=5)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -6449,7 +6486,9 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.Fluidigm-log2-NearestNeighbor-800.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.10X-log2-NearestNeighbor.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
-    filename = '/Users/saljh8/Downloads/fusiongenesdata/TARGET_Genes.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-filtered.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Hildeman/EEC-10X/ExpressionInput/exp.MarkerFinder.txt'
     #filename = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/R412X/exp.R412X-RSEM-order.txt'
 
     print genesets

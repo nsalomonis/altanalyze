@@ -3059,6 +3059,8 @@ def checkExpressionFileFormat(expFile,platform):
     return platform
     
 def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=[]):
+    #import warnings
+    #warnings.simplefilter('error', UserWarning)
     firstLine=True
     expressed_values={}
     for line in open(expFile,'rU').xreadlines():
@@ -4156,8 +4158,8 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
 def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
     lineNum=1
     for line in open(cluster_file,'rU').xreadlines():
-        line = line[:-1]
-        t = string.split(line,'\t')
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
         if lineNum==1: names = t[2:]; lineNum+=1
         elif lineNum==2: clusters = t[2:]; lineNum+=1
         else: break
@@ -4915,8 +4917,10 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             ###download Ensembl fasta file to the above directory
             from build_scripts import EnsemblSQL
             ensembl_version = string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','')
-            EnsemblSQL.getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA')
-            fasta_file = getFASTAFile(species)
+            try:
+                EnsemblSQL.getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA')
+                fasta_file = getFASTAFile(species)
+            except Exception: pass
         elif customFASTA!=None:  ### Custom FASTA file supplied by the user
             fasta_file = customFASTA
             indexFile = filepath(kallisto_index_root+species+'-custom')
@@ -5010,7 +5014,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             headers.append(n)
             sample_total_counts = importTotalReadCounts(n,output_path+'/run_info.json',sample_total_counts)
         except Exception:
-            print traceback.format_exc();sys.exit()
+            print traceback.format_exc()
             print n, 'TPM expression import failed'
             if paired == 'paired':
                 print '\n...Make sure the paired-end samples were correctly assigned:'
@@ -5270,10 +5274,10 @@ if __name__ == '__main__':
     """
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
-    correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
-    sys.exit()
-    correlateClusteredGenes('exons',results_file,stringency='strict',rhoCutOff=0.6);sys.exit()
-    sys.exit()
+    #correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
+    #sys.exit()
+    #correlateClusteredGenes('exons',results_file,stringency='strict',rhoCutOff=0.6);sys.exit()
+    #sys.exit()
     species='Hs'; platform = "3'array"; vendor = "3'array"
     #FeatureCounts('/Users/saljh8/Downloads/subread-1.5.2-MaxOSX-x86_64/annotation/mm10_AltAnalyze.txt', '/Users/saljh8/Desktop/Grimes/GEC14074/Grimes_092914_Cell12.bam')
     #sys.exit()
@@ -5297,7 +5301,7 @@ if __name__ == '__main__':
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
 
-    runKallisto('Ma','test','/Volumes/salomonis2/Suhas-Rhesus-mRNAseq/FASTQs','/Volumes/salomonis2/Suhas-Rhesus-mRNAseq/FASTQs');sys.exit()
+    runKallisto('Hs','HSC','/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Hs-Fluidigm-Kallisto','/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Hs-Fluidigm-Kallisto');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

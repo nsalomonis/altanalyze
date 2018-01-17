@@ -208,7 +208,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     
     collapse_override = True
     
-    if 'Clustering-' in customMarkers and 'ICGS' in customMarkers:
+    if 'Clustering-' in customMarkers and ('ICGS' in customMarkers or 'MarkerGene' in customMarkers):
         """ When performing cellHarmony, build an ICGS expression reference with log2 TPM values rather than fold """
         print 'Converting ICGS folds to ICGS expression values as a reference first...'
         customMarkers = convertICGSClustersToExpression(customMarkers,exp_input)
@@ -2299,15 +2299,22 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             export_object.close()
             
             from stats_scripts import metaDataAnalysis
+            strictCutoff = True
+            pvalThreshold=0.01
+            use_adjusted_pval = False
             if platform == 'RNASeq':
                 log_fold_cutoff=0.585
+                if strictCutoff:
+                    log_fold_cutoff = 1
+                    pvalThreshold = 0.05
+                    use_adjusted_pval = True
                 output_dir = root_dir+'/DEGs-LogFold_0.585_rawp'
             else:
                 log_fold_cutoff=0.1
                 output_dir = root_dir+'Events-LogFold_0.1_rawp'
 
             metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,
-                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=False,pvalThreshold=0.01)
+                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold)
             all_DEGs = aggregateRegulatedGenes(output_dir)
             display_genes = string.join(list(all_DEGs),' ')
             ICGS_DEGs_combined = ref_exp_db.keys()
@@ -2477,6 +2484,9 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file):
     graphic_links=[]
     filename = export.findFilename(heatmap_file)
     ICGS_dir = export.findParentDir(heatmap_file)
+    if 'DataPlots' in ICGS_dir: ### For MarkerFinder input
+        ### Go one more level up
+        ICGS_dir = export.findParentDir(ICGS_dir[:-1])
     root_dir = export.findParentDir(ICGS_dir[:-1])
     files = unique.read_directory(root_dir+'/ExpressionInput')
 
@@ -2502,17 +2512,43 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file):
     if '-Guide' in filename:
         guide = string.split(filename,'-Guide')[1][:1]
         cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/Guide'+guide+'-cellHarmony-reference.txt'
+    elif 'MarkerGene' in filename:
+        cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/MarkerFinder-cellHarmony-reference.txt'
     else:
         cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/ICGS-cellHarmony-reference.txt'
     eo = export.ExportFile(cellHarmonyReferenceFile)
     
     ### Import the heatmap and expression files
     matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(heatmap_file)
-    matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
 
-    ### Correct fileheader if group prefix present
-    try: column_header_exp = map(lambda x: string.split(x,':')[1],column_header_exp)
-    except Exception: pass ### If no ":" in cell library names
+    if 'MarkerGene' in heatmap_file:
+        clusters=[]
+        cluster_number=0
+        new_row_header = []
+        row_header.reverse() ### In the opposite order
+        for uid in row_header:
+            if ':' in uid:
+                cluster,uid = string.split(uid,':')
+                if cluster not in clusters:
+                    clusters.append(cluster)
+                    cluster_number+=1
+                if ' ' in uid:
+                    uid = string.split(uid,' ')[1]
+                priorRowClusters.append(str(cluster_number))
+            new_row_header.append(uid)
+        clusters=[]
+        cluster_number=0
+        new_column_header = []
+        for uid in column_header:
+            if ':' in uid:
+                cluster,uid = string.split(uid,':')
+                if cluster not in clusters:
+                    clusters.append(cluster)
+                    cluster_number+=1
+                priorColumnClusters.append(str(cluster_number))
+            new_column_header.append(uid)
+        row_header = new_row_header
+        column_header = new_column_header
 
     ### Correct fileheader if group prefix present
     try: column_header = map(lambda x: string.split(x,':')[1],column_header)
@@ -2529,6 +2565,11 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file):
     ### Record the index for each sample name in the ICGS result order in the original expression file (exp.*)
     priorColumnClusters = map(str,priorColumnClusters)
 
+    matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
+    ### Correct fileheader if group prefix present
+    try: column_header_exp = map(lambda x: string.split(x,':')[1],column_header_exp)
+    except Exception: pass ### If no ":" in cell library names
+    
     sample_index_list = map(lambda x: column_header_exp.index(x), column_header)
     eo.write(string.join(['UID','row_clusters-flat']+column_header,'\t')+'\n')
     eo.write(string.join(['column_clusters-flat','']+priorColumnClusters,'\t')+'\n')

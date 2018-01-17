@@ -4551,22 +4551,25 @@ def exportComparisonSummary(dataset_name,summary_data_dbase,return_type):
         if key != 'QC': ### The value is a list of strings
             summary_data_dbase[key] = str(summary_data_dbase[key])
     d = 'Dataset name: '+ dataset_name[:-1]; result_list.append(d+'\n')
-    d = summary_data_dbase['gene_assayed']+':\tAll genes examined'; result_list.append(d)
-    d = summary_data_dbase['denominator_exp_genes']+':\tExpressed genes examined for AS'; result_list.append(d)
+    try:
+        d = summary_data_dbase['gene_assayed']+':\tAll genes examined'; result_list.append(d)
+        d = summary_data_dbase['denominator_exp_genes']+':\tExpressed genes examined for AS'; result_list.append(d)
 
-    if explicit_data_type == 'exon-only': 
-        d = summary_data_dbase['alt_events']+':\tAlternatively regulated probesets'; result_list.append(d)
-        d = summary_data_dbase['denominator_exp_events']+':\tExpressed probesets examined'; result_list.append(d)  
-    elif (array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq') and (explicit_data_type == 'null' or return_type == 'print'):
-        d = summary_data_dbase['alt_events']+':\tAlternatively regulated junction-pairs'; result_list.append(d)
-        d = summary_data_dbase['denominator_exp_events']+':\tExpressed junction-pairs examined'; result_list.append(d)
-    else: 
-        d = summary_data_dbase['alt_events']+':\tAlternatively regulated probesets'; result_list.append(d)
-        d = summary_data_dbase['denominator_exp_events']+':\tExpressed probesets examined'; result_list.append(d)
-    d = summary_data_dbase['alt_genes']+':\tAlternatively regulated genes (ARGs)'; result_list.append(d)
-    d = summary_data_dbase['direct_domain_genes']+':\tARGs - overlaping with domain/motifs'; result_list.append(d)
-    d = summary_data_dbase['miRNA_gene_hits']+':\tARGs - overlaping with microRNA binding sites'; result_list.append(d)
-
+        if explicit_data_type == 'exon-only': 
+            d = summary_data_dbase['alt_events']+':\tAlternatively regulated probesets'; result_list.append(d)
+            d = summary_data_dbase['denominator_exp_events']+':\tExpressed probesets examined'; result_list.append(d)  
+        elif (array_type == 'AltMouse' or array_type == 'junction' or array_type == 'RNASeq') and (explicit_data_type == 'null' or return_type == 'print'):
+            d = summary_data_dbase['alt_events']+':\tAlternatively regulated junction-pairs'; result_list.append(d)
+            d = summary_data_dbase['denominator_exp_events']+':\tExpressed junction-pairs examined'; result_list.append(d)
+        else: 
+            d = summary_data_dbase['alt_events']+':\tAlternatively regulated probesets'; result_list.append(d)
+            d = summary_data_dbase['denominator_exp_events']+':\tExpressed probesets examined'; result_list.append(d)
+        d = summary_data_dbase['alt_genes']+':\tAlternatively regulated genes (ARGs)'; result_list.append(d)
+        d = summary_data_dbase['direct_domain_genes']+':\tARGs - overlaping with domain/motifs'; result_list.append(d)
+        d = summary_data_dbase['miRNA_gene_hits']+':\tARGs - overlaping with microRNA binding sites'; result_list.append(d)
+    except Exception:
+        pass
+    
     result_list2=[]
     for d in result_list:
         if explicit_data_type == 'exon-only': d = string.replace(d,'probeset','exon')
@@ -4660,7 +4663,7 @@ class SummaryResultsWindow:
             txt.insert(END, 'DataPlots',('link', str(i))); i+=1
             self.LINKS.append(output_dir+'DataPlots/')
         else:
-            url = 'http://code.google.com/p/altanalyze/'
+            url = 'http://altanalyze.readthedocs.io/en/latest/'
             self.LINKS=(url,'')
             txt.insert(END, '\nFor more information see the ')
             txt.insert(END, "AltAnalyze Online Help", ('link', str(0)))
@@ -4690,14 +4693,14 @@ class SummaryResultsWindow:
             text_button = Button(tl, text='Start DomainGraph in Cytoscape', command=self.SelectCytoscapeTopLevel)
             text_button.pack(side = 'right', padx = 5, pady = 5)
             self.output_dir = output_dir + "AltResults"
-            self.whatNext_url = 'http://code.google.com/p/altanalyze/wiki/AnalyzingASResults' #http://www.altanalyze.org/what_next_altexon.htm'
+            self.whatNext_url = 'http://altanalyze.readthedocs.io/en/latest/' #http://www.altanalyze.org/what_next_altexon.htm'
             whatNext_pdf = 'Documentation/what_next_alt_exon.pdf'; whatNext_pdf = filepath(whatNext_pdf); self.whatNext_pdf = whatNext_pdf
             if output_type == 'parent': self.output_dir = output_dir ###Used for fake datasets
         else:
             if pathway_permutations == 'NA':
                 self.output_dir = output_dir + "ExpressionOutput"
             else: self.output_dir = output_dir
-            self.whatNext_url = 'http://code.google.com/p/altanalyze/wiki/AnalyzingGEResults' #'http://www.altanalyze.org/what_next_expression.htm'
+            self.whatNext_url = 'http://altanalyze.readthedocs.io/en/latest/' #'http://www.altanalyze.org/what_next_expression.htm'
             whatNext_pdf = 'Documentation/what_next_GE.pdf'; whatNext_pdf = filepath(whatNext_pdf); self.whatNext_pdf = whatNext_pdf
         what_next = Button(tl, text='What Next?', command=self.whatNextlinkout)
         what_next.pack(side = 'right', padx = 5, pady = 5)
@@ -5807,7 +5810,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     graphic_link1 = ExpressionBuilder.exportHeatmap(significantFilteredDir)
                     try: summary_data_db2['QC']+=graphic_link1
                     except Exception: summary_data_db2['QC']=graphic_link1
-      except Exception: print traceback.format_exc()
+      except Exception:
+        print traceback.format_exc()
       
       import RNASeq
       try:
@@ -5850,13 +5854,19 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None); print 'completed'
             UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
       except Exception:
-        print traceback.format_exc()
+        #print traceback.format_exc()
+        pass
         
       if array_type != 'exon' and array_type != 'gene':
             ### SashimiPlot Visualization
             try:
-              top_PSI_junction = inputpsi[:-4]+'-ANOVA.txt'
-              isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
+              top_PSI_junction = inputpsi
+              #isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
+              altoutput_dir = export.findParentDir(top_PSI_junction)
+              isoform_dir2 = altoutput_dir+'/top'+str(50)+'/MultiPath-PSI.txt'
+              gene_string = UI.importGeneList(isoform_dir2,limit=50)
+              UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None); print 'completed'
+              UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
             except Exception:
               print traceback.format_exc()
             try:
@@ -5935,6 +5945,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       if root !='' and root !=None:
           print "Analysis Complete\n";
           UI.InfoWindow(print_out,'Analysis Completed!')
+          try: dataset_name = dataset_name
+          except: dataset_name = dataset
           tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset_name,'specific',summary_data_db2)
   except Exception:
     print traceback.format_exc()
@@ -6200,6 +6212,7 @@ def commandLineRun():
     testType = "fast"
     inputTestData = "text"
     customFASTA = None
+    filterFile = None
     
     original_arguments = sys.argv
     arguments=[]
@@ -6261,7 +6274,7 @@ def commandLineRun():
                                                          'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
                                                          'reimportModelScores=','separateGenePlots=','ChromiumSparseMatrix=',
                                                          'test=','testType=','inputTestData=','customFASTA=',
-                                                         'excludeGuides=','cellHarmony='])
+                                                         'excludeGuides=','cellHarmony=','BAM_dir=','filterFile='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6287,7 +6300,7 @@ def commandLineRun():
         elif opt == '--celdir':
             arg = verifyPath(arg)
             cel_file_dir=arg
-        elif opt == '--bedDir':
+        elif opt == '--bedDir' or opt == '--BAM_dir':
             arg = verifyPath(arg)
             cel_file_dir=arg
         elif opt == '--ChromiumSparseMatrix':
@@ -6377,6 +6390,11 @@ def commandLineRun():
             else: multiThreading = False
     
     if perform_tests != False:
+        ### Requires the mouse RNASeq database
+        ### python AltAnalyze.py --test --testType ICGS --inputTestData text
+        ### python AltAnalyze.py --test --testType ICGS --inputTestData BAM
+        ### python AltAnalyze.py --test --testType ICGS --inputTestData FASTQ
+        ### python AltAnalyze.py --test --testType ICGS --inputTestData 10X
         if 'ICGS' in perform_tests:
             from tests.scripts import ICGS_test
             if runKallisto:
@@ -6437,8 +6455,8 @@ def commandLineRun():
                 array_type == "3'array"
                 if IDtype == None: IDtype = manufacturer
         
-            row_method = 'weighted'
-            column_method = 'average'
+            row_method = 'hopach'
+            column_method = 'hopach'
             row_metric = 'cosine'
             column_metric = 'cosine'
             color_gradient = 'yellow_black_blue'
@@ -6449,16 +6467,20 @@ def commandLineRun():
             GeneSetSelection = 'None Selected'
             excludeCellCycle = True
             rho_cutoff = 0.4
-            restrictBy = 'protein_coding'
+            restrictBy = None
             featurestoEvaluate = 'Genes'
             ExpressionCutoff = 1
-            CountsCutoff = 1
-            FoldDiff = 2
-            SamplesDiffering = 3
+            CountsCutoff = 0.9
+            FoldDiff = 4
+            SamplesDiffering = 4
             JustShowTheseIDs=''
             removeOutliers = False
             excludeGuides = None
             PathwaySelection=[]
+            if ChromiumSparseMatrix != '':
+                rho_cutoff = 0.3
+                column_metric = 'euclidean'
+                restrictBy = 'protein_coding'
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 if opt == '--row_method':
                     row_method=arg
@@ -6669,8 +6691,10 @@ def commandLineRun():
             new_groups_dir = RNASeq.exportGroupsFromClusters(Guide3_results,fl.ExpFile(),array_type,suffix='ICGS')
             
             ### Build-tSNE plot
-            UI.performPCA(Guide3_results, 'no', 't-SNE', False, None, plotType='2D',
-                display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False, separateGenePlots=False)
+            tSNE_graphical_links = UI.performPCA(Guide3_results, 'no', 't-SNE', False, None, plotType='2D',
+                display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+                separateGenePlots=False, returnImageLoc=True)
+            tSNE_score_file = tSNE_graphical_links[-1][-1][:-10]+'-tSNE_scores.txt'
             
             ### Rename and reorder the resulting ICGS files for downstream anlaysis (preserving the original files)
             from import_scripts import sampleIndexSelection
@@ -6701,7 +6725,12 @@ def commandLineRun():
                 new_filtered_exp_file = string.replace(filtered_exp_file,'-OutliersRemoved','')
                 #try: os.rename(filtered_exp_file,new_filtered_exp_file) ### if present copy over
                 #except Exception: pass
-                
+
+            ### Copy the t-SNE scores to use it for gene expression analyses
+            exp_tSNE_score_file = export.findParentDir(tSNE_score_file)+'/'+export.findFilename(exonExpFile)[:-4]+'-tSNE_scores.txt'
+            import shutil
+            shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
+        
             fl.setExpFile(newExpFile) ### set this to the outlier removed version
             groups_file = string.replace(newExpFile,'exp.','groups.')
             comps_file = string.replace(newExpFile,'exp.','comps.')
@@ -6751,7 +6780,18 @@ def commandLineRun():
                 print printout,'\n'
             except Exception: None
             sys.exit()
-
+        if 'FilterFile' in accessoryAnalysis:
+            for opt, arg in options: ### Accept user input for these hierarchical clustering variables
+                if opt == '--filterFile':
+                    filterFile = arg
+                if opt == '--input':
+                    input_file = verifyPath(arg)
+            output_file = input_file[:-4]+'-filtered.txt'
+            from import_scripts import sampleIndexSelection
+            filter_order = sampleIndexSelection.getFilters(filterFile)
+            
+            sampleIndexSelection.filterFile(input_file,output_file,filter_order)
+            sys.exit()
         if 'MergeFiles' in accessoryAnalysis:
             #python AltAnalyze.py --accessoryAnalysis MergeFiles --input "C:\file1.txt" --input "C:\file2.txt" --output "C:\tables"
             files_to_merge=[]
@@ -7461,7 +7501,8 @@ def commandLineRun():
                     else:
                         group_exp_file = (input_exp_file,output_dir) ### still analyze the primary sample
                 except Exception:
-                    print traceback.format_exc()
+                    #print traceback.format_exc()
+                    print 'No DATASET file present (used to obtain gene annotatinos)...'
                     ### Work around when performing this analysis on an alternative exon input cluster file
                     group_exp_file = input_exp_file
                 fl = UI.ExpressionFileLocationData(input_exp_file,'','',''); fl.setOutputDir(export.findParentDir(export.findParentDir(input_exp_file)[:-1]))
@@ -7579,7 +7620,7 @@ def commandLineRun():
             groups_file = string.replace(exp_file_dir,'exp.','groups.')
             comps_file = string.replace(exp_file_dir,'exp.','comps.')
             if verifyGroupFileFormat(groups_file) == False:
-                print "\nWarning! The format of your groups file is not correct. For details, see:\nhttp://code.google.com/p/altanalyze/wiki/ManualGroupsCompsCreation\n"
+                print "\nWarning! The format of your groups file is not correct. For details, see:\nhttp://altanalyze.readthedocs.io/en/latest/ManualGroupsCompsCreation\n"
                 sys.exit()
 
         if array_type != 'RNASeq' and manufacturer!= 'Agilent':
@@ -8071,7 +8112,7 @@ def commandLineRun():
                     comps_file = string.replace(new_exp_file,'exp.','comps.')
                     input_exp_file = new_exp_file
                     if verifyGroupFileFormat(groups_file) == False:
-                        print "\nWarning! The format of your groups file is not correct. For details, see:\nhttp://code.google.com/p/altanalyze/wiki/ManualGroupsCompsCreation\n"
+                        print "\nWarning! The format of your groups file is not correct. For details, see:\nhttp://altanalyze.readthedocs.io/en/latest/ManualGroupsCompsCreation\n"
                         sys.exit()
                 try:
                     cel_files, array_linker_db = ExpressionBuilder.getArrayHeaders(input_exp_file)

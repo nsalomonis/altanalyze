@@ -1,6 +1,6 @@
 [data]
-bam_prefix = /Volumes/salomonis2/Starczynowski_TRAF6_KO/bams/
-bam_files =["DS1_AGTTCC_R1.bam","DS5_GTGGCC_R1.bam","DS6_CGTACG_R1.bam","DS9_CGATGT_R1.bam"]
+bam_prefix = /Users/saljh8/Desktop/Old Mac/Desktop/Grimes/GEC14074//
+bam_files =["Grimes_September_23_Cell_1.bam","Grimes_September_23_Cell_12.bam","Grimes_092914_Cell84.bam","Grimes_092914_Cell12.bam"]
 
 [plotting]
 fig_width = 7 
@@ -20,6 +20,6 @@ resolution = .5
 posterior_bins = 40 
 gene_posterior_ratio = 5 
 colors =["red","red","blue","blue"]
-coverages =[5915542,6263523,6175438,5696692]
+coverages =[3224790,6037410,8405905,7577548]
 bar_color = "b" 
 bf_thresholds = [0, 1, 2, 5, 10, 20]

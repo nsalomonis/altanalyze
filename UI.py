@@ -661,11 +661,65 @@ def RemotePredictSampleExpGroups(expFile, mlp_instance, gsp, globalVars):
     global species
     global array_type
     species, array_type = globalVars
-    predictSampleExpGroups(expFile, mlp_instance, gsp, False, None)
+    predictSampleExpGroups(expFile, mlp_instance, gsp, False, None, exportAdditionalResults=False)
     return graphic_links
 
+def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
+    
+    ### Remove OutlierRemoved files (they will otherwise clutter up the directory)
+    if 'OutliersRemoved' in group_selected and 'OutliersRemoved' not in expFile:
+        try: os.remove(expFile[:-4]+'-OutliersRemoved.txt')
+        except Exception: pass
+        try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','groups.'))
+        except Exception: pass
+        try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','comps.'))
+        except Exception: pass
+        
+    ### Create the new groups file but don't over-write the old
+    import RNASeq
+    new_groups_dir = RNASeq.exportGroupsFromClusters(group_selected,expFile,array_type,suffix='ICGS')
+    from import_scripts import sampleIndexSelection
 
-def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root):
+    if outputTSNE:
+        ### Build-tSNE plot from the selected ICGS output (maybe different than Guide-3)
+        tSNE_graphical_links = performPCA(group_selected, 'no', 't-SNE', False, None, plotType='2D',
+            display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+            separateGenePlots=False,returnImageLoc=True)
+        tSNE_score_file = tSNE_graphical_links[-1][-1][:-10]+'-tSNE_scores.txt'
+    
+    if '-steady-state' in expFile:
+        newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
+        ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
+        sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
+        
+        ### Copy the steady-state files for ICGS downstream-specific analyses
+        ssCountsFile = string.replace(expFile,'exp.','counts.')
+        newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
+        newssCountsFile = string.replace(newExpFile,'exp.','counts.')                    
+        exonExpFile = string.replace(expFile,'-steady-state','')
+        exonCountFile = string.replace(exonExpFile,'exp.','counts.')
+        newExonExpFile = string.replace(newExpFile,'-steady-state','')
+        newExonCountsFile = string.replace(newExonExpFile,'exp.','counts.')
+
+        sampleIndexSelection.filterFile(ssCountsFile,newssCountsFile,ICGS_order)
+        sampleIndexSelection.filterFile(exonExpFile,newExonExpFile,ICGS_order)
+        sampleIndexSelection.filterFile(exonCountFile,newExonCountsFile,ICGS_order)
+        exonExpFile = exonExpFile[:-4]+'-ICGS.txt'
+    else:
+        newExpFile = expFile[:-4]+'-ICGS.txt'
+        ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
+        sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
+        exonExpFile = newExpFile
+    
+    if outputTSNE:
+        ### Copy the t-SNE scores to use it for gene expression analyses
+        exp_tSNE_score_file = export.findParentDir(tSNE_score_file)+'/'+export.findFilename(exonExpFile)[:-4]+'-tSNE_scores.txt'
+        import shutil
+        shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
+    
+    return exonExpFile,newExpFile,new_groups_dir 
+        
+def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root, exportAdditionalResults=True):
     global graphic_links; graphic_links=[];
     if root == None: display=False
     else: display=True
@@ -680,7 +734,12 @@ def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root):
             graphic_links3 = RNASeq.singleCellRNASeqWorkflow(species, 'exons', cluster_input_file, mlp_instance, parameters=gsp, reportOnly=reportOnly)
             graphic_links+=graphic_links2+graphic_links3
         print_out  = 'Predicted sample groups saved.'
-
+        
+        if exportAdditionalResults:
+            ### Optionally automatically generate t-SNE and MarkerFinder Results
+            guide3_results = graphic_links[-1][-1][:-4]+'.txt'
+            exportAdditionalICGSOutputs(expFile,guide3_results)
+            
         if len(graphic_links)==0:
             print_out  = 'No predicted sample groups identified. Try different parameters.'
         if display == False: print print_out
@@ -950,16 +1009,16 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     
 def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,
             geneSetName=None, species=None, zscore=True, colorByGene=None, reimportModelScores=True,
-            separateGenePlots=False):
+            separateGenePlots=False, returnImageLoc=False):
     from visualization_scripts import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
     else: pca_labels=False
     if zscore=='yes': zscore = True
     elif zscore=='no': zscore = False
-
+    pca_graphical_links=[]
     try:
-        clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels,
+        pca_graphical_links = clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels,
                     plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName,
                     species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores,
                     separateGenePlots=separateGenePlots)
@@ -980,6 +1039,9 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
         except Exception: None
     try: root.destroy()
     except Exception: pass
+    if returnImageLoc:
+        try: return pca_graphical_links
+        except Exception: pass
     
 def createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, root, display=True):
     graphics = []
@@ -1612,6 +1674,7 @@ class GUI:
         self.defaults = defaults
         
         filename = 'Config/icon.gif'; orient_type = 'left'
+
         if 'input_cel_dir' in option_list:
             filename = 'Config/aa_0.gif'
             if array_type == 'RNASeq': filename = 'Config/aa_0_rs.gif'
@@ -1809,7 +1872,8 @@ class GUI:
                 entrytxt.set(default_option)
                 self.pathdb[option] = entrytxt
                 self._user_variables[option] = default_option
-                
+                if option == 'input_cel_dir' and '10X' in vendor:
+                    od.setDisplayObject('file')
                 #l = Label(group.interior(), text=self.title); l.pack(side=LEFT)        
                 entry = Entry(group.interior(),textvariable=self.pathdb[option]);
                 entry.pack(side='left',fill = 'both', expand = 1, padx = 10, pady = 2)
@@ -1904,8 +1968,9 @@ class GUI:
                         #self.comp.invoke(self.display_options[0]) # better to know the variable incase their is a conflict
                         print self.display_options, selected_default, option, option_list;kill
                     if option == 'selected_version':
-                        notes = 'Note: Available species may vary based on database selection    \n'
-                        notes += 'Different Ensembl versions will relate to different genome builds\n'
+                        notes = 'Note: Available species may vary based on database selection. Also,\n'
+                        notes += 'different Ensembl versions will relate to different genome builds\n'
+                        notes += '(e.g., EnsMart54-74 for hg19 and EnsMart75-current for hg38).\n'
                         ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
                     if option == 'probability_algorithm':
                         notes = 'Note: Moderated tests only run for gene-expression analyses      \n'
@@ -2076,7 +2141,9 @@ class GUI:
                         except Exception:
                             None
                     if option == 'selected_version':
-                        notes = 'Note: Available species may vary based on database selection    \n'
+                        notes = 'Note: Available species may vary based on database selection. Also,\n'
+                        notes += 'different Ensembl versions will relate to different genome builds\n'
+                        notes += '(e.g., EnsMart54-74 for hg19 and EnsMart75-current for hg38).\n'
                         ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
                         
             if 'pulldown_comps' in od.DisplayObject() and self.display_options != ['NA']:
@@ -2413,7 +2480,8 @@ class GUI:
         column_metric = self.Results()['column_metric_predict']
         column_method = self.Results()['column_method_predict']
         GeneSetSelection = self.Results()['GeneSetSelectionPredict']
-        PathwaySelection = self.Results()['PathwaySelectionPredict']
+        try: PathwaySelection = self.Results()['PathwaySelectionPredict']
+        except Exception: PathwaySelection = 'None Selected'
         GeneSelection = self.Results()['GeneSelectionPredict']
         JustShowTheseIDs = self.Results()['JustShowTheseIDsPredict']
         ExpressionCutoff = self.Results()['ExpressionCutoff']
@@ -2836,8 +2904,10 @@ class GUI:
                     except Exception: null = []
                     try:
                         self.speciescomp._list.setlist(current_species_names)
-                        self.speciescomp.selectitem(current_species_names[0]) 
-                    except Exception: null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
+                        self.speciescomp.selectitem(current_species_names[0])
+                    except Exception:
+                        print traceback.format_exc()
+                        null = [] ### Occurs before speciescomp is declared when dbase_version pulldown is first intiated
 
     def checkSpeciesArraySelection(self,array_type):
         current_species_names = getSpeciesForArray(array_type)
@@ -2980,6 +3050,8 @@ def importGeneList(filename,limit=None):
         gene = string.split(data,'\t')[0]
         if ' ' in gene:
             gene = string.split(gene,' ')[0]
+        if ':' in gene:
+            gene = string.split(gene,':')[0]
         if gene not in gene_list and gene != 'GeneID' and gene != 'UID' and gene != 'probesetID':
             gene_list.append(gene)
             count+=1
@@ -2991,8 +3063,7 @@ def importGeneList(filename,limit=None):
 def exportJunctionList(filename,limit=None):
     ### Optionally limit the number of results imported
     parent = export.findParentDir(filename)
-    file = export.findFilename(filename)
-    export_file = parent+'/top'+str(limit)+'/'+file
+    export_file = parent+'/top'+str(limit)+'/MultiPath-PSI.txt'#+file
     #export_file = filename[:-4]+'-top-'+str(limit)+'.txt'
     eo = export.ExportFile(export_file)
     fn=filepath(filename); count=0; firstLine=True
@@ -4011,7 +4082,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze version 2.1.0.\n'
+        about = 'AltAnalyze version 2.1.1.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.altanalyze.org\n'
@@ -4032,7 +4103,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.1.0.\n')
+        txt.insert(END, 'AltAnalyze version 2.1.1.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
@@ -4865,7 +4936,7 @@ def getUserParameters(run_parameter,Multi=None):
         for array_name in array_list:
             manufacturer = array_codes[array_name].Manufacturer(); manufacturer_list_all_possible.append(manufacturer) 
         manufacturer_list_all_possible = unique.unique(manufacturer_list_all_possible); manufacturer_list_all_possible.sort()
-
+        
         if len(elite_db_versions)>1:
             option_db['dbase_version'].setArrayOptions(elite_db_versions)
             option_db['dbase_version'].setDefaultOption(gene_database_dir)
@@ -4881,7 +4952,7 @@ def getUserParameters(run_parameter,Multi=None):
                 gu = GUI(root,option_db,option_list['ArrayType'],'')
             else: gu = PreviousResults(old_options)
             species_full = gu.Results()['species']
-        
+
         new_analysis_options=[]
         try: update_dbs = gu.Results()['update_dbs']
         except Exception: update_dbs = 'no'
@@ -4936,9 +5007,13 @@ def getUserParameters(run_parameter,Multi=None):
                     print_out = "Valid species data was not added. You must\nindicate a two letter species code and full species name."
                     IndicatorWindow(print_out,'Continue')  
         else: species = species_codes[species_full].SpeciesCode()    
-        array_full = gu.Results()['array_type']
+        array_full = gu.Results()['array_type'] ### Can be 10X Genomics
         vendor = gu.Results()['manufacturer_selection']
-        try: array_type = array_codes[array_full].ArrayCode()
+        if '10X' in array_full:
+            vendor = '10XGenomics'
+
+        try:
+            array_type = array_codes[array_full].ArrayCode() ### Here, 10X Genomics would be converted to RNASeq
         except Exception:
             if vendor == 'Other ID':
                 #"""
@@ -4973,7 +5048,7 @@ def getUserParameters(run_parameter,Multi=None):
             array_type = '10XGenomics'
             array_full == '10X Genomics sparse matrix'
         option_list,option_db = importUserOptions(array_type,vendor=vendor)  ##Initially used to just get the info for species and array_type
-
+        
         if array_type == "3'array" and '10X' not in vendor:
             if species == 'Hs': compendiumPlatform = "3'array"
             for i in option_db['run_from_scratch'].ArrayOptions():
@@ -4999,11 +5074,11 @@ def getUserParameters(run_parameter,Multi=None):
         try: constitutive_source = array_codes[array_full].ConstitutiveSource()
         except Exception: constitutive_source = vendor
 
-        if array_full == '10X Genomics sparse matrix':
+        if '10X' in array_full or '10X' in vendor:
             array_type = "3'array"
             vendor = 'other:'+array_full ### Ensembl linked system name
             #option_list,option_db = importUserOptions(array_type,vendor=vendor)  ##Initially used to just get the info for species and array_type
-            
+
         if backSelect == 'yes':
             for option in old_options: ### Set options to user selected
                 try: option_db[option].setDefaultOption(old_options[option])
@@ -5012,6 +5087,38 @@ def getUserParameters(run_parameter,Multi=None):
         if run_from_scratch == 'Interactive Result Viewer':
             AltAnalyze.AltAnalyzeSetup('remoteViewer');sys.exit()
             
+        def rebootAltAnalyzeGUI(selected_parameters,user_variables):
+            commandline_args = ['--selected_parameters',selected_parameters[-1]]
+            for uv in user_variables:
+                if isinstance(user_variables[uv], list):
+                    commandline_args += ['--'+uv,user_variables[uv][0]]
+                else:
+                    try:
+                        if len(user_variables[uv])>0:
+                            commandline_args += ['--'+uv,user_variables[uv]]
+                    except Exception: pass 
+            commandline_args = map(lambda x: string.replace(x,' ','__'),commandline_args)
+            commandline_args = str(string.join(commandline_args,' '))
+            if os.name == 'posix' or os.name == 'nt':
+                try:
+                    package_path = filepath('python')
+                    if os.name == 'posix':
+                        package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/AltAnalyze')
+                    else:
+                        package_path = string.replace(package_path,'python','AltAnalyze.exe')
+                        package_path = 'AltAnalyze.exe'
+                    #print [package_path+' --GUI yes '+commandline_args]
+                    os.system(package_path+' --GUI yes '+commandline_args);sys.exit()
+                except Exception:   
+                    package_path = filepath('python')
+                    package_path = string.replace(package_path,'python','AltAnalyze.py')
+                    package_path = 'python '+package_path
+                    if os.name == 'nt':
+                        package_path = 'python AltAnalyze.py'
+                    os.system(package_path+' --GUI yes '+commandline_args);sys.exit()
+            else:
+                AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                                
         if run_from_scratch == 'Additional Analyses':
 
             if backSelect == 'no' or 'Additional Analyses' == selected_parameters[-1]:
@@ -5192,36 +5299,7 @@ def getUserParameters(run_parameter,Multi=None):
                         #if len(altgenes_file)>0 or ' ' in gene_symbol or ((len(exp_file)>0 or len(gene_symbol)>0) and analysisType == 'Sashimi-Plot'):
                         if len(analysisType)>0:
                             ### Typically have a Tkinter related error
-                            commandline_args = ['--selected_parameters',selected_parameters[-1]]
-                            for uv in user_variables:
-                                if isinstance(user_variables[uv], list):
-                                    commandline_args += ['--'+uv,user_variables[uv][0]]
-                                else:
-                                    try:
-                                        if len(user_variables[uv])>0:
-                                            commandline_args += ['--'+uv,user_variables[uv]]
-                                    except Exception: pass 
-                            commandline_args = map(lambda x: string.replace(x,' ','__'),commandline_args)
-                            commandline_args = str(string.join(commandline_args,' '))
-                            if os.name == 'posix' or os.name == 'nt':
-                                try:
-                                    package_path = filepath('python')
-                                    if os.name == 'posix':
-                                        package_path = string.replace(package_path,'python','AltAnalyze.app/Contents/MacOS/AltAnalyze')
-                                    else:
-                                        package_path = string.replace(package_path,'python','AltAnalyze.exe')
-                                        package_path = 'AltAnalyze.exe'
-                                    #print [package_path+' --GUI yes '+commandline_args]
-                                    os.system(package_path+' --GUI yes '+commandline_args);sys.exit()
-                                except Exception:   
-                                    package_path = filepath('python')
-                                    package_path = string.replace(package_path,'python','AltAnalyze.py')
-                                    package_path = 'python '+package_path
-                                    if os.name == 'nt':
-                                        package_path = 'python AltAnalyze.py'
-                                    os.system(package_path+' --GUI yes '+commandline_args);sys.exit()
-                            else:
-                                AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                            rebootAltAnalyzeGUI(selected_parameters,user_variables)
                         else:
                             AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -5482,7 +5560,10 @@ def getUserParameters(run_parameter,Multi=None):
                         fl.setClassificationAnalysis(classificationAnalysis)
                         values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file, modelDiscovery
                         StatusWindow(values,analysis) ### display an window with download status
-                        AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                        ### Typically have a Tkinter related error
+                        rebootAltAnalyzeGUI(selected_parameters,user_variables)
+                        #else:
+                        #AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
@@ -5509,7 +5590,7 @@ def getUserParameters(run_parameter,Multi=None):
                     else:
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
-            
+
         if 'CEL files' in run_from_scratch or 'RNA-seq reads' in run_from_scratch or 'Feature Extraction' in run_from_scratch or 'Chromium' in run_from_scratch:
             """Designate CEL, Agilent or BED file directory, Dataset Name and Output Directory"""
             assinged = 'no'
@@ -5522,7 +5603,7 @@ def getUserParameters(run_parameter,Multi=None):
                     if array_type == 'RNASeq':
                         root.title('AltAnalyze: Select Exon and/or Junction files to analyze'); import_file = 'BED, BAM, TAB or TCGA'
                     elif '10X' in vendor:
-                        root.title('AltAnalyze: Select Chromium Sparse Matrix Filtered Directory'); import_file = 'Filtered Directory'
+                        root.title('AltAnalyze: Select Chromium Sparse Matrix Filtered Matrix'); import_file = 'Filtered Matrix'
                     elif vendor == 'Agilent':
                         root.title('AltAnalyze: Select Agilent Feature Extraction text files to analyze'); import_file = '.txt'
                     else:
@@ -5839,7 +5920,14 @@ def getUserParameters(run_parameter,Multi=None):
                     if 'exp.' not in input_exp_file: exp_prefix = 'exp.'
                     else: exp_prefix=''
                     moved_exp_dir = output_dir+'/'+exp_prefix+export.findFilename(input_exp_file)
+                    alt_exp_dir = export.findParentDir(input_exp_file)+'/'+exp_prefix+export.findFilename(input_exp_file)
                     export.copyFile(input_exp_file, moved_exp_dir)
+                    ### Do the same thing for a groups file
+                    try: export.copyFile(string.replace(alt_exp_dir,'exp.','groups.'), string.replace(moved_exp_dir,'exp.','groups.'))
+                    except: pass
+                    ### Do the same thing for a comps file
+                    try: export.copyFile(string.replace(alt_exp_dir,'exp.','comps.'), string.replace(moved_exp_dir,'exp.','comps.'))
+                    except: pass
                     input_exp_file = moved_exp_dir
                     if len(input_stats_file)>1: ### Do the same for a stats file
                         if 'stats.' not in input_exp_file: stats_prefix = 'stats.'
@@ -5848,7 +5936,7 @@ def getUserParameters(run_parameter,Multi=None):
                         export.copyFile(input_stats_file, moved_stats_dir)
                         input_stats_file = moved_stats_dir
                 except Exception: None
-                    
+
         if run_from_scratch != 'buildExonExportFiles': ### Update DBs is an option which has been removed from 1.1. Should be a separate menu item soon.
             expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = importDefaults(array_type,species)
             #print vendor
@@ -6637,51 +6725,18 @@ def getUserParameters(run_parameter,Multi=None):
             if nextStep == 'UseSelected':
                 group_selected = group_selected[:-4]+'.txt'
                 exp_file = fl.ExpFile()
-                
-                ### Remove OutlierRemoved files (they will otherwise cluster up the directory)
-                if 'OutliersRemoved' in group_selected and 'OutliersRemoved' not in exp_file:
-                    try: os.remove(expFile[:-4]+'-OutliersRemoved.txt')
-                    except Exception: pass
-                    try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','groups.'))
-                    except Exception: pass
-                    try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','comps.'))
-                    except Exception: pass
-                    filtered_exp_file = string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','filteredExp.')
-                    new_filtered_exp_file = string.replace(filtered_exp_file,'-OutliersRemoved','')
-                    
-                ### Create the new groups file but don't over-write the old
-                new_groups_dir = RNASeq.exportGroupsFromClusters(group_selected,fl.ExpFile(),array_type,suffix='ICGS')
-                from import_scripts import sampleIndexSelection
-                if '-steady-state' in expFile:
-                    newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
-                    ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
-                    sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
-                    
-                    ### Copy the steady-state files for ICGS downstream-specific analyses
-                    ssCountsFile = string.replace(expFile,'exp.','counts.')
-                    newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
-                    newssCountsFile = string.replace(newExpFile,'exp.','counts.')                    
-                    exonExpFile = string.replace(expFile,'-steady-state','')
-                    exonCountFile = string.replace(exonExpFile,'exp.','counts.')
-                    newExonExpFile = string.replace(newExpFile,'-steady-state','')
-                    newExonCountsFile = string.replace(newExonExpFile,'exp.','counts.')
-
-                    sampleIndexSelection.filterFile(ssCountsFile,newssCountsFile,ICGS_order)
-                    sampleIndexSelection.filterFile(exonExpFile,newExonExpFile,ICGS_order)
-                    sampleIndexSelection.filterFile(exonCountFile,newExonCountsFile,ICGS_order)
-                    exonExpFile = exonExpFile[:-4]+'-ICGS.txt'
-                else:
-                    newExpFile = expFile[:-4]+'-ICGS.txt'
-                    ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
-                    sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
-                    exonExpFile = newExpFile
-                    
-                fl.setExpFile(exonExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
-                comps_file = string.replace(newExpFile,'exp.','comps.')
-                fl.setGroupsFile(new_groups_dir)
-                fl.setCompsFile(string.replace(new_groups_dir,'groups.','comps.'))
-                del exp_file_location_db[exp_name]
-                exp_file_location_db[exp_name+'-ICGS'] = fl
+                try:
+                    exonExpFile,newExpFile,new_groups_dir = exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=False)
+                    for exp_name in exp_file_location_db: break ### get name
+                    fl.setExpFile(exonExpFile) ### Use the ICGS re-ordered and possibly OutlierFiltered for downstream analyses
+                    comps_file = string.replace(newExpFile,'exp.','comps.')
+                    fl.setGroupsFile(new_groups_dir)
+                    fl.setCompsFile(string.replace(new_groups_dir,'groups.','comps.'))
+                    del exp_file_location_db[exp_name]
+                    exp_file_location_db[exp_name+'-ICGS'] = fl
+                except Exception:
+                    print traceback.format_exc()
+                    pass ### Unknown error
                                     
                 run_from_scratch = 'Process Expression file'
             else:

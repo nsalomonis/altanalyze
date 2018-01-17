@@ -173,6 +173,8 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
             if arrayid[0]== ' ':
                 try: arrayid = arrayid[1:] ### Cufflinks issue
                 except Exception: arrayid = ' ' ### can be the first row UID column as blank
+            if 'ENSG' in arrayid and '.' in arrayid:
+                arrayid = string.split(arrayid,'.')[0]
         else:
             arrayid = 'UID'
         #if 'counts.' in expr_input_dir: arrayid,coordinates = string.split(arrayid,'=') ### needed for exon-level analyses only
@@ -951,12 +953,14 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
     #print exportOutliers
     #print exportRelative
     #print customPath
-        
     """ Import sample and gene expression values from input file, filter, calculate geometric folds
     and export. Use for clustering and QC."""
     #print '\n',filename
     filename = string.replace(filename,'///','/')
     filename = string.replace(filename,'//','/')
+    status = 'yes'
+    convertGeneToSymbol = True
+
     if 'ExpressionOutput' in filename:
         filename = string.replace(filename,'-steady-state.txt','.txt')
         export_path = string.replace(filename,'ExpressionOutput','ExpressionOutput/Clustering')
@@ -1080,8 +1084,20 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                 if gene in genes_to_import:
                     ### Genes regulated in any user-indicated comparison according to the fold and pvalue cutoffs provided
                     log_folds = map(lambda x: str(x), log_folds)
-                    try: gene2 = gene+' '+probeset_symbol[gene]
+                    try:
+                        """
+                        if convertGeneToSymbol:
+                            if gene == probeset_symbol[gene]:
+                                gene2 = gene
+                                convertGeneToSymbol = False
+                            else:
+                                gene2 = gene+' '+probeset_symbol[gene]
+                        else:
+                            gene2 = gene
+                        """
+                        gene2 = gene+' '+probeset_symbol[gene]
                     except Exception: gene2 = gene
+                    #print [gene2,gene];sys.exit()
                     if len(t[1:])!=len(log_folds):
                         log_folds = t[1:] ### If NAs - output the original values
                     export_data.write(string.join([gene2]+log_folds,'\t')+'\n')
