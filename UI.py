@@ -2978,7 +2978,7 @@ class PreviousResults:
     def Results(self): return self._user_variables
         
 def getSpeciesList(vendor):
-    try: current_species_dirs = unique.read_directory('/AltDatabase')
+    try: current_species_dirs = unique.read_directory('/AltDatabase'); print current_species_dirs
     except Exception: ### Occurs when the version file gets over-written with a bad directory name
         try:
             ### Remove the version file and wipe the species file
@@ -2987,14 +2987,18 @@ def getSpeciesList(vendor):
             os.mkdir(filepath('AltDatabase'))
             AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
         except Exception:
-            print 'Cannot write Config/version.txt to the Config directory (like Permissions Error)'
-        try: elite_db_versions = returnDirectoriesNoReplace('/AltDatabase')
+            #print traceback.format_exc()
+            print 'Cannot write Config/version.txt to the Config directory (likely Permissions Error)'
+        try: db_versions = returnDirectoriesNoReplace('/AltDatabase')
         except Exception:
             try: os.mkdir(filepath('AltDatabase'))
             except Exception: pass
-            elite_db_versions = returnDirectoriesNoReplace('/AltDatabase')
-        try: exportDBversion(elite_db_versions[0])
-        except Exception: exportDBversion('')
+            db_versions = returnDirectoriesNoReplace('/AltDatabase')
+        for db_version in db_versions:
+            if 'EnsMart' in db_version:
+                try: exportDBversion(db_version)
+                except Exception: exportDBversion('')
+                break
         current_species_dirs = unique.read_directory('/AltDatabase')
 
     current_species_names=[]; manufacturers_list=[]
@@ -3025,12 +3029,17 @@ def exportDBversion(db_version):
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
     try: exportVersionData(db_version,today,'Config/')
     except Exception:
-        print 'Cannot write Config/version.txt to the Config directory (like Permissions Error)'
+        print traceback.format_exc()
+        print 'Cannot write Config/version.txt to the Config directory (likely Permissions Error)'
 
-def exportVersionData(version,version_date,dir):   
+def exportVersionData(version,version_date,dir):
     new_file = dir+'version.txt'
-    data = export.ExportFile(new_file)
-    data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
+    new_file_default = unique.filepath(new_file,force='application-path') ### can use user directory local or application local
+    try:
+        data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
+    except:
+        data = export.ExportFile(new_file)
+        data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
 
 def importResourceList():
     filename = 'Config/resource_list.txt'
@@ -4836,7 +4845,9 @@ def getUserParameters(run_parameter,Multi=None):
     try: gene_database_dir = unique.getCurrentGeneDatabaseVersion()
     except Exception: gene_database_dir=''
     if len(elite_db_versions)>0 and gene_database_dir == '':
-        gene_database_dir = elite_db_versions[-1]; exportDBversion(elite_db_versions[-1])
+        for db_version in elite_db_versions:
+            if 'EnsMart' in db_version:
+                gene_database_dir = db_version; exportDBversion(db_version)
     
     current_species_names,manufacturer_list_all = getSpeciesList('')
     option_db['species'].setArrayOptions(current_species_names)
@@ -5877,8 +5888,8 @@ def getUserParameters(run_parameter,Multi=None):
             try: prior_platform = user_variables['prior_platform']
             except Exception: prior_platform = None
             if array_type == 'RNASeq' or prior_platform == 'RNASeq':
-                counts_file = string.replace(input_exp_file,'exp.','counts.')
-                count = verifyFileLength(counts_file)
+                steady_state = string.replace(input_exp_file,'.txt','-steady-state.txt')
+                count = verifyFileLength(steady_state)
                 if count == 0 or 'exp.' not in input_exp_file: #No counts file
                     systm = getGeneSystem(input_exp_file)
                     ### Wrong platform listed

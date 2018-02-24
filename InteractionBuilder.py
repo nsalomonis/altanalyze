@@ -91,10 +91,12 @@ def importInteractionDatabases(interactionDirs):
     for fn in interactionDirs:    #loop through each file in the directory to output results
         x=0; imported=0; stored=0
         file = export.findFilename(fn)
+        count=0
         print "Parsing interactions from:",file
         for line in open(fn,'rU').xreadlines():
-            data,null = string.split(line,'\n')
+            data = cleanUpLine(line)
             t = string.split(data,'\t')
+            count+=1
             if x==0: x=1
             #elif 'PAZAR' in data or 'Amadeus' in data:x+=0
             else:

@@ -7509,7 +7509,7 @@ def commandLineRun():
                         group_exp_file = (input_exp_file,output_dir) ### still analyze the primary sample
                 except Exception:
                     #print traceback.format_exc()
-                    print 'No DATASET file present (used to obtain gene annotatinos)...'
+                    print 'No DATASET file present (used to obtain gene annotations)...'
                     ### Work around when performing this analysis on an alternative exon input cluster file
                     group_exp_file = input_exp_file
                 fl = UI.ExpressionFileLocationData(input_exp_file,'','',''); fl.setOutputDir(export.findParentDir(export.findParentDir(input_exp_file)[:-1]))

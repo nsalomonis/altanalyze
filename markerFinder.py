@@ -840,13 +840,19 @@ def identifyMarkers(filename,cluster_comps):
     
     #print len(Added),len(Queried),len(tissue_scores),count;sys.exit()
     tissue_specific_IDs={}; interim_correlations={}
-
+    gene_specific_rho_values = {}
+    tissue_list=[]
     for tissue in tissue_scores:
         tissue_scores[tissue].sort()
         tissue_scores[tissue].reverse()
         ranked_list=[]; ranked_lookup=[]
-        
+        if tissue not in tissue_list: tissue_list.append(tissue) ### Keep track of the tissue order
         for ((rho,p),(probeset,symbol)) in tissue_scores[tissue]:
+            
+            ### Get a matrix of all genes to correlations
+            try: gene_specific_rho_values[symbol].append(rho)
+            except Exception: gene_specific_rho_values[symbol] = [rho]
+            
             if symbol == '': symbol = probeset
             #print tissue, tissue_scores[tissue];sys.exit()
             if symbol not in ranked_list:
@@ -866,12 +872,17 @@ def identifyMarkers(filename,cluster_comps):
                 for ((rho,p),(probeset,symbol)) in tissue_scores[tissue]:
                     try: all_genes_ranked[probeset,symbol].append([(rho,p),tissue])
                     except Exception:all_genes_ranked[probeset,symbol] = [[(rho,p),tissue]]
-    """
+
     for ID in all_genes_ranked:
         ag = all_genes_ranked[ID]
         ag.sort()
         all_genes_ranked[ID] = ag[-1] ### topcorrelated
-    """
+
+    print string.join(tissue_list,'\t')
+    for gene in gene_specific_rho_values:
+        print string.join([gene]+map(str,gene_specific_rho_values[gene]),'\t')
+    sys.exit()
+
     #print len(tissue_specific_IDs);sys.exit()
     return tissue_specific_IDs,interim_correlations,annotation_headers,tissues
 

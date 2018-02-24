@@ -86,7 +86,7 @@ if 'GO_Elite?' in application_path:
 for py2app_dir in py2app_dirs:
     application_path = string.replace(application_path,py2app_dir,'')
     
-def filepath(filename):
+def filepath(filename,force=None):
     altDatabaseCheck = True
     #dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
     dir = application_path
@@ -105,7 +105,7 @@ def filepath(filename):
             #print 'filename:',filename, fileExists
             """"When AltAnalyze installed through pypi - AltDatabase and possibly Config in user-directory """
             if ('Config' in fn):
-                if fileExists == False:
+                if fileExists == False and force !='application-path':
                     fn=os.path.join(userHomeDir,filename)
             if 'AltDatabase' in fn:
                 getCurrentGeneDatabaseVersion()
@@ -173,7 +173,9 @@ def returnDirectoriesNoReplace(sub_dir):
     try: dir_list = os.listdir(dir + sub_dir)
     except Exception:
         try: dir_list = os.listdir(sub_dir) ### For linux
-        except Exception: dir_list = os.listdir(sub_dir[1:]) ### For linux
+        except Exception:
+            try: dir_list = os.listdir(sub_dir[1:]) ### For linux
+            except: dir_list = os.listdir(userHomeDir + sub_dir)
     return dir_list
 
 def refDir():
@@ -215,9 +217,18 @@ def getCurrentGeneDatabaseVersion():
         filename = 'Config/version.txt'; fn=filepath(filename)
         for line in open(fn,'r').readlines():
             gene_database_dir, previous_date = string.split(line,'\t')
-    except Exception: gene_database_dir=''
+    except Exception:
+        import UI
+        gene_database_dir='' 
+        try:
+            for db_version in db_versions:
+                if 'EnsMart' in db_version:
+                    gene_database_dir = db_version; UI.exportDBversion(db_version)
+                    break
+        except Exception:
+            pass
     return gene_database_dir
-    
+
 def unique(s):
     #we need to remove duplicates from a list, unsuccessfully tried many different methods
     #so I found the below function at: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/52560

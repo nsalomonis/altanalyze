@@ -73,6 +73,7 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
         data = line.rstrip()
         data = string.replace(data,'"','')
         values = string.split(data,'\t')
+        if len(values)==1: continue
         if firstLine:
             headers = values
             covariateIndex=None
@@ -184,7 +185,7 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
                 if group_id not in group_names:
                     group_names.append(group_id)
         if len(group_names) == 2:
-            if 'Others'== group_names[1]:
+            if 'Others'in group_names:
                 comps.append(tuple(group_names))
             if 'Others'not in group_names:
                 comps.append(tuple(group_names))
@@ -321,6 +322,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
     compared_ids={}
     row_count=0
     header_db={}
+    headers_compared={}
     for line in open(input_file,'rU').xreadlines():
         row_count+=1
         if '.bed' in line:
@@ -414,6 +416,10 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
             for groups in comps_db:
                 group1,group2 = groups
                 g1_headers,g2_headers=header_db[groups]
+                header_samples = (tuple(g1_headers),tuple(g2_headers))
+                if header_samples not in headers_compared:
+                    headers_compared[header_samples]=[]
+                    print len(g1_headers),len(g2_headers),groups
                 data_list1 = group_expression_values[group1]
                 data_list2 = group_expression_values[group2]
                 combined = data_list1+data_list2
@@ -475,6 +481,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
     
     ### Calculate adjusted p-values for all pairwise comparisons
     global_count=0
+    ensembls_found=False
     try: to = export.ExportFile(rootdir+'/top50/MultiPath-PSI.txt')
     except: pass
     for groups in pval_summary_db:
@@ -561,6 +568,12 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                         else: fold = 'downregulated'
                         try: splicingEventTypes[group_comp_name].append(fold)
                         except Exception: splicingEventTypes[group_comp_name] = [fold]
+                        
+                        if 'ENS' in uid and ensembls_found==False:
+                            ensembls_found = True
+                        else:
+                            if 'ENS' not in uid:
+                                system_code = 'Sy'; symbol = uid
                         values = string.join([uid,system_code,str(gs.LogFold()),str(gs.Pval()),str(gs.AdjP()),symbol,group1_avg,group2_avg],'\t')+'\n'
                         eo.write(values)
                     proceed = True

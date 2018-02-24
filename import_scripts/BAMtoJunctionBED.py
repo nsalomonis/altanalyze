@@ -205,6 +205,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
 
     chromosome = False
     chromosomes={}
+    bam_reads=0
     count=0
     jid = 1
     prior_jc_start=0
@@ -217,6 +218,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
         isoform_junctions = copy.deepcopy(junction_db)
     outlier_start = 0; outlier_end = 0; read_count = 0; c=0
     for entry in bamf.fetch():
+      bam_reads+=1
       try: cigarstring = entry.cigarstring
       except Exception:
           codes = map(lambda x: x[0],entry.cigar)
@@ -231,10 +233,12 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
                 #writeIsoformFile(isoform_junctions,io)
                 junction_db = copy.deepcopy(original_junction_db) ### Re-set this object
                 jid+=1
-
+            
             chromosome = bamf.getrname( entry.rname )
             chromosomes[chromosome]=[] ### keep track
             X=entry.pos
+            #if entry.query_name == 'SRR791044.33673569':
+            #print chromosome, entry.pos, entry.reference_length, entry.alen, entry.query_name
             Y=entry.pos+entry.alen
             prior_jc_start = X
 
@@ -243,7 +247,8 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
                 #if multi == False:  print 'No TopHat strand information';sys.exit()
                 tophat_strand = None
             coordinates,up_to_intron_dist = getSpliceSites(entry.cigar,X)
-
+            #if count > 100: sys.exit()
+            #print entry.query_name,X, Y, entry.cigarstring, entry.cigar, tophat_strand
             for (five_prime_ss,three_prime_ss) in coordinates:
                 jc = five_prime_ss,three_prime_ss
                 #print X, Y, jc, entry.cigarstring, entry.cigar
@@ -272,7 +277,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
             count+=1
     writeJunctionBedFile(junction_db,jid,o) ### One last read-out
     if multi == False:
-        print time.time()-start, 'seconds required to parse the BAM file'
+        print bam_reads, count, time.time()-start, 'seconds required to parse the BAM file'
     o.close()
     bamf.close()
     

@@ -866,6 +866,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
             elif len(unique.unique(ind2))==6: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                #cmap_c = matplotlib.colors.ListedColormap(['black', '#1DA532', '#88BF47','b', 'grey','r'])
                 #cmap_c = matplotlib.colors.ListedColormap(['w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
                 #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'k', 'w','w','w'])
             elif len(unique.unique(ind2))==7: ### cmap_c is too few colors
@@ -873,8 +874,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 #cmap_c = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'k', 'w','w','w'])
                 #cmap_c = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
             #elif len(unique.unique(ind2))==9:  cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w'])
-            elif len(unique.unique(ind2))==11: 
-                cmap_c = matplotlib.colors.ListedColormap(['w', '#DC2342', '#0B9B48', '#FDDF5E', '#E0B724', 'k', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
+            #elif len(unique.unique(ind2))==11: 
+            #cmap_c = matplotlib.colors.ListedColormap(['w', '#DC2342', '#0B9B48', '#FDDF5E', '#E0B724', 'k', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
                 cmap_c = pylab.cm.gist_rainbow
     
@@ -904,6 +905,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                         #cmap_c = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
                     elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
+                        #cmap_c = matplotlib.colors.ListedColormap(['black', '#1DA532', 'b','r'])
                     elif len(unique.unique(ind2_clust))==5: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
                     elif len(unique.unique(ind2_clust))==6: ### cmap_c is too few colors
@@ -939,6 +941,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#3D3181', '#FEBC18', '#EE2C3C'])
             elif len(unique.unique(ind2))==6: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
+                #cmap_d = matplotlib.colors.ListedColormap(['black', '#1DA532', '#88BF47','b', 'grey','r'])
                 #cmap_d = matplotlib.colors.ListedColormap(['w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
                 #cmap_d = matplotlib.colors.ListedColormap(['w', 'w', 'k', 'w', 'w','w','w'])
             elif len(unique.unique(ind2))==7: ### cmap_c is too few colors
@@ -946,9 +949,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 #cmap_d = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'k', 'w','w','w'])
                 #cmap_d = matplotlib.colors.ListedColormap(['w','w', '#0B9B48', 'w', '#5D82C1','#4CB1E4','#71C065'])
             #elif len(unique.unique(ind2))==10: cmap_d = matplotlib.colors.ListedColormap(['w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'k'])
-            elif len(unique.unique(ind2))==11:
-                #Eryth Gfi1 Gran HSCP-1 HSCP-2 IG2 MDP Meg Mono Multi-Lin Myelo
-                cmap_d = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
+            #elif len(unique.unique(ind2))==11:
+            #Eryth Gfi1 Gran HSCP-1 HSCP-2 IG2 MDP Meg Mono Multi-Lin Myelo
+            #cmap_d = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
                 cmap_d = pylab.cm.gist_rainbow
             dc = numpy.array(group_colors, dtype=int)
@@ -975,6 +978,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             cmap_r = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
             if len(unique.unique(ind1))>4: ### cmap_r is too few colors
                 cmap_r = pylab.cm.gist_rainbow
+            if len(unique.unique(ind1))==2:
+                cmap_r = matplotlib.colors.ListedColormap(['w', 'k'])
             im_r = axr.matshow(dr, aspect='auto', origin='lower', cmap=cmap_r)
             axr.set_xticks([]) ### Hides ticks
             axr.set_yticks([])
@@ -2452,7 +2457,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         else:
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
-                cm = matplotlib.colors.ListedColormap(['w', 'k'])
+                #cm = matplotlib.colors.ListedColormap(['w', 'k'])
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -3824,9 +3829,13 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
                 #print traceback.format_exc()
                 rho_results = markerFinder.simpleScipyPearson(matrix,targetGeneValues)
             correlated_symbols={}
-            #print targetGeneID, rho_results[:130][-1];sys.exit()
+            #print targetGeneID, rho_results[:100]
+            #print targetGeneID, rho_results[-100:];sys.exit()
             for (rho,ind) in rho_results[:limit]: ### Get the top-50 correlated plus the gene of interest
                 proceed = True
+                try:
+                    if len(rho)==2: rho = rho[0]
+                except: pass
                 if 'top' in targetGene:
                     if rho_results[4][0]<rho_cutoff: proceed = False
                 if rho>rho_cutoff and proceed: #and rho_results[3][0]>rho_cutoff:# ensures only clustered genes considered
@@ -3857,11 +3866,13 @@ def getAllCorrelatedGenes(matrix,row_header,column_header,species,platform,vendo
             #sys.exit()
             rho_results.reverse()
             for (rho,ind) in rho_results[:limit]: ### Get the top-50 anti-correlated plus the gene of interest
+                try:
+                    if len(rho)==2: rho = rho[0]
+                except: pass
                 if rho<-1*rho_cutoff and 'positive' not in targetGene:
                     rh = row_header[ind]
                     #if gene_to_symbol[rh][0] in targetGenes:anticorrelated.append(gene_to_symbol[rh][0])
                     #anticorrelated.append(gene_to_symbol[rh][0])
-                    
                     if len(row_header2)<100 or multipleGenes:
                         rh = row_header[ind]
                         if matrix[ind] not in matrix2:
@@ -4736,10 +4747,13 @@ def plotHistogram(filename):
     #pylab.hist(matrix, 50, cumulative=-1)
     pylab.show()
 
-def multipleSubPlots(filename,uids,SubPlotType='column'):
+def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
     #uids = [uids[-1]]+uids[:-1]
     str_uids = string.join(uids,'_')
     matrix, column_header, row_header, dataset_name, group_db = importData(filename,geneFilter=uids)
+    for uid in uids:
+        if uid not in row_header:
+            print uid,"is missing from the expression file."
     fig = pylab.figure()
     def ReplaceZeros(val,min_val):
         if val == 0: 
@@ -4781,7 +4795,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
             color_list.append(cm(1.*i/len(groups)))  # color will now be an RGBA tuple
             
     for i in range(len(matrix)):
-        ax = pylab.subplot(20,1,1+i)
+        ax = pylab.subplot(n,1,1+i)
         OY = matrix[i]
         pylab.xlim(0,len(OY))
         pylab.subplots_adjust(right=0.85)
@@ -4792,6 +4806,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
                 index+=1
                 group = group_db[column_header[index]][0]
                 pylab.bar(index, v,edgecolor='black',linewidth=0,color=color_list[groups.index(group)])
+                #pylab.bar(index, v,edgecolor=color_list[groups.index(group)],linewidth=1,color=color_list[groups.index(group)])
                 width = .35
             #print i ,row_header[i]
         if SubPlotType=='plot':
@@ -4812,6 +4827,8 @@ def multipleSubPlots(filename,uids,SubPlotType='column'):
         #pylab.setp(xtickNames, rotation=90, fontsize=10)
         
     #pylab.show()
+    if len(str_uids)>50:
+        str_uids = str_uids[:50]
     pylab.savefig(filename[:-4]+'-1'+str_uids+'.pdf')
 
 def simpleTranspose(filename):
@@ -5287,6 +5304,7 @@ def importGeneList(gene_list_file,n=20):
     genes=[]
     for line in open(gene_list_file,'rU').xreadlines():
         gene = line.rstrip()
+        gene = string.split(gene,'\t')[0]
         genes.append(gene)
         if len(genes)==n:
             genesets.append(genes)
@@ -6209,7 +6227,7 @@ def compareEventLists(folder):
                     firstLine= False
                     continue
                 uid = t[0]
-                uid = string.split(uid,'|')[0]
+                #uid = string.split(uid,'|')[0]
                 if 'U2AF1-l' in file or 'U2AF1-E' in file:
                     if t[2] == "inclusion":
                         ls[(uid,t[event_index])]=t ### Keep the event data for output
@@ -6229,17 +6247,19 @@ def compareEventLists(folder):
     ea1 = export.ExportFile(folder+'/overlaps-same-direction.txt')
     ea2 = export.ExportFile(folder+'/overlaps-opposite-direction.txt')
     ea3 = export.ExportFile(folder+'/concordance.txt')
-    ea4 = export.ExportFile(folder+'/overlap-same-direction-events.txt')
+    #ea4 = export.ExportFile(folder+'/overlap-same-direction-events.txt')
     ea1.write(string.join(groups_list,'\t')+'\n')
     ea2.write(string.join(groups_list,'\t')+'\n')
     ea3.write(string.join(groups_list,'\t')+'\n')
     
     comparison_db={}
+    best_hits={}
     for comparison1 in event_db:
         events1 = event_db[comparison1]
         hits1=[comparison1]
         hits2=[comparison1]
         hits3=[comparison1]
+        best_hits[comparison1]=[]
         for comparison2 in event_db:
             events2 = event_db[comparison2]
             events3 = convertEvents(events2)
@@ -6253,23 +6273,43 @@ def compareEventLists(folder):
             if denom == 0: denom = 0.00001
             #comparison_db[comparison1,comparison2]=overlap
             if min_events1 == 0: min_events1 = 1
-            hits1.append(str((1.00*overlap)/min_events1))
-            hits2.append(str((1.00*inverse_overlap)/min_events1))
-            hits3.append(str(1.00*overlap/denom)+'|'+str(1.00*inverse_overlap/denom))
+            if (overlap+inverse_overlap)<20:
+                hits1.append('0.5')
+                hits2.append('0.5')
+                hits3.append('0.5|0.5')
+            else:
+                hits1.append(str((1.00*overlap)/min_events1))
+                hits2.append(str((1.00*inverse_overlap)/min_events1))
+                hits3.append(str(1.00*overlap/denom)+'|'+str(1.00*inverse_overlap/denom)+':'+str(overlap+inverse_overlap))
+                if 'Leu' not in comparison2:
+                    comp_name = string.split(comparison2,'_vs')[0]
+                    best_hits[comparison1].append([abs(1.00*overlap/denom),'cor',comp_name])
+                    best_hits[comparison1].append([abs(1.00*inverse_overlap/denom),'anti',comp_name])
             if comparison1 != comparison2:
                 if len(overlapping_events)>0:
-                    ea4.write(string.join(['UID',comparison1]+file_headers[comparison1]+[comparison2]+file_headers[comparison2],'\t')+'\n')
+                    #ea4.write(string.join(['UID',comparison1]+file_headers[comparison1]+[comparison2]+file_headers[comparison2],'\t')+'\n')
+                    pass
                 overlapping_events.sort()
                 for event in overlapping_events:
                     vals = string.join([event[0],comparison1]+event_db[comparison1][event]+[comparison2]+event_db[comparison2][event],'\t')
-                    ea4.write(vals+'\n')
+                    #ea4.write(vals+'\n')
+                    pass
         ea1.write(string.join(hits1,'\t')+'\n')
         ea2.write(string.join(hits2,'\t')+'\n')
         ea3.write(string.join(hits3,'\t')+'\n')
     ea1.close()
     ea2.close()
     ea3.close()
-    ea4.close()
+    #ea4.close()
+    for comparison in best_hits:
+        best_hits[comparison].sort()
+        best_hits[comparison].reverse()
+        hits = best_hits[comparison][:10]
+        hits2=[]
+        for (score,dir,comp) in hits:
+            h = str(score)[:4]+'|'+dir+'|'+comp
+            hits2.append(h)
+        print comparison,'\t',string.join(hits2,', ')
      
 def convertGroupsToBinaryMatrix(groups_file,sample_order):
     eo = export.ExportFile(groups_file[:-4]+'-matrix.txt')
@@ -6307,21 +6347,26 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
         eo.write(string.join([group]+sample_groups[group],'\t')+'\n')
     eo.close()
     
-def returnIntronJunctionRatio(counts_file):
+def returnIntronJunctionRatio(counts_file,species = 'Mm'):
     eo = export.ExportFile(counts_file[:-4]+'-intron-ratios.txt')
     ### Import a groups file
     header=True
     prior_gene=[]
     exon_junction_values=[]
     intron_junction_values=[]
+    eoi = export.ExportFile(counts_file[:-4]+'-intron-ratios-gene.txt')
     rows=0
+    import gene_associations
+    gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
     def logratio(list):
         try: return list[0]/list[1]
         except Exception: return 0
     for line in open(counts_file,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
+        junctionID = t[0]
         if header:
+            eoi.write(line)
             samples = t[1:]
             #zero_ref =[0]*len(samples)
             global_intron_ratios={}
@@ -6331,7 +6376,15 @@ def returnIntronJunctionRatio(counts_file):
                 i+=1
             header = False
             continue
-        junctionID = t[0]
+        else:
+            uid,coords = string.split(junctionID,'=')
+            genes = string.split(uid,':') ### can indicate trans-splicing
+            if len(genes)>2: trans_splicing = True
+            else: trans_splicing = False
+            coords = string.split(coords,':')[1]
+            coords = string.split(coords,'-')
+            coords = map(int,coords)
+            coord_diff = abs(coords[1]-coords[0])
         #ENSMUSG00000027770:I23.1-E24.1=chr3:62470748-62470747
         gene = string.split(junctionID,':')[0]
         rows+=1
@@ -6344,9 +6397,47 @@ def returnIntronJunctionRatio(counts_file):
                 #global_intron_ratios = [sum(value) for value in zip(*[global_intron_ratios,zero_ref])]
                 pass
             else:
+                intron_junction_values_original = list(intron_junction_values)
+                exon_junction_values_original = list(exon_junction_values)
                 intron_junction_values = [sum(i) for i in zip(*intron_junction_values)]
                 exon_junction_values = [sum(i) for i in zip(*exon_junction_values)]
                 intron_ratios = [logratio(value) for value in zip(*[intron_junction_values,exon_junction_values])]
+                #if sum(intron_ratios)>3:
+
+                intron_ratios2=[]
+                if prior_gene in gene_to_symbol:
+                    symbol = gene_to_symbol[prior_gene][0]
+                else:
+                    symbol = prior_gene
+                i=0
+                #"""
+                if symbol == 'Pi4ka':
+                    print samples[482:487]
+                    for x in exon_junction_values_original:
+                        print x[482:487]
+                    print exon_junction_values[482:487]
+                    print intron_ratios[482:487]
+                #"""
+                for val in intron_ratios:
+                    if exon_junction_values[i]>9:
+                        if val>0:
+                            ### stringent requirement - make sure it's not just a few reads
+                            if intron_junction_values[i]>9: 
+                                intron_ratios2.append(val)
+                            else:
+                                intron_ratios2.append(0)
+                        else:
+                            intron_ratios2.append(0)
+                    else:
+                        """
+                        if val>0:
+                            print val
+                            print intron_junction_values
+                            print exon_junction_values;sys.exit()"""
+                        intron_ratios2.append('')
+                    i+=1
+
+                eoi.write(string.join([symbol]+map(str,intron_ratios2),'\t')+'\n')
                 i = 0
                 for val in intron_ratios:
                     if exon_junction_values[i]!=0: ### Only consider values with a non-zero denominator
@@ -6357,10 +6448,10 @@ def returnIntronJunctionRatio(counts_file):
             intron_junction_values = []
             prior_gene = gene
         values = map(float,t[1:])
-        if 'I' in junctionID and '_' not in junctionID:
+        if 'I' in junctionID and '_' not in junctionID and coord_diff==1 and trans_splicing == False:
             intron_junction_values.append(values)
             exon_junction_values.append(values)
-        else:
+        elif trans_splicing == False:
             exon_junction_values.append(values)
     print rows, 'processed'
 
@@ -6373,18 +6464,19 @@ def returnIntronJunctionRatio(counts_file):
     eo.write(string.join(['UID']+samples,'\t')+'\n')
     eo.write(string.join(['Global-Intron-Retention-Ratio']+map(str,global_intron_ratios_values),'\t')+'\n')
     eo.close()
+    eoi.close()
     
 if __name__ == '__main__':
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/groups.all-Nov2017.txt'
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Krause-Will/Nov.9.2017/ExpressionInput/groups.MEP-all-cellHarmony-original-names.txt'
-    #convertGroupsToBinaryMatrix(b,b);sys.exit()
+    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Inigo/12.7.17/Combined/Fibroblast-Only/ExpressionInput/exp.fibroblasts-cleaned-filt-filtered.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Inigo/12.7.17/Combined/Fibroblast-Only/ExpressionInput/groups.fibroblasts-cleaned-filt.txt'
+    convertGroupsToBinaryMatrix(b,a);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
-    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/ENCODE-KD/junctions/AltResults/AlternativeOutput/Events-dPSI_0.1_rawp');sys.exit()
+    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD');sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/CORNEL-AML/PSI/exp.Cornell-Bulk.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
@@ -6471,8 +6563,10 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/customGenes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Krause-Will/Nov.9.2017/ExpressionInput/MultiLin_genes-Will.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Hildeman/EEC-10X/ExpressionInput/genes.txt'
-    genesets = importGeneList(gene_list_file,n=5)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/genes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes2.txt'
+    genesets = importGeneList(gene_list_file,n=49)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -6488,12 +6582,15 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-filtered.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Hildeman/EEC-10X/ExpressionInput/exp.MarkerFinder.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-R412X-relative3.txt'
+    #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
+    #filename = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/exp.wt-panorama.txt'
+    #filename = '/Volumes/salomonis2/Harinder-singh/Run2421-10X/10X_IRF4_Lo/outs/filtered_gene_bc_matrices/ExpressionInput/exp.10X_IRF4_Lo_matrix_CPTT-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/R412X/exp.R412X-RSEM-order.txt'
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column')
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=49)
     sys.exit()
 
     plotHistogram(filename);sys.exit()

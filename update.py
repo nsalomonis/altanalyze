@@ -67,12 +67,14 @@ def zipDirectory(dir):
 
 def unzipFiles(filename,dir):
     import zipfile
-    output_filepath = filepath(dir+filename)
+    output_filepath = filepath(dir+'/'+filename)
     try:
         zfile = zipfile.ZipFile(output_filepath)
         for name in zfile.namelist():
             if name.endswith('/'):null=[] ### Don't need to export
             else:
+                if 'EnsMart' in name and 'EnsMart' in dir:
+                    dir = export.findParentDir(dir[:-1]) ### Remove EnsMart suffix directory
                 try: outfile = export.ExportFile(filepath(dir+name))
                 except Exception: outfile = export.ExportFile(filepath(dir+name[1:]))
                 outfile.write(zfile.read(name)); outfile.close()
@@ -292,11 +294,14 @@ def download(url,dir,file_type):
     global suppress_printouts
     try: suppress_printouts = Suppress_Printouts
     except Exception: suppress_printouts = 'no'
-
     try: dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
     except Exception:
-        output_filepath='failed'; status = "Internet connection not established. Re-establish and try again."
-        fp = filepath(dir+url.split('/')[-1]) ### Remove this empty object if saved
+        try:
+            dir = unique.filepath(dir) ### Can result in the wrong filepath exported for AltDatabase RNA-Seq zip files (don't include by default)
+            dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
+        except Exception:
+            output_filepath='failed'; status = "Internet connection not established. Re-establish and try again."
+            fp = filepath(dir+url.split('/')[-1]) ### Remove this empty object if saved
     if 'Internet' not in status:
         if '.zip' in fp or '.gz' in fp or '.tar' in fp:
             #print "\nRemoving zip file:",fp
@@ -312,10 +317,10 @@ class download_protocol:
     def __init__(self,url,dir,file_type):
         try: self.suppress = suppress_printouts
         except Exception: self.suppress = 'no'
-        dir = unique.filepath(dir)
         """Copy the contents of a file from a given URL to a local file."""
         filename = url.split('/')[-1]; self.status = ''
         #print [url, dir, file_type]
+        #dir = unique.filepath(dir) ### Can screw up directory structures
         if file_type == None: file_type =''
         if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
         output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
@@ -323,7 +328,6 @@ class download_protocol:
         
         if self.suppress == 'no':
             print "Downloading the following file:",filename,' ',
-        
         self.original_increment = 5
         self.increment = 0
         import urllib
@@ -339,7 +343,7 @@ class download_protocol:
                     reload(urllib)
         except:
             print 'Unknown URL error encountered...'; forceURLError
-            
+
         if self.suppress == 'no': print ''
         self.testFile()
         if self.suppress == 'no': print self.status
@@ -437,7 +441,6 @@ def downloadCurrentVersion(filename,secondary_dir,file_type):
     dir = string.replace(dir,'hGlue','')  ### Used since the hGlue data is in a sub-directory
     filename = export.findFilename(filename)
     url = url_dir+secondary_dir+'/'+filename
-    print url
     file,status = download(url,dir,file_type); continue_analysis = 'yes'
     if 'Internet' in status and 'nnot' not in filename: ### Exclude for Affymetrix annotation files
         print_out = "File:\n"+url+"\ncould not be found on the server or an internet connection is unavailable."
@@ -666,14 +669,16 @@ if __name__ == '__main__':
     #unzipFiles('Rn.zip', 'AltDatabaseNoVersion/');kill    
     #filename = 'http://altanalyze.org/archiveDBs/LibraryFiles/Mouse430_2.zip'
     #filename = 'AltDatabase/affymetrix/LibraryFiles/Mouse430_2.zip'
-    #downloadCurrentVersionUI(filename,'LibraryFiles','','')
+    filename = 'AltDatabase/Mm_RNASeq.zip'; dir = 'AltDatabase/updated/EnsMart72'
+    downloadCurrentVersionUI(filename,dir,'','')
     import update
-    dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','')
-    dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','');sys.exit()
+    #dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','')
+    #dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','');sys.exit()
 
     #kill
     #target_folder = 'Databases/Ci'; zipDirectory(target_folder)
-    #unzipFiles('Cs.zip', 'Databases/');kill
+    filename = 'Mm_RNASeq.zip'; dir = 'AltDatabase/EnsMart72/'
+    unzipFiles(filename, dir);sys.exit()
     #buildUniProtFunctAnnotations('Hs',force='no')
 
     species = 'Hs'; array_type = 'junction'; force = 'yes'; run_seqcomp = 'no'

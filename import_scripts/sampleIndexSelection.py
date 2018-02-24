@@ -57,15 +57,18 @@ def filterFile(input_file,output_file,filter_names,force=False):
 def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False):
     export_object = open(output_file,'w')
     firstLine = True
+    uid_index=0
     for line in open(input_file,'rU').xreadlines():
         data = cleanUpLine(line)
         values = string.split(data,'\t')
+        if 'PSI_EventAnnotation' in input_file and firstLine:
+            uid_index = values.index('UID')
         if firstLine:
             firstLine = False
             export_object.write(line)
         else:
             if filterDB!=None:
-                if values[0] in filterDB:
+                if values[uid_index] in filterDB:
                     if logData:
                         line = string.join([values[0]]+map(str,(map(lambda x: math.log(float(x)+1,2),values[1:]))),'\t')+'\n'
                     if exclude==False:
@@ -224,7 +227,7 @@ def combineDropSeq(input_dir):
 
 if __name__ == '__main__':
     ################  Comand-line arguments ################
-    #statisticallyFilterFile('/Volumes/salomonis2/Inigo-dropseq/tac/ExpressionInput/exp.run1976_lane12_TAC_normalized.txt','/Volumes/salomonis2/Inigo-dropseq/tac/ExpressionInput/exp.run1976_lane12_TAC_normalized2.txt',1); sys.exit()
+    #statisticallyFilterFile('/Volumes/salomonis2/Grimes/GSE108891_RAW-10X-Paper-Review-Data/combined-files/ExpressionInput/exp.MergedFiles-ICGS-filtered.txt','/Volumes/salomonis2/Grimes/GSE108891_RAW-10X-Paper-Review-Data/combined-files/ExpressionInput/exp.MergedFiles-ICGS-filtered2.txt',1); sys.exit()
     import getopt
     filter_rows=False
     filter_file=None
