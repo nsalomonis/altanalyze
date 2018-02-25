@@ -3,7 +3,7 @@
 "exon_seq","","HuEx-1_0-st-v2.hg16.probeset.fa","Hs"
 "exon_seq","","MoEx-1_0-st-v1.mm5.probeset.fa","Mm"
 "exon_seq","","RaEx-1_0-st-v1.rn3.probeset.fa","Rn"
-"PathDir","local","/Users/saljh8/Desktop/dataAnalysis/Collaborative/Inigo/12.7.17/Combined/Fibroblast-Only/ExpressionInput/DEGs-LogFold_1.0_rawp/up","all"
+"PathDir","local","/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/DEGs-LogFold_1.0_rawp/Myelo","all"
 "temp","temp","ftp://ftp.geneontology.org/pub/go/ontology-archive/function.ontology.2008-08-01.gz","all"
 "Program/Download","Status","Location","Species"
 "url","url","http://altanalyze.org/archiveDBs/","all"

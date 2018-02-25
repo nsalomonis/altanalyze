@@ -2978,7 +2978,7 @@ class PreviousResults:
     def Results(self): return self._user_variables
         
 def getSpeciesList(vendor):
-    try: current_species_dirs = unique.read_directory('/AltDatabase'); print current_species_dirs
+    try: current_species_dirs = unique.read_directory('/AltDatabase')
     except Exception: ### Occurs when the version file gets over-written with a bad directory name
         try:
             ### Remove the version file and wipe the species file

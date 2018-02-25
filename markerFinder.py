@@ -872,17 +872,18 @@ def identifyMarkers(filename,cluster_comps):
                 for ((rho,p),(probeset,symbol)) in tissue_scores[tissue]:
                     try: all_genes_ranked[probeset,symbol].append([(rho,p),tissue])
                     except Exception:all_genes_ranked[probeset,symbol] = [[(rho,p),tissue]]
-
+    """
     for ID in all_genes_ranked:
         ag = all_genes_ranked[ID]
         ag.sort()
         all_genes_ranked[ID] = ag[-1] ### topcorrelated
-
+    """
+    """
     print string.join(tissue_list,'\t')
     for gene in gene_specific_rho_values:
         print string.join([gene]+map(str,gene_specific_rho_values[gene]),'\t')
     sys.exit()
-
+    """
     #print len(tissue_specific_IDs);sys.exit()
     return tissue_specific_IDs,interim_correlations,annotation_headers,tissues
 
