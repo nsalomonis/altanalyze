@@ -754,8 +754,8 @@ def remoteGene(gene,Species,root_dir,comparison_file):
     
 if __name__ == "__main__":
     #Selected_Gene = sys.argv[1]
-    Selected_Gene = 'ENSG00000166825'
+    Selected_Gene = 'ENSG00000132906'
     Species = 'Hs'
-    root_dir = '/Volumes/SEQ-DATA/Ichi/'
-    comparison_file = '/Volumes/SEQ-DATA/Ichi/AltResults/RawSpliceData/Hs/splicing-index/Hs_RNASeq_Homo_vs_WT.ExpCutoff-5.0_average.txt'
+    root_dir = '/Volumes/salomonis2/Leucegene_project/STAR_TOP-SRSF2-U2AF1-like/'
+    comparison_file = '/Volumes/salomonis2/Leucegene_project/STAR_TOP-SRSF2-U2AF1-like/AltResults/RawSpliceData/Hs/splicing-index/Hs_RNASeq_U2AF1-like_vs_SRSF2-like.ExpCutoff-5.0_average.txt'
     remoteGene(Selected_Gene,Species,root_dir,comparison_file)

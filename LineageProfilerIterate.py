@@ -416,8 +416,9 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     
     print ''
     class_headers = map(lambda x: x+' Predicted Hits',tissue_list)
-    headers = string.join(['Samples']+class_headers+['Composite Classification Score','Combined Correlation DiffScore','Predicted Class']+models,'\t')+'\n'
+    headers = string.join(['Samples']+class_headers+['Composite Classification Score','Combined Correlation DiffScore','Predicted Class','Max-Rho'],'\t')+'\n'
     export_summary.write(headers)
+    
     sorted_results=[] ### sort the results
     try: numberOfModels = len(allPossibleClassifiers)
     except Exception: numberOfModels = 1
@@ -498,7 +499,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
                 overall_prog_score = str(float(overall_prog_score)*-1)
                 sum_score = sum_score*-1
         values = [sample]+class_scores_str+[overall_prog_score,str(sum_score),call]
-        values = string.join(values+zscore_distribution,'\t')+'\n'
+        values = string.join(values+zscore_distribution[:-1]+[str(max(correlations))],'\t')+'\n'
         if ':' in sample:
             sample = string.split(sample,':')[0]
         if ':' in call:
@@ -548,6 +549,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
             max_pearson_list.append(rho)
     
     avg_pearson_rho = Average(max_pearson_list)
+    maxPearson = max(max_pearson_list)
 
     try:
         for i in sample_diff_z:
@@ -2299,16 +2301,17 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             export_object.close()
             
             from stats_scripts import metaDataAnalysis
-            strictCutoff = True
+            strictCutoff = False
             pvalThreshold=0.01
             use_adjusted_pval = False
             if platform == 'RNASeq':
                 log_fold_cutoff=0.585
+                output_dir = root_dir+'/DEGs-LogFold_0.585_rawp'
                 if strictCutoff:
                     log_fold_cutoff = 1
                     pvalThreshold = 0.05
-                    use_adjusted_pval = True
-                output_dir = root_dir+'/DEGs-LogFold_0.585_rawp'
+                    output_dir = root_dir+'/DEGs-LogFold_1_adjp'
+                
             else:
                 log_fold_cutoff=0.1
                 output_dir = root_dir+'Events-LogFold_0.1_rawp'
@@ -2525,7 +2528,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file):
         clusters=[]
         cluster_number=0
         new_row_header = []
-        row_header.reverse() ### In the opposite order
+        #row_header.reverse() ### In the opposite order
         for uid in row_header:
             if ':' in uid:
                 cluster,uid = string.split(uid,':')

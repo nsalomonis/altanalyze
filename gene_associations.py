@@ -1349,7 +1349,9 @@ class GeneIDInfo:
         except Exception: null=[]
     def GeneID(self): return str(self.geneID)
     def System(self): return str(self.system_name)
-    def Pathway(self): return str(self.pathway)
+    def Pathway(self):
+        try: return str(self.pathway)
+        except Exception: return 'invalid'
     def setGraphID(self,graphID): self.graphID = graphID
     def setGroupID(self,groupid): self.groupid = groupid
     def GraphID(self): return self.graphID
@@ -1396,7 +1398,8 @@ def exportWikiPathwayData(species_name,pathway_db,type):
         values +=[wpd.Uniprot(), wpd.Unigene(), wpd.Refseq(), wpd.MOD(), wpd.Pubchem(), wpd.CAS(), wpd.Chebi()]
         values = string.join(values,'\t')
         values = string.replace(values,'\n','') ###Included by mistake
-        export_data.write(values+'\n')
+        try: export_data.write(values+'\n')
+        except Exception: pass
     export_data.close()
     #print 'WikiPathways data exported to:',export_dir
     
@@ -1583,7 +1586,8 @@ def parseGPML(custom_sets_folder):
         try: wpid = string.split(filename,'_')[-2]
         except Exception: wpid = filename[:-5]
         revision = string.split(filename,'_')[-1][:-5]
-        dom = parse(xml)
+        try: dom = parse(xml)
+        except Except: continue
         tags = dom.getElementsByTagName('Xref')
         data_node_tags = dom.getElementsByTagName('DataNode')
         groups = dom.getElementsByTagName('Group') ### complexes

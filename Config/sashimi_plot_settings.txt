@@ -1,6 +1,6 @@
 [data]
-bam_prefix = /Users/saljh8/Desktop/Old Mac/Desktop/Grimes/GEC14074//
-bam_files =["Grimes_September_23_Cell_1.bam","Grimes_September_23_Cell_12.bam","Grimes_092914_Cell84.bam","Grimes_092914_Cell12.bam"]
+bam_prefix = /Volumes/salomonis2/Leucegene_project/STAR_TOP-SRSF2-U2AF1-like//
+bam_files =["SRS876199_1.bam","SRS876191_1.bam","SRS876158_1.bam","SRS876169_1.bam","SRS876101_1.bam","SRS876215_1.bam","SRS876216_1.bam","SRS876242_1.bam","SRS876196_1.bam","SRS876165_1.bam","SRS876173_1.bam","SRS876175_1.bam","SRS876168_1.bam","SRS876195_1.bam","SRS876200_1.bam"]
 
 [plotting]
 fig_width = 7 
@@ -19,7 +19,7 @@ number_junctions = True
 resolution = .5 
 posterior_bins = 40 
 gene_posterior_ratio = 5 
-colors =["red","red","blue","blue"]
-coverages =[3224790,6037410,8405905,7577548]
+colors =["red","red","red","red","red","blue","blue","blue","blue","blue","green","green","green","green","green"]
+coverages =[3052018,2940171,2996918,3891477,3390897,2811829,2657054,2898721,2522749,2397661,2570866,3240209,3339785,3623129,3311602]
 bar_color = "b" 
 bf_thresholds = [0, 1, 2, 5, 10, 20]

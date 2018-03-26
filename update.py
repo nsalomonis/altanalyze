@@ -30,6 +30,7 @@ import export
 import traceback
 try: from build_scripts import ExonArray
 except Exception: null=[]
+import traceback
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -296,6 +297,7 @@ def download(url,dir,file_type):
     except Exception: suppress_printouts = 'no'
     try: dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
     except Exception:
+        print traceback.format_exc();sys.exit()
         try:
             dir = unique.filepath(dir) ### Can result in the wrong filepath exported for AltDatabase RNA-Seq zip files (don't include by default)
             dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
@@ -323,8 +325,13 @@ class download_protocol:
         #dir = unique.filepath(dir) ### Can screw up directory structures
         if file_type == None: file_type =''
         if len(file_type) == 2: filename, file_type = file_type ### Added this feature for when a file has an invalid filename
-        output_filepath_object = export.createExportFile(dir+filename,dir[:-1])
-        output_filepath = filepath(dir+filename); self.output_filepath = output_filepath
+        output_filepath = unique.filepath(dir+filename, force='application-path')
+        dir = export.findParentDir(output_filepath)
+        output_filepath_object = export.createExportFile(output_filepath,dir[:-1])
+
+        if 'Download' not in output_filepath:sys.exit()
+
+        self.output_filepath = output_filepath
         
         if self.suppress == 'no':
             print "Downloading the following file:",filename,' ',

@@ -566,11 +566,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis2/Starczynowski_TRAF6_KO/bams/'
+    root_dir = '/Volumes/salomonis2/Kas_Myers-SDS/'
     events = ['ENSMUSG00000029687:E14.1-E17.1']
-    #events = None
+    events = None
     eventsToVisualizeFilename = None
-    #eventsToVisualizeFilename = '/Volumes/salomonis2/Ichi_data/bams/AltResults/AlternativeOutput/top50/top_pvalue.txt'
+    eventsToVisualizeFilename = '/Volumes/salomonis2/Kas_Myers-SDS/AltResults/AlternativeOutput/Events-dPSI_0.1_adjp/Common_donor-U2AF1-like.txt'
     bamdir = root_dir
-    remoteSashimiPlot('Mm', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
+    remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

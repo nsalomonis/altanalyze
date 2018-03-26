@@ -4777,7 +4777,8 @@ def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
     
     groups=[]
     for sample in column_header:
-        group = group_db[sample][0]
+        try: group = group_db[sample][0]
+        except: group = '1'
         if group not in groups:
             groups.append(group)
             
@@ -4804,7 +4805,8 @@ def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
             index=-1
             for v in OY:
                 index+=1
-                group = group_db[column_header[index]][0]
+                try: group = group_db[column_header[index]][0]
+                except: group = '1'
                 pylab.bar(index, v,edgecolor='black',linewidth=0,color=color_list[groups.index(group)])
                 #pylab.bar(index, v,edgecolor=color_list[groups.index(group)],linewidth=1,color=color_list[groups.index(group)])
                 width = .35
@@ -6320,7 +6322,12 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         if 'row_clusters-flat' in t:
-            samples = t[2:]
+            samples=[]
+            samples1 = t[2:]
+            for name in samples1:
+                if ':' in name:
+                    name = string.split(name,':')[1]
+                samples.append(name)
             break
         elif groups_file == sample_order:
             samples.append(t[0])
@@ -6469,14 +6476,14 @@ def returnIntronJunctionRatio(counts_file,species = 'Mm'):
 if __name__ == '__main__':
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Inigo/12.7.17/Combined/Fibroblast-Only/ExpressionInput/exp.fibroblasts-cleaned-filt-filtered.txt'
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Inigo/12.7.17/Combined/Fibroblast-Only/ExpressionInput/groups.fibroblasts-cleaned-filt.txt'
-    convertGroupsToBinaryMatrix(b,a);sys.exit()
+    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/MultiLin-Gata1/CellHarmonyReference/exp.MarkerFinder-cellHarmony-reference.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/MultiLin-Gata1/CellHarmonyReference/groups.all-Jan.2018-sorts.txt'
+    #convertGroupsToBinaryMatrix(b,a);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
-    #compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD');sys.exit()
+    compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD');sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/CORNEL-AML/PSI/exp.Cornell-Bulk.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
@@ -6565,8 +6572,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes2.txt'
-    genesets = importGeneList(gene_list_file,n=49)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/Tickmarks/groups.all-Nov2017-matrix.txt'
+    genesets = importGeneList(gene_list_file,n=9)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -6582,7 +6589,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-filtered.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-R412X-relative3.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/Tickmarks/groups.all-Nov2017-matrix.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
     #filename = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/exp.wt-panorama.txt'
     #filename = '/Volumes/salomonis2/Harinder-singh/Run2421-10X/10X_IRF4_Lo/outs/filtered_gene_bc_matrices/ExpressionInput/exp.10X_IRF4_Lo_matrix_CPTT-ICGS.txt'
@@ -6590,7 +6597,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=49)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=9)
     sys.exit()
 
     plotHistogram(filename);sys.exit()

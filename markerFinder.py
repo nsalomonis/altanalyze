@@ -452,7 +452,7 @@ def verifyFileLength(filename):
     except Exception: null=[]
     return count
     
-def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAll=True,AdditionalParameters=None,logTransform=False):
+def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAll=True,AdditionalParameters=None,logTransform=False,binarize=False):
     global genesToReport; genesToReport = geneToReport
     global correlateAllGenes; correlateAllGenes = correlateAll
     global all_genes_ranked; all_genes_ranked={}
@@ -553,7 +553,7 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
         for cluster_comp_db in cluster_comps:
             ###Interate through each comparison
             print 'Iteration',iteration,'of',len(cluster_comps)
-            tissue_specific_IDs,interim_correlations,annotation_headers,tissues = identifyMarkers(filename,cluster_comp_db)
+            tissue_specific_IDs,interim_correlations,annotation_headers,tissues = identifyMarkers(filename,cluster_comp_db,binarize=binarize)
             iteration+=1
             for tissue in tissue_specific_IDs:
                 if tissue not in tissue_specific_IDs_combined: ### Combine the tissue results from all of the cluster group analyses, not over-writing the existing 
@@ -572,7 +572,7 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
         original_tissue_headers2 = original_tissue_headers ### The last function will overwrite the group~ replacement
         #identifyMarkers(filename,[]) ### Used to get housekeeping genes for all conditions
     else:
-        tissue_specific_IDs,interim_correlations,annotation_headers,tissues = identifyMarkers(filename,[])
+        tissue_specific_IDs,interim_correlations,annotation_headers,tissues = identifyMarkers(filename,[],binarize=binarize)
         original_tissue_headers2 = original_tissue_headers
     ### Add a housekeeping set (genes that demonstrate expression with low variance
     housekeeping.sort(); ranked_list=[]; ranked_lookup=[]; tissue = 'Housekeeping'
@@ -673,7 +673,13 @@ def selectiveFloats(values):
         except Exception: float_values.append(None)
     return float_values
 
-def identifyMarkers(filename,cluster_comps):
+def binaryExp(value):
+    if value>1:
+        return 2
+    else:
+        return 0
+    
+def identifyMarkers(filename,cluster_comps,binarize=False):
     """ This function is the real workhorse of markerFinder, which coordinates the correlation analyses and data import """
     
     global tissue_scores; tissue_scores={}; print_interval=2000; print_limit=2000
@@ -816,6 +822,8 @@ def identifyMarkers(filename,cluster_comps):
                         try: exp_values =  map(lambda x: math.log(x,2), exp_values)
                         except Exception:
                             exp_values =  map(lambda x: math.log(x+1,2), exp_values)
+                    if binarize:
+                        exp_values =  map(lambda x: binaryExp(x), exp_values)
                 if analyze_housekeeping == 'yes': ### Only grab these when analyzing all tissues
                     findHousekeepingGenes((probeset,symbol),exp_values)
                 elif platform == 'RNASeq': ### Exclude low expression (RPKM) genes

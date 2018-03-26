@@ -104,7 +104,7 @@ def filepath(filename,force=None):
             fileExists = os.path.isfile(fn)
             #print 'filename:',filename, fileExists
             """"When AltAnalyze installed through pypi - AltDatabase and possibly Config in user-directory """
-            if ('Config' in fn):
+            if 'Config' in fn:
                 if fileExists == False and force !='application-path':
                     fn=os.path.join(userHomeDir,filename)
             if 'AltDatabase' in fn:

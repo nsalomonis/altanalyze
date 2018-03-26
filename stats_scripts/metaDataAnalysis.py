@@ -440,7 +440,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     continue ### Don't analyze
                 if (len(data_list1)>1 and len(data_list2)>1) or (len(g1_headers)==1 or len(g2_headers)==1): ### For splicing data
                     ### Just a One-Way ANOVA at first - moderation happens later !!!!
-                    try: p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic) 
+                    try:
+                        p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
                     except Exception: p = 1
                     avg1 = statistics.avg(data_list1)
                     avg2 = statistics.avg(data_list2)
@@ -504,7 +505,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         #uo.write(header)
         so.write('Gene\tPval\n')
         pval_db = pval_summary_db[groups]
-        if 'moderated' in probability_statistic and pval_threshold<1:
+        if 'moderated' in probability_statistic: # and pval_threshold<1:
             try: statistics.moderateTestStats(pval_db,probability_statistic) ### Moderates the original reported test p-value prior to adjusting
             except Exception:
                 print 'Moderated test failed... using student t-test instead',group1,group2
@@ -1441,11 +1442,163 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
         outputGeneExpressionSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
         #except: pass
         
+def compareDomainComposition(folder):
+    ### Compare domain composition
+
+    import collections
+    event_db = collections.OrderedDict()
+    background_db = collections.OrderedDict()
+    groups_list=['']
+    import UI
+    files = UI.read_directory(folder)
+    for file in files:
+        if '.txt' in file and 'PSI.' in file:
+            db={}
+            event_db[file[:-4]]=db
+            all_unique_events = {}
+            background_db[file[:-4]]=all_unique_events
+            groups_list.append(file[:-4])
+            fn = folder+'/'+file
+            firstLine = True
+            output_file = fn[:-4]+'-ProteinImpact.txt'
+            output_file = string.replace(output_file,'PSI.','Impact.')
+            eo = export.ExportFile(output_file)
+            eo.write('GeneSymbol\tSy\tImpact\tImpactDescription\tUID\n')
+            for line in open(fn,'rU').xreadlines():
+                data = line.rstrip()
+                t = string.split(data,'\t')
+                #(+)alt-coding, (+)AA:232(ENSP00000230685)->296(ENSP00000009530)|(-)MHC_II-assoc_invar_chain-IPR022339, (+)DISULFID, (+)DOMAIN-Thyroglobulin type-1, (+)HELIX, (+)MHC_II-assoc_invar_chain-IPR022339, (+)SITE-Breakpoint for translocation to form a CD74-ROS1 fusion protein, (+)STRAND, (+)TOPO_DOM-Extracellular, (+)TURN, (+)Thyroglobulin_1-IPR000716
+                if firstLine:
+                    protein_index = t.index('ProteinPredictions')
+                    clusterID_index = t.index('UpdatedClusterID')
+                    event_index = t.index('EventAnnotation')
+                    firstLine= False
+                    continue
+                uid = t[0]
+                symbol = string.split(uid,':')[0]
+                clusterID=t[clusterID_index]
+                all_unique_events[clusterID]=None
+                if len(t[protein_index])>0:
+                    protein_prediction = t[protein_index]
+                    protein_predictions = string.split(protein_prediction,',')
+                    if 'Promoter' in t[event_index]:
+                        continue
+                    for annotation in protein_predictions:
+                        if 'AA:' in annotation: 
+                            if annotation[0]==' ':
+                                direction = annotation[2]
+                                diff = string.split(annotation[7:],'|')[0]
+                            else:
+                                direction = annotation[1]
+                                diff = string.split(annotation[6:],'|')[0]
+                            
+                            try: diff1,diff2 = string.split(diff,'->')
+                            except:
+                                diff1,diff2 = string.split(diff,'+>')
+                            try: diff1 = int(string.split(diff1,'(')[0])
+                            except: print diff,diff1,diff2,[annotation];sys.exit()
+                            diff2 = int(string.split(diff2,'(')[0])
+                            coding_diff = (diff1)/float(diff2)
+                            if coding_diff < 0.333:
+                                type = 'Truncation'
+                            elif coding_diff < 0.75:
+                                type = 'Protein Length'
+                            else:
+                                type = None
+                            if '|' in annotation:
+                                domain_difference = True
+                            else:
+                                domain_difference = False
+                            if type==None and domain_difference == False:
+                                pass
+                            else:
+                                if direction == '+':
+                                    direction = 'decreased' ### seems counter intuitive but we are specificall looking at decreased protein length
+                                    """ specifically, if a (+)200->1000, this means in the experiment the protein is longer but truncation is decreased """
+                                elif direction == '-':
+                                    direction = 'increased'
+                                if direction != '~':
+                                    if type == 'Truncation':
+                                        score = 2
+                                    elif domain_difference:
+                                        score = 1
+                                    elif type == 'Protein Length':
+                                        score = 0.5
+                                    if direction == 'decreased':
+                                        score = score*-1
+                                    if type != None:
+                                        updated_type = type
+                                        if domain_difference:
+                                            updated_type += '|domain-impact'
+                                    else:
+                                        updated_type = ''
+                                        if domain_difference:
+                                            updated_type += 'domain-impact'
+                                    eo.write(string.join([symbol,'Sy',str(score),updated_type,uid],'\t')+'\n')
+                                    db[clusterID]=type,domain_difference,direction
+                            continue
+
+    eo = export.ExportFile(folder+'/Protein-Level-Impact-Summary.txt')
+    file_list = []
+    for file in event_db:
+        file_list.append(file)
+        domain_difference_db={}
+        impact_type_db={}
+        impacted_events = event_db[file]
+        for clusterID in impacted_events:
+            type,domain_difference,direction = impacted_events[clusterID]
+            ### Create the entries in the dictionary so these can be consistently populated below
+            if domain_difference!=False:
+                domain_difference_db[direction,domain_difference]=[]
+            if type !=None:
+                impact_type_db[direction,type]=[]
+
+    for file in event_db:
+        impacted_events = event_db[file]
+        unique_events = len(background_db[file])
+        file_domain_difference_db={}
+        file_impact_type_db={}
+        for clusterID in impacted_events:
+            type,domain_difference,direction = impacted_events[clusterID]
+            try:
+                if domain_difference!=False:
+                    file_domain_difference_db[direction,domain_difference]+=1
+                if type!=None:
+                    file_impact_type_db[direction,type]+=1
+            except:
+                if domain_difference!=False:
+                    file_domain_difference_db[direction,domain_difference]=1
+                if type!=None:
+                    file_impact_type_db[direction,type]=1
+
+        for (direction,type) in impact_type_db:
+            try: impact_type_db[direction,type].append(str(file_impact_type_db[direction,type]/float(unique_events)))
+            except: impact_type_db[direction,type].append('0')
+        for (direction,domain_difference) in domain_difference_db: 
+            try: domain_difference_db[direction,domain_difference].append(str(file_domain_difference_db[direction,domain_difference]/float(unique_events)))
+            except: domain_difference_db[direction,domain_difference].append('0')
+            
+    eo.write(string.join(['UID']+file_list,'\t')+'\n')
+    for (direction,domain_difference) in domain_difference_db:
+            out = [direction+' Domain Impact']+domain_difference_db[direction,domain_difference]
+            out = string.join(map(str,out),'\t')+'\n'
+
+            eo.write(out)
+    for (direction,type) in impact_type_db:
+            out = [direction+' '+type]+impact_type_db[direction,type]
+            out = string.join(map(str,out),'\t')+'\n'
+            #print file, out, unique_events;sys.exit()
+            eo.write(out)
+    eo.close()
+    sys.exit()
+    
 if __name__ == '__main__':
     species = 'Hs';
     expression_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     groups_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/groups.KD.txt'
+    computed_results_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
     #remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05);sys.exit()
+    #compareDomainComposition(computed_results_dir)
     ################  Comand-line arguments ################
     #buildAdditionalMirTargetGeneSets();sys.exit()
     filename = '/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/eXpress/CombinedResults/allTopGenes.txt' #DiffStateComps Reprogramming
@@ -1454,6 +1607,7 @@ if __name__ == '__main__':
     platform='RNASeq'
     species='Hs'
     probability_statistic = 'moderated t-test'
+    #probability_statistic = 'Kolmogorov Smirnov'
     #probability_statistic = 'unpaired t-test'
     minRPKM=-1000
     PercentExp = 75
