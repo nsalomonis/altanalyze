@@ -3114,7 +3114,7 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
         print options_result_in_no_genes
     elif len(expressed_uids) < 50 and len(expressed_values)>0:
         return expressed_values, fold, samplesDiffering, headers
-    elif len(expressed_values)>14000:
+    elif len(expressed_values)>15000:
         if platform == 'exons' or platform == 'PSI':
             fold+=0.1
         else:
@@ -3986,8 +3986,11 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
             try: TFs = importGeneSets('Biotypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
             except Exception: TFs = importGeneSets('BioTypes',filterType='transcription regulator',geneAnnotations=gene_to_symbol_db)
             if excludeCellCycle == True or excludeCellCycle == 'strict':
-                cell_cycle = importGeneSets('KEGG',filterType='Cell cycle:',geneAnnotations=gene_to_symbol_db)
-                cell_cycle_go = importGeneSets('GeneOntology',filterType='GO:0022402',geneAnnotations=gene_to_symbol_db)
+                try: cell_cycle = importGeneSets('KEGG',filterType='Cell cycle:',geneAnnotations=gene_to_symbol_db)
+                except Exception:
+                    cell_cycle = {}
+                try: cell_cycle_go = importGeneSets('GeneOntology',filterType='GO:0022402',geneAnnotations=gene_to_symbol_db)
+                except Exception: cell_cycle_go={}
                 for i in cell_cycle_go:
                     cell_cycle[i]=[]
                 print len(cell_cycle),'cell cycle genes being considered.'

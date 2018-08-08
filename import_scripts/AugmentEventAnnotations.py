@@ -270,9 +270,11 @@ def updatePSIAnnotations(PSIpath, species, psievents, terminal_exons, junctionPa
         line = line.rstrip('\n')
         values = string.split(line,'\t')
         if header:
-            fI = values.index('feature')
+            try: fI = values.index('feature')
+            except: fI = values.index('EventAnnotation')
             aI = values.index('AltExons')
-            pI = values.index('PME')
+            try: pI = values.index('PME')
+            except: pI = values.index('ProteinPredictions')
             cI = values.index('Coordinates')
             values[fI] = 'EventAnnotation'
             values[pI] = 'ProteinPredictions'

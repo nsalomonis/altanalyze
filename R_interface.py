@@ -638,7 +638,7 @@ class RScripts:
             if len(dat) > 1:
                 dist = r(distance_matrix_line)
                 #print distance_matrix_line
-                print_out = r('hopa<-hopach(t(data),dmat=distmata,ord="own"'+force2+')') #,coll="all"
+                print_out = r('hopa<-hopach(t(data),dmat=distmata,ord="own"'+force1+')') #,coll="all"
                 #print ['hopa<-hopach(t(data),dmat=distmata,ord="own",'+force2+')']
                 #print 'hopa<-hopach(t(data),dmat=distmata,ord="own"'+force2+')'
                 hopach_run = r['hopa']

@@ -326,7 +326,7 @@ def simplerGroupImport(group_dir):
         sample_group_db[sample_filename] = group_name
     return sample_group_db
 
-def simpleGroupImport(group_dir,splitHeaders=False):
+def simpleGroupImport(group_dir,splitHeaders=False, ignoreComps=False):
     
     """ Used for calculating fold changes prior to clustering for individual samples (genomtric folds) """
     import collections
@@ -355,6 +355,7 @@ def simpleGroupImport(group_dir,splitHeaders=False):
         data = cleanUpLine(line)
         try: sample_filename,group_number,group_name = string.split(data,'\t')
         except Exception:
+            print traceback.format_exc()
             print "\nWARNING!!! Impropper groups file format detected. Terminating AltAnalyze. The groups file must have only three columns (sampleName, groupNumber, groupName).\n"
             forceGroupsError
         if splitHeaders:
@@ -368,7 +369,10 @@ def simpleGroupImport(group_dir,splitHeaders=False):
         group_name_db[group_number]=group_name ### used by simpleCompsImport
         
     ### Get the comparisons indicated by the user
-    comps_name_db,comp_groups = simpleCompsImport(group_dir,group_name_db)
+    if ignoreComps==False: ### Not required for some analyses
+        comps_name_db,comp_groups = simpleCompsImport(group_dir,group_name_db)
+    else:
+        comps_name_db={}; comp_groups=[]
     return sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db
                 
 def simpleCompsImport(group_dir,group_name_db):

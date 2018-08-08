@@ -62,7 +62,6 @@ def importMetaDataDescriptions(field_description_file):
 
 def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
     """Import the metadata and include/exclude fields/samples based on the user inputs"""
-    
     firstLine = True
     samplesToRetain=[]
     samplesToRemove=[]
@@ -288,6 +287,7 @@ class PSIData:
 
 def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,comps_db,CovariateQuery,splicingEventTypes={}):
     ### filter the expression file for the samples of interest and immediately calculate comparison statistics
+
     firstLine = True
     group_index_db={}
     pval_summary_db={}
@@ -575,6 +575,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                         else:
                             if 'ENS' not in uid:
                                 system_code = 'Sy'; symbol = uid
+                        if 'ENS' in uid:
+                            system_code = 'En'
                         values = string.join([uid,system_code,str(gs.LogFold()),str(gs.Pval()),str(gs.AdjP()),symbol,group1_avg,group2_avg],'\t')+'\n'
                         eo.write(values)
                     proceed = True
@@ -729,7 +731,8 @@ def getAltID(uid):
 def getAnnotations(species,platform):
     import gene_associations
     if platform == 'RNASeq' or platform == 'PSI' or platform == 'miRSeq':
-        gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+        try: gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+        except Exception: gene_to_symbol={}
         system_code = 'En'
         if platform == 'miRSeq':
             from import_scripts import OBO_import
@@ -1653,7 +1656,9 @@ if __name__ == '__main__':
                     output_dir = [output_dir,arg]
             if opt == '--i': expression_files.append(arg)
             if opt == '--e': runGOElite=True
-            if opt == '--f': logfold_threshold = math.log(float(arg),2)
+            if opt == '--f':
+                try: logfold_threshold = math.log(float(arg),2)
+                except Exception: logfold_threshold = 0
             if opt == '--ce': compareEnrichmentProfiles = True
             if opt == '--d': sampleSetQuery=arg
             if opt == '--c': CovariateQuery=arg

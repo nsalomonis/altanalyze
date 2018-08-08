@@ -55,7 +55,11 @@ class GrabFiles:
     
 def getDirectoryFiles(import_dir, search_term):
     exact_file = ''; exact_file_dirs=[]
-    dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    try: dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
+    except Exception:
+        print unique.filepath(import_dir)
+        export.createDirPath(unique.filepath(import_dir[1:]))
+        dir_list = read_directory(import_dir)
     dir_list.sort() ### Get the latest files
     for data in dir_list:    #loop through each file in the directory to output results
         affy_data_dir = import_dir[1:]+'/'+data
@@ -1379,10 +1383,12 @@ def runProgram(Species,Array_type,Data_type,translate_seq,run_seqcomp):
     species = Species; array_type = Array_type; translate = translate_seq; data_type = Data_type
     test = 'no'; test_genes = ['ENSMUSG00000029467']
     if array_type == 'gene' or array_type == 'exon' or data_type == 'exon':
-        #compareExonComposition(species,array_type)
         compare_all_features = 'no' 
         print 'Begin Exon-based compareProteinComposition'
-        compareProteinComposition(species,array_type,translate,compare_all_features)
+        try: compareProteinComposition(species,array_type,translate,compare_all_features)
+        except Exception:
+            compareExonComposition(species,array_type)
+            compareProteinComposition(species,array_type,translate,compare_all_features)
         if run_seqcomp == 'yes':
             compare_all_features = 'yes'; translate = 'no'
             compareProteinComposition(species,array_type,translate,compare_all_features)

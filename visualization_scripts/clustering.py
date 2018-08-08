@@ -256,6 +256,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         vmin = vmax*-1
     elif 'Clustering-Zscores-' in dataset_name:
         vmin = vmax*-1
+    #vmin = vmax*-1
+    #print vmax, vmin
     default_window_hight = 8.5
     default_window_width = 12
     if len(column_header)>80:
@@ -977,7 +979,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #print ind1, len(ind1)
             cmap_r = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
             if len(unique.unique(ind1))>4: ### cmap_r is too few colors
-                cmap_r = pylab.cm.gist_rainbow
+                cmap_r = pylab.cm.gist_rainbow_r
             if len(unique.unique(ind1))==2:
                 cmap_r = matplotlib.colors.ListedColormap(['w', 'k'])
             im_r = axr.matshow(dr, aspect='auto', origin='lower', cmap=cmap_r)
@@ -1959,6 +1961,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
     try:
+        if priorColumnClusters==None: prior_clusters=[]
+    except:
+        pass
+    try:
         if len(prior_clusters)>0 and len(group_db)==0:
             newColumnHeader=[]
             i=0
@@ -1967,6 +1973,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 i+=1
             group_db, column_header = assignGroupColors(newColumnHeader)    
     except Exception,e:
+        print traceback.format_exc()
         #print e
         group_db={}
 
@@ -4801,16 +4808,28 @@ def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
         pylab.xlim(0,len(OY))
         pylab.subplots_adjust(right=0.85)
         ind = np.arange(len(OY))
+        index_list = []
+        v_list = []
+        colors_list = []
         if SubPlotType=='column':
             index=-1
             for v in OY:
                 index+=1
                 try: group = group_db[column_header[index]][0]
                 except: group = '1'
-                pylab.bar(index, v,edgecolor='black',linewidth=0,color=color_list[groups.index(group)])
-                #pylab.bar(index, v,edgecolor=color_list[groups.index(group)],linewidth=1,color=color_list[groups.index(group)])
+                index_list.append(index)
+                v_list.append(v)
+                colors_list.append(color_list[groups.index(group)])
+                #pylab.bar(index, v,edgecolor='black',linewidth=0,color=color_list[groups.index(group)])
                 width = .35
             #print i ,row_header[i]
+            print 1
+            barlist = pylab.bar(index_list, v_list,edgecolor='black',linewidth=0)
+            ci = 0
+
+            for cs in barlist:
+                barlist[ci].set_color(colors_list[ci])
+                ci+=1
         if SubPlotType=='plot':
             pylab.plot(x,y)
 
@@ -6229,7 +6248,7 @@ def compareEventLists(folder):
                     firstLine= False
                     continue
                 uid = t[0]
-                #uid = string.split(uid,'|')[0]
+                uid = string.split(uid,'|')[0]
                 if 'U2AF1-l' in file or 'U2AF1-E' in file:
                     if t[2] == "inclusion":
                         ls[(uid,t[event_index])]=t ### Keep the event data for output
@@ -6313,8 +6332,9 @@ def compareEventLists(folder):
             hits2.append(h)
         print comparison,'\t',string.join(hits2,', ')
      
-def convertGroupsToBinaryMatrix(groups_file,sample_order):
+def convertGroupsToBinaryMatrix(groups_file,sample_order,cellHarmony=False):
     eo = export.ExportFile(groups_file[:-4]+'-matrix.txt')
+    print groups_file[:-4]+'-matrix.txt'
     firstRow=True
     samples = []
     ### Import a file with the sample names in the groups file in the correct order
@@ -6328,13 +6348,16 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
                 if ':' in name:
                     name = string.split(name,':')[1]
                 samples.append(name)
-            break
+            if cellHarmony==False:
+                break
+        elif 'column_clusters-flat' in t and cellHarmony:
+            clusters = t[2:]
         elif groups_file == sample_order:
             samples.append(t[0])
         elif firstRow:
             samples = t[1:]
             firstRow=False
-        
+    
     ### Import a groups file
     import collections
     sample_groups = collections.OrderedDict()
@@ -6342,18 +6365,31 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order):
         data = cleanUpLine(line)
         t = string.split(data,'\t')
         sample, groupNum, groupName = t[:3]
-        if sample in samples:
-            si=samples.index(sample) ### Index of the sample
-            try: sample_groups[groupName][si] = '1' ### set that sample to 1
-            except Exception:
-                sample_groups[groupName] = ['0']*len(samples)
-                sample_groups[groupName][si] = '1' ### set that sample to 1
-
-    eo.write(string.join(['GroupName']+samples,'\t')+'\n')
-    for group in sample_groups:
-        eo.write(string.join([group]+sample_groups[group],'\t')+'\n')
-    eo.close()
-    
+        if cellHarmony == False: ### JUST USE THE PROVIDED GROUPS FOR SAMPLES FOUND IN BOTH FILES
+            if sample in samples:
+                si=samples.index(sample) ### Index of the sample
+                try: sample_groups[groupName][si] = '1' ### set that sample to 1
+                except Exception:
+                    sample_groups[groupName] = ['0']*len(samples)
+                    sample_groups[groupName][si] = '1' ### set that sample to 1
+        else: ### JUST GRAB THE GROUP NAMES FOR THE SAMPLE GROUPS NOT THE SAMPES
+            sample_groups[groupNum]=groupName
+            
+    if cellHarmony:
+        i=0
+        for sample in samples1:
+            cluster = clusters[i]
+            group_name = sample_groups[cluster]
+            eo.write(sample+'\t'+cluster+'\t'+group_name+'\n')
+            i+=1
+        eo.close()
+        
+    else:
+        eo.write(string.join(['GroupName']+samples,'\t')+'\n')
+        for group in sample_groups:
+            eo.write(string.join([group]+sample_groups[group],'\t')+'\n')
+        eo.close()
+        
 def returnIntronJunctionRatio(counts_file,species = 'Mm'):
     eo = export.ExportFile(counts_file[:-4]+'-intron-ratios.txt')
     ### Import a groups file
@@ -6472,18 +6508,119 @@ def returnIntronJunctionRatio(counts_file,species = 'Mm'):
     eo.write(string.join(['Global-Intron-Retention-Ratio']+map(str,global_intron_ratios_values),'\t')+'\n')
     eo.close()
     eoi.close()
+
+def convertSymbolLog(input_file,ensembl_symbol):
     
+    gene_symbol_db={}
+    for line in open(ensembl_symbol,'rU').xreadlines():
+        data = cleanUpLine(line)
+        ensembl,symbol = string.split(data,'\t')
+        gene_symbol_db[ensembl]=symbol
+        
+    eo = export.ExportFile(input_file[:-4]+'-log2.txt')
+    header=True
+    added_symbols=[]
+    not_found=[]
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data,'\t')
+        gene = values[0]
+        if header:
+            #eo.write(line)
+            data = cleanUpLine(line)
+            headers = []
+            values = string.split(data,'\t')
+            for v in values:
+                if "exp." in v:
+                    headers.append(string.split(v,'.exp.')[0])
+                else:
+                    headers.append(v)
+            eo.write(string.join(headers,'\t')+'\n')
+            header = False
+        if gene in gene_symbol_db:
+            symbol = gene_symbol_db[gene]
+            if symbol not in added_symbols: 
+                added_symbols.append(symbol)
+                values = map(lambda x: math.log(float(x)+1,2),values[1:])
+                if max(values)> 0.5:
+                    values = map(lambda x: str(x)[:5],values)
+                    eo.write(string.join([symbol]+values,'\t')+'\n')
+        else:
+            not_found.append(gene)
+    print len(not_found),not_found[:10]
+
+    eo.close()
+
+def outputForGOElite(folds_dir):
+    
+    matrix, column_header, row_header, dataset_name, group_db = importData(folds_dir,Normalize=False)
+    matrix = zip(*matrix) ### transpose
+    
+    ci=0
+    root_dir = findParentDir(folds_dir)
+    for group_data in matrix:
+        group_name = column_header[ci]
+        eo = export.ExportFile(root_dir+'/folds/'+group_name+'.txt')
+        gi=0
+        eo.write('geneID'+'\tSy\t'+'log2-fold'+'\n')
+        for fold in group_data:
+            gene = row_header[gi]
+            if fold>0:
+                eo.write(gene+'\tSy\t'+str(fold)+'\n')
+            gi+=1
+        eo.close()
+        ci+=1
+    
+def transposeMatrix(input_file):
+    arrays=[]
+    eo = export.ExportFile(input_file[:-4]+'-transposed.txt')
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data,'\t')
+        arrays.append(values)
+    t_arrays = zip(*arrays)
+    for t in t_arrays:
+        eo.write(string.join(t,'\t')+'\n')
+    eo.close()
+
+def simpleStatsSummary(input_file):
+    cluster_counts={}
+    header=True
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if header:
+            header = False
+        else:
+            sample,cluster,counts = string.split(data,'\t')
+            try: cluster_counts[cluster].append(float(counts))
+            except Exception: cluster_counts[cluster]=[float(counts)]
+    
+    for cluster in cluster_counts:
+        avg = statistics.avg(cluster_counts[cluster])
+        stdev = statistics.stdev(cluster_counts[cluster])
+        print cluster+'\t'+str(avg)+'\t'+str(stdev)
+        
 if __name__ == '__main__':
+    #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
+    #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
+    a = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/MergedFiles.txt'
+    b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
+    b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
+    #a = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/head.txt'
+    #transposeMatrix(a);sys.exit()
+    convertSymbolLog(a,b);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/MultiLin-Gata1/CellHarmonyReference/exp.MarkerFinder-cellHarmony-reference.txt'
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/MultiLin-Gata1/CellHarmonyReference/groups.all-Jan.2018-sorts.txt'
-    #convertGroupsToBinaryMatrix(b,a);sys.exit()
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/MultiLin-Gata1/ExpressionInput/groups.SuperPan-Gata1-v4.txt'
+    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/MCA/CD34+/set3/ExpressionInput/DataPlots/Clustering-exp.MarkerFinder-cellHarmony-reference__filteredExp.Lsk3Linckit3-ReOrdered-Query-hierarchical_euclidean_cosine.txt'
+    #convertGroupsToBinaryMatrix(b,a,cellHarmony=True);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
-    compareEventLists('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD');sys.exit()
+    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
+    a = '/Users/saljh8/Desktop/circadian_splicing_concordance'
+    compareEventLists(a);sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/CORNEL-AML/PSI/exp.Cornell-Bulk.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
@@ -6571,9 +6708,9 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Krause-Will/Nov.9.2017/ExpressionInput/MultiLin_genes-Will.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/genes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/Tickmarks/groups.all-Nov2017-matrix.txt'
-    genesets = importGeneList(gene_list_file,n=9)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/callouts.txt'
+    genesets = importGeneList(gene_list_file,n=7)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -6588,8 +6725,9 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/cellHarmony/MF-analysis/ExpressionInput/exp.10X-log2-NearestNeighbor.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/exp.NaturePan-Cd11b-Ly6g-filtered.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/Tickmarks/groups.all-Nov2017-matrix.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
+    #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
+    #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
     #filename = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/Ly6g/CodingOnly/Guide3-Kallisto-Coding-NatureAugmented/SubClustering/Nov-27-Final-version/ExpressionInput/exp.wt-panorama.txt'
     #filename = '/Volumes/salomonis2/Harinder-singh/Run2421-10X/10X_IRF4_Lo/outs/filtered_gene_bc_matrices/ExpressionInput/exp.10X_IRF4_Lo_matrix_CPTT-ICGS.txt'
@@ -6597,7 +6735,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=9)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=7)
     sys.exit()
 
     plotHistogram(filename);sys.exit()

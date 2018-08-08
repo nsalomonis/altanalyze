@@ -3,6 +3,8 @@ sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir depend
 import os
 import math
 import traceback
+try: from stats_scripts import statistics
+except Exception: pass
 
 def makeTestFile():
     all_data = [['name','harold','bob','frank','sally','kim','jim'],
@@ -16,7 +18,10 @@ def makeTestFile():
     export_object.close()
     return input_file
 
-def filterFile(input_file,output_file,filter_names,force=False):
+def filterFile(input_file,output_file,filter_names,force=False,calculateMedoids=False):
+    if calculateMedoids:
+        filter_names,group_index_db=filter_names
+        
     export_object = open(output_file,'w')
     firstLine = True
     for line in open(input_file,'rU').xreadlines():
@@ -38,10 +43,15 @@ def filterFile(input_file,output_file,filter_names,force=False):
                 header = values
             if 'PSI_EventAnnotation' in input_file:
                 uid_index = values.index('UID')
+            if calculateMedoids:
+                clusters = map(str,group_index_db)
+                export_object.write(string.join([values[uid_index]]+clusters,'\t')+'\n')
+                continue ### skip the below code
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
         except Exception:
             print traceback.format_exc()
-            print values;sys.exit()
+            print len(values), len(sample_index_list)
+            print input_file, len(filter_names); sys.exit()
             ### For PSI files with missing values at the end of each line, often
             if len(header) != len(values):
                 diff = len(header)-len(values)
@@ -49,6 +59,15 @@ def filterFile(input_file,output_file,filter_names,force=False):
             filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
             #print values[0]; print sample_index_list; print values; print len(values); print len(prior_values);kill
         prior_values=values
+        ######################## Begin Medoid Calculation ########################
+        if calculateMedoids:
+            median_matrix=[]
+            for cluster in group_index_db:
+                try: median_matrix.append(str(statistics.avg(map(lambda x: float(filtered_values[x]), group_index_db[cluster]))))
+                except Exception: ### Only one value
+                    median_matrix.append(str(map(lambda x: reference_matrix[uid][x], group_index_db[cluster])))
+            filtered_values = median_matrix
+        ########################  End Medoid Calculation  ######################## 
         export_object.write(string.join([values[uid_index]]+filtered_values,'\t')+'\n')
     export_object.close()
     print 'Filtered columns printed to:',output_file
@@ -84,15 +103,57 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False)
     export_object.close()
     print 'Filtered rows printed to:',output_file
     
-def getFilters(filter_file):
+def getFiltersFromHeatmap(filter_file):
+    import collections
+    alt_filter_list=None
+    group_index_db = collections.OrderedDict()
+    for line in open(filter_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if t[1] == 'row_clusters-flat':
+            filter_list = string.split(data,'\t')[2:]
+            if ':' in data:
+                alt_filter_list = map(lambda x: string.split(x,":")[1],string.split(data,'\t')[2:])
+        elif t[0] == 'column_clusters-flat':
+            cluster_list = string.split(data,'\t')[2:]
+            if 'NA' in cluster_list: ### When MarkerFinder notated groups
+                sample_names = map(lambda x: string.split(x,":")[1],filter_list)
+                cluster_list = map(lambda x: string.split(x,":")[0],filter_list)
+                filter_list = sample_names
+            elif alt_filter_list != None: ### When undesired groups notated in the sample names
+                filter_list = alt_filter_list
+            index=0
+            for sample in filter_list:
+                cluster=cluster_list[index]
+                try: group_index_db[cluster].append(index)
+                except Exception: group_index_db[cluster] = [index]
+                index+=1
+    return filter_list, group_index_db
+        
+def getFilters(filter_file,calculateMedoids=False):
     filter_list=[]
+    if calculateMedoids:
+        import collections
+        group_index_db = collections.OrderedDict()
+    
+    index=0
     for line in open(filter_file,'rU').xreadlines():
         data = cleanUpLine(line)
         sample = string.split(data,'\t')[0]
         filter_list.append(sample)
-    return filter_list
-
-"""" Filter a dataset based on number of genes with expression above the indicated threshold"""
+        if calculateMedoids:
+            if 'row_clusters-flat' in data:
+                forceHeatmapError
+            sample,group_num,group_name = string.split(data,'\t')
+            try: group_index_db[group_name].append(index)
+            except Exception: group_index_db[group_name] = [index]
+        index+=1
+    if calculateMedoids:
+        return filter_list,group_index_db
+    else:
+        return filter_list
+    
+""" Filter a dataset based on number of genes with expression above the indicated threshold """
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
@@ -193,38 +254,6 @@ def statisticallyFilterFile(input_file,output_file,threshold):
     print output_file
     filterFile(input_file,output_file,samples_to_retain)
 
-def combineDropSeq(input_dir):
-    import unique
-    files = unique.read_directory(input_dir)
-    combinedGeneExpression={}
-    for input_file in files: #:70895507-70895600
-        header=True
-        if '.txt' in input_file:
-            for line in open(input_dir+'/'+input_file,'rU').xreadlines():
-                data = cleanUpLine(line)
-                t = string.split(data,'\t')
-                if header:
-                    header_row = line
-                    samples = t[1:]
-                    header=False
-                else:
-                    values = map(float,t[1:])
-                    gene = t[0]
-                    if gene in combinedGeneExpression:
-                        prior_values = combinedGeneExpression[gene]
-                        count_sum_array = [sum(value) for value in zip(*[prior_values,values])]
-                    else:
-                        count_sum_array = values
-                    combinedGeneExpression[gene] = count_sum_array
-
-    input_file = input_dir+'/test.txt'
-    export_object = open(input_file,'w')
-    export_object.write(string.join(['UID']+samples,'\t')+'\n')
-    for gene in combinedGeneExpression:
-        values = string.join(map(str,[gene]+combinedGeneExpression[gene]),'\t')
-        export_object.write(values+'\n')
-    export_object.close()
-
 if __name__ == '__main__':
     ################  Comand-line arguments ################
     #statisticallyFilterFile('/Volumes/salomonis2/Grimes/GSE108891_RAW-10X-Paper-Review-Data/combined-files/ExpressionInput/exp.MergedFiles-ICGS-filtered.txt','/Volumes/salomonis2/Grimes/GSE108891_RAW-10X-Paper-Review-Data/combined-files/ExpressionInput/exp.MergedFiles-ICGS-filtered2.txt',1); sys.exit()
@@ -233,6 +262,7 @@ if __name__ == '__main__':
     filter_file=None
     force=False
     exclude = False
+    calculateMedoids=False
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         filter_names = ['bob','sally','jim']
         input_file = makeTestFile()
@@ -240,11 +270,12 @@ if __name__ == '__main__':
         #Filtering samples in a datasets
         #python SampleSelect.py --i /Users/saljh8/Desktop/C4-hESC/ExpressionInput/exp.C4.txt --f /Users/saljh8/Desktop/C4-hESC/ExpressionInput/groups.C4.txt
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','force='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=','centroid=','force='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
             elif opt == '--f': filter_file=arg
+            elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateMedoids = True
             elif opt == '--r':
                 if arg == 'exclude':
                     filter_rows=True
@@ -254,11 +285,16 @@ if __name__ == '__main__':
             elif opt == '--force': force=True
             
     output_file = input_file[:-4]+'-filtered.txt'
+
     if filter_rows:
         filter_names = getFilters(filter_file)
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)
-    elif filter_file ==None:
-        combineDropSeq(input_file)
+    elif calculateMedoids:
+        output_file = input_file[:-4]+'-median.txt'
+        try: filter_names,group_index_db = getFilters(filter_file,calculateMedoids=calculateMedoids)
+        except Exception:
+            filter_names,group_index_db = getFiltersFromHeatmap(filter_file)
+        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateMedoids=calculateMedoids)
     else:
         filter_names = getFilters(filter_file)
         filterFile(input_file,output_file,filter_names,force=force)

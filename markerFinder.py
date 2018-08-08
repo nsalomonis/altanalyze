@@ -633,7 +633,7 @@ def getReplicateData(expr_input,t):
         if '~' not in i:splitHeaders=True
 
     ### use comps in the future to visualize group comparison changes
-    sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = ExpressionBuilder.simpleGroupImport(groups_dir,splitHeaders=splitHeaders)
+    sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = ExpressionBuilder.simpleGroupImport(groups_dir,splitHeaders=splitHeaders, ignoreComps=True)
     sample_list = t ### This is the actual order in the input expression files
 
     for x in t:
@@ -775,7 +775,9 @@ def identifyMarkers(filename,cluster_comps,binarize=False):
                     if 'ENS' in probeset:
                         geneID, probeset = probeset,geneID
                         probeset=geneID+':'+probeset
-                except Exception: pass
+                except Exception:
+                    if 'ENS' in probeset:
+                        geneID = probeset
                 try: symbol = gene_to_symbol[geneID][0]; description = ''
                 except Exception: pass
                 except Exception: symbol = probeset; description = ''
@@ -881,17 +883,19 @@ def identifyMarkers(filename,cluster_comps,binarize=False):
                     try: all_genes_ranked[probeset,symbol].append([(rho,p),tissue])
                     except Exception:all_genes_ranked[probeset,symbol] = [[(rho,p),tissue]]
     """
+    
     for ID in all_genes_ranked:
         ag = all_genes_ranked[ID]
         ag.sort()
         all_genes_ranked[ID] = ag[-1] ### topcorrelated
     """
-    """
-    print string.join(tissue_list,'\t')
+    #"""
+    data = export.ExportFile(string.replace(filename[:-4]+'-all-correlations.txt','exp.','MarkerFinder.'))
+    data.write(string.join(tissue_list,'\t')+'\n')
     for gene in gene_specific_rho_values:
-        print string.join([gene]+map(str,gene_specific_rho_values[gene]),'\t')
-    sys.exit()
-    """
+        data.write(string.join([gene]+map(str,gene_specific_rho_values[gene]),'\t')+'\n')
+    #sys.exit()
+    #"""
     #print len(tissue_specific_IDs);sys.exit()
     return tissue_specific_IDs,interim_correlations,annotation_headers,tissues
 

@@ -256,9 +256,7 @@ def Zscore(r,n,N,R):
     return z
 
 if __name__ == '__main__':
-    """ This script iterates the LineageProfiler algorithm (correlation based classification method) to identify sample types relative
-    two one of two references given one or more gene models."""
-    
+
     try:
         import multiprocessing as mlp
         mlp.freeze_support()

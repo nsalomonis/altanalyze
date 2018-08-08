@@ -57,6 +57,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
     
     def importMarkerFinderHits(fn):
         genes={}
+        genes_to_symbol={}
         ICGS_State_ranked={}
         skip=True
         for line in open(fn,'rU').xreadlines():
@@ -67,6 +68,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
                     gene,symbol,rho,ICGS_State = string.split(data,'\t')
                 except Exception:
                     gene,symbol,rho,rho_p,ICGS_State = string.split(data,'\t')
+                genes_to_symbol[gene]=symbol
                 #if ICGS_State!=state and float(rho)>0.0:
                 if float(rho)>0.3:
                     try: ICGS_State_ranked[ICGS_State].append([float(rho),gene,symbol])
@@ -79,14 +81,15 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
             for (rho,gene,symbol) in ICGS_State_ranked[ICGS_State][:50]:
                 genes[gene]=rho,ICGS_State ### Retain all population specific genes (lax)
                 genes[symbol]=rho,ICGS_State
-        return genes
+                
+        return genes, genes_to_symbol
     
     def importQueryDataset(fn):
         matrix, column_header, row_header, dataset_name, group_db = clustering.importData(fn)
         return matrix, column_header, row_header, dataset_name, group_db
     
     signatureGenes = importGeneLists(SignatureGenes)
-    markerFinderGenes = importMarkerFinderHits(MarkerFinder)
+    markerFinderGenes, genes_to_symbol = importMarkerFinderHits(MarkerFinder)
     #print len(signatureGenes),len(markerFinderGenes)
 
     ### Determine for each gene, its population frequency per cell state
@@ -131,6 +134,8 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
                                 rho, ICGS_State = markerFinderGenes[gene]
                             else:
                                 rho, ICGS_Cell_State = markerFinderGenes[gene] #ICGS_Cell_State
+                            #try: gene = genes_to_symbol[gene]
+                            #except: gene = gene
                             score = int(rho*100*state_frq)*(float(rank)/len(all_states_frq))
                             try: expressedGenesPerState[ICGS_State].append((score,gene))
                             except Exception: expressedGenesPerState[ICGS_State]=[(score,gene)] #(rank*multilin_frq)

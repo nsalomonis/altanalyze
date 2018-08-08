@@ -1,5 +1,6 @@
 species_code	species_name	compatible_algorithms
 Hs	Homo sapiens	
+At	Arabidopsis thaliana	
 Ma	Macaca mulatta	
 Ce	Caenorhabditis elegans	
 Cf	Canis familiaris	
@@ -10,9 +11,8 @@ Xl	Xenopus laevis
 Gg	Gallus gallus	
 Nc	Neurospora crassa	
 Ac	Anolis carolinensis	
-Dr	Danio rerio	
 Dm	Drosophila melanogaster	
 Xl	Test	
 Zm	Zea mays	
 Sc	Saccharomyces cerevisiae	
-At	Arabidopsis thaliana	
+Dr	Danio rerio	

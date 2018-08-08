@@ -63,20 +63,19 @@ def writeJunctionBedFile(junction_db,jid,o):
         if tophat_strand==None:
             strandStatus = False
         break
-
+    
     if strandStatus== False: ### If no strand information in the bam file filter and add known strand data
         junction_db2={}
         for (chr,jc,tophat_strand) in junction_db:
             original_chr = chr
             if 'chr' not in chr:
                 chr = 'chr'+chr
-            for j in jc:                
+            for j in jc:
                 try:
                     strand = splicesite_db[chr,j]
                     junction_db2[(original_chr,jc,strand)]=junction_db[(original_chr,jc,tophat_strand)]
                 except Exception: pass
         junction_db = junction_db2
-    
     for (chr,jc,tophat_strand) in junction_db:
         x_ls=[]; y_ls=[]; dist_ls=[]
         read_count = str(len(junction_db[(chr,jc,tophat_strand)]))
@@ -131,15 +130,15 @@ def retreiveAllKnownSpliceSites(returnExonRetention=False,DesignatedSpecies=None
     splicesite_db={}
     gene_coord_db={}
     try:
-        exon_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt'
-        length = verifyFileLength(exon_dir)
+        if ExonReference==None:
+            exon_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt'
+            length = verifyFileLength(exon_dir)
     except Exception:
         #print traceback.format_exc();sys.exit()
         length = 0
     if length==0:
         exon_dir = ExonReference
     refExonCoordinateFile = unique.filepath(exon_dir)
-
     firstLine=True
     for line in open(refExonCoordinateFile,'rU').xreadlines():
         if firstLine: firstLine=False
@@ -177,10 +176,11 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
     IndicatedSpecies = Species
     ExonReference = ReferenceDir
     bam_file = bam_dir
-    try: splicesite_db,chromosomes_found = retreiveAllKnownSpliceSites()
+    try: splicesite_db,chromosomes_found, gene_coord_db = retreiveAllKnownSpliceSites()
     except Exception:
-        #print traceback.format_exc()
+        print traceback.format_exc()
         splicesite_db={}; chromosomes_found={}
+
     start = time.time()
     try: import collections; junction_db=collections.OrderedDict()
     except Exception:

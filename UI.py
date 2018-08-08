@@ -989,7 +989,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
         print '\n****Running cellHarmony****'
         codingtype = 'exon'; compendium_platform = 'exon'
         platform = array_type,vendor
-        try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel,modelSize=modelSize)
+        try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel,modelSize=modelSize,fl=fl)
         except Exception:
             print_out = traceback.format_exc()
             try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
@@ -4277,6 +4277,7 @@ class ExpressionFileLocationData:
     def setCompendiumType(self,compendiumType): self.compendiumType = compendiumType
     def setCompendiumPlatform(self,compendiumPlatform): self.compendiumPlatform = compendiumPlatform
     def setClassificationAnalysis(self, classificationAnalysis): self.classificationAnalysis = classificationAnalysis
+    def setReturnCentroids(self,returnCentroids): self.returnCentroids = returnCentroids
     def setMultiThreading(self, multithreading): self.multithreading = multithreading
     def setVendor(self,vendor): self.vendor = vendor
     def setPredictGroups(self, predictGroups): self.predictGroups = predictGroups
@@ -4304,6 +4305,9 @@ class ExpressionFileLocationData:
         except Exception: rpkm_threshold = rpkm_threshold
         self.rpkm_threshold = rpkm_threshold
     def setMarkerFinder(self,marker_finder): self.marker_finder = marker_finder
+    def setDE(self,DE): self.DE = DE
+    def DE(self): return self.DE
+    def ReturnCentroids(self): return self.returnCentroids
     def FDRStatistic(self): return self.FDR_statistic
     def multiThreading(self): return self.multithreading
     def STDOUT(self): return self.stdout
@@ -4373,6 +4377,8 @@ class ExpressionFileLocationData:
     def ExonMapFile(self): return self.exonMapFile
     def setCorrelationDirection(self, correlationDirection): self.correlationDirection = correlationDirection
     def CorrelationDirection(self): return self.correlationDirection
+    def setPearsonThreshold(self, pearsonThreshold): self.pearsonThreshold = pearsonThreshold
+    def PearsonThreshold(self): return self.pearsonThreshold
     def MLP(self): return self.mlp
     def PlatformType(self): return self.platformType
     def AnalysisMode(self): return self.analysis_mode

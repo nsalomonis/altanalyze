@@ -2366,10 +2366,13 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
     exon_seq_db={}
     for (uid1,seq) in uid_sequence_list:
         exon_seq_db[uid1] = seq
-    print '('+ex1+')'+exon_seq_db[gene+':'+ex1]
-    print '('+ex2+')'+exon_seq_db[gene+':'+ex2]
-    print '('+ex1b+')'+exon_seq_db[gene+':'+ex1b]
-    print '('+ex2b+')'+exon_seq_db[gene+':'+ex2b]
+    try: 
+        print '('+ex1+')'+exon_seq_db[gene+':'+ex1]
+        print '('+ex2+')'+exon_seq_db[gene+':'+ex2]
+        print '('+ex1b+')'+exon_seq_db[gene+':'+ex1b]
+        print '('+ex2b+')'+exon_seq_db[gene+':'+ex2b]
+    except Exception:
+        pass
     
     if print_outs == True:
         #"""
@@ -2387,21 +2390,31 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
         mRNA2_s = isoform_db[mRNA2]
     except Exception:
         mRNA2_s = string.replace(exclusion_junction,'-','|')
-    
-    print ex1,ex2,[mRNA1_s],[mRNA2_s]
+
+    print ex1,ex2
+    print [mRNA1_s]
+    print [mRNA2_s]
     if mRNA1_s != None:
         ex1_pos = string.find(mRNA1_s,ex1+'|') ### This is the location in the string where the exclusion junctions starts
         ex1_pos = ex1_pos+1+string.find(mRNA1_s[ex1_pos:],'|') ### This is the location in the string where the inclusion exon starts
         ex2_pos = string.find(mRNA1_s,ex2+'|')-1 ### This is the location in the string where the inclusion exon ends
+    print ex2_pos, ex1_pos
     if ex2_pos<ex1_pos:
         if mRNA2_s != None:
             mRNA1_s = mRNA2_s
-            mRNA1 = mRNA2
+            #mRNA1 = mRNA2
             ex1_pos = string.find(mRNA1_s,ex1+'|') ### This is the location in the string where the exclusion junctions starts
             ex1_pos = ex1_pos+1+string.find(mRNA1_s[ex1_pos:],'|') ### This is the location in the string where the inclusion exon starts
             ex2_pos = string.find(mRNA1_s,ex2+'|')-1 ### This is the location in the string where the inclusion exon ends
+    if abs(ex1_pos-ex2_pos)<2:
+        ### Incorrect isoform assignments resulting in faulty primer design
+        if ex1b+'|' in mRNA2_s and ex2b+'|' in mRNA2_s:
+            ex1 = ex1b
+            ex2 = ex2b
+            ex1_pos = string.find(mRNA1_s,ex1+'|') ### This is the location in the string where the exclusion junctions starts
+            ex1_pos = ex1_pos+1+string.find(mRNA1_s[ex1_pos:],'|') ### This is the location in the string where the inclusion exon starts
+            ex2_pos = string.find(mRNA1_s,ex2+'|')-1 ### This is the location in the string where the inclusion exon ends      
 
-    print ex1_pos,ex2_pos
     inclusion_exons = string.split(mRNA1_s[ex1_pos:ex2_pos],'|') ### These are the missing exons from the exclusion junction (in between)
     #if '-' in mRNA1_s:
     common_exons5p = string.split(mRNA1_s[:ex1_pos-1],'|') ### Flanking full 5' region (not just the 5' exclusion exon region)
@@ -2418,6 +2431,7 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
         print common_exons5p, common_exons3p
         print mRNA1_s, ex2_pos, ex1, ex2
         sys.exit()
+
     inclusion_exons = map(lambda x: gene+':'+x, inclusion_exons) ### add geneID prefix
     common_exons5p = map(lambda x: gene+':'+x, common_exons5p) ### add geneID prefix
     common_exons3p = map(lambda x: gene+':'+x, common_exons3p) ### add geneID prefix
@@ -2442,8 +2456,11 @@ def identifyPCRregions(species,platform,uid,inclusion_junction,exclusion_junctio
     #sys.exit()
     ### Get the common flanking and inclusion transcript sequence
     #print common_exons5p,common_exons3p;sys.exit()
+    print 1
     common_5p_seq = grabTranscriptSeq(common_exons5p,uid_seq_db)
+    print 2
     common_3p_seq = grabTranscriptSeq(common_exons3p,uid_seq_db)
+    print 3
     inclusion_seq = grabTranscriptSeq(inclusion_exons,uid_seq_db)
     print 'common_5p_seq:',[common_5p_seq]
     print 'common_3p_seq:',[common_3p_seq]
@@ -2521,7 +2538,8 @@ def grabTranscriptSeq(exons,uid_seq_db):
     seq=''
     #print exons
     for uid in exons:
-        seq += uid_seq_db[uid]
+        try: seq += uid_seq_db[uid]
+        except Exception: break ### MISSING SEQUENCE FROM THE DATABASE - OFTEN OCCURS IN THE LAST FEW EXONS - UNCLEAR WHY
     return seq
 
 def exportPrimerInputSeq(sequence,include_region,target_region):
@@ -2600,11 +2618,11 @@ def importComparisonSplicingData4Primers(filename,species):
                     symbol = uid_objects[0]
                     junctions = string.join(uid_objects[1:],':')
                     junctions = string.split(junctions,'|')
-                    fold_change = abs(float(t[8]))
-                    isoforms = t[7]
-                    splice_type = t[5]
-                    exonid = t[4]
-                #print symbol, fold_change,percent_exp,confirmed;sys.exit()
+                    fold_change = abs(float(t[9]))
+                    isoforms = t[8]
+                    splice_type = t[6]
+                    exonid = t[5]
+                #print symbol, junctions,fold_change,percent_exp,confirmed;sys.exit()
                 #if fold_change<2 and percent_exp>0.25 and (confirmed == 'yes'):
                 if fold_change < 50:
                     if 'alternative_polyA' not in splice_type and 'altPromoter' not in splice_type:
@@ -2634,8 +2652,8 @@ def importComparisonSplicingData4Primers(filename,species):
                             #sys.exit()
                         except Exception:
                             pass
-                            #print traceback.format_exc(),'\n'; sys.exit()
-                    
+                            print traceback.format_exc(),'\n'; #sys.exit()
+                        #sys.exit()
             except Exception:
                 #print traceback.format_exc(),'\n'#;sys.exit()
                 pass
@@ -2648,7 +2666,7 @@ if __name__ == '__main__':
     Data_type = 'ncRNA'
     Data_type = 'mRNA'
     #E6.1-E8.2 vs. E5.1-E8.3
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.0_rawp/MergedFiles2.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.0_rawp/PSI.R636S_Homo_vs_WTC-limma-updated-Domains2-filtered.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/Events-dPSI_0.1_adjp/PSI.U2AF1-like_vs_OthersQPCR.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/Combined-junction-exon-evidence.txt'
     

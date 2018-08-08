@@ -297,7 +297,7 @@ def download(url,dir,file_type):
     except Exception: suppress_printouts = 'no'
     try: dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
     except Exception:
-        print traceback.format_exc();sys.exit()
+        #print traceback.format_exc()
         try:
             dir = unique.filepath(dir) ### Can result in the wrong filepath exported for AltDatabase RNA-Seq zip files (don't include by default)
             dp = download_protocol(url,dir,file_type); output_filepath, status  = dp.getStatus(); fp = output_filepath
@@ -328,8 +328,6 @@ class download_protocol:
         output_filepath = unique.filepath(dir+filename, force='application-path')
         dir = export.findParentDir(output_filepath)
         output_filepath_object = export.createExportFile(output_filepath,dir[:-1])
-
-        if 'Download' not in output_filepath:sys.exit()
 
         self.output_filepath = output_filepath
         

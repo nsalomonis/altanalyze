@@ -6213,6 +6213,9 @@ def commandLineRun():
     inputTestData = "text"
     customFASTA = None
     filterFile = None
+    PearsonThreshold = 0.1
+    returnCentroids = False
+    DE=True
     
     original_arguments = sys.argv
     arguments=[]
@@ -6274,7 +6277,8 @@ def commandLineRun():
                                                          'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
                                                          'reimportModelScores=','separateGenePlots=','ChromiumSparseMatrix=',
                                                          'test=','testType=','inputTestData=','customFASTA=',
-                                                         'excludeGuides=','cellHarmony=','BAM_dir=','filterFile='])
+                                                         'excludeGuides=','cellHarmony=','BAM_dir=','filterFile=',
+                                                         'correlationCutoff=','referenceType=','DE='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6383,6 +6387,14 @@ def commandLineRun():
         elif opt == '--direction': direction = arg
         elif opt == '--logexp': expression_data_format=arg
         elif opt == '--geneRPKM': rpkm_threshold=arg
+        elif opt == '--correlationCutoff': PearsonThreshold=float(arg)
+        elif opt == '--DE':
+            if string.lower(arg) == 'true':
+                DE = True
+            else:
+                DE = False
+        elif opt == '--referenceType':
+            if string.lower(arg) == 'centroid': returnCentroids = True
         elif opt == '--multiThreading' or opt == '--multiProcessing':
             multiThreading=arg
             if multiThreading == 'yes': multiThreading = True
@@ -7976,6 +7988,9 @@ def commandLineRun():
                 fl.setCompendiumType('protein_coding')
                 if '--cellHarmony' in arguments:
                     fl.setClassificationAnalysis('cellHarmony')
+                    fl.setPearsonThreshold(PearsonThreshold)
+                    fl.setReturnCentroids(returnCentroids)
+                    fl.setDE(DE)
                 else:
                     fl.setClassificationAnalysis('LineageProfiler')
                 #fl.setCompendiumType('AltExon')
