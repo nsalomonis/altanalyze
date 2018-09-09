@@ -6276,9 +6276,9 @@ def commandLineRun():
                                                          'featurestoEvaluate=','restrictBy=','ExpressionCutoff=',
                                                          'excludeCellCycle=','runKallisto=','fastq_dir=','FDR=',
                                                          'reimportModelScores=','separateGenePlots=','ChromiumSparseMatrix=',
-                                                         'test=','testType=','inputTestData=','customFASTA=',
+                                                         'test=','testType=','inputTestData=','customFASTA=','i=',
                                                          'excludeGuides=','cellHarmony=','BAM_dir=','filterFile=',
-                                                         'correlationCutoff=','referenceType=','DE='])
+                                                         'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -7747,7 +7747,7 @@ def commandLineRun():
     for opt, arg in options:
         if opt == '--runGOElite': run_GOElite=arg
         elif opt == '--outputQCPlots': visualize_qc_results=arg
-        elif opt == '--runLineageProfiler' or opt == '--cellHarmony':
+        elif opt == '--runLineageProfiler' or opt == '--cellHarmony' or opt == '--cellHarmonyMerge':
             if string.lower(arg) == 'yes' or string.lower(arg) == 'true':
                 run_lineage_profiler = 'yes'
         elif opt == '--elitepermut': goelite_permutations=arg
@@ -7964,7 +7964,7 @@ def commandLineRun():
             if status == False:
                 print 'Please note: LineageProfiler not currently supported for this species...'
                 
-        if run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and ('--runLineageProfiler' in arguments or '--cellHarmony' in arguments):
+        if run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and ('--runLineageProfiler' in arguments or '--cellHarmony' in arguments or '--cellHarmonyMerge' in arguments):
             #python AltAnalyze.py --input "/Users/arrays/test.txt" --runLineageProfiler yes --vendor Affymetrix --platform "3'array" --species Mm --output "/Users/nsalomonis/Merrill"
             #python AltAnalyze.py --input "/Users/qPCR/samples.txt" --runLineageProfiler yes --geneModel "/Users/qPCR/models.txt" --reference "Users/qPCR/reference_profiles.txt"
             if array_type==None:
@@ -7997,6 +7997,15 @@ def commandLineRun():
                 fl.setCompendiumPlatform(array_type)
                 try: expr_input_dir
                 except Exception: expr_input_dir = input_file_dir
+                if '--cellHarmonyMerge' in arguments:
+                    ICGS_files=[]
+                    for opt, arg in options: ### Accept user input for these hierarchical clustering variables
+                        if opt == '--input':
+                            input_file = verifyPath(arg)
+                            ICGS_files.append(input_file)
+                    import LineageProfilerIterate
+                    LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod='median')
+                    sys.exit()
                 UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize) #,display=display
                 #graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,input_file_dir,array_type,species,manufacturer)
                 print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
@@ -8255,6 +8264,7 @@ def commandLineRun():
         global commandLineMode; commandLineMode = 'yes'
         AltAnalyzeMain(expr_var, alt_var, goelite_var, additional_var, exp_file_location_db,None)
     else:
+        print traceback.format_exc()
         print 'Insufficient Flags entered (requires --species and --output)'
 
 def cleanUpCommandArguments():

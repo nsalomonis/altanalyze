@@ -5546,7 +5546,7 @@ def getUserParameters(run_parameter,Multi=None):
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
 
-            if additional_analyses == 'Lineage Analysis' or additional_analyses == 'Cell State Classification':
+            if additional_analyses == 'Lineage Analysis' or additional_analyses == 'Cell Classification':
                 selected_parameters.append('Lineage Analysis')
                 status = 'repeat'
                 while status == 'repeat':
@@ -6697,7 +6697,7 @@ def getUserParameters(run_parameter,Multi=None):
         status = 'repeat'
         while status == 'repeat':
             root = Tk()
-            root.title('AltAnalyze: Predict Sample Groups')
+            root.title('AltAnalyze: Predict Cell Populations')
             ### Run in GUI and wait to be executed
             gu = GUI(root,option_db,option_list['PredictGroups'],'')
             ### Permission to run full analsyis is granted, proceed

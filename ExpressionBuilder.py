@@ -97,7 +97,7 @@ def getArrayHeaders(expr_input_dir):
             x = 1
     return array_names, array_linker_db
 
-def checkExpressionFileFormat(expFile,reportNegatives=False):
+def checkExpressionFileFormat(expFile,reportNegatives=False,filterIDs=False):
     """ Determine if the data is log, non-log and increment value for log calculation """
     firstLine=True; convert=False
     inputMax=0; inputMin=10000; increment=0
@@ -117,6 +117,9 @@ def checkExpressionFileFormat(expFile,reportNegatives=False):
                 continue ### skip this row if analyzing a clustered heatmap file
             try: uid, coordinates = string.split(key,'=')
             except Exception: uid = key
+            if filterIDs!=False:
+                if uid not in filterIDs:
+                    continue
             if '' in t[1:]:
                 values = [0 if x=='' else x for x in t[startIndex:]]
             elif 'NA' in t[1:]:

@@ -594,6 +594,7 @@ class RScripts:
         checklinelengths(self._file)
         print_out = r(parse_line)
         dat = r['data']
+        print_out = r(parse_line)
         #print "Number of columns in input file:",len(dat)
         print_out = r('data<-as.matrix(data)')
         dat = r['data']

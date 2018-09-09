@@ -164,7 +164,7 @@ def cleanUpLine(line):
     data = data.decode('utf8').encode('ascii', errors='ignore') ### get rid of bad quotes
     return data
 
-def statisticallyFilterFile(input_file,output_file,threshold):
+def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499):
     if 'exp.' in input_file:
         counts_file = string.replace(input_file,'exp.','geneCount.')
     else:
@@ -234,12 +234,12 @@ def statisticallyFilterFile(input_file,output_file,threshold):
         cutoff = avg - stdev; dev = 1
     
     print 'Using a default cutoff of >=500 genes per cell expressed/cell'
-    cutoff = 499
+
     import export
     eo = export.ExportFile(counts_file)
     eo.write('Sample\tGenes Expressed(threshold:'+str(threshold)+')\n')
     for sample in samples: ### keep the original order
-        if count_sum_array_db[sample]>cutoff:
+        if count_sum_array_db[sample]>minGeneCutoff:
             samples_to_retain.append(sample)
         else:
             samples_to_exclude.append(sample)
@@ -248,7 +248,7 @@ def statisticallyFilterFile(input_file,output_file,threshold):
     if len(samples_to_retain)<4: ### Don't remove any if too few samples
         samples_to_retain+=samples_to_exclude
     else:
-        print len(samples_to_exclude), 'samples removed (< 500 genes expressed)' # (%s)' % (dev,string.join(samples_to_exclude,', '))
+        print len(samples_to_exclude), 'samples removed (< %d genes expressed)' % minGeneCutoff
     eo.close()
     print 'Exporting the filtered expression file to:'
     print output_file
@@ -256,21 +256,22 @@ def statisticallyFilterFile(input_file,output_file,threshold):
 
 if __name__ == '__main__':
     ################  Comand-line arguments ################
-    #statisticallyFilterFile('/Volumes/salomonis2/Grimes/GSE108891_RAW-10X-Paper-Review-Data/combined-files/ExpressionInput/exp.MergedFiles-ICGS-filtered.txt','/Volumes/salomonis2/Grimes/GSE108891_RAW-10X-Paper-Review-Data/combined-files/ExpressionInput/exp.MergedFiles-ICGS-filtered2.txt',1); sys.exit()
+
     import getopt
     filter_rows=False
     filter_file=None
     force=False
     exclude = False
     calculateMedoids=False
+    geneCountFilter=False
+    expressionCutoff=1
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
-        filter_names = ['bob','sally','jim']
+        filter_names = ['test-1','test-2','test-3']
         input_file = makeTestFile()
         
-        #Filtering samples in a datasets
-        #python SampleSelect.py --i /Users/saljh8/Desktop/C4-hESC/ExpressionInput/exp.C4.txt --f /Users/saljh8/Desktop/C4-hESC/ExpressionInput/groups.C4.txt
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=','centroid=','force='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=',
+                            'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
@@ -283,9 +284,13 @@ if __name__ == '__main__':
                 else:
                     filter_rows=True
             elif opt == '--force': force=True
+            elif opt == '--geneCountFilter': geneCountFilter=True
+            elif opt == '--expressionCutoff': expressionCutoff=float(arg)
+            elif opt == '--minGeneCutoff': minGeneCutoff=int(arg)
             
     output_file = input_file[:-4]+'-filtered.txt'
-
+    if geneCountFilter:
+        statisticallyFilterFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',1,minGeneCutoff=199); sys.exit()
     if filter_rows:
         filter_names = getFilters(filter_file)
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)

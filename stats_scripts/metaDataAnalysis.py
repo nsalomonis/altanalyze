@@ -1268,6 +1268,31 @@ def synapseDirectoryUpload(expressionDir, parent_syn, executed_urls, used):
                 ### These are the GO-Elite result files (not folders)
                 synapseStore(files,dir_path_level3,sub_parent3,executed_urls,used)
 
+def exportUpDownGenes(results_dir):
+    files = os.listdir(results_dir)
+    for file in files:
+        filename = results_dir+'/'+file
+        output_dir = results_dir+'/regulated/'+file
+        firstLine=True
+        if '.txt' in filename and 'GE.' in filename:
+            ou = export.ExportFile(output_dir[:-4]+'-up.txt')
+            od = export.ExportFile(output_dir[:-4]+'-down.txt')
+            for line in open(filename,'rU').xreadlines():
+                data = line.rstrip()
+                values = string.split(data,'\t')
+                if firstLine:
+                    firstLine=False
+                    ou.write(line)
+                    od.write(line)
+                    lfi = values.index('LogFold')
+                else:
+                    if float(values[lfi]) >0:
+                        ou.write(line)
+                    else:
+                        od.write(line)
+            ou.close()
+            od.close()
+                    
 def exportGeneSetsFromCombined(filename):
     firstLine=True
     synapse_format = True
@@ -1600,6 +1625,7 @@ if __name__ == '__main__':
     expression_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     groups_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/groups.KD.txt'
     computed_results_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
+    #exportUpDownGenes('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/cellHarmony-evaluation/HCA-alignment/DEGs');sys.exit()
     #remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05);sys.exit()
     #compareDomainComposition(computed_results_dir)
     ################  Comand-line arguments ################

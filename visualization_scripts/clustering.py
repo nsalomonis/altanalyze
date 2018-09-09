@@ -1674,11 +1674,22 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                 except Exception:
                     #print traceback.format_exc()
                     pass
+
             group_db, column_header = assignGroupColors(t[1:])
             x=1
         elif 'column_clusters-flat' in t:
             try:
-                prior = map(lambda x: int(float(x)),t[2:])
+                if 'NA' in t:
+                    kill
+                try: prior = map(lambda x: int(float(x)),t[2:])
+                except Exception:
+                    ### Replace the cluster string with number
+                    c=1; prior=[]; clusters={}
+                    for i in t[2:]:
+                        if i in clusters: c1 = clusters[i]
+                        else: c1 = c; clusters[i]=c1
+                        prior.append(c1)
+                        c+=1
                 #priorColumnClusters = dict(zip(column_header, prior))
                 priorColumnClusters = prior
             except Exception:
@@ -6346,7 +6357,7 @@ def convertGroupsToBinaryMatrix(groups_file,sample_order,cellHarmony=False):
             samples1 = t[2:]
             for name in samples1:
                 if ':' in name:
-                    name = string.split(name,':')[1]
+                    group,name = string.split(name,':')
                 samples.append(name)
             if cellHarmony==False:
                 break
@@ -6516,16 +6527,16 @@ def convertSymbolLog(input_file,ensembl_symbol):
         data = cleanUpLine(line)
         ensembl,symbol = string.split(data,'\t')
         gene_symbol_db[ensembl]=symbol
-        
+    convert = False
     eo = export.ExportFile(input_file[:-4]+'-log2.txt')
-    header=True
+    header=0
     added_symbols=[]
     not_found=[]
     for line in open(input_file,'rU').xreadlines():
         data = cleanUpLine(line)
         values = string.split(data,'\t')
         gene = values[0]
-        if header:
+        if header == 0:
             #eo.write(line)
             data = cleanUpLine(line)
             headers = []
@@ -6536,7 +6547,7 @@ def convertSymbolLog(input_file,ensembl_symbol):
                 else:
                     headers.append(v)
             eo.write(string.join(headers,'\t')+'\n')
-            header = False
+        header +=1
         if gene in gene_symbol_db:
             symbol = gene_symbol_db[gene]
             if symbol not in added_symbols: 
@@ -6545,6 +6556,11 @@ def convertSymbolLog(input_file,ensembl_symbol):
                 if max(values)> 0.5:
                     values = map(lambda x: str(x)[:5],values)
                     eo.write(string.join([symbol]+values,'\t')+'\n')
+        elif convert==False and header>1:
+            values = map(lambda x: math.log(float(x)+1,2),values[1:])
+            if max(values)> 0.5:
+                values = map(lambda x: str(x)[:5],values)
+                eo.write(string.join([gene]+values,'\t')+'\n')
         else:
             not_found.append(gene)
     print len(not_found),not_found[:10]
@@ -6600,26 +6616,125 @@ def simpleStatsSummary(input_file):
         stdev = statistics.stdev(cluster_counts[cluster])
         print cluster+'\t'+str(avg)+'\t'+str(stdev)
         
+def removeMarkerFinderDoublets(heatmap_file,diff=1):
+    matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = remoteImportData(heatmap_file)
+        
+    priorRowClusters.reverse()
+    if len(priorColumnClusters)==0:
+        for c in column_header:
+            cluster = string.split(c,':')[0]
+            priorColumnClusters.append(cluster)
+        for r in row_header:
+            cluster = string.split(r,':')[0]
+            priorRowClusters.append(cluster)
+
+    import collections
+    cluster_db = collections.OrderedDict()
+    i=0
+    for cluster in priorRowClusters:
+        try: cluster_db[cluster].append(matrix[i])
+        except: cluster_db[cluster] = [matrix[i]]
+        i+=1
+    
+    transposed_data_matrix=[]
+    clusters=[]
+    for cluster in cluster_db:
+        cluster_cell_means = numpy.mean(cluster_db[cluster],axis=0)
+        cluster_db[cluster] = cluster_cell_means
+        transposed_data_matrix.append(cluster_cell_means)
+        if cluster not in clusters:
+            clusters.append(cluster)
+    transposed_data_matrix = zip(*transposed_data_matrix)
+    
+    i=0
+    cell_max_scores=[]
+    cell_max_score_db = collections.OrderedDict()
+
+    for cell_scores in transposed_data_matrix:
+        cluster = priorColumnClusters[i]
+        cell = column_header[i]
+        ci = clusters.index(cluster)
+        #print ci, cell, cluster, cell_scores;sys.exit()
+        cell_state_score = cell_scores[ci] ### This is the score for that cell for it's assigned MarkerFinder cluster
+        alternate_state_scores=[]
+        for score in cell_scores:
+            if score != cell_state_score:
+                alternate_state_scores.append(score)
+        alt_max_score = max(alternate_state_scores)
+        alt_sum_score = sum(alternate_state_scores)
+        cell_max_scores.append([cell_state_score,alt_max_score,alt_sum_score]) ### max and secondary max score - max for the cell-state should be greater than secondary max
+        try: cell_max_score_db[cluster].append(([cell_state_score,alt_max_score,alt_sum_score]))
+        except: cell_max_score_db[cluster] = [[cell_state_score,alt_max_score,alt_sum_score]]
+        i+=1
+    
+    
+    for cluster in cell_max_score_db:
+        cluster_cell_means = numpy.median(cell_max_score_db[cluster],axis=0)
+        cell_max_score_db[cluster] = cluster_cell_means ### This is the cell-state mean score for all cells in that cluster and the alternative max mean score (difference gives you the threshold for detecting double)
+    i=0
+    print len(cell_max_scores)
+    keep=['row_clusters-flat']
+    keep_alt=['row_clusters-flat']
+    remove = ['row_clusters-flat']
+    remove_alt = ['row_clusters-flat']
+    for (cell_score,alt_score,alt_sum) in cell_max_scores:
+        cluster = priorColumnClusters[i]
+        cell = column_header[i]
+        ref_max, ref_alt, ref_sum = cell_max_score_db[cluster]
+        ci = clusters.index(cluster)
+        ref_diff= math.pow(2,(ref_max-ref_alt))*diff #1.1
+        ref_alt = math.pow(2,(ref_alt))
+        cell_diff = math.pow(2,(cell_score-alt_score))
+        cell_score = math.pow(2,cell_score)
+        if cell_diff>ref_diff and cell_diff>diff: #cell_score cutoff removes some, but cell_diff is more crucial
+                #if alt_sum<cell_score:
+                assignment=0 #1.2
+                keep.append(cell)
+                try: keep_alt.append(string.split(cell,':')[1]) ### if prefix added
+                except Exception:
+                    keep_alt.append(cell)
+        else:
+            remove.append(cell)
+            try: remove_alt.append(string.split(cell,':')[1])
+            except Exception: remove_alt.append(cell)
+            assignment=1
+
+        #print assignment
+        i+=1
+    print len(keep), len(remove)
+    from import_scripts import sampleIndexSelection
+    input_file=heatmap_file
+    output_file = heatmap_file[:-4]+'-Singlets.txt'
+    try: sampleIndexSelection.filterFile(input_file,output_file,keep)
+    except: sampleIndexSelection.filterFile(input_file,output_file,keep_alt)
+
+    output_file = heatmap_file[:-4]+'-Multiplets.txt'
+    try: sampleIndexSelection.filterFile(input_file,output_file,remove)
+    except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
+    
 if __name__ == '__main__':
+    diff=0.8
+    print 'diff:',diff
+    #removeMarkerFinderDoublets('/Volumes/salomonis2/Lab_backup/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/post/DataPlots/MarkerFinder/Clustering-MarkerGenes_correlations-ReplicateBased-20180405-155403_euclidean_cosine-20180831-195351_cosine_cosine.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
-    a = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/MergedFiles.txt'
+    a = '/Volumes/salomonis2/Lab_backup/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/ExpressionInput/exp.AML-p27-D.txt'
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
-    b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
+    #b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
     #a = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/head.txt'
     #transposeMatrix(a);sys.exit()
-    convertSymbolLog(a,b);sys.exit()
+    #convertSymbolLog(a,b);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/MultiLin-Gata1/ExpressionInput/groups.SuperPan-Gata1-v4.txt'
-    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/MCA/CD34+/set3/ExpressionInput/DataPlots/Clustering-exp.MarkerFinder-cellHarmony-reference__filteredExp.Lsk3Linckit3-ReOrdered-Query-hierarchical_euclidean_cosine.txt'
-    #convertGroupsToBinaryMatrix(b,a,cellHarmony=True);sys.exit()
+    b = '/Volumes/salomonis2/Joshua_Waxman-10X-Zebrafish/SeuratCCA/DataPlots/Clustering-exp.CCA.txt'
+    a = '/Volumes/salomonis2/Joshua_Waxman-10X-Zebrafish/SeuratCCA/groups.CCA.txt'
+    #convertGroupsToBinaryMatrix(a,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
-    a = '/Users/saljh8/Desktop/circadian_splicing_concordance'
+    #a = '/Users/saljh8/Desktop/circadian_splicing_concordance'
     compareEventLists(a);sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/CORNEL-AML/PSI/exp.Cornell-Bulk.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
@@ -6705,12 +6820,11 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/Final-Classifications/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/TFs/Myelo_TFs2.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/customGenes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Krause-Will/Nov.9.2017/ExpressionInput/MultiLin_genes-Will.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/callouts.txt'
-    genesets = importGeneList(gene_list_file,n=7)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/cellHarmony-evaluation/Grimes/DEGs.txt'
+    genesets = importGeneList(gene_list_file,n=37)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -6726,6 +6840,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/cellHarmony-evaluation/Grimes/exp.AML-relative.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
     #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
@@ -6735,7 +6850,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=7)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=37)
     sys.exit()
 
     plotHistogram(filename);sys.exit()
