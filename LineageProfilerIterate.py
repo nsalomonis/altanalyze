@@ -2562,6 +2562,7 @@ def createMetaICGSResults(ICGS_files,outputDir,CenterMethod='median'):
 
     # import raw expression values for each ICGS or MarkerFinder
     files_to_merge = []
+
     for heatmap_file in ICGS_files:
         ### returnCentroids = False to return all cells
         cellHarmonyReferenceFile = convertICGSClustersToExpression(heatmap_file,heatmap_file,returnCentroids=True,

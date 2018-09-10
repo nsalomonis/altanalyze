@@ -55,7 +55,7 @@ try:
     try: import ImageTk
     except Exception: from PIL import ImageTk
 except Exception:
-    None #print 'Python Imaging Library not installed... using default PNG viewer'
+    pass #print 'Python Imaging Library not installed... using default PNG viewer'
     
 use_Tkinter = 'no'
 debug_mode = 'no'
@@ -6278,7 +6278,8 @@ def commandLineRun():
                                                          'reimportModelScores=','separateGenePlots=','ChromiumSparseMatrix=',
                                                          'test=','testType=','inputTestData=','customFASTA=','i=',
                                                          'excludeGuides=','cellHarmony=','BAM_dir=','filterFile=',
-                                                         'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge='])
+                                                         'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
+                                                         'o='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6335,7 +6336,7 @@ def commandLineRun():
             arg = verifyPath(arg)
             input_annotation_file=arg
         elif opt == '--expname': exp_name=arg
-        elif opt == '--output':
+        elif opt == '--output' or opt == '--o':
             arg = verifyPath(arg)
             output_dir=arg
         elif opt == '--vendor': manufacturer=arg
@@ -6350,7 +6351,7 @@ def commandLineRun():
         elif opt == '--version': ensembl_version = arg
         elif opt == '--compendiumPlatform': compendiumPlatform=arg ### platform for which the LineageProfiler compendium is built on
         elif opt == '--force': force=arg
-        elif opt == '--input':
+        elif opt == '--input' or opt == '--i':
             arg = verifyPath(arg)
             input_file_dir=arg
             #input_exp_file=arg
@@ -6400,7 +6401,7 @@ def commandLineRun():
             if multiThreading == 'yes': multiThreading = True
             elif 'rue' in multiThreading: multiThreading = True
             else: multiThreading = False
-    
+
     if perform_tests != False:
         ### Requires the mouse RNASeq database
         ### python AltAnalyze.py --test --testType ICGS --inputTestData text
@@ -7845,7 +7846,7 @@ def commandLineRun():
             array_type = "3'array"
             if customFASTA!=None:
                 fl.setCustomFASTA(customFASTA)
-
+    
     if proceed == 'yes':
         species_codes = UI.remoteSpeciesInfo()
         ### Update Ensembl Databases
@@ -7963,10 +7964,11 @@ def commandLineRun():
             status = UI.verifyLineageProfilerDatabases(species,'command-line')
             if status == False:
                 print 'Please note: LineageProfiler not currently supported for this species...'
-                
+
         if run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and ('--runLineageProfiler' in arguments or '--cellHarmony' in arguments or '--cellHarmonyMerge' in arguments):
             #python AltAnalyze.py --input "/Users/arrays/test.txt" --runLineageProfiler yes --vendor Affymetrix --platform "3'array" --species Mm --output "/Users/nsalomonis/Merrill"
             #python AltAnalyze.py --input "/Users/qPCR/samples.txt" --runLineageProfiler yes --geneModel "/Users/qPCR/models.txt" --reference "Users/qPCR/reference_profiles.txt"
+
             if array_type==None:
                 print "Please include a platform name (e.g., --platform RNASeq)";sys.exit()
             if species==None:
@@ -8000,7 +8002,7 @@ def commandLineRun():
                 if '--cellHarmonyMerge' in arguments:
                     ICGS_files=[]
                     for opt, arg in options: ### Accept user input for these hierarchical clustering variables
-                        if opt == '--input':
+                        if opt == '--input' or opt == '--i':
                             input_file = verifyPath(arg)
                             ICGS_files.append(input_file)
                     import LineageProfilerIterate
