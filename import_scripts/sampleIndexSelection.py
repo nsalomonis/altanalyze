@@ -83,6 +83,8 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False)
         if 'PSI_EventAnnotation' in input_file and firstLine:
             uid_index = values.index('UID')
         if firstLine:
+            try:uid_index=values.index('UID')
+            except Exception:uid_index=values.index('uid')
             firstLine = False
             export_object.write(line)
         else:

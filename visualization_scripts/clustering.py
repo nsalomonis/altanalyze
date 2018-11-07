@@ -575,7 +575,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             column_fontsize = 10
         if len(justShowTheseIDs)<1:
             additional_symbols=[]
-            import gene_associations, OBO_import
+            import gene_associations; from import_scripts import OBO_import
             try:
                 gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
                 #symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
@@ -1718,7 +1718,10 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                         except Exception: s.append(0.000101)
                     #s = numpy.ma.masked_values(s, 0.000101)
                 original_matrix.append(s)
-                if max(s)>inputMax: inputMax = max(s)
+                try:
+                    if max(s)>inputMax: inputMax = max(s)
+                except:
+                    continue ### empty row
                 if min(s)<inputMin: inputMin = min(s)
                 #if (abs(max(s)-min(s)))>2:
                 if Normalize!=False:
@@ -1967,8 +1970,37 @@ def importtSNEScores(inputdir):
         scores.append(t)
     return scores
 
+def umap(matrix, column_header,dataset_name,group_db,display=False,showLabels=False,
+         row_header=None,colorByGene=None,species=None,reimportModelScores=True,method="UMAP",rootDir='',finalOutputDir=''):
+    global root_dir
+    global graphic_link
+    graphic_link=[]
+    root_dir = rootDir
+    
+    tSNE(matrix, column_header,dataset_name,group_db,display=False,showLabels=False,
+         row_header=None,colorByGene=None,species=None,reimportModelScores=True,method="UMAP")
+    import shutil
+    filename = 'Clustering-'+dataset_name+'-'+method+'.pdf'
+    filename = string.replace(filename,'Clustering-Clustering','Clustering')
+    new_file=finalOutputDir + filename
+    new_file=string.replace(new_file,'Clustering-','')
+    new_file=string.replace(new_file,'exp.','')
+    old_file=root_dir+filename
+    shutil.move(old_file,new_file)
+    
+    filename = filename[:-3]+'png'
+    new_file=finalOutputDir + filename
+    new_file=string.replace(new_file,'Clustering-','')
+    new_file=string.replace(new_file,'exp.','')
+    old_file=root_dir+filename
+    shutil.move(old_file,new_file)
+    old_file=root_dir+dataset_name+'-'+method+'_scores.txt'
+    new_file=finalOutputDir+dataset_name+'-'+method+'_coordinates.txt'
+    new_file=string.replace(new_file,'exp.','')
+    shutil.move(old_file,new_file)
+
 def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,
-         row_header=None,colorByGene=None,species=None,reimportModelScores=True):
+         row_header=None,colorByGene=None,species=None,reimportModelScores=True,method="tSNE"):
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
     try:
@@ -1990,8 +2022,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
 
     if reimportModelScores:
         print 'Re-importing t-SNE model scores rather than calculating from scratch',
-        print root_dir+dataset_name+'-tSNE_scores.txt'
-        try: scores = importtSNEScores(root_dir+dataset_name+'-tSNE_scores.txt'); print '...import finished'
+        print root_dir+dataset_name+'-'+method+'_scores.txt'
+        try: scores = importtSNEScores(root_dir+dataset_name+'-'+method+'_scores.txt'); print '...import finished'
         except Exception:
             reimportModelScores=False; print '...import failed'
         
@@ -2006,14 +2038,18 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         scores = bh_sne(X)"""
         
         #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
-        model = TSNE(n_components=2)
+        if method=="tSNE":
+            model = TSNE(n_components=2)
+        if method=="UMAP":
+            import umap
+            model=umap.UMAP(n_neighbors=50,min_dist=0.75,metric='correlation')
         #model = TSNE(n_components=2,init='pca', random_state=0, verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2,verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2, random_state=0, n_iter=10000, early_exaggeration=10)
         scores=model.fit_transform(X)
         
         ### Export the results for optional re-import later
-        writetSNEScores(scores,root_dir+dataset_name+'-tSNE_scores.txt')
+        writetSNEScores(scores,root_dir+dataset_name+'-'+method+'_scores.txt')
         #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
     
     ### Exclude samples with high TSNE deviations
@@ -2035,8 +2071,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             
     fig = pylab.figure()
     ax = fig.add_subplot(111)
-    pylab.xlabel('TSNE-X')
-    pylab.ylabel('TSNE-Y')
+    pylab.xlabel(method.upper()+'-X')
+    pylab.ylabel(method.upper()+'-Y')
 
     axes = getAxesTransposed(scores,exclude=exclude) ### adds buffer space to the end of each axis and creates room for a legend
     pylab.axis(axes)
@@ -2189,7 +2225,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         else:
             print [colorByGene], 'not found in rows...'
             
-    pylab.title('t-SNE - '+dataset_name)
+    pylab.title(method+' - '+dataset_name)
     
     group_names={}
     i=0
@@ -2240,13 +2276,13 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         ax.set_position([box.x0, box.y0, box.width, box.height])
         pylab.legend(loc="upper left", prop={'size': 10})
   
-    filename = 'Clustering-%s-t-SNE.pdf' % dataset_name
+    filename = 'Clustering-'+dataset_name+'-'+method+'.pdf'
     filename = string.replace(filename,'Clustering-Clustering','Clustering')
     try: pylab.savefig(root_dir + filename)
     except Exception: None ### Rare error
     #print 'Exporting:',filename
     filename = filename[:-3]+'png'
-    try: pylab.savefig(root_dir + filename) #dpi=200
+    try: pylab.savefig(root_dir + filename) #dpi=200, transparent=True
     except Exception: None ### Rare error
     graphic_link.append(['Principal Component Analysis',root_dir+filename])
 
@@ -5386,7 +5422,7 @@ def MakeJunctionFasta(filename):
     ea.close()
     
 def ToppGeneFilter(filename):
-    import gene_associations, OBO_import
+    import gene_associations; from import_scripts import OBO_import
     gene_to_symbol = gene_associations.getGeneToUid('Hs',('hide','Ensembl-Symbol'))
     symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
     
@@ -6616,6 +6652,22 @@ def simpleStatsSummary(input_file):
         stdev = statistics.stdev(cluster_counts[cluster])
         print cluster+'\t'+str(avg)+'\t'+str(stdev)
         
+def latteralMerge(file1, file2):
+    import collections
+    cluster_db = collections.OrderedDict()
+    eo = export.ExportFile(file2[:-4]+'combined.txt')
+    for line in open(file1,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        cluster_db[t[0]]=t
+    for line in open(file2,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if t[0] in cluster_db:
+            t1=cluster_db[t[0]]
+            eo.write(string.join(t1+t[2:],'\t')+'\n')
+    eo.close()
+    
 def removeMarkerFinderDoublets(heatmap_file,diff=1):
     matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = remoteImportData(heatmap_file)
         
@@ -6715,6 +6767,9 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
 if __name__ == '__main__':
     diff=0.8
     print 'diff:',diff
+    file1='/Volumes/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5-CF001WBC-Day0/outs/filtered_gene_bc_matrices/CellHarmonyReference/AML-D0-WBC-reference.txt'
+    file2='/Volumes/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5_CF001CD34_Day0/outs/filtered_gene_bc_matrices/ExpressionInput/exp.AML-D0-WBC-centroid__10x5_CF001CD34_Day0_matrix_CPTT-ReOrdered-Query.txt'
+    latteralMerge(file1, file2);sys.exit()
     #removeMarkerFinderDoublets('/Volumes/salomonis2/Lab_backup/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/post/DataPlots/MarkerFinder/Clustering-MarkerGenes_correlations-ReplicateBased-20180405-155403_euclidean_cosine-20180831-195351_cosine_cosine.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()

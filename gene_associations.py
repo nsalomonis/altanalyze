@@ -1966,7 +1966,11 @@ if __name__ == '__main__':
     species_code = 'Hs'; mod = 'Ensembl'; gotype='nested'
     filedir = 'C:/Documents and Settings/Nathan Salomonis/My Documents/GO-Elite_120beta/Databases/EnsMart56Plus/Ce/gene/EntrezGene.txt'
     system = 'Macaroni'
-    
+    gene_annotations = importGeneData('Hs','EntrezGene')
+    for i in gene_annotations:
+        print i, gene_annotations[i].Symbol(); break
+    print len(gene_annotations)
+    sys.exit()
     import GO_Elite
     system_codes,source_types,mod_types = GO_Elite.getSourceData()
     #custom_sets_folder = '/test'

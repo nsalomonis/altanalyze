@@ -3360,7 +3360,7 @@ def AllGroupsNIComparison(root_dir, species, array_type):
 def createExpressionSQLdb(species,platform,expFile):
     """ Store junction/exon RPKMs or probesets expression in a SQL database"""
     start=time.time()
-    import SQLInterface
+    from import_scripts import SQLInterface
     DBname = 'FeatureExpression'
     schema_text ='''-- Schema for species specific AltAnalyze junction/exon expression data.
 

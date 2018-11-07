@@ -2687,7 +2687,7 @@ def collapseSimilarMedoids(outputfile,cutoff=0.9):
     return collapsed_dir
     
 def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=False,
-                            CenterMethod='centroid',geneOverride=None,combineFullDatasets=True):
+                            CenterMethod='median',geneOverride=None,combineFullDatasets=True):
     """This function will import an ICGS row normalized heatmap and return raw
     expression values substituted for the values. """
 
@@ -2781,7 +2781,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         updated_column_header.append(i)
     column_header = updated_column_header
     row_header.reverse() ### Reverse order is the default
-    #priorRowClusters.reverse()
+    priorRowClusters.reverse()
     ### Record the index for each sample name in the ICGS result order in the original expression file (exp.*)
     priorColumnClusters = map(str,priorColumnClusters)
 
@@ -2850,7 +2850,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     for uid in reference_matrix:
         median_matrix=[]
         for cluster in group_index_db:
-            if CenterMethod == 'mean':
+            if CenterMethod == 'mean' or CenterMethod == 'centroid':
                 try: median_matrix.append(str(statistics.avg(map(lambda x: reference_matrix[uid][x], group_index_db[cluster]))))
                 except Exception: ### Only one value
                     median_matrix.append(str(map(lambda x: reference_matrix[uid][x], group_index_db[cluster])))

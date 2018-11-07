@@ -2927,8 +2927,9 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
             expressed_uids.append(uid)
     print len(expressed_uids), 'expressed IDs being further analyzed'
     #sys.exit()
-    print_out = findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_genes,mlp,parameters=parameters,reportOnly=reportOnly)
-    return print_out
+    #Meenakshi changes
+    print_out,n = findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_genes,mlp,parameters=parameters,reportOnly=reportOnly)
+    return print_out,n
 
 def getOverlappingKeys(db1,db2):
     db3=[]
@@ -3160,7 +3161,8 @@ def intraCorrelation(expressed_values,mlp):
 
 def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_genes,mlp,fold=2,samplesDiffering=2,parameters=None,reportOnly=False):
     use_CV=False
-    
+    global rho_cutoff
+
     row_metric = 'correlation'; row_method = 'average'
     column_metric = 'cosine'; column_method = 'hopach'
     original_column_metric = column_metric
@@ -3398,7 +3400,10 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     #eo.close()
     print len(atleast_10), 'genes correlated to multiple other members (initial filtering)'
     ### go through the list from the most linked to the least linked genes, only reported the most linked partners
-    
+    if len(atleast_10)>5000:
+        print_out=""
+        return print_out,atleast_10
+        
     removeOutlierDrivenCorrelations=True
     exclude_corr=[]
     numb_corr.sort(); numb_corr.reverse()
@@ -3584,7 +3589,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
 
     try: copyICGSfiles(expFile,graphic_links)
     except Exception: pass
-    return graphic_links
+    return graphic_links,len(atleast_10)
 
 def copyICGSfiles(expFile,graphic_links):
     if 'ExpressionInput' in expFile:
@@ -4183,7 +4188,8 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
             elif 'junction_quantification.txt' not in name and '.txt' not in name and '.bed' not in name:
                 name = name+'.txt'
         if ':' in name:
-            name = string.split(name,':')[1]
+            group,name = string.split(name,':')
+            if cluster=='NA': cluster = group
         out_obj.write(name+'\t'+cluster+'\t'+cluster+'\n')
         if cluster not in unique_clusters: unique_clusters.append(cluster)
     out_obj.close()

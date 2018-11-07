@@ -4,6 +4,7 @@ import csv
 import scipy.io
 import numpy
 import time
+import math
 
 def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None):
     start_time = time.time()
@@ -54,7 +55,7 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None):
         if val==0:
             return '0'
         else:
-            return (10000.0*val)/barcode_sum
+            return math.log((10000.00*val)/barcode_sum,2) ### convert to log2 expression
 
     vfunc = numpy.vectorize(calculateCPTT)
     norm_mat_array=[]

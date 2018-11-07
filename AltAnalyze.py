@@ -4523,7 +4523,7 @@ class StatusWindow:
             group = PmwFreeze.Group(self.sf.interior(),tag_text = 'Output')
             group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
                 
-            Label(group.interior(),width=190,height=552,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
+            Label(group.interior(),width=190,height=1000,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
 
             status = StringVarFile(statusVar,root) ### Likely captures the stdout
             sys.stdout = status
@@ -6216,6 +6216,7 @@ def commandLineRun():
     PearsonThreshold = 0.1
     returnCentroids = False
     DE=True
+    runCompleteWorkflow=True
     
     original_arguments = sys.argv
     arguments=[]
@@ -6279,7 +6280,7 @@ def commandLineRun():
                                                          'test=','testType=','inputTestData=','customFASTA=','i=',
                                                          'excludeGuides=','cellHarmony=','BAM_dir=','filterFile=',
                                                          'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
-                                                         'o='])
+                                                         'o=','dynamicCorrelation=','runCompleteWorkflow='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6395,7 +6396,8 @@ def commandLineRun():
             else:
                 DE = False
         elif opt == '--referenceType':
-            if string.lower(arg) == 'centroid': returnCentroids = True
+            if string.lower(arg) == 'centroid': returnCentroids = True; CenterMethod='centroid'
+            else: CenterMethod='median'; returnCentroids = True
         elif opt == '--multiThreading' or opt == '--multiProcessing':
             multiThreading=arg
             if multiThreading == 'yes': multiThreading = True
@@ -6497,6 +6499,8 @@ def commandLineRun():
             removeOutliers = False
             excludeGuides = None
             PathwaySelection=[]
+            dynamicCorrelation=True
+            runCompleteWorkflow=False
             if ChromiumSparseMatrix != '':
                 rho_cutoff = 0.3
                 column_metric = 'euclidean'
@@ -6523,6 +6527,13 @@ def commandLineRun():
                 elif opt == '--FoldDiff':FoldDiff=float(arg)
                 elif opt == '--SamplesDiffering':SamplesDiffering=int(float(arg))
                 elif opt == '--excludeGuides': excludeGuides=arg
+                elif opt == '--dynamicCorrelation': dynamicCorrelation=arg
+                elif opt == '--runCompleteWorkflow':
+                    runCompleteWorkflow=arg
+                    if string.lower(arg)=='false' or string.lower(arg)=='no':
+                        runCompleteWorkflow = False
+                    else:
+                        runCompleteWorkflow = True
                 elif opt == '--removeOutliers':
                     removeOutliers=arg
                     if removeOutliers=='yes' or removeOutliers=='True':
@@ -6561,7 +6572,7 @@ def commandLineRun():
                 gsp.setJustShowTheseIDs(JustShowTheseIDs)
                 gsp.setNormalize('median')
                 gsp.setExcludeGuides(excludeGuides)
-                gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,   
+                gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering, dynamicCorrelation,  
                     removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff) 
 
             import RNASeq
@@ -6670,7 +6681,7 @@ def commandLineRun():
                         array_type = "3'array" ### No steady-state file, must be an standard gene-level analysis
  
             time_stamp = timestamp()    
-            log_file = filepath(root_dir+'AltAnalyze_report-'+time_stamp+'.log')
+            log_file = filepath(root_dir+'/AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
             sys.stdout = Logger('')
             
@@ -6704,6 +6715,7 @@ def commandLineRun():
             if excludeCellCycle != False:
                 print "Excluding Cell Cycle effects status:",excludeCellCycle
 
+            ### Run ICGS through the GUI
             graphic_links = UI.RemotePredictSampleExpGroups(expFile, mlp_instance, gsp,(species,array_type)) ### proceed to run the full discovery analysis here!!!
                         
             ### Export Guide3 Groups automatically
@@ -6749,7 +6761,8 @@ def commandLineRun():
             ### Copy the t-SNE scores to use it for gene expression analyses
             exp_tSNE_score_file = export.findParentDir(tSNE_score_file)+'/'+export.findFilename(exonExpFile)[:-4]+'-tSNE_scores.txt'
             import shutil
-            shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
+            try: shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
+            except Exception: pass
         
             fl.setExpFile(newExpFile) ### set this to the outlier removed version
             groups_file = string.replace(newExpFile,'exp.','groups.')
@@ -6762,7 +6775,12 @@ def commandLineRun():
             
             ### force MarkerFinder to be run
             input_exp_file = newExpFile  ### Point MarkerFinder to the new ICGS ordered copied expression file
-            update_method = ['markers'] 
+            runMarkerFinder=False ### Not necessary for ICGS2 as MarkerFinder will already have been run
+            if runMarkerFinder:
+                update_method = ['markers']
+            if runCompleteWorkflow == False:
+                print 'ICGS run complete... halted prior to full differential comparison analysis'
+                sys.exit()
             
         if 'WikiPathways' in image_export:
             #python AltAnalyze.py --input /Users/test/input/criterion1.txt --image WikiPathways --mod Ensembl --species Hs --wpid WP536
@@ -7581,7 +7599,7 @@ def commandLineRun():
                 try: output_dir = export.findParentDir(input_file_dir)
                 except:
                     output_dir = input_fastq_dir
-            log_file = filepath(output_dir+'AltAnalyze_report-'+time_stamp+'.log')
+            log_file = filepath(output_dir+'/AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
             sys.stdout = Logger('')
         except Exception,e:
@@ -8008,7 +8026,9 @@ def commandLineRun():
                     import LineageProfilerIterate
                     LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod='median')
                     sys.exit()
-                UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize) #,display=display
+                try: CenterMethod=CenterMethod
+                except: CenterMethod='centroid'
+                UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize, CenterMethod=CenterMethod) #,display=display
                 #graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,input_file_dir,array_type,species,manufacturer)
                 print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
                 print print_out

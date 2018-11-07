@@ -938,6 +938,7 @@ def exportAllGeneCorrelations(filename,allGenesRanked):
     data = export.ExportFile(filename)
     title_row = string.join(['UID','Symbol','Pearson rho','Pearson p-value','Cell State'],'\t')
     data.write(title_row+'\n')
+    rho_sorted=[]
     for (probeset,symbol) in allGenesRanked:
         try: (rho,p),tissue = allGenesRanked[(probeset,symbol)]
         except Exception:
@@ -945,6 +946,9 @@ def exportAllGeneCorrelations(filename,allGenesRanked):
             allGenesRanked[(probeset,symbol)].sort()
             (rho,p),tissue = allGenesRanked[(probeset,symbol)][-1]
         values = string.join([probeset,symbol,str(rho),str(p),tissue],'\t')+'\n'
+        rho_sorted.append([(tissue,1.0/rho),values])
+    rho_sorted.sort()
+    for (x,values) in rho_sorted:
         data.write(values)
     data.close()
     

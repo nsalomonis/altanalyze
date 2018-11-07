@@ -1,10 +1,11 @@
 ### SQL Interface
 
-import string
+import sys,string,os
+sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
+
 import time
 import random
 import math
-import sys, os
 import sqlite3
 import export
 

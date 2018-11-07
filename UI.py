@@ -396,7 +396,7 @@ class StatusWindow:
             group = PmwFreeze.Group(self.sf.interior(),tag_text = 'Output')
             group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
                 
-            Label(group.interior(),width=180,height=152,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
+            Label(group.interior(),width=180,height=1000,justify=LEFT, bg='black', fg = 'white',anchor=NW,padx = 5,pady = 5, textvariable=statusVar).pack(fill=X,expand=Y)
 
             status = StringVarFile(statusVar,root) ### Captures the stdout (or print) to the GUI instead of to the terminal
             self.original_sys_out = sys.stdout ### Save the original stdout mechanism
@@ -677,15 +677,19 @@ def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
         
     ### Create the new groups file but don't over-write the old
     import RNASeq
+    print group_selected
     new_groups_dir = RNASeq.exportGroupsFromClusters(group_selected,expFile,array_type,suffix='ICGS')
     from import_scripts import sampleIndexSelection
+    print new_groups_dir
 
     if outputTSNE:
-        ### Build-tSNE plot from the selected ICGS output (maybe different than Guide-3)
-        tSNE_graphical_links = performPCA(group_selected, 'no', 't-SNE', False, None, plotType='2D',
-            display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
-            separateGenePlots=False,returnImageLoc=True)
-        tSNE_score_file = tSNE_graphical_links[-1][-1][:-10]+'-tSNE_scores.txt'
+        try:
+            ### Build-tSNE plot from the selected ICGS output (maybe different than Guide-3)
+            tSNE_graphical_links = performPCA(group_selected, 'no', 't-SNE', False, None, plotType='2D',
+                display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+                separateGenePlots=False,returnImageLoc=True)
+            tSNE_score_file = tSNE_graphical_links[-1][-1][:-10]+'-tSNE_scores.txt'
+        except Exception: pass
     
     if '-steady-state' in expFile:
         newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
@@ -712,10 +716,12 @@ def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
         exonExpFile = newExpFile
     
     if outputTSNE:
-        ### Copy the t-SNE scores to use it for gene expression analyses
-        exp_tSNE_score_file = export.findParentDir(tSNE_score_file)+'/'+export.findFilename(exonExpFile)[:-4]+'-tSNE_scores.txt'
-        import shutil
-        shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
+        try:
+            ### Copy the t-SNE scores to use it for gene expression analyses
+            exp_tSNE_score_file = export.findParentDir(tSNE_score_file)+'/'+export.findFilename(exonExpFile)[:-4]+'-tSNE_scores.txt'
+            import shutil
+            shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
+        except Exception: pass
     
     return exonExpFile,newExpFile,new_groups_dir 
         
@@ -727,8 +733,14 @@ def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root, exportA
     import RNASeq,ExpressionBuilder; reload(RNASeq) ### allows for GUI testing with restarting
     try:
         if gsp.FeaturestoEvaluate() != 'AltExon':
-            graphic_links = RNASeq.singleCellRNASeqWorkflow(species, array_type, expFile, mlp_instance, parameters=gsp, reportOnly=reportOnly)
+            from stats_scripts import ICGS_NMF
+            reload(ICGS_NMF)
+            scaling = True ### Performs pagerank downsampling if over 2,500 cells - currently set as a hard coded default
+            dynamicCorrelation=True
+            graphic_links=ICGS_NMF.runICGS_NMF(expFile,scaling,array_type,species,gsp,enrichmentInput='',dynamicCorrelation=True)
+            #graphic_links = RNASeq.singleCellRNASeqWorkflow(species, array_type, expFile, mlp_instance, parameters=gsp, reportOnly=reportOnly)
         if gsp.FeaturestoEvaluate() != 'Genes':
+            ### For splice-ICGS (needs to be updated in a future version to ICGS_NMF updated code)
             graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),species,array_type,expFile=fl.CountsFile(),min_events=gsp.MinEvents(),med_events=gsp.MedEvents())
             gsp.setCountsCutoff(0);gsp.setExpressionCutoff(0)  
             graphic_links3 = RNASeq.singleCellRNASeqWorkflow(species, 'exons', cluster_input_file, mlp_instance, parameters=gsp, reportOnly=reportOnly)
@@ -739,6 +751,7 @@ def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root, exportA
             ### Optionally automatically generate t-SNE and MarkerFinder Results
             guide3_results = graphic_links[-1][-1][:-4]+'.txt'
             exportAdditionalICGSOutputs(expFile,guide3_results)
+
             
         if len(graphic_links)==0:
             print_out  = 'No predicted sample groups identified. Try different parameters.'
@@ -937,13 +950,13 @@ def IDconverter(filename, species_code, input_source, output_source, root):
             try: openDirectory(export.findParentDir(filename))
             except Exception: None
 
-def remoteLP(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=None):
+def remoteLP(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=None,CenterMethod='centroid'):
     global species; global array_type
     species = fl.Species()
     array_type = fl.PlatformType()
-    runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=modelSize)
+    runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=modelSize,CenterMethod=CenterMethod)
 
-def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=None):
+def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=None,CenterMethod='centroid'):
     if custom_markerFinder == '': custom_markerFinder = False
     if modelSize != None and modelSize != 'no':
         try: modelSize = int(modelSize)
@@ -2492,6 +2505,7 @@ class GUI:
         try: featurestoEvaluate = self.Results()['featuresToEvaluate']
         except Exception: featurestoEvaluate = 'Genes'
         removeOutliers = self.Results()['removeOutliers']
+        dynamicCorrelation = self.Results()['dynamicCorrelation']
         restrictBy = self.Results()['restrictBy']
         excludeCellCycle = self.Results()['excludeCellCycle']
         gsp = GeneSelectionParameters(species,array_type,vendor)
@@ -2500,7 +2514,7 @@ class GUI:
         gsp.setGeneSelection(GeneSelection)
         gsp.setJustShowTheseIDs(JustShowTheseIDs)
         gsp.setNormalize('median')
-        gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,
+        gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,dynamicCorrelation,
             removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff)
         self._user_variables['gsp'] = gsp
         
@@ -6888,7 +6902,7 @@ class GeneSelectionParameters:
     def Normalize(self): return self._Normalize
     def setExcludeGuides(self,excludeGuides): self.excludeGuides = excludeGuides
     def ExcludeGuides(self): return self.excludeGuides
-    def setSampleDiscoveryParameters(self,ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,
+    def setSampleDiscoveryParameters(self,ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,dynamicCorrelation,
                 removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff):
         ### For single-cell RNA-Seq data
         self.expressionCutoff = ExpressionCutoff
@@ -6902,6 +6916,7 @@ class GeneSelectionParameters:
         self.column_metric = column_metric
         self.column_method = column_method
         self.removeOutliers = removeOutliers
+        self.dynamicCorrelation = dynamicCorrelation
         if len(self._gene)>0:
             self._gene = self._gene + ' amplify' ### always amplify the selected genes if any
     def setExpressionCutoff(self,expressionCutoff):self.expressionCutoff = expressionCutoff
@@ -6922,6 +6937,11 @@ class GeneSelectionParameters:
     def SamplesDiffering(self):
         try: return int(float(self.samplesDiffering))
         except Exception: return False
+    def dynamicCorrelation(self):
+        if self.dynamicCorrelation=='yes' or self.dynamicCorrelation==True:
+            return True
+        else:
+            return False
     def amplifyGenes(self):
         if (self.FilterByPathways() != '' and self.FilterByPathways() !=False) or (self.GeneSelection() != '' and self.GeneSelection() != ' amplify'):
             return True
