@@ -37,7 +37,7 @@ def normalizeDropSeqCounts(expFile):
         if val==0:
             return '0'
         else:
-            return math.log((10000.00*val)/barcode_sum,2) ### convert to log2 expression
+            return math.log(1+(10000.00*val)/barcode_sum,2) ### convert to log2 expression
 
     vfunc = numpy.vectorize(calculateCPTT)
     norm_mat_array=[]
