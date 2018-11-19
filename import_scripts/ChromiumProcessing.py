@@ -4,9 +4,8 @@ import csv
 import scipy.io
 import numpy
 import time
-import math
 
-def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None):
+def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True):
     start_time = time.time()
     human_matrix_dir = os.path.join(matrices_dir, genome)
     mat = scipy.io.mmread(os.path.join(human_matrix_dir, "matrix.mtx"))
@@ -55,7 +54,10 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None):
         if val==0:
             return '0'
         else:
-            return math.log(1+(10000.00*val)/barcode_sum,2) ### convert to log2 expression
+            if log:
+                return math.log((10000.00*val/barcode_sum)+1.0,2) ### convert to log2 expression
+            else:
+                return 10000.00*val/barcode_sum
 
     vfunc = numpy.vectorize(calculateCPTT)
     norm_mat_array=[]

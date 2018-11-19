@@ -1380,8 +1380,8 @@ def exportGeneSetsFromCombined(filename):
         ro.close()
     aro.close()
 
-def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
-        log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05):
+def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,
+                use_adjusted_pval=True,pvalThreshold=0.05,use_custom_output_dir=''):
     global pval_threshold
     global PercentExp
     global restricted_gene_denominator
@@ -1454,7 +1454,10 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
         result_type = 'dPSI'
     else:
         result_type = 'LogFold'
-    if use_adjusted_p:
+    
+    if len(use_custom_output_dir)>0:
+        CovariateQuery = use_custom_output_dir
+    elif use_adjusted_p:
         CovariateQuery += '-'+result_type+'_'+str(logfold_threshold)[:4]+'_adjp'
     else:
         CovariateQuery += '-'+result_type+'_'+str(logfold_threshold)+'_rawp'
@@ -1462,7 +1465,8 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',
     for specificCovariate in all_groups_db:
         comps_db = all_comps_db[specificCovariate]
         groups_db = all_groups_db[specificCovariate]
-        rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,groups_db,comps_db,CovariateQuery,splicingEventTypes)
+        rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,
+                        groups_db,comps_db,CovariateQuery,splicingEventTypes)
 
     if platform == 'PSI':
         outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)

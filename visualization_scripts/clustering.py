@@ -1608,8 +1608,8 @@ def filepath(filename):
     fn = unique.filepath(filename)
     return fn
 
-def remoteImportData(filename,geneFilter=None):
-    matrix, column_header, row_header, dataset_name, group_db = importData(filename,geneFilter=geneFilter)
+def remoteImportData(filename,geneFilter=None,reverseOrder=True):
+    matrix, column_header, row_header, dataset_name, group_db = importData(filename,geneFilter=geneFilter,reverseOrder=reverseOrder)
     try:
         return matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters
     except:
@@ -1646,6 +1646,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
             ### color samples by annotated groups if an expression file
             new_headers=[]
             temp_groups={}
+            original_headers=t[1:]
             if ('exp.' in filename or 'filteredExp.' in filename or 'MarkerGene' in filename):# and ':' not in data:
                 if overwriteGroupNotations:
                     ### Use groups file annotations over any header sample separation with a ":"
@@ -1684,15 +1685,24 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                 try: prior = map(lambda x: int(float(x)),t[2:])
                 except Exception:
                     ### Replace the cluster string with number
+                    index=0
                     c=1; prior=[]; clusters={}
                     for i in t[2:]:
-                        if i in clusters: c1 = clusters[i]
-                        else: c1 = c; clusters[i]=c1
+                        original_headers[index] = i+':'+original_headers[index]
+                        if i in clusters:
+                            c1 = clusters[i]
+                        else:
+                            c1 = c; clusters[i]=c1
+                            c+=1
                         prior.append(c1)
-                        c+=1
+                        index+=1
+                    #prior=[]
+                    if len(temp_groups)==0: ### Hence, no secondary group label combined with the sample name
+                        group_db, column_header = assignGroupColors(original_headers)
                 #priorColumnClusters = dict(zip(column_header, prior))
                 priorColumnClusters = prior
             except Exception:
+                #print traceback.format_exc() 
                 pass
             start = 2
             getRowClusters = True
@@ -2021,7 +2031,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         group_db={}
 
     if reimportModelScores:
-        print 'Re-importing t-SNE model scores rather than calculating from scratch',
+        print 'Re-importing',method,'model scores rather than calculating from scratch',
         print root_dir+dataset_name+'-'+method+'_scores.txt'
         try: scores = importtSNEScores(root_dir+dataset_name+'-'+method+'_scores.txt'); print '...import finished'
         except Exception:
@@ -2038,7 +2048,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         scores = bh_sne(X)"""
         
         #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
-        if method=="tSNE":
+        print "Performing",method
+        if method=="tSNE" or method=="t-SNE":
             model = TSNE(n_components=2)
         if method=="UMAP":
             import umap
@@ -4208,28 +4219,28 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
         column_header, row_header = row_header, column_header
-    if (len(column_header)>1000 or len(row_header)>1000) and algorithm != 't-SNE':
+    if (len(column_header)>1000 or len(row_header)>1000) and algorithm != 't-SNE' and algorithm != 'UMAP':
         print 'Performing Principal Component Analysis (please be patient)...'
     #PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=True)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
-        if algorithm == 't-SNE':
+        if algorithm == 't-SNE' or algorithm == 'UMAP':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
             column_header, row_header = row_header, column_header
             if separateGenePlots and (len(colorByGene)>0 or colorByGene==None):
                 for gene in geneFilter:
                     tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=False,
                          showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
-                         reimportModelScores=reimportModelScores)
+                         reimportModelScores=reimportModelScores,method=algorithm)
                 if display:
                     ### Show the last one
                     tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=True,
                         showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
-                        reimportModelScores=reimportModelScores)    
+                        reimportModelScores=reimportModelScores,method=algorithm)    
             else:
                 tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
                      showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
-                     reimportModelScores=reimportModelScores)
+                     reimportModelScores=reimportModelScores,method=algorithm)
         elif plotType == '3D':
             try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db,
                        display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName,
@@ -6765,12 +6776,12 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
     except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
     
 if __name__ == '__main__':
-    diff=0.8
+    diff=0.7
     print 'diff:',diff
-    file1='/Volumes/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5-CF001WBC-Day0/outs/filtered_gene_bc_matrices/CellHarmonyReference/AML-D0-WBC-reference.txt'
-    file2='/Volumes/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5_CF001CD34_Day0/outs/filtered_gene_bc_matrices/ExpressionInput/exp.AML-D0-WBC-centroid__10x5_CF001CD34_Day0_matrix_CPTT-ReOrdered-Query.txt'
+    file1='/data/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5-CF001WBC-Day0/outs/filtered_gene_bc_matrices/CellHarmonyReference/AML-D0-WBC-reference.txt'
+    file2='/data/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5_CF001CD34_Day0/outs/filtered_gene_bc_matrices/ExpressionInput/exp.AML-D0-WBC-centroid__10x5_CF001CD34_Day0_matrix_CPTT-ReOrdered-Query.txt'
     latteralMerge(file1, file2);sys.exit()
-    #removeMarkerFinderDoublets('/Volumes/salomonis2/Lab_backup/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/post/DataPlots/MarkerFinder/Clustering-MarkerGenes_correlations-ReplicateBased-20180405-155403_euclidean_cosine-20180831-195351_cosine_cosine.txt',diff=diff);sys.exit()
+    removeMarkerFinderDoublets('/Volumes/salomonis2/Erica-data/Demuxlet8Human/Seurat/ICGS2/CellHarmonyReference/DataPlots/Clustering-exp.ICGS-cellHarmony-reference-filtered-hierarchical_cosine_cosine2.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
     a = '/Volumes/salomonis2/Lab_backup/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/ExpressionInput/exp.AML-p27-D.txt'

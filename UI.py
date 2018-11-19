@@ -957,6 +957,13 @@ def remoteLP(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, m
     runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=modelSize,CenterMethod=CenterMethod)
 
 def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneModel, root, modelSize=None,CenterMethod='centroid'):
+    try:
+        global logfile
+        root_dir = export.findParentDir(expr_input_dir)
+        time_stamp = AltAnalyze.timestamp()    
+        logfile = filepath(root_dir+'/AltAnalyze_report-'+time_stamp+'.log')
+    except: pass
+    
     if custom_markerFinder == '': custom_markerFinder = False
     if modelSize != None and modelSize != 'no':
         try: modelSize = int(modelSize)
@@ -982,7 +989,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
                 if 'steady' not in expr_input_dir:
                     expr_input_dir = string.replace(expr_input_dir,'.txt','-steady-state.txt')
     
-        print '\n****Running LineageProfiler****'
+        print '****Running LineageProfiler****'
         graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder,specificPlatform=True,visualizeNetworks=False)
         if len(graphic_links)>0:
             print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
@@ -999,7 +1006,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     else:
         import LineageProfilerIterate
         reload(LineageProfilerIterate)
-        print '\n****Running cellHarmony****'
+        print '****Running cellHarmony****'
         codingtype = 'exon'; compendium_platform = 'exon'
         platform = array_type,vendor
         try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel,modelSize=modelSize,fl=fl)
@@ -1007,12 +1014,12 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
             print_out = traceback.format_exc()
             try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
             except Exception: None
-        print_out = 'LineageProfiler classification results saved to the folder "SampleClassification".'
+        print_out = 'LineageProfiler classification results saved to the folder "CellClassification".'
         if root!=None and root!='':
-            try: openDirectory(export.findParentDir(expr_input_dir)+'/SampleClassification')
+            try: openDirectory(export.findParentDir(expr_input_dir)+'/cellHarmony')
             except Exception: None
-            #try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
-            #except Exception: None
+            try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
+            except Exception: None
         else:
             print print_out
 
@@ -4319,8 +4326,6 @@ class ExpressionFileLocationData:
         except Exception: rpkm_threshold = rpkm_threshold
         self.rpkm_threshold = rpkm_threshold
     def setMarkerFinder(self,marker_finder): self.marker_finder = marker_finder
-    def setDE(self,DE): self.DE = DE
-    def DE(self): return self.DE
     def ReturnCentroids(self): return self.returnCentroids
     def FDRStatistic(self): return self.FDR_statistic
     def multiThreading(self): return self.multithreading
@@ -4393,6 +4398,22 @@ class ExpressionFileLocationData:
     def CorrelationDirection(self): return self.correlationDirection
     def setPearsonThreshold(self, pearsonThreshold): self.pearsonThreshold = pearsonThreshold
     def PearsonThreshold(self): return self.pearsonThreshold
+    def setUseAdjPval(self, UseAdjPval): self.UseAdjPval = UseAdjPval
+    def UseAdjPval(self):
+        if string.lower(self.UseAdjPval)=='false' or string.lower(self.UseAdjPval)=='no' or self.UseAdjPval==False:
+            return False
+        else:
+            return True
+    def setFoldCutoff(self, foldCutoff): self.foldCutoff = foldCutoff
+    def FoldCutoff(self): return self.foldCutoff
+    def setPvalThreshold(self, pvalThreshold): self.pvalThreshold = pvalThreshold
+    def PvalThreshold(self): return self.pvalThreshold
+    def setPeformDiffExpAnalysis(self, peformDiffExpAnalysis): self.peformDiffExpAnalysis = peformDiffExpAnalysis
+    def PeformDiffExpAnalysis(self):
+        if string.lower(self.peformDiffExpAnalysis)=='false' or string.lower(self.peformDiffExpAnalysis)=='no' or self.peformDiffExpAnalysis==False:
+            return False
+        else:
+            return True
     def MLP(self): return self.mlp
     def PlatformType(self): return self.platformType
     def AnalysisMode(self): return self.analysis_mode
@@ -5581,6 +5602,14 @@ def getUserParameters(run_parameter,Multi=None):
                     markerFinder_file = gu.Results()['markerFinder_file']
                     geneModel_file = gu.Results()['geneModel_file']
                     modelDiscovery = gu.Results()['modelDiscovery']
+                    PearsonThreshold = gu.Results()['PearsonThreshold']
+                    returnCentroids = gu.Results()['returnCentroids']
+                    performDiffExp = gu.Results()['performDiffExp']
+                    UseAdjPval = gu.Results()['UseAdjPval']
+                    pvalThreshold = gu.Results()['pvalThreshold']
+                    FoldCutoff = gu.Results()['FoldCutoff']
+                    if '.png' in markerFinder_file or '.pdf' in markerFinder_file:
+                        markerFinder_file=markerFinder_file[:-4]+'.txt'
                     if len(geneModel_file) == 0: geneModel_file = None
                     if len(modelDiscovery) == 0: modelDiscovery = None
                     if len(input_exp_file)>0:
@@ -5589,16 +5618,25 @@ def getUserParameters(run_parameter,Multi=None):
                         fl.setCompendiumType(compendiumType)
                         fl.setCompendiumPlatform(compendiumPlatform)
                         fl.setClassificationAnalysis(classificationAnalysis)
+                        fl.setPearsonThreshold(float(PearsonThreshold))
+                        fl.setReturnCentroids(returnCentroids)
+                        fl.setPeformDiffExpAnalysis(performDiffExp)
+                        fl.setUseAdjPval(UseAdjPval)
+                        fl.setPvalThreshold(pvalThreshold)
+                        fl.setFoldCutoff(FoldCutoff)
                         values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file, modelDiscovery
                         StatusWindow(values,analysis) ### display an window with download status
                         ### Typically have a Tkinter related error
-                        rebootAltAnalyzeGUI(selected_parameters,user_variables)
+                        #rebootAltAnalyzeGUI(selected_parameters,user_variables)
+                        AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                        
                         #else:
                         #AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
                         print_out = "No input expression file selected."
                         IndicatorWindow(print_out,'Continue')
-
+                    print 'here'
+                    
             if additional_analyses == 'MarkerFinder Analysis':
                 selected_parameters.append('MarkerFinder Analysis')
                 status = 'repeat'

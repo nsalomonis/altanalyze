@@ -6215,7 +6215,6 @@ def commandLineRun():
     filterFile = None
     PearsonThreshold = 0.1
     returnCentroids = False
-    DE=True
     runCompleteWorkflow=True
     
     original_arguments = sys.argv
@@ -6280,7 +6279,8 @@ def commandLineRun():
                                                          'test=','testType=','inputTestData=','customFASTA=','i=',
                                                          'excludeGuides=','cellHarmony=','BAM_dir=','filterFile=',
                                                          'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
-                                                         'o=','dynamicCorrelation=','runCompleteWorkflow='])
+                                                         'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
+                                                         'fold=','performDiffExp='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -8001,6 +8001,15 @@ def commandLineRun():
                 print 'Please note: LineageProfiler not currently supported for this species...';sys.exit()
                 
             try:
+                FoldDiff=1.5
+                performDiffExp=True
+                pval = 0.05
+                adjp = False
+                for opt, arg in options: ### Accept user input for these hierarchical clustering variables
+                    if opt == '--fold': FoldDiff=float(arg)
+                    elif opt == '--pval': pval = float(arg)
+                    elif opt == '--adjp': adjp = arg
+                    elif opt == '--performDiffExp': performDiffExp = arg
                 fl = UI.ExpressionFileLocationData('','','','')
                 fl.setSpecies(species)
                 fl.setVendor(manufacturer)
@@ -8010,7 +8019,10 @@ def commandLineRun():
                     fl.setClassificationAnalysis('cellHarmony')
                     fl.setPearsonThreshold(PearsonThreshold)
                     fl.setReturnCentroids(returnCentroids)
-                    fl.setDE(DE)
+                    fl.setPeformDiffExpAnalysis(performDiffExp)
+                    fl.setUseAdjPval(adjp)
+                    fl.setPvalThreshold(pval)
+                    fl.setFoldCutoff(FoldDiff)
                 else:
                     fl.setClassificationAnalysis('LineageProfiler')
                 #fl.setCompendiumType('AltExon')
@@ -8024,7 +8036,9 @@ def commandLineRun():
                             input_file = verifyPath(arg)
                             ICGS_files.append(input_file)
                     import LineageProfilerIterate
-                    LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod='median')
+                    try: LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod='median',species=species)
+                    except:
+                        LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod='median')
                     sys.exit()
                 try: CenterMethod=CenterMethod
                 except: CenterMethod='centroid'

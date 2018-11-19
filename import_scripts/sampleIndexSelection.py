@@ -18,8 +18,8 @@ def makeTestFile():
     export_object.close()
     return input_file
 
-def filterFile(input_file,output_file,filter_names,force=False,calculateMedoids=False):
-    if calculateMedoids:
+def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False):
+    if calculateCentroids:
         filter_names,group_index_db=filter_names
         
     export_object = open(output_file,'w')
@@ -43,7 +43,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateMedoids=
                 header = values
             if 'PSI_EventAnnotation' in input_file:
                 uid_index = values.index('UID')
-            if calculateMedoids:
+            if calculateCentroids:
                 clusters = map(str,group_index_db)
                 export_object.write(string.join([values[uid_index]]+clusters,'\t')+'\n')
                 continue ### skip the below code
@@ -60,7 +60,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateMedoids=
             #print values[0]; print sample_index_list; print values; print len(values); print len(prior_values);kill
         prior_values=values
         ######################## Begin Medoid Calculation ########################
-        if calculateMedoids:
+        if calculateCentroids:
             median_matrix=[]
             for cluster in group_index_db:
                 try: median_matrix.append(str(statistics.avg(map(lambda x: float(filtered_values[x]), group_index_db[cluster]))))
@@ -109,6 +109,7 @@ def getFiltersFromHeatmap(filter_file):
     import collections
     alt_filter_list=None
     group_index_db = collections.OrderedDict()
+    index=0
     for line in open(filter_file,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -132,9 +133,9 @@ def getFiltersFromHeatmap(filter_file):
                 index+=1
     return filter_list, group_index_db
         
-def getFilters(filter_file,calculateMedoids=False):
+def getFilters(filter_file,calculateCentroids=False):
     filter_list=[]
-    if calculateMedoids:
+    if calculateCentroids:
         import collections
         group_index_db = collections.OrderedDict()
     
@@ -143,14 +144,14 @@ def getFilters(filter_file,calculateMedoids=False):
         data = cleanUpLine(line)
         sample = string.split(data,'\t')[0]
         filter_list.append(sample)
-        if calculateMedoids:
+        if calculateCentroids:
             if 'row_clusters-flat' in data:
                 forceHeatmapError
             sample,group_num,group_name = string.split(data,'\t')
             try: group_index_db[group_name].append(index)
             except Exception: group_index_db[group_name] = [index]
         index+=1
-    if calculateMedoids:
+    if calculateCentroids:
         return filter_list,group_index_db
     else:
         return filter_list
@@ -264,7 +265,7 @@ if __name__ == '__main__':
     filter_file=None
     force=False
     exclude = False
-    calculateMedoids=False
+    calculateCentroids=False
     geneCountFilter=False
     expressionCutoff=1
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
@@ -278,7 +279,7 @@ if __name__ == '__main__':
         for opt, arg in options:
             if opt == '--i': input_file=arg
             elif opt == '--f': filter_file=arg
-            elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateMedoids = True
+            elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateCentroids = True
             elif opt == '--r':
                 if arg == 'exclude':
                     filter_rows=True
@@ -296,12 +297,12 @@ if __name__ == '__main__':
     if filter_rows:
         filter_names = getFilters(filter_file)
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)
-    elif calculateMedoids:
-        output_file = input_file[:-4]+'-median.txt'
-        try: filter_names,group_index_db = getFilters(filter_file,calculateMedoids=calculateMedoids)
+    elif calculateCentroids:
+        output_file = input_file[:-4]+'-mean.txt'
+        try: filter_names,group_index_db = getFilters(filter_file,calculateCentroids=calculateCentroids)
         except Exception:
             filter_names,group_index_db = getFiltersFromHeatmap(filter_file)
-        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateMedoids=calculateMedoids)
+        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids)
     else:
         filter_names = getFilters(filter_file)
         filterFile(input_file,output_file,filter_names,force=force)

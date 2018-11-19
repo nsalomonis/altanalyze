@@ -212,11 +212,15 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     
     collapse_override = True
     
-    if 'Clustering-' in customMarkers and ('ICGS' in customMarkers or 'MarkerGene' in customMarkers):
+    if 'ICGS' in customMarkers or 'MarkerGene' in customMarkers:
         """ When performing cellHarmony, build an ICGS expression reference with log2 TPM values rather than fold """
         print 'Converting ICGS folds to ICGS expression values as a reference first...'
-        customMarkers = convertICGSClustersToExpression(customMarkers,exp_input,returnCentroids=returnCentroids)
-    
+        customMarkers = convertICGSClustersToExpression(customMarkers,exp_input,returnCentroids=returnCentroids,species=species)
+        """
+        except:
+            print "Proceeding without differential expression analsyes..."
+            pass
+        """
     customMarkerFile = customMarkers
     if geneModels == False or geneModels == None: geneModels = []
     else:
@@ -2087,10 +2091,28 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     with cell population restricted expression, largely abrogating this problem.
 
     """
+    ### Set the user or default options for cellHarmony Differential Expression Analyses
     try: pearsonThreshold=fl.PearsonThreshold()
     except: pearsonThreshold = 0.1
+
+    try: peformDiffExpAnalysis=fl.PeformDiffExpAnalysis()
+    except: peformDiffExpAnalysis = True
     
-    output_file,query_output_file = importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,classification_file,pearsonThreshold=pearsonThreshold)
+    try: use_adjusted_pval=fl.UseAdjPval()
+    except: use_adjusted_pval = False
+    
+    try: pvalThreshold=float(fl.PvalThreshold())
+    except: pvalThreshold = 0.05
+    
+    try: FoldCutoff = fl.FoldCutoff()
+    except: FoldCutoff = 1.5
+            
+    ### Output the alignment results and perform the differential expression analysis
+    output_file,query_output_file = importAndCombineExpressionFiles(species,reference_exp_file,
+            query_exp_file,classification_file,pearsonThreshold=pearsonThreshold,peformDiffExpAnalysis=peformDiffExpAnalysis,
+            pvalThreshold=pvalThreshold,fold_cutoff=FoldCutoff,use_adjusted_pval=use_adjusted_pval)
+    
+    ### Output the cellHarmony heatmaps
     from visualization_scripts import clustering
     row_method = None; row_metric = 'cosine'; column_method = None; column_metric = 'euclidean'; color_gradient = 'yellow_black_blue'
     transpose = False; Normalize='median'
@@ -2099,13 +2121,25 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
         display = False
     else:
         display = True
+        display = False
+        
     graphics = clustering.runHCexplicit(query_output_file, [], row_method, row_metric,
                 column_method, column_metric, color_gradient, transpose, Normalize=Normalize,
                 contrast=5, display=display)
-    
+
     graphics = clustering.runHCexplicit(output_file, [], row_method, row_metric,
                 column_method, column_metric, color_gradient, transpose, Normalize=Normalize,
                 contrast=5, display=display)
+    
+    zscore = True
+    graphics=[]
+    transpose='no'
+    
+    ### Build-UMAP plot
+    import UI
+    UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
+            display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+            separateGenePlots=False, returnImageLoc=True)
 
 class ClassificationData:
     def __init__(self,sample,score,assigned_class):
@@ -2114,14 +2148,17 @@ class ClassificationData:
     def Score(self): return self.score
     def AssignedClass(self): return self.assigned_class
       
-def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,classification_file,platform='RNASeq',pearsonThreshold=0.1):
+def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,classification_file,platform='RNASeq',pearsonThreshold=0.1,
+            peformDiffExpAnalysis=True, pvalThreshold=0.05,fold_cutoff=1.5, use_adjusted_pval=False):
     """Harmonize the numerical types and feature IDs of the input files, then combine """
     
     import collections
     from visualization_scripts import clustering
+    original_reference_exp_file = reference_exp_file
+    reference_exp_file = string.replace(reference_exp_file,'-centroid.txt','.txt')
     ref_filename = export.findFilename(reference_exp_file)
     query_filename = export.findFilename(query_exp_file)
-    root_dir = export.findParentDir(query_exp_file)
+    root_dir = export.findParentDir(query_exp_file)+'/cellHarmony/'
     output_dir = ref_filename[:-4]+'__'+query_filename ### combine the filenames and query path
     output_dir = root_dir+'/exp.'+string.replace(output_dir,'exp.','')
     output_dir =string.replace(output_dir,'-OutliersRemoved','')
@@ -2130,18 +2167,46 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     cluster_results = clustering.remoteImportData(query_exp_file,geneFilter=ref_exp_db)
     if len(cluster_results[0])>0: filterIDs = ref_exp_db
     else: filterIDs = False
-    print len(filterIDs)
     query_exp_db,query_headers,query_col_clusters = importExpressionFile(query_exp_file,ignoreClusters=True,filterIDs=False)
     ref_filename_clean = string.replace(ref_filename,'exp.','')
     ref_filename_clean = string.replace(ref_filename_clean,'.txt','')
+    ref_filename_clean = 'cellHarmony-Reference'
     query_filename_clean = string.replace(query_filename,'exp.','')
     query_filename_clean = string.replace(query_filename_clean,'.txt','')
     
+    ### Define Reference groups and import prior reference file
+    groups_file = groups_dir[:-4]+'-AllCells.txt'
+    groups_file = string.replace(groups_file,'OutliersRemoved-','')
+    groups_file = string.replace(groups_file,'-centroid__','__')
+    comps_file  = string.replace(groups_file,'groups.','comps.')
+    groups_reference_file = string.replace(groups_file,'-AllCells.txt','-Reference.txt')
+    try:
+        import ExpressionBuilder ### If using centroids for classification, merge with original reference groups
+        sample_group_ref_db = ExpressionBuilder.simplerGroupImport(groups_reference_file)
+        groups_to_reference_cells = {}
+        if '-centroid' in original_reference_exp_file:
+            for cell in sample_group_ref_db:
+                group = sample_group_ref_db[cell]
+                try: groups_to_reference_cells[group].append(cell)
+                except: groups_to_reference_cells[group]=[cell]
+    except:
+        sample_group_ref_db={}
+        groups_to_reference_cells={}
+
     column_clusters=[]
     final_clusters=[]
-    comps=[]
     numeric_cluster=True
-    if len(ref_col_clusters)>0:
+    comps=[]
+    
+    ### If using all cells as a reference, rather than centroid, then len(ref_col_clusters)==len(sample_group_ref_db)
+    if len(sample_group_ref_db)>len(ref_col_clusters):
+        for sample in sample_group_ref_db:
+            column_clusters.append(sample_group_ref_db[sample]) ### this is an ordered dictionary
+            try: final_clusters.append([ref_filename_clean,int(float(sample_group_ref_db[sample])),sample])  ### used later for creating the apples-to-apples group file
+            except Exception:
+                final_clusters.append([ref_filename_clean,sample_group_ref_db[sample],sample])
+                numeric_cluster=False
+    elif len(ref_col_clusters)>0:
         for sample in ref_col_clusters:
             column_clusters.append(ref_col_clusters[sample]) ### this is an ordered dictionary
             try: final_clusters.append([ref_filename_clean,int(float(ref_col_clusters[sample])),sample])  ### used later for creating the apples-to-apples group file
@@ -2190,7 +2255,10 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             assigned_class = values[class_index]
             if sample in original_sampleID_translation:
                 sample = original_sampleID_translation[sample]
+            if len(groups_to_reference_cells)>0: ### Hence, centroids - replace centroids with individual reference cells
+                assigned_class = groups_to_reference_cells[assigned_class][-1]
             cd = ClassificationData(sample,score,assigned_class)
+            #print sample, assigned_class;sys.exit()
             try: sample_classes[assigned_class].append([score,cd])
             except Exception: sample_classes[assigned_class] = [[score,cd]]
             query_header_proppegated_clusters[sample]=assigned_class
@@ -2203,6 +2271,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     classified_samples={}
     if numeric_cluster: prefix = 'c'
     else: prefix = ''
+
     for sample in query_headers:
         if sample in query_header_proppegated_clusters:
             ref_sample = query_header_proppegated_clusters[sample]
@@ -2213,7 +2282,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 column_clusters.append(cluster) ### Assign a predicted cluster label to the query sample
                 try: final_clusters.append([query_filename_clean,int(float(cluster)),sample]) ### used later for creating the apples-to-apples group file
                 except Exception: final_clusters.append([query_filename_clean,cluster,sample])
-                comps.append([prefix+cluster+'-'+query_filename_clean,prefix+cluster+'-'+ref_filename_clean])
+                comps.append([prefix+cluster+'_'+query_filename_clean,prefix+cluster+'_'+ref_filename_clean])
                 classified_samples[sample]=cluster
                 
     for assigned_class in sample_classes:
@@ -2269,8 +2338,12 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     """ Write out a groups file that lists samples per file for optional visualization """
     export_object = export.ExportFile(groups_dir[:-4]+'-ReOrdered.txt')
     for sample in ref_headers:
+        if ':' in sample:
+            sample = string.split(sample,':')[1]
         export_object.write(sample+'\t1\t'+ref_filename_clean+'\n')
     for sample in query_headers:
+        if ':' in sample:
+            sample = string.split(sample,':')[1]
         export_object.write(sample+'\t2\t'+query_filename_clean+'\n')
     export_object.close()
     
@@ -2291,9 +2364,11 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             filter_names2.append(sample_name)
             if sample_name in new_query_headers:
                 new_query_headers2.append(sample_name)
+                if ':' in sample_name:
+                    sample_name = string.split(sample_name,':')[1]
                 try:
                     cluster = classified_samples[sample_name]
-                    group_export_object.write(sample_name+'\t'+cluster+'\tc'+cluster+'\n')
+                    group_export_object.write(sample_name+'\t'+cluster+'\t'+prefix+cluster+'\n')
                 except Exception: pass
     group_export_object.close()
     
@@ -2302,21 +2377,22 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     sampleIndexSelection.filterFile(input_file,query_output_file,new_query_headers2)
     
     """Export a combined groups and comps file to perform apples-to-apples comparisons"""
-    if len(final_clusters)>0:
+    if len(final_clusters)>0 and peformDiffExpAnalysis:
         try:
             final_clusters.sort()
             new_query_headers=[]
-            groups_file = groups_dir[:-4]+'-AllCells.txt'
-            groups_file = string.replace(groups_file,'OutliersRemoved-','')
-            comps_file  = string.replace(groups_file,'groups.','comps.')
             expression_file = string.replace(groups_file,'groups.','exp.')
             export_object = export.ExportFile(groups_file)
             group_counter=0
             added_groups={}
             group_numbers={}
+            
+            import ExpressionBuilder ### If using centroids for classification, merge with original reference groups
+            sample_group_ref_db = ExpressionBuilder.simplerGroupImport(groups_reference_file)
+            
             ### The below tuple order controls which clusters and groups are listed in which orders
             for (source,cluster,sample) in final_clusters:
-                cluster_name = prefix+str(cluster)+'-'+source
+                cluster_name = prefix+str(cluster)+'_'+source
                 if cluster_name in added_groups:
                     added_groups[cluster_name]+=1
                     group_number = group_counter
@@ -2325,6 +2401,8 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                     group_counter += 1
                     group_number = group_counter
                     group_numbers[cluster_name]=group_number
+                if ':' in sample:
+                    sample = string.split(sample,':')[1]
                 export_object.write(sample+'\t'+str(group_number)+'\t'+cluster_name+'\n')
                 new_query_headers.append(sample)
             export_object.close()
@@ -2345,6 +2423,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             export_object.close()
             
             from stats_scripts import metaDataAnalysis
+            """
             strictCutoff = True
             pvalThreshold=0.05
             use_adjusted_pval = False
@@ -2360,9 +2439,19 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             else:
                 log_fold_cutoff=0.1
                 output_dir = root_dir+'Events-LogFold_0.1_rawp'
-
-            metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,
+            """
+            if use_adjusted_pval:
+                pval_type = '_adjp_'+str(pvalThreshold)
+            else:
+                pval_type = '_rawp_'+str(pvalThreshold)
+            use_custom_output_dir = 'DifferentialExpression_Fold_'+str(fold_cutoff)[:4]+pval_type
+            output_dir = root_dir+use_custom_output_dir
+            
+            log_fold_cutoff = math.log(float(fold_cutoff),2)
+            
+            metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,use_custom_output_dir=use_custom_output_dir,
                                 log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold)
+            
             all_DEGs = aggregateRegulatedGenes(output_dir)
             display_genes = string.join(list(all_DEGs),' ')
             ICGS_DEGs_combined = ref_exp_db.keys()
@@ -2391,7 +2480,11 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 display = False
             else:
                 display = True
-            graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, Normalize=True)
+                display = False
+                
+            outputDEGheatmap=False
+            if outputDEGheatmap:
+                graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, Normalize=True)
         except Exception:
             print traceback.format_exc()
             print '!!!!! NO merged expression file availble for differential expression analyis (apples-to-apples).'
@@ -2401,7 +2494,6 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
 def aggregateRegulatedGenes(folder):
     import UI
     geneIDs=[]
-    added_genes=[]
     files = UI.read_directory(folder)
     for file in files:
         comp_geneIDs=[]
@@ -2427,7 +2519,7 @@ def aggregateRegulatedGenes(folder):
         comp_geneIDs.sort() ### Sort by fold
         comp_geneIDs.reverse()
         for (fold,uid) in comp_geneIDs:
-            if uid not in added_genes: ### Remove this to inlcude redundant genes
+            if uid not in geneIDs: ### Remove this to inlcude redundant genes
                 geneIDs.append(uid)
     return geneIDs
                     
@@ -2554,7 +2646,7 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False):
     print len(expression_db),'IDs imported'
     return expression_db, header_row, column_cluster_index
             
-def createMetaICGSResults(ICGS_files,outputDir,CenterMethod='median'):
+def createMetaICGSResults(ICGS_files,outputDir,CenterMethod='median',species='Hs'):
     """This function combines ICGS or MarkerFinder results from multiple outputs"""
     
     # import all ICGS or MarkerFinder variable genes
@@ -2566,7 +2658,7 @@ def createMetaICGSResults(ICGS_files,outputDir,CenterMethod='median'):
     for heatmap_file in ICGS_files:
         ### returnCentroids = False to return all cells
         cellHarmonyReferenceFile = convertICGSClustersToExpression(heatmap_file,heatmap_file,returnCentroids=True,
-                    CenterMethod=CenterMethod,geneOverride=gene_db,combineFullDatasets=False)
+                    CenterMethod=CenterMethod,geneOverride=gene_db,combineFullDatasets=False,species=species)
         files_to_merge.append(cellHarmonyReferenceFile)
     
     join_option = 'Intersection'
@@ -2687,7 +2779,7 @@ def collapseSimilarMedoids(outputfile,cutoff=0.9):
     return collapsed_dir
     
 def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=False,
-                            CenterMethod='median',geneOverride=None,combineFullDatasets=True):
+                            CenterMethod='median',geneOverride=None,combineFullDatasets=True,species='Hs'):
     """This function will import an ICGS row normalized heatmap and return raw
     expression values substituted for the values. """
 
@@ -2707,7 +2799,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     specific_matches = []
     steady_state_files = []
     exp_files = []
-    exp_files = []
+    filteredExp_files = []
     for file in files:
         if 'exp.' in file and '~exp.' not in file:
             exp_files.append([os.path.getsize(root_dir+'/ExpressionInput/'+file),file])
@@ -2716,10 +2808,13 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
                 expression_files_ss
             if exp_dir_prefix in file:
                 specific_matches.append([os.path.getsize(root_dir+'/ExpressionInput/'+file),file])
-            
+        if 'filteredExp.' in file: 
+            filteredExp_files.append([os.path.getsize(root_dir+'/ExpressionInput/'+file),file])
+
     specific_matches.sort()
     steady_state_files.sort()
     exp_files.sort()
+    filteredExp_files.sort()
     
     if len(specific_matches)>0:
         expdir = root_dir+'/ExpressionInput/'+specific_matches[-1][1]
@@ -2727,25 +2822,27 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         expdir = root_dir+'/ExpressionInput/'+steady_state_files[-1][1]
     else:
         expdir = root_dir+'/ExpressionInput/'+exp_files[-1][1]
+    try: filtered_expdir = root_dir+'/ExpressionInput/'+filteredExp_files[-1][1]
+    except: filtered_expdir = ''
 
     print 'Selected the full expression file:',expdir
     if '-Guide' in filename:
         guide = string.split(filename,'-Guide')[1][:1]
         cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/Guide'+guide+'-cellHarmony-reference.txt'
-    elif 'MarkerGene' in filename:
+    elif 'Marker' in filename:
         cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/MarkerFinder-cellHarmony-reference.txt'
     else:
         cellHarmonyReferenceFile = root_dir+'/CellHarmonyReference/ICGS-cellHarmony-reference.txt'
     eo = export.ExportFile(cellHarmonyReferenceFile)
     
     ### Import the heatmap and expression files
-    matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(heatmap_file)
-
-    if 'MarkerGene' in heatmap_file:
+    matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(heatmap_file,reverseOrder=False)
+    
+    gene_cluster_db={}
+    if len(priorRowClusters)==0:
         clusters=[]
         cluster_number=0
         new_row_header = []
-        #row_header.reverse() ### In the opposite order
         for uid in row_header:
             if ':' in uid:
                 cluster,uid = string.split(uid,':')
@@ -2754,7 +2851,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
                     cluster_number+=1
                 if ' ' in uid:
                     uid = string.split(uid,' ')[0] ### Typically source ID and then symbol
-                priorRowClusters.append(str(cluster_number))
+                gene_cluster_db[uid] = str(cluster_number)
             new_row_header.append(uid)
         clusters=[]
         cluster_number=0
@@ -2769,6 +2866,12 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
             new_column_header.append(uid)
         row_header = new_row_header
         column_header = new_column_header
+    else:
+        ### Store the row clusters in a dictionary rather than a list since matching IDs in the expression file may change (e.g., different ID systems in the ICGS results)
+        index=0
+        for gene in row_header:
+            gene_cluster_db[gene] = priorRowClusters[index]
+            index+=1
 
     ### Correct fileheader if group prefix present
     try: column_header = map(lambda x: string.split(x,':')[1],column_header)
@@ -2780,24 +2883,47 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
             i = string.split(i,':')[1]
         updated_column_header.append(i)
     column_header = updated_column_header
-    row_header.reverse() ### Reverse order is the default
-    priorRowClusters.reverse()
+    
     ### Record the index for each sample name in the ICGS result order in the original expression file (exp.*)
     priorColumnClusters = map(str,priorColumnClusters)
-
+        
     if geneOverride != None:
         row_header = geneOverride.keys() ### Replace with a custom or expanded list of gene IDs to use
-    
+
     ### Expand the possible set of usable IDs
-    #gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-'+vendor))
 
     matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
+    if len(row_header_exp)==0:
+        print "...Incompatible primary ID (Symbol), converting to Ensembl"
+        import gene_associations; from import_scripts import OBO_import
+        gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+        symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+        ### Assume the original IDs were Ensembl IDs and get IDs from the filtered Expression File
+        filteredIDs = simpleICGSGeneImport([filtered_expdir])
+        row_header2=[]
+        index=0
+        for symbol in row_header:
+            if symbol in symbol_to_gene:
+                for gene in symbol_to_gene[symbol]:
+                    if 'LRG' not in gene and gene in filteredIDs:
+                        row_header2.append(gene)
+                    gene_cluster_db[gene]=priorRowClusters[index]
+            index+=1
+        row_header = row_header2
+        matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
 
     ### Correct fileheader if group prefix present
     try: column_header_exp = map(lambda x: string.split(x,':')[1],column_header_exp)
     except Exception: pass ### If no ":" in cell library names
     
-    sample_index_list = map(lambda x: column_header_exp.index(x), column_header)
+    try: sample_index_list = map(lambda x: column_header_exp.index(x), column_header)
+    except Exception: ### Hence, there are missing cells in the expression file
+        sample_index_list=[]
+        for cell in column_header:
+            if cell in column_header_exp:
+                sample_index_list.append(column_header_exp.index(cell))
+        print "WARNING... only",len(sample_index_list), "out of",len(column_header), "cells found in the expression file."
+        
     if geneOverride != None:
         eo.write(string.join(['UID']+column_header,'\t')+'\n')
     else:
@@ -2823,8 +2949,8 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
                 eo.write(string.join([uid]+reordered_values,'\t')+'\n')
                 reference_matrix[uid,0]=map(float,reordered_values)
             else:
-                eo.write(string.join([uid,str(priorRowClusters[index])]+reordered_values,'\t')+'\n')
-                reference_matrix[uid,str(priorRowClusters[index])]=map(float,reordered_values)
+                eo.write(string.join([uid,str(gene_cluster_db[uid])]+reordered_values,'\t')+'\n')
+                reference_matrix[uid,str(gene_cluster_db[uid])]=map(float,reordered_values)
         index+=1
     eo.close()
     
@@ -2834,8 +2960,8 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     group_index_db = collections.OrderedDict()
     index=0
     for cluster in priorColumnClusters:
-        try: group_index_db['cluster-'+cluster].append(index)
-        except Exception: group_index_db['cluster-'+cluster]=[index]
+        try: group_index_db[cluster].append(index) #group_index_db['cluster-'+cluster].append(index)
+        except Exception: group_index_db[cluster]=[index] #group_index_db['cluster-'+cluster]=[index]
         index+=1
     
     cellHarmonyReferenceFileMediod = cellHarmonyReferenceFile[:-4]+'-centroid.txt'
@@ -2877,8 +3003,11 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
             root_dir = export.findParentDir(query_exp_file)
             output_dir = ref_filename[:-4]+'__'+query_filename[:-4]+'-AllCells.txt' ### combine the filenames and query path
             output_dir = string.replace(output_dir,'OutliersRemoved-','')
+            output_dir = string.replace(output_dir,'-centroid__','__')
             ### Matches the outputdir name from the function importAndCombineExpressionFiles
-            output_dir = root_dir+'/exp.'+string.replace(output_dir,'exp.','')
+            output_dir = root_dir+'/cellHarmony/exp.'+string.replace(output_dir,'exp.','')
+            group_ref_export_dir = string.replace(output_dir,'exp.','groups.')
+            group_ref_export_dir = string.replace(group_ref_export_dir,'-AllCells.','-Reference.')
         
             eo = export.ExportFile(output_dir)
             eo.write(string.join(['UID']+reference_header+query_header,'\t')+'\n')
@@ -2887,11 +3016,17 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
                     eo.write(string.join([uid]+reference_exp[uid]+query_exp[uid],'\t')+'\n')
             eo.close()
             print 'Combined query and reference expression file exported to:'
-            print output_dir
+            eo = export.ExportFile(group_ref_export_dir)
+            index=0
+            for cell in column_header:
+                eo.write(cell+'\t'+str(priorColumnClusters[index])+'\t'+str(priorColumnClusters[index])+'\n')
+                index+=1
+            eo.close()
+            
         except:
             print 'Failed to join the query and reference expression files due to:'
             print traceback.format_exc()
-    
+
     if returnCentroids:
         return cellHarmonyReferenceFileMediod
     else:

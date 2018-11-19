@@ -6,9 +6,10 @@ import numpy
 import time
 import math
 
-def normalizeDropSeqCounts(expFile):
+def normalizeDropSeqCounts(expFile,log=True):
     start_time = time.time()
     
+    print 'log2 conversion equals',log
     firstLine = True
     mat_array=[]
     gene_names = []
@@ -37,7 +38,10 @@ def normalizeDropSeqCounts(expFile):
         if val==0:
             return '0'
         else:
-            return math.log(1+(10000.00*val)/barcode_sum,2) ### convert to log2 expression
+            if log:
+                return math.log((10000.00*val/barcode_sum)+1.0,2) ### convert to log2 expression
+            else:
+                return 10000.00*val/barcode_sum
 
     vfunc = numpy.vectorize(calculateCPTT)
     norm_mat_array=[]
@@ -63,13 +67,19 @@ def normalizeDropSeqCounts(expFile):
 
 if __name__ == '__main__':
     import getopt
+    log=True
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
         #Filtering samples in a datasets
         #python DropSeqProcessing.py --i dropseq.txt
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','log='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': matrices_dir=arg
-    normalizeDropSeqCounts(matrices_dir)
+            if opt == '--log':
+                if string.lower(arg) == 'true' or string.lower(arg) == 'yes':
+                    pass
+                else:
+                    log = False
+    normalizeDropSeqCounts(matrices_dir,log=log)

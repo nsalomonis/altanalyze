@@ -717,7 +717,7 @@ def DetermineClusterFitness(allgenesfile,markerfile,filterfile,BinarizedOutput,r
         if header:
             header = False
         else:
-            if float(rho)>0.0:
+            if float(rho)>0.3:
                 allgenes[uid]=cluster
 
     header=True
@@ -739,7 +739,8 @@ def DetermineClusterFitness(allgenesfile,markerfile,filterfile,BinarizedOutput,r
         else:
             if uid in genes:
                 common_geneIDs+=1
-                if rho_cutoff>0.4:rho_cutoff=0.4
+                #if rho_cutoff>0.4:rho_cutoff=0.4
+                rho_cutoff=0.3
                 #print rho_cutoff
                 #rho_cutoff=0.2
                 if float(rho)>rho_cutoff and cluster == allgenes[uid]:
@@ -993,10 +994,12 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
     Rank=estimateK(NMFinput)
     Rank=Rank*2
     #Rank=30
+    
     if Rank>1:
         if Rank>2 and platform=='PSI':
             Rank=30
-            
+        if Rank<5 and platform!='PSI':
+            Rank=10
         print "Running NMF analyses for dimension reduction using "+str(Rank)+" ranks - Round"+str(iteration)
         
         ### This function prepares files for differential expression analsyis (MetaDataAnalysis), MarkerFinder
@@ -1167,7 +1170,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
             shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
             
             ### write final groups ordered
-            exportGroups(root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt",root_dir+"/ICGS-NMF/FinalGroups.txt",platform)
+            #exportGroups(root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt",root_dir+"/ICGS-NMF/FinalGroups.txt",platform)
             
             if scaling:
                 flag=False
