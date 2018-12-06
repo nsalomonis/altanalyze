@@ -123,7 +123,8 @@ def getColorRange(x):
         return vmax,vmin
     
 def heatmap(x, row_header, column_header, row_method, column_method, row_metric, column_metric, color_gradient,
-            dataset_name, display=False, contrast=None, allowAxisCompression=True,Normalize=True,PriorColumnClusters=None, PriorRowClusters=None):
+            dataset_name, display=False, contrast=None, allowAxisCompression=True,Normalize=True,
+            PriorColumnClusters=None, PriorRowClusters=None):
     print "Performing hieararchical clustering using %s for columns and %s for rows" % (column_metric,row_metric)
     show_color_bars = True ### Currently, the color bars don't exactly reflect the dendrogram colors
     try: ExportCorreleationMatrix = exportCorreleationMatrix
@@ -255,6 +256,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if Normalize != False:
         vmin = vmax*-1
     elif 'Clustering-Zscores-' in dataset_name:
+        vmin = vmax*-1
+    elif vmin<0 and vmax>0 and Normalize==False:
         vmin = vmax*-1
     #vmin = vmax*-1
     #print vmax, vmin
@@ -4812,6 +4815,57 @@ def plotHistogram(filename):
     #pylab.hist(matrix, 50, cumulative=-1)
     pylab.show()
 
+def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='SkyBlue',color2='IndianRed'):
+    header=[]
+    reference_data=[]
+    query_data=[]
+    groups=[]
+    for line in open(filename,'rU').xreadlines():         
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if len(header)==0:
+            header = t
+            header1=header[index1]
+            header2=header[index2]
+        else:
+            reference_data.append(int(t[index1]))
+            query_data.append(int(t[index2]))
+            name = t[0]
+            if '_vs_' in name:
+                name = string.split(name,'_vs_')[0]
+                if '_' in name:
+                    name = string.split(name,'_')[:-1]
+                    name = string.join(name,'_')
+            groups.append(name)
+
+    fig, ax = pylab.subplots()
+    
+    pos1 = ax.get_position() # get the original position 
+    pos2 = [pos1.x0 + 0.1, pos1.y0 + 0.1,  pos1.width / 1.2, pos1.height / 1.2 ] 
+    ax.set_position(pos2) # set a new position
+    
+    ind = np.arange(len(groups))  # the x locations for the groups
+    width = 0.35  # the width of the bars
+    query_data.reverse()
+    reference_data.reverse()
+    groups.reverse()
+
+    ax.barh(ind - width/2, query_data, width, color=color2, label=header2)
+    ax.barh(ind + width/2, reference_data, width,color=color1, label=header1)
+
+    ax.set_xlabel(x_axis)
+    ax.set_ylabel(y_axis)
+    ax.set_yticks(ind)
+    ax.set_yticklabels(groups)
+    ax.set_title(title)
+    ax.legend()
+    pylab.savefig(filename[:-4]+'.pdf')
+    
+    if display:
+        print 'Exporting:',filename
+        try: pylab.show()
+        except Exception: None ### when run in headless mode    
+    
 def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
     #uids = [uids[-1]]+uids[:-1]
     str_uids = string.join(uids,'_')
@@ -6776,25 +6830,28 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
     except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
     
 if __name__ == '__main__':
+    filename='/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/cellHarmony-evaluation/Grimes/cellHarmony/gene_summary.txt'
+    index1=2;index2=3; x_axis='Number of cells'; y_axis = 'Reference clusters'; title='Assigned Cell Frequencies'
+    barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='r',color2='b');sys.exit()
     diff=0.7
     print 'diff:',diff
     file1='/data/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5-CF001WBC-Day0/outs/filtered_gene_bc_matrices/CellHarmonyReference/AML-D0-WBC-reference.txt'
     file2='/data/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5_CF001CD34_Day0/outs/filtered_gene_bc_matrices/ExpressionInput/exp.AML-D0-WBC-centroid__10x5_CF001CD34_Day0_matrix_CPTT-ReOrdered-Query.txt'
-    latteralMerge(file1, file2);sys.exit()
-    removeMarkerFinderDoublets('/Volumes/salomonis2/Erica-data/Demuxlet8Human/Seurat/ICGS2/CellHarmonyReference/DataPlots/Clustering-exp.ICGS-cellHarmony-reference-filtered-hierarchical_cosine_cosine2.txt',diff=diff);sys.exit()
+    #latteralMerge(file1, file2);sys.exit()
+    #removeMarkerFinderDoublets('/Volumes/salomonis2/Erica-data/Demuxlet8Human/Seurat/ICGS2/CellHarmonyReference/DataPlots/Clustering-exp.ICGS-cellHarmony-reference-filtered-hierarchical_cosine_cosine2.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
-    a = '/Volumes/salomonis2/Lab_backup/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/ExpressionInput/exp.AML-p27-D.txt'
+    a = '/Volumes/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/Combined_Captures/Day0/cellHarmony/exp.MarkerFinder-cellHarmony-reference__Day0-CPTT-log2-ReOrdered-Query.txt'
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     #b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
     #a = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/head.txt'
-    #transposeMatrix(a);sys.exit()
-    #convertSymbolLog(a,b);sys.exit()
+    transposeMatrix(a);sys.exit()
+    convertSymbolLog(a,b);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Volumes/salomonis2/Joshua_Waxman-10X-Zebrafish/SeuratCCA/DataPlots/Clustering-exp.CCA.txt'
-    a = '/Volumes/salomonis2/Joshua_Waxman-10X-Zebrafish/SeuratCCA/groups.CCA.txt'
-    #convertGroupsToBinaryMatrix(a,b,cellHarmony=False);sys.exit()
+    b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Plasma-cell/ExpressionInput/DataPlots/a.txt'
+    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Plasma-cell/ICGS-NMF1/groups.FinalMarkerHeatmap.txt'
+    convertGroupsToBinaryMatrix(a,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')

@@ -6938,6 +6938,13 @@ class GeneSelectionParameters:
         if Normalize == 'NA': Normalize = False
         self._Normalize = Normalize
     def Normalize(self): return self._Normalize
+    def setK(self,k): self.k = k
+    def k(self):
+        try: return self.k
+        except: return None
+    def K(self):
+        try: return self.k
+        except: return None
     def setExcludeGuides(self,excludeGuides): self.excludeGuides = excludeGuides
     def ExcludeGuides(self): return self.excludeGuides
     def setSampleDiscoveryParameters(self,ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,dynamicCorrelation,

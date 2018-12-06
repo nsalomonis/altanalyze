@@ -56,15 +56,22 @@ def cleanUpLine(line):
     return data
     
 def combineAllLists(files_to_merge,original_filename,includeColumns=False):
-    headers =[]; all_keys={}; dataset_data={}; files=[]
+    headers =[]; all_keys={}; dataset_data={}; files=[]; unique_filenames=[]
+    count=0
     for filename in files_to_merge:
-        print filename
         duplicates=[]
-        fn=filepath(filename); x=0; combined_data ={}; files.append(filename)
+        count+=1
+        fn=filepath(filename); x=0; combined_data ={}
         if '/' in filename:
             file = string.split(filename,'/')[-1][:-4]
         else:
             file = string.split(filename,'\\')[-1][:-4]
+        ### If two files with the same name being merged
+        if file in unique_filenames:
+            file += str(count)
+        unique_filenames.append(file)
+        print file
+        files.append(filename)
         for line in open(fn,'rU').xreadlines():         
             data = cleanUpLine(line)
             t = string.split(data,'\t')

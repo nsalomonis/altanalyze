@@ -32,7 +32,7 @@ Steps applied in this workflow:
 
 import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
-
+import traceback
 import sys, string, os
 import RNASeq
 import numpy as np
@@ -374,7 +374,6 @@ def PageRankSampling(inputfile):
     
     for iq in range(0,n,20000):
         jj=2500
- 
         if iq+24999>n:
             j=n-iq
         else:
@@ -812,18 +811,20 @@ def sortFile(allgenesfile,rho_cutoff):
                 
     return markergrps,markerlst
 
-def generateMarkerheatmap(processedInputExpFile,NMFSVM_centroid_cluster_dir,groupsdict,markergrps,header1,outputDir,species,uniqueIDs):
+def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_cluster_dir,groupsdict,markergrps,header1,outputDir,root_dir,species,uniqueIDs):
     """ Produces a final MarkerFinder result from ICGS-NMF """
     
     matrix={}
     header=True
     samples=[]
     samples2=[]
+    samples_all=[]
+    samples2_all=[]
     genes=[]
     genes2=[]
-    Outfile = outputDir+'/'+'MarkerFinder-subsampled-ordered.txt'
+    exportnam2=root_dir+'/ICGS-NMF/FinalGroups.txt'
+    export_class2=open(exportnam2,"w")
     
-    exportnam=open(Outfile,"w")
     for line in open(NMFSVM_centroid_cluster_dir,'rU').xreadlines():
         data = line.rstrip()
         t = string.split(data,'\t')
@@ -838,7 +839,7 @@ def generateMarkerheatmap(processedInputExpFile,NMFSVM_centroid_cluster_dir,grou
                     #sampleOrder.append(string.split(val,"-")[1])
                     sampleOrder.append(gr)
             break
-
+        
     header=True
     samp=[]
     for line in open(processedInputExpFile,'rU').xreadlines():
@@ -852,10 +853,11 @@ def generateMarkerheatmap(processedInputExpFile,NMFSVM_centroid_cluster_dir,grou
         else:
             for i in range(1,len(t)):
                 matrix[t[0],samp[i-1]]=t[i]
-
+                
     for i in range(len(sampleOrder)):
        
         for j in range(len(groupsdict[sampleOrder[i]])):
+            export_class2.write(groupsdict[sampleOrder[i]][j]+"\t"+str(i+1)+"\t"+sampleOrder[i]+"\n")
             if groupsdict[sampleOrder[i]][j] in header1:
                 samples.append(sampleOrder[i]+":"+groupsdict[sampleOrder[i]][j])
                 samples2.append(groupsdict[sampleOrder[i]][j])
@@ -868,8 +870,11 @@ def generateMarkerheatmap(processedInputExpFile,NMFSVM_centroid_cluster_dir,grou
             else:
                 symbol = uid
             genes2.append(sampleOrder[i]+":"+uid+' '+symbol)
+            
+    Outfile = outputDir+'/'+'MarkerFinder-subsampled-ordered.txt'
+    exportnam=open(Outfile,"w")     
     exportnam.write("uid"+"\t"+"row_clusters-flat")
-    
+   
     for i in range(len(samples)):
         exportnam.write("\t"+samples[i])
     exportnam.write("\n")
@@ -881,10 +886,11 @@ def generateMarkerheatmap(processedInputExpFile,NMFSVM_centroid_cluster_dir,grou
     for i in range(len(genes)):
         exportnam.write(genes2[i]+"\t"+"NA")
         for j in range(len(samples)):
-            
             exportnam.write("\t"+matrix[genes[i],samples2[j]])
         exportnam.write("\n")
     exportnam.close()
+
+    export_class2.close()
     graphic_links=[]
     row_method=None
     column_method=None
@@ -908,7 +914,37 @@ def generateMarkerheatmap(processedInputExpFile,NMFSVM_centroid_cluster_dir,grou
     #gsp.setClusterGOElite('GeneOntology')
     gsp.setClusterGOElite('BioMarkers')
     graphic_links = clustering.runHCexplicit(Outfile,graphic_links, row_method, row_metric, column_method,column_metric,color_gradient, gsp, display=False, Normalize=True,contrast=5)
-    return graphic_links
+    
+    if len(samp)>len(header1):
+        Outfile1 = outputDir+'/'+'MarkerFinder-Allsamples-ordered.txt'
+        exportnam1=open(Outfile1,"w")
+        for i in range(len(sampleOrder)):
+            for j in range(len(groupsdict[sampleOrder[i]])):
+                samples_all.append(sampleOrder[i]+":"+groupsdict[sampleOrder[i]][j])
+                samples2_all.append(groupsdict[sampleOrder[i]][j])
+        exportnam1.write("uid"+"\t"+"row_clusters-flat")
+        for i in range(len(samples_all)):
+            exportnam1.write("\t"+samples_all[i])
+        exportnam1.write("\n")
+        exportnam1.write("column_clusters-flat"+"\t")
+        for i in range(len(samples_all)):
+            exportnam1.write("\t"+"NA")
+        exportnam1.write("\n")
+
+    
+        for i in range(len(genes)):
+            exportnam1.write(genes2[i]+"\t"+"NA")
+            for j in range(len(samples_all)):
+                
+                exportnam1.write("\t"+matrix[genes[i],samples2_all[j]])
+            exportnam1.write("\n")
+        exportnam1.close()
+        graphic_links = clustering.runHCexplicit(Outfile1,graphic_links, row_method, row_metric, column_method,column_metric,color_gradient, gsp, display=False, Normalize=True,contrast=5)
+        status = 'subsampled'
+    else:
+        status = 'not-subsampled'
+
+    return status, graphic_links
 
 def callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp):
     #Run ICGS recursively to dynamically identify the best rho cutoff
@@ -991,9 +1027,15 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
     ### Filters the original expression file for the guide3 genes [returns a filename similar to NMFInput-Round1.txt]
     NMFinput,Rank=NMF_Analysis.FilterGuideGeneFile(Guidefile,Guidefile_block,processedInputExpFile,iteration,platform,uniqueIDs,symbolIDs)
     #NMFinput="/Volumes/Pass/ICGS2_testrun/ExpressionInput/ICGS-interim/NMFInput-Round1.txt"
-    Rank=estimateK(NMFinput)
-    Rank=Rank*2
-    #Rank=30
+    try: k = gsp.K(); print [k]
+    except: k = None; print traceback.format_exc()
+    
+    if k==None:
+        Rank=estimateK(NMFinput)
+        Rank=Rank*2
+    else:
+        Rank=k
+    print "The number target number of clusters (k/rank) is:",k
     
     if Rank>1:
         if Rank>2 and platform=='PSI':
@@ -1161,13 +1203,23 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
             NMFSVM_centroid_cluster_dir=graphic_links[0][1][:-4]+'.txt'
             outputDir = root_dir+"/NMF-SVM/SVMOutputs"
             header=ExpandSampleClusters.header_file(NMFinput)
-            graphic_links2=generateMarkerheatmap(processedInputExpFile[:-4]+'-markers.txt',NMFSVM_centroid_cluster_dir,groupsdict,markergrps,header,outputDir,species,uniqueIDs)
-            NMFSVM_centroid_cluster_dir=graphic_links2[0][1][:-4]
+            status,graphic_links2=generateMarkerheatmap(processedInputExpFile[:-4]+'-markers.txt',output_file,NMFSVM_centroid_cluster_dir,groupsdict,markergrps,header,outputDir,root_dir,species,uniqueIDs)
             import shutil
-            shutil.copy(NMFSVM_centroid_cluster_dir+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt")
-            shutil.copy(NMFSVM_centroid_cluster_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.png")
-            shutil.copy(NMFSVM_centroid_cluster_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.pdf")
-            shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
+            if status=='not-subsampled':
+                NMFSVM_centroid_cluster_dir=graphic_links2[0][1][:-4]
+                shutil.copy(NMFSVM_centroid_cluster_dir+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt")
+                shutil.copy(NMFSVM_centroid_cluster_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.png")
+                shutil.copy(NMFSVM_centroid_cluster_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.pdf")
+            else:
+                NMFSVM_centroid_cluster_dir=graphic_links2[0][1][:-4]
+                NMFSVM_centroid_cluster_dir1=graphic_links2[1][1][:-4]
+                shutil.copy(NMFSVM_centroid_cluster_dir+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.txt")
+                shutil.copy(NMFSVM_centroid_cluster_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.png")
+                shutil.copy(NMFSVM_centroid_cluster_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.pdf")
+                shutil.copy(NMFSVM_centroid_cluster_dir1+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.txt")
+                shutil.copy(NMFSVM_centroid_cluster_dir1+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.png")
+                shutil.copy(NMFSVM_centroid_cluster_dir1+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.pdf")
+                shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
             
             ### write final groups ordered
             #exportGroups(root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt",root_dir+"/ICGS-NMF/FinalGroups.txt",platform)

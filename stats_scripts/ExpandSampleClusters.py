@@ -106,24 +106,26 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,firstLine=True
     orderlst={}
     counter=[]
     export_object = open(output_file,'w')
-    Flag=0;
+    row_count=0
     for line in open(input_file,'rU').xreadlines():
         #for i in filterDB:
             flag1=0
+            row_count+=1
             data = cleanUpLine(line)
+            line = data+'\n'
             values = string.split(data,'\t')
+            if row_count == 1:
+                initial_length = len(values)
+            if len(values)!=initial_length:
+                print values
             if firstLine:
                 firstLine = False
-                if Flag==0:
-                    export_object.write(line)
+                export_object.write(line)
             else:
                 if values[0] in filterDB:
                     counter=[index for index, value in enumerate(filterDB) if value == values[0]]
-                    
                     for it in range(0,len(counter)):
                         orderlst[counter[it]]=line
-                    if logData:
-                        line = string.join([values[0]]+map(str,(map(lambda x: math.log(float(x)+1,2),values[1:]))),'\t')+'\n'
     for i in range(0,len(orderlst)):
             try: export_object.write(orderlst[i])
             except Exception:
@@ -147,20 +149,16 @@ def filterRows_data(input_file,output_file,filterDB=None,logData=False):
     for line in open(input_file,'rU').xreadlines():
         #for i in filterDB:
             flag1=0
-            
             data = cleanUpLine(line)
-           
             values = string.split(data,'\t')
             event=string.split(values[0],"|")[0]
-                  
-            
+                
             if firstLine:
                 firstLine = False
                 if Flag==0:
                     export_object.write(line)
             else:
                 if event in tempevents:
-                    
                     counter=[index for index, value in enumerate(tempevents) if value == event]
                     #print counter
                     filteredevents.append(event)
@@ -235,18 +233,6 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
     Y=zip(*Y)
     Y=np.array(Y)
 
-    exportnam=output_file[:-4]+'KNN_test_30.txt'
-    export_class=open(exportnam,"w")
-    export_class.write("uid"+"\t"+"group"+"\t"+"class"+"\n")
-    regr = KNeighborsClassifier(n_neighbors=4)
-   
-    regr.fit(Xobs,X[:,0])
-    q=regr.predict(Y)
-    count=1
-    for i in q:
-        export_class.write(header[count]+"\t"+str(i)+"\t"+name[int(i)-1]+"\n")
-        count+=1            
-    
     #np.savetxt("/Volumes/MyPassport/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/ExpressionProfiles/DataPlots/complete_KNN.txt",q)
     #if platform=="PSI":
     #else:
@@ -277,12 +263,15 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
     q=regr.predict(Y)
     #print q
     count=1
-    
+    ordersamp={}
+    order=[]
     for i in q:
         gr=string.split(name[int(i)-1],"_")[0]
         gr=gr.replace("V","")
+        
         #export_class2.write(header[count]+"\t"+str(i)+"\t"+name[int(i)-1]+"\n")
-        export_class2.write(header[count]+"\t"+str(i)+"\t"+gr+"\n")
+       # export_class2.write(header[count]+"\t"+str(i)+"\t"+gr+"\n")
+        ordersamp[header[count]]=[name[int(i)-1],str(i)]
         count+=1
     #print len(X[:,0])
     if len(X[:,0])>2:
@@ -306,8 +295,10 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
             export_class3.write(header[iq+1])
             for jq in range(0,len(name)):
                 export_class1.write("\t"+str(prob_[iq][jq]))
-             
                 if prob_[iq][jq]==max(prob_[iq,:]):
+                    #print ordersamp[header[iq+1]],name[jq]
+                    if ordersamp[header[iq+1]][0]==name[jq]: 
+                        order.append([header[iq+1],name[jq],prob_[iq][jq],ordersamp[header[iq+1]][1]])
                     export_class3.write("\t"+str(1))
                 else:
                     export_class3.write("\t"+str(0))
@@ -315,37 +306,49 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
             export_class1.write("\n")
             #export_class2.write("\n")
             export_class3.write("\n")
+        export_class1.close()
         export_class3.close()
     else:
-        prob_=regr.fit(Xobs,X[:,0]).decision_function(Y)
-        #k=list(prob_)
-        export_class1.write("uid"+"\t")
-        export_class2.write("uid"+"\t")
-        export_class1.write("group")
-        export_class2.write("round"+str(turn)+"-V1"+"\t"+"round"+str(turn)+"-V2"+"\n")
-        #for ni in name:
-        #   export_class1.write("\t"+ni)
-        #   export_class2.write("\t"+ni)
-        export_class1.write("\n")
-        export_class2.write("\n")
-        #print prob_
-        #export_class1.write(header[1])
-        #export_class2.write(header[1])
-        for iq in range(0,len(header)-1):
-            export_class1.write(header[iq+1])
-            export_class2.write(header[iq+1])
-            #for jq in range(0,len(X[:,0])):
-            export_class1.write("\t"+str(prob_[iq]))
-            if prob_[iq]>0.5:                    
-                export_class2.write("\t"+str(1)+"\t"+str(0))            
-            else:
-                if prob_[iq]<-0.5:  
-                    export_class2.write("\t"+str(0)+"\t"+str(1))
-                else:
-                    export_class2.write("\t"+str(0)+"\t"+str(0))
+        if platfrm=="PSI":
+            prob_=regr.fit(Xobs,X[:,0]).decision_function(Y)
+            #k=list(prob_)
+            export_class1.write("uid"+"\t")
+            export_class2.write("uid"+"\t")
+            export_class1.write("group")
+            export_class2.write("round"+str(turn)+"-V1"+"\t"+"round"+str(turn)+"-V2"+"\n")
+            #for ni in name:
+            #   export_class1.write("\t"+ni)
+            #   export_class2.write("\t"+ni)
             export_class1.write("\n")
             export_class2.write("\n")
-    #export_class2.close()
+            #print prob_
+            #export_class1.write(header[1])
+            #export_class2.write(header[1])
+            for iq in range(0,len(header)-1):
+                export_class1.write(header[iq+1])
+                export_class2.write(header[iq+1])
+                #for jq in range(0,len(X[:,0])):
+                export_class1.write("\t"+str(prob_[iq]))
+                if prob_[iq]>0.5:                    
+                    export_class2.write("\t"+str(1)+"\t"+str(0))            
+                else:
+                    if prob_[iq]<-0.5:  
+                        export_class2.write("\t"+str(0)+"\t"+str(1))
+                    else:
+                        export_class2.write("\t"+str(0)+"\t"+str(0))
+                export_class1.write("\n")
+                export_class2.write("\n")
+    order = sorted(order, key = operator.itemgetter(2),reverse=True)
+    order = sorted(order, key = operator.itemgetter(1))
+    for i in range(len(order)):
+        #export_class2.write(order[i][0]+"\t"+order[i][3]+"\t"+order[i][1]+"\n")
+        gr=string.split(order[i][1],"_")[0]
+        gr=gr.replace("V","")
+        
+        #export_class2.write(header[count]+"\t"+str(i)+"\t"+name[int(i)-1]+"\n")
+        export_class2.write(order[i][0]+"\t"+order[i][3]+"\t"+gr+"\n")
+    
+    export_class2.close()
     if platform=="PSI":
         Orderedheatmap.Classify(exportnam2)
     else:
@@ -364,8 +367,7 @@ def header_file(fname, delimiter=None):
                     if ":" in i:
                         
                         i=string.split(i,":")[1]
-                    new_head.append(i)
-                        
+                    new_head.append(i)     
                 head=1
             else:break   
     return new_head
@@ -409,15 +411,12 @@ def Findgroups(NMF_annot,name):
     groups=np.asarray(groups)
     return groups
 
-def TrainDataGeneration(output_file,NMF_annot,name,scaling=False,exports=False,rootDir=''):
+def TrainDataGeneration(output_file,NMF_annot,name,scaling=False,exports=False,rootDir='',calculatecentroid=True):
     head=0
     groups=[1,2]
     centroid_heatmap_input=''
-    
     matrix=defaultdict(list)
     compared_groups={}
-    train=[]
-
     for exp1 in open(NMF_annot,"rU").xreadlines():
         lin=exp1.rstrip('\r\n')
         lin=string.split(lin,"\t")
@@ -441,7 +440,6 @@ def TrainDataGeneration(output_file,NMF_annot,name,scaling=False,exports=False,r
             for exp2 in open(output_file,"rU").xreadlines():
                     lin2=exp2.rstrip('\r\n')
                     lin2=string.split(lin2,"\t")
-                    
                     if head2==0:
                         group_db={}
                         index=0
@@ -479,14 +477,22 @@ def TrainDataGeneration(output_file,NMF_annot,name,scaling=False,exports=False,r
                                     #try: gvalues_list.append('') ### Thus are missing values
                                     #except Exception: pass
                                     pass
-                        
+                        if calculatecentroid:
+                            try:
+                            
+                                matrix[lin[0]].append(avg(gvalues_list))
+                                eventname.append(key)
+                            except Exception:
+                                matrix[lin[0]].append(float(0))
+                                eventname.append(key)
+                        else:
                         #matrix[lin[0]].append(gvalues_list)
-                        try:
-                            matrix[lin[0]].append(gvalues_list)
-                            eventname.append(key)
-                        except Exception:
-                            matrix[lin[0]].append(float(0))
-                            eventname.append(key)
+                            try:
+                                matrix[lin[0]].append(gvalues_list)
+                                eventname.append(key)
+                            except Exception:
+                                matrix[lin[0]].append(float(0))
+                                eventname.append(key)
     
     #export_class=open(exportnam,"w")
     #export_class.write('uid')
@@ -496,7 +502,7 @@ def TrainDataGeneration(output_file,NMF_annot,name,scaling=False,exports=False,r
 
     keylist=[]
     matri=[]
- 
+    train=[]
     for j in range(0,len(name)):
         mediod=[]
         for key in matrix:
@@ -518,24 +524,28 @@ def TrainDataGeneration(output_file,NMF_annot,name,scaling=False,exports=False,r
             if key1 in name[j] or key2 in name[j]:
                 keylist.append(key)
                 #print name[j]
-                #train.append(matrix[key])
+                if calculatecentroid:
+                    train.append(matrix[key])
+                else:
                 #mediod.append(matrix[key])
-                matri=zip(*matrix[key])
+                    matri=zip(*matrix[key])
         #print len(matri)
-        matri=np.array(matri)
-        #print matri.shape
-        n=matri.shape[0]
-        D=pairwise_distances(matri,metric='euclidean').tolist()
-        D=np.array(D)
-       
-        dist=np.mean(D,0)
+        
       
         k=0
-        for i in np.argsort(dist):
-            if k<1:
-               
-                train.append(np.array(matri[i]))
-                k=k+1
+        if calculatecentroid==False:
+            matri=np.array(matri)
+            #print matri.shape
+            n=matri.shape[0]
+            D=pairwise_distances(matri,metric='euclidean').tolist()
+            D=np.array(D)
+       
+            dist=np.mean(D,0)
+            for i in np.argsort(dist):
+                if k<1:
+                   
+                    train.append(np.array(matri[i]))
+                    k=k+1
          
         #Xst=10000000
         #temp=[]

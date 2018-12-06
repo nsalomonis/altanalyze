@@ -318,7 +318,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         filename='ExpressionProfiles/'+string.join(groups,'_vs_')+'.txt'
         eo = export.ExportFile(rootdir+filename) ### create and store an export object for the comparison (for raw expression)
         export_object_db[groups] = eo
-    
+
     compared_ids={}
     row_count=0
     header_db={}
@@ -389,7 +389,10 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
             for group in group_index_db:
                 sample_index_list = group_index_db[group]
                 if platform != 'PSI':
-                    filtered_values = map(lambda x: float(values[x]), sample_index_list) ### simple and fast way to reorganize the samples
+                    try: filtered_values = map(lambda x: float(values[x]), sample_index_list) ### simple and fast way to reorganize the samples
+                    except ValueError:
+                        ### Strings rather than values present - skip this row
+                        continue
                 else: ### for splice-event comparisons where there a missing values at the end of the row
                     if len(header) != len(values):
                         diff = len(header)-len(values)
@@ -420,7 +423,11 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 if header_samples not in headers_compared:
                     headers_compared[header_samples]=[]
                     print len(g1_headers),len(g2_headers),groups
-                data_list1 = group_expression_values[group1]
+                try:
+                    data_list1 = group_expression_values[group1]
+                except KeyError:
+                    ### This error is linked to the above Strings rather than values present error
+                    continue
                 data_list2 = group_expression_values[group2]
                 combined = data_list1+data_list2
                 if g1_headers==0 or g2_headers==0:

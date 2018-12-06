@@ -6216,7 +6216,7 @@ def commandLineRun():
     PearsonThreshold = 0.1
     returnCentroids = False
     runCompleteWorkflow=True
-    
+    k=None
     original_arguments = sys.argv
     arguments=[]
     for arg in original_arguments:
@@ -6280,7 +6280,7 @@ def commandLineRun():
                                                          'excludeGuides=','cellHarmony=','BAM_dir=','filterFile=',
                                                          'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
                                                          'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
-                                                         'fold=','performDiffExp='])
+                                                         'fold=','performDiffExp=','centerMethod=', 'k='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6528,6 +6528,7 @@ def commandLineRun():
                 elif opt == '--SamplesDiffering':SamplesDiffering=int(float(arg))
                 elif opt == '--excludeGuides': excludeGuides=arg
                 elif opt == '--dynamicCorrelation': dynamicCorrelation=arg
+                elif opt == '--k': k=int(arg)
                 elif opt == '--runCompleteWorkflow':
                     runCompleteWorkflow=arg
                     if string.lower(arg)=='false' or string.lower(arg)=='no':
@@ -6572,6 +6573,7 @@ def commandLineRun():
                 gsp.setJustShowTheseIDs(JustShowTheseIDs)
                 gsp.setNormalize('median')
                 gsp.setExcludeGuides(excludeGuides)
+                gsp.setK(k)
                 gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering, dynamicCorrelation,  
                     removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff) 
 
@@ -8010,6 +8012,7 @@ def commandLineRun():
                     elif opt == '--pval': pval = float(arg)
                     elif opt == '--adjp': adjp = arg
                     elif opt == '--performDiffExp': performDiffExp = arg
+                    elif opt == '--centerMethod': CenterMethod = arg
                 fl = UI.ExpressionFileLocationData('','','','')
                 fl.setSpecies(species)
                 fl.setVendor(manufacturer)
@@ -8036,9 +8039,10 @@ def commandLineRun():
                             input_file = verifyPath(arg)
                             ICGS_files.append(input_file)
                     import LineageProfilerIterate
-                    try: LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod='median',species=species)
+                    print 'center method =',CenterMethod
+                    try: LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod =CenterMethod,species=species,PearsonThreshold=PearsonThreshold)
                     except:
-                        LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod='median')
+                        LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod=CenterMethod)
                     sys.exit()
                 try: CenterMethod=CenterMethod
                 except: CenterMethod='centroid'

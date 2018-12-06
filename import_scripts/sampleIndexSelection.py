@@ -18,7 +18,7 @@ def makeTestFile():
     export_object.close()
     return input_file
 
-def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False):
+def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[]):
     if calculateCentroids:
         filter_names,group_index_db=filter_names
         
@@ -38,20 +38,48 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                     for f in filter_names:
                         if f in values: filter_names2.append(f)
                     filter_names = filter_names2
-                sample_index_list = map(lambda x: values.index(x), filter_names)
-                firstLine = False   
+                try: sample_index_list = map(lambda x: values.index(x), filter_names)
+                except:
+                    ### If ":" in header name
+                    if ':' in line:
+                        values2=[]
+                        for x in values:
+                            if ':' in x:
+                                x=string.split(x,':')[1]
+                            values2.append(x)
+                        values = values2
+                        sample_index_list = map(lambda x: values.index(x), filter_names)
+                    elif ':' in filter_names:
+                        filter_names = map(lambda x: string.split(filter_names,':')[1], filter_names)
+                    else:
+                        for x in filter_names:
+                            if x not in values:
+                                print x,
+                            print 'are missing';kill
+                        
+                firstLine = False
                 header = values
             if 'PSI_EventAnnotation' in input_file:
                 uid_index = values.index('UID')
             if calculateCentroids:
-                clusters = map(str,group_index_db)
-                export_object.write(string.join([values[uid_index]]+clusters,'\t')+'\n')
+                if len(comparisons)>0:
+                    export_object.write(string.join(['UID']+map(lambda x: x[0]+'-fold',comparisons),'\t')+'\n') ### Use the numerator group name                  
+                else:
+                    clusters = map(str,group_index_db)
+                    export_object.write(string.join([values[uid_index]]+clusters,'\t')+'\n')
                 continue ### skip the below code
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
         except Exception:
+            print 'aaaaaa'
             print traceback.format_exc()
             print len(values), len(sample_index_list)
-            print input_file, len(filter_names); sys.exit()
+            print input_file, len(filter_names)
+            for i in filter_names:
+                if i not in header:
+                    print i, 'not found'
+            sys.exit()
+            
+            sys.exit()
             ### For PSI files with missing values at the end of each line, often
             if len(header) != len(values):
                 diff = len(header)-len(values)
@@ -59,15 +87,24 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
             filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
             #print values[0]; print sample_index_list; print values; print len(values); print len(prior_values);kill
         prior_values=values
-        ######################## Begin Medoid Calculation ########################
+        ######################## Begin Centroid Calculation ########################
         if calculateCentroids:
-            median_matrix=[]
+            mean_matrix=[]
+            means={}
             for cluster in group_index_db:
-                try: median_matrix.append(str(statistics.avg(map(lambda x: float(filtered_values[x]), group_index_db[cluster]))))
-                except Exception: ### Only one value
-                    median_matrix.append(str(map(lambda x: reference_matrix[uid][x], group_index_db[cluster])))
-            filtered_values = median_matrix
-        ########################  End Medoid Calculation  ######################## 
+                #### group_index_db[cluster] is all of the indeces for samples in a noted group, cluster is the actual cluster name (not number)
+                try: mean=statistics.avg(map(lambda x: float(filtered_values[x]), group_index_db[cluster]))
+                except Exception: mean = map(lambda x: filtered_values[uid][x], group_index_db[cluster]) ### Only one value
+                means[cluster]=mean
+                mean_matrix.append(str(mean))
+            filtered_values = mean_matrix
+            if len(comparisons)>0:
+                fold_matrix=[]
+                for (group2, group1) in comparisons:
+                    fold = means[group2]-means[group1]
+                    fold_matrix.append(str(fold))
+                filtered_values = fold_matrix
+        ########################  End Centroid Calculation  ######################## 
         export_object.write(string.join([values[uid_index]]+filtered_values,'\t')+'\n')
     export_object.close()
     print 'Filtered columns printed to:',output_file
@@ -84,7 +121,9 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False)
             uid_index = values.index('UID')
         if firstLine:
             try:uid_index=values.index('UID')
-            except Exception:uid_index=values.index('uid')
+            except Exception:
+                try: uid_index=values.index('uid')
+                except Exception: uid_index = 0
             firstLine = False
             export_object.write(line)
         else:
@@ -132,8 +171,27 @@ def getFiltersFromHeatmap(filter_file):
                 except Exception: group_index_db[cluster] = [index]
                 index+=1
     return filter_list, group_index_db
+       
+def getComparisons(filter_file):
+    """Import group comparisons when calculating fold changes"""
+    groups={}
+    for line in open(filter_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        sample,group_num,group_name = string.split(data,'\t')
+        groups[group_num]=group_name
         
+    comparisons=[]
+    comparison_file = string.replace(filter_file,'groups.','comps.')
+    for line in open(comparison_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        group2,group1 = string.split(data,'\t')
+        group2 = groups[group2]
+        group1 = groups[group1]
+        comparisons.append([group2,group1])
+    return comparisons
+
 def getFilters(filter_file,calculateCentroids=False):
+    """Import sample list for filtering and optionally sample to groups """
     filter_list=[]
     if calculateCentroids:
         import collections
@@ -268,18 +326,21 @@ if __name__ == '__main__':
     calculateCentroids=False
     geneCountFilter=False
     expressionCutoff=1
+    returnComparisons=False
+    comparisons=[]
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         filter_names = ['test-1','test-2','test-3']
         input_file = makeTestFile()
         
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=',
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
                             'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
             elif opt == '--f': filter_file=arg
             elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateCentroids = True
+            elif opt == '--fold': returnComparisons = True
             elif opt == '--r':
                 if arg == 'exclude':
                     filter_rows=True
@@ -299,10 +360,14 @@ if __name__ == '__main__':
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)
     elif calculateCentroids:
         output_file = input_file[:-4]+'-mean.txt'
+        if returnComparisons:
+            comparisons = getComparisons(filter_file)
+            output_file = input_file[:-4]+'-fold.txt'
         try: filter_names,group_index_db = getFilters(filter_file,calculateCentroids=calculateCentroids)
         except Exception:
+            print traceback.format_exc()
             filter_names,group_index_db = getFiltersFromHeatmap(filter_file)
-        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids)
+        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids,comparisons=comparisons)
     else:
         filter_names = getFilters(filter_file)
         filterFile(input_file,output_file,filter_names,force=force)
