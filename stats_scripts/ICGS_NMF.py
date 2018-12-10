@@ -1027,7 +1027,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
     ### Filters the original expression file for the guide3 genes [returns a filename similar to NMFInput-Round1.txt]
     NMFinput,Rank=NMF_Analysis.FilterGuideGeneFile(Guidefile,Guidefile_block,processedInputExpFile,iteration,platform,uniqueIDs,symbolIDs)
     #NMFinput="/Volumes/Pass/ICGS2_testrun/ExpressionInput/ICGS-interim/NMFInput-Round1.txt"
-    try: k = gsp.K(); print [k]
+    try: k = int(gsp.K())
     except: k = None; print traceback.format_exc()
     
     if k==None:
@@ -1176,9 +1176,12 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 #column_header, row_header = row_header, column_header
                 finalOutputDir=root_dir+"/ICGS-NMF/"
                 #clustering.tSNE(np.array(matrix),column_header,dataset_name,group_db,display=False,showLabels=False,species=species,reimportModelScores=False)
-                clustering.umap(np.array(matrix),column_header,dataset_name,group_db,display=False,
-                    showLabels=False,species=species,reimportModelScores=False,rootDir=root_dir,finalOutputDir=finalOutputDir)
-
+                try:
+                    clustering.umap(np.array(matrix),column_header,dataset_name,group_db,display=False,
+                        showLabels=False,species=species,reimportModelScores=False,rootDir=root_dir,finalOutputDir=finalOutputDir)
+                except:
+                    print traceback.format_exc()
+    
             #clustering.tSNE(processedInputExpFile,group_db=groupsdict,display=True,showLabels=False,row_header=None,colorByGene=None,species=None,reimportModelScores=False)
             ##MV need to code 
             #Orderedfile,groupsdict=FindcentroidGroups(filtered,groupfile)

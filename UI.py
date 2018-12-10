@@ -382,7 +382,7 @@ class StatusWindow:
             else:
                 root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.1.1')
+            root.title('AltAnalyze version 2.1.2')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 300; width = 700
@@ -523,7 +523,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             try:
                 parent_dir = export.findParentDir(expFile)
                 flx.setRootDir(parent_dir)
-                RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,returnSampleNames=False,customFASTA=customFASTA)   
+                RNASeq.runKallisto(species,dataset,flx.RootDir(),fastq_folder,mlp_instance,returnSampleNames=False,customFASTA=customFASTA)   
             except Exception:
                 print 'Kallisto failed due to:',traceback.format_exc()
             try: root.destroy()
@@ -4112,7 +4112,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze version 2.1.1.\n'
+        about = 'AltAnalyze version 2.1.2.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.altanalyze.org\n'
@@ -4133,7 +4133,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.1.1.\n')
+        txt.insert(END, 'AltAnalyze version 2.1.2.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
@@ -4287,6 +4287,7 @@ class ExpressionFileLocationData:
     def setCLFFile(self,clf_file): self._clf_file = osfilepath(clf_file)
     def setBGPFile(self,bgp_file): self._bgp_file = osfilepath(bgp_file)
     def setCELFileDir(self,cel_file_dir): self._cel_file_dir = osfilepath(cel_file_dir)
+    def setBEDFileDir(self,cel_file_dir): self._cel_file_dir = osfilepath(cel_file_dir)
     def setFeatureNormalization(self,normalize_feature_exp): self.normalize_feature_exp = normalize_feature_exp
     def setExcludeLowExpressionExons(self, excludeNonExpExons): self.excludeNonExpExons = excludeNonExpExons
     def setNormMatrix(self,normalize_gene_data): self.normalize_gene_data = normalize_gene_data
@@ -5708,14 +5709,16 @@ def getUserParameters(run_parameter,Multi=None):
                 elif 'input_cel_dir' in gu.Results() or 'input_fastq_dir' in gu.Results():
                     if len(input_fastq_dir)>0:
                         import RNASeq
-                        cel_files = RNASeq.runKallisto(species,'',input_fastq_dir,input_fastq_dir,returnSampleNames=True)
+                        cel_files = RNASeq.runKallisto(species,'',input_fastq_dir,input_fastq_dir,mlp,returnSampleNames=True)
                         try: output_dir = gu.Results()['output_CEL_dir']
                         except KeyError: output_dir = input_fastq_dir
+                        """ ### Change made in version 2.1.2
                         option_db['perform_alt_analysis'].setArrayOptions(['NA'])
                         option_db['exon_exp_threshold'].setArrayOptions(['NA'])
                         option_db['exon_rpkm_threshold'].setArrayOptions(['NA'])
                         option_db['expression_threshold'].setArrayOptions(['NA'])
                         option_db['gene_exp_threshold'].setArrayOptions(['NA'])
+                        """
                         assinged = 'yes'
                     else:
                         cel_file_dir = gu.Results()['input_cel_dir']
@@ -6655,10 +6658,11 @@ def getUserParameters(run_parameter,Multi=None):
             button_text = 'Download Annotations'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
             IndicatorLinkOutWindow(print_out,button_text,url)
             """
-            
+    """ ### Change made in version 2.1.2
     if len(input_fastq_dir)>0:
         array_type = "3'array"
         vendor = 'other:Ensembl' ### Ensembl linked system name
+    """
     if microRNA_prediction_method == 'two or more': microRNA_prediction_method = 'multiple'
     else: microRNA_prediction_method = 'any'
 

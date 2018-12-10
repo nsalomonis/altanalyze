@@ -4509,7 +4509,7 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            root.title('AltAnalyze version 2.1.1')
+            root.title('AltAnalyze version 2.1.2')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
             self.root = root
             height = 450; width = 500
@@ -4607,7 +4607,7 @@ class SummaryResultsWindow:
         self.emergency_exit = False            
         self.LINKS = []
         self.tl = tl
-        self.tl.title('AltAnalyze version 2.1.1')
+        self.tl.title('AltAnalyze version 2.1.2')
         self.analysis_type = analysis_type
 
         filename = 'Config/icon.gif'
@@ -5269,7 +5269,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   else: id_name = 'array IDs'
 
   print_items=[]; #print [permute_p_threshold]; sys.exit()
-  print_items.append("AltAnalyze version 2.1.1 - Expression Analysis Parameters Being Used...")
+  print_items.append("AltAnalyze version 2.1.2 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'database'+': '+unique.getCurrentGeneDatabaseVersion())
   print_items.append('\t'+'species'+': '+species)
   print_items.append('\t'+'method'+': '+array_type)
@@ -5452,13 +5452,51 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       except Exception: print traceback.format_exc()
       try: customFASTA = fl.CustomFASTA()
       except Exception: customFASTA = None
+      processBEDfiles = True
       if len(fastq_folder)>0:
-         ### Perform pseudoalignment with Kallisto on FASTQ files 
-          try:
-              RNASeq.runKallisto(species,dataset,root_dir,fastq_folder,returnSampleNames=False,customFASTA=customFASTA)
-              biotypes = 'ran'
-          except Exception: biotypes='failed'
-      else:
+        ### Perform pseudoalignment with Kallisto on FASTQ files
+        processBEDfiles=False
+        try:
+            RNASeq.runKallisto(species,dataset,root_dir,fastq_folder,mlp,returnSampleNames=False,customFASTA=customFASTA)
+            biotypes = 'ran'
+            dir_list = unique.read_directory(root_dir)
+            ### If we are performing a splicing analysis
+            if perform_alt_analysis != 'no' and perform_alt_analysis != 'expression':
+                print '...Performing analyses on junction-RPKM versus Kallisto-TPM.'
+                for file in dir_list:
+                    if '.bam' in string.lower(file):
+                        processBEDfiles=True
+                    if '.bed' in string.lower(file):
+                        processBEDfiles=True
+                try: rpkm_threshold = fl.RPKMThreshold()
+                except Exception: rpkm_threshold = []
+                if isinstance(rpkm_threshold, int) ==False:
+                    array_type = 'RNASeq'
+                    fl.setArrayType(array_type)
+                    fl.setBEDFileDir(root_dir)
+                    fl.setRPKMThreshold(1.0)
+                    fl.setExonExpThreshold(5.0)
+                    fl.setGeneExpThreshold(200.0)
+                    fl.setExonRPKMThreshold(0.5)
+                    fl.setJunctionExpThreshold(5.0)
+                    fl.setVendor('RNASeq')
+                from import_scripts import BAMtoJunctionBED
+                ### Export BAM file indexes
+                try: BAMtoJunctionBED.exportIndexes(root_dir)
+                except:
+                    print 'BAM file indexing failed...'
+                    print traceback.format_exc()
+            else:
+                print '...Performing analyses on Kallisto-TPM values directly.'
+                array_type = "3'array"
+                fl.setArrayType(array_type)
+                vendor = 'other:Ensembl' ### Ensembl linked system name
+                fl.setVendor(vendor)
+        except Exception:
+            print traceback.format_exc()
+            biotypes='failed'
+        
+      if processBEDfiles:
           analyzeBAMs = False; bedFilesPresent = False
           dir_list = unique.read_directory(fl.BEDFileDir())
           for file in dir_list:
@@ -5466,6 +5504,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                 analyzeBAMs=True
             if '.bed' in string.lower(file):
                 bedFilesPresent=True
+
           if analyzeBAMs and bedFilesPresent==False:
             from import_scripts import multiBAMtoBED
             bam_dir = fl.BEDFileDir()
@@ -5798,9 +5837,14 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                         else: pvalThreshold = p_threshold
                     except: pvalThreshold = ge_pvalue_cutoffs ### Use the gene expression p-value cutoff if NA
                     try:
-                        metaDataAnalysis.remoteAnalysis(species,psi_annotated,fl.GroupsFile(),
+                        graphics_alt = metaDataAnalysis.remoteAnalysis(species,psi_annotated,fl.GroupsFile(),
                                 platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=use_adjusted_pval,
                                 pvalThreshold=ge_pvalue_cutoffs)
+                        try: summary_data_db['QC'] += graphics_alt
+                        except Exception: summary_data_db['QC'] = graphics_alt
+                        try: summary_data_db['QC'] += graphic_links2
+                        except Exception: pass
+                        
                     except Exception:
                         print traceback.format_exc()
                 else:
@@ -5808,16 +5852,16 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
                     significantFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
                     graphic_link1 = ExpressionBuilder.exportHeatmap(significantFilteredDir)
-                    try: summary_data_db2['QC']+=graphic_link1
-                    except Exception: summary_data_db2['QC']=graphic_link1
+                    try: summary_data_db['QC']+=graphic_link1
+                    except Exception: summary_data_db['QC']=graphic_link1
       except Exception:
         print traceback.format_exc()
       
       import RNASeq
       try:
         graphic_link = RNASeq.compareExonAndJunctionResults(species,array_type,summary_results_db,root_dir)
-        try: summary_data_db2['QC']+=graphic_link
-        except Exception: summary_data_db2['QC']=graphic_link
+        try: summary_data_db['QC']+=graphic_link
+        except Exception: summary_data_db['QC']=graphic_link
       except Exception:
         print traceback.format_exc()
     
@@ -5860,6 +5904,10 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       if array_type != 'exon' and array_type != 'gene':
             ### SashimiPlot Visualization
             try:
+              expression_results_folder = fl.RootDir()+'/ExpressionInput/'
+              expression_dir = UI.getValidExpFile(expression_results_folder)
+              show_introns=False
+              analysisType='plot'
               top_PSI_junction = inputpsi
               #isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
               altoutput_dir = export.findParentDir(top_PSI_junction)
@@ -5947,7 +5995,8 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
           UI.InfoWindow(print_out,'Analysis Completed!')
           try: dataset_name = dataset_name
           except: dataset_name = dataset
-          tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset_name,'specific',summary_data_db2)
+          #tl = Toplevel(); SummaryResultsWindow(tl,'AS',results_dir,dataset_name,'specific',summary_data_db2)
+          tl = Toplevel(); SummaryResultsWindow(tl,'GE',results_dir,dataset_name,'specific',summary_data_db)
   except Exception:
     print traceback.format_exc()
     pass #print 'Failed to open GUI.'
@@ -6645,6 +6694,7 @@ def commandLineRun():
             elif len(input_fastq_dir)>0:
                 fl.setRunKallisto(input_fastq_dir)
                 fl.setArrayType("3'array")
+                fl.setMultiThreading(multiThreading)
                 array_type = "3'array"
                 if customFASTA!=None:
                     fl.setCustomFASTA(customFASTA)
@@ -6940,7 +6990,7 @@ def commandLineRun():
             #from visualization_scripts import clustering; clustering.outputClusters([input_file_dir],[])
             sys.exit()
                         
-        if 'PCA' in image_export or 't-SNE' in image_export:
+        if 'PCA' in image_export or 't-SNE' in image_export or 'UMAP' in image_export or 'umap' in image_export:
             #AltAnalyze.py --input "/Users/nsalomonis/Desktop/folds.txt" --image PCA --plotType 3D --display True --labels yes
             #python AltAnalyze.py --input "/Users/nsalomonis/Desktop/log2_expression.txt" --image "t-SNE" --plotType 2D --display True --labels no --genes "ACTG2 ARHDIA KRT18 KRT8 ATP2B1 ARHGDIB" --species Hs --platform RNASeq --separateGenePlots True --zscore no
             #--algorithm "t-SNE"
@@ -6954,6 +7004,8 @@ def commandLineRun():
             reimportModelScores = True
             if 't-SNE' in image_export:
                 pca_algorithm = 't-SNE'
+            if 'UMAP' in image_export or 'umap' in image_export:
+                pca_algorithm = 'UMAP'
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 #print opt,arg
                 if opt == '--labels':

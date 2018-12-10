@@ -405,7 +405,9 @@ def simpleCompsImport(group_dir,group_name_db):
     return comps_name_db,comp_groups
 
 def importArrayGroups(expr_group_dir,array_linker_db):
-    new_index_order = 0    
+    new_index_order = 0
+    import collections
+    updated_groups = collections.OrderedDict()
     expr_group_list=[]
     expr_group_db = {} ### use when writing out data
     fn=filepath(expr_group_dir)
@@ -421,13 +423,22 @@ def importArrayGroups(expr_group_dir,array_linker_db):
                     ### compare new to original index order of arrays
                     try:
                         original_index_order = array_linker_db[array_header]
-                    except KeyError:
-                        print_out = 'WARNING!!! At least one sample-ID listed in the "groups." file (e.g.,'+array_header+')'+'\n is not in the sample "exp." file. See the new file "arrays." with all "exp." header names\nand correct "groups."' 
-                        try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!')
-                        except Exception: print print_out
-                        exportArrayHeaders(expr_group_dir,array_linker_db)
-                        try: root.destroy(); sys.exit()
-                        except Exception: sys.exit()
+                    except:
+                        if array_header+'.bed' in array_linker_db:
+                            new_header = array_header+'.bed'
+                            original_index_order = array_linker_db[new_header]
+                            updated_groups[new_header]=group,group_name
+                        elif array_header[:-4] in array_linker_db:
+                            new_header = array_header[:-4]
+                            original_index_order = array_linker_db[new_header]
+                            updated_groups[new_header]=group,group_name      
+                        else:
+                            print_out = 'WARNING!!! At least one sample-ID listed in the "groups." file (e.g.,'+array_header+')'+'\n is not in the sample "exp." file. See the new file "arrays." with all "exp." header names\nand correct "groups."' 
+                            try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!')
+                            except Exception: print print_out
+                            exportArrayHeaders(expr_group_dir,array_linker_db)
+                            try: root.destroy(); sys.exit()
+                            except Exception: sys.exit()
                     entry = new_index_order, original_index_order, group, group_name
                     expr_group_list.append(entry)
                     new_index_order += 1 ### add this aftwards since these will also be used as index values
@@ -444,8 +455,16 @@ def importArrayGroups(expr_group_dir,array_linker_db):
         print_out = 'No groups or comps files found for'+expr_group_dir+'... exiting program.'
         try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
         except Exception: print print_out; sys.exit()
-        
+    if len(updated_groups)>0:
+        exportUpdatedGroups(expr_group_dir,updated_groups)
     return expr_group_list,expr_group_db
+
+def exportUpdatedGroups(expr_group_dir,updated_groups):
+    eo = export.ExportFile(expr_group_dir)
+    for sample in updated_groups:
+        eo.write(sample+'\t'+str(updated_groups[sample][0])+'\t'+updated_groups[sample][1]+'\n')
+    eo.close()
+    print 'The groups file has been updated with bed file sample names'
 
 def exportArrayHeaders(expr_group_dir,array_linker_db):
     new_file = string.replace(expr_group_dir,'groups.','arrays.')
@@ -1821,7 +1840,11 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
 
     m_cutoff = m_cutoff = math.log(float(GE_fold_cutoffs),2); p_cutoff = float(GE_pvalue_cutoffs); ptype_to_use = GE_ptype
   
-    print "Beginning to Process the",species,array_type,'dataset'
+    if array_type=="3'array":
+        platform_description = "gene-level"
+    else:
+        platform_description = array_type
+    print "Beginning to process the",species,platform_description,'dataset'
   
     process_custom = 'no'  
     if array_type == "custom": ### Keep this code for now, even though not currently used

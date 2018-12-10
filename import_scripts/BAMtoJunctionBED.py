@@ -168,6 +168,27 @@ def retreiveAllKnownSpliceSites(returnExonRetention=False,DesignatedSpecies=None
         gene_coord_db[i] = [gene_coord_db[i][0],gene_coord_db[i][-1]]
     return splicesite_db,chromosomes_found,gene_coord_db
 
+def exportIndexes(input_dir):
+    import unique
+    bam_dirs = unique.read_directory(input_dir)
+    print 'Building BAM index files',
+    for file in bam_dirs:
+        if string.lower(file[-4:]) == '.bam':
+            bam_dir = input_dir+'/'+file
+            bamf = pysam.Samfile(bam_dir, "rb" )
+            ### Is there an indexed .bai for the BAM? Check.
+            try:
+                for entry in bamf.fetch():
+                    codes = map(lambda x: x[0],entry.cigar)
+                    break
+            except Exception:
+                ### Make BAM Indexv lciv9df8scivx 
+                print '.',
+                bam_dir = str(bam_dir)
+                #On Windows, this indexing step will fail if the __init__ pysam file line 51 is not set to - catch_stdout = False
+                pysam.index(bam_dir)
+                bamf = pysam.Samfile(bam_dir, "rb" )        
+
 def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
     global bam_file
     global splicesite_db
@@ -189,7 +210,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
     original_junction_db = copy.deepcopy(junction_db)
     
     bamf = pysam.Samfile(bam_dir, "rb" )
-    ### Is there are indexed .bai for the BAM? Check.
+    ### Is there an indexed .bai for the BAM? Check.
     try:
         for entry in bamf.fetch():
             codes = map(lambda x: x[0],entry.cigar)

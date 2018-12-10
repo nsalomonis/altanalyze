@@ -2261,7 +2261,6 @@ def exportCombinedMarkerFinderResults(folds_file,positive_dir,negative_dir,DEGs_
                 column_method, column_metric, color_gradient, gsp, Normalize=Normalize,
                 contrast=3, display=display)
 
-    
 class ClassificationData:
     def __init__(self,sample,score,assigned_class):
         self.sample = sample; self.score = score; self.assigned_class = assigned_class

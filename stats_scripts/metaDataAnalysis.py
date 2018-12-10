@@ -652,7 +652,8 @@ def outputGeneExpressionSummaries(rootdir,DEGs):
     eo.close()
     
 def outputSplicingSummaries(rootdir,splicingEventTypes):
-    eo = export.ExportFile(rootdir+'/event_summary.txt')
+    events_file = rootdir+'/event_summary.txt'
+    eo = export.ExportFile(events_file)
     header = ['ComparisonName','UniqueJunctionClusters','InclusionEvents','ExclusionEvents']
     header+= ["alt-3'_exclusion","alt-3'_inclusion","alt-5'_exclusion","alt-5'_inclusion"]
     header+= ["alt-C-term_exclusion","alt-C-term_inclusion","altPromoter_exclusion","altPromoter_inclusion"]
@@ -722,6 +723,21 @@ def outputSplicingSummaries(rootdir,splicingEventTypes):
         values = string.join(values,'\t')+'\n'
         eo.write(values)
     eo.close()
+    graphics = []
+    try:
+        from visualization_scripts import clustering
+        parent_dir = export.findParentDir(events_file)
+        parent_dir = export.findParentDir(parent_dir[:-1])
+        OutputFile1 = parent_dir+'/SpliceEvent-Types.png'
+        clustering.stackedbarchart(events_file,display=False,output=OutputFile1)
+        OutputFile2 = parent_dir+'/SignificantEvents.png'
+        index1=2;index2=3; x_axis='Number of Alternative Events'; y_axis = 'Comparisons'; title='MultiPath-PSI Alternative Splicing Events'
+        clustering.barchart(events_file,index1,index2,x_axis,y_axis,title,display=False,color1='Orange',color2='SkyBlue',output=OutputFile2)
+        graphics.append(['SpliceEvent-Types',OutputFile1])
+        graphics.append(['Significant MultiPath-PSI Events',OutputFile2])
+    except Exception:
+        print traceback.format_exc()
+    return graphics
             
 def getAltID(uid):
     altID = string.replace(uid,'hsa-mir-','MIR')
@@ -1476,11 +1492,12 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
                         groups_db,comps_db,CovariateQuery,splicingEventTypes)
 
     if platform == 'PSI':
-        outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+        graphics = outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
     else:
         outputGeneExpressionSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
         #except: pass
-        
+    return graphics
+
 def compareDomainComposition(folder):
     ### Compare domain composition
 
@@ -1826,7 +1843,7 @@ if __name__ == '__main__':
             rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,groups_db,comps_db,CovariateQuery,splicingEventTypes)
 
         if platform == 'PSI':
-            outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+            graphics = outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
         else:
             outputGeneExpressionSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
             #except: pass

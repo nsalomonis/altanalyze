@@ -60,8 +60,12 @@ def filepath(filename):
     return fn
 
 def read_directory(sub_dir):
+    dir_list_clean=[]
     dir_list = unique.read_directory(sub_dir)
-    return dir_list
+    for filepath in dir_list:
+        if 'log.txt' not in filepath and '.log' not in filepath:
+            dir_list_clean.append(filepath)
+    return dir_list_clean
 
 def makeUnique(item):
     db1={}; list1=[]; k=0
@@ -596,6 +600,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                         if len(splicesite_db)==0: ### get strand to pos info
                             splicesite_db = getStrandMappingData(species)   
                     if testImport == 'yes': print condition, algorithm
+
                 if rows>1:
                     try:
                         if ':' in t[0]:
@@ -613,6 +618,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                         print 'is not formated as expected (format='+algorithm+').'
                         print 'search chromosome:',searchChr
                         print t; force_bad_exit
+
                     if proceed:
                         proceed = False
                         if '.tab' in fn or '.TAB' in fn:
@@ -673,7 +679,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     reads = t[junction_position+1]
                                     junction_id = t[junction_position]
                                     exon1_len=0; exon2_len=0
-                                else:
+                                else: 
                                     ### Applies to BED format Junction input
                                     chr, exon1_start, exon2_stop, junction_id, reads, strand, null, null, null, null, lengths, null = t
                                     if 'chr' not in chr: chr = 'chr'+chr
@@ -681,12 +687,20 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                 exon1_start = int(exon1_start); exon2_stop = int(exon2_stop)
                                 biotype = 'junction'; biotypes[biotype]=[]
                                 if strand == '-':
-                                    exon1_stop = exon1_start+exon1_len; exon2_start=exon2_stop-exon2_len+1
+                                    if (exon1_len-exon2_len)==0: ### Kallisto-Splice directly reports these coordinates
+                                        exon1_stop = exon1_start
+                                        exon2_start = exon2_stop
+                                    else:
+                                        exon1_stop = exon1_start+exon1_len; exon2_start=exon2_stop-exon2_len+1
                                     ### Exons have the opposite order
                                     a = exon1_start,exon1_stop; b = exon2_start,exon2_stop
                                     exon1_stop,exon1_start = b; exon2_stop,exon2_start = a
                                 else:
-                                    exon1_stop = exon1_start+exon1_len; exon2_start=exon2_stop-exon2_len+1
+                                    if (exon1_len-exon2_len)==0: ### Kallisto-Splice directly reports these coordinates
+                                        exon1_stop = exon1_start
+                                        exon2_start= exon2_stop
+                                    else:
+                                        exon1_stop = exon1_start+exon1_len; exon2_start=exon2_stop-exon2_len+1
                                 if float(reads)>4 or getReads: proceed = True
                                 if algorithm == 'HMMSplicer':
                                     if '|junc=' in junction_id: reads = string.split(junction_id,'|junc=')[-1]
@@ -759,6 +773,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                 
     end_time = time.time()
     if testImport == 'yes': print 'Read coordinates imported in',int(end_time-begin_time),'seconds'
+
     if getReads:
         #print len(exon_len_db), getBiotype, 'read counts present for',algorithm
         return condition_count_db,exon_len_db,biotypes,algorithms
@@ -1570,7 +1585,7 @@ class AlignExonsAndJunctionsToEnsembl:
                     ### Reformat these dictionaries to combine annotations from multiple reciprocol junctions
                     junction_annotations = combineExonAnnotations(junction_annotations)
                     critical_exon_annotations = combineExonAnnotations(critical_exon_annotations)
-                    
+
                 if 'exon' in biotypes:
                     if testImport == 'yes':
                         print len(unmapped_exon_db),'exon genomic locations imported.'
@@ -4863,13 +4878,62 @@ def FeatureCounts(bed_ref, bam_file):
     print [featurecounts_file,"-a", "-F", "SAF",bed_ref, "-o", output, bam_file]
     retcode = subprocess.call([featurecounts_file,"-a",bed_ref, "-F", "SAF", "-o", output, bam_file])
     
-def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=False,customFASTA=None):
+def filterFASTAFiles(fasta_files):
+    filter_fasta_files=[]
+    filter_dir = export.findParentDir(fasta_files[0])+'/filtered_fasta'
+    try: os.mkdir(filter_dir)
+    except Exception: pass
+    
+    for file in fasta_files:
+        import shutil
+        if 'filtered.fa' in file:
+            filter_fasta_files.append(file)
+        else:
+            filtered_fasta = file[:-3]+'-filtered.fa'
+            filter_fasta_files.append(filtered_fasta)
+            filename = export.findFilename(file)
+            eo=export.ExportFile(filtered_fasta)
+            for line in open(file,'rU').xreadlines():
+                if '>'==line[0]:
+                    skip=False
+                    ### Exclude non-standard chromosomal transcripts
+                    if 'PATCH' in line or '_1_' in line or '_1:' in line or ':HSCHR' in line or 'putative' in line or 'supercontig' in line or 'NOVEL_TEST' in line:
+                        skip=True
+                    else:
+                        eo.write(line)
+                elif skip==False:
+                    eo.write(line)
+            eo.close()
+            shutil.move(file,filter_dir+'/'+filename)
+    return filter_fasta_files
+
+def getCoordinateFile(species):
+    geneCoordFile = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_transcript-annotations.txt'
+    geneCoordFile = unique.filepath(geneCoordFile)
+    status = verifyFile(geneCoordFile)
+    if status == 'not found':
+        try:
+            from build_scripts import EnsemblSQL
+            ensembl_version = string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','')      
+            configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''; force = 'no'
+            EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,ensembl_version,force,buildCommand='exon')     
+        except Exception:
+            print 'Failed to export a transcript-exon coordinate file (similar to a GTF)!!!!\n...Proceeding with standard Kallisto (no-splicing).'
+            geneCoordFile=None
+    return geneCoordFile
+
+def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames=False,customFASTA=None,log_output=True):
+
     #print 'Running Kallisto...please be patient'
     import subprocess
 
+    n_threads = mlp.cpu_count()
+    print 'Number of threads =',n_threads
+    #n_threads = 1
+
     kallisto_dir_objects = os.listdir(unique.filepath('AltDatabase/kallisto'))
     ### Determine version
-    version = '0.42.1'
+    version = '0.43.1'
     for subdir in kallisto_dir_objects:
         if subdir.count('.')>1: version = subdir
     kallisto_dir= 'AltDatabase/kallisto/'+version+'/'
@@ -4879,7 +4943,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     elif 'darwin' in sys.platform:
         kallisto_file = kallisto_dir + 'Mac/bin/kallisto'; plat = 'MacOSX'
     elif 'linux' in sys.platform:
-        kallisto_file = kallisto_dir + '/Linux/bin/kallisto'; plat = 'linux'
+        kallisto_file = kallisto_dir + '/Linux/Hs_Ensembl_transcript-annotations.txtbin/kallisto'; plat = 'linux'
     print 'Using',kallisto_file
     kallisto_file = filepath(kallisto_file)
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
@@ -4916,35 +4980,42 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
     try: os.mkdir(filepath(kallisto_index_root))
     except Exception: pass
     indexFile =  filepath(kallisto_index_root+species)
+    #indexFile = filepath(kallisto_index_root + 'Hs_intron')
 
     indexStatus = os.path.isfile(indexFile)
+
     if indexStatus == False or customFASTA!=None:
-        try: fasta_file = getFASTAFile(species)
-        except Exception: fasta_file = None
+        try: fasta_files = getFASTAFile(species)
+        except Exception: fasta_files = []
         index_file = filepath(kallisto_index_root+species)
-        if fasta_file==None and customFASTA==None:
+        if len(fasta_files)==0 and customFASTA==None:
             ###download Ensembl fasta file to the above directory
             from build_scripts import EnsemblSQL
             ensembl_version = string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','')
             try:
                 EnsemblSQL.getEnsemblTranscriptSequences(ensembl_version,species,restrictTo='cDNA')
-                fasta_file = getFASTAFile(species)
+                fasta_files = getFASTAFile(species)
             except Exception: pass
         elif customFASTA!=None:  ### Custom FASTA file supplied by the user
-            fasta_file = customFASTA
+            fasta_files = [customFASTA]
             indexFile = filepath(kallisto_index_root+species+'-custom')
             try: os.remove(indexFile) ### erase any pre-existing custom index
             except Exception: pass
-
-        if fasta_file!=None:
+        if len(fasta_files)>0:
             print 'Building kallisto index file...'
+            arguments = [kallisto_file, "index","-i", indexFile]
+            fasta_files = filterFASTAFiles(fasta_files)
+
+            for fasta_file in fasta_files:
+                arguments.append(fasta_file)
+
             try:
-                retcode = subprocess.call([kallisto_file, "index","-i", indexFile, fasta_file])
+                retcode = subprocess.call(arguments)
             except Exception:
                 print traceback.format_exc()
                 ### If installed on the local OS
-                retcode = subprocess.call(['kallisto', "index","-i", indexFile, fasta_file])
-    
+                retcode = subprocess.call(arguments)
+
     if customFASTA!=None:
         reimportExistingKallistoOutput = False
     elif len(kallisto_tsv_paths) == len(fastq_paths):
@@ -4980,23 +5051,47 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             countSampleMatrix={}
             sample_total_counts={}
     headers=['UID']
-    
+
+    ### Verify, import, create and/or ignore the transcript exon coordinate file for BAM file creation
+    geneCoordFile = getCoordinateFile(species)
+
     for n in fastq_paths:
         output_path = output_dir+n
         kallisto_folders.append(output_path)
         if reimportExistingKallistoOutput == False:
             begin_time = time.time()
-            print 'Running kallisto on:',n,
-            p=fastq_paths[n]
-            b=[" > "+n+'.sam']
-            #"""
+            if geneCoordFile != None: ### For BAM and BED file generation
+                print 'Running kallisto on:',n,'...',
+                p=fastq_paths[n]
+                b=[" > "+n+'.sam']
+                bedFile = root_dir+ '/' + n + '__junction.bed'
+                kallisto_out = open(root_dir+ '/' + n + '.bam', 'ab')
+                if log_output:
+                    err_out = open(output_dir + '/log.txt', 'a')
+                    err_out.seek(0, 2)  # Subprocess doesn't move the file pointer when appending!
+                else:
+                    err_out = None
+                kallisto_out.seek(0, 2)  # Subprocess doesn't move the file pointer when appending!
+
             if paired == 'paired':
-                try:
+                #geneCoordFile=None - force to run simple Kallisto
+                if geneCoordFile==None:
+                    try: ### Without BAM and BED file generation
+                        retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
+                    except Exception:
+                        print traceback.format_exc()
+                else: ### Attempt to export BAM and BED files with Kallisto quantification
+                    kallisto_command = [kallisto_file, "quant", "-i", indexFile, "-o", output_path,
+                                        "-g", geneCoordFile, "-j", bedFile, "--threads="+str(n_threads), "--sortedbam"] + p
+                    kallisto_process = subprocess.Popen(kallisto_command, stdout=kallisto_out, stderr=err_out)
+                    kallisto_process.communicate()
+                    retcode = kallisto_process.returncode
                     #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
-                    retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
-                except Exception:
+                    #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
+                    """except Exception:
                     print traceback.format_exc()
-                    retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)
+                    kill
+                    retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)"""
             else:
                 if os.name == 'nt':
                     try:
@@ -5024,9 +5119,11 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
             sample_total_counts = importTotalReadCounts(n,output_path+'/run_info.json',sample_total_counts)
         except Exception:
             print traceback.format_exc()
+            sys.exit()
             print n, 'TPM expression import failed'
             if paired == 'paired':
                 print '\n...Make sure the paired-end samples were correctly assigned:'
+                print fastq_paths
                 for i in fastq_paths:
                     print 'Common name:',i,
                     for x in fastq_paths[i]:
@@ -5063,6 +5160,23 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,returnSampleNames=Fal
         print 'AltAnalyze was unable to summarize gene TPMs from transcripts, proceeding with transcripts.'
         export.copyFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt',root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
     exportMatrix(so,['SampleID','Estimated Counts','Total Fragments','Percent Aligned'],countSampleMatrix) ### export gene expression matrix
+    
+    ### Copy results to the Kallisto_Results directory
+    try: os.mkdir(root_dir+'/ExpressionInput/Kallisto_Results')
+    except: pass
+    import shutil
+    try:
+        tf = root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt'
+        shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))
+        tf = root_dir+'/ExpressionInput/isoCounts.'+dataset_name+'.txt'
+        shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))
+        tf = root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt'
+        shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))
+        tf = root_dir+'/ExpressionInput/counts.'+dataset_name+'.txt'
+        shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))
+        tf = root_dir+'/ExpressionInput/summary.'+dataset_name+'.txt'
+        shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))
+    except: pass
     
 def calculateGeneTPMs(species,expMatrix):
     import gene_associations
@@ -5263,12 +5377,13 @@ def checkForMultipleLanes(new_names):
     return updated_names
         
 def getFASTAFile(species):
-    fasta_file=None
     fasta_folder = 'AltDatabase/'+species+'/SequenceData/'
+    fasta_files=[]
     dir_list = read_directory(filepath(fasta_folder))
     for file in dir_list:
-        if '.fa' in file: fasta_file = filepath(fasta_folder+file)
-    return fasta_file
+        if '.fa' in file:
+            fasta_files.append(filepath(fasta_folder)+file)
+    return fasta_files
 
 if __name__ == '__main__':
     samplesDiffering = 3
@@ -5281,6 +5396,10 @@ if __name__ == '__main__':
                     numSamplesClustered=samplesDiffering,excludeCellCycle=excludeCellCycle,graphics=graphic_links,
                     ColumnMethod=column_method, transpose=True, includeMoreCells=True)
     """
+    import UI; import multiprocessing as mlp
+
+    runKallisto('Hs','HSC','/Users/saljh8/Desktop/files to organize/Archived/Desktop/code/AltAnalyze/distribution/Tutorial/FASTQs','/Users/saljh8/Desktop/files to organize/Archived/Desktop/code/AltAnalyze/distribution/Tutorial/FASTQs',mlp);sys.exit()
+
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
     #correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
@@ -5309,8 +5428,6 @@ if __name__ == '__main__':
     #fastRPKMCalculate(filename);sys.exit()
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
-
-    runKallisto('Hs','HSC','/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Hs-Fluidigm-Kallisto','/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Hs-Fluidigm-Kallisto');sys.exit()
     import multiprocessing as mlp
     import UI
     species='Mm'; platform = "3'array"; vendor = 'Ensembl'

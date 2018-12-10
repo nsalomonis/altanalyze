@@ -57,6 +57,7 @@ try:
             matplotlib.rcParams['pdf.fonttype'] = 42
             matplotlib.rcParams['font.family'] = 'sans-serif'
             matplotlib.rcParams['font.sans-serif'] = 'Arial'
+            matplotlib.rcParams['figure.facecolor'] = 'white' ### Added in 2.1.2
         except Exception:
             print traceback.format_exc()
             print 'Matplotlib support not enabled'
@@ -76,6 +77,15 @@ try:
         try:
             from sklearn.decomposition import PCA, FastICA
         except Exception: pass
+        
+        from sklearn.neighbors import quad_tree
+        from sklearn.neighbors import *; from sklearn.manifold.t_sne import *
+        from sklearn.tree import *; from sklearn.tree import _utils
+        from sklearn.manifold.t_sne import _utils
+        from sklearn.manifold import TSNE
+        import numba
+        import llvmlite; from llvmlite import binding; from llvmlite.binding import *
+        from llvmlite.binding import ffi; from llvmlite.binding import dylib
         #pylab.ion() # closes Tk window after show - could be nice to include
 except Exception:
     print traceback.format_exc()
@@ -134,7 +144,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     except Exception: None
     if display == False:
         pylab.figure() ### Add this to avoid a Tkinter bug after running MarkerFinder (not sure why it is needed) - creates a second empty window when display == True
-                
+        
     if row_method == 'hopach' or column_method == 'hopach':
         ### Test R and hopach
         """
@@ -275,8 +285,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     
     #print vmin/scaling_factor
     norm = matplotlib.colors.Normalize(vmin/scaling_factor, vmax/scaling_factor) ### adjust the max and min to scale these colors by 2.5 (1 scales to the highest change)
-    fig = pylab.figure(figsize=(default_window_width,default_window_hight)) ### could use m,n to scale here
+    #fig = pylab.figure(figsize=(default_window_width,default_window_hight)) ### could use m,n to scale here
+    fig = pylab.figure() ### could use m,n to scale here - figsize=(12,10)
+    fig.set_figwidth(12)
+    fig.set_figheight(7)
+    fig.patch.set_facecolor('white')
     pylab.rcParams['font.size'] = 7.5
+    #pylab.rcParams['axes.facecolor'] = 'white' ### Added in 2.1.2
 
     if show_color_bars == False:
         color_bar_w = 0.000001 ### Invisible but not gone (otherwise an error persists)
@@ -1042,6 +1057,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         graphic_link.append(['Hierarchical Clustering - AltExonConfirmed',root_dir+filename])
     elif 'AltExon' in filename:
         graphic_link.append(['Hierarchical Clustering - AltExon',root_dir+filename])
+    elif 'alt_junction' in filename:
+        graphic_link.append(['Hierarchical Clustering - Variable Splice-Events',root_dir+filename])
     else:
         graphic_link.append(['Hierarchical Clustering - Significant Genes',root_dir+filename])
     
@@ -2041,7 +2058,6 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             reimportModelScores=False; print '...import failed'
         
     if reimportModelScores==False:
-        from sklearn.manifold import TSNE
         X=matrix.T
         """
         from tsne import bh_sne
@@ -2053,10 +2069,12 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         #model = TSNE(n_components=2, random_state=0,init='pca',early_exaggeration=4.0,perplexity=20)
         print "Performing",method
         if method=="tSNE" or method=="t-SNE":
+            from sklearn.manifold import TSNE
             model = TSNE(n_components=2)
         if method=="UMAP":
             import umap
             model=umap.UMAP(n_neighbors=50,min_dist=0.75,metric='correlation')
+            print 'UMAP run'
         #model = TSNE(n_components=2,init='pca', random_state=0, verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2,verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2, random_state=0, n_iter=10000, early_exaggeration=10)
@@ -4815,7 +4833,91 @@ def plotHistogram(filename):
     #pylab.hist(matrix, 50, cumulative=-1)
     pylab.show()
 
-def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='SkyBlue',color2='IndianRed'):
+def stackedbarchart(filename,display=False,output=False):
+    header=[]
+    conditions = []
+    data_matrix=[]
+    for line in open(filename,'rU').xreadlines():         
+        cd = cleanUpLine(line)
+        t = string.split(cd,'\t')
+        if len(header)==0:
+            header = t[4:]
+            exc_indexes = [0,2,4,6,8,10,12]
+            inc_indexes = [1,3,5,7,9,11,13]
+            inlc_header = map(lambda i: string.split(header[i],'_')[0],inc_indexes)
+            header = inlc_header            
+        else:
+            condition = t[0]
+            data = t[4:]
+            conditions.append(condition+'-inclusion ')
+            data_matrix.append(map(lambda i: float(data[i]),inc_indexes))
+            conditions.append(condition+'-exclusion ')
+            data_matrix.append(map(lambda i: float(data[i]),exc_indexes))
+            
+    data_matrix = map(numpy.array, zip(*data_matrix))
+    
+    #https://www.w3resource.com/graphics/matplotlib/barchart/matplotlib-barchart-exercise-16.php
+    # multi-dimensional data_matrix 
+    y_pos = np.arange(len(conditions))
+    
+    fig, ax = pylab.subplots()
+    #fig = pylab.figure(figsize=(10,8))
+    #ax = fig.add_subplot(111)
+    #pos1 = ax.get_position() # get the original position 
+    #pos2 = [pos1.x0 + 0.2, pos1.y0 - 0.2,  pos1.width / 1.2, pos1.height / 1.2 ] 
+    #ax.set_position(pos2) # set a new position
+    
+    colors =['royalblue','salmon','grey','gold','cornflowerblue','mediumseagreen','navy']
+    patch_handles = []
+    # left alignment of data_matrix starts at zero
+    left = np.zeros(len(conditions))
+    index=0
+    for i, d in enumerate(data_matrix):
+        patch_handles.append(ax.barh(y_pos, d, 0.3,
+            color=colors[index], align='center', 
+            left=left,label = header[index]))
+        left += d
+        index+=1
+    
+    # search all of the bar segments and annotate
+    """
+    for j in range(len(patch_handles)):
+        for i, patch in enumerate(patch_handles[j].get_children()):
+            bl = patch.get_xy()
+            x = 0.5*patch.get_width() + bl[0]
+            y = 0.5*patch.get_height() + bl[1]
+            #ax.text(x,y, "%d%%" % (percentages[i,j]), ha='center')
+    """
+    
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(conditions)
+    ax.set_xlabel('Events')
+    ax.legend(loc="best", bbox_to_anchor=(1.0, 1.0))
+
+    box = ax.get_position()
+
+    # Shink current axis by 20%
+    ax.set_position([box.x0+0.2, box.y0, box.width * 0.6, box.height])
+    try: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize = 10) ### move the legend over to the right of the plot
+    except Exception: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.set_title('MultiPath-PSI Splicing Event Types')
+    
+    #pylab.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+    if output==False:
+        pylab.savefig(filename[:-4]+'.pdf')
+        pylab.savefig(filename[:-4]+'.png')
+    else:
+        pylab.savefig(output[:-4]+'.pdf')
+        pylab.savefig(output[:-4]+'.png')
+    
+    if display:
+        print 'Exporting:',filename
+        try: pylab.show()
+        except Exception: None ### when run in headless mode    
+    
+    
+def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='SkyBlue',color2='IndianRed',output=False):
+
     header=[]
     reference_data=[]
     query_data=[]
@@ -4831,7 +4933,7 @@ def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='Sk
             reference_data.append(int(t[index1]))
             query_data.append(int(t[index2]))
             name = t[0]
-            if '_vs_' in name:
+            if '_vs_' in name and 'event_summary' not in filename:
                 name = string.split(name,'_vs_')[0]
                 if '_' in name:
                     name = string.split(name,'_')[:-1]
@@ -4855,12 +4957,18 @@ def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='Sk
 
     ax.set_xlabel(x_axis)
     ax.set_ylabel(y_axis)
-    ax.set_yticks(ind)
+    ax.set_yticks(ind+0.175)
     ax.set_yticklabels(groups)
     ax.set_title(title)
     ax.legend()
-    pylab.savefig(filename[:-4]+'.pdf')
-    
+
+    if output==False:
+        pylab.savefig(filename[:-4]+'.pdf')
+        pylab.savefig(filename[:-4]+'.png')
+    else:
+        pylab.savefig(output[:-4]+'.pdf')
+        pylab.savefig(output[:-4]+'.png')
+        
     if display:
         print 'Exporting:',filename
         try: pylab.show()
@@ -6830,9 +6938,13 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
     except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
     
 if __name__ == '__main__':
-    filename='/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/cellHarmony-evaluation/Grimes/cellHarmony/gene_summary.txt'
-    index1=2;index2=3; x_axis='Number of cells'; y_axis = 'Reference clusters'; title='Assigned Cell Frequencies'
-    barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='r',color2='b');sys.exit()
+    filename='/Users/saljh8/Desktop/files-to-organize/Archived/Desktop/code/AltAnalyze/distribution/Tutorial/FASTQs/output/AltResults/AlternativeOutput/Events-dPSI_0.1_rawp/event_summary.txt'
+    index1=2;index2=3; x_axis='Number of Alternative Events'; y_axis = 'Comparisons'; title='MultiPath-PSI Alternative Splicing Events'
+    OutputFile = export.findParentDir(filename)
+    OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
+    
+    stackedbarchart(filename,display=True,output=OutputFile);sys.exit()
+    barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='Orange',color2='SkyBlue');sys.exit()
     diff=0.7
     print 'diff:',diff
     file1='/data/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5-CF001WBC-Day0/outs/filtered_gene_bc_matrices/CellHarmonyReference/AML-D0-WBC-reference.txt'
