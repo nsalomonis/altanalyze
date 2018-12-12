@@ -8,8 +8,8 @@ Config/R*
 input*
 output*
 build/*
+dist/*
 AltAnalyze.app*
-dist*
 .DS_Store
 .DS_Store?
 ArchiveDBs*

@@ -8,7 +8,7 @@ Config/R*
 input*
 output*
 build/*
-dist*
+dist/*
 .DS_Store
 .DS_Store?
 ArchiveDBs*
