@@ -1,16 +1,1 @@
-array_type	array_name	manufacturer	constitutive_source	compatible_species
-3'array	Codelink expression array	Codelink	Codelink	Hs|Mm|Rn
-junction	Junction Glue array	Affymetrix	Ensembl	Hs
-AltMouse	Junction AltMouse array	Affymetrix	Ensembl	Mm
-RNASeq	10X Genomics aligned	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm|Ma|Nc
-junction	Junction JAY array	Affymetrix	Ensembl	Mm|Hs
-exon	Exon 1.0 ST array	Affymetrix	Ensembl	Mm|Hs|Rn
-RNASeq	Raw sequence or processed	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm|Ma|Nc
-3'array	Affymetrix expression array	Affymetrix	Affymetrix	Mm|Hs|Rn|Dm|Bt|Dr|Sc|Ce|Gg|Zm|At|Xl|Ma|Cf
-junction	Junction MTA 1.0 array	Affymetrix	Ensembl	Mm
-gene	Gene 1.0 ST array	Affymetrix	Ensembl	Mm|Hs|Rn
-3'array	Illumina expression array	Illumina	Illumina	Hs|Mm
-3'array	Ensembl annotated data	Other ID	Ensembl	Hs|Mm|Rn
-junction	Junction HTA 2.0 array	Affymetrix	Ensembl	Hs
-3'array	Misc. expression array	Misc	Misc	
-3'array	Agilent expression array	Agilent	Agilent	Hs|Mm|Dr|Rn
+array_type	array_name	manufacturer	constitutive_source	compatible_species3'array	Codelink expression array	Codelink	Codelink	Hs|Mm|Rnjunction	Junction Glue array	Affymetrix	Ensembl	HsAltMouse	Junction AltMouse array	Affymetrix	Ensembl	MmRNASeq	10X Genomics aligned	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm|Ma|Ncjunction	Junction JAY array	Affymetrix	Ensembl	Mm|Hsexon	Exon 1.0 ST array	Affymetrix	Ensembl	Mm|Hs|RnRNASeq	Raw sequence or processed	RNASeq	Ensembl	Mm|Hs|Rn|Dm|Sc|Ce|Gg|Dr|Zm|Ma|Nc|Ee|Cf|Go|Mi|Am|Og|Md|Ml|Op|Dn|Pc|Pp|La|Ec|Ts|Bt|Vp|Pv|Me|Tb|Pt|Fc|Tt|Ch|Oc|Oa|Cj|Sa|Et|Pb|Am|Cp|St|Pf|Aa|Ce|Cs|Ag|Ci|Pa|Xl|Ta|Vv|Os|Mg|Tg|Tn|Ol3'array	Affymetrix expression array	Affymetrix	Affymetrix	Mm|Hs|Rn|Dm|Bt|Dr|Sc|Ce|Gg|Zm|At|Xl|Ma|Cfjunction	Junction MTA 1.0 array	Affymetrix	Ensembl	Mmgene	Gene 1.0 ST array	Affymetrix	Ensembl	Mm|Hs|Rn3'array	Illumina expression array	Illumina	Illumina	Hs|Mm3'array	Ensembl annotated data	Other ID	Ensembl	Hs|Mm|Rnjunction	Junction HTA 2.0 array	Affymetrix	Ensembl	Hs3'array	Misc. expression array	Misc	Misc	3'array	Agilent expression array	Agilent	Agilent	Hs|Mm|Dr|Rn

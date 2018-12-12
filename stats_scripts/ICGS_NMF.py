@@ -269,7 +269,9 @@ def UMAPsampling(inputfile):
     sampmark=[]    
     nn=X.shape[0]
     nm=X.shape[1]
-    import umap
+    try: import umap
+    except:
+        from visualization_scripts.umap_learn import umap
     print "running UMAP"  
     model=umap.UMAP()
 
@@ -1028,7 +1030,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
     NMFinput,Rank=NMF_Analysis.FilterGuideGeneFile(Guidefile,Guidefile_block,processedInputExpFile,iteration,platform,uniqueIDs,symbolIDs)
     #NMFinput="/Volumes/Pass/ICGS2_testrun/ExpressionInput/ICGS-interim/NMFInput-Round1.txt"
     try: k = int(gsp.K())
-    except: k = None; print traceback.format_exc()
+    except: k = None; #print traceback.format_exc()
     
     if k==None:
         Rank=estimateK(NMFinput)
@@ -1177,7 +1179,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 finalOutputDir=root_dir+"/ICGS-NMF/"
                 #clustering.tSNE(np.array(matrix),column_header,dataset_name,group_db,display=False,showLabels=False,species=species,reimportModelScores=False)
                 try:
-                    clustering.umap(np.array(matrix),column_header,dataset_name,group_db,display=False,
+                    clustering.runUMAP(np.array(matrix),column_header,dataset_name,group_db,display=False,
                         showLabels=False,species=species,reimportModelScores=False,rootDir=root_dir,finalOutputDir=finalOutputDir)
                 except:
                     print traceback.format_exc()

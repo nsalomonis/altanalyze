@@ -2127,7 +2127,7 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     try: peformDiffExpAnalysis=fl.PeformDiffExpAnalysis()
     except: peformDiffExpAnalysis = True
     
-    try: use_adjusted_pval=fl.UseAdjPval()
+    try: use_adjusted_pval=fl.UseAdjPvalue()
     except: use_adjusted_pval = False
     
     try: pvalThreshold=float(fl.PvalThreshold())
@@ -2168,7 +2168,13 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
         UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
             display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
             separateGenePlots=False, returnImageLoc=True)
-    except: pass
+    except:
+        try:
+            print 'UMAP error encountered (dependency not met), trying t-SNE'
+            UI.performPCA(output_file, 'no', 't-SNE', False, None, plotType='2D',
+                display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+                separateGenePlots=False, returnImageLoc=True)
+        except: pass
     
     try: fl.setSpecies(species); fl.setVendor("3'array")
     except:
@@ -2529,7 +2535,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     
     """Export a combined groups and comps file to perform apples-to-apples comparisons"""
     folds_file=''
-    ICGS_DEGs_combined=[]
+    all_DEGs=[]
     if len(final_clusters)>0 and peformDiffExpAnalysis:
         try:
             final_clusters.sort()
@@ -2614,8 +2620,11 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                     freq_object.write(g+'\t'+str(g2_len)+'\t'+str(0)+'\t'+str(pvalue)+'\t'+str(g2_frq)[:4]+'\t'+str(0)+'\n')
             export_object.close()
             freq_object.close()
-            index1=1;index2=2; x_axis='Number of cells'; y_axis = 'Reference clusters'; title='Assigned Cell Frequencies'
-            clustering.barchart(root_dir+'/cell-frequency-stats.txt',index1,index2,x_axis,y_axis,title)
+            try:
+                index1=1;index2=2; x_axis='Number of cells'; y_axis = 'Reference clusters'; title='Assigned Cell Frequencies'
+                clustering.barchart(root_dir+'/cell-frequency-stats.txt',index1,index2,x_axis,y_axis,title)
+            except Exception:
+                pass
     
             from stats_scripts import metaDataAnalysis
             """
@@ -2659,13 +2668,13 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 if gene not in ICGS_DEGs_combined:
                     ICGS_DEGs_combined.append(gene) ### Add these genes at the end
             ICGS_DEGs_combined.reverse()
-            all_DEGs = string.join(ICGS_DEGs_combined,' ')
+            all_DEGs2 = string.join(ICGS_DEGs_combined,' ')
             import UI
             vendor = 'Ensembl'
             gsp = UI.GeneSelectionParameters(species,platform,vendor)
             gsp.setGeneSet('None Selected')
             gsp.setPathwaySelect('')
-            gsp.setGeneSelection(all_DEGs)
+            gsp.setGeneSelection(all_DEGs2)
             gsp.setJustShowTheseIDs(display_genes)
             gsp.setNormalize('median')
             transpose = gsp
@@ -2706,7 +2715,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
         export_object.close()
     except:
         pass
-    return output_file, query_output_file, folds_file, ICGS_DEGs_combined
+    return output_file, query_output_file, folds_file, all_DEGs
 
 def aggregateRegulatedGenes(folder):
     import UI
@@ -2737,7 +2746,8 @@ def aggregateRegulatedGenes(folder):
         comp_geneIDs.reverse()
         for (fold,uid) in comp_geneIDs:
             if uid not in geneIDs: ### Remove this to inlcude redundant genes
-                geneIDs.append(uid)
+                if len(uid)>0:
+                    geneIDs.append(uid)
     return geneIDs
                     
 def convertFromEnsemblToSymbol(exp_db,gene_to_symbol):

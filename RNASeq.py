@@ -4914,10 +4914,11 @@ def getCoordinateFile(species):
     if status == 'not found':
         try:
             from build_scripts import EnsemblSQL
-            ensembl_version = string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','')      
+            ensembl_version = string.replace(unique.getCurrentGeneDatabaseVersion(),'EnsMart','')
             configType = 'Advanced'; analysisType = 'AltAnalyzeDBs'; externalDBName = ''; force = 'no'
             EnsemblSQL.buildEnsemblRelationalTablesFromSQL(species,configType,analysisType,externalDBName,ensembl_version,force,buildCommand='exon')     
         except Exception:
+            #print traceback.format_exc()
             print 'Failed to export a transcript-exon coordinate file (similar to a GTF)!!!!\n...Proceeding with standard Kallisto (no-splicing).'
             geneCoordFile=None
     return geneCoordFile
@@ -4943,7 +4944,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
     elif 'darwin' in sys.platform:
         kallisto_file = kallisto_dir + 'Mac/bin/kallisto'; plat = 'MacOSX'
     elif 'linux' in sys.platform:
-        kallisto_file = kallisto_dir + '/Linux/Hs_Ensembl_transcript-annotations.txtbin/kallisto'; plat = 'linux'
+        kallisto_file = kallisto_dir + '/Linux/bin/kallisto'; plat = 'linux'
     print 'Using',kallisto_file
     kallisto_file = filepath(kallisto_file)
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
@@ -4955,6 +4956,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
     try: os.mkdir(root_dir+'/ExpressionInput/kallisto')
     except Exception: pass
     fastq_folder += '/'
+
     dir_list = read_directory(fastq_folder)
     fastq_paths = []
     for file in dir_list:
@@ -5013,8 +5015,6 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
                 retcode = subprocess.call(arguments)
             except Exception:
                 print traceback.format_exc()
-                ### If installed on the local OS
-                retcode = subprocess.call(arguments)
 
     if customFASTA!=None:
         reimportExistingKallistoOutput = False
@@ -5054,7 +5054,6 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
 
     ### Verify, import, create and/or ignore the transcript exon coordinate file for BAM file creation
     geneCoordFile = getCoordinateFile(species)
-
     for n in fastq_paths:
         output_path = output_dir+n
         kallisto_folders.append(output_path)
@@ -5143,6 +5142,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
         countSampleMatrix[sample] = [str(estCounts),totalCounts,aligned]
     
     dataset_name = string.replace(dataset_name,'exp.','')
+    dataset_name = string.replace(dataset_name,'.txt','')
     to = export.ExportFile(root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt')
     ico = export.ExportFile(root_dir+'/ExpressionInput/isoCounts.'+dataset_name+'.txt')
     go = export.ExportFile(root_dir+'/ExpressionInput/exp.'+dataset_name+'.txt')
@@ -5176,7 +5176,9 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
         shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))
         tf = root_dir+'/ExpressionInput/summary.'+dataset_name+'.txt'
         shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))
-    except: pass
+    except:
+        print traceback.format_exc()
+        pass
     
 def calculateGeneTPMs(species,expMatrix):
     import gene_associations
@@ -5398,7 +5400,7 @@ if __name__ == '__main__':
     """
     import UI; import multiprocessing as mlp
 
-    runKallisto('Hs','HSC','/Users/saljh8/Desktop/files to organize/Archived/Desktop/code/AltAnalyze/distribution/Tutorial/FASTQs','/Users/saljh8/Desktop/files to organize/Archived/Desktop/code/AltAnalyze/distribution/Tutorial/FASTQs',mlp);sys.exit()
+    runKallisto('Hs','HSC','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/FASTQ/output','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/FASTQ/input',mlp);sys.exit()
 
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'

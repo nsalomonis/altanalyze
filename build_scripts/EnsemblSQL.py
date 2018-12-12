@@ -162,7 +162,7 @@ def getEnsemblSQLDir(ensembl_version):
     ensembl_sql_dir,ensembl_sql_description_dir = child_dirs[species_full]
     return ensembl_sql_dir, ensembl_sql_description_dir
 
-def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,ensembl_version,force):
+def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,externalDBName,ensembl_version,force,buildCommand=None):
     import UI; import update; global external_xref_key_db; global species; species = Species
     global system_synonym_db; system_synonym_db={} ### Currently only used by GO-Elite
     global rewrite_existing; rewrite_existing = 'yes'; global all_external_ids; all_external_ids={}; global added_systems; added_systems={}
@@ -198,7 +198,8 @@ def buildEnsemblRelationalTablesFromSQL(Species,configType,analysisType,external
     if analysisType == 'AltAnalyzeDBs':
         ###Export data for Ensembl-External gene system
         buildTranscriptStructureTable()
-        
+        if buildCommand == 'exon':
+            return None
         ###Export transcript biotype annotations (e.g., NMD)
         exportTranscriptBioType()
         
@@ -241,6 +242,7 @@ def getEnsemblTranscriptSequences(ensembl_version,species,restrictTo=None):
             ensembl_cdnaseq_dir = getCurrentEnsemblSequences(ensembl_version,dirtype,ens_species)
             
         output_dir = 'AltDatabase/'+species + '/SequenceData/'
+        #print [ensembl_cdnaseq_dir]
         gz_filepath, status = update.download(ensembl_cdnaseq_dir,output_dir,'')
         if status == 'not-removed':
             try: os.remove(gz_filepath) ### Not sure why this works now and not before

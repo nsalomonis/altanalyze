@@ -1494,6 +1494,7 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
     if platform == 'PSI':
         graphics = outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
     else:
+        graphics=[]
         outputGeneExpressionSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
         #except: pass
     return graphics

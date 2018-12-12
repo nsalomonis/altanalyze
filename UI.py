@@ -53,8 +53,10 @@ try:
         from PIL import Image as PIL_Image
         try: import ImageTk
         except Exception: from PIL import ImageTk
+        import PIL._imaging
+        import PIL._imagingft
     except Exception:
-        #print traceback.format_exc()
+        print traceback.format_exc()
         #print 'Python Imaging Library not installed... using default PNG viewer'
         None
 
@@ -1682,6 +1684,13 @@ class GUI:
         elif 'darwin' in sys.platform: os.system('open "'+png_file_dir+'"')
         elif 'linux' in sys.platform: os.system('xdg-open "'+png_file_dir+'"')   
 
+    def centerPage(self):
+            # Example of how to use the yview() method of Pmw.ScrolledFrame.
+            top, bottom = self.sf.yview()
+            size = bottom - top
+            middle = 0.5 - size / 2
+            self.sf.yview('moveto', middle)
+
     def __init__(self, parent, option_db, option_list, defaults):
         if option_db == 'ViewPNG':
             output_filename = defaults
@@ -1858,6 +1867,8 @@ class GUI:
                 else: self.default_option = defaults[i]
                 def buttoncallback(tag,callback=self.callback,option=option):
                     callback(tag,option)
+                    #self.sf.update_idletasks()
+                    #self.centerPage()
                 orientation = 'vertical'
                 #if 'pathway_permutations' in option_list or 'new_run' in option_list: orientation = 'vertical'
                 #elif 'run_from_scratch' in option_list: orientation = 'vertical'
@@ -4399,9 +4410,9 @@ class ExpressionFileLocationData:
     def CorrelationDirection(self): return self.correlationDirection
     def setPearsonThreshold(self, pearsonThreshold): self.pearsonThreshold = pearsonThreshold
     def PearsonThreshold(self): return self.pearsonThreshold
-    def setUseAdjPval(self, UseAdjPval): self.UseAdjPval = UseAdjPval
-    def UseAdjPval(self):
-        if string.lower(self.UseAdjPval)=='false' or string.lower(self.UseAdjPval)=='no' or self.UseAdjPval==False:
+    def setUseAdjPvalue(self, useAdjPval): self.useAdjPval = useAdjPval
+    def UseAdjPvalue(self):
+        if string.lower(self.useAdjPval)=='false' or string.lower(self.useAdjPval)=='no' or self.useAdjPval==False:
             return False
         else:
             return True
@@ -4432,7 +4443,7 @@ class ExpressionFileLocationData:
         return dataset_dir
     def Architecture(self): return self.architecture
     def BioTypes(self): return self.biotypes
-    def Report(self): return self.ExpFile()+'|'+str(len(self.StatsFile()))+'|'+str(len(self.GroupsFile()))+'|'+str(len(self.CompsFile()))
+    def Report(self): return 'fl printout'+self.ExpFile()+'|'+str(len(self.StatsFile()))+'|'+str(len(self.GroupsFile()))+'|'+str(len(self.CompsFile()))
     def __repr__(self): return self.Report()
 
 class AdditionalAlgorithms:
@@ -5603,12 +5614,12 @@ def getUserParameters(run_parameter,Multi=None):
                     markerFinder_file = gu.Results()['markerFinder_file']
                     geneModel_file = gu.Results()['geneModel_file']
                     modelDiscovery = gu.Results()['modelDiscovery']
-                    PearsonThreshold = gu.Results()['PearsonThreshold']
+                    pearsonThreshold = gu.Results()['PearsonThreshold']
                     returnCentroids = gu.Results()['returnCentroids']
                     performDiffExp = gu.Results()['performDiffExp']
-                    UseAdjPval = gu.Results()['UseAdjPval']
+                    useAdjPval = gu.Results()['UseAdjPval']
                     pvalThreshold = gu.Results()['pvalThreshold']
-                    FoldCutoff = gu.Results()['FoldCutoff']
+                    foldCutoff = gu.Results()['FoldCutoff']
                     if '.png' in markerFinder_file or '.pdf' in markerFinder_file:
                         markerFinder_file=markerFinder_file[:-4]+'.txt'
                     if len(geneModel_file) == 0: geneModel_file = None
@@ -5619,12 +5630,24 @@ def getUserParameters(run_parameter,Multi=None):
                         fl.setCompendiumType(compendiumType)
                         fl.setCompendiumPlatform(compendiumPlatform)
                         fl.setClassificationAnalysis(classificationAnalysis)
-                        fl.setPearsonThreshold(float(PearsonThreshold))
+                        fl.setPearsonThreshold(float(pearsonThreshold))
                         fl.setReturnCentroids(returnCentroids)
                         fl.setPeformDiffExpAnalysis(performDiffExp)
-                        fl.setUseAdjPval(UseAdjPval)
+                        fl.setUseAdjPvalue(useAdjPval)
                         fl.setPvalThreshold(pvalThreshold)
-                        fl.setFoldCutoff(FoldCutoff)
+                        fl.setFoldCutoff(foldCutoff)
+                        """
+                        print fl.PeformDiffExpAnalysis()
+                        print fl.CompendiumType()
+                        print fl.CompendiumPlatform()
+                        print fl.ClassificationAnalysis()
+                        print fl.PearsonThreshold()
+                        print fl.ReturnCentroids()
+                        print fl.PeformDiffExpAnalysis()
+                        print fl.PvalThreshold()
+                        print fl.FoldCutoff()
+                        print fl.UseAdjPvalue()
+                        print fl.PearsonThreshold()"""
                         values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file, modelDiscovery
                         StatusWindow(values,analysis) ### display an window with download status
                         ### Typically have a Tkinter related error

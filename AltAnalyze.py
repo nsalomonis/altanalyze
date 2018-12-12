@@ -54,7 +54,10 @@ try:
     from PIL import Image as PIL_Image
     try: import ImageTk
     except Exception: from PIL import ImageTk
+    import PIL._imaging
+    import PIL._imagingft
 except Exception:
+    print traceback.format_exc()
     pass #print 'Python Imaging Library not installed... using default PNG viewer'
     
 use_Tkinter = 'no'
@@ -8075,7 +8078,7 @@ def commandLineRun():
                     fl.setPearsonThreshold(PearsonThreshold)
                     fl.setReturnCentroids(returnCentroids)
                     fl.setPeformDiffExpAnalysis(performDiffExp)
-                    fl.setUseAdjPval(adjp)
+                    fl.setUseAdjPvalue(adjp)
                     fl.setPvalThreshold(pval)
                     fl.setFoldCutoff(FoldDiff)
                 else:

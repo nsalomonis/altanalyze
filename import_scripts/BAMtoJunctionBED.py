@@ -41,6 +41,11 @@ except Exception:
     try:
         if os.name != 'posix': print traceback.format_exc()
     except Exception: pass
+try:
+    from pysam import libctabixproxies
+except:
+    print traceback.format_exc()
+    pass
 
 def getSpliceSites(cigarList,X):
     cummulative=0

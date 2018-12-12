@@ -71,6 +71,8 @@ try:
         except Exception:
             print 'Numpy import error...'
             print traceback.format_exc()
+        try: import umap
+        except: pass
         try:
             import igraph.vendor.texttable
         except ImportError: pass
@@ -83,9 +85,12 @@ try:
         from sklearn.tree import *; from sklearn.tree import _utils
         from sklearn.manifold.t_sne import _utils
         from sklearn.manifold import TSNE
-        import numba
-        import llvmlite; from llvmlite import binding; from llvmlite.binding import *
-        from llvmlite.binding import ffi; from llvmlite.binding import dylib
+        try:
+            import numba
+            import llvmlite; from llvmlite import binding; from llvmlite.binding import *
+            from llvmlite.binding import ffi; from llvmlite.binding import dylib
+        except:
+            pass
         #pylab.ion() # closes Tk window after show - could be nice to include
 except Exception:
     print traceback.format_exc()
@@ -2000,7 +2005,7 @@ def importtSNEScores(inputdir):
         scores.append(t)
     return scores
 
-def umap(matrix, column_header,dataset_name,group_db,display=False,showLabels=False,
+def runUMAP(matrix, column_header,dataset_name,group_db,display=False,showLabels=False,
          row_header=None,colorByGene=None,species=None,reimportModelScores=True,method="UMAP",rootDir='',finalOutputDir=''):
     global root_dir
     global graphic_link
@@ -2072,7 +2077,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             from sklearn.manifold import TSNE
             model = TSNE(n_components=2)
         if method=="UMAP":
-            import umap
+            try:
+                import umap
+            except: 
+                from visualization_scripts.umap_learn import umap ### Bypasses issues with Py2app importing umap (and secondarily numba/llvmlite)
             model=umap.UMAP(n_neighbors=50,min_dist=0.75,metric='correlation')
             print 'UMAP run'
         #model = TSNE(n_components=2,init='pca', random_state=0, verbose=1, perplexity=40, n_iter=300)

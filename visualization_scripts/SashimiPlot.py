@@ -485,7 +485,14 @@ def remoteSashimiPlot(Species,fl,bamdir,eventsToVisualizeFilename,events=None,sh
         for file in files:
             if 'counts.' in file and 'steady-state.txt' not in file:
                 countinp = search_dir+'/'+file
-    
+
+    ### Export BAM file indexes
+    from import_scripts import BAMtoJunctionBED
+    try: BAMtoJunctionBED.exportIndexes(root_dir)
+    except:
+        print 'BAM file indexing failed...'
+        print traceback.format_exc()
+        
     PSIFilename = root_dir+'/AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI.txt'
     
     import ExpressionBuilder

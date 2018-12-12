@@ -675,9 +675,9 @@ if __name__ == '__main__':
     #filename = 'http://altanalyze.org/archiveDBs/LibraryFiles/Mouse430_2.zip'
     #filename = 'AltDatabase/affymetrix/LibraryFiles/Mouse430_2.zip'
     filename = 'AltDatabase/Mm_RNASeq.zip'; dir = 'AltDatabase/updated/EnsMart72'
-    downloadCurrentVersionUI(filename,dir,'','')
+    #downloadCurrentVersionUI(filename,dir,'','')
     import update
-    #dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','')
+    dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh37.72.cdna.all.fa.gz','AltDatabase/Hs/SequenceData/','');sys.exit()
     #dp = update.download_protocol('ftp://ftp.ensembl.org/pub/release-72/mysql/macaca_mulatta_core_72_10/gene.txt.gz','AltDatabase/ensembl/Ma/EnsemblSQL/','');sys.exit()
 
     #kill

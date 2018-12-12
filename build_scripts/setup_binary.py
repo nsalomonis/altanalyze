@@ -6,7 +6,7 @@ sys.setrecursionlimit(5000)
 
 _script = 'AltAnalyze.py'
 _appName = "AltAnalyze"
-_appVersion = '2.0.1.1'
+_appVersion = '2.1.2'
 _appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to take RNASeq or "
 _appDescription +="relatively raw microarray data (CEL files or normalized), identify predicted alternative splicing or alternative "
 _appDescription +="promoter changes and view how these changes may affect protein sequence, domain composition, and microRNA targeting."
@@ -33,6 +33,8 @@ check the py2app print out to see where this file is in the future
 sudo mkdir /System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/lib-dynload/igraph/
 cp /Library/Python/2.6/site-packages/igraph/core.so /System/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/lib-dynload/igraph/
 
+May require:
+python build_scripts/setup_binary.py py2app --frameworks /Library/Python/2.7/site-packages/llvmlite/binding/libllvmlite.dylib --packages llvmlite,numba
 """
 
 if sys.platform.startswith("darwin"):
@@ -42,7 +44,12 @@ if sys.platform.startswith("darwin"):
         import py2app
         import lxml
         import sklearn
+	import PIL._imaging
+	import PIL._imagingft
+	#import macholib_patch
         includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath"] #"xml.sax.drivers2.drv_pyexpat"
+	frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/PIL']
+	frameworks += ['/Library/Python/2.7/site-packages/llvmlite/binding/libllvmlite.dylib']
         """
         resources = ['/System/Library/Frameworks/Python.framework/Versions/2.7']
         frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7/pyconfig.h']
