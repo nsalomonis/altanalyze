@@ -5095,6 +5095,12 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
                     kallisto_process = subprocess.Popen(kallisto_command, stdout=kallisto_out, stderr=err_out)
                     kallisto_process.communicate()
                     retcode = kallisto_process.returncode
+                    if os.name == 'nt':
+                        try:
+                            sam_process = subprocess.Popen('AltDatabase\samtools\samtools.exe index ' + root_dir+ '/' + n + '.bam')
+                            sam_process.communicate()
+                            retcode_sam = sam_process.returncode
+                        except: pass
                     #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--pseudobam"]+p+b)
                     #retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
                     """except Exception:

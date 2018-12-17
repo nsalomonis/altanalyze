@@ -252,7 +252,7 @@ def NMFAnalysis(expressionInputFile,NMFinputDir,Rank,platform,iteration=0,strate
                     export_res2.write("\t"+str(1))
                     new_val.append(1)
                     export_res4.write("\t"+str(j+1)+"\t"+'V'+str(j))
-                    #flag=False
+                    flag=False
                 else:
                     export_res5.write("\t"+str(0))
                     export_res2.write("\t"+str(0))

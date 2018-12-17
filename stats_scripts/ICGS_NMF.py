@@ -1018,6 +1018,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
         graphic_links3,n,rho_cutoff=callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp)
     Guidefile=graphic_links3[-1][-1]
     Guidefile=Guidefile[:-4]+'.txt'
+
     #Guidefile="/Volumes/Pass/ICGS2_testrun/ExpressionInput/amplify/DataPlots/Clustering-exp.input-Guide3 AREG GZMA BTG1 CCL5 TMSB4X ITGA2B UBE2C IRF-hierarchical_euclidean_correlation.txt"
     #rho_cutoff=0.2
     try:
@@ -1050,6 +1051,8 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
             
             ### This function prepares files for differential expression analsyis (MetaDataAnalysis), MarkerFinder
             filteredInputExpFile = string.replace(processedInputExpFile,'exp.','filteredExp.')
+            if '-OutliersRemoved' in Guidefile:
+                filteredInputExpFile = string.replace(filteredInputExpFile,'.txt','-OutliersRemoved.txt')
             NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
             
             if platform == 'PSI':
