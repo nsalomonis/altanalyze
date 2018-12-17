@@ -53,6 +53,8 @@ try:
             import matplotlib.ticker as tic
             from matplotlib.patches import Circle
             from mpl_toolkits.mplot3d import Axes3D
+            try: from matplotlib.cbook import _string_to_bool
+            except: pass
             matplotlib.rcParams['axes.linewidth'] = 0.5
             matplotlib.rcParams['pdf.fonttype'] = 42
             matplotlib.rcParams['font.family'] = 'sans-serif'
@@ -72,6 +74,9 @@ try:
             print 'Numpy import error...'
             print traceback.format_exc()
         try: import umap
+        except: pass
+        try:
+            from cairo import ImageSurface
         except: pass
         try:
             import igraph.vendor.texttable
@@ -2036,6 +2041,7 @@ def runUMAP(matrix, column_header,dataset_name,group_db,display=False,showLabels
 
 def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,
          row_header=None,colorByGene=None,species=None,reimportModelScores=True,method="tSNE"):
+
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
     try:
@@ -2322,6 +2328,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     except Exception: None ### Rare error
     #print 'Exporting:',filename
     filename = filename[:-3]+'png'
+
     try: pylab.savefig(root_dir + filename) #dpi=200, transparent=True
     except Exception: None ### Rare error
     graphic_link.append(['Principal Component Analysis',root_dir+filename])
@@ -4221,6 +4228,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     root_dir = string.replace(root_dir,'/amplify','')
     root_dir = string.replace(root_dir,'ExpressionOutput/Clustering','DataPlots')
     root_dir = string.replace(root_dir,'ExpressionInput','DataPlots')
+    root_dir = string.replace(root_dir,'ICGS-NMF','DataPlots')
     if 'DataPlots' not in root_dir:
         root_dir += '/DataPlots/'
     try: os.mkdir(root_dir) ### May need to create this directory
@@ -4228,11 +4236,14 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         
     ### Transpose matrix and build PCA
     geneFilter=None
-    if algorithm == 't-SNE' and reimportModelScores:
+    if (algorithm == 't-SNE' or algorithm == 'UMAP') and reimportModelScores:
         dataset_name = string.split(filename,'/')[-1][:-4]
         try:
             ### if the scores are present, we only need to import the genes of interest (save time importing large matrices)
-            importtSNEScores(root_dir+dataset_name+'-tSNE_scores.txt')
+            if algorithm == 't-SNE':
+                importtSNEScores(root_dir+dataset_name+'-t-SNE_scores.txt')
+            if algorithm == 'UMAP':
+                importtSNEScores(root_dir+dataset_name+'-UMAP_scores.txt')
             if len(colorByGene)==None:
                 geneFilter = [''] ### It won't import the matrix, basically
             elif ' ' in colorByGene or ',' in colorByGene:
@@ -6946,17 +6957,15 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
     except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
     
 if __name__ == '__main__':
-    filename='/Users/saljh8/Desktop/files-to-organize/Archived/Desktop/code/AltAnalyze/distribution/Tutorial/FASTQs/output/AltResults/AlternativeOutput/Events-dPSI_0.1_rawp/event_summary.txt'
-    index1=2;index2=3; x_axis='Number of Alternative Events'; y_axis = 'Comparisons'; title='MultiPath-PSI Alternative Splicing Events'
-    OutputFile = export.findParentDir(filename)
-    OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
+    filename=''
+    index1=2;index2=3; x_axis='Number of Differentially Expressed Genes'; y_axis = 'Comparisons'; title='Hippocampus - Number of Differentially Expressed Genes'
+    #OutputFile = export.findParentDir(filename)
+    #OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
     
-    stackedbarchart(filename,display=True,output=OutputFile);sys.exit()
-    barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='Orange',color2='SkyBlue');sys.exit()
+    #stackedbarchart(filename,display=True,output=OutputFile);sys.exit()
+    barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='IndianRed',color2='SkyBlue');sys.exit()
     diff=0.7
     print 'diff:',diff
-    file1='/data/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5-CF001WBC-Day0/outs/filtered_gene_bc_matrices/CellHarmonyReference/AML-D0-WBC-reference.txt'
-    file2='/data/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/10x5_CF001CD34_Day0/outs/filtered_gene_bc_matrices/ExpressionInput/exp.AML-D0-WBC-centroid__10x5_CF001CD34_Day0_matrix_CPTT-ReOrdered-Query.txt'
     #latteralMerge(file1, file2);sys.exit()
     #removeMarkerFinderDoublets('/Volumes/salomonis2/Erica-data/Demuxlet8Human/Seurat/ICGS2/CellHarmonyReference/DataPlots/Clustering-exp.ICGS-cellHarmony-reference-filtered-hierarchical_cosine_cosine2.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()

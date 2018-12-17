@@ -1,0 +1,145 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf830
+{\fonttbl\f0\fswiss\fcharset0 ArialMT;\f1\fmodern\fcharset0 CourierNewPSMT;\f2\fnil\fcharset0 HelveticaNeue;
+}
+{\colortbl;\red255\green255\blue255;\red53\green53\blue53;}
+{\*\expandedcolortbl;;\cssrgb\c27059\c27059\c27059;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid1\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid2\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid101\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid102\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid201\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid202\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid301\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc4\levelnfcn4\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{lower-alpha\}.}{\leveltext\leveltemplateid302\'02\'01.;}{\levelnumbers\'01;}\fi-360\li1440\lin1440 }{\listname ;}\listid4}
+{\list\listtemplateid5\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid401\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc4\levelnfcn4\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{lower-alpha\}.}{\leveltext\leveltemplateid402\'02\'01.;}{\levelnumbers\'01;}\fi-360\li1440\lin1440 }{\listname ;}\listid5}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}{\listoverride\listid5\listoverridecount0\ls5}}
+{\info
+{\author Nathan Salomonis}
+{\*\company CCHMC}}\margl1440\margr1440\vieww12240\viewh15840\viewkind1\viewscale97
+\deftab720
+\pard\pardeftab720\ri0\partightenfactor0
+
+\f0\b\fs24 \cf0 Input Files for cellHarmony Analysis\
+\pard\pardeftab720\ri0\partightenfactor0
+
+\b0 \cf0 \
+For the below files, see the examples in the Mouse_BoneMarrow folder.\
+\
+\pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
+\ls1\ilvl0
+\b \cf0 1.	Reference Creation
+\b0 : Produce an AltAnalyze heatmap result as a \ul reference\ulnone  for cellHarmony. Heatmaps can be generated through:\
+\pard\pardeftab720\li1440\fi-360\ri0\partightenfactor0
+\ls1\ilvl1
+\f1 \cf0 o	
+\f0 ICGS version 1 (ICGS folder)\
+\ls1\ilvl1
+\f1 o	
+\f0 ICGS version 2 (ICGS-NMF folder)\
+\ls1\ilvl1
+\f1 o	
+\f0 MarkerFinder (DataPlots/MarkerFinder)\
+\ls1\ilvl1
+\f1 o	
+\f0 The example in our demo is named: \'93Clustering-exp.Mm-BoneMarrow_scRNASeq.txt\'94 (ICGS-Reference folder)\
+\pard\pardeftab720\li1440\ri0\partightenfactor0
+\cf0 \
+\pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
+\ls2\ilvl1\cf0 2.	Prior to running, make sure there is a folder named ExpressionInput with expression values (ideally log2 normalized) for all genes and all cells corresponding to the reference in 1. The program will organize these results with the heatmap file cell and gene groups.\
+\pard\pardeftab720\li1440\fi-360\ri0\partightenfactor0
+\ls2\ilvl1
+\f1 \cf0 o	
+\f0 The example in our demo is named: \'93exp.Mm-BoneMarrow_scRNASeq.txt\'94 (ExpressionInput folder) GEO accession: GSE70245.\
+\pard\pardeftab720\li1440\ri0\partightenfactor0
+\cf0 \
+\pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
+\ls3\ilvl1
+\b \cf0 3.	Input File
+\b0 : This is a tab-delimited text file with all genes and all cells for your dataset you wish to align to the reference.  \
+\pard\pardeftab720\li1440\fi-360\ri0\partightenfactor0
+\ls3\ilvl1
+\f1 \cf0 o	
+\f0 The example in our demo is named: \'93AML.txt\'94 (ExpressionInput folder) GEO accession: GSE77026.\
+\pard\pardeftab720\li1440\ri0\partightenfactor0
+\cf0 \
+\pard\pardeftab720\ri0\partightenfactor0
+
+\b \cf0 Running cellHarmony through the Graphical User Interface\
+\
+\pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
+\ls4\ilvl1
+\b0 \cf0 1.	Double-click on the AltAnalyze executable (see Running-AltAnalyze file in the program directory for problems opening). \
+2.	Install the correct species database when prompted.\
+\pard\pardeftab720\li1440\fi-360\ri0\partightenfactor0
+\ls4\ilvl1\cf0 a.	For the demo dataset, ensure Mus Musculus is downloaded.\
+\pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
+\ls4\ilvl1\cf0 3.	From the main menu in AltAnalyze, select RNA-Seq as the \'93Select vendor/data type\'94. Then select the Continue button.\
+4.	Select the \'93Additional Analyses\'94 radio button. Then select the Continue button.\
+5.	Select the \'93Cell Classification\'94 radio button. Then select the Continue button.\
+\pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
+\ls4\ilvl1
+\b \cf0 6.	\ul Select the Input File
+\b0 \ulnone : Select your input expression file location (e.g. AML.txt) using the top \'93select file\'94 button. This is the file which you wish to align to the reference clusters.\
+\ls4\ilvl1
+\b 7.	\ul Select the Reference
+\b0 \ulnone : Select the reference heatmap text file, which is your reference file. using the top \'93select file\'94 button. This is the file which contains your clusters and variably expressed genes as your reference for classification.\
+\ls4\ilvl1
+\b 8.	\ul Align to individual cells or cell centroids
+\b0 \ulnone : The option Align to cluster centroid instead of cells will increase the speed of the analysis and use the cell centroid as a reference rather than aligning to individual cells. This option is recommended when both the reference and input contain thousands of cells. \ul Note\ulnone : In the demo dataset, align to cells rather than centroids.\
+\ls4\ilvl1
+\b 9.	\ul Differential expression analysis parameters
+\b0 \ulnone : These options control the stringency for the differential expression analyses that are performed on the aligned query cells compared to the reference cells in the same aligned clusters. For the demo, use the adjusted p-value option. You can ignore the LineageProfiler associated options for this analysis.\
+\ls4\ilvl1
+\b 10.	\ul Press Continue to run the analysis
+\b0 \ulnone : A black screen will appear. Be patient while the analysis runs. Both tabular and graphical outputs will be produced in the input (query) folder in a new directory named cellHarmony. A log file will also be produced in the folder containing your input (.log). Any errors encountered will be reported in this fail.\ul \
+\pard\pardeftab720\ri0\partightenfactor0
+\cf0 \ulnone \
+\pard\pardeftab720\ri0\partightenfactor0
+
+\b \cf0 Outputs of cellHarmony\
+\pard\pardeftab720\ri0\partightenfactor0
+
+\b0 \cf0 \
+See the precomputed-results folder which contains examples. The final results of cellHarmony include:\
+\pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
+\ls5\ilvl1
+\b \cf0 1.	\ul Tabular
+\b0 \ulnone  results which detail the alignment scores (Pearson correlation) in the \'93CellClassification\'94 directory.\
+\ls5\ilvl1
+\b 2.	\ul Tabular
+\b0 \ulnone  input text file for the combined query and reference cells in one expression matrix (suffix \'93-ReOrdered.txt\'94). 
+\b \ul Heatmap image
+\b0 \ulnone  file is saved for this file into the folder 
+\b DataPlots
+\b0  with normalized expression values.\
+3.	The same outputs in #2 are saved for the query cells alone (suffix \'93-ReOrdered-Query.txt")\
+\ls5\ilvl1
+\b 4.	\ul UMAP image
+\b0 \ulnone  file with the cells combined from the query and reference for ICGS reference genes (
+\b DataPlots
+\b0  folder). \
+\ls5\ilvl1
+\b 5.	\ul Summary table
+\b0 \ulnone  and 
+\b \ul barchart
+\b0 \ulnone  displaying the numbers of genes differentially expressed based on the user-supplied thresholds (gene_summary.txt and gene_summary.pdf files).\
+\ls5\ilvl1
+\b 6.	\ul Summary table
+\b0 \ulnone  and 
+\b \ul barchart
+\b0 \ulnone  displaying the numbers of cells aligned to each cluster (cell-frequency-stats.txt and cell-frequency-stats.pdf files). The text file contains statistics, including \
+7.	\ul Differential Expression Results\ulnone : Differentially expressed genes are in the folder \ul DifferentialExpression_Fold_1.5_adjp_0.05\ulnone  or similar. \
+8.	A global summary differential analysis results 
+\b \ul heatmap
+\b0 \ulnone  with embedded pathway analysis results is saved to the 
+\b DataPlots
+\b0  folder with \'93folds-MarkerFinder\'94 in its name.  \
+\
+\pard\pardeftab720\ri0\partightenfactor0
+
+\b \cf0 Running cellHarmony on the command-line\
+\
+\pard\pardeftab720\ri0\partightenfactor0
+
+\b0 \cf0 Below is an example command similar to the above analysis:\
+\pard\pardeftab560\slleading20\partightenfactor0
+
+\f2 \cf2 \
+
+\f1 python AltAnalyze.py --cellHarmony yes --input /Users/altanalyze/input/AML.txt --reference /Users/altanalyze/reference/ICGS/Clustering-exp.Mm-BoneMarrow_scRNASeq.txt  --platform "RNASeq" --species Mm --correlationCutoff 0.4 --referenceType centroid --fold 2 --pval 0.05 --adjp True --performDiffExp True}

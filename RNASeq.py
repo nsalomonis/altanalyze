@@ -4195,6 +4195,8 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
         new_groups_dir = new_groups_dir[:-4]+'-'+suffix+'.txt' ###Usually end in ICGS
         new_comps_dir = new_comps_dir[:-4]+'-'+suffix+'.txt'
     out_obj = export.ExportFile(new_groups_dir)
+    cluster_number=0
+    cluster_db={}
     for name in names:
         cluster = clusters[names.index(name)]
         if platform == 'RNASeq':
@@ -4204,8 +4206,16 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
                 name = name+'.txt'
         if ':' in name:
             group,name = string.split(name,':')
+            if group in cluster_db:
+                clust_num=cluster_db[group]
+            else:
+                cluster_number+=1
+                cluster_db[group] = cluster_number
+                clust_num = cluster_number
             if cluster=='NA': cluster = group
-        out_obj.write(name+'\t'+cluster+'\t'+cluster+'\n')
+        else:
+            clust_num = cluster
+        out_obj.write(name+'\t'+str(clust_num)+'\t'+cluster+'\n')
         if cluster not in unique_clusters: unique_clusters.append(cluster)
     out_obj.close()
     comps=[] #Export comps

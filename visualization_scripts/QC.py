@@ -297,7 +297,7 @@ def importTableEntries(filename,filter_db,ensembl_exon_db,gene_db,root_dir,trans
         gene_symbol = gene_db[gene]
         try: matrix = matrix_gene_db[gene]
         except Exception:
-            print gene_symbol, 'not in alternative expression database'
+            #print gene_symbol, 'not in alternative expression database'
             continue ### go the next gene - no alt.expression for this gene
         row_header = row_header_gene[gene]
 

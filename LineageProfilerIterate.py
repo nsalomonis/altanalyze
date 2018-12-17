@@ -3280,10 +3280,11 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         except:
             print 'Failed to join the query and reference expression files due to:'
             print traceback.format_exc()
-
-    if returnCentroids:
+    if returnCentroids == True or returnCentroids == 'yes' or returnCentroids == 'centroid':
+        print 'Using centroids rather than individual cells for alignment.'
         return cellHarmonyReferenceFileMediod
     else:
+        print 'Using invidual cells rather than cell centroids for alignment.'
         return cellHarmonyReferenceFile
 
 def simpleExpressionFileImport(filename):

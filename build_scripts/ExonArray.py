@@ -171,8 +171,8 @@ def importExonProbesetData(filename,import_these_probesets,import_type):
                       reorderArraysHeader(filtered_exp_db)
               elif import_type == 'filterDataset': temp_data.write(line)
     except IOError:
-        print traceback.format_exc()
-        print 'IOError!!!!!!!!!!!!!!!!!!!!!!!!!'
+        #print traceback.format_exc()
+        print filename, 'not found.'
         null=[]
 
     end_time = time.time(); time_diff = int(end_time-start_time)

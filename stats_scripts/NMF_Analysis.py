@@ -2,18 +2,19 @@
 
 import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
-
-import traceback
-import export
-import numpy as np
+import warnings
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
+    import numpy as np
+    from sklearn.cluster import KMeans
+    import nimfa
+    from sklearn.decomposition import NMF
 import os.path
 from collections import defaultdict
-from sklearn.cluster import KMeans
-import nimfa
+import traceback
+import export
 from visualization_scripts import Orderedheatmap
 #import statistics
-
-from sklearn.decomposition import NMF
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')

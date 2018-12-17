@@ -4638,7 +4638,7 @@ class SummaryResultsWindow:
         self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
         self.frame = self.sf.interior()
 
-        txt=Text(self.frame,bg='gray',width=150, height=80)              
+        txt=Text(self.frame,bg='light gray',width=150, height=80)              
         txt.pack(expand=True, fill="both")
         #txt.insert(END, 'Primary Analysis Finished....\n')
         txt.insert(END, 'Results saved to:\n'+output_dir+'\n')
@@ -6777,56 +6777,13 @@ def commandLineRun():
             Guide3_results = graphic_links[-1][-1][:-4]+'.txt'
             new_groups_dir = RNASeq.exportGroupsFromClusters(Guide3_results,fl.ExpFile(),array_type,suffix='ICGS')
             
-            ### Build-tSNE plot
-            tSNE_graphical_links = UI.performPCA(Guide3_results, 'no', 't-SNE', False, None, plotType='2D',
-                display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
-                separateGenePlots=False, returnImageLoc=True)
-            tSNE_score_file = tSNE_graphical_links[-1][-1][:-10]+'-tSNE_scores.txt'
-            
-            ### Rename and reorder the resulting ICGS files for downstream anlaysis (preserving the original files)
-            from import_scripts import sampleIndexSelection
-            ICGS_order = sampleIndexSelection.getFilters(new_groups_dir)
-            if '-steady-state' in expFile:
-                ssCountsFile = string.replace(expFile,'exp.','counts.')
-                newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
-                newssCountsFile = string.replace(newExpFile,'exp.','counts.')
-                exonExpFile = string.replace(expFile,'-steady-state','')
-                exonCountFile = string.replace(exonExpFile,'exp.','counts.')
-                newExonExpFile = string.replace(newExpFile,'-steady-state','')
-                newExonCountsFile = string.replace(newExonExpFile,'exp.','counts.')
-
-                sampleIndexSelection.filterFile(ssCountsFile,newssCountsFile,ICGS_order)
-                sampleIndexSelection.filterFile(exonExpFile,newExonExpFile,ICGS_order)
-                sampleIndexSelection.filterFile(exonCountFile,newExonCountsFile,ICGS_order)
-            else:
-                newExpFile = expFile[:-4]+'-ICGS.txt'
-                
-            if 'OutliersRemoved' in Guide3_results:
-                try: os.remove(expFile[:-4]+'-OutliersRemoved.txt')
-                except Exception: pass
-                try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','groups.'))
-                except Exception: pass
-                try: os.remove(string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','comps.'))
-                except Exception: pass
-                filtered_exp_file = string.replace(expFile[:-4]+'-OutliersRemoved.txt','exp.','filteredExp.')
-                new_filtered_exp_file = string.replace(filtered_exp_file,'-OutliersRemoved','')
-                #try: os.rename(filtered_exp_file,new_filtered_exp_file) ### if present copy over
-                #except Exception: pass
-
-            ### Copy the t-SNE scores to use it for gene expression analyses
-            exp_tSNE_score_file = export.findParentDir(tSNE_score_file)+'/'+export.findFilename(exonExpFile)[:-4]+'-tSNE_scores.txt'
-            import shutil
-            try: shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
-            except Exception: pass
+            exonExpFile,newExpFile,new_groups_dir  = UI.exportAdditionalICGSOutputs(expFile,Guide3_results,outputTSNE=True)
         
             fl.setExpFile(newExpFile) ### set this to the outlier removed version
-            groups_file = string.replace(newExpFile,'exp.','groups.')
-            comps_file = string.replace(newExpFile,'exp.','comps.')
-            fl.setGroupsFile(groups_file)
+            comps_file = string.replace(new_groups_dir,'groups.','comps.')
+            fl.setGroupsFile(new_groups_dir)
             fl.setCompsFile(comps_file)
             exp_file_location_db[exp_name+'-ICGS'] = fl
-                
-            sampleIndexSelection.filterFile(expFile,newExpFile,ICGS_order)
             
             ### force MarkerFinder to be run
             input_exp_file = newExpFile  ### Point MarkerFinder to the new ICGS ordered copied expression file
@@ -7041,7 +6998,6 @@ def commandLineRun():
                         display=True
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
-            
             UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
                           plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots)
             sys.exit()
@@ -8512,11 +8468,13 @@ def dependencyCheck():
     dependent_modules += ['warnings','sklearn','os','webbrowser']
     dependent_modules += ['scipy','numpy','matplotlib','igraph','pandas','patsy']
     dependent_modules += ['ImageTk','PIL','cairo','wx','fastcluster','pysam', 'Tkinter']
+    dependent_modules += ['networkx','numba','umap','nimfa','lxml','annoy','llvmlite']
     print ''
     count=0
     for module in dependent_modules:
         if module not in modules:
-            print 'AltAnalyze depedency not met for:',module
+            if 'ImageTk' != module and 'PIL' != module:
+                print 'AltAnalyze depedency not met for:',module
             if 'fastcluster' == module:
                 print '...Faster hierarchical cluster not supported without fastcluster'
             if 'pysam' == module:
@@ -8534,7 +8492,9 @@ def dependencyCheck():
             if 'wx' == module:
                 print '...The AltAnalyze Results Viewer requires wx'
             if 'ImageTk' == module or 'PIL' == module:
-                print '...Some graphical results displays require ImageTk and PIL'
+                if 'PIL' not in dependent_modules:
+                    print 'AltAnalyze depedency not met for:',module
+                    print '...Some graphical results displays require ImageTk and PIL'
             if 'Tkinter' == module:
                 print '...AltAnalyze graphical user interface mode requires Tkinter'
             if 'igraph' == module or 'cairo' == module:
@@ -8544,7 +8504,7 @@ def dependencyCheck():
             if 'pandas' == module or 'patsy' == module:
                 print '...Combat batch effects correction requires pandas and patsy'
             count+=1
-    if count>0:
+    if count>1:
         print '\nWARNING!!!! Some dependencies are not currently met.'
         print "This may impact AltAnalyze's performance\n"
 

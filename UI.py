@@ -666,6 +666,15 @@ def RemotePredictSampleExpGroups(expFile, mlp_instance, gsp, globalVars):
     predictSampleExpGroups(expFile, mlp_instance, gsp, False, None, exportAdditionalResults=False)
     return graphic_links
 
+def getICGSNMFOutput(root,filename):
+    if 'exp.' in filename:
+        filename = string.replace(filename,'exp.','')
+    umap_scores_file=''
+    for file in unique.read_directory(root):
+        if '-UMAP_coordinates.txt' in file and filename in file:
+            umap_scores_file = file
+    return root+'/'+umap_scores_file
+
 def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
     
     ### Remove OutlierRemoved files (they will otherwise clutter up the directory)
@@ -679,19 +688,31 @@ def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
         
     ### Create the new groups file but don't over-write the old
     import RNASeq
-    print group_selected
     new_groups_dir = RNASeq.exportGroupsFromClusters(group_selected,expFile,array_type,suffix='ICGS')
     from import_scripts import sampleIndexSelection
-    print new_groups_dir
 
-    if outputTSNE:
+    ### Look to see if a UMAP file exists in ICGS-NMF
+    if 'ICGS-NMF' in group_selected or 'NMF-SVM' in group_selected:
+        root = export.findParentDir(export.findParentDir(expFile)[:-1])+'/ICGS-NMF'
+        umap_scores_file = getICGSNMFOutput(root,export.findFilename(expFile)[:-4])
+        tSNE_score_file = umap_scores_file
+        extension = '-UMAP_scores.txt'
+    elif outputTSNE:
         try:
             ### Build-tSNE plot from the selected ICGS output (maybe different than Guide-3)
-            tSNE_graphical_links = performPCA(group_selected, 'no', 't-SNE', False, None, plotType='2D',
+        
+            tSNE_graphical_links = performPCA(group_selected, 'no', 'UMAP', False, None, plotType='2D',
                 display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
                 separateGenePlots=False,returnImageLoc=True)
-            tSNE_score_file = tSNE_graphical_links[-1][-1][:-10]+'-tSNE_scores.txt'
-        except Exception: pass
+            if 'SNE' in tSNE_graphical_links[-1][-1]:
+                tSNE_score_file =tSNE_graphical_links[-1][-1][:-10]+'-t-SNE_scores.txt'
+                extension = '-t-SNE_scores.txt'
+            else:
+                tSNE_score_file =tSNE_graphical_links[-1][-1][:-9]+'-UMAP_scores.txt'
+                extension = '-UMAP_scores.txt'
+        except Exception:
+            print traceback.format_exc()
+            pass
     
     if '-steady-state' in expFile:
         newExpFile = string.replace(expFile,'-steady-state','-ICGS-steady-state')
@@ -719,11 +740,20 @@ def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
     
     if outputTSNE:
         try:
+            status = verifyFile(tSNE_score_file)
+            if status=='no':
+                tSNE_score_file = string.replace(tSNE_score_file,'Clustering-','')
             ### Copy the t-SNE scores to use it for gene expression analyses
-            exp_tSNE_score_file = export.findParentDir(tSNE_score_file)+'/'+export.findFilename(exonExpFile)[:-4]+'-tSNE_scores.txt'
+            if 'DataPlots' not in tSNE_score_file:
+                outdir = export.findParentDir(export.findParentDir(tSNE_score_file)[:-1])+'/DataPlots'
+            else:
+                outdir = export.findParentDir(tSNE_score_file)
+            exp_tSNE_score_file = outdir+'/'+export.findFilename(exonExpFile)[:-4]+extension
             import shutil
             shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
-        except Exception: pass
+        except Exception:
+            print traceback.format_exc()
+            pass
     
     return exonExpFile,newExpFile,new_groups_dir 
         
@@ -1427,7 +1457,7 @@ class GUI:
         self._user_variables[option] = default_option
         entry = Entry(group.interior(),textvariable=self.pathdb[option]);
         entry.pack(side='left',fill = 'both', expand = 0.7, padx = 10, pady = 2)
-        button = Button(group.interior(), text="select "+self.directory_type, width = 10, fg="red", command=filecallback)
+        button = Button(group.interior(), text="select "+self.directory_type, width = 10, fg="black", command=filecallback)
         button.pack(side=LEFT, padx = 2,pady = 2)
         if len(self.notes)>0: ln = Label(self.parent_type, text=self.notes,fg="blue"); ln.pack(padx = 10)
         
@@ -1908,7 +1938,7 @@ class GUI:
                 #l = Label(group.interior(), text=self.title); l.pack(side=LEFT)        
                 entry = Entry(group.interior(),textvariable=self.pathdb[option]);
                 entry.pack(side='left',fill = 'both', expand = 1, padx = 10, pady = 2)
-                button = Button(group.interior(), text="select "+od.DisplayObject(), width = 10, fg="red", command=filecallback); button.pack(side=LEFT, padx = 2,pady = 2)                    
+                button = Button(group.interior(), text="select "+od.DisplayObject(), width = 10, fg="black", command=filecallback); button.pack(side=LEFT, padx = 2,pady = 2)                    
 
                 #print option,run_mappfinder, self.title, self.default_option
                 if len(notes)>0: ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
@@ -2050,7 +2080,7 @@ class GUI:
                 if listbox_selectmode == 'multiple':
                     self.comp = PmwFreeze.ComboBox(parent_type,
                         labelpos = label_pos, dropdown=1, label_text = self.title,
-                        unique = 0, history = 0, entry_background="gray", entry_width=entrywidth,
+                        unique = 0, history = 0, entry_background="light gray", entry_width=entrywidth,
                         scrolledlist_usehullsize=1,listbox_selectmode=listbox_selectmode,
                         scrolledlist_items = self.default_option,
                         selectioncommand = mult_callback)
@@ -2058,7 +2088,7 @@ class GUI:
                 else:  
                     self.comp = PmwFreeze.ComboBox(parent_type,
                         labelpos = label_pos, dropdown=1, label_text = self.title,
-                        unique = 0, history = 0, entry_background="gray", entry_width=entrywidth,
+                        unique = 0, history = 0, entry_background="light gray", entry_width=entrywidth,
                         scrolledlist_usehullsize=1,listbox_selectmode=listbox_selectmode,
                         scrolledlist_items = self.default_option,
                         selectioncommand = comp_callback1)
@@ -3834,6 +3864,7 @@ def importUserOptions(array_type,vendor=None):
         elif 'linux' in sys.platform: displayed_title = linux_displayed_title
         else: displayed_title = linux_displayed_title
         """
+        """
         try:
             if option == 'rho_cutoff' and '10X' in vendor:
                 global_default = '0.3'
@@ -3843,6 +3874,7 @@ def importUserOptions(array_type,vendor=None):
                 global_default = 'euclidean'    
         except Exception:
             pass
+        """
  
         if 'junction' in displayed_title: displayed_title+=' '
         """if array_type == 'RNASeq':
@@ -4480,7 +4512,7 @@ def getDirectoryFiles():
             if len(cel_files)>0: status = 'continue'
             else:
                 print_out = "The expression file:\n"+input_exp_file+"\ndoes not appear to be a valid expression file. Check to see that\nthis is the correct tab-delimited text file."
-                IndicatorWindow(print_out,'Continue')
+                IndicatorWindow(print_out,'Continue') 
         else:
             print_out = "No input expression file selected."
             IndicatorWindow(print_out,'Continue')
@@ -5651,8 +5683,9 @@ def getUserParameters(run_parameter,Multi=None):
                         values = fl, input_exp_file, vendor, markerFinder_file, geneModel_file, modelDiscovery
                         StatusWindow(values,analysis) ### display an window with download status
                         ### Typically have a Tkinter related error
-                        #rebootAltAnalyzeGUI(selected_parameters,user_variables)
-                        AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
+                        try: rebootAltAnalyzeGUI(selected_parameters[:-1],user_variables)
+                        except: 
+                            AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                         
                         #else:
                         #AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
@@ -5957,8 +5990,15 @@ def getUserParameters(run_parameter,Multi=None):
                         IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()  
                     if len(cel_files)>0: status = 'continue'
                     else:
-                        print_out = "The expression file:\n"+input_exp_file+"\ndoes not appear to be a valid expression file. Check to see that\nthis is the correct tab-delimited text file."
-                        IndicatorWindow(print_out,'Continue')
+                        if '.mtx' in input_exp_file:
+                            array_type = '10XGenomics'
+                            array_full == '10X Genomics sparse matrix'
+                            vendor = '10x'
+                            print_out = "The expression file:\n"+input_exp_file+"\nis a 10x Genomics matrix... change the Platform to 10x Genomics Aligned in the main menu."
+                            IndicatorWindow(print_out,'Continue')
+                        else:
+                            print_out = "The expression file:\n"+input_exp_file+"\ndoes not appear to be a valid expression file. Check to see that\nthis is the correct tab-delimited text file."
+                            IndicatorWindow(print_out,'Continue')
                 else:
                     print_out = "No input expression file selected."
                     IndicatorWindow(print_out,'Continue')
@@ -7139,7 +7179,13 @@ def downloadInteractionDBs(species,windowType):
     StatusWindow(values,analysis,windowType=windowType) ### open in a TopLevel TK window (don't close current option selection menu)
     
 if __name__ == '__main__':
+    """
     dir = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/Clustering/Combined-junction-exon-evidence.txt'
+    expFile = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionInput/exp.GGI-IG2.txt'
+    group_selected = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ICGS-NMF/FinalMarkerHeatmap.txt'
+    array_type="3'array"; species='Mm'
+    exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True)
+    sys.exit()"""
     #a = exportJunctionList(dir,limit=50)
     #print a;sys.exit()
     try:

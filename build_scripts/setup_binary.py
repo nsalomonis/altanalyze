@@ -1,6 +1,7 @@
 #!/usr/local/bin/python2.6
 
 import sys,string,os
+import export
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 sys.setrecursionlimit(5000)
 
@@ -48,8 +49,9 @@ if sys.platform.startswith("darwin"):
 	import PIL._imagingft
 	#import macholib_patch
         includes+= ["pkg_resources","distutils","lxml.etree","lxml._elementpath"] #"xml.sax.drivers2.drv_pyexpat"
-	frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/PIL']
-	frameworks += ['/Library/Python/2.7/site-packages/llvmlite/binding/libllvmlite.dylib']
+	frameworks = ['/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/PIL']
+	frameworks += ['/Library/Python/2.7/site-packages/llvmlite/binding/libllvmlite.dylib',
+	'/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/PIL/.dylibs/libopenjp2.2.1.0.dylib']
         """
         resources = ['/System/Library/Frameworks/Python.framework/Versions/2.7']
         frameworks = ['/System/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7/pyconfig.h']
@@ -61,6 +63,7 @@ if sys.platform.startswith("darwin"):
         import distutils.sysconfig
         import distutils.util
         """
+
         options = {"py2app":
                     {"excludes": excludes,
                      "includes": includes,
@@ -80,6 +83,15 @@ if sys.platform.startswith("darwin"):
                         #data_files=data_files,
                         setup_requires=["py2app"]
         )
+
+	import UI
+	import shutil
+	scr_root = '/Users/saljh8/GitHub/accessory/.dylibs/'
+	des_root = '/Users/saljh8/GitHub/altanalyze/dist/AltAnalyze.app/Contents/Resources/lib/python2.7/lib-dynload/PIL/.dylibs/'
+	os.mkdir(des_root)
+	files = UI.read_directory(scr_root[:-1])
+	for file in files: 
+		shutil.copy(scr_root+file,des_root+file)
 
 if sys.platform.startswith("win"):
         ### example command: python setup.py py2exe

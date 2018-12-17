@@ -949,6 +949,7 @@ def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_clus
     return status, graphic_links
 
 def callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp):
+    
     #Run ICGS recursively to dynamically identify the best rho cutoff
     graphic_links3,n = RNASeq.singleCellRNASeqWorkflow(species,platform,processedInputExpFile,mlp,exp_threshold=0, rpkm_threshold=0, parameters=gsp)
     if n>5000 and dynamicCorrelation:
@@ -1019,255 +1020,272 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
     Guidefile=Guidefile[:-4]+'.txt'
     #Guidefile="/Volumes/Pass/ICGS2_testrun/ExpressionInput/amplify/DataPlots/Clustering-exp.input-Guide3 AREG GZMA BTG1 CCL5 TMSB4X ITGA2B UBE2C IRF-hierarchical_euclidean_correlation.txt"
     #rho_cutoff=0.2
-    
-    print "Running block identification for rank analyses - Round"+str(iteration)
     try:
-        RNASeq_blockIdentification.correlateClusteredGenesParameters(Guidefile,rho_cutoff=0.4,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True) 
-        Guidefile_block=Guidefile[:-4]+'-BlockIDs.txt'
-    except Exception:
-        Guidefile_block=Guidefile
-    ### Filters the original expression file for the guide3 genes [returns a filename similar to NMFInput-Round1.txt]
-    NMFinput,Rank=NMF_Analysis.FilterGuideGeneFile(Guidefile,Guidefile_block,processedInputExpFile,iteration,platform,uniqueIDs,symbolIDs)
-    #NMFinput="/Volumes/Pass/ICGS2_testrun/ExpressionInput/ICGS-interim/NMFInput-Round1.txt"
-    try: k = int(gsp.K())
-    except: k = None; #print traceback.format_exc()
-    
-    if k==None:
-        Rank=estimateK(NMFinput)
-        Rank=Rank*2
-    else:
-        Rank=k
-    print "The number target number of clusters (k/rank) is:",k
-    
-    if Rank>1:
-        if Rank>2 and platform=='PSI':
-            Rank=30
-        if Rank<5 and platform!='PSI':
-            Rank=10
-        print "Running NMF analyses for dimension reduction using "+str(Rank)+" ranks - Round"+str(iteration)
+        print "Running block identification for rank analyses - Round"+str(iteration)
+        try:
+            RNASeq_blockIdentification.correlateClusteredGenesParameters(Guidefile,rho_cutoff=0.4,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True) 
+            Guidefile_block=Guidefile[:-4]+'-BlockIDs.txt'
+        except Exception:
+            Guidefile_block=Guidefile
+            
+        ### Filters the original expression file for the guide3 genes [returns a filename similar to NMFInput-Round1.txt]
+        NMFinput,Rank=NMF_Analysis.FilterGuideGeneFile(Guidefile,Guidefile_block,processedInputExpFile,iteration,platform,uniqueIDs,symbolIDs)
+        #NMFinput="/Volumes/Pass/ICGS2_testrun/ExpressionInput/ICGS-interim/NMFInput-Round1.txt"
+        try: k = int(gsp.K())
+        except: k = None; #print traceback.format_exc()
         
-        ### This function prepares files for differential expression analsyis (MetaDataAnalysis), MarkerFinder
-        filteredInputExpFile = string.replace(processedInputExpFile,'exp.','filteredExp.')
-        NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
-        
-        if platform == 'PSI':
-            print "Identifying cluster-specific differential splicing events"
-            findmarkers=False
+        if k==None:
+            Rank=estimateK(NMFinput)
+            Rank=Rank*2
         else:
-            print 'Identifying cell-population specific genes'
-            findmarkers=True
-            
-        if findmarkers:
-            import markerFinder
-            ### Default path for the NMF clustered groups for MarkerFinder analysis
-            input_exp_file=root_dir+'/NMF-SVM/ExpressionInput/exp.NMF-MarkerFinder.txt'
-            logTransform = False
-                ### Work around when performing this analysis on an alternative exon input cluster file
-            group_exp_file = input_exp_file
-            fl = UI.ExpressionFileLocationData(input_exp_file,'','',''); fl.setOutputDir(root_dir)
-            fl.setSpecies(species); fl.setVendor("3'array")
-            rpkm_threshold = 0.00
-            fl.setRPKMThreshold(rpkm_threshold)
-            fl.setCorrelationDirection('up')
-            compendiumType = 'protein_coding'
-            genesToReport = 60
-            correlateAll = True
-            markerFinder.analyzeData(input_exp_file,species,platform,compendiumType,geneToReport=genesToReport,correlateAll=correlateAll,AdditionalParameters=fl,logTransform=logTransform)
-            print 'MarkerFinder analysis complete'
-            
-            #markerfile="/Volumes/Pass/Final_scicgs/ExpressionOutput/MarkerFinder/MarkerGenes_correlations-ReplicateBased.txt"
-            allgenesfile = root_dir+'/NMF-SVM/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
-            markerfile = root_dir+'/NMF-SVM/ExpressionOutput/MarkerFinder/MarkerGenes_correlations-ReplicateBased.txt'
-            guides=[]
-            ### See if any unique genes are found in a cluster before using it for SVM
-            guides,name,group=DetermineClusterFitness(allgenesfile,markerfile,input_exp_file,BinarizedOutput,rho_cutoff)
-            counter=group
-        else:
-            if platform=="PSI":
-                rootdir,CovariateQuery=metaDataAnalysis.remoteAnalysis(species,FilteredEventAnnot,Metadata,'PSI',0.1,use_adjusted_p,0.05,Annotation)
-            else:
-                rootdir,CovariateQuery=metaDataAnalysis.remoteAnalysis(species,processedInputExpFile,Metadata,'RNASeq',0.58,use_adjusted_p,0.05,Annotation)
-            counter=1
-            Guidedir=rootdir+CovariateQuery
-            PSIdir=rootdir+'ExpressionProfiles'
-
-            global upd_guides
-            upd_guides=[]
-            name=[]
-            group=[]
-            
-            for filename in os.listdir(Guidedir):
-                if filename.startswith("PSI."):
-                    Guidefile=os.path.join(Guidedir, filename)
-                    psi=string.replace(filename,"PSI.","")
-                if filename.startswith("GE."):
-                    Guidefile=os.path.join(Guidedir, filename)
-                    psi=string.replace(filename,"GE.","")
-                    PSIfile=os.path.join(PSIdir, psi)
-                    omitcluster=FindTopUniqueEvents(Guidefile,psi,Guidedir)
-                   
-                    if omitcluster==0:
-                        group.append(counter)
-                        name.append(psi)
-                        counter+=1
-            upd_guides=[x for x in upd_guides if x != ""]
-        upd_guides=guides
-        upd_guides=list(set(upd_guides))
-       
-        scaling=True
-        grplst=[]
+            Rank=k
+        print "The number target number of clusters (k/rank) is:",k
         
-        ############ Perform SVM classification to assign individual cells to valid-NMF clusters #############
-        ### The below analysis is performed on the down-sampled expression file
-        if counter>2:
-            output_dir = root_dir+'/NMF-SVM'
-            if os.path.exists(output_dir)==False:
-                export.createExportFolder(output_dir)
+        if Rank>1:
+            if Rank>2 and platform=='PSI':
+                Rank=30
+            if Rank<5 and platform!='PSI':
+                Rank=10
+            print "Running NMF analyses for dimension reduction using "+str(Rank)+" ranks - Round"+str(iteration)
             
-            #output_file = output_dir+'/SVMInput-Round'+str(iteration)+'.txt'
-            #ExpandSampleClusters.filterRows(processedInputExpFile,output_file,filterDB=upd_guides,logData=False)
+            ### This function prepares files for differential expression analsyis (MetaDataAnalysis), MarkerFinder
+            filteredInputExpFile = string.replace(processedInputExpFile,'exp.','filteredExp.')
+            NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
             
-            if scaling:
-                output_fil=EventAnnot
-                output_file=output_dir+'/SVMInput-Round'+str(iteration)+'.txt'
-                #output_file1 = "/Users/meenakshi/Documents/Singlecellbest/exp.exp.CD34+.v5-log2_filtered.txt"
-                ExpandSampleClusters.filterRows(EventAnnot,output_file,filterDB=upd_guides,logData=False)
+            if platform == 'PSI':
+                print "Identifying cluster-specific differential splicing events"
+                findmarkers=False
             else:
-                output_file = output_dir+'/SVMInput-Round'+str(iteration)+'.txt' 
-                ExpandSampleClusters.filterRows(processedInputExpFile,output_file,filterDB=upd_guides,logData=False)
+                print 'Identifying cell-population specific genes'
+                findmarkers=True
+                
+            if findmarkers:
+                import markerFinder
+                ### Default path for the NMF clustered groups for MarkerFinder analysis
+                input_exp_file=root_dir+'/NMF-SVM/ExpressionInput/exp.NMF-MarkerFinder.txt'
+                logTransform = False
+                    ### Work around when performing this analysis on an alternative exon input cluster file
+                group_exp_file = input_exp_file
+                fl = UI.ExpressionFileLocationData(input_exp_file,'','',''); fl.setOutputDir(root_dir)
+                fl.setSpecies(species); fl.setVendor("3'array")
+                rpkm_threshold = 0.00
+                fl.setRPKMThreshold(rpkm_threshold)
+                fl.setCorrelationDirection('up')
+                compendiumType = 'protein_coding'
+                genesToReport = 60
+                correlateAll = True
+                markerFinder.analyzeData(input_exp_file,species,platform,compendiumType,geneToReport=genesToReport,correlateAll=correlateAll,AdditionalParameters=fl,logTransform=logTransform)
+                print 'MarkerFinder analysis complete'
+                
+                #markerfile="/Volumes/Pass/Final_scicgs/ExpressionOutput/MarkerFinder/MarkerGenes_correlations-ReplicateBased.txt"
+                allgenesfile = root_dir+'/NMF-SVM/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
+                markerfile = root_dir+'/NMF-SVM/ExpressionOutput/MarkerFinder/MarkerGenes_correlations-ReplicateBased.txt'
+                guides=[]
+                ### See if any unique genes are found in a cluster before using it for SVM
+                guides,name,group=DetermineClusterFitness(allgenesfile,markerfile,input_exp_file,BinarizedOutput,rho_cutoff)
+                counter=group
+            else:
+                if platform=="PSI":
+                    rootdir,CovariateQuery=metaDataAnalysis.remoteAnalysis(species,FilteredEventAnnot,Metadata,'PSI',0.1,use_adjusted_p,0.05,Annotation)
+                else:
+                    rootdir,CovariateQuery=metaDataAnalysis.remoteAnalysis(species,processedInputExpFile,Metadata,'RNASeq',0.58,use_adjusted_p,0.05,Annotation)
+                counter=1
+                Guidedir=rootdir+CovariateQuery
+                PSIdir=rootdir+'ExpressionProfiles'
+    
+                global upd_guides
+                upd_guides=[]
+                name=[]
+                group=[]
+                
+                for filename in os.listdir(Guidedir):
+                    if filename.startswith("PSI."):
+                        Guidefile=os.path.join(Guidedir, filename)
+                        psi=string.replace(filename,"PSI.","")
+                    if filename.startswith("GE."):
+                        Guidefile=os.path.join(Guidedir, filename)
+                        psi=string.replace(filename,"GE.","")
+                        PSIfile=os.path.join(PSIdir, psi)
+                        omitcluster=FindTopUniqueEvents(Guidefile,psi,Guidedir)
+                       
+                        if omitcluster==0:
+                            group.append(counter)
+                            name.append(psi)
+                            counter+=1
+                upd_guides=[x for x in upd_guides if x != ""]
+            upd_guides=guides
+            upd_guides=list(set(upd_guides))
+           
+            scaling=True
+            grplst=[]
             
-            header=ExpandSampleClusters.header_file(output_file)
+            ############ Perform SVM classification to assign individual cells to valid-NMF clusters #############
+            ### The below analysis is performed on the down-sampled expression file
+            if counter>2:
+                output_dir = root_dir+'/NMF-SVM'
+                if os.path.exists(output_dir)==False:
+                    export.createExportFolder(output_dir)
+                
+                #output_file = output_dir+'/SVMInput-Round'+str(iteration)+'.txt'
+                #ExpandSampleClusters.filterRows(processedInputExpFile,output_file,filterDB=upd_guides,logData=False)
+                
+                if scaling:
+                    output_fil=EventAnnot
+                    output_file=output_dir+'/SVMInput-Round'+str(iteration)+'.txt'
+                    #output_file1 = "/Users/meenakshi/Documents/Singlecellbest/exp.exp.CD34+.v5-log2_filtered.txt"
+                    ExpandSampleClusters.filterRows(EventAnnot,output_file,filterDB=upd_guides,logData=False)
+                else:
+                    output_file = output_dir+'/SVMInput-Round'+str(iteration)+'.txt' 
+                    ExpandSampleClusters.filterRows(processedInputExpFile,output_file,filterDB=upd_guides,logData=False)
+                
+                header=ExpandSampleClusters.header_file(output_file)
+                
+                print "Running SVM prediction for improved subtypes - Round"+str(iteration)
+                ### Create teh training data for SVM
+                train,null=ExpandSampleClusters.TrainDataGeneration(output_file,BinarizedOutput,name,scaling,exports=False,rootDir=root_dir)
             
-            print "Running SVM prediction for improved subtypes - Round"+str(iteration)
-            ### Create teh training data for SVM
-            train,null=ExpandSampleClusters.TrainDataGeneration(output_file,BinarizedOutput,name,scaling,exports=False,rootDir=root_dir)
-        
-            ### Determine the medoids (use medoids for SVM but centroids for clustering)
-            grplst.append(group)
-            
-            Expand=False ### If Expand == True, use all down-sampled cells for classification rather than medoids (similar cellHarmony)
-            if Expand==True: 
-                grplst=[]
-                group=ExpandSampleClusters.Findgroups(BinarizedOutput,name)
+                ### Determine the medoids (use medoids for SVM but centroids for clustering)
                 grplst.append(group)
                 
-            ### Perform SVM
-            ExpandSampleClusters.Classify(header,train,output_file,grplst,name,iteration,platform,output_dir,root_dir)
-            
-            ### Create a groups file for the downsampled (or original) file
-            groupsfile = string.replace(originalExpFile,'exp.','groups.')
-            groupsfile_downsampled = string.replace(processedInputExpFile,'exp.','groups.')
-            finalgrpfile=root_dir+"/ICGS-NMF/FinalGroups.txt"
-            export.customFileCopy(finalgrpfile,groupsfile)
-            export.customFileCopy(finalgrpfile,groupsfile_downsampled)
-            export.customFileCopy(finalgrpfile,groupsfile[:-4]+'-markers.txt')
-            
-            ### Identify markers for the our final un-ordered clusters (clustering will need to be run after this)
-            markerFinder.analyzeData(processedInputExpFile,species,platform,compendiumType,geneToReport=genesToReport,correlateAll=correlateAll,AdditionalParameters=fl,logTransform=logTransform)
-            allgenesfile=root_dir+"/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt"
-            markergrps,markerlst=sortFile(allgenesfile,rho_cutoff)
-            ### To plot the heatmap, use the MarkerFinder genes (function pulls those genes out)
-            ExpandSampleClusters.filterRows(EventAnnot,processedInputExpFile[:-4]+'-markers.txt',filterDB=markerlst,logData=False) ### the processedInputExpFile is overwritten
-            
-            groupsdict=grpDict(groupsfile)
-            matrix, column_header, row_header, dataset_name, group_db = clustering.importData(originalExpFile,geneFilter=markerlst)
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
-
-                #matrix = map(np.array, zip(*matrix)) ### coverts these to tuples
-                #column_header, row_header = row_header, column_header
-                finalOutputDir=root_dir+"/ICGS-NMF/"
-                #clustering.tSNE(np.array(matrix),column_header,dataset_name,group_db,display=False,showLabels=False,species=species,reimportModelScores=False)
-                try:
-                    clustering.runUMAP(np.array(matrix),column_header,dataset_name,group_db,display=False,
-                        showLabels=False,species=species,reimportModelScores=False,rootDir=root_dir,finalOutputDir=finalOutputDir)
-                except:
-                    print traceback.format_exc()
+                Expand=False ### If Expand == True, use all down-sampled cells for classification rather than medoids (similar cellHarmony)
+                if Expand==True: 
+                    grplst=[]
+                    group=ExpandSampleClusters.Findgroups(BinarizedOutput,name)
+                    grplst.append(group)
+                    
+                ### Perform SVM
+                ExpandSampleClusters.Classify(header,train,output_file,grplst,name,iteration,platform,output_dir,root_dir)
+                
+                ### Create a groups file for the downsampled (or original) file
+                groupsfile = string.replace(originalExpFile,'exp.','groups.')
+                groupsfile_downsampled = string.replace(processedInputExpFile,'exp.','groups.')
+                finalgrpfile=root_dir+"/ICGS-NMF/FinalGroups.txt"
+                if groupsfile_downsampled == groupsfile:
+                    pass
+                else:
+                    export.customFileCopy(finalgrpfile,groupsfile_downsampled)
+                export.customFileCopy(finalgrpfile,groupsfile[:-4]+'-ICGS.txt')
+                export.customFileCopy(finalgrpfile,groupsfile[:-4]+'-markers.txt')
+                from shutil import copyfile
+                ### Don't overwrite the original groups
+                updated_expfile = originalExpFile[:-4]+'-ICGS.txt'
+                copyfile(originalExpFile, updated_expfile)
+                if groupsfile_downsampled == groupsfile:
+                    processedInputExpFile = updated_expfile
+                groupsfile=groupsfile[:-4]+'-ICGS.txt'
+                
+                ### Identify markers for the our final un-ordered clusters (clustering will need to be run after this)
+                markerFinder.analyzeData(processedInputExpFile,species,platform,compendiumType,geneToReport=genesToReport,correlateAll=correlateAll,AdditionalParameters=fl,logTransform=logTransform)
+                allgenesfile=root_dir+"/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt"
+                markergrps,markerlst=sortFile(allgenesfile,rho_cutoff)
+                ### To plot the heatmap, use the MarkerFinder genes (function pulls those genes out)
+                ExpandSampleClusters.filterRows(EventAnnot,processedInputExpFile[:-4]+'-markers.txt',filterDB=markerlst,logData=False) ### the processedInputExpFile is overwritten
+                
+                groupsdict=grpDict(groupsfile)
+                matrix, column_header, row_header, dataset_name, group_db = clustering.importData(updated_expfile,geneFilter=markerlst)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
     
-            #clustering.tSNE(processedInputExpFile,group_db=groupsdict,display=True,showLabels=False,row_header=None,colorByGene=None,species=None,reimportModelScores=False)
-            ##MV need to code 
-            #Orderedfile,groupsdict=FindcentroidGroups(filtered,groupfile)
-            SVMBinOutput=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max.txt"
-            SVMBinOutput_t=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max_t.txt"
-            import csv
-            from itertools import izip
-            a = izip(*csv.reader(open(SVMBinOutput,"rb"),delimiter='\t'))
-            csv.writer(open(SVMBinOutput_t, "wb"),delimiter='\t').writerows(a)
-            scaling=False ### will calculate centroids rather than medoids
-            centroids,centroid_heatmap_input=ExpandSampleClusters.TrainDataGeneration(processedInputExpFile[:-4]+'-markers.txt',SVMBinOutput_t,name,scaling,exports=True,rootDir=root_dir)
-            scaling=True
-            
-            graphic_links=[]
-            row_method = "hopach"
-            column_method="hopach"
-            column_metric='cosine'
-            row_metric='correlation'
-            color_gradient = 'yellow_black_blue'
-            transpose=False
-            graphic_links = clustering.runHCexplicit(centroid_heatmap_input,graphic_links, row_method, row_metric, column_method,column_metric,color_gradient, transpose, display=False, Normalize=True)
-            NMFSVM_centroid_cluster_dir=graphic_links[0][1][:-4]+'.txt'
-            outputDir = root_dir+"/NMF-SVM/SVMOutputs"
-            header=ExpandSampleClusters.header_file(NMFinput)
-            status,graphic_links2=generateMarkerheatmap(processedInputExpFile[:-4]+'-markers.txt',output_file,NMFSVM_centroid_cluster_dir,groupsdict,markergrps,header,outputDir,root_dir,species,uniqueIDs)
-            import shutil
-            if status=='not-subsampled':
-                NMFSVM_centroid_cluster_dir=graphic_links2[0][1][:-4]
-                shutil.copy(NMFSVM_centroid_cluster_dir+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt")
-                shutil.copy(NMFSVM_centroid_cluster_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.png")
-                shutil.copy(NMFSVM_centroid_cluster_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.pdf")
-            else:
-                NMFSVM_centroid_cluster_dir=graphic_links2[0][1][:-4]
-                NMFSVM_centroid_cluster_dir1=graphic_links2[1][1][:-4]
-                shutil.copy(NMFSVM_centroid_cluster_dir+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.txt")
-                shutil.copy(NMFSVM_centroid_cluster_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.png")
-                shutil.copy(NMFSVM_centroid_cluster_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.pdf")
-                shutil.copy(NMFSVM_centroid_cluster_dir1+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.txt")
-                shutil.copy(NMFSVM_centroid_cluster_dir1+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.png")
-                shutil.copy(NMFSVM_centroid_cluster_dir1+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.pdf")
-                shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
-            
-            ### write final groups ordered
-            #exportGroups(root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt",root_dir+"/ICGS-NMF/FinalGroups.txt",platform)
-            
-            if scaling:
-                flag=False
-                return flag,processedInputExpFile,EventAnnot,graphic_links3+graphic_links2
-
-            header=Correlationdepletion.header_file(NMFResult)
-            
-            output_file=output_dir+'/DepletionInput-Round'+str(iteration)+".txt"
-            sampleIndexSelection.filterFile(processedInputExpFile[:-4]+'-markers.txt',output_file,header)
-            print "Running Correlation Depletion - Round"+str(iteration)
-            commonkeys,count=Correlationdepletion.FindCorrelations(NMFResult,output_file,name)
-            Depleted=Correlationdepletion.DepleteSplicingevents(commonkeys,output_file,count,processedInputExpFile)
-            processedInputExpFile=Deplete
-            flag=True
-            
-        else:
-            try:
-                print "Running K-means analyses instead of NMF - Round"+str(iteration)
-                header=[]
-                header=Kmeans.header_file(Guidefile_block)
-                Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
-                flag=False
-            except Exception:
-                flag=False
-            
-    else:
-        if Rank==1:
-            try:
-                print "Running K-means analyses instead of NMF - Round"+str(iteration)
-                header=[]
-                header=Kmeans.header_file(Guidefile_block)
-                Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
+                    #matrix = map(np.array, zip(*matrix)) ### coverts these to tuples
+                    #column_header, row_header = row_header, column_header
+                    finalOutputDir=root_dir+"/ICGS-NMF/"
+                    #clustering.tSNE(np.array(matrix),column_header,dataset_name,group_db,display=False,showLabels=False,species=species,reimportModelScores=False)
+                    try:
+                        clustering.runUMAP(np.array(matrix),column_header,dataset_name,group_db,display=False,
+                            showLabels=False,species=species,reimportModelScores=False,rootDir=root_dir,finalOutputDir=finalOutputDir)
+                    except:
+                        print traceback.format_exc()
         
-                flag=False
-            except Exception:
-                flag=False
+                #clustering.tSNE(processedInputExpFile,group_db=groupsdict,display=True,showLabels=False,row_header=None,colorByGene=None,species=None,reimportModelScores=False)
+                ##MV need to code 
+                #Orderedfile,groupsdict=FindcentroidGroups(filtered,groupfile)
+                SVMBinOutput=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max.txt"
+                SVMBinOutput_t=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max_t.txt"
+                import csv
+                from itertools import izip
+                a = izip(*csv.reader(open(SVMBinOutput,"rb"),delimiter='\t'))
+                csv.writer(open(SVMBinOutput_t, "wb"),delimiter='\t').writerows(a)
+                scaling=False ### will calculate centroids rather than medoids
+                centroids,centroid_heatmap_input=ExpandSampleClusters.TrainDataGeneration(processedInputExpFile[:-4]+'-markers.txt',SVMBinOutput_t,name,scaling,exports=True,rootDir=root_dir)
+                scaling=True
+                
+                graphic_links=[]
+                row_method = "hopach"
+                column_method="hopach"
+                column_metric='cosine'
+                row_metric='correlation'
+                color_gradient = 'yellow_black_blue'
+                transpose=False
+                graphic_links = clustering.runHCexplicit(centroid_heatmap_input,graphic_links, row_method, row_metric, column_method,column_metric,color_gradient, transpose, display=False, Normalize=True)
+                NMFSVM_centroid_cluster_dir=graphic_links[0][1][:-4]+'.txt'
+                outputDir = root_dir+"/NMF-SVM/SVMOutputs"
+                header=ExpandSampleClusters.header_file(NMFinput)
+                status,graphic_links2=generateMarkerheatmap(processedInputExpFile[:-4]+'-markers.txt',output_file,NMFSVM_centroid_cluster_dir,groupsdict,markergrps,header,outputDir,root_dir,species,uniqueIDs)
+                import shutil
+                if status=='not-subsampled':
+                    NMFSVM_centroid_cluster_dir=graphic_links2[0][1][:-4]
+                    shutil.copy(NMFSVM_centroid_cluster_dir+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt")
+                    shutil.copy(NMFSVM_centroid_cluster_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.png")
+                    shutil.copy(NMFSVM_centroid_cluster_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.pdf")
+                    shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
+                else:
+                    NMFSVM_centroid_cluster_dir=graphic_links2[0][1][:-4]
+                    NMFSVM_centroid_cluster_dir1=graphic_links2[1][1][:-4]
+                    shutil.copy(NMFSVM_centroid_cluster_dir+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.txt")
+                    shutil.copy(NMFSVM_centroid_cluster_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.png")
+                    shutil.copy(NMFSVM_centroid_cluster_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_sampled.pdf")
+                    shutil.copy(NMFSVM_centroid_cluster_dir1+'.txt',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.txt")
+                    shutil.copy(NMFSVM_centroid_cluster_dir1+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.png")
+                    shutil.copy(NMFSVM_centroid_cluster_dir1+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.pdf")
+                    shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
+                
+                ### write final groups ordered
+                #exportGroups(root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt",root_dir+"/ICGS-NMF/FinalGroups.txt",platform)
+                
+                if scaling:
+                    flag=False
+                    return flag,processedInputExpFile,EventAnnot,graphic_links3+graphic_links2
+    
+                header=Correlationdepletion.header_file(NMFResult)
+                
+                output_file=output_dir+'/DepletionInput-Round'+str(iteration)+".txt"
+                sampleIndexSelection.filterFile(processedInputExpFile[:-4]+'-markers.txt',output_file,header)
+                print "Running Correlation Depletion - Round"+str(iteration)
+                commonkeys,count=Correlationdepletion.FindCorrelations(NMFResult,output_file,name)
+                Depleted=Correlationdepletion.DepleteSplicingevents(commonkeys,output_file,count,processedInputExpFile)
+                processedInputExpFile=Deplete
+                flag=True
+                
+            else:
+                try:
+                    print "Running K-means analyses instead of NMF - Round"+str(iteration)
+                    header=[]
+                    header=Kmeans.header_file(Guidefile_block)
+                    Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
+                    flag=False
+                except Exception:
+                    flag=False
+                
         else:
-            flag=False
-     
-    return flag,processedInputExpFile,EventAnnot
+            if Rank==1:
+                try:
+                    print "Running K-means analyses instead of NMF - Round"+str(iteration)
+                    header=[]
+                    header=Kmeans.header_file(Guidefile_block)
+                    Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
+            
+                    flag=False
+                except Exception:
+                    flag=False
+            else:
+                flag=False
+         
+        return flag,processedInputExpFile,EventAnnot
+    except:
+        print traceback.format_exc()
+        print 'WARNING!!!! Error encountered in the NMF ICGS analysis... See the above report.'
+        flag=False
+        return flag,processedInputExpFile,EventAnnot,graphic_links3
 
 def exportGroups(cluster_file,outdir,platform):
     lineNum=1

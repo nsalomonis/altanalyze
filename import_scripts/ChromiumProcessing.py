@@ -4,6 +4,7 @@ import csv
 import scipy.io
 import numpy
 import time
+import math
 
 def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True):
     start_time = time.time()
