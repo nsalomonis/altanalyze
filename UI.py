@@ -2555,12 +2555,14 @@ class GUI:
         removeOutliers = self.Results()['removeOutliers']
         dynamicCorrelation = self.Results()['dynamicCorrelation']
         restrictBy = self.Results()['restrictBy']
+        k = self.Results()['k']
         excludeCellCycle = self.Results()['excludeCellCycle']
         gsp = GeneSelectionParameters(species,array_type,vendor)
         gsp.setGeneSet(GeneSetSelection)
         gsp.setPathwaySelect(PathwaySelection)
         gsp.setGeneSelection(GeneSelection)
         gsp.setJustShowTheseIDs(JustShowTheseIDs)
+        gsp.setK(k)
         gsp.setNormalize('median')
         gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,dynamicCorrelation,
             removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff)
@@ -3247,7 +3249,7 @@ def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,u
         #print [base_url+'AltDatabase/'+db_version+'/'+species_code+'.zip']
         if species_code == 'Mm' or species_code == 'Hs' or species_code == 'Rn': specific_extension=''
         else: specific_extension='_RNASeq'
-        fln,status = update.download(base_url+'AltDatabase/updated/'+db_version+'/'+species_code+specific_extension+'.zip','AltDatabaseNoVersion/','')
+        fln,status = update.download(base_url+'AltDatabase/updated/'+db_version+'/'+species_code+specific_extension+'.zip','AltDatabase/','') #AltDatabaseNoVersion
         if 'Internet' not in status:
             print 'Finished downloading the latest species database files.'
             dbs_added+=1
@@ -4345,6 +4347,8 @@ class ExpressionFileLocationData:
     def setReturnCentroids(self,returnCentroids): self.returnCentroids = returnCentroids
     def setMultiThreading(self, multithreading): self.multithreading = multithreading
     def setVendor(self,vendor): self.vendor = vendor
+    def setKallistoFile(self,kallisto_exp): self.kallisto_exp = kallisto_exp
+    def KallistoFile(self): return self.kallisto_exp
     def setPredictGroups(self, predictGroups): self.predictGroups = predictGroups
     def setPredictGroupsParams(self, predictGroupsObjects): self.predictGroupsObjects = predictGroupsObjects
     def setGraphicLinks(self,graphic_links): self.graphic_links = graphic_links ### file location of image files

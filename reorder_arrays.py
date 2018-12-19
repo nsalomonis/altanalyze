@@ -101,7 +101,7 @@ def reorder(data,data_headers,array_order,comp_group_list,probeset_db,include_ra
     ### Begin processing sample expression values according to the organized groups
     for row_id in data:
         try: gene = probeset_db[row_id][0]
-        except TypeError: gene = '' #not needed if not altsplice data
+        except: gene = '' #not needed if not altsplice data
         data_headers2 = {} #reset each time
         grouped_ordered_array_list = {}
         for x in array_order:

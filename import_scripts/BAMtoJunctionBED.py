@@ -24,6 +24,7 @@ strand notations from other aligners (check with the software authors)."""
 import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 import pysam
+#import bamnostic as pysam
 import copy,getopt
 import time
 import traceback
@@ -328,6 +329,7 @@ if __name__ == "__main__":
         sys.exit()
     else:
         Species = None
+        reference_dir = None
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','species=','r='])
         for opt, arg in options:
             if opt == '--i': bam_dir=arg ### full path of a BAM file

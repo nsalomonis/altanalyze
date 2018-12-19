@@ -20,7 +20,16 @@
 \b0 \cf0 \
 The latest version of AltAnalyze introduces a new method to quickly process raw sequencing data (FASTQ files) to directly produce gene expression and alternative splicing estimates, without any additional software on your desktop or laptop computer.\
 \
-A demo zip file is included with the software that contains FASTQ files for analysis with Kallisto-splice, corresponding to murine single-cell bone marrow populations (LK.CD34+ and Lsk). Unzip this file before proceeding (right click and extract of open and extract to this directory - e.g., WinZip). \
+\pard\pardeftab720\ri0\partightenfactor0
+
+\b \cf0 Demo Files
+\b0 \
+Two zip files with very small FASTQ files for demonstration purposes are available here:\
+http://altanalyze.org/Data/Hs_GSE45419_FASTQs.zip (344MB - Human downsampled)\
+http://altanalyze.org/Data/Mm-FASTQ-GSE70245.zip (59MB - Mouse scRNA-Seq)\
+\
+The Breast Cancer dataset was downsampled from the original fast files as described here: https://www.synapse.org/#!Synapse:syn7286377/files/\
+The human breast cancer samples correspond to two subtypes (ER-positive and Triple-negative). Unzip these file before proceeding (right click and extract of open and extract to this directory - e.g., WinZip). \
 \pard\pardeftab720\li1440\ri0\partightenfactor0
 \cf0 \
 \pard\pardeftab720\ri0\partightenfactor0
@@ -32,13 +41,13 @@ A demo zip file is included with the software that contains FASTQ files for anal
 \b0 \cf0 1.	Double-click on the AltAnalyze executable (see Running-AltAnalyze file in the program directory for problems opening). \
 2.	Install the correct species database when prompted.\
 \pard\pardeftab720\li1440\fi-360\ri0\partightenfactor0
-\ls1\ilvl1\cf0 a.	For the demo dataset, ensure Mus musculus is downloaded. Any version of the database should be compatible (e.g., EnsMart72). \
+\ls1\ilvl1\cf0 a.	For the demo dataset, ensure Homo Sapiens is downloaded. Any version of the database should be compatible (e.g., EnsMart72). \
 \pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
 \ls1\ilvl1\cf0 3.	From the main menu in AltAnalyze, select RNA-Seq as the \'93Select vendor/data type\'94. Then select the Continue button.\
 4.	Select the \'93Process RNA-Seq reads\'94 radio button. Then select the Continue button.\
 5.	
 \b \ul Dataset Location
-\b0 \ulnone : Enter a dataset name of choice (e.g., BoneMarrow). For the \'93Select FASTQ files to run in Kallisto\'94 , select the location of the unzipped FASTQ directory. The program will process all FASTQ files in that directory. Select the output directory, which is the folder to save all results and subsequent input files to. Then select the Continue button.\
+\b0 \ulnone : Enter a dataset name of choice (e.g., Breast_cancer). For the \'93Select FASTQ files to run in Kallisto\'94 , select the location of the unzipped FASTQ directory. The program will process all FASTQ files in that directory. Select the output directory, which is the folder to save all results and subsequent input files to. Then select the Continue button.\
 \pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
 \ls1\ilvl1
 \b \cf0 6.	\ul Expression Analysis Parameters
@@ -51,14 +60,14 @@ A demo zip file is included with the software that contains FASTQ files for anal
 \b0 \ulnone : The default recommended method for splicing analysis is selected (MultiPath-PSI), however, alternative and additional algorithm options are available. When finished, select the \'93Run Analysis\'94 option.\
 \ls1\ilvl1
 \b 9.	\ul Groups Designation
-\b0 \ulnone : Type a label for each FASTQ sample shown (e.g., LK.CD34+, Lsk). This will create a \'93groups.\'94 text file in the output directory folder ExpressionInput. This file will be reloaded when. \ul \
+\b0 \ulnone : Type a label for each FASTQ sample shown (e.g., ERpos, TripleNeg). This will create a \'93groups.\'94 text file in the output directory folder ExpressionInput. This file will be reloaded when. \ul \
 \pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
 \cf0 \ulnone \
 \
 \pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
 \ls2\ilvl1
 \b \cf0 10.	\ul Comparisons Designation
-\b0 \ulnone : Select the experimental and control datasets to compare to (e.g., LK.CD34+ vs. Lsk). Select \'93Continue\'94 to run the analysis.\
+\b0 \ulnone : Select the experimental and control datasets to compare to (e.g., TripleNeg vs. ERpos). Select \'93Continue\'94 to run the analysis.\
 \ls2\ilvl1
 \b 11.	\ul Analysis Progress
 \b0 \ulnone : A black screen will appear once the analysis has begun. Be patient as the software is performing a series of in-depth analyses, including indexing of the Kallisto transcriptome (run the first time FASTQ files are processed), Kallisto pseudo-alignment to the reference transcriptome, BAM file generation with genome coordinates for all pseudo-aligned reads, gene expression quantification, differential gene expression analysis, QC analysis, network analysis, marker identification, pathway analysis and alternative splicing analysis.
@@ -85,7 +94,7 @@ There are a large array of results from this workflow which can be found in the 
 \b0 \ulnone : This folder contains the majority of saved plots as pdf and png files. Note, that the MarkerFinder folder in this directory contains additional plots. Splicing associated plots will also be saved to the folder AltResults/AlternativeOutput.\
 \ls3\ilvl1
 \b 5.	\ul AltResults
-\b0 \ulnone : This directory contains all splicing analysis results. This most important file is \'93Mm_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt\'94, which contains all MultiPath-PSI detected splicing events and associated annotations. Statistical comparison results are saved to the \'93Events-dPSI\'94 folder and splicing graphs to the SashimiPlots folder in the output directory (derived from the BAM files in the output directory.\
+\b0 \ulnone : This directory contains all splicing analysis results. This most important file is \'93Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt\'94, which contains all MultiPath-PSI detected splicing events and associated annotations. Statistical comparison results are saved to the \'93Events-dPSI\'94 folder and splicing graphs to the SashimiPlots folder in the output directory (derived from the BAM files in the output directory.\
 \pard\pardeftab720\li720\fi-360\ri0\partightenfactor0
 \ls4\ilvl1
 \b \cf0 3.	\ul SashimiPlots
@@ -101,6 +110,6 @@ Below is an example command similar to the above analysis:\
 
 \f1 \cf2 \
 
-\f2 python AltAnalyze.py --platform "RNASeq" --species Mm \'97fastq_dir /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245/ --groupdir /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245/groups.BoneMarrow.txt --compdir /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245-DownSampled/comp.BoneMarrow.txt --output /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245-DownSampled/output --expname BoneMarrow --runGOElite yes --returnPathways all\
+\f2 python AltAnalyze.py --platform "RNASeq" --species Mm \'97fastq_dir /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245-DownSampled/ --groupdir /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245-DownSampled/groups.Breast_cancer.txt --compdir /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245-DownSampled/comp.Breast_cancer.txt --output /Users/altanalyze/DemoData/Mm-FASTQ-GSE70245-DownSampled/output --expname Breast_cancer --runGOElite yes --returnPathways all\
 \
 }

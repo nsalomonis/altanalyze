@@ -61,7 +61,7 @@ try:
             matplotlib.rcParams['font.sans-serif'] = 'Arial'
             matplotlib.rcParams['figure.facecolor'] = 'white' ### Added in 2.1.2
         except Exception:
-            print traceback.format_exc()
+            #print traceback.format_exc()
             print 'Matplotlib support not enabled'
         import scipy
         try: from scipy.sparse.csgraph import _validation
@@ -72,7 +72,8 @@ try:
         try: import numpy; np = numpy
         except Exception:
             print 'Numpy import error...'
-            print traceback.format_exc()
+            #print traceback.format_exc()
+        ### The below is used for binary freeze dependency identification
         try: import umap
         except: pass
         try:
@@ -98,7 +99,7 @@ try:
             pass
         #pylab.ion() # closes Tk window after show - could be nice to include
 except Exception:
-    print traceback.format_exc()
+    #print traceback.format_exc()
     pass
 
 import time

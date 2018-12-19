@@ -227,8 +227,10 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
                 #add this aftwards since these will also be used as index values
             x = 1
     print len(array_folds),"IDs imported...beginning to calculate statistics for all group comparisons"
-    expr_group_list,expr_group_db = importArrayGroups(expr_group_dir,array_linker_db)
+    expr_group_list,expr_group_db,dataType = importArrayGroups(expr_group_dir,array_linker_db,checkInputType=True)
     comp_group_list, comp_group_list2 = importComparisonGroups(comp_group_dir)
+    if dataType=='Kallisto':
+        return None, None
     
     if 'RPKM' in norm and 'counts.' in expr_input_dir: normalization_method = 'RPKM-counts' ### process as counts if analyzing the counts file
     else: normalization_method = norm
@@ -404,13 +406,14 @@ def simpleCompsImport(group_dir,group_name_db):
         except Exception: pass ### Occurs if there are dummy lines in the file (returns with no values)
     return comps_name_db,comp_groups
 
-def importArrayGroups(expr_group_dir,array_linker_db):
+def importArrayGroups(expr_group_dir,array_linker_db,checkInputType=False):
     new_index_order = 0
     import collections
     updated_groups = collections.OrderedDict()
     expr_group_list=[]
     expr_group_db = {} ### use when writing out data
     fn=filepath(expr_group_dir)
+    data_type='null'
     try:
         try: 
             for line in open(fn,'rU').xreadlines():
@@ -455,9 +458,23 @@ def importArrayGroups(expr_group_dir,array_linker_db):
         print_out = 'No groups or comps files found for'+expr_group_dir+'... exiting program.'
         try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); root.destroy(); sys.exit()
         except Exception: print print_out; sys.exit()
-    if len(updated_groups)>0:
+    if len(updated_groups)>0 and checkInputType:
+        import shutil
+        try: ### When a Kallisto TPM and a gene-RPKM file co-exist (prioritize differential analysis of Kallisto)
+            shutil.copy(expr_group_dir,string.replace(expr_group_dir,'.txt','-Kallisto.txt'))
+            scr_exp_dir = string.replace(expr_group_dir,'groups.','Kallisto_Results/exp.')
+            dst_exp_dir = string.replace(expr_group_dir,'groups.','exp.')
+            shutil.copy(scr_exp_dir,string.replace(dst_exp_dir,'.txt','-Kallisto.txt'))
+            src_comps_dir = string.replace(expr_group_dir,'groups.','comps.')
+            shutil.copy(src_comps_dir,string.replace(src_comps_dir,'.txt','-Kallisto.txt'))
+        except:
+            pass
+        data_type='Kallisto'
         exportUpdatedGroups(expr_group_dir,updated_groups)
-    return expr_group_list,expr_group_db
+    if checkInputType:
+        return expr_group_list,expr_group_db,data_type
+    else:
+        return expr_group_list,expr_group_db
 
 def exportUpdatedGroups(expr_group_dir,updated_groups):
     eo = export.ExportFile(expr_group_dir)
@@ -986,7 +1003,7 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
     filename = string.replace(filename,'//','/')
     status = 'yes'
     convertGeneToSymbol = True
-
+    
     if 'ExpressionOutput' in filename:
         filename = string.replace(filename,'-steady-state.txt','.txt')
         export_path = string.replace(filename,'ExpressionOutput','ExpressionOutput/Clustering')
@@ -1106,7 +1123,7 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                     for x in values:
                         try: log_folds.append(x-avg)
                         except Exception: log_folds.append('')
-
+    
                 if gene in genes_to_import:
                     ### Genes regulated in any user-indicated comparison according to the fold and pvalue cutoffs provided
                     log_folds = map(lambda x: str(x), log_folds)
@@ -1940,7 +1957,8 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
             for file in comparison_filename_list: altanalyze_files.append(file)
             residual_file_status = ExonArray.verifyFile(residuals_input_dir)
             ### Separate residual file into comparison files for AltAnalyze (if running FIRMA)
-            if residual_file_status == 'found': ExonArray.processResiduals(fl,Array_type,Species,perform_alt_analysis)
+            if residual_file_status == 'found':
+                ExonArray.processResiduals(fl,Array_type,Species,perform_alt_analysis)
         """
         from build_scripts import ExonArrayEnsemblRules
         source_biotype = array_type, root_dir
@@ -1952,7 +1970,17 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
             counts_expr_dir = string.replace(expr_input_dir,'exp.','counts.')
             if 'counts.' not in counts_expr_dir: counts_expr_dir = 'counts.'+counts_expr_dir ### Occurs if 'exp.' not in the filename
             count_statistics_db, count_statistics_headers = calculate_expression_measures(counts_expr_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
-        
+            if count_statistics_headers==None:
+                ### Indicates that the Kallisto expressio file should be used instead of the steady-state RPKM file
+                expr_input_dir = string.replace(expr_input_dir,'-steady-state.txt','-Kallisto.txt')
+                expr_group_dir = string.replace(expr_group_dir,'.txt','-Kallisto.txt')
+                array_type = "3'array"; arrayCode=0; vendor='Ensembl'
+                experiment_name += '-Kallisto'
+                fl.setKallistoFile(expr_input_dir)
+                annotate_db = importGeneAnnotations(species)
+                conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
+                probeset_db={}
+
         calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
         buildCriterion(GE_fold_cutoffs, p_cutoff, ptype_to_use, root_dir+'/ExpressionOutput/','summary') ###Outputs a summary of the dataset and all comparisons to ExpressionOutput/summary.txt
         #except Exception: null=[]
@@ -2454,7 +2482,6 @@ def calculateNormalizedIntensities(root_dir, species, array_type, avg_all_for_SS
 
 def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expFile,min_events=0,med_events=0):
     expFile = exportSorted(expFile, 0) ### Sort the expression file
-    print expFile
     from  scipy import stats
     exported=[]
     retained_introns=[]

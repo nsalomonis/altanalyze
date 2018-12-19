@@ -5576,6 +5576,10 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             fl.setOutputDir(root_dir) ### This needs to be set here
             exp_file = fl.ExpFile()
             if array_type != "3'array": exp_file = string.replace(exp_file,'.txt','-steady-state.txt')
+            try:
+                exp_file = fl.KallistoFile() ### Override with the Kallisto expression file if present
+                print 'Using the Kallisto expressio file for MarkerFinder...'
+            except: pass
             markerFinder_inputs = [exp_file,fl.DatasetFile()] ### Output a replicate and non-replicate version
             markerFinder_inputs = [exp_file] ### Only considers the replicate and not mean analysis (recommended)
             for input_exp_file in markerFinder_inputs:

@@ -5083,15 +5083,19 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
                 kallisto_out.seek(0, 2)  # Subprocess doesn't move the file pointer when appending!
 
             if paired == 'paired':
-                #geneCoordFile=None - force to run simple Kallisto
-                if geneCoordFile==None:
+                s=[]
+            else:
+                s=["--single","-l","200","-s","20"]
+            
+            #geneCoordFile=None - force to run simple Kallisto
+            if geneCoordFile==None:
                     try: ### Without BAM and BED file generation
-                        retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+p)
+                        retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+s+p)
                     except Exception:
                         print traceback.format_exc()
-                else: ### Attempt to export BAM and BED files with Kallisto quantification
+            else: ### Attempt to export BAM and BED files with Kallisto quantification
                     kallisto_command = [kallisto_file, "quant", "-i", indexFile, "-o", output_path,
-                                        "-g", geneCoordFile, "-j", bedFile, "--threads="+str(n_threads), "--sortedbam"] + p
+                                        "-g", geneCoordFile, "-j", bedFile, "--threads="+str(n_threads), "--sortedbam"] + s +p
                     kallisto_process = subprocess.Popen(kallisto_command, stdout=kallisto_out, stderr=err_out)
                     kallisto_process.communicate()
                     retcode = kallisto_process.returncode
@@ -5107,19 +5111,6 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
                     print traceback.format_exc()
                     kill
                     retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)"""
-            else:
-                if os.name == 'nt':
-                    try:
-                        try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
-                        except Exception: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
-                    except Exception:
-                        try: retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200"]+p)
-                        except Exception:
-                            retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
-                else:
-                    try: retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
-                    except Exception:
-                        retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path,"--single","-l","200","-s","20"]+p)
             if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
             else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
 
@@ -5416,7 +5407,8 @@ if __name__ == '__main__':
     """
     import UI; import multiprocessing as mlp
 
-    runKallisto('Hs','HSC','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/FASTQ/output','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/FASTQ/input',mlp);sys.exit()
+    #runKallisto('Mm','BoneMarrow','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ',mlp);sys.exit()
+    runKallisto('Hs','BreastCancer','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input',mlp);sys.exit()
 
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
