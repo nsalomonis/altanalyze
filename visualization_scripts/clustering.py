@@ -677,7 +677,12 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             new_index = idx1[i]
         else:
             try:
-                if row_header[i] in JustShowTheseIDs: color = 'red'
+                feature_id = row_header[i]
+                if ':' in feature_id:
+                    feature_id = string.split(feature_id,':')[1]
+                    if feature_id[-1]==' ': feature_id = feature_id[:-1]
+                if feature_id in JustShowTheseIDs:
+                    color = 'red'
                 else: color = 'black'
             except Exception: pass
             if len(row_header)<106: ### Don't visualize gene associations when more than 100 rows
@@ -706,6 +711,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if ':' in feature_id:
                 if 'ENS' != feature_id[:3] or 'G0000' in feature_id:
                     feature_id = string.split(feature_id,':')[1]
+                    if feature_id[-1]==' ': feature_id = feature_id[:-1]
                 else:
                     feature_id = string.split(feature_id,':')[0]
                     try: feature_id = gene_to_symbol[feature_id][0]
@@ -2086,9 +2092,14 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         if method=="UMAP":
             try:
                 import umap
+                model=umap.UMAP(n_neighbors=50,min_dist=0.75,metric='correlation')
             except: 
-                from visualization_scripts.umap_learn import umap ### Bypasses issues with Py2app importing umap (and secondarily numba/llvmlite)
-            model=umap.UMAP(n_neighbors=50,min_dist=0.75,metric='correlation')
+                try:
+                    from visualization_scripts.umap_learn import umap ### Bypasses issues with Py2app importing umap (and secondarily numba/llvmlite)
+                    model=umap.UMAP(n_neighbors=50,min_dist=0.75,metric='correlation')
+                except: ### requires single-threading for Windows platforms (possibly others)
+                    from visualization_scripts.umap_learn_single import umap ### Bypasses issues with Py2app importing umap (and secondarily numba/llvmlite)
+                    model=umap.UMAP(n_neighbors=50,min_dist=0.75,metric='correlation')
             print 'UMAP run'
         #model = TSNE(n_components=2,init='pca', random_state=0, verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2,verbose=1, perplexity=40, n_iter=300)

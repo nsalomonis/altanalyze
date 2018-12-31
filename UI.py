@@ -750,7 +750,7 @@ def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
                 outdir = export.findParentDir(tSNE_score_file)
             exp_tSNE_score_file = outdir+'/'+export.findFilename(exonExpFile)[:-4]+extension
             import shutil
-            shutil.copyfile(tSNE_score_file,exp_tSNE_score_file)
+            export.customFileCopy(tSNE_score_file,exp_tSNE_score_file)
         except Exception:
             print traceback.format_exc()
             pass
@@ -7184,10 +7184,9 @@ def downloadInteractionDBs(species,windowType):
     
 if __name__ == '__main__':
     """
-    dir = '/Users/saljh8/Desktop/dataAnalysis/FuKun/AltResults/Clustering/Combined-junction-exon-evidence.txt'
-    expFile = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ExpressionInput/exp.GGI-IG2.txt'
-    group_selected = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/Kallisto/ICGS-NMF/FinalMarkerHeatmap.txt'
-    array_type="3'array"; species='Mm'
+    expFile = '/Volumes/salomonis2/NICOLAS-NASSAR-Hs/Run0012-Hs/10X-Vehicle-20181005-3hg/outs/filtered_gene_bc_matrices/ExpressionInput/exp.10X-Vehicle-20181005-3hg_matrix_CPTT.txt'
+    group_selected = '/Volumes/salomonis2/NICOLAS-NASSAR-Hs/Run0012-Hs/10X-Vehicle-20181005-3hg/outs/filtered_gene_bc_matrices/ICGS-NMF/FinalMarkerHeatmap_all.txt'
+    array_type="3'array"; species='Hs'
     exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True)
     sys.exit()"""
     #a = exportJunctionList(dir,limit=50)

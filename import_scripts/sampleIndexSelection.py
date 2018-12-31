@@ -55,7 +55,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                         for x in filter_names:
                             if x not in values:
                                 print x,
-                            print 'are missing';kill
+                        print 'are missing';kill
                         
                 firstLine = False
                 header = values

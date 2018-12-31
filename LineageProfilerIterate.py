@@ -2536,7 +2536,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     """Export a combined groups and comps file to perform apples-to-apples comparisons"""
     folds_file=''
     all_DEGs=[]
-    if len(final_clusters)>0 and peformDiffExpAnalysis:
+    if len(final_clusters)>0:
         try:
             final_clusters.sort()
             new_query_headers=[]
@@ -2644,56 +2644,57 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 log_fold_cutoff=0.1
                 output_dir = root_dir+'Events-LogFold_0.1_rawp'
             """
-            if use_adjusted_pval:
-                pval_type = '_adjp_'+str(pvalThreshold)
-            else:
-                pval_type = '_rawp_'+str(pvalThreshold)
-            use_custom_output_dir = 'DifferentialExpression_Fold_'+str(fold_cutoff)[:4]+pval_type
-            output_dir = root_dir+use_custom_output_dir
-            
-            log_fold_cutoff = math.log(float(fold_cutoff),2)
-            
-            metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,use_custom_output_dir=use_custom_output_dir,
-                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold)
-            gene_summary_file = output_dir+'/gene_summary.txt'
-            gene_summary_file2 = string.replace(gene_summary_file,use_custom_output_dir,'')
-            export.copyFile(gene_summary_file,gene_summary_file2)
-            index1=2;index2=3; x_axis='Number of DEGs'; y_axis = 'Reference clusters'; title='cellHarmony Differentially Expressed Genes'
-            clustering.barchart(gene_summary_file2,index1,index2,x_axis,y_axis,title,color1='IndianRed',color2='SkyBlue')
-            
-            all_DEGs = aggregateRegulatedGenes(output_dir)
-            display_genes = string.join(list(all_DEGs),' ')
-            ICGS_DEGs_combined = ref_exp_db.keys()
-            for gene in all_DEGs:
-                if gene not in ICGS_DEGs_combined:
-                    ICGS_DEGs_combined.append(gene) ### Add these genes at the end
-            ICGS_DEGs_combined.reverse()
-            all_DEGs2 = string.join(ICGS_DEGs_combined,' ')
-            import UI
-            vendor = 'Ensembl'
-            gsp = UI.GeneSelectionParameters(species,platform,vendor)
-            gsp.setGeneSet('None Selected')
-            gsp.setPathwaySelect('')
-            gsp.setGeneSelection(all_DEGs2)
-            gsp.setJustShowTheseIDs(display_genes)
-            gsp.setNormalize('median')
-            transpose = gsp
-            column_method = None #'hopach'
-            column_metric = 'cosine'
-            row_method = None #'hopach'
-            row_metric = 'correlation'
-            graphic_links=[]
-            color_gradient = 'yellow_black_blue'
-            from visualization_scripts import clustering
-            if runningCommandLine:
-                display = False
-            else:
-                display = True
-                display = False
+            if peformDiffExpAnalysis:
+                if use_adjusted_pval:
+                    pval_type = '_adjp_'+str(pvalThreshold)
+                else:
+                    pval_type = '_rawp_'+str(pvalThreshold)
+                use_custom_output_dir = 'DifferentialExpression_Fold_'+str(fold_cutoff)[:4]+pval_type
+                output_dir = root_dir+use_custom_output_dir
                 
-            outputDEGheatmap=False
-            if outputDEGheatmap:
-                graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, Normalize=True)
+                log_fold_cutoff = math.log(float(fold_cutoff),2)
+                
+                metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,use_custom_output_dir=use_custom_output_dir,
+                                    log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold)
+                gene_summary_file = output_dir+'/gene_summary.txt'
+                gene_summary_file2 = string.replace(gene_summary_file,use_custom_output_dir,'')
+                export.copyFile(gene_summary_file,gene_summary_file2)
+                index1=2;index2=3; x_axis='Number of DEGs'; y_axis = 'Reference clusters'; title='cellHarmony Differentially Expressed Genes'
+                clustering.barchart(gene_summary_file2,index1,index2,x_axis,y_axis,title,color1='IndianRed',color2='SkyBlue')
+                
+                all_DEGs = aggregateRegulatedGenes(output_dir)
+                display_genes = string.join(list(all_DEGs),' ')
+                ICGS_DEGs_combined = ref_exp_db.keys()
+                for gene in all_DEGs:
+                    if gene not in ICGS_DEGs_combined:
+                        ICGS_DEGs_combined.append(gene) ### Add these genes at the end
+                ICGS_DEGs_combined.reverse()
+                all_DEGs2 = string.join(ICGS_DEGs_combined,' ')
+                import UI
+                vendor = 'Ensembl'
+                gsp = UI.GeneSelectionParameters(species,platform,vendor)
+                gsp.setGeneSet('None Selected')
+                gsp.setPathwaySelect('')
+                gsp.setGeneSelection(all_DEGs2)
+                gsp.setJustShowTheseIDs(display_genes)
+                gsp.setNormalize('median')
+                transpose = gsp
+                column_method = None #'hopach'
+                column_metric = 'cosine'
+                row_method = None #'hopach'
+                row_metric = 'correlation'
+                graphic_links=[]
+                color_gradient = 'yellow_black_blue'
+                from visualization_scripts import clustering
+                if runningCommandLine:
+                    display = False
+                else:
+                    display = True
+                    display = False
+                    
+                outputDEGheatmap=False
+                if outputDEGheatmap:
+                    graphic_links = clustering.runHCexplicit(expression_file, graphic_links, row_method, row_metric, column_method, column_metric, color_gradient, transpose, display=display, Normalize=True)
         except Exception:
             print traceback.format_exc()
             print '!!!!! NO merged expression file availble for differential expression analyis (apples-to-apples).'

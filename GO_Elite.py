@@ -1643,7 +1643,7 @@ class SummaryResultsWindow:
         self.sf.pack(padx = 5, pady = 1, fill = 'both', expand = 1)
         self.frame = self.sf.interior()
         
-        txt=Text(self.frame,bg='gray')                    
+        txt=Text(self.frame,bg='light gray')                    
         txt.pack(expand=True, fill="both")
         txt.insert(END, 'Primary Analysis Finished....\n')
         txt.insert(END, '\nResults saved to:\n'+output_dir+'\n')

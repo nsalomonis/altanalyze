@@ -5483,12 +5483,14 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     fl.setExonRPKMThreshold(0.5)
                     fl.setJunctionExpThreshold(5.0)
                     fl.setVendor('RNASeq')
-                from import_scripts import BAMtoJunctionBED
                 ### Export BAM file indexes
-                try: BAMtoJunctionBED.exportIndexes(root_dir)
-                except:
-                    print 'BAM file indexing failed...'
-                    print traceback.format_exc()
+                try:
+                    from import_scripts import BAMtoJunctionBED
+                    try: BAMtoJunctionBED.exportIndexes(root_dir)
+                    except:
+                        print 'BAM file indexing failed...'
+                        print traceback.format_exc()
+                except: print 'BAM file support missing due to lack of pysam...'
             else:
                 print '...Performing analyses on Kallisto-TPM values directly.'
                 array_type = "3'array"
@@ -5629,9 +5631,9 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                 gsp.setIncludeExpIDs(True)
                 UI.networkBuilder(input_file_dir,inputType,output_dir,interactionDirs,degrees,input_exp_file,gsp,'')
       except Exception:
-        print traceback.format_exc()
-
-                            
+        #print traceback.format_exc()
+        pass
+                    
       if status == 'stop':
           ### See if the array and species are compatible with GO-Elite analysis
           system_codes = UI.getSystemInfo()
@@ -5684,6 +5686,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       null=[] ###Add link to new module here (possibly)
       #updateDBs(species,array_type)
       sys.exit()
+
   if perform_alt_analysis != 'expression': ###Thus perform_alt_analysis = 'both' or 'alt' (default when skipping expression summary step)
       ###### Run AltAnalyze ######  
       global dataset_name; global summary_results_db; global summary_results_db2
@@ -5809,6 +5812,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     fl.setExpFile(search_dir+'/'+file)
                 if 'groups.' in file:
                     fl.setGroupsFile(search_dir+'/'+file)
+
       try:
           #"""
           try:
@@ -6791,7 +6795,7 @@ def commandLineRun():
             
             ### force MarkerFinder to be run
             input_exp_file = newExpFile  ### Point MarkerFinder to the new ICGS ordered copied expression file
-            runMarkerFinder=False ### Not necessary for ICGS2 as MarkerFinder will already have been run
+            runMarkerFinder=True ### Not necessary for ICGS2 as MarkerFinder will already have been run - but good for other ICGS outputs
             if runMarkerFinder:
                 update_method = ['markers']
             if runCompleteWorkflow == False:

@@ -5,7 +5,7 @@ Cytoscape*
 *.pyc
 Config/R*
 *.log
-input*
+input/*
 output*
 build/*
 dist/*

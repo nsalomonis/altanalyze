@@ -244,6 +244,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
         io = open (string.replace(bam_dir,'.bam','__isoforms.txt'),"w")
         isoform_junctions = copy.deepcopy(junction_db)
     outlier_start = 0; outlier_end = 0; read_count = 0; c=0
+
     for entry in bamf.fetch():
       bam_reads+=1
       try: cigarstring = entry.cigarstring
@@ -273,6 +274,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
             except Exception:
                 #if multi == False:  print 'No TopHat strand information';sys.exit()
                 tophat_strand = None
+
             coordinates,up_to_intron_dist = getSpliceSites(entry.cigar,X)
             #if count > 100: sys.exit()
             #print entry.query_name,X, Y, entry.cigarstring, entry.cigar, tophat_strand

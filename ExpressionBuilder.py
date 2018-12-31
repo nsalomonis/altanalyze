@@ -1903,6 +1903,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
     if 'Ensembl' in vendor:
         annotate_db = importGeneAnnotations(species) ### populate annotate_db - mimicking export structure of exon array
 
+    original_platform = array_type
     global expr_threshold; global dabg_pval; global gene_exp_threshold; global gene_rpkm_threshold; dabg_pval = dabg_p
     altanalyze_files = []; datasets_with_all_necessary_files=0
     for dataset in exp_file_location_db:
@@ -1980,6 +1981,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
                 annotate_db = importGeneAnnotations(species)
                 conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
                 probeset_db={}
+                original_platform = 'RNASeq'
 
         calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
         buildCriterion(GE_fold_cutoffs, p_cutoff, ptype_to_use, root_dir+'/ExpressionOutput/','summary') ###Outputs a summary of the dataset and all comparisons to ExpressionOutput/summary.txt
@@ -2014,9 +2016,10 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         print "...check these file names before running again."
         inp = sys.stdin.readline(); sys.exit()
     altanalyze_files = unique.unique(altanalyze_files) ###currently not used, since declaring altanalyze_files a global is problematic (not available from ExonArray... could add though)
-    if array_type != "3'array" and perform_alt_analysis != 'expression':
+
+    if (array_type != "3'array" and perform_alt_analysis != 'expression') or original_platform == 'RNASeq':
         from stats_scripts import FilterDabg; reload(FilterDabg)
-        altanalyze_output = FilterDabg.remoteRun(fl,species,array_type,expression_threshold,filter_method,dabg_p,expression_data_format,altanalyze_files,avg_all_for_ss)
+        altanalyze_output = FilterDabg.remoteRun(fl,species,original_platform,expression_threshold,filter_method,dabg_p,expression_data_format,altanalyze_files,avg_all_for_ss)
         return 'continue',altanalyze_output
     else:
         end_time = time.time(); time_diff = int(end_time-start_time)
