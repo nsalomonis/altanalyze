@@ -1,9 +1,10 @@
 #!/usr/local/bin/python2.6
 
 import sys,string,os
-import export
+
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 sys.setrecursionlimit(5000)
+import export
 
 _script = 'AltAnalyze.py'
 _appName = "AltAnalyze"
@@ -14,7 +15,7 @@ _appDescription +="promoter changes and view how these changes may affect protei
 _authorName = 'Nathan Salomonis'
 _authorEmail = 'altanalyze@gmail.com'
 _authorURL = 'http://www.altanalyze.org'
-_appIcon = "AltAnalyze_W7.ico"
+_appIcon = "build_scripts/AltAnalyze_W7.ico"
 
 excludes = ['wx','tests','iPython'] #["wxPython"] #"numpy","scipy","matplotlib"
 includes = ["mpmath", "numpy","sklearn.neighbors.typedefs",'sklearn.utils.lgamma','sklearn.manifold',
@@ -97,7 +98,6 @@ if sys.platform.startswith("win"):
         ### example command: python setup.py py2exe
         from distutils.core import setup
         import py2exe
-        import suds
         import numpy
         import matplotlib
         import unique
@@ -109,12 +109,15 @@ if sys.platform.startswith("win"):
         import ctabix
         import csamtools
         import cvcf
+        from mpl_toolkits import mplot3d
         import dbhash
+        import matplotlib.backends.backend_tkagg
         import anydbm
         import six ### relates to a date-time dependency in matplotlib
         #sys.path.append(unique.filepath("Config\DLLs")) ### This is added, but DLLs still require addition to DLL python dir
         from distutils.filelist import findall
         import os
+        import mpl_toolkits
         excludes = []
         
         data_files=matplotlib.get_py2exe_datafiles()
@@ -122,6 +125,7 @@ if sys.platform.startswith("win"):
         matplotlibdatadir = matplotlib.get_data_path()
         matplotlibdata = findall(matplotlibdatadir)
         matplotlibdata_files = []
+        data_files += ['C:\Python27\Lib\site-packages\scipy\extra-dll\msvcr90.dll','C:\Python27\Lib\site-packages\scipy\extra-dll\msvcp90.dll','C:\Python27\Lib\site-packages\scipy\extra-dll\msvcm90.dll']
         for f in matplotlibdata:
             dirname = os.path.join('matplotlibdata', f[len(matplotlibdatadir)+1:])
             matplotlibdata_files.append((os.path.split(dirname)[0], [f]))
@@ -139,6 +143,16 @@ if sys.platform.startswith("win"):
                         "includes": 'matplotlib',
                         "includes": 'mpl_toolkits',
                         "includes": 'matplotlib.backends.backend_tkagg',
+                        "includes": 'mpl_toolkits.mplot3d',
+                        "includes": 'scipy._lib.messagestream',
+                        "includes": 'scipy.special._ufuncs_cxx',
+                        "includes": 'sklearn.neighbors.typedefs',
+                        "includes": 'sklearn.neighbors.ball_tree',
+                        "includes": 'sklearn.utils.lgamma',
+                        "includes": 'sklearn.linear_model.sgd_fast',
+                        "includes": 'scipy.special.cython_special',
+                        "includes": 'llvmlite.binding.ffi',
+                        "includes": 'numba.config',
                         #'includes': 'sklearn.neighbors.typedefs',
                         #'includes': 'sklearn.utils.lgamma',
                         #"includes": 'sklearn.utils.sparsetools._graph_validation',

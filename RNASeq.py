@@ -4216,7 +4216,8 @@ def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
         else:
             clust_num = cluster
         out_obj.write(name+'\t'+str(clust_num)+'\t'+cluster+'\n')
-        if cluster not in unique_clusters: unique_clusters.append(cluster)
+        clust_num = str(clust_num)
+        if clust_num not in unique_clusters: unique_clusters.append(clust_num)
     out_obj.close()
     comps=[] #Export comps
     out_obj = export.ExportFile(new_comps_dir)

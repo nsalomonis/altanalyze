@@ -39,10 +39,13 @@ try:
             ### TkAgg doesn't work when AltAnalyze is run remotely (ssh or sh script)
             try: matplotlib.use('Agg')
             except Exception: pass
-            try: matplotlib.rcParams['backend'] = 'Agg'
+            try:
+                matplotlib.rcParams['backend'] = 'Agg'
             except Exception: pass
         else:
-            try: matplotlib.use('TkAgg')
+            try:
+                import matplotlib.backends.backend_tkagg
+                matplotlib.use('TkAgg')
             except Exception: pass
             try: matplotlib.rcParams['backend'] = 'TkAgg'
             except Exception: pass
@@ -52,6 +55,8 @@ try:
             import matplotlib.mlab as mlab
             import matplotlib.ticker as tic
             from matplotlib.patches import Circle
+            import mpl_toolkits
+            from mpl_toolkits import mplot3d
             from mpl_toolkits.mplot3d import Axes3D
             try: from matplotlib.cbook import _string_to_bool
             except: pass
@@ -61,18 +66,25 @@ try:
             matplotlib.rcParams['font.sans-serif'] = 'Arial'
             matplotlib.rcParams['figure.facecolor'] = 'white' ### Added in 2.1.2
         except Exception:
-            #print traceback.format_exc()
+            print traceback.format_exc()
             print 'Matplotlib support not enabled'
         import scipy
         try: from scipy.sparse.csgraph import _validation
         except Exception: pass
         from scipy.linalg import svd
+        import scipy.special._ufuncs_cxx
+        from scipy.spatial import _voronoi
+        from scipy.spatial import _spherical_voronoi
+        from scipy.spatial import qhull
+        import scipy._lib.messagestream
         import scipy.cluster.hierarchy as sch
         import scipy.spatial.distance as dist
+        #import scipy.interpolate.interpnd
+        #from scipy import optimize
         try: import numpy; np = numpy
         except Exception:
             print 'Numpy import error...'
-            #print traceback.format_exc()
+            print traceback.format_exc()
         ### The below is used for binary freeze dependency identification
         try: import umap
         except: pass
@@ -86,20 +98,34 @@ try:
             from sklearn.decomposition import PCA, FastICA
         except Exception: pass
         
-        from sklearn.neighbors import quad_tree
-        from sklearn.neighbors import *; from sklearn.manifold.t_sne import *
+        try: from sklearn.neighbors import quad_tree ### supported in sklearn>18.2
+        except: pass
+        try: import sklearn.utils.sparsetools._graph_validation
+        except: pass
+        try: import sklearn.utils.weight_vector
+        except: pass
+        from sklearn.neighbors import *
+        from sklearn.manifold.t_sne import *
         from sklearn.tree import *; from sklearn.tree import _utils
         from sklearn.manifold.t_sne import _utils
         from sklearn.manifold import TSNE
+        from sklearn.neighbors import NearestNeighbors
+        import sklearn.linear_model.sgd_fast
+        import sklearn.utils.lgamma
+        try: import scipy.special.cython_special
+        except: pass
+        import sklearn.neighbors.typedefs
+        import sklearn.neighbors.ball_tree
         try:
             import numba
+            import numba.config
             import llvmlite; from llvmlite import binding; from llvmlite.binding import *
             from llvmlite.binding import ffi; from llvmlite.binding import dylib
         except:
             pass
         #pylab.ion() # closes Tk window after show - could be nice to include
 except Exception:
-    #print traceback.format_exc()
+    print traceback.format_exc()
     pass
 
 import time
@@ -4517,9 +4543,10 @@ def buildGraphFromSIF(mod,species,sif_filename,ora_input_dir):
         #displaySimpleNetXGraph(sif_filename,fold_db,pathway_name)
         output_filename = iGraphSimple(sif_filename,fold_db,pathway_name)
     except Exception:
-        print traceback.format_exc()
+        print 'igraph export failed due to an unknown error'
+        #print traceback.format_exc()
         try: displaySimpleNetwork(sif_filename,fold_db,pathway_name)
-        except Exception: None ### GraphViz problem
+        except Exception: pass ### GraphViz problem
     return output_filename
 
 def iGraphSimple(sif_filename,fold_db,pathway_name):

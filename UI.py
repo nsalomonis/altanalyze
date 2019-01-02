@@ -752,7 +752,7 @@ def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
             import shutil
             export.customFileCopy(tSNE_score_file,exp_tSNE_score_file)
         except Exception:
-            print traceback.format_exc()
+            #print traceback.format_exc()
             pass
     
     return exonExpFile,newExpFile,new_groups_dir 
@@ -1207,10 +1207,11 @@ class GUI:
     def PredictGroups(self):
         self.button_flag = True
         self.graphic_link = {}
-        try: import ImageTk
-        except Exception:
+        try:
             from PIL import ImageTk
             from PIL import Image
+        except Exception:
+            from ImageTk import Image
         
         self.toplevel_list=[] ### Keep track to kill later
         
