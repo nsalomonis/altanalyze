@@ -2151,12 +2151,15 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     else:
         display = True
         display = False
-        
-    graphics = clustering.runHCexplicit(query_output_file, [], row_method, row_metric, column_method,
-            column_metric, color_gradient, transpose, Normalize=Normalize, contrast=5, display=display)
-
-    graphics = clustering.runHCexplicit(output_file, [], row_method, row_metric, column_method,
-            column_metric, color_gradient, transpose, Normalize=Normalize, contrast=5, display=display)
+    print 'Exporting cellHarmony heatmaps...'
+    try:
+        graphics = clustering.runHCexplicit(query_output_file, [], row_method, row_metric, column_method,
+                column_metric, color_gradient, transpose, Normalize=Normalize, contrast=5, display=display)
+    
+        graphics = clustering.runHCexplicit(output_file, [], row_method, row_metric, column_method,
+                column_metric, color_gradient, transpose, Normalize=Normalize, contrast=5, display=display)
+    except:
+        print traceback.format_exc()
     
     zscore = True
     graphics=[]
@@ -2716,6 +2719,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
         export_object.close()
     except:
         pass
+    print 'Completed cellHarmony file creation...'
     return output_file, query_output_file, folds_file, all_DEGs
 
 def aggregateRegulatedGenes(folder):
