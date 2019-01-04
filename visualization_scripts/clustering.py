@@ -130,6 +130,8 @@ except Exception:
     print traceback.format_exc()
     pass
 
+try: import numpy
+except: pass
 import time
 import unique
 from stats_scripts import statistics
@@ -1806,9 +1808,6 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                             #avg = min(s)
                             avg = numpy.mean(s)
                         else:
-                            try: avg = numpy.median(s)
-                            except NameError:
-                                import numpy
                             avg = numpy.median(s)
                     if nullsPresent:
                         s=[] ### Needs to be done to zero out the values
