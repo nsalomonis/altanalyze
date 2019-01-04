@@ -82,7 +82,7 @@ try:
         #import scipy.interpolate.interpnd
         #from scipy import optimize
         try: import numpy; np = numpy
-        except Exception:
+        except:
             print 'Numpy import error...'
             print traceback.format_exc()
         ### The below is used for binary freeze dependency identification
@@ -1805,7 +1805,11 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                         if Normalize=='row mean':
                             #avg = min(s)
                             avg = numpy.mean(s)
-                        else: avg = avg = numpy.median(s)
+                        else:
+                            try: avg = numpy.median(s)
+                            except NameError:
+                                import numpy
+                            avg = numpy.median(s)
                     if nullsPresent:
                         s=[] ### Needs to be done to zero out the values
                         for value in t[start:]:

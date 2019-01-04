@@ -4960,7 +4960,9 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
     kallisto_file = filepath(kallisto_file)
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
     fn = filepath(kallisto_file)
-    
+    try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
+    except: pass    
+
     output_dir=root_dir+'/ExpressionInput/kallisto/'
     try: os.mkdir(root_dir+'/ExpressionInput')
     except Exception: pass
