@@ -8,7 +8,7 @@ AltAnalyze is an extremely user-friendly and open-source analysis tool that can 
 
 If installed from PyPI (pip install AltAnalyze), the below dependencies should be included in the installed package. When running from source code you will need to install the following libraries.
   * Required: Python 2.7, numpy, scipy, matplotlib, sklearn (scikit-learn)
-  * Recommended: umap-learn, nimfa, numba, annoy, networkx, R 3+, fastcluster, pillow, pysam, requests, pandas, patsy, lxml, python-igraph, cairo
+  * Recommended: umap-learn, nimfa, numba, community, annoy, networkx, R 3+, fastcluster, pillow, pysam, requests, pandas, patsy, lxml, python-igraph, cairo
 
 [AltAnalyze documentation](http://altanalyze.readthedocs.io/), stand-alone archives are provided at [sourceforge](https://sourceforge.net/projects/altanalyze/files/) as well as at [github](https://github.com/nsalomonis/altanalyze). For questions not addressed here, please [contact us](https://github.com/nsalomonis/altanalyze/wiki/ContactUs).
 
