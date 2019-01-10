@@ -226,13 +226,13 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                 except Exception:
                     codes = map(lambda x: x[0],alignedread.cigar)
                     if 3 in codes: cigarstring = 'N'
-                    else: cigarstring = None
-                
+                    else: cigarstring = ''
+                    
                 try: read_strand = alignedread.opt('XS') ### TopHat/STAR knows which sequences are likely real splice sites so it assigns a real strand to the read
                 except Exception,e:
                     #if multi == False:  print 'No TopHat strand information';sys.exit()
                     read_strand = None ### TopHat doesn't predict strand for many reads                
-                
+
                 if read_strand==None or read_strand==strand: ### Tries to ensure the propper strand reads are considered (if strand read info available)
                     if cigarstring == None: pass
                     else:
@@ -264,41 +264,43 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                     Y=int(alignedread.pos+alignedread.alen)
                                     read_pos = [X,Y]; read_pos.sort()
                                     combined_pos = [X,Y,start,stop]; combined_pos.sort()
+                                    try: readname = alignedread.qname
+                                    except: readname = alignedread.query_name
                                     if MateSearch==False:
                                         if read_pos[0]==combined_pos[0] or read_pos[1]==combined_pos[-1]:
                                             ### Hence, the read starts or ends OUTSIDE of that interval (Store the overlap read coordinates)
-                                            if alignedread.query_name in intronJunction: ### occurs when the other mate has been stored to this dictionary
-                                                ir = intronJunction[alignedread.query_name]
+                                            if readname in intronJunction: ### occurs when the other mate has been stored to this dictionary
+                                                ir = intronJunction[readname]
                                                 ir.setIntronSpanningRead(read_pos)
                                                 ir.setCombinedPositions(combined_pos)
                                             else:
                                                 ir = IntronRetenionReads() ### first time the read-name added to this dictionary
                                                 ir.setIntronSpanningRead(read_pos)
                                                 ir.setCombinedPositions(combined_pos)
-                                                intronJunction[alignedread.query_name] = ir
+                                                intronJunction[readname] = ir
                                                 if paired == False:
                                                     ir.setIntronMateRead() ### For single-end FASTQ (not accurate)
                                         else:
                                             intron_boundaries = [start,stop]; intron_boundaries.sort()
                                             if intron_boundaries[0]==combined_pos[0] and intron_boundaries[-1]==combined_pos[-1]: ### Hence, the read occurs entirely within the intron
                                                 ### Store the "MATE" information (intron contained read)
-                                                if alignedread.query_name in intronJunction:
-                                                    ir = intronJunction[alignedread.query_name]
+                                                if readname in intronJunction:
+                                                    ir = intronJunction[readname]
                                                     ir.setIntronMateRead()
                                                     found = ir.For_and_Rev_Present()
                                                 else:
                                                     ir = IntronRetenionReads()
                                                     ir.setIntronMateRead()
-                                                    intronJunction[alignedread.query_name] = ir
-                                        if alignedread.query_name in intronJunction:
-                                            ir = intronJunction[alignedread.query_name]
+                                                    intronJunction[readname] = ir
+                                        if readname in intronJunction:
+                                            ir = intronJunction[readname]
                                             found = ir.For_and_Rev_Present()
                                             if found: ### if the intron is less 500 (CAN CAUSE ISSUES IF READS BLEED OVER ON BOTH SIDES OF THE INTRON)
                                                 combined_pos = ir.CombinedPositions()
                                                 read_pos = ir.IntronSpanningRead()
                                                 if read_pos[0]==combined_pos[0]:
                                                     five_intron_junction_count+=1 ### intron junction read that spans the 5' intron-exon
-                                                    #print alignedread.query_name, exon, start, stop, X, Y, strand, read_pos, combined_pos
+                                                    #print readname, exon, start, stop, X, Y, strand, read_pos, combined_pos
                                                 elif read_pos[1]==combined_pos[-1]:
                                                     three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon
                                             elif regionLen<500:
@@ -309,7 +311,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                                 if intron_read_overlap>25:
                                                     if read_pos[0]==combined_pos[0]:
                                                         five_intron_junction_count+=1 ### intron junction read that spans the 5' intron-exon
-                                                        #print alignedread.query_name, exon, start, stop, X, Y, strand, read_pos, combined_pos
+                                                        #print readname, exon, start, stop, X, Y, strand, read_pos, combined_pos
                                                     elif read_pos[1]==combined_pos[-1]:
                                                         #print read_pos, combined_pos, intron_read_overlap
                                                         three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon                                         
@@ -319,7 +321,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                         except Exception:
                                             codes = map(lambda x: x[0],mate.cigar)
                                             if 3 in codes: cigarstring = 'N'
-                                            else: cigarstring = None
+                                            else: cigarstring = ''
                                         if 'N' not in cigarstring:
                                             RX=int(mate.pos)
                                             RY=int(mate.pos+mate.alen)
@@ -328,7 +330,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                             if intron_boundaries[0]==combined_pos2[0] and intron_boundaries[-1]==combined_pos2[-1]:
                                                 if read_pos[0]==intron_boundaries[0]:
                                                     five_intron_junction_count+=1 ### intron junction read that spans the 5' intron-exon
-                                                    #print alignedread.query_name,exon, start, stop, X, Y, RX, RY, strand, read_strand;sys.exit()
+                                                    #print readname,exon, start, stop, X, Y, RX, RY, strand, read_strand;sys.exit()
                                                 elif read_pos[1]==intron_boundaries[-1]:
                                                     three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon
                                         

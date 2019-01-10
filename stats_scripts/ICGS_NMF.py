@@ -747,7 +747,7 @@ def DetermineClusterFitness(allgenesfile,markerfile,filterfile,BinarizedOutput,r
                 if float(rho)>rho_cutoff and cluster == allgenes[uid]:
                     try: markerdict[cluster].append([uid,float(rho)])
                     except Exception: markerdict[cluster]=[[uid,float(rho)]]
-    if common_geneIDs<marker_count:
+    if (common_geneIDs+2)<marker_count:
         print 'WARNING... only',common_geneIDs, 'out of', marker_count, 'gene IDs matched after conversion.'
         
     for key in markerdict:
