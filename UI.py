@@ -2578,7 +2578,7 @@ class GUI:
         if reportOnly:
             ### Only used to report back what the number of regulated genes are if the gene expression file is present
             reload(RNASeq)
-            try: report = RNASeq.singleCellRNASeqWorkflow(species, array_type, expFile, mlp_instance, parameters=gsp, reportOnly=reportOnly)
+            try: report, filteredFile = RNASeq.singleCellRNASeqWorkflow(species, array_type, expFile, mlp_instance, parameters=gsp, reportOnly=reportOnly)
             except Exception: report = traceback.format_exc()
             if 'options_result_in_no_genes' in report:
                 report = 'Options are too stringent. Try relaxing the thresholds.'

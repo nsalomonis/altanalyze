@@ -1424,7 +1424,7 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
         CovariateQuery = 'Events'
     else:
         CovariateQuery = 'DEGs'
-    pval_threshold = pvalThreshold
+    pval_threshold = float(pvalThreshold)
     metadata_files = [groups_file]
     meta_description_file = None
     

@@ -762,11 +762,12 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                         axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                 elif ' ' in row_header[new_index]:
                     symbol = string.split(row_header[new_index], ' ')[-1]
-                    if symbol in justShowTheseIDs:
-                        if display_label_names and 'ticks' not in justShowTheseIDs:
-                            axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
-                        else:
-                            axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True)
+                    if len(symbol)>0:
+                        if symbol in justShowTheseIDs:
+                            if display_label_names and 'ticks' not in justShowTheseIDs:
+                                axm.text(x.shape[1]-0.5, i-radj, '  '+row_header[new_index],fontsize=column_fontsize, color=color,picker=True)
+                            else:
+                                axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True)
             except Exception: pass
                     
         if cluster in cluster_elite_terms or 'cluster-'+cluster in cluster_elite_terms:

@@ -37,6 +37,7 @@ import logging
 import traceback
 import warnings
 import bisect
+import shutil
 from visualization_scripts import clustering; reload(clustering)
 try:
     import scipy
@@ -687,7 +688,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                 exon1_start = int(exon1_start); exon2_stop = int(exon2_stop)
                                 biotype = 'junction'; biotypes[biotype]=[]
                                 if strand == '-':
-                                    if (exon1_len-exon2_len)==0: ### Kallisto-Splice directly reports these coordinates
+                                    if (exon1_len+exon2_len)==0: ### Kallisto-Splice directly reports these coordinates
                                         exon1_stop = exon1_start
                                         exon2_start = exon2_stop
                                     else:
@@ -696,7 +697,7 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     a = exon1_start,exon1_stop; b = exon2_start,exon2_stop
                                     exon1_stop,exon1_start = b; exon2_stop,exon2_start = a
                                 else:
-                                    if (exon1_len-exon2_len)==0: ### Kallisto-Splice directly reports these coordinates
+                                    if (exon1_len+exon2_len)==0: ### Kallisto-Splice directly reports these coordinates
                                         exon1_stop = exon1_start
                                         exon2_start= exon2_stop
                                     else:
@@ -2784,7 +2785,7 @@ def importBiologicalRelationships(species):
             gene,null,celltype = t[:3]
             try: gene_db = custom_annotation_dbase['BioMarker']; gene_db[gene]=[]
             except Exception: custom_annotation_dbase['BioMarker'] = {gene:[]}
-        print len(custom_annotation_dbase), 'gene classes imported'
+        #print len(custom_annotation_dbase), 'gene classes imported'
     except Exception: pass
     return custom_annotation_dbase
 
@@ -2842,7 +2843,6 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
     if removeOutliers:
         ### Remove samples with low relative number of genes expressed
         try:
-            import shutil
             print '***Removing outlier samples***'
             from import_scripts import sampleIndexSelection
             reload(sampleIndexSelection)
@@ -2879,11 +2879,13 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         except Exception: expressed_uids = getOverlappingKeys(expressed_uids_rpkm,expressed_uids_counts)
     else:
         expressed_uids = expressed_uids_rpkm
-    print 'Genes filtered by counts:',len(expressed_uids_counts)
-    print 'Genes filtered by expression:',len(expressed_uids_rpkm),len(expressed_uids)
-    #expressed_uids = filterByProteinAnnotation(species,expressed_uids)
-    print len(expressed_uids), 'expressed genes by RPKM/TPM (%d) and counts (%d)' % (rpkm_threshold,exp_threshold)
-    #"""
+    if reportOnly:
+        print '.',
+    else:
+        print 'Genes filtered by counts:',len(expressed_uids_counts)
+        print 'Genes filtered by expression:',len(expressed_uids_rpkm),len(expressed_uids)
+        #expressed_uids = filterByProteinAnnotation(species,expressed_uids)
+        print len(expressed_uids), 'expressed genes by RPKM/TPM (%d) and counts (%d)' % (rpkm_threshold,exp_threshold)
 
     from import_scripts import OBO_import; import ExpressionBuilder
     gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
@@ -2895,7 +2897,10 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
         print 'Missing annotation file in:','AltDatabase/uniprot/'+species+'/custom_annotations.txt !!!!!'
 
     if restrictBy !=None:
-        print 'Attempting to restrict analysis to protein coding genes only (flag --RestrictBy protein_coding)'
+        if reportOnly:
+            print '.',
+        else:
+            print 'Attempting to restrict analysis to protein coding genes only (flag --RestrictBy protein_coding)'
         genes = biological_categories['protein_coding']
         genes_temp=dict(genes)
         for gene in genes_temp:
@@ -2934,15 +2939,16 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, r
                 try: expressed_uids = guide_genes.viewkeys() & expressed_uids_db2.viewkeys() ### common
                 except Exception: expressed_uids = getOverlappingKeys(guide_genes,expressed_uids_db2)
 
-    if len(expressed_uids)<10:
-        print 'NOTE: The input IDs do not sufficiently map to annotated protein coding genes...',
+    if len(expressed_uids)<100:
+        print '\nNOTE: The input IDs do not sufficiently map to annotated protein coding genes...',
         print 'skipping protein coding annotation filtering.'
         expressed_uids=[]
         for uid in expressed_uids_db:
             expressed_uids.append(uid)
-    print len(expressed_uids), 'expressed IDs being further analyzed'
-    #sys.exit()
-    #Meenakshi changes
+    if reportOnly:
+        print '.',
+    else:
+        print len(expressed_uids), 'expressed IDs being further analyzed'
     print_out,n = findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_genes,mlp,parameters=parameters,reportOnly=reportOnly)
     return print_out,n
 
@@ -3074,9 +3080,7 @@ def checkExpressionFileFormat(expFile,platform):
         platform = "3'array"
     return platform
     
-def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=[]):
-    #import warnings
-    #warnings.simplefilter('error', UserWarning)
+def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=[],reportOnly=False):
     firstLine=True
     expressed_values={}
     for line in open(expFile,'rU').xreadlines():
@@ -3116,16 +3120,25 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
                             values = map(lambda x: math.log(x+1,2),values)
                     vs = list(values); vs.sort()
                     if (vs[-1*samplesDiffering]-vs[samplesDiffering-1])>math.log(fold,2): ### Ensures that atleast 4 samples are significantly different in the set
-                        expressed_values[uid] = values
+                        if reportOnly==False:
+                            expressed_values[uid] = values
+                        else:
+                            expressed_values[uid]=[] ### Don't store the values - datasets can contain tens of thousands of 
                 else:
                     vs = list(values); vs.sort()
                     if (vs[-1*samplesDiffering]-vs[samplesDiffering-1])>math.log(fold,2): ### Ensures that atleast 4 samples are significantly different in the set
-                        expressed_values[uid] = values
+                        if reportOnly==False:
+                            expressed_values[uid] = values
+                        else:
+                            expressed_values[uid]=[]
                 if uid in guideGenes:
                     expressed_values[uid] = values
                 #if uid == 'ENSMUSG00000062825': print (vs[-1*samplesDiffering]-vs[samplesDiffering]),math.log(fold,2);sys.exit()
 
-    print len(expressed_uids),'genes examined and', len(expressed_values),'genes expressed for a fold cutoff of', fold
+    if reportOnly:
+        print '.',
+    else:
+        print len(expressed_uids),'genes examined and', len(expressed_values),'genes expressed for a fold cutoff of', fold
     if len(expressed_uids)==0 or len(expressed_values)==0:
         print options_result_in_no_genes
     elif len(expressed_uids) < 50 and len(expressed_values)>0:
@@ -3136,7 +3149,7 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
         else:
             fold+=1
             samplesDiffering+=1
-        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guideGenes)
+        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guideGenes,reportOnly=reportOnly)
     elif fold == 1.2 and samplesDiffering == 1:
         return expressed_values, fold, samplesDiffering, headers
     elif len(expressed_values)<50:
@@ -3144,7 +3157,7 @@ def optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=2,sam
         samplesDiffering-=1
         if samplesDiffering<1: samplesDiffering = 1
         if fold < 1.1: fold = 1.2
-        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guideGenes)
+        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guideGenes,reportOnly=reportOnly)
     else:
         return expressed_values, fold, samplesDiffering, headers
     return expressed_values, fold, samplesDiffering, headers
@@ -3219,11 +3232,17 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     if use_CV:
         expressed_values, fold, samplesDiffering, headers = CoeffVar(expFile,platform,expressed_uids,fold=2,samplesDiffering=2,guideGenes=guide_genes)
     else:
-        print 'Finding an optimal number of genes based on differing thresholds to include for clustering...'
+        if reportOnly:
+            print '.',
+        else:
+            print 'Finding an optimal number of genes based on differing thresholds to include for clustering...'
         #fold=1; samplesDiffering=1
-        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guide_genes) #fold=2,samplesDiffering=2
-        print 'Evaluating',len(expressed_values),'genes, differentially expressed',fold,'fold for at least',samplesDiffering*2,'samples'
-    #sys.exit()
+        expressed_values, fold, samplesDiffering, headers = optimizeNumberOfGenesForDiscovery(expFile,platform,expressed_uids,fold=fold,samplesDiffering=samplesDiffering,guideGenes=guide_genes,reportOnly=reportOnly) #fold=2,samplesDiffering=2
+        if reportOnly:
+            print '.',
+        else:
+            print 'Evaluating',len(expressed_values),'genes, differentially expressed',fold,'fold for at least',samplesDiffering*2,'samples'
+    #sys.exit() 
     
     from import_scripts import OBO_import; import ExpressionBuilder
     gene_to_symbol_db = ExpressionBuilder.importGeneAnnotations(species)
@@ -3253,7 +3272,8 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
                 expressed_values2[id]=expressed_values[id]
         print len(expressed_values)-len(expressed_values2),'cell-cycle associated genes removed for cluster discovery'
         expressed_values = expressed_values2
-    print 'amplifyGenes:',amplifyGenes
+    if reportOnly==False:
+        print 'amplifyGenes:',amplifyGenes
     
     ### Write out filtered list to amplify and to filtered.YourExperiment.txt
     filtered_file = export.findParentDir(expFile)+'/amplify/'+export.findFilename(expFile)
@@ -3261,16 +3281,17 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     groups_filtered_file = string.replace(filtered_file,'exp.','groups.')
     groups_file = string.replace(groups_file,'-steady-state','')
     groups_filtered_file = string.replace(groups_filtered_file,'-steady-state','')
-    try: export.customFileCopy(groups_file,groups_filtered_file) ### if present copy over
-    except Exception: pass
-    writeFilteredFile(filtered_file,platform,headers,{},expressed_values,[])
-    filtered_file_new = string.replace(expFile,'exp.','filteredExp.')
-    try: export.customFileCopy(filtered_file,filtered_file_new) ### if present copy over
-    except Exception: pass
-    
-    if reportOnly:
+    if reportOnly==False:
+        try: export.customFileCopy(groups_file,groups_filtered_file) ### if present copy over
+        except Exception: pass
+        writeFilteredFile(filtered_file,platform,headers,{},expressed_values,[])
+        filtered_file_new = string.replace(expFile,'exp.','filteredExp.')
+        try: export.customFileCopy(filtered_file,filtered_file_new) ### if present copy over
+        except Exception: pass
+    else:
+        filtered_file = writeFilteredFileReimport(expFile,platform,headers,expressed_values) ### expressed_values just contains the UID
         print_out = '%d genes, differentially expressed %d fold for at least %d samples' % (len(expressed_values), fold, samplesDiffering*2)
-        return print_out
+        return print_out, filtered_file
 
     if len(expressed_values)<1400 and column_method == 'hopach':
         row_method = 'hopach'; row_metric = 'correlation'
@@ -3611,7 +3632,7 @@ def copyICGSfiles(expFile,graphic_links):
         root_dir = string.split(expFile,'ExpressionInput')[0]
     else:
         root_dir = string.split(expFile,'AltResults')[0]
-    import shutil
+
     destination_folder = root_dir+'/ICGS'
     try: os.mkdir(destination_folder)
     except Exception: pass
@@ -3730,6 +3751,21 @@ def genericRowIDImport(filename):
         else:
             id_list.append(uid)
     return id_list
+
+def writeFilteredFileReimport(expFile,platform,headers,expressed_values):
+    filtered_file=expFile[:-4]+'-VarGenes.txt'
+    groups_file = string.replace(expFile,'exp.','groups.')
+    filtered_groups = string.replace(filtered_file,'exp.','groups.')
+    try: shutil.copy(groups_file,filtered_groups)
+    except: pass
+    eo = export.ExportFile(filtered_file)
+    eo.write(headers)
+    for line in open(expFile,'rU').xreadlines():
+        uid = string.split(line,'\t')[0]
+        if uid in expressed_values:
+            eo.write(line)
+    eo.close()
+    return filtered_file
 
 def writeFilteredFile(results_file,platform,headers,gene_to_symbol_db,expressed_values,atleast_10,excludeGenes=[]):
     eo = export.ExportFile(results_file)
@@ -4896,7 +4932,6 @@ def filterFASTAFiles(fasta_files):
     except Exception: pass
     
     for file in fasta_files:
-        import shutil
         if 'filtered.fa' in file:
             filter_fasta_files.append(file)
         else:
@@ -5174,7 +5209,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
     ### Copy results to the Kallisto_Results directory
     try: os.mkdir(root_dir+'/ExpressionInput/Kallisto_Results')
     except: pass
-    import shutil
+
     try:
         tf = root_dir+'/ExpressionInput/transcript.'+dataset_name+'.txt'
         shutil.copyfile(tf,string.replace(tf,'ExpressionInput','ExpressionInput/Kallisto_Results'))

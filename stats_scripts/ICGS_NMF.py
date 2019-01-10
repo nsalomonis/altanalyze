@@ -1314,10 +1314,12 @@ def exportGroups(cluster_file,outdir,platform):
     out_obj.close()
     
 def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dynamicCorrelation=True):
-    """ Runs downsampling analysis and prepares files for ICGS. After running ICGS, peform enrichment analyses """
+    """ Export the filtered expression file then run downsampling analysis and prepares files for ICGS. After running ICGS, peform enrichment analyses """
+    
+    print 'Filtering the expression dataset (be patient).',
+    print_out, inputExpFile = RNASeq.singleCellRNASeqWorkflow(species,platform,inputExpFile,mlp,exp_threshold=0,rpkm_threshold=0,parameters=gsp,reportOnly=True)
     
     print 'Running ICGS-NMF'
-    
     ### Find the parent dir of the output directory (expression file from the GUI will be stored in the output dir [ExpressionInput])
     root_dir = export.findParentDir(inputExpFile)[:-1]
     if 'ExpressionInput' in inputExpFile:
