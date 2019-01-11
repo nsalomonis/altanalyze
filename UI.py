@@ -1249,7 +1249,8 @@ class GUI:
             option = 'imageView'
             self.option=option
             #photo1 = Tkinter.PhotoImage(file=iF.Thumbnail())
-            photo1 = ImageTk.PhotoImage(file=iF.Thumbnail()) ### specifically compatible with png files
+            try: photo1 = ImageTk.PhotoImage(file=iF.Thumbnail()) ### specifically compatible with png files
+            except: continue
             # create the image button, image is above (top) the optional text
             def view_FullImageOnClick(image_name):
                 tl = Toplevel() #### This is the critical location to allow multiple TopLevel instances that don't clash, that are created on demand (by click)
