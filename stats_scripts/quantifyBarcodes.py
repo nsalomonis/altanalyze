@@ -52,6 +52,8 @@ def importViralBarcodeReferences(barcode1,barcode2):
         
 def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
     eo = export.ExportFile(viral_barcode_file[:-4]+'-cleaned.txt')
+    parent = export.findParentDir(viral_barcode_file)
+    eom = export.ExportFile(parent+'/MultiLin-cells.txt')
     ### Import a file with the sample names in the groups file in the correct order
     viral_barcodes={}
     repair={}
@@ -243,7 +245,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
                         except: unique_cells[cell] = [viral]
                         if cell in cell_clusters:
                             cluster = cell_clusters[cell]
-                            if 'Multi-Lin c4-Mast' in cluster:
+                            if 'Multi-Lin' == cluster:
                                 multilin.append(cell)
                             viral_cluster_db[cluster]='1'
                             clusters.append(cluster)
@@ -252,11 +254,12 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
                 #if c1 == ['MultiLin','MEP','Myelo-1'] or  c1 == ['MultiLin','MEP','Myelo-2'] or  c1 == ['MultiLin','MEP','Myelo-4']:
                 #if 'Multi-Lin c4-Mast' in c1 and ('ERP-primed' not in c1 and 'MEP' not in c1 and 'MKP-primed' not in c1 and 'MKP' not in c1 and 'ERP' not in c1) and 'Monocyte' not in c1 and 'e-Mono' not in c1 and ('Gran' in c1 or 'Myelo-1' in c1 or 'Myelo-2' in c1 and 'Myelo-3' in c1 and 'Myelo-4' in c1):
                 #if 'Multi-Lin' in c1 and ('e-Mono' in c1 or 'Monocyte' in c1) and ('ERP-primed' in c1 or 'MEP' in c1 or 'MKP-primed' in c1 or 'MKP' in c1) and ('Gran' in c1 or 'Myelo-4' in c1 or 'Myelo-1' in c1 or 'Myelo-2' in c1 or 'Myelo-3' in c1):
-                if 'Multi-Lin c4-Mast' in c1:
+                if 'Multi-Lin' in c1:
                     for cell in multilin:
-                        print string.join(c1,'|')+'\t'+cell+'\t'+viral
+                        eom.write(string.join(c1,'|')+'\t'+cell+'\t'+viral+'\n')
                     custom+=viral_barcodes[viral]
-                    
+                    #print 'custom:',custom
+                  
                 multiMappingFinal[viral]=viral_cluster_db
 
         ### Count the number of cluster pairs to make a weighted network
@@ -274,8 +277,8 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
         clusters = string.join(unique.unique(clusters),'|')
         try: cluster_hits_counts[clusters]+=1
         except Exception: cluster_hits_counts[clusters]=1
-    sys.exit()
-    print custom
+    #sys.exit()
+    #print custom
         
     for cluster in cluster_pairs:
         cluster_counts=[]
@@ -318,7 +321,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
 if __name__ == '__main__':
     
     cellBarcodes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/cellular-viral_und-det.txt'
-    cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime.txt'
+    cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime-Merged.txt'
     #cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime-MultiMerge.txt'
     #cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime-Baso.txt'
     barcode1 = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/14mer.txt'

@@ -1521,6 +1521,7 @@ class GUI:
             tl = Tkinter.Toplevel()
         try: self.viewPNGFile(tl) ### ImageTK PNG viewer
         except Exception:
+            print traceback.format_exc()
             try: self.openPNGImage() ### OS default PNG viewer
             except Exception:
                 print 'Unable to open PNG file for unknown reasons'

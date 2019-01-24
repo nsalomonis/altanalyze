@@ -71,14 +71,17 @@ try:
         import scipy
         try: from scipy.sparse.csgraph import _validation
         except Exception: pass
-        from scipy.linalg import svd
-        import scipy.special._ufuncs_cxx
-        from scipy.spatial import _voronoi
-        from scipy.spatial import _spherical_voronoi
-        from scipy.spatial import qhull
-        import scipy._lib.messagestream
+        try:
+            from scipy.linalg import svd
+            import scipy.special._ufuncs_cxx
+            from scipy.spatial import _voronoi
+            from scipy.spatial import _spherical_voronoi
+            from scipy.spatial import qhull
+            import scipy._lib.messagestream
+        except Exception:
+            pass
         import scipy.cluster.hierarchy as sch
-        import scipy.spatial.distance as dist
+        import scipy.spatial.distance as dist   
         #import scipy.interpolate.interpnd
         #from scipy import optimize
         try: import numpy; np = numpy

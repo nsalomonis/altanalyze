@@ -3054,6 +3054,7 @@ def checkExpressionFileFormat(expFile,platform):
     firstLine=True
     inputMax=0; inputMin=10000
     expressed_values={}
+    rows=0
     for line in open(expFile,'rU').xreadlines():
         key = string.split(line,'\t')[0]
         t = string.split(line,'\t')
@@ -3073,6 +3074,8 @@ def checkExpressionFileFormat(expFile,platform):
                 if max(values)>inputMax: inputMax = max(values)
             except Exception:
                 pass
+            if inputMax>100:
+                    break
                 
     if inputMax>100: ### Thus, not log values
         platform = 'RNASeq'
@@ -3761,9 +3764,24 @@ def writeFilteredFileReimport(expFile,platform,headers,expressed_values):
     eo = export.ExportFile(filtered_file)
     eo.write(headers)
     for line in open(expFile,'rU').xreadlines():
-        uid = string.split(line,'\t')[0]
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        uid = t[0]
         if uid in expressed_values:
-            eo.write(line)
+            if platform=='RNASeq': ### set to RNASeq when non-log2 data detected
+                values = t[1:]
+                try: values = map(lambda x: math.log(float(x)+1,2),values)
+                except Exception:
+                    if 'NA' in values:
+                        values = [0 if x=='NA' else x for x in values] ### Replace NAs
+                        values = map(lambda x: math.log(x+1,2),values)
+                    elif '' in values:
+                        values = [0 if x=='' else x for x in values] ### Replace NAs
+                        values = map(lambda x: math.log(x+1,2),values)
+                values = map(str,values)
+                eo.write(string.join([uid]+values,'\t')+'\n')
+            else:
+                eo.write(line)
     eo.close()
     return filtered_file
 

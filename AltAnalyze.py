@@ -8469,7 +8469,6 @@ def verifyPath(filename):
     
 def dependencyCheck():
     ### Make sure core dependencies for AltAnalyze are met and if not report back
-    
     from pkgutil import iter_modules
     modules = set(x[1] for x in iter_modules())  ### all installed modules
     dependent_modules = ['string','csv','base64','getpass','requests']
@@ -8555,9 +8554,9 @@ if __name__ == '__main__':
     #testResultsPanel()
     skip_intro = 'yes'; #sys.exit()
     #skip_intro = 'remoteViewer'
+    dependencyCheck()
     runCommandLineVersion()
     
-    dependencyCheck()
     if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)
 
     """ To do list:
