@@ -6986,6 +6986,8 @@ class GeneSelectionParameters:
             return ''
         else:
             justShowTheseIDs = string.replace(self.justShowTheseIDs,'\r',' ')
+            justShowTheseIDs = string.replace(justShowTheseIDs,',',' ')
+            justShowTheseIDs = string.replace(justShowTheseIDs,'  ',' ')
             justShowTheseIDs = string.replace(justShowTheseIDs,'\n',' ')
             justShowTheseIDs = string.split(justShowTheseIDs,' ')
             try: justShowTheseIDs.remove('')
@@ -7012,6 +7014,12 @@ class GeneSelectionParameters:
         if Normalize == 'NA': Normalize = False
         self._Normalize = Normalize
     def Normalize(self): return self._Normalize
+    def setDownsample(self,downsample): self.downsample = downsample
+    def DownSample(self):
+        try:
+            return int(self.downsample())
+        except:
+            return 2500
     def setK(self,k): self.k = k
     def k(self):
         try: return self.k

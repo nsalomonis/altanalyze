@@ -11,6 +11,8 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=Tr
     human_matrix_dir = os.path.join(matrices_dir, genome)
     mat = scipy.io.mmread(os.path.join(human_matrix_dir, "matrix.mtx"))
     genes_path = os.path.join(human_matrix_dir, "genes.tsv")
+    if os.path.isfile(genes_path)==False:
+        genes_path = os.path.join(human_matrix_dir, "features.tsv")
     gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
     gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
     barcodes_path = os.path.join(human_matrix_dir, "barcodes.tsv")

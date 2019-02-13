@@ -341,7 +341,7 @@ def UMAPsampling(inputfile):
         sampmark.append(header[key+1])
     return sampmark
     
-def PageRankSampling(inputfile):
+def PageRankSampling(inputfile,downsample_cutoff):
     """ Google PageRank algorithm from networkX for graph-based link analysis """
     header=[]
     X=[]
@@ -375,14 +375,14 @@ def PageRankSampling(inputfile):
     sampmark1=[]
     
     for iq in range(0,n,20000):
-        jj=2500
+        jj=downsample_cutoff
         if iq+24999>n:
             j=n-iq
         else:
             j=24999
         jj=int(float(j+1)/4.0)
-        jj=2500
-        #if jj<2500 and n<3000:
+        jj=downsample_cutoff
+        #if jj<downsample_cutoff and n<3000:
             #jj=n
 
         Xtemp=X[iq:iq+j,]
@@ -1334,7 +1334,11 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     
     ### Use dispersion (variance by mean) to define initial variable genes
     inputExpFileVariableGenesDir,n=hgvfinder(inputExpFile) ### returns filtered expression file with 500 variable genes
-    if n>2500 and scaling:
+    
+    try: downsample_cutoff = gsp.DownSample()
+    except: downsample_cutoff = 2500
+    
+    if n>downsample_cutoff and scaling:
         if n>25000: ### For extreemly large datasets, UMAP is used as a preliminary downsampling before pagerank
             inputExpFileScaled=inputExpFile[:-4]+'-UMAP-downsampled.txt'
             ### UMAP and Louvain clustering for down-sampling from >25,000 to 10,000 cells
@@ -1344,10 +1348,10 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             ### Use dispersion (variance by mean) to define post-UMAP/Louvain selected cell variable genes
             inputExpFileVariableGenesDir,n=hgvfinder(inputExpFileScaled) ### returns filtered expression file with 500 variable genes
             ### Run PageRank on the UMAP/Louvain/dispersion downsampled dataset
-            sampmark=PageRankSampling(inputExpFileVariableGenesDir)
+            sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
         else:
             ### Directly run PageRank on the initial dispersion based dataset
-            sampmark=PageRankSampling(inputExpFileVariableGenesDir)
+            sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
         
         ### Write out final downsampled results to a new file
         output_dir = root_dir+'/ExpressionInput'

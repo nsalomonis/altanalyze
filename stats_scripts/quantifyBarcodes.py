@@ -224,6 +224,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
     cluster_hits_counts={}
     cluster_pairs={}
     custom=[]
+    cells_per_pattern={}
     for viral in viral_barcodes:
         clusters=[]
         k=len(unique.unique(viral_barcodes[viral]))
@@ -238,6 +239,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
                 multi_cell_mapping+=1
                 cell_tracker=[]
                 multilin=[]
+                all_cells=[]
                 for cell in viral_barcodes[viral]:
                         #if cell not in doublet_cell:
                         cell_tracker.append(cell)
@@ -247,9 +249,13 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
                             cluster = cell_clusters[cell]
                             if 'Multi-Lin' == cluster:
                                 multilin.append(cell)
+                            all_cells.append(cell)
                             viral_cluster_db[cluster]='1'
                             clusters.append(cluster)
                 c1= unique.unique(clusters)
+                c2 = string.join(c1,'|')
+                try: cells_per_pattern[c2]+=all_cells
+                except: cells_per_pattern[c2]=all_cells
                 #if c1 == ['Multi-Lin c4-Mast']:
                 #if c1 == ['MultiLin','MEP','Myelo-1'] or  c1 == ['MultiLin','MEP','Myelo-2'] or  c1 == ['MultiLin','MEP','Myelo-4']:
                 #if 'Multi-Lin c4-Mast' in c1 and ('ERP-primed' not in c1 and 'MEP' not in c1 and 'MKP-primed' not in c1 and 'MKP' not in c1 and 'ERP' not in c1) and 'Monocyte' not in c1 and 'e-Mono' not in c1 and ('Gran' in c1 or 'Myelo-1' in c1 or 'Myelo-2' in c1 and 'Myelo-3' in c1 and 'Myelo-4' in c1):
@@ -297,7 +303,11 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
     final_ranked_cluster_hits.sort()
     final_ranked_cluster_hits.reverse()
     for (counts,clusters) in final_ranked_cluster_hits:
-        print counts, clusters
+        try:
+            print str(counts)+'\t'+clusters+'\t'+str(len(unique.unique(cells_per_pattern[clusters])))
+            #print cells_per_pattern[clusters];sys.exit()
+        except:  print str(counts)+'\t'+clusters
+        
     
     eo.write(string.join(['UID']+cluster_header,'\t')+'\n')
     for viral_barcode in multiMappingFinal:

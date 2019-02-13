@@ -5063,6 +5063,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
             new_row_header.append(uid)
             try: update_exp_vals = map(lambda x: ReplaceZeros(x,0.0001),matrix[ind])
             except Exception: print uid, len(matrix[ind]);sys.exit()
+            #update_exp_vals = map(lambda x: math.pow(2,x+1),update_exp_vals) #- nonlog transform
             matrix2.append(update_exp_vals)
     matrix = numpy.array(matrix2)
     row_header = new_row_header
@@ -6969,6 +6970,7 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
     keep_alt=['row_clusters-flat']
     remove = ['row_clusters-flat']
     remove_alt = ['row_clusters-flat']
+    min_val = 1000
     for (cell_score,alt_score,alt_sum) in cell_max_scores:
         cluster = priorColumnClusters[i]
         cell = column_header[i]
@@ -6978,6 +6980,7 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
         ref_alt = math.pow(2,(ref_alt))
         cell_diff = math.pow(2,(cell_score-alt_score))
         cell_score = math.pow(2,cell_score)
+        if cell_diff<min_val: min_val = cell_diff
         if cell_diff>ref_diff and cell_diff>diff: #cell_score cutoff removes some, but cell_diff is more crucial
                 #if alt_sum<cell_score:
                 assignment=0 #1.2
@@ -6993,6 +6996,7 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
 
         #print assignment
         i+=1
+    print min_val
     print len(keep), len(remove)
     from import_scripts import sampleIndexSelection
     input_file=heatmap_file
@@ -7015,7 +7019,7 @@ if __name__ == '__main__':
     diff=0.7
     print 'diff:',diff
     #latteralMerge(file1, file2);sys.exit()
-    #removeMarkerFinderDoublets('/Volumes/salomonis2/Erica-data/Demuxlet8Human/Seurat/ICGS2/CellHarmonyReference/DataPlots/Clustering-exp.ICGS-cellHarmony-reference-filtered-hierarchical_cosine_cosine2.txt',diff=diff);sys.exit()
+    #removeMarkerFinderDoublets('/Volumes/salomonis2/Nancy_ratner/2mo-NF/exp.Figure_SX-ICGS-MarkerFinder.filt.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
     a = '/Volumes/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/Combined_Captures/Day0/cellHarmony/exp.MarkerFinder-cellHarmony-reference__Day0-CPTT-log2-ReOrdered-Query.txt'
@@ -7026,9 +7030,9 @@ if __name__ == '__main__':
     #convertSymbolLog(a,b);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Plasma-cell/ExpressionInput/DataPlots/a.txt'
-    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Plasma-cell/ICGS-NMF1/groups.FinalMarkerHeatmap.txt'
-    #convertGroupsToBinaryMatrix(a,b,cellHarmony=False);sys.exit()
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/ICGS-NMF-SLAM/groups.February2019.txt'
+    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/ICGS-NMF-SLAM/exp.FinalMarkerHeatmap.txt'
+    #convertGroupsToBinaryMatrix(b,a,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
@@ -7123,8 +7127,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
-    gene_list_file = '/Users/saljh8/Dropbox/Manuscripts/Postnatal_Valve_scRNASeq/ExpressionInput/Figure3/genelist.immunecells.txt'
-    genesets = importGeneList(gene_list_file,n=16)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Marie.Dominique/ExpressionInput/genes2.txt'
+    genesets = importGeneList(gene_list_file,n=30)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -7140,7 +7144,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
-    filename = '/Users/saljh8/Dropbox/Manuscripts/Postnatal_Valve_scRNASeq/ExpressionInput/Figure3/exp.immune.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Marie.Dominique/ExpressionInput/exp.Cdt1-H2b.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
     #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
@@ -7150,7 +7154,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=37)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=30)
     sys.exit()
 
     plotHistogram(filename);sys.exit()

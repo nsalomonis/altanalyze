@@ -47,11 +47,13 @@ def filterRows(input_file,output_file,filterDB=None,logData=False):
                     counter=[index for index, value in enumerate(filterDB) if value == uid]
                     for it in range(0,len(counter)):
                         orderlst[counter[it]]=line
-    try:
-        for i in range(0,len(orderlst)):
+    
+    for i in range(0,len(orderlst)):
+        try:
             export_object.write(orderlst[i])
-    except Exception:
-        print i,filterDB[i]
+        except Exception:
+            print i,filterDB[i]
+            continue
     export_object.close()
     print 'Filtered rows printed to:',output_file
 
@@ -98,6 +100,9 @@ def FilterGuideGeneFile(Guidefile,Guidefile_block,expressionInputFile,iteration,
             if uid not in uniqueIDs:
                 if uid in symbolIDs:
                     uid = symbolIDs[uid]
+                    val.append(uid)
+                else:
+                    continue
             val.append(uid)
             if platform != "PSI" and head==2:
                 rank_Count=rank_Count+int(q[1])
@@ -146,12 +151,12 @@ def NMFAnalysis(expressionInputFile,NMFinputDir,Rank,platform,iteration=0,strate
     export_res2=export.ExportFile(exportnam2)
     exportnam3=root_dir+'/NMF-SVM/SubtypeAnalyses/round'+str(iteration)+'Annotation'+str(Rank)+'.txt'
     export_res3=export.ExportFile(exportnam3)
-    if 'Clustering' in NMFinputDir:
-        count=1
-        start=2
-    else:
-        count=0
-        start=1
+    #if 'Clustering' in NMFinputDir:
+     #   count=1
+      #  start=2
+    #else:
+    count=0
+    start=1
     #print Rank
     for line in open(NMFinputDir,'rU').xreadlines():
         line=line.rstrip('\r\n')
