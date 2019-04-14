@@ -6274,9 +6274,11 @@ def commandLineRun():
     customFASTA = None
     filterFile = None
     PearsonThreshold = 0.1
-    returnCentroids = False
+    returnCentroids = 'community'
     runCompleteWorkflow=True
     k=None
+    labels=None
+    
     original_arguments = sys.argv
     arguments=[]
     for arg in original_arguments:
@@ -6457,8 +6459,16 @@ def commandLineRun():
             else:
                 DE = False
         elif opt == '--referenceType':
-            if string.lower(arg) == 'centroid': returnCentroids = True; CenterMethod='centroid'
-            else: CenterMethod='median'; returnCentroids = True
+            if string.lower(arg) == 'centroid' or string.lower(arg) == 'mean':
+                returnCentroids = True; CenterMethod='centroid'
+            elif string.lower(arg) == 'medoid' or string.lower(arg) == 'median':
+                returnCentroids = True; CenterMethod='median'     
+            elif string.lower(arg) == 'community' or string.lower(arg) == 'louvain':
+                returnCentroids = 'community'; CenterMethod='community'
+            elif string.lower(arg) == 'cells' or string.lower(arg) == 'cell':
+                returnCentroids = False; CenterMethod='centroid'
+            else:
+                returnCentroids = 'community'; CenterMethod='community'     
         elif opt == '--multiThreading' or opt == '--multiProcessing':
             multiThreading=arg
             if multiThreading == 'yes': multiThreading = True
@@ -7000,6 +7010,7 @@ def commandLineRun():
                         separateGenePlots = True
                     else:
                         separateGenePlots = False
+
                 if opt == '--zscore':
                     if arg=='yes' or arg=='True' or arg == 'true':
                         zscore=True
@@ -8036,6 +8047,7 @@ def commandLineRun():
                     elif opt == '--adjp': adjp = arg
                     elif opt == '--performDiffExp': performDiffExp = arg
                     elif opt == '--centerMethod': CenterMethod = arg
+                    elif opt == '--labels': labels = arg
                 fl = UI.ExpressionFileLocationData('','','','')
                 fl.setSpecies(species)
                 fl.setVendor(manufacturer)
@@ -8049,6 +8061,7 @@ def commandLineRun():
                     fl.setUseAdjPvalue(adjp)
                     fl.setPvalThreshold(pval)
                     fl.setFoldCutoff(FoldDiff)
+                    fl.setLabels(labels)
                 else:
                     fl.setClassificationAnalysis('LineageProfiler')
                 #fl.setCompendiumType('AltExon')
@@ -8063,9 +8076,8 @@ def commandLineRun():
                             ICGS_files.append(input_file)
                     import LineageProfilerIterate
                     print 'center method =',CenterMethod
-                    try: LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod =CenterMethod,species=species,PearsonThreshold=PearsonThreshold)
-                    except:
-                        LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod=CenterMethod)
+                    LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod =CenterMethod,species=species,PearsonThreshold=PearsonThreshold)
+                    #except: LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod=CenterMethod)
                     sys.exit()
                 try: CenterMethod=CenterMethod
                 except: CenterMethod='centroid'

@@ -323,7 +323,12 @@ def simplerGroupImport(group_dir):
     fn = filepath(group_dir)
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
-        try: sample_filename,group_number,group_name = string.split(data,'\t')
+        try:
+            group_data = string.split(data,'\t')
+            sample_filename = group_data[0]
+            group_name = group_data[-1]
+            if len(group_data)>3:
+                forceError
         except Exception:
             #print 'Non-Standard Groups file or missing relationships'
             print string.split(data,'\t')[:10], 'more than 3 columns present in groups file'
@@ -331,7 +336,7 @@ def simplerGroupImport(group_dir):
         sample_group_db[sample_filename] = group_name
     return sample_group_db
 
-def simpleGroupImport(group_dir,splitHeaders=False, ignoreComps=False):
+def simpleGroupImport(group_dir,splitHeaders=False, ignoreComps=False, reverseOrder=False):
     
     """ Used for calculating fold changes prior to clustering for individual samples (genomtric folds) """
     import collections
@@ -366,8 +371,12 @@ def simpleGroupImport(group_dir,splitHeaders=False, ignoreComps=False):
         if splitHeaders:
             if '~' in sample_filename: sample_filename = string.split(sample_filename,'~')[-1]
         group_sample_db[sample_filename] = group_name+':'+sample_filename
-        try: group_name_sample_db[group_name].append(group_name+':'+sample_filename)
-        except Exception: group_name_sample_db[group_name] = [group_name+':'+sample_filename]
+        if reverseOrder==False:
+            try: group_name_sample_db[group_name].append(group_name+':'+sample_filename)
+            except Exception: group_name_sample_db[group_name] = [group_name+':'+sample_filename]
+        else:
+            try: group_name_sample_db[group_name].append(sample_filename)
+            except Exception: group_name_sample_db[group_name] = [sample_filename]
         sample_list.append(sample_filename)
         group_db[sample_filename] = group_name
         
@@ -375,15 +384,16 @@ def simpleGroupImport(group_dir,splitHeaders=False, ignoreComps=False):
         
     ### Get the comparisons indicated by the user
     if ignoreComps==False: ### Not required for some analyses
-        comps_name_db,comp_groups = simpleCompsImport(group_dir,group_name_db)
+        comps_name_db,comp_groups = simpleCompsImport(group_dir,group_name_db,reverseOrder=reverseOrder)
     else:
         comps_name_db={}; comp_groups=[]
     return sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db
                 
-def simpleCompsImport(group_dir,group_name_db):
+def simpleCompsImport(group_dir,group_name_db,reverseOrder=False):
     """ Used for calculating fold changes prior to clustering for individual samples (genomtric folds) """
     comps_dir = string.replace(group_dir,'groups.','comps.')
-    comps_name_db={}
+    import collections
+    comps_name_db=collections.OrderedDict()
     comp_groups=[]
     comps_dir = verifyExpressionFile(comps_dir)
     fn = filepath(comps_dir)
@@ -391,6 +401,8 @@ def simpleCompsImport(group_dir,group_name_db):
         data = cleanUpLine(line)
         try:
             exp_group_num,con_group_num = string.split(data,'\t')
+            if reverseOrder:
+                con_group_num, exp_group_num = exp_group_num,con_group_num
             exp_group_name = group_name_db[exp_group_num]
             con_group_name = group_name_db[con_group_num]
             try: comps_name_db[con_group_name].append(exp_group_name)
@@ -2678,7 +2690,10 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                                         print incl_exp
                                         print excl_exp;sys.exit()"""
                                 #if 'ENSMUSG00000009350:E14.2_87617106-E15.1' in incl: print feature_exp_db[incl]
-                                altexons = unique.unique(critical_junction_pair_db[incl,excl])
+                                try:
+                                    altexons = unique.unique(critical_junction_pair_db[incl,excl])
+                                except:
+                                    altexons=[]
                                 altexons = string.join(altexons,'|')
                                 if num_excl_events > num_incl_events:
                                     #print max_ratio, '\t',gene

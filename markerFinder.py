@@ -158,7 +158,7 @@ def rhoCalculation(data_list1,tissue_template):
                 kill
     except Exception:
         rho = pearson(data_list1,tissue_template)
-        return rho
+        return rho, 'Null'
 
 def simpleScipyPearson(query_lists,reference_list):
     """ Get the top correlated values referenced by index of the query_lists (e.g., data matrix) """
@@ -859,6 +859,10 @@ def identifyMarkers(filename,cluster_comps,binarize=False):
         if tissue not in tissue_list: tissue_list.append(tissue) ### Keep track of the tissue order
         for ((rho,p),(probeset,symbol)) in tissue_scores[tissue]:
             
+            if correlateAllGenes:
+                try: all_genes_ranked[probeset,symbol].append([(rho,p),tissue])
+                except Exception:all_genes_ranked[probeset,symbol] = [[(rho,p),tissue]]
+                
             ### Get a matrix of all genes to correlations
             try: gene_specific_rho_values[symbol].append(rho)
             except Exception: gene_specific_rho_values[symbol] = [rho]
@@ -877,18 +881,13 @@ def identifyMarkers(filename,cluster_comps,binarize=False):
                     except Exception: tissue_specific_IDs[probeset] = [tissue]
                 try: interim_correlations[tissue].append([probeset,symbol,(rho,p)])
                 except Exception: interim_correlations[tissue] = [[probeset,symbol,(rho,p)]]    
-        if correlateAllGenes:
-            for tissue in tissue_scores:
-                for ((rho,p),(probeset,symbol)) in tissue_scores[tissue]:
-                    try: all_genes_ranked[probeset,symbol].append([(rho,p),tissue])
-                    except Exception:all_genes_ranked[probeset,symbol] = [[(rho,p),tissue]]
-    """
-    
-    for ID in all_genes_ranked:
-        ag = all_genes_ranked[ID]
-        ag.sort()
-        all_genes_ranked[ID] = ag[-1] ### topcorrelated
-    """
+
+    if correlateAllGenes:  ### This was commented out - Not sure why - get an error downstream otherwise
+        for ID in all_genes_ranked:
+            ag = all_genes_ranked[ID]
+            ag.sort()
+            all_genes_ranked[ID] = ag[-1] ### topcorrelated
+
     #"""
     data = export.ExportFile(string.replace(filename[:-4]+'-all-correlations.txt','exp.','MarkerFinder.'))
     data.write(string.join(tissue_list,'\t')+'\n')
@@ -940,11 +939,13 @@ def exportAllGeneCorrelations(filename,allGenesRanked):
     data.write(title_row+'\n')
     rho_sorted=[]
     for (probeset,symbol) in allGenesRanked:
-        try: (rho,p),tissue = allGenesRanked[(probeset,symbol)]
+        try:
+            (rho,p),tissue = allGenesRanked[(probeset,symbol)]
         except Exception:
             ### Applies to tiered analysis
             allGenesRanked[(probeset,symbol)].sort()
             (rho,p),tissue = allGenesRanked[(probeset,symbol)][-1]
+
         values = string.join([probeset,symbol,str(rho),str(p),tissue],'\t')+'\n'
         rho_sorted.append([(tissue,1.0/rho),values])
     rho_sorted.sort()

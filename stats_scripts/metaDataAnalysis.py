@@ -285,7 +285,8 @@ class PSIData:
         else:
             return junction_type
 
-def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,comps_db,CovariateQuery,splicingEventTypes={}):
+def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,comps_db,
+                    CovariateQuery,splicingEventTypes={},suppressPrintOuts=False):
     ### filter the expression file for the samples of interest and immediately calculate comparison statistics
 
     firstLine = True
@@ -422,7 +423,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 header_samples = (tuple(g1_headers),tuple(g2_headers))
                 if header_samples not in headers_compared:
                     headers_compared[header_samples]=[]
-                    print len(g1_headers),len(g2_headers),groups
+                    if suppressPrintOuts==False:
+                        print len(g1_headers),len(g2_headers),groups
                 try:
                     data_list1 = group_expression_values[group1]
                 except KeyError:
@@ -445,6 +447,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     pass
                 else:
                     continue ### Don't analyze
+                #print len(g1_headers), len(g2_headers);sys.exit()
                 if (len(data_list1)>1 and len(data_list2)>1) or (len(g1_headers)==1 or len(g2_headers)==1): ### For splicing data
                     ### Just a One-Way ANOVA at first - moderation happens later !!!!
                     try:
@@ -1404,7 +1407,10 @@ def exportGeneSetsFromCombined(filename):
     aro.close()
 
 def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,
-                use_adjusted_pval=True,pvalThreshold=0.05,use_custom_output_dir=''):
+                use_adjusted_pval=True,pvalThreshold=0.05,use_custom_output_dir='',
+                suppressPrintOuts=False):
+    
+    print "Performing a differential expression analysis (be patient)..."
     global pval_threshold
     global PercentExp
     global restricted_gene_denominator
@@ -1470,7 +1476,9 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
 
     for i in all_groups_db:
         #print i
-        for k in all_groups_db[i]: print '  ',k,'\t',len(all_groups_db[i][k])
+        for k in all_groups_db[i]:
+            if suppressPrintOuts == False:
+                print '  ',k,'\t',len(all_groups_db[i][k])
     #print all_comps_db
     
     if platform == 'PSI':
@@ -1489,7 +1497,7 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
         comps_db = all_comps_db[specificCovariate]
         groups_db = all_groups_db[specificCovariate]
         rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,
-                        groups_db,comps_db,CovariateQuery,splicingEventTypes)
+                groups_db,comps_db,CovariateQuery,splicingEventTypes,suppressPrintOuts=suppressPrintOuts)
 
     if platform == 'PSI':
         graphics = outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)

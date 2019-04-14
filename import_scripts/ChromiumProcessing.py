@@ -5,19 +5,45 @@ import scipy.io
 import numpy
 import time
 import math
+from scipy import sparse, stats
+import h5py
 
 def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True):
     start_time = time.time()
-    human_matrix_dir = os.path.join(matrices_dir, genome)
-    mat = scipy.io.mmread(os.path.join(human_matrix_dir, "matrix.mtx"))
-    genes_path = os.path.join(human_matrix_dir, "genes.tsv")
-    if os.path.isfile(genes_path)==False:
-        genes_path = os.path.join(human_matrix_dir, "features.tsv")
-    gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
-    gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
-    barcodes_path = os.path.join(human_matrix_dir, "barcodes.tsv")
-    barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
-    barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
+    h5_filename = matrices_dir
+    if '.h5' in matrices_dir:
+        f = h5py.File(h5_filename, 'r')
+        genome = None
+        matrices_dir = os.path.abspath(os.path.join(h5_filename, os.pardir))
+        if genome == None:
+            possible_genomes = f.keys()
+            if len(possible_genomes) != 1:
+                raise Exception("{} contains multiple genomes ({}).  Explicitly select one".format(h5_filename, ", ".join(possible_genomes)))
+            genome = possible_genomes[0]
+            #print("Auto-selecting genome {}".format(genome), file=sys.stderr)
+
+        mat = sparse.csc_matrix((f[genome]['data'], f[genome]['indices'], f[genome]['indptr']))
+        gene_names = f[genome]['gene_names']
+        barcodes = list(f[genome]['barcodes'])
+        gene_ids = list(f[genome]['genes'])
+    else:
+        #matrix_dir = os.path.join(matrices_dir, genome)
+        matrix_dir = matrices_dir
+        mat = scipy.io.mmread(matrix_dir)
+        genes_path = string.replace(matrix_dir,'matrix.mtx','genes.tsv')
+        barcodes_path = string.replace(matrix_dir,'matrix.mtx','barcodes.tsv')
+        if os.path.isfile(genes_path)==False:
+            genes_path = string.replace(matrix_dir,'matrix.mtx','features.tsv')
+        if '.gz' in genes_path:
+            gene_ids = [row[0] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
+            gene_names = [row[1] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
+            barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
+        else:
+            gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
+            gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
+            barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
+        barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
+        matrices_dir = os.path.abspath(os.path.join(matrices_dir, os.pardir))
 
     ### Write out raw data matrix
     counts_path = matrices_dir+'/'+dataset_name+'_matrix.txt'

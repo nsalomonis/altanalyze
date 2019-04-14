@@ -2789,13 +2789,16 @@ def importBiologicalRelationships(species):
     except Exception: pass
     return custom_annotation_dbase
 
-def importGeneSets(geneSetType,filterType=None,geneAnnotations=None):
+def importGeneSets(geneSetType,filterType=None,geneAnnotations=None,speciesName=None):
+    try: speciesName = species
+    except: pass
+    
     gene_db={}
     if 'Ontology' in geneSetType:
-        filename = 'AltDatabase/goelite/'+species+'/nested/Ensembl_to_Nested-GO.txt'
+        filename = 'AltDatabase/goelite/'+speciesName+'/nested/Ensembl_to_Nested-GO.txt'
         ontology=True
     else:
-        filename = 'AltDatabase/goelite/'+species+'/gene-mapp/Ensembl-'+geneSetType+'.txt'
+        filename = 'AltDatabase/goelite/'+speciesName+'/gene-mapp/Ensembl-'+geneSetType+'.txt'
         ontology=False
     fn=filepath(filename)
     for line in open(fn,'rU').xreadlines():
@@ -2813,7 +2816,7 @@ def importGeneSets(geneSetType,filterType=None,geneAnnotations=None):
             gene_db[gene]=[]
     return gene_db
     
-def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=5, rpkm_threshold=5, drivers=False, parameters = None, reportOnly=False):
+def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=0, rpkm_threshold=5, drivers=False, parameters = None, reportOnly=False):
     global species
     global rho_cutoff
     species = Species

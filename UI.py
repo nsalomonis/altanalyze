@@ -514,7 +514,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
                 genome = export.findFilename(matrix_dir[:-1])
                 parent_dir = export.findParentDir(matrix_dir[:-1])
                 from import_scripts import ChromiumProcessing
-                ChromiumProcessing.import10XSparseMatrix(parent_dir,genome,dataset,expFile=expFile)
+                ChromiumProcessing.import10XSparseMatrix(matrix_file,genome,dataset,expFile=expFile)
             except Exception:
                 print 'Chromium export failed due to:',traceback.format_exc()
             try: root.destroy()
@@ -1041,12 +1041,40 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
         print '****Running cellHarmony****'
         codingtype = 'exon'; compendium_platform = 'exon'
         platform = array_type,vendor
-        try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,codingtype,compendium_platform,customMarkers=custom_markerFinder,geneModels=geneModel,modelSize=modelSize,fl=fl)
-        except Exception:
-            print_out = traceback.format_exc()
-            try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
-            except Exception: None
-        print_out = 'LineageProfiler classification results saved to the folder "CellClassification".'
+        
+        try: returnCentroids = fl.ReturnCentroids()
+        except Exception: returnCentroids = 'community'
+    
+        if returnCentroids == 'community':
+            """ Match cells between datasets according to their similar clusters defined by
+            community clustering of the two independent dataset network (same ICGS genes) """
+            from stats_scripts import cellHarmony
+            try: output_dir = fl.OutputDir()
+            except:
+                output_dir = os.path.abspath(os.path.join(expr_input_dir, os.pardir))
+                if 'ExpressionInput' in output_dir:
+                    output_dir = string.replace(output_dir,'ExpressionInput','')
+
+            try:
+                print 'Running community cellHarmony analysis'
+                cellHarmony.manage_louvain_alignment(species,platform,expr_input_dir,output_dir,
+                    customMarkers=custom_markerFinder,useMulti=False,fl=fl)
+            except ZeroDivisionError:
+                print_out = traceback.format_exc()
+                try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
+                except Exception: None
+        else:
+            """ Directly match cells between datasets either all cells by all cells or cells
+            by centroids (same ICGS genes) """
+            try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,
+                    codingtype,compendium_platform,customMarkers=custom_markerFinder,
+                    geneModels=geneModel,modelSize=modelSize,fl=fl)
+            except Exception:
+                print_out = traceback.format_exc()
+                try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
+                except Exception: None
+            
+        print_out = 'cellHarmony classification results saved to the folder "CellClassification".'
         if root!=None and root!='':
             try: openDirectory(export.findParentDir(expr_input_dir)+'/cellHarmony')
             except Exception: None
@@ -1061,7 +1089,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     
 def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,
             geneSetName=None, species=None, zscore=True, colorByGene=None, reimportModelScores=True,
-            separateGenePlots=False, returnImageLoc=False):
+            separateGenePlots=False, returnImageLoc=False, forceClusters=False, maskGroups=None):
     from visualization_scripts import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
@@ -1073,7 +1101,7 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
         pca_graphical_links = clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels,
                     plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName,
                     species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores,
-                    separateGenePlots=separateGenePlots)
+                    separateGenePlots=separateGenePlots, forceClusters=forceClusters, maskGroups=maskGroups)
         try: print'Finished building exporting plot.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -4455,13 +4483,19 @@ class ExpressionFileLocationData:
             return False
         else:
             return True
+    def setLabels(self,labels): self.labels = labels
+    def Labels(self): return self.labels
     def setFoldCutoff(self, foldCutoff): self.foldCutoff = foldCutoff
     def FoldCutoff(self): return self.foldCutoff
     def setPvalThreshold(self, pvalThreshold): self.pvalThreshold = pvalThreshold
     def PvalThreshold(self): return self.pvalThreshold
     def setPeformDiffExpAnalysis(self, peformDiffExpAnalysis): self.peformDiffExpAnalysis = peformDiffExpAnalysis
     def PeformDiffExpAnalysis(self):
-        if string.lower(self.peformDiffExpAnalysis)=='false' or string.lower(self.peformDiffExpAnalysis)=='no' or self.peformDiffExpAnalysis==False:
+        if self.peformDiffExpAnalysis==False:
+            return False
+        if self.peformDiffExpAnalysis==True:
+            return True
+        if string.lower(self.peformDiffExpAnalysis)=='false' or string.lower(self.peformDiffExpAnalysis)=='no':
             return False
         else:
             return True
@@ -4797,6 +4831,8 @@ def checkForLocalArraySupport(species,array_type,specific_arraytype,run_mode):
     if array_type == 'junction' or array_type == 'RNASeq':
         try: gene_database = unique.getCurrentGeneDatabaseVersion()
         except Exception: gene_database='00'
+        try: int(gene_database[-2:])
+        except: gene_database='00'
         if int(gene_database[-2:]) < 0:
             print_out = 'The AltAnalyze database indicated for '+array_type+' analysis\n is not supported for alternative exon analysis.\nPlease update to EnsMart55 or greater before\nproceeding.'
             if run_mode == 'GUI': IndicatorWindow(print_out,'Continue')
@@ -5659,6 +5695,7 @@ def getUserParameters(run_parameter,Multi=None):
                     useAdjPval = gu.Results()['UseAdjPval']
                     pvalThreshold = gu.Results()['pvalThreshold']
                     foldCutoff = gu.Results()['FoldCutoff']
+                    labels = gu.Results()['labels']
                     if '.png' in markerFinder_file or '.pdf' in markerFinder_file:
                         markerFinder_file=markerFinder_file[:-4]+'.txt'
                     if len(geneModel_file) == 0: geneModel_file = None
@@ -5675,6 +5712,7 @@ def getUserParameters(run_parameter,Multi=None):
                         fl.setUseAdjPvalue(useAdjPval)
                         fl.setPvalThreshold(pvalThreshold)
                         fl.setFoldCutoff(foldCutoff)
+                        fl.setLabels(labels)
                         """
                         print fl.PeformDiffExpAnalysis()
                         print fl.CompendiumType()
@@ -5793,7 +5831,22 @@ def getUserParameters(run_parameter,Multi=None):
                                 barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
                                 barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
                                 return barcodes
-                            barcodes = import10XSparseMatrixHeaders(sparse_matrix_file)
+                            def importH5(h5_filename):
+                                import h5py
+                                f = h5py.File(h5_filename, 'r')
+                                possible_genomes = f.keys()
+                                if len(possible_genomes) != 1:
+                                    raise Exception("{} contains multiple genomes ({}).  Explicitly select one".format(h5_filename, ", ".join(possible_genomes)))
+                                genome = possible_genomes[0]
+                                barcodes = f[genome]['barcodes']
+                                barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
+                                print len(barcodes);sys.exit()
+                                return barcodes
+                            
+                            if '.mtx' in sparse_matrix_file:
+                                barcodes = import10XSparseMatrixHeaders(sparse_matrix_file)
+                            else:
+                                barcodes = importH5(sparse_matrix_file)
                             cel_files = barcodes
                         else:
                             cel_files,cel_files_fn=identifyCELfiles(cel_file_dir,array_type,vendor)
@@ -6507,16 +6560,20 @@ def getUserParameters(run_parameter,Multi=None):
                         batch = ''; batch_name = ''    
                         agd = ArrayGroupData(cel_file,batch,batch_name); array_batch_list.append(agd); batch_db=[]
             if comps_name in dir_files and len(group_db)>0:
-                comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
-                for group1,group2 in comp_group_list:
-                    try:
-                        group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
-                        original_comp_group_list.append((group_name1,group_name2)) ### If comparisons already exist, default to these
-                    except KeyError:
-                        print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
-                        #WarningWindow(print_out,'Exit'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
-                        #print print_out
+                try:
+                    comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
+                    for group1,group2 in comp_group_list:
+                        try:
+                            group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
+                            original_comp_group_list.append((group_name1,group_name2)) ### If comparisons already exist, default to these
+                        except KeyError:
+                            print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
+                            #WarningWindow(print_out,'Exit'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+                            #print print_out
                         original_comp_group_list=[]
+                except:
+                    print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
+                    original_comp_group_list=[]
                         
         else:
             for cel_file in cel_files:
@@ -7017,7 +7074,7 @@ class GeneSelectionParameters:
     def setDownsample(self,downsample): self.downsample = downsample
     def DownSample(self):
         try:
-            return int(self.downsample())
+            return int(self.downsample)
         except:
             return 2500
     def setK(self,k): self.k = k

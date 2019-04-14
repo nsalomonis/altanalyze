@@ -38,7 +38,8 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                     for f in filter_names:
                         if f in values: filter_names2.append(f)
                     filter_names = filter_names2
-                try: sample_index_list = map(lambda x: values.index(x), filter_names)
+                try:
+                    sample_index_list = map(lambda x: values.index(x), filter_names)
                 except:
                     ### If ":" in header name
                     if ':' in line:
@@ -49,11 +50,24 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                             values2.append(x)
                         values = values2
                         sample_index_list = map(lambda x: values.index(x), filter_names)
-                    elif ':' in filter_names:
-                        filter_names = map(lambda x: string.split(filter_names,':')[1], filter_names)
+                    elif '.$' in line:
+                        filter_names2=[]
+                        for f in filter_names: ### if the name in the filter is a string within the input data-file
+                            for f1 in values:
+                                if f in f1:
+                                    filter_names2.append(f1) ### change to the reference name
+                                    break
+                        print len(filter_names2), len(values), len(filter_names);kill
+                        filter_names = filter_names2
+                        #filter_names = map(lambda x: string.split(x,'.')[0], filter_names)
+                        #values = map(lambda x: string.split(x,'.')[0], values)
+                        sample_index_list = map(lambda x: values.index(x), filter_names)              
                     else:
+                        temp_count=1
                         for x in filter_names:
                             if x not in values:
+                                temp_count+=1
+                                if temp_count>50: print 'too many to print';kill
                                 print x,
                         print 'are missing';kill
                         
@@ -222,7 +236,9 @@ def cleanUpLine(line):
     data = string.replace(line,'\r','')
     data = string.replace(data,'"','')
     #https://stackoverflow.com/questions/36598136/remove-all-hex-characters-from-string-in-python
-    data = data.decode('utf8').encode('ascii', errors='ignore') ### get rid of bad quotes
+    try: data = data.decode('utf8').encode('ascii', errors='ignore') ### get rid of bad quotes
+    except:
+        print data
     return data
 
 def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499):

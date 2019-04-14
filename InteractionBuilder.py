@@ -262,9 +262,11 @@ def importqueryResults(species,dir_file,id_db):
         
     if len(id_db)==0: ### Otherwise, already provided gene IDs to query
         translated=0
+        count=0
         try:
             x=0
             for line in fileRead:
+                count+=1
                 try:
                     data = cleanUpLine(line)
                     t = string.split(data,'\t')
@@ -809,7 +811,35 @@ def getGeneIDs(Genes):
                     except Exception: input_IDs[i] = i ### Currently not dealt with
     return input_IDs
 
+def remoteBuildNetworks(species, outputDir, interactions=['WikiPathways','KEGG','TFTargets']):
+    """ Attempts to output regulatory/interaction networks from a directory of input files """
+    
+    directory = 'gene-mapp'
+    interactionDirs=[]
+    obligatorySet=[] ### Always include interactions from these if associated with any input ID period
+    secondarySet=[]
+    inputType = 'IDs'
+    degrees = 'direct'
+                
+    for i in interactions:
+        fn = filepath('AltDatabase/goelite/'+species+'/gene-interactions/Ensembl-'+i+'.txt')
+        interactionDirs.append(fn)
+
+    pdfs=[]
+    dir_list = read_directory(outputDir)
+    for file in dir_list:
+        if 'GE.' in file:
+            input_file_dir = outputDir+'/'+file
+
+            output_filename = buildInteractions(species,degrees,inputType,input_file_dir,outputDir,interactionDirs,
+                              directory=outputDir,expressionFile=input_file_dir, IncludeExpIDs=True)
+            try: pdfs.append(output_filename[:-4]+'.pdf')
+            except: pass
+    return pdfs
+        
 if __name__ == '__main__':
+    remoteBuildNetworks('Mm', '/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
+    sys.exit()
     Species = 'Hs'
     Degrees = 2
     inputType = 'IDs'

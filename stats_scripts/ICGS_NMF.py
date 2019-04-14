@@ -206,7 +206,7 @@ def hgvfinder(inputfile):
                 
             counter+=1
             #if counter%500==0: print counter,
-             #   break
+            #   break
     #with open('hgv_0.1.txt', 'w') as f:
     #    for item in hgv:
     #        f.write(str(item)+"\t"+str(hgv[item]))
@@ -269,32 +269,32 @@ def UMAPsampling(inputfile):
     sampmark=[]    
     nn=X.shape[0]
     nm=X.shape[1]
+    """
     try: import umap
-    except:
-        from visualization_scripts.umap_learn import umap
+    except: from visualization_scripts.umap_learn import umap
     print "running UMAP"  
     model=umap.UMAP()
-
+    """
     from annoy import AnnoyIndex
     t=AnnoyIndex(nm)
     for i in range(nn):
-      try:  t.add_item(i,X[i])
-      except Exception: print i
+        try:  t.add_item(i,X[i])
+        except Exception: print i
     t.build(100)
-   # t.save('test.ann')
+    #t.save('test.ann')
     #u=AnnoyIndex(nm)
     diclst={}
     #u.load('test.ann')
     #n1=25
     print "creating graphs"
     for i in range(nn):
-    #ind = tree.query([Xtemp[i]],k=10,return_distance=False,dualtree=True)
+        #ind = tree.query([Xtemp[i]],k=10,return_distance=False,dualtree=True)
         ind=t.get_nns_by_item(i,10)
         diclst[i]=ind
 
     print "creating graphs"
     G=nx.from_dict_of_lists(diclst)
-   # nx.write_adjlist(G,"test.adjlist")
+    #nx.write_adjlist(G,"test.adjlist")
     #G=nx.read_adjlist("test.adjlist")
     dendrogram= community.generate_dendrogram(G)
     #for level in range(len(dendrogram) - 1):
@@ -318,7 +318,7 @@ def UMAPsampling(inputfile):
         matri=np.array(comval[key1])
         matri=np.array(matri)
    
-    #n=matri.shape[0]
+        #n=matri.shape[0]
         D=pairwise_distances(matri,metric='euclidean').tolist()
         D=np.array(D)
     
@@ -476,13 +476,12 @@ def PageRankSampling(inputfile,downsample_cutoff):
             samptemp.append(header[i])
     
     sampmark=samptemp
-    if len(sampmark)>3000 and n<5000:
+    if len(sampmark)>downsample_cutoff:
         output_file=inputfile[:-4]+'-filtered.txt'
         sampleIndexSelection.filterFile(inputfile,output_file,sampmark)
         sampmark=sampling(output_file)
         return sampmark
     else:
-        
         return sampmark
   
 
@@ -951,7 +950,7 @@ def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_clus
 def callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp):
     
     #Run ICGS recursively to dynamically identify the best rho cutoff
-    graphic_links3,n = RNASeq.singleCellRNASeqWorkflow(species,platform,processedInputExpFile,mlp,exp_threshold=0, rpkm_threshold=0, parameters=gsp)
+    graphic_links3,n = RNASeq.singleCellRNASeqWorkflow(species,platform,processedInputExpFile,mlp,rpkm_threshold=0, parameters=gsp)
     if n>5000 and dynamicCorrelation:
             rho_cutoff=rho_cutoff+0.1
             gsp.setRhoCutoff(rho_cutoff)
@@ -1316,8 +1315,12 @@ def exportGroups(cluster_file,outdir,platform):
 def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dynamicCorrelation=True):
     """ Export the filtered expression file then run downsampling analysis and prepares files for ICGS. After running ICGS, peform enrichment analyses """
     
+    try: downsample_cutoff = gsp.DownSample()
+    except: downsample_cutoff = 2500
+    print 'DownSample threshold =',downsample_cutoff, 'cells'
+
     print 'Filtering the expression dataset (be patient).',
-    print_out, inputExpFile = RNASeq.singleCellRNASeqWorkflow(species,platform,inputExpFile,mlp,exp_threshold=0,rpkm_threshold=0,parameters=gsp,reportOnly=True)
+    print_out, inputExpFile = RNASeq.singleCellRNASeqWorkflow(species,platform,inputExpFile,mlp,rpkm_threshold=0,parameters=gsp,reportOnly=True)
     
     print 'Running ICGS-NMF'
     ### Find the parent dir of the output directory (expression file from the GUI will be stored in the output dir [ExpressionInput])
@@ -1334,10 +1337,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     
     ### Use dispersion (variance by mean) to define initial variable genes
     inputExpFileVariableGenesDir,n=hgvfinder(inputExpFile) ### returns filtered expression file with 500 variable genes
-    
-    try: downsample_cutoff = gsp.DownSample()
-    except: downsample_cutoff = 2500
-    
+        
     if n>downsample_cutoff and scaling:
         if n>25000: ### For extreemly large datasets, UMAP is used as a preliminary downsampling before pagerank
             inputExpFileScaled=inputExpFile[:-4]+'-UMAP-downsampled.txt'

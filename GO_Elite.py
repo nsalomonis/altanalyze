@@ -1849,10 +1849,12 @@ class Logger(object):
         self.log = open(log_file, "w")
 
     def write(self, message):
-        self.log = open(log_file, "a")
-        self.terminal.write(message)
-        self.log.write(message)
-        self.log.close()
+        try:
+            self.log = open(log_file, "a")
+            self.terminal.write(message)
+            self.log.write(message)
+            self.log.close()
+        except: pass
         
     def flush(self): pass
     

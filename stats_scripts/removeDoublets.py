@@ -16,7 +16,7 @@
 #OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys,string,os,copy, path
+import sys,string,os,copy, numpy, math
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 command_args = string.join(sys.argv,' ')
@@ -27,9 +27,11 @@ display_label_names = True
 
 import traceback
 
+from visualization_scripts import clustering
+
 def removeMarkerFinderDoublets(heatmap_file,diff=1):
-    matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = remoteImportData(heatmap_file)
-    
+    matrix, column_header, row_header, dataset_name, group_db, priorColumnClusters, priorRowClusters = clustering.remoteImportData(heatmap_file)
+        
     priorRowClusters.reverse()
     if len(priorColumnClusters)==0:
         for c in column_header:
@@ -83,9 +85,12 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
         cluster_cell_means = numpy.median(cell_max_score_db[cluster],axis=0)
         cell_max_score_db[cluster] = cluster_cell_means ### This is the cell-state mean score for all cells in that cluster and the alternative max mean score (difference gives you the threshold for detecting double)
     i=0
-    print len(cell_max_scores)
+    #print len(cell_max_scores)
     keep=['row_clusters-flat']
     keep_alt=['row_clusters-flat']
+    remove = ['row_clusters-flat']
+    remove_alt = ['row_clusters-flat']
+    min_val = 1000
     for (cell_score,alt_score,alt_sum) in cell_max_scores:
         cluster = priorColumnClusters[i]
         cell = column_header[i]
@@ -95,39 +100,45 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
         ref_alt = math.pow(2,(ref_alt))
         cell_diff = math.pow(2,(cell_score-alt_score))
         cell_score = math.pow(2,cell_score)
+        if cell_diff<min_val: min_val = cell_diff
         if cell_diff>ref_diff and cell_diff>diff: #cell_score cutoff removes some, but cell_diff is more crucial
                 #if alt_sum<cell_score:
                 assignment=0 #1.2
                 keep.append(cell)
-                keep_alt.append(string.split(cell,':')[1]) ### if prefix added
+                try: keep_alt.append(string.split(cell,':')[1]) ### if prefix added
+                except Exception:
+                    keep_alt.append(cell)
         else:
+            remove.append(cell)
+            try: remove_alt.append(string.split(cell,':')[1])
+            except Exception: remove_alt.append(cell)
             assignment=1
 
         #print assignment
         i+=1
-    print len(keep)
+    #print min_val
+    print 'Number of cells to keep:',len(keep), 'out of', len(column_header)
     from import_scripts import sampleIndexSelection
     input_file=heatmap_file
-    output_file = heatmap_file[:-4]+'-ReOrdered.txt'
+    output_file = heatmap_file[:-4]+'-Singlets.txt'
     try: sampleIndexSelection.filterFile(input_file,output_file,keep)
     except: sampleIndexSelection.filterFile(input_file,output_file,keep_alt)
 
+    output_file = heatmap_file[:-4]+'-Multiplets.txt'
+    try: sampleIndexSelection.filterFile(input_file,output_file,remove)
+    except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
+
+
 if __name__ == '__main__':
     import getopt
-    filter_rows=False
-    filter_file=None
-    genome = 'hg19'
-    dataset_name = '10X_filtered'
+    threshold=1
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
-        #Filtering samples in a datasets
-        #python 10XProcessing.py --i /Users/test/10X/outs/filtered_gene_bc_matrices/ --g hg19 --n My10XExperiment
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','n='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','t=',])
         #print sys.argv[1:]
         for opt, arg in options:
-            if opt == '--i': matrices_dir=arg
-            elif opt == '--g': genome=arg
-            elif opt == '--n': dataset_name=arg
-    removeMarkerFinderDoublets('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ratner-10X/2mo-NF/Mm_Run2050/Final.8.11.2018/DataPlots/MarkerFinder/Clustering-MarkerGenes_correlations-ReplicateBased-20180812-091909_euclidean_cosine.txt',diff=diff);sys.exit()
+            if opt == '--i': inputFile=arg
+            elif opt == '--t': threshold=float(arg)
+    removeMarkerFinderDoublets(inputFile,diff=threshold)
     

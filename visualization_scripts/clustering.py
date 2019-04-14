@@ -37,7 +37,7 @@ try:
         import matplotlib
         if commandLine and 'linux' in sys.platform:
             ### TkAgg doesn't work when AltAnalyze is run remotely (ssh or sh script)
-            try: matplotlib.use('Agg')
+            try: matplotlib.use('Agg');
             except Exception: pass
             try:
                 matplotlib.rcParams['backend'] = 'Agg'
@@ -351,6 +351,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     try:
         if EliteGeneSets != [''] and EliteGeneSets !=[]:
             matrix_horiz_pos = 0.27
+            
         elif skipClustering:
             if len(row_header)<100:
                 matrix_horiz_pos = 0.20
@@ -358,9 +359,14 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 matrix_horiz_pos = 0.27
         else:
             matrix_horiz_pos = 0.14
+
     except Exception:
         matrix_horiz_pos = 0.14
-
+        
+    """ Adjust the position of the heatmap based on the number of columns """
+    if len(column_header)<50:
+        matrix_horiz_pos+=0.1
+        
     ## calculate positions for all elements
     # ax1, placement of dendrogram 1, on the left of the heatmap
     [ax1_x, ax1_y, ax1_w, ax1_h] = [0.05,0.235,matrix_horiz_pos,dg1]   ### The last controls matrix hight, second value controls the position of the matrix relative to the bottom of the view [0.05,0.22,0.2,0.6] 
@@ -374,10 +380,16 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     width_between_axr_axm = 0.004
     
     # axc, placement of column side colorbar (3rd value controls the width of the matrix!)
-    [axc_x, axc_y, axc_w, axc_h] = [0.4,0.63,0.6,color_bar_w] ### last one controls the hight of the top color bar - 0.015 when showing [0.4,0.63,0.5,color_bar_w]
+    [axc_x, axc_y, axc_w, axc_h] = [0.5,0.63,0.5,color_bar_w] ### last one controls the hight of the top color bar - 0.015 when showing [0.4,0.63,0.5,color_bar_w]
+    """ Adjust the width of the heatmap based on the number of columns """
+    if len(column_header)<50:
+        axc_w = 0.3
+        if len(column_header)<20:
+            axc_w = 0.2
     axc_x = axr_x + axr_w + width_between_axr_axm
     axc_y = ax1_y + ax1_h + height_between_ax1_axc
     height_between_axc_ax2 = 0.004
+
     
     # axm, placement of heatmap for the data matrix
     [axm_x, axm_y, axm_w, axm_h] = [0.4,0.9,2.5,0.5] #[0.4,0.9,2.5,0.5]
@@ -502,7 +514,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             xt = x
             ind2 = ['NA']*len(column_header) ### Used for exporting the flat cluster data
             ind1 = ['NA']*len(row_header) ### Used for exporting the flat cluster data
-            
+
     if row_method != None:
         idx1 = Z1['leaves'] ### apply the clustering for the gene-dendrograms to the actual matrix data
         prior_xt = xt
@@ -660,7 +672,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     interval = int(float(string.split(str(len(row_header)/35.0),'.')[0]))+1 ### for enrichment term labels with over 100 genes
     increment=interval-2
     if len(row_header)<100: increment = interval-1
-    label_pos=-0.03*len(column_header)-.5
+    label_pos=-0.03*len(column_header)-.8
+    alternate=1
     #print label_pos
     try:
         if 'top' in justShowTheseIDs: justShowTheseIDs.remove('top')
@@ -760,7 +773,11 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                     if original_feature_id in justShowTheseIDs:
                         feature_id = original_feature_id
                     if display_label_names and 'ticks' not in justShowTheseIDs:
-                        axm.text(x.shape[1]-0.5, i-radj, '  '+feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
+                        if alternate==1: buffer=1.2; alternate=2
+                        elif alternate==2: buffer=2.4; alternate=3
+                        elif alternate==3: buffer=3.6; alternate=4
+                        elif alternate==4: buffer=0; alternate=1
+                        axm.text(x.shape[1]-0.4+buffer, i-radj, feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                     else:
                         axm.text(x.shape[1]-0.5, i-radj, '  '+"-",fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
                 elif ' ' in row_header[new_index]:
@@ -920,7 +937,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         axc = fig.add_axes([axc_x, axc_y, axc_w, axc_h])  # axes for column side colorbar
         cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
         if use_default_colors:
-            cmap_c = pylab.cm.gist_rainbow
+            cmap_c = pylab.cm.nipy_spectral
         else:
             #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
             if len(unique.unique(ind2))==2: ### cmap_c is too few colors
@@ -948,7 +965,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #elif len(unique.unique(ind2))==11: 
             #cmap_c = matplotlib.colors.ListedColormap(['w', '#DC2342', '#0B9B48', '#FDDF5E', '#E0B724', 'k', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
-                cmap_c = pylab.cm.gist_rainbow
+                cmap_c = pylab.cm.nipy_spectral
     
         dc = numpy.array(ind2, dtype=int)
         dc.shape = (1,len(ind2)) 
@@ -966,7 +983,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#CCCCE0','#000066','#FFFF00', '#FF1493'])
                 #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF','#FFFF00', '#FF1493'])
                 if use_default_colors:
-                    cmap_c = pylab.cm.gist_rainbow
+                    cmap_c = pylab.cm.nipy_spectral
                 else:
                     if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
                         #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
@@ -984,7 +1001,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                     elif len(unique.unique(ind2_clust))==7: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
                     elif len(unique.unique(ind2_clust))>0: ### cmap_c is too few colors
-                        cmap_c = pylab.cm.gist_rainbow
+                        cmap_c = pylab.cm.nipy_spectral
                     dc = numpy.array(ind2_clust, dtype=int)
                     dc.shape = (1,len(ind2_clust)) 
                     im_cd = axcd.matshow(dc, aspect='auto', origin='lower', cmap=cmap_c)
@@ -1024,7 +1041,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #Eryth Gfi1 Gran HSCP-1 HSCP-2 IG2 MDP Meg Mono Multi-Lin Myelo
             #cmap_d = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
-                cmap_d = pylab.cm.gist_rainbow
+                cmap_d = pylab.cm.nipy_spectral
             dc = numpy.array(group_colors, dtype=int)
             dc.shape = (1,len(group_colors)) 
             im_c = axd.matshow(dc, aspect='auto', origin='lower', cmap=cmap_d)
@@ -1048,7 +1065,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #print ind1, len(ind1)
             cmap_r = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
             if len(unique.unique(ind1))>4: ### cmap_r is too few colors
-                cmap_r = pylab.cm.gist_rainbow_r
+                cmap_r = pylab.cm.nipy_spectral_r
             if len(unique.unique(ind1))==2:
                 cmap_r = matplotlib.colors.ListedColormap(['w', 'k'])
             im_r = axr.matshow(dr, aspect='auto', origin='lower', cmap=cmap_r)
@@ -1686,7 +1703,8 @@ def remoteImportData(filename,geneFilter=None,reverseOrder=True):
     except:
         return matrix, column_header, row_header, dataset_name, group_db, [], []
 
-def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore=False):
+def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,
+               zscore=False,forceClusters=False):
     
     global priorColumnClusters 
     global priorRowClusters
@@ -1718,11 +1736,11 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
             new_headers=[]
             temp_groups={}
             original_headers=t[1:]
-            if ('exp.' in filename or 'filteredExp.' in filename or 'MarkerGene' in filename):# and ':' not in data:
+            if ('exp.' in filename or 'filteredExp.' in filename or 'MarkerGene' in filename) and forceClusters==False:# and ':' not in data:
                 if overwriteGroupNotations:
                     ### Use groups file annotations over any header sample separation with a ":"
                     for i in t:
-                        if ':' in i:
+                        if ':' in i: ### Don't annotate groups according to the clusters
                             group,i = string.split(i,':')
                             new_headers.append(i)
                             temp_groups[i] = group
@@ -1768,8 +1786,10 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,zscore
                         prior.append(c1)
                         index+=1
                     #prior=[]
+                    
                     if len(temp_groups)==0: ### Hence, no secondary group label combined with the sample name
-                        group_db, column_header = assignGroupColors(original_headers)
+                        if '-ReOrdered.txt' not in filename: ### Applies to cellHarmony UMAP and heatmap visualization
+                            group_db, column_header = assignGroupColors(original_headers)
                 #priorColumnClusters = dict(zip(column_header, prior))
                 priorColumnClusters = prior
             except Exception:
@@ -1959,7 +1979,7 @@ def assignGroupColors(t):
 
     if len(group_number_db)>3:
         color_list = []
-        cm = pylab.cm.get_cmap('gist_rainbow') #gist_ncar # binary
+        cm = pylab.cm.get_cmap('nipy_spectral') #gist_ncar # binary
         for i in range(len(group_number_db)):
             color_list.append(cm(1.*i/len(group_number_db)))  # color will now be an RGBA tuple
     #color_list=[]
@@ -2082,7 +2102,8 @@ def runUMAP(matrix, column_header,dataset_name,group_db,display=False,showLabels
     shutil.move(old_file,new_file)
 
 def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,
-         row_header=None,colorByGene=None,species=None,reimportModelScores=True,method="tSNE"):
+         row_header=None,colorByGene=None,species=None,reimportModelScores=True,
+         method="tSNE",maskGroups=None):
 
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
@@ -2108,7 +2129,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         print root_dir+dataset_name+'-'+method+'_scores.txt'
         try: scores = importtSNEScores(root_dir+dataset_name+'-'+method+'_scores.txt'); print '...import finished'
         except Exception:
-            reimportModelScores=False; print '...import failed'
+            reimportModelScores=False; print '...no existing score file found'
         
     if reimportModelScores==False:
         X=matrix.T
@@ -2145,6 +2166,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         writetSNEScores(scores,root_dir+dataset_name+'-'+method+'_scores.txt')
         #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
     
+    if maskGroups != None:
+        group_name,restricted_samples = maskGroups
+        dataset_name += '-'+group_name ### indicate the restricted group
+        
     ### Exclude samples with high TSNE deviations
     scoresT = zip(*scores)
     exclude={}
@@ -2243,7 +2268,6 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             RGB color; the keyword argument name must be a standard mpl colormap name.'''
             return pylab.cm.get_cmap(name, n)
         
-        
         if genePresent:
             dataset_name+='-'+colorByGene
             group_db={}
@@ -2333,6 +2357,12 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             group_names[group_name] = color
         except Exception:
             color = 'r'; label=None
+        if maskGroups != None:
+            base_name = sample_name
+            if ':' in sample_name:
+                base_name = string.split(base_name,':')[1]
+            if base_name not in restricted_samples:
+                exclude[i]=None ### Don't visualize this sample
         if i not in exclude:
             ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
             #except Exception: print i, len(scores[pcB]);kill
@@ -2414,7 +2444,7 @@ def excludeHighlyCorrelatedHits(x,row_header):
 
 def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             group_db, display=False, showLabels=True, algorithm='SVD', geneSetName=None,
-            species=None, pcA=1,pcB=2, colorByGene=None):
+            species=None, pcA=1,pcB=2, colorByGene=None, reimportModelScores=True):
     print "Performing Principal Component Analysis..."
     from numpy import mean,cov,double,cumsum,dot,linalg,array,rank
 
@@ -2435,7 +2465,8 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         
     pcA-=1
     pcB-=1
-    
+    label1=''
+    label2=''
     """ Based in part on code from:
     http://glowingpython.blogspot.com/2011/07/principal-component-analysis-with-numpy.html
 
@@ -2460,89 +2491,103 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     
     if algorithm == 'SVD': use_svd = True
     else: use_svd = False
-    #Mdif = matrix-matrix.mean(axis=0)# subtract the mean (along columns)
-    #M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
-    Mdif = matrix/matrix.std()
-    Mdif = Mdif.T
-    u, s, vt = svd(Mdif, 0)
-    fracs = s**2/np.sum(s**2)
-    entropy = -sum(fracs*np.log(fracs))/np.log(np.min(vt.shape))
     
-    label1 = 'PC%i (%2.1f%%)' %(pcA+1, fracs[0]*100)
-    label2 = 'PC%i (%2.1f%%)' %(pcB+1, fracs[1]*100)
-
-    #http://docs.scipy.org/doc/scipy/reference/sparse.html
-    #scipy.sparse.linalg.svds - sparse svd
-    #idx = numpy.argsort(vt[0,:])
-    #print idx;sys.exit() # Use this as your cell order or use a density analysis to get groups
-    
-    ####  FROM LARSSON ########
-    #100 most correlated Genes with PC1
-    #print vt
-    PCsToInclude = 4
-    correlated_db={}
-    allGenes={}
-    new_matrix = []
-    new_headers = []
-    added_indexes=[]
-    x = 0
-    #100 most correlated Genes with PC1
-    print 'exporting PCA loading genes to:',root_dir+'/PCA/correlated.txt'
-    exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
-    
-    matrix = zip(*matrix) ### transpose this back to normal
-    try:
-        while x<PCsToInclude:
-            idx = numpy.argsort(u[:,x])         
-            correlated = map(lambda i: row_header[i],idx[:300])
-            anticorrelated = map(lambda i: row_header[i],idx[-300:])
-            correlated_db[x] = correlated,anticorrelated
-            ### Create a new filtered matrix of loading gene indexes
-            fidx = list(idx[:300])+list(idx[-300:])
-            for i in fidx:
-                if i not in added_indexes:
-                    added_indexes.append(i)
-                    new_headers.append(row_header[i])
-                    new_matrix.append(matrix[i])
-            x+=1
-                    
-        #redundant_genes = excludeHighlyCorrelatedHits(numpy.array(new_matrix),new_headers)
-        redundant_genes = []
+    if reimportModelScores:
+        print 'Re-importing PCA model scores rather than calculating from scratch',
+        print root_dir+dataset_name+'-PCA_scores.txt'
+        try:
+            scores = importtSNEScores(root_dir+dataset_name+'-PCA_scores.txt'); print '...import finished'
+            matrix = zip(*matrix)
+        except Exception:
+            reimportModelScores=False; print '...no existing score file found'
         
-        for x in correlated_db:
-            correlated,anticorrelated = correlated_db[x]
-            count=0
-            for gene in correlated:
-                if gene not in redundant_genes and count<100:
-                    exportData.write(gene+'\tcorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
-                    count+=1
-            count=0
-            for gene in anticorrelated:
-                if gene not in redundant_genes and count<100:
-                    exportData.write(gene+'\tanticorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
-                    count+=1
-        exportData.close()
+    if reimportModelScores==False:
+            
+        #Mdif = matrix-matrix.mean(axis=0)# subtract the mean (along columns)
+        #M = (matrix-mean(matrix.T,axis=1)).T # subtract the mean (along columns)
+        Mdif = matrix/matrix.std()
+        Mdif = Mdif.T
+        u, s, vt = svd(Mdif, 0)
+        fracs = s**2/np.sum(s**2)
+        entropy = -sum(fracs*np.log(fracs))/np.log(np.min(vt.shape))
         
-        if geneSetName != None:
-            if len(geneSetName)>0:
-                exportCustomGeneSet(geneSetName,species,allGenes)
-                print 'Exported geneset to "StoredGeneSets"'
-    except Exception:
-        pass       
-
-    ###########################
+        label1 = 'PC%i (%2.1f%%)' %(pcA+1, fracs[0]*100)
+        label2 = 'PC%i (%2.1f%%)' %(pcB+1, fracs[1]*100)
     
-    #if len(row_header)>20000:
-    #print '....Using eigenvectors of the real symmetric square matrix for efficiency...'
-    #[latent,coeff] = scipy.sparse.linalg.eigsh(cov(M))
-    #scores=mlab.PCA(scores)
+        #http://docs.scipy.org/doc/scipy/reference/sparse.html
+        #scipy.sparse.linalg.svds - sparse svd
+        #idx = numpy.argsort(vt[0,:])
+        #print idx;sys.exit() # Use this as your cell order or use a density analysis to get groups
+        
+        ####  FROM LARSSON ########
+        #100 most correlated Genes with PC1
+        #print vt
+        PCsToInclude = 4
+        correlated_db={}
+        allGenes={}
+        new_matrix = []
+        new_headers = []
+        added_indexes=[]
+        x = 0
+        #100 most correlated Genes with PC1
+        print 'exporting PCA loading genes to:',root_dir+'/PCA/correlated.txt'
+        exportData = export.ExportFile(root_dir+'/PCA/correlated.txt')
+        
+        matrix = zip(*matrix) ### transpose this back to normal
+        try:
+            while x<PCsToInclude:
+                idx = numpy.argsort(u[:,x])         
+                correlated = map(lambda i: row_header[i],idx[:300])
+                anticorrelated = map(lambda i: row_header[i],idx[-300:])
+                correlated_db[x] = correlated,anticorrelated
+                ### Create a new filtered matrix of loading gene indexes
+                fidx = list(idx[:300])+list(idx[-300:])
+                for i in fidx:
+                    if i not in added_indexes:
+                        added_indexes.append(i)
+                        new_headers.append(row_header[i])
+                        new_matrix.append(matrix[i])
+                x+=1
+                        
+            #redundant_genes = excludeHighlyCorrelatedHits(numpy.array(new_matrix),new_headers)
+            redundant_genes = []
+            
+            for x in correlated_db:
+                correlated,anticorrelated = correlated_db[x]
+                count=0
+                for gene in correlated:
+                    if gene not in redundant_genes and count<100:
+                        exportData.write(gene+'\tcorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
+                        count+=1
+                count=0
+                for gene in anticorrelated:
+                    if gene not in redundant_genes and count<100:
+                        exportData.write(gene+'\tanticorrelated-PC'+str(x+1)+'\n'); allGenes[gene]=[]
+                        count+=1
+            exportData.close()
+            
+            if geneSetName != None:
+                if len(geneSetName)>0:
+                    exportCustomGeneSet(geneSetName,species,allGenes)
+                    print 'Exported geneset to "StoredGeneSets"'
+        except Exception:
+            pass       
     
-    if use_svd == False:
-        [latent,coeff] = linalg.eig(cov(M))
-        scores = dot(coeff.T,M) # projection of the data in the new space
-    else:
-        ### transform u into the same structure as the original scores from linalg.eig coeff
-        scores = vt
+        ###########################
+        
+        #if len(row_header)>20000:
+        #print '....Using eigenvectors of the real symmetric square matrix for efficiency...'
+        #[latent,coeff] = scipy.sparse.linalg.eigsh(cov(M))
+        #scores=mlab.PCA(scores)
+        
+        if use_svd == False:
+            [latent,coeff] = linalg.eig(cov(M))
+            scores = dot(coeff.T,M) # projection of the data in the new space
+        else:
+            ### transform u into the same structure as the original scores from linalg.eig coeff
+            scores = vt
+        
+        writetSNEScores(scores,root_dir+dataset_name+'-PCA_scores.txt')
     
     fig = pylab.figure()
     ax = fig.add_subplot(111)
@@ -2570,6 +2615,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     #samples = list(column_header)
     ### Color By Gene
     if colorByGene != None:
+        print 'Coloring based on feature expression.'
         gene_translation_db={}
         matrix = numpy.array(matrix)
         min_val = matrix.min()  ### min val
@@ -2605,7 +2651,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         else:
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
-                #cm = matplotlib.colors.ListedColormap(['w', 'k'])
+                #cm = matplotlib.colors.ListedColormap(['w', 'k']) ### If you want to hide one of the groups
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -2617,7 +2663,13 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             elif numberGenesPresent==7:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             else:
-                cmap_c = pylab.cm.gist_rainbow
+                cm = pylab.cm.get_cmap('gist_rainbow')
+                
+        def get_cmap(n, name='hsv'):
+            '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
+            RGB color; the keyword argument name must be a standard mpl colormap name.'''
+            return pylab.cm.get_cmap(name, n)
+        
         if genePresent:
             dataset_name+='-'+colorByGene
             group_db={}
@@ -2641,6 +2693,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
                         ranges.append(r)
                         iz+=bin_size
                     color_db = {}
+                    colors = get_cmap(len(genes))
                     for i in range(len(ranges)):
                         if i==0:
                             color = '#C0C0C0'
@@ -2651,7 +2704,10 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
                                 #color = cm(1.*(i+1)/len(ranges))
                             else:
                                 if i>2:
-                                    color = cm(k)
+                                    if len(genes)<8:
+                                        color = cm(k)
+                                    else:
+                                        color = colors(k)
                                 else:
                                     color = '#C0C0C0'
                         color_db[ranges[i]] = color
@@ -4265,7 +4321,7 @@ def timestamp():
 
 def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,
                algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None,
-               reimportModelScores=True, separateGenePlots=False):
+               reimportModelScores=True, separateGenePlots=False, forceClusters=False, maskGroups=None):
 
     global root_dir
     global graphic_link
@@ -4302,7 +4358,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
             #print traceback.format_exc();sys.exit()
             geneFilter = None ### It won't import the matrix, basically
 
-    matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,geneFilter=geneFilter)
+    matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,geneFilter=geneFilter,forceClusters=forceClusters)
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
         column_header, row_header = row_header, column_header
@@ -4323,7 +4379,20 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
                     ### Show the last one
                     tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=True,
                         showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
-                        reimportModelScores=reimportModelScores,method=algorithm)    
+                        reimportModelScores=reimportModelScores,method=algorithm)
+            elif maskGroups!=None:
+                """ Mask the samples not present in each examined group below """
+                import ExpressionBuilder
+                sample_group_db = ExpressionBuilder.simplerGroupImport(maskGroups)
+                group_sample_db = {}
+                for sample in sample_group_db:
+                    try: group_sample_db[sample_group_db[sample]].append(sample)
+                    except: group_sample_db[sample_group_db[sample]] = [sample]
+                for group in group_sample_db:
+                    restricted_samples = group_sample_db[group]
+                    tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
+                        showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
+                        reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples))
             else:
                 tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
                      showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
@@ -4336,11 +4405,13 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
                 print traceback.format_exc()
                 PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header,
                         dataset_name, group_db, display=display, showLabels=showLabels, algorithm=algorithm,
-                        geneSetName=geneSetName, species=species, colorByGene=colorByGene)
+                        geneSetName=geneSetName, species=species, colorByGene=colorByGene,
+                        reimportModelScores=reimportModelScores)
         else:
             PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name,
                         group_db, display=display, showLabels=showLabels, algorithm=algorithm,
-                        geneSetName=geneSetName, species=species, colorByGene=colorByGene)
+                        geneSetName=geneSetName, species=species, colorByGene=colorByGene,
+                        reimportModelScores=reimportModelScores)
 
     return graphic_link
 
@@ -4553,7 +4624,7 @@ def buildGraphFromSIF(mod,species,sif_filename,ora_input_dir):
         output_filename = iGraphSimple(sif_filename,fold_db,pathway_name)
     except Exception:
         print 'igraph export failed due to an unknown error'
-        #print traceback.format_exc()
+        print traceback.format_exc()
         try: displaySimpleNetwork(sif_filename,fold_db,pathway_name)
         except Exception: pass ### GraphViz problem
     return output_filename
@@ -4997,8 +5068,8 @@ def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='Sk
             header1=header[index1]
             header2=header[index2]
         else:
-            reference_data.append(int(t[index1]))
-            query_data.append(int(t[index2]))
+            reference_data.append(float(t[index1]))
+            query_data.append(float(t[index2]))
             name = t[0]
             if '_vs_' in name and 'event_summary' not in filename:
                 name = string.split(name,'_vs_')[0]
@@ -5031,10 +5102,10 @@ def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='Sk
 
     if output==False:
         pylab.savefig(filename[:-4]+'.pdf')
-        pylab.savefig(filename[:-4]+'.png')
+        #pylab.savefig(filename[:-4]+'.png')
     else:
         pylab.savefig(output[:-4]+'.pdf')
-        pylab.savefig(output[:-4]+'.png')
+        #pylab.savefig(output[:-4]+'.png')
         
     if display:
         print 'Exporting:',filename
@@ -5622,6 +5693,15 @@ def importGeneList(gene_list_file,n=20):
         genes+=(n-len(genes))*[gene]
         genesets.append(genes)
     return genesets
+
+def simpleListImport(filename):
+    genesets=[]
+    genes=[]
+    for line in open(filename,'rU').xreadlines():
+        gene = line.rstrip()
+        gene = string.split(gene,'\t')[0]
+        genes.append(gene)
+    return genes
             
 def customClean(filename):
     fn = filepath(filename)
@@ -7008,12 +7088,39 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
     try: sampleIndexSelection.filterFile(input_file,output_file,remove)
     except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
     
+def exportTFcorrelations(filename,TF_file,threshold):
+    
+    eo = export.ExportFile(filename[:-4]+'-TF-correlations.txt')
+    TFs = simpleListImport(TF_file)
+    x, column_header, row_header, dataset_name, group_db = importData(filename)
+    
+    ### For methylation data or other data with redundant signatures, remove these and only report the first one
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
+        D1 = numpy.corrcoef(x)
+    i=0
+    correlation_pairs=[]
+    for score_ls in D1:
+        k=0
+        for v in score_ls:
+            if str(v)!='nan':
+                if k!=i:
+                    #print row_header[i], row_header[k], v
+                    if row_header[i] in TFs or row_header[k] in TFs:
+                        #correlation_pairs.append([row_header[i],row_header[k],v])
+                        if v<(-1*threshold) or v>threshold:
+                            eo.write(row_header[i]+'\t'+row_header[k]+'\t'+str(v)+'\n')
+            k+=1    
+        i+=1
+    eo.close()
+
 if __name__ == '__main__':
     filename=''
+
     index1=2;index2=3; x_axis='Number of Differentially Expressed Genes'; y_axis = 'Comparisons'; title='Hippocampus - Number of Differentially Expressed Genes'
     #OutputFile = export.findParentDir(filename)
     #OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
-    
+    #exportTFcorrelations('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/ExpressionInput/exp.Cdt1-2139-genes.txt','/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Marie.Dominique/TF-to-gene/228-tfs.txt',0.1);sys.exit()
     #stackedbarchart(filename,display=True,output=OutputFile);sys.exit()
     #barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='IndianRed',color2='SkyBlue');sys.exit()
     diff=0.7
@@ -7022,7 +7129,7 @@ if __name__ == '__main__':
     #removeMarkerFinderDoublets('/Volumes/salomonis2/Nancy_ratner/2mo-NF/exp.Figure_SX-ICGS-MarkerFinder.filt.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
-    a = '/Volumes/salomonis2/Grimes/Andre-10X/PROJ-00504/Project_s1115g01001_6lib_11lane_BCL/Combined_Captures/Day0/cellHarmony/exp.MarkerFinder-cellHarmony-reference__Day0-CPTT-log2-ReOrdered-Query.txt'
+    a = '/Volumes/salomonis2/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all/header.txt'
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     #b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
     #a = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/head.txt'
@@ -7030,9 +7137,9 @@ if __name__ == '__main__':
     #convertSymbolLog(a,b);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/ICGS-NMF-SLAM/groups.February2019.txt'
-    a = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/ICGS-NMF-SLAM/exp.FinalMarkerHeatmap.txt'
-    #convertGroupsToBinaryMatrix(b,a,cellHarmony=False);sys.exit()
+    b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Liron/MRD-positive-GE/groups.GE.txt'
+    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Liron/MRD-positive-GE/exp.GE.txt'
+    convertGroupsToBinaryMatrix(b,a,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
