@@ -830,10 +830,11 @@ def remoteBuildNetworks(species, outputDir, interactions=['WikiPathways','KEGG',
     for file in dir_list:
         if 'GE.' in file:
             input_file_dir = outputDir+'/'+file
-
-            output_filename = buildInteractions(species,degrees,inputType,input_file_dir,outputDir,interactionDirs,
-                              directory=outputDir,expressionFile=input_file_dir, IncludeExpIDs=True)
-            try: pdfs.append(output_filename[:-4]+'.pdf')
+            try:
+                output_filename = buildInteractions(species,degrees,inputType,input_file_dir,outputDir,interactionDirs,
+                                  directory=outputDir,expressionFile=input_file_dir, IncludeExpIDs=True)
+                try: pdfs.append(output_filename[:-4]+'.pdf')
+                except: pass
             except: pass
     return pdfs
         

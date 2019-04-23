@@ -42,15 +42,15 @@ def importViralBarcodeReferences(barcode1,barcode2):
     for line in open(barcode1,'rU').xreadlines():
         b1 = cleanUpLine(line)
         b1_ls.append(b1)
-    reference_38mers={}
+    reference_48mers={}
     for line in open(barcode2,'rU').xreadlines():
         b2 = cleanUpLine(line)
         for b1 in b1_ls:
-            #reference_38mers[b1+spacer+b2[:20]]=[]
-            reference_38mers[b1+spacer+b2]=[]
-    return reference_38mers
+            #reference_48mers[b1+spacer+b2[:20]]=[]
+            reference_48mers[b1+spacer+b2]=[]
+    return reference_48mers
         
-def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
+def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
     eo = export.ExportFile(viral_barcode_file[:-4]+'-cleaned.txt')
     parent = export.findParentDir(viral_barcode_file)
     eom = export.ExportFile(parent+'/MultiLin-cells.txt')
@@ -109,7 +109,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
     
     valid_barcodes = 0
     for viral in viral_barcodes:
-        if viral in reference_38mers:
+        if viral in reference_48mers:
             valid_barcodes+=1
     print valid_barcodes, 'unique valid viral barcodes present'
     #"""
@@ -131,7 +131,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
                 except Exception: cell_5prime[i[:10]]=[i]
                 try: cell_3prime[i[-10:]].append(i)
                 except Exception: cell_3prime[i[-10:]]=[i]
-                if i in reference_38mers:
+                if i in reference_48mers:
                     ref_sequences.append(i)
             if len(ref_sequences)>0:
                 cells_with_valid_barcodes+=1 ### Determine how many cells have valid viral barcodes
@@ -156,7 +156,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
                 
         else:
             for i in cells_with_virus[cellular]:
-                if i in reference_38mers:
+                if i in reference_48mers:
                     cells_with_valid_barcodes+=1 ### Determine how many cells have valid viral barcodes
                 try: viral_barcodes_overide[i].append(cellular)
                 except: viral_barcodes_overide[i]=[cellular]
@@ -172,7 +172,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
         if v in mismatch_to_match:
             v = mismatch_to_match[v]
             proceed = True
-        elif v in reference_38mers:
+        elif v in reference_48mers:
             proceed = True
         if proceed:
             if v in viral_barcodes2:
@@ -209,7 +209,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
     print len(viral_barcodes),'updated unique viral barcodes'
     #"""
              
-    #reference_38mers={}
+    #reference_48mers={}
     
     multi_cell_mapping=0
     unique_cells={}
@@ -230,8 +230,8 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_38mers):
         k=len(unique.unique(viral_barcodes[viral]))
         if k>k_value:
             proceed=True
-            if len(reference_38mers)>0:
-                if viral in reference_38mers:
+            if len(reference_48mers)>0:
+                if viral in reference_48mers:
                     proceed = True
                 else: proceed = False
             if proceed:

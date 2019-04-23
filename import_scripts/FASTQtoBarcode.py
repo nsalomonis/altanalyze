@@ -1,14 +1,7 @@
 import sys,string,os
-sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
-import pysam
 import copy,getopt
 import time
 import traceback
-try: import export
-except Exception: pass
-try: import unique
-except Exception: pass
-import Bio; from Bio.Seq import Seq
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
@@ -77,14 +70,12 @@ def outputPairs(fastq_dir,read1_cellular_barcode,read2_viral_barcode):
 if __name__ == '__main__':
     ################  Comand-line arguments ################
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
-        print "Warning! Please designate a SAM file as input in the command-line"
-        print "Example: python BAMtoJunctionBED.py --i /Users/me/sample1.fastq"
         sys.exit()
     else:
         Species = None
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i='])
         for opt, arg in options:
-            if opt == '--i': fastq_dir=arg ### full path of a BAM file
+            if opt == '--i': fastq_dir=arg ### full path of a FASTQ file
             else:
                 print "Warning! Command-line argument: %s not recognized. Exiting..." % opt; sys.exit()
     if 'R1' in fastq_dir:

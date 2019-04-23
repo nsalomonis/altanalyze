@@ -1,10 +1,12 @@
 from __future__ import print_function
 
 import h5py
+import gzip
 import scipy.io
-from scipy import sparse, stats
+from scipy import sparse, stats, io
 import numpy as np
 import sys, string, os, csv, math
+import time
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 
 def index_items(universe, itemset):
@@ -18,7 +20,8 @@ class CellCollection:
     Encapsulates a cohort of cells, ie from a CellRanger run
 
     Expression values are stored in a sparse matrix, and barcodes/gene identifiers are
-    maintained in parallel arrays.  Construct by calling CellCollection.from_cellranger_h5()
+    maintained in parallel arrays.  Construct by calling CellCollection.from_file(), or one
+    of the other specialized static constructors
     """
 
     @staticmethod
@@ -26,70 +29,125 @@ class CellCollection:
         """
         Creates a CellCollection from the contents of an H5 file created by CellRanger.
 
-        If genome is None, the only genome in the H5 will be loaded.  If genome is None and multiple genomes
-        are in the H5, an Exception is raised.
+        The meaning of the genome parameter differs depending on the version of CellRanger that created the h5.
+        
+        For CellRanger version 2, the genome parameters specifies the matrix to load.  If genome is None, the
+        single matrix present will be loaded (using genome==None when multiple genomes are present in the file
+        is an error and will cause an exception).
+
+        For CellRanger version 3, genome is now specified as an attribute of the features (typically genes).
+        In this version, specifying a genome will filter the matrix to only include features from that genome.
+        Whether a genome is specified or not, non-gene features will be removed
         """
+        start = time.time()
         coll = CellCollection()
         f = h5py.File(h5_filename, 'r')
-        if genome == None:
-            possible_genomes = f.keys()
-            if len(possible_genomes) != 1:
-                raise Exception("{} contains multiple genomes ({}).  Explicitly select one".format(h5_filename, ", ".join(possible_genomes)))
-            genome = possible_genomes[0]
-            #print("Auto-selecting genome {}".format(genome), file=sys.stderr)
+        if 'matrix' in f:
+            # CellRanger v3
+            coll._barcodes = f['matrix']['barcodes']
+            coll._gene_ids = f['matrix']['features']['id']
+            coll._gene_names = f['matrix']['features']['name']
+            
+            if returnGenes:
+                """ Do not import the matrix at this point """
+                return list(coll._gene_names)
+            
+            coll._matrix = sparse.csc_matrix((f['matrix']['data'], f['matrix']['indices'], f['matrix']['indptr']), shape=f['matrix']['shape'])
+            indices = np.flatnonzero(np.array(f['matrix']['features']['genome']) != '') if \
+                genome == None else \
+                np.flatnonzero(np.array(f['matrix']['features']['genome']) == genome)
+            coll._filter_genes_by_index(indices.tolist())
+        else:
+            # CellRanger v2
+            if genome == None:
+                possible_genomes = f.keys()
+                if len(possible_genomes) != 1:
+                    raise Exception("{} contains multiple genomes ({}).  Explicitly select one".format(h5_filename, ", ".join(possible_genomes)))
+                genome = possible_genomes[0]
+                #print("Auto-selecting genome {}".format(genome), file=sys.stderr)
 
-        coll._gene_names = f[genome]['gene_names']
-        coll._gene_ids = f[genome]['genes']
-        coll._barcodes = f[genome]['barcodes']
-        coll._barcodes = map(lambda x: string.replace(x,'-1',''), coll._barcodes)
-        
-        if returnGenes:
-            """ Do not import the matrix at this point """
-            return list(coll._gene_names)
-        
-        coll._matrix = sparse.csc_matrix((f[genome]['data'], f[genome]['indices'], f[genome]['indptr']))
+            coll._gene_names = f[genome]['gene_names']
+            if returnGenes:
+                """ Do not import the matrix at this point """
+                return list(coll._gene_names)
 
-        print('sparse matrix data imported from h5 file...')
+            coll._matrix = sparse.csc_matrix((f[genome]['data'], f[genome]['indices'], f[genome]['indptr']))   
+            coll._barcodes = f[genome]['barcodes']
+            coll._gene_ids = f[genome]['genes']
+
+        print('sparse matrix data imported from h5 file in %s seconds' % str(time.time()-start))
         return coll
 
     @staticmethod
-    def from_cellranger_mtx(matrix_directory, genome=None, returnGenes=False):
+    def from_cellranger_mtx(mtx_directory, genome=None, returnGenes=False):
+
         """
-        Creates a CellCollection from the contents of an mtx directory created by CellRanger.
+        Creates a CellCollection from a sparse matrix (.mtx and associated files) exported by CellRanger
+
+        Recognize directories from CellRanger version 2 (files: matrix.mtx, genes.tsv, barcodes.tsv) and
+        CellRanger v3 (files: matrix.mtx.gz, features.tsv.gz, barcodes.tsv.gz)
         """
-        
+
+        start = time.time()
         coll = CellCollection()
+        cellranger_version = 2
+        if '.mtx' in mtx_directory:
+            mtx_file = mtx_directory ### Hence an mtx file was directly supplied
+            mtx_directory = os.path.abspath(os.path.join(mtx_file, os.pardir))
+        else:
+            mtx_file = os.path.join(mtx_directory, "matrix.mtx")
+        if not os.path.exists(mtx_file):
+            cellranger_version = 3
+            mtx_file = mtx_file + ".gz"
+            if not os.path.exists(mtx_file):
+                raise Exception("Directory {} does not contain a recognizable matrix file".format(mtx_directory))
 
-        genes_path = os.path.join(matrix_directory, "genes.tsv")
-        if os.path.isfile(genes_path)==False:
-            genes_path = os.path.join(matrix_directory, "features.tsv")
-        gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
+        coll._gene_ids = np.empty((coll._matrix.shape[0], ), np.object)
+        coll._gene_names = np.empty((coll._matrix.shape[0], ), np.object)
 
-        try:
-            coll._gene_names = np.array([row[1] for row in csv.reader(open(genes_path), delimiter="\t")])
-        except:
-            coll._gene_names = np.array([row[0] for row in csv.reader(open(genes_path), delimiter="\t")])
+        sparse_matrix = io.mmread(mtx_file)
+        coll._matrix = sparse_matrix.tocsc()
+        
+        if cellranger_version == 2:
+            with open(os.path.join(mtx_directory, "genes.tsv"), "rU") as f:
+                idx = 0
+                for line in f:
+                    i, n = line.rstrip().split("\t")
+                    coll._gene_ids[idx] = i
+                    coll._gene_names[idx] = n
+                    idx += 1
+            with open(os.path.join(mtx_directory, "barcodes.tsv"), "rU") as f:
+                coll._barcodes = np.array( [ line.rstrip() for line in f ] )
+        else:
+            with gzip.open(os.path.join(mtx_directory, "features.tsv.gz"), "rt") as f:
+                idx = 0
+                indices = []
+                for line in f:
+                    i, n, t = line.rstrip().split("\t")
+                    coll._gene_ids[idx] = i
+                    coll._gene_names[idx] = n
+                    if t == 'Gene Expression':
+                        indices.append(idx)
+                    idx += 1
+                coll._filter_genes_by_index(indices)
+            with gzip.open(os.path.join(mtx_directory, "barcodes.tsv.gz"), "rt") as f:
+                coll._barcodes = np.array( [ line.rstrip() for line in f ] )
+
         if returnGenes:
             """ Do not import the matrix at this point """
             return list(coll._gene_names)
-        
-        coll._gene_ids = coll._gene_names
-        barcodes_path = os.path.join(matrix_directory, "barcodes.tsv")
-        barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
-        coll._barcodes = np.array(map(lambda x: string.replace(x,'-1',''), barcodes))        
-        coll._matrix = scipy.io.mmread(os.path.join(matrix_directory, "matrix.mtx"))
-        
-        print('sparse matrix data imported from mtx file...')
+            
+        print('sparse matrix data imported from mtx file in %s seconds' % str(time.time()-start))
         return coll
-    
+
     @staticmethod
-    def from_tsvfile(tsv_file, genome=None, returnGenes=False, gene_list=None):
+    def from_tsvfile_old(tsv_file, genome=None, returnGenes=False, gene_list=None):
         """
         Creates a CellCollection from the contents of a tab-separated text file.
         """
-        
+
+        startT = time.time()
         coll = CellCollection()
-        
         UseDense=False
         header=True
         skip=False
@@ -143,7 +201,67 @@ class CellCollection:
         coll._barcodes = np.array(coll._barcodes)
         coll._gene_names = np.array(coll._gene_names)
         coll._gene_ids = coll._gene_names
-        print('sparse matrix data imported from TSV file...')
+
+        print('sparse matrix data imported from TSV file in %s seconds' % str(time.time()-startT))
+        return coll
+    
+    @staticmethod
+    def from_tsvfile(tsv_filename, genome=None, returnGenes=False, gene_list=None):
+        """
+        Generates a CellCollection from a (dense) tab-separated file, where cells are in
+        columns and
+        """
+        
+        start = time.time()
+        coll = CellCollection()
+        with open(tsv_filename, "rU") as f:
+            try:
+                line = next(f)
+            except StopIteration:
+                raise Exception("TSV file {} is empty".format(tsv_filename))
+            
+            ### Check formatting
+            skip=False
+            if '\t' in line:
+                delimiter = '\t' # TSV file
+            else:
+                delimiter = ','
+            col_start = 1
+            if 'row_clusters' in line:
+                col_start=2 # An extra column and row are present from the ICGS file
+                skip=True
+            ### Check formatting end
+                    
+            coll._barcodes = np.array(line.rstrip().split(delimiter)[col_start:])
+            sparse_matrix = sparse.lil_matrix((50000, len(coll._barcodes)), dtype=np.float_)
+            coll._gene_names = np.empty((sparse_matrix.shape[0], ), np.object)
+            row = 0
+            for line in f:
+                if row==0 and skip:
+                    skip = False
+                    continue
+                vals = line.rstrip().split(delimiter)
+                coll._gene_names[row] = vals[0]
+                if returnGenes==False:
+                    for i in range(col_start, len(vals)):
+                        if vals[i] != "0":
+                            sparse_matrix[row, i-col_start] = float(vals[i])
+                    if row == sparse_matrix.shape[0]-1:
+                        sparse_matrix.resize(sparse_matrix.shape + (10000, 0))
+                        coll._gene_names.resize(coll._gene_names.shape + (10000, 0))
+                row += 1
+
+        coll._gene_names.resize((row, ))
+        if returnGenes:
+            """ Do not import the matrix at this point """
+            return list(coll._gene_names)
+        
+        sparse_matrix.resize((row, len(coll._barcodes)))
+        coll._matrix = sparse_matrix.tocsc()
+        coll._gene_ids = coll._gene_names
+    
+        #print('matrix shape: {}'.format(coll._matrix.shape))
+        print('sparse matrix data imported from TSV file in %s seconds' % str(time.time()-start))
         return coll
     
     def __init__(self):
@@ -172,10 +290,10 @@ class CellCollection:
         """
         Returns a (standard, non-sparse) sequence of expression values for a given cell
         """
-        try:
-            return self._matrix.getcol(cell_index).todense()
-        except:
-            return self._matrix[:,cell_index] # ith column for existing dense matrix
+        #try:
+        return self._matrix.getcol(cell_index).todense()
+        #except:
+        #    return self._matrix[:,cell_index] # ith column for existing dense matrix
 
     def centroid(self):
         """
@@ -254,7 +372,7 @@ class CellCollection:
         #mat_array_original = self._matrix.toarray()
         #print(len(mat_array_original))
 
-    def filter_genes_by_symbol(self, symbol_list):
+    def filter_genes_by_symbol(self, symbol_list, data_type):
         """
         Reduces the CellCollection in-place to only contain the genes requested.
 
@@ -264,12 +382,16 @@ class CellCollection:
         """
         gene_subset = set(symbol_list)
         #print("Selecting {} genes".format(len(gene_subset)), file=sys.stderr)
-        #gene_index = index_items(self._gene_names, gene_subset) # will output genes in the full dataset order
         gene_index=[]
         gene_names = list(self._gene_names)
-        for gene in gene_subset:
-            if gene in gene_names:
-                gene_index.append(gene_names.index(gene))
+        if data_type == 'txt':
+            ### below code is problematic for h5 and probably sparse matrix files
+            for gene in gene_subset:
+                if gene in gene_names:
+                    gene_index.append(gene_names.index(gene))
+        else:
+            gene_index = index_items(self._gene_names, gene_subset) # will output genes in the full dataset order
+            
         self._filter_genes_by_index(gene_index)
 
     def filter_genes_by_id(self, id_list):

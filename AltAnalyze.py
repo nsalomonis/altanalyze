@@ -6243,7 +6243,7 @@ def commandLineRun():
     GeneSetSelection=''
     interactionDirs=[]
     inputType='ID list'
-    Genes=''
+    Genes=''; genes=''
     degrees='direct'
     includeExpIDs=True
     update_interactions=False
@@ -6343,7 +6343,7 @@ def commandLineRun():
                                                          'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
                                                          'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
-                                                         'downsample='])
+                                                         'downsample=','query='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6415,7 +6415,7 @@ def commandLineRun():
         elif opt == '--version': ensembl_version = arg
         elif opt == '--compendiumPlatform': compendiumPlatform=arg ### platform for which the LineageProfiler compendium is built on
         elif opt == '--force': force=arg
-        elif opt == '--input' or opt == '--i':
+        elif opt == '--input' or opt == '--i' or opt == '--query':
             arg = verifyPath(arg)
             input_file_dir=arg
             #input_exp_file=arg
@@ -8048,6 +8048,7 @@ def commandLineRun():
                     elif opt == '--performDiffExp': performDiffExp = arg
                     elif opt == '--centerMethod': CenterMethod = arg
                     elif opt == '--labels': labels = arg
+                    elif opt == '--genes': genes = arg
                 fl = UI.ExpressionFileLocationData('','','','')
                 fl.setSpecies(species)
                 fl.setVendor(manufacturer)
@@ -8076,11 +8077,17 @@ def commandLineRun():
                             ICGS_files.append(input_file)
                     import LineageProfilerIterate
                     print 'center method =',CenterMethod
-                    LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod =CenterMethod,species=species,PearsonThreshold=PearsonThreshold)
+                    LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod=CenterMethod,species=species,PearsonThreshold=PearsonThreshold)
                     #except: LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod=CenterMethod)
                     sys.exit()
                 try: CenterMethod=CenterMethod
-                except: CenterMethod='centroid'
+                except: CenterMethod='community'
+                
+                """ Only align sparse matrix files and skip other analyses """
+                if len(genes)>0 and ('h5' in custom_reference or 'mtx' in custom_reference):
+                    fl.set_reference_exp_file(custom_reference)
+                    custom_reference = genes
+
                 UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize, CenterMethod=CenterMethod) #,display=display
                 #graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,input_file_dir,array_type,species,manufacturer)
                 print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'

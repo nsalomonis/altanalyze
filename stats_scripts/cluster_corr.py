@@ -7,6 +7,7 @@ import networkx
 import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) # import parent dir dependencies
 import numpy as np
+import time
 
 def read_gene_list(filename):
     """
@@ -14,18 +15,14 @@ def read_gene_list(filename):
     """
     gene_list = []
     with open(filename, 'rU') as f:
-        header_lines = 2
         for line in f:
-            if header_lines > 0:
-                header_lines -= 1
+            gene = line.split('\t', 1)[0]
+            if ' ' in gene:
+                gene = string.split(gene.rstrip(),' ')[0]
+            if ':' in gene:
+                gene_list.append((gene.rstrip().split(':'))[1])
             else:
-                gene = line.split('\t', 1)[0]
-                if ' ' in gene:
-                    gene = string.split(gene,' ')[0]
-                if ':' in gene:
-                    gene_list.append((gene.rstrip().split(':'))[1])
-                else:
-                    gene_list.append(gene)
+                gene_list.append(gene.rstrip())
     return gene_list
 
 def read_labels_dictionary(filename):
@@ -50,9 +47,12 @@ def find_nearest_cells(ref_h5_filename, query_h5_filename, gene_list=None, genom
     function that calls them (among others)
     """
     
-    gene_list = find_shared_genes(ref_h5_filename,genome=genome,gene_list=gene_list)
-    gene_list = find_shared_genes(query_h5_filename,genome=genome,gene_list=gene_list)
-    
+    startT = time.time()
+    if '.mtx' not in ref_h5_filename and '.h5' not in ref_h5_filename:
+        """ Assumes partial overlapping gene lists present """
+        gene_list = find_shared_genes(ref_h5_filename,genome=genome,gene_list=gene_list)
+        gene_list = find_shared_genes(query_h5_filename,genome=genome,gene_list=gene_list)
+
     ref_partition = partition_h5_file(ref_h5_filename, gene_list=gene_list, num_neighbors=num_neighbors, 
                             num_trees=num_trees, louvain_level=louvain_level,genome=genome)
     query_partition = partition_h5_file(query_h5_filename, gene_list=gene_list, num_neighbors=num_neighbors, 
@@ -69,6 +69,8 @@ def find_nearest_cells(ref_h5_filename, query_h5_filename, gene_list=None, genom
                                  'correlation': best_cor, 
                                  'query_partition': query_part_id,
                                  'ref_partition': ref_part_id}
+            
+    print('cellHarmony-community alignment complete in %s seconds' % str(time.time()-startT))
     return result
 
 def write_results_to_file(results, filename, labels=None):
@@ -137,6 +139,7 @@ def identify_clusters(graph, louvain_level=-1):
 def find_shared_genes(h5_filename,genome=None,gene_list=None):
     """
     Selects genes shared by the reference, query and gene_list
+    for filtering genes
     """    
     
     if gene_list !=None:
@@ -169,12 +172,15 @@ def partition_h5_file(h5_filename, gene_list=None, num_neighbors=10, num_trees=1
     """
     if 'h5' in h5_filename:
         collection = CellCollection.from_cellranger_h5(h5_filename)
+        data_type = 'h5'
     elif 'txt' in h5_filename:
         collection = CellCollection.from_tsvfile(h5_filename,genome)
+        data_type = 'txt'
     else:
         collection = CellCollection.from_cellranger_mtx(h5_filename,genome)
+        data_type = 'mtx'
     if gene_list != None:
-        collection.filter_genes_by_symbol(gene_list)
+        collection.filter_genes_by_symbol(gene_list,data_type)
     neighbor_dict = nearest_neighbors(collection, num_neighbors=num_neighbors, n_trees=num_trees)
     cluster_definition = identify_clusters(networkx.from_dict_of_lists(neighbor_dict), louvain_level=louvain_level)
     return collection.partition(cluster_definition)

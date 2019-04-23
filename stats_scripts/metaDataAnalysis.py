@@ -506,7 +506,17 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         eo = export.ExportFile(rootdir+'/'+filename)
         #do = export.ExportFile(rootdir+'/Downregulated/'+filename)
         #uo = export.ExportFile(rootdir+'/Upregulated/'+filename)
-        so = export.ExportFile(rootdir+'PValues/'+CovariateQuery+'-'+string.join(groups,'_vs_')+'.txt')
+        try:
+            so = export.ExportFile(rootdir+'PValues/'+CovariateQuery+'-'+string.join(groups,'_vs_')+'.txt')
+        except IOError:
+            ### Occurs when the filename is too long - so we shorten this (not ideal)
+            groups2 = list(groups)
+            groups2[-1] = 'controls'
+            try:
+                so = export.ExportFile(rootdir+'PValues/'+CovariateQuery+'-'+string.join(groups2,'_vs_')+'.txt')
+            except IOError:
+                groups2[0] = groups2[0][:30] ### restrict to 30 characters
+                so = export.ExportFile(rootdir+'PValues/'+CovariateQuery+'-'+string.join(groups2,'_vs_')+'.txt')
         header = 'GeneID\tSystemCode\tLogFold\trawp\tadjp\tSymbol\tavg-%s\tavg-%s\n' % (group1,group2)
         if platform == 'PSI':
             header = 'UID\tInclusion-Junction\tEvent-Direction\tClusterID\tUpdatedClusterID\tAltExons\tEventAnnotation\tCoordinates\tProteinPredictions\tdPSI\trawp\tadjp\tavg-%s\tavg-%s\n' % (group1,group2)

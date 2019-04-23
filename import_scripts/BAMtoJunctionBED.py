@@ -71,18 +71,27 @@ def writeJunctionBedFile(junction_db,jid,o):
             strandStatus = False
         break
     
-    if strandStatus== False: ### If no strand information in the bam file filter and add known strand data
-        junction_db2={}
-        for (chr,jc,tophat_strand) in junction_db:
-            original_chr = chr
-            if 'chr' not in chr:
-                chr = 'chr'+chr
-            for j in jc:
+    #if strandStatus== False: ### If no strand information in the bam file filter and add known strand data
+    junction_db2={}
+    strand='+'
+    for (chr,jc,tophat_strand) in junction_db:
+        original_chr = chr
+        if 'chr' not in chr:
+            chr = 'chr'+chr
+        for j in jc:
+            if tophat_strand==None:
                 try:
                     strand = splicesite_db[chr,j]
                     junction_db2[(original_chr,jc,strand)]=junction_db[(original_chr,jc,tophat_strand)]
-                except Exception: pass
-        junction_db = junction_db2
+                except Exception:
+                    ### Assume the strand is the last strand detected (in the same genomic region)
+                    junction_db2[(original_chr,jc,strand)]=junction_db[(original_chr,jc,tophat_strand)]
+            else:
+                ### Programs like HISAT2 have some reads with strand assigned and others without
+                junction_db2[(original_chr,jc,tophat_strand)]=junction_db[(original_chr,jc,tophat_strand)]
+
+    junction_db = junction_db2
+
     for (chr,jc,tophat_strand) in junction_db:
         x_ls=[]; y_ls=[]; dist_ls=[]
         read_count = str(len(junction_db[(chr,jc,tophat_strand)]))
@@ -138,9 +147,9 @@ def retreiveAllKnownSpliceSites(returnExonRetention=False,DesignatedSpecies=None
     gene_coord_db={}
     length=0
     try:
-        if ExonReference==None:
-            exon_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt'
-            length = verifyFileLength(exon_dir)
+        #if ExonReference==None:
+        exon_dir = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_exon.txt'
+        length = verifyFileLength(exon_dir)
     except Exception:
         #print traceback.format_exc();sys.exit()
         pass

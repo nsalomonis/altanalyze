@@ -4623,8 +4623,8 @@ def buildGraphFromSIF(mod,species,sif_filename,ora_input_dir):
         #displaySimpleNetXGraph(sif_filename,fold_db,pathway_name)
         output_filename = iGraphSimple(sif_filename,fold_db,pathway_name)
     except Exception:
-        print 'igraph export failed due to an unknown error'
-        print traceback.format_exc()
+        print 'igraph export failed due to an unknown error (not installed)'
+        #print traceback.format_exc()
         try: displaySimpleNetwork(sif_filename,fold_db,pathway_name)
         except Exception: pass ### GraphViz problem
     return output_filename
@@ -5053,8 +5053,7 @@ def stackedbarchart(filename,display=False,output=False):
         try: pylab.show()
         except Exception: None ### when run in headless mode    
     
-    
-def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='SkyBlue',color2='IndianRed',output=False):
+def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='darkviolet',color2='gold',output=False):
 
     header=[]
     reference_data=[]
@@ -5069,19 +5068,29 @@ def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='Sk
             header2=header[index2]
         else:
             reference_data.append(float(t[index1]))
-            query_data.append(float(t[index2]))
+            q_value = float(t[index2])
+            if 'event_summary' not in filename:
+                q_value = q_value*-1
+            query_data.append(q_value)
             name = t[0]
             if '_vs_' in name and 'event_summary' not in filename:
                 name = string.split(name,'_vs_')[0]
+                suffix=None
+                if '__' in name:
+                    suffix = string.split(name,'__')[-1]
                 if '_' in name:
                     name = string.split(name,'_')[:-1]
                     name = string.join(name,'_')
+                    if len(name)>20:
+                        name = string.split(name,'_')[0]
+                if suffix !=None:
+                    name+='_'+suffix
             groups.append(name)
 
     fig, ax = pylab.subplots()
     
     pos1 = ax.get_position() # get the original position 
-    pos2 = [pos1.x0 + 0.1, pos1.y0 + 0.1,  pos1.width / 1.2, pos1.height / 1.2 ] 
+    pos2 = [pos1.x0 + 0.2, pos1.y0 + 0.1,  pos1.width / 1.2, pos1.height / 1.2 ] 
     ax.set_position(pos2) # set a new position
     
     ind = np.arange(len(groups))  # the x locations for the groups
@@ -7115,14 +7124,18 @@ def exportTFcorrelations(filename,TF_file,threshold):
     eo.close()
 
 if __name__ == '__main__':
-    filename=''
-
+    filename='/Users/saljh8/Desktop/DemoData/Venetoclax/D4/cellHarmony-rawp-stringent/gene_summary.txt'
+    filename = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/cellHarmony-latest/gene_summary-p27.txt'
+    filename = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/gene_summary2.txt'
     index1=2;index2=3; x_axis='Number of Differentially Expressed Genes'; y_axis = 'Comparisons'; title='Hippocampus - Number of Differentially Expressed Genes'
     #OutputFile = export.findParentDir(filename)
     #OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
     #exportTFcorrelations('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/ExpressionInput/exp.Cdt1-2139-genes.txt','/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Marie.Dominique/TF-to-gene/228-tfs.txt',0.1);sys.exit()
     #stackedbarchart(filename,display=True,output=OutputFile);sys.exit()
-    #barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='IndianRed',color2='SkyBlue');sys.exit()
+    index1=2;index2=3; x_axis='Number of DEGs'; y_axis = 'Reference clusters'; title='cellHarmony Differentially Expressed Genes'
+    barchart(filename,index1,index2,x_axis,y_axis,title,color1='IndianRed',color2='SkyBlue')
+    sys.exit()
+    barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='IndianRed',color2='SkyBlue');sys.exit()
     diff=0.7
     print 'diff:',diff
     #latteralMerge(file1, file2);sys.exit()

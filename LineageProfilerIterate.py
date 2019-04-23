@@ -2306,7 +2306,7 @@ def exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined):
     top_comparison_genes={}
     comparisons={}
     for gene in DEGs_combined:
-        pval,direction,comparison = DEGs_combined[gene]
+        pval,direction,comparison,uid = DEGs_combined[gene]
         ### Group by comparison and remove ".txt" suffix
         comparison = string.split(comparison,'_vs_')[0]
         comparison = string.replace(comparison,'GE.','')
@@ -2316,13 +2316,14 @@ def exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined):
         comparisons[comparison]=[]
 
     """ Augment the ordered cell-state header list with the other broader comparisons """
+
     cluster_comparisons=[]
     for comparison in comparisons:
         if comparison not in cell_states:
             if '-Query' not in comparison:
                 bulk_comparison = comparison
             else:
-                first_group = string.split(comparison,'|')[0]
+                first_group = string.split(comparison,'__')[0]
                 index = cell_states.index(first_group)
                 cluster_comparisons.append([index,comparison])
     cluster_comparisons.sort()
@@ -2336,10 +2337,11 @@ def exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined):
     for h in cell_states:
         for direction in ('positive','negative'):
             signature = h+'--'+direction
-            top_comparison_genes[signature].sort()
-            for (pval,gene) in top_comparison_genes[signature]:
-                try: export_object.write(string.join([signature+':'+gene]+map(str,matrix[gene]),'\t')+'\n')
-                except: pass ### for Ensembl IDs
+            if signature in top_comparison_genes: ### Not all comparisons will yield significant genes
+                top_comparison_genes[signature].sort()
+                for (pval,gene) in top_comparison_genes[signature]:
+                    if gene in matrix:
+                        export_object.write(string.join([signature+':'+gene]+map(str,matrix[gene]),'\t')+'\n')
     export_object.close()
     
     from visualization_scripts import clustering
@@ -2618,7 +2620,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             alt_ref_headers.append(alt_sample_id)
             if sample in ref_col_clusters: ### If clusters assigned in original file
                 cluster = ref_col_clusters[sample]
-                ref_col_clusters[alt_sample_id]=cluster  ### append to the original
+                ref_col_clusters[alt_sample_id]=cluster ### append to the original
     
     """ Store alternative query sample names with groups added """
     original_sampleID_translation={}
@@ -2797,7 +2799,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                         cluster = classified_samples[sample_name]
                         group_export_object.write(sample_name+'\t'+cluster+'\t'+prefix+cluster+'\n')
                         if cluster not in ordered_clusters:
-                            ordered_clusters.append(cluster)
+                            ordered_clusters.append(cluster) ### Needed to organize the clusters in the reference order
                     except Exception: pass
                     
     group_export_object.close()
@@ -2808,9 +2810,35 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     """Export a combined groups and comps file to perform apples-to-apples comparisons"""
     folds_file=''
     all_DEGs=[]
+    comps = unique.unique(comps)
+    comps.sort()
+
     if len(final_clusters)>0:
         try:
-            final_clusters.sort()
+
+            """ Re-order the groups the original ICGS order """
+            cells_lookup_temp={}
+            comps_lookup_temp={}
+            #final_clusters.sort() ### Here is where the groups are ordered for export
+            for (source,cluster,sample) in final_clusters:
+                try: cells_lookup_temp[cluster].append((source,cluster,sample))
+                except: cells_lookup_temp[cluster] = [(source,cluster,sample)]
+            for (group,g1,g2) in comps:
+                comps_lookup_temp[group] = (group,g1,g2)
+            final_clusters2=[]
+            comps2=[]
+            for group in ordered_clusters:
+                try: cells_lookup_temp[group].sort()
+                except:
+                    group = int(group) ### Occurs if the group number is an integer
+                    cells_lookup_temp[group].sort()
+                final_clusters2+=cells_lookup_temp[group]
+                try: comps2.append(comps_lookup_temp[group])
+                except:
+                    comps2.append(comps_lookup_temp[str(group)])
+            final_clusters = final_clusters2
+            comps = comps2
+                
             new_query_headers=[]
             expression_file = string.replace(groups_file,'groups.','exp.')
             export_object = export.ExportFile(groups_file) 
@@ -2828,7 +2856,6 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             groups_to_samples={}
             cluster_lookup={}
             for (source,cluster,sample) in final_clusters:
-                #print source,cluster,sample;sys.exit() blahhh
                 cluster_name = prefix+str(cluster)+'_'+source
                 cluster_lookup[cluster_name]=prefix+str(cluster)
                 if cluster_name in added_groups:
@@ -2862,15 +2889,13 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             
             export_object = export.ExportFile(comps_file)
             freq_object = export.ExportFile(root_dir+'/cell-frequency-stats.txt')
-            comps = unique.unique(comps)
-            comps.sort()
             
             ### Export the comps and frequency results
             freq_object.write('Cluster-name\t'+ref_filename_clean+'\t'+query_filename_clean+'\tFisher exact test p-value\t'+'% '+ref_filename_clean+'\t'+'% '+query_filename_clean+'\n')
             added=[]
             g2_all = len(ref_headers)
             g1_all = len(query_headers)
-            if len(query_header_proppegated_clusters) > 1000:
+            if len(query_header_proppegated_clusters) > 200:
                 min_cells = 19
             else:
                 min_cells = 3
@@ -2932,8 +2957,9 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 output_dir = root_dir+use_custom_output_dir
                 
                 log_fold_cutoff = math.log(float(fold_cutoff),2)
-                
+            
                 """ Re-run the differential analysis comparing all cell states in the query vs. reference """
+
                 metaDataAnalysis.remoteAnalysis(species,expression_file,groups_file,platform=platform,use_custom_output_dir=use_custom_output_dir,
                             log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold,suppressPrintOuts=True)
                 gene_summary_file = output_dir+'/gene_summary.txt'
@@ -2942,16 +2968,24 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 except: pass
                 shutil.move(gene_summary_file,moved_summary_file)
                 gene_summaries.append(moved_summary_file)
-                                
+                                    
+                cellstate_DEGs = aggregateRegulatedGenes(output_dir) ### Collect these genes here rather than below to avoid cell-type frequency bias
+                
                 """ Re-run the differential analysis comparing all cells in the query vs. reference (not cell states) """
-                metaDataAnalysis.remoteAnalysis(species,expression_file,reference_query_groups,platform=platform,use_custom_output_dir=use_custom_output_dir,
-                            log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold,suppressPrintOuts=True)
-                gene_summary_file = output_dir+'/gene_summary.txt'
-                moved_summary_file = gene_summary_file[:-4]+'-query-reference.txt'
-                try: os.remove(moved_summary_file)
-                except: pass
-                shutil.move(gene_summary_file,moved_summary_file)
-                gene_summaries.append(moved_summary_file)
+                try:
+                    metaDataAnalysis.remoteAnalysis(species,expression_file,reference_query_groups,platform=platform,use_custom_output_dir=use_custom_output_dir,
+                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold,suppressPrintOuts=True)
+                    gene_summary_file = output_dir+'/gene_summary.txt'
+                    moved_summary_file = gene_summary_file[:-4]+'-query-reference.txt'
+                    try: os.remove(moved_summary_file)
+                    except: pass
+                    shutil.move(gene_summary_file,moved_summary_file)
+                    gene_summaries.append(moved_summary_file)
+                except:
+                    print traceback.format_exc()
+                    pass ### Unknown errors - skip this analysis
+                
+                global_DEGs = aggregateRegulatedGenes(output_dir) ### Collect these genes here rather than below to avoid cell-type frequency bias
                 
                 """ Export a folds-file with the average fold differences per cell state (query vs. reference) """
                 try:  
@@ -2973,25 +3007,33 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                     pass
 
                 """ Find similar clusters """
-                cellstate_DEGs = aggregateRegulatedGenes(output_dir)
-                clustered_groups_file = findSimilarImpactedCellStates(folds_file,cellstate_DEGs)
                 
-                if clustered_groups_file!=None:
-                    """ Re-run the differential analysis comparing all cells in the query vs. reference (not cell states) """
-                    metaDataAnalysis.remoteAnalysis(species,expression_file,clustered_groups_file,platform=platform,use_custom_output_dir=use_custom_output_dir,
-                                log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold,suppressPrintOuts=True)
-                    gene_summary_file = output_dir+'/gene_summary.txt'
-                    moved_summary_file = gene_summary_file[:-4]+'-clustered-states.txt'
-                    try: os.remove(moved_summary_file)
-                    except: pass
-                    shutil.move(gene_summary_file,moved_summary_file)
-                    gene_summaries.append(moved_summary_file)
+                try:
+                    clustered_groups_file = findSimilarImpactedCellStates(folds_file,cellstate_DEGs)
+                except:
+                    ### Unknown error - likely extra files in the PValues folder from a prior error
+                    clustered_groups_file=None
 
+                if clustered_groups_file!=None:
+                    try:
+                        """ Re-run the differential analysis comparing all cells in the query vs. reference (not cell states) """
+                        metaDataAnalysis.remoteAnalysis(species,expression_file,clustered_groups_file,platform=platform,use_custom_output_dir=use_custom_output_dir,
+                                    log_fold_cutoff=log_fold_cutoff,use_adjusted_pval=use_adjusted_pval,pvalThreshold=pvalThreshold,suppressPrintOuts=True)
+                        gene_summary_file = output_dir+'/gene_summary.txt'
+                        moved_summary_file = gene_summary_file[:-4]+'-clustered-states.txt'
+                        try: os.remove(moved_summary_file)
+                        except: pass
+                        shutil.move(gene_summary_file,moved_summary_file)
+                        gene_summaries.append(moved_summary_file)
+                    except:
+                        print traceback.format_exc()
+                        pass ### Unknown errors - skip this analysis
+                #sys.exit()
                 """ Clean up cellHarmony output directory """
                 export.deleteFolder(root_dir+'ExpressionProfiles')
-                export.deleteFolder(root_dir+'PValues')
+                #export.deleteFolder(root_dir+'PValues')
                 export.deleteFolder(root_dir+'top50')
-                
+
                 gene_summary_combined = string.replace(gene_summary_file,use_custom_output_dir,'')
                 combineSummaryFiles(gene_summaries,gene_summary_combined)
                 
@@ -3011,8 +3053,9 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                     file = string.replace(file,'_cellHarmony-Reference-interactions','')
                     shutil.copy(pdf,root_dir+'/networks/'+file)
         
-                """ Union of all differentially expressed genes """
-                all_DEGs = aggregateRegulatedGenes(output_dir)
+                #""" Union of all differentially expressed genes """
+                all_DEGs = aggregateRegulatedGenes(output_dir,filterGenes=cellstate_DEGs) ### do not include additional genes as these may represent cell frequency bias
+                
                 display_genes = string.join(list(all_DEGs),' ')
                 ICGS_DEGs_combined = ref_exp_db.keys()
                 for gene in all_DEGs:
@@ -3078,6 +3121,7 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
 
     folds_header_clean=[]
     expression_db, folds_header = simpleExpressionFileImport(folds_file,filterUID=cellstate_DEGs)
+
     matrix=[]
     for gene in expression_db:
         matrix.append(map(float,expression_db[gene]))
@@ -3087,7 +3131,7 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
 
     for h in folds_header:
         folds_header_clean.append(string.replace(h,'-fold',''))
-        
+
     output_dir = os.path.abspath(os.path.join(folds_file, os.pardir))
     pvalue_dir = output_dir+'/PValues/'
     dir_list = unique.read_directory(pvalue_dir)
@@ -3096,7 +3140,7 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
     genes={}
     valid_comparisons=[]
     for file in dir_list:
-        if '.txt' in file:
+        if '.txt' in file and '|' not in file:
             pval_file_dir = pvalue_dir+'/'+file
             pval_db, header = simpleExpressionFileImport(pval_file_dir,filterUID=cellstate_DEGs)
             for gene in pval_db: genes[gene]=[]
@@ -3105,7 +3149,7 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
                     valid_comparisons.append(h) ### Use the simple name of this cluster
                     pval_all_db[h] = pval_db
                     break
-            
+
     """Create a binarized matrix of p-values"""
 
     combined_pvalues={}
@@ -3123,29 +3167,51 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
     
     pval_patterns={}
     for gene in combined_pvalues:
-        try: pval_patterns[tuple(combined_pvalues[gene])]+=1
-        except: pval_patterns[tuple(combined_pvalues[gene])]=1
+        i=0
+        pattern = list(combined_pvalues[gene])
+        uid = cellstate_DEGs[gene][-1]
+        for value in combined_pvalues[gene]:
+            if value == 1:
+                try:
+                    if '-' in expression_db[uid][i]:
+                        pattern[i] = -1
+                except:
+                    print pattern
+                    print i,expression_db[uid];kill
+            i+=1
+        try: pval_patterns[tuple(pattern)]+=1
+        except: pval_patterns[tuple(pattern)]=1
     patterns_ranked=[]
     for pattern in pval_patterns:
-        count = pval_patterns[pattern]
-        s = sum(pattern)
-        if s == 0 or s==1 or s==len(valid_comparisons):
-            continue
+        s = pattern.count(0)
+        n = pattern.count(-1)
+        p = pattern.count(1)
+        counts = pval_patterns[pattern]
+        if s == (len(valid_comparisons)-1) or s == (len(valid_comparisons)) or s==0:
+            if s==0:
+                if n==len(valid_comparisons) or p == len(valid_comparisons):
+                    pass
+                else:
+                    ### complex pattern of 1 and -1 only
+                    patterns_ranked.append([counts,pattern])
         else:
-            patterns_ranked.append([count,pattern])
+            patterns_ranked.append([counts,pattern])
     patterns_ranked.sort()
     patterns_ranked.reverse()
-    
+
     new_aggregate_clusters=[]
-    for (count,pattern) in  patterns_ranked[:4]: ### restrict to the top 4 patterns
+    for (count,pattern) in  patterns_ranked[:8]: ### restrict to the top 4 patterns
         pattern_groups=[]
         if count > 9: ### require that atleast 10 genes have that pattern
             i=0
             for cluster in pattern:
-                if cluster == 1:
+                if cluster == 1 or cluster == -1:
                     pattern_groups.append(valid_comparisons[i])
                 i+=1
-            new_aggregate_clusters.append(pattern_groups)
+            if pattern_groups not in new_aggregate_clusters:
+                new_aggregate_clusters.append(pattern_groups)
+                if len(new_aggregate_clusters)==4:
+                    break
 
     """
     index=0
@@ -3211,15 +3277,21 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
         groups_file = string.replace(exp_file,'exp.','groups.')
         output_groups_file = string.replace(groups_file,'.txt','-clusters.txt')
         output_comps_file = string.replace(output_groups_file,'groups.','comps.')
+        
+        output_dir = os.path.abspath(os.path.join(output_comps_file, os.pardir))
+        summary_file = output_dir+'/corregulated-clusters.txt'
 
         og = export.ExportFile(output_groups_file)
         oc = export.ExportFile(output_comps_file)
-        
+        ox = export.ExportFile(summary_file)
+        print summary_file
+        ox.write('Combined Clusters\tFilename\n')
         import ExpressionBuilder
         sample_list,group_sample_db,group_db,group_name_sample_db,comp_groups,comps_name_db = ExpressionBuilder.simpleGroupImport(groups_file,reverseOrder=True)
 
+        c=0
         for clustered_groups in new_aggregate_clusters:
-
+            c+=1
             ### Combine the cells from different groups
             exp_cells=[]
             control_cells=[]
@@ -3228,7 +3300,9 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
                 control_group = comps_name_db[exp_group][1]
                 control_cells += group_name_sample_db[control_group]
             num_new_clusters+=1
-            cluster_name = string.replace(string.join(clustered_groups,'|'),'-fold','')
+            #cluster_name = string.replace(string.join(clustered_groups,'|'),'-fold','')
+            cluster_name = string.replace(string.join(clustered_groups[:1]+['co-'+str(c)],'__'),'-fold','')
+            ox.write(string.join(clustered_groups,'__')+'\t'+string.join(clustered_groups[:1]+['co-'+str(c)],'|')+'\n')
             for cell in exp_cells:
                 og.write(cell+'\t'+str(num_new_clusters)+'\t'+cluster_name+'-Query'+'\n')
             for cell in control_cells:
@@ -3237,13 +3311,14 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
             num_new_clusters = num_new_clusters*2
         og.close()
         oc.close()
+        ox.close()
         
     if num_new_clusters>0:
         return output_groups_file
     else:
         return None
         
-def aggregateRegulatedGenes(folder):
+def aggregateRegulatedGenes(folder,filterGenes=None):
     """ Find the best representative comparison for each gene
     dependent on the observed rawp """
     import UI
@@ -3255,44 +3330,69 @@ def aggregateRegulatedGenes(folder):
             ls=[]
             fn = folder+'/'+file
             firstLine = True
-            for line in open(fn,'rU').xreadlines():
-                data = line.rstrip()
-                t = string.split(data,'\t')
-                if firstLine:
-                    if 'Event-Direction' in t:
-                        uid_index = t.index('Event-Direction')
-                        fold_index = t.index('dPSI')
+            if os.path.isfile(fn): ### When file paths are too long - will error
+                for line in open(fn,'rU').xreadlines():
+                    data = line.rstrip()
+                    t = string.split(data,'\t')
+                    if firstLine:
+                        if 'Event-Direction' in t:
+                            uid_index = t.index('Event-Direction')
+                            fold_index = t.index('dPSI')
+                        else:
+                            uid_index = t.index('GeneID')
+                            symbol_index = t.index('Symbol')
+                            fold_index = t.index('LogFold')
+                            p_index = t.index('rawp')
+                        firstLine= False
+                        continue
+                    uid = t[uid_index]
+                    symbol = t[symbol_index]
+                    pval = float(t[p_index])
+                    fold = t[fold_index]
+                    if '-' in fold:
+                        direction = 'negative'
                     else:
-                        uid_index = t.index('GeneID')
-                        symbol_index = t.index('Symbol')
-                        fold_index = t.index('LogFold')
-                        p_index = t.index('rawp')
-                    firstLine= False
-                    continue
-                uid = t[uid_index]
-                symbol = t[symbol_index]
-                pval = float(t[p_index])
-                fold = t[fold_index]
-                if '-' in fold:
-                    direction = 'negative'
-                else:
-                    direction = 'positive'
-                try:
-                    geneIDs[uid].append([pval,direction,file])
-                except:
-                    geneIDs[uid] = [[pval,direction,file]]
-                if symbol != uid:
-                    """ Support both ID systems for different databases """
+                        direction = 'positive'
+                    if filterGenes!=None:
+                        if uid not in filterGenes and symbol not in filterGenes:
+                            continue
                     try:
-                        geneIDs[symbol].append([pval,direction,file])
+                        geneIDs[uid].append([pval,direction,file,symbol])
                     except:
-                        geneIDs[symbol] = [[pval,direction,file]]
-                    
+                        geneIDs[uid] = [[pval,direction,file,symbol]]
+                    if symbol != uid:
+                        """ Support both ID systems for different databases """
+                        try:
+                            geneIDs[symbol].append([pval,direction,file,uid])
+                        except:
+                            geneIDs[symbol] = [[pval,direction,file,uid]]
+        
+    def check_if_globally_regulated(hits):
+        """ Determine if the global regulation pattern is supported by multiple
+        comparisons """
+        if len(hits)>2:
+            direction_db={}
+            for (pval,direction,file,uid) in hits:
+                try: direction_db[direction]+=1
+                except: direction_db[direction]=1
+            if len(direction_db)==1:
+                pass
+            else:
+                del hits[0]
+        else:
+            del hits[0]
+        return hits
+    
+    geneIDs2={}
     for uid in geneIDs:
         hits = geneIDs[uid]
         hits.sort()
-        geneIDs[uid] = hits[0]
-    return geneIDs
+        if 'vs_cellHarmony-Reference' in hits[0][-2]:
+            hits = check_if_globally_regulated(hits)
+        if len(hits)>0:
+            geneIDs2[uid] = hits[0] ### all hits removed
+
+    return geneIDs2
                     
 def convertFromEnsemblToSymbol(exp_db,gene_to_symbol):
     ### covert primary ID to symbol
@@ -4161,6 +4261,7 @@ def simpleExpressionFileImport(filename,filterUID={}):
     fn=filepath(filename)
     expression_db = {}
     firstRow = True
+
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -4231,20 +4332,56 @@ def compareICGSpopulationFrequency(folder):
                 else:
                     break
     clusters.sort()
-    print len(cluster_counts)
-    print len(datasets)
     ea.write(string.join(['Cluster']+datasets,'\t')+'\n')
     for cluster in clusters:
         ea.write(string.join([cluster]+cluster_counts[cluster],'\t')+'\n')
     ea.close()
                 
 if __name__ == '__main__':
+        
     import UI
-    
     folds_file = '/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/exp.ICGS-cellHarmony-reference__AML-AllCells-folds.txt'
     output = '/data/salomonis2/LabFiles/TabulaMuris/10x-GSE109774_RAW/all/cellHarmony/'
+    DEGs_combined = aggregateRegulatedGenes('/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
+    
+    #folds_file = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/exp.ICGS-cellHarmony-reference__MI-AllCells-folds.txt'
+    #output = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/'
+    #DEGs_combined = aggregateRegulatedGenes('/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/DifferentialExpression_Fold_1.5_adjp_0.05_less')
+    #DEGs_combined = aggregateRegulatedGenes('/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/DifferentialExpression_Fold_1.5_adjp_0.05',filterGenes=DEGs_combined)
+
+    platform = 'RNASeq'
+    fl = UI.ExpressionFileLocationData(folds_file,'','',''); species='Mm'; platform = 'RNASeq'
+    fl.setSpecies(species); fl.setVendor(platform)
+    fl.setOutputDir(output)
+    
+    clustered_groups_file = findSimilarImpactedCellStates(folds_file,DEGs_combined)
+    #sys.exit()
+    exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined)
+
+    sys.exit()
+
+
+
+    species = 'Hs'
+    reference_exp_file = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/post/CellHarmonyReference/MarkerFinder-cellHarmony-reference.txt'
+    query_exp_file = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/exp.AML-p27-D.txt'
+    classification_file = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/CellClassification/AML-p27-D-CellClassification.txt'
+    pearsonThreshold=0.3
+    peformDiffExpAnalysis=True
+    pvalThreshold=0.05
+    FoldCutoff=2
+    use_adjusted_pval=True
+    customLabels=None
+    output_file,query_output_file,folds_file,DEGs_combined = importAndCombineExpressionFiles(species,reference_exp_file,
+            query_exp_file,classification_file,pearsonThreshold=pearsonThreshold,peformDiffExpAnalysis=peformDiffExpAnalysis,
+            pvalThreshold=pvalThreshold,fold_cutoff=FoldCutoff,use_adjusted_pval=use_adjusted_pval,customLabels=customLabels)
+    sys.exit()
+    
+    
+
+
     output_file = '/data/salomonis2/LabFiles/TabulaMuris/10x-GSE109774_RAW/all/cellHarmony/exp.MarkerFinder-cellHarmony-reference__12_tissues-CellOntologyCommon-ReOrdered.txt'
-    species = 'Mm'
+
     ### Build-UMAP plot
     import UI
     import warnings
@@ -4281,12 +4418,7 @@ if __name__ == '__main__':
     except ZeroDivisionError:
         pass
     sys.exit()
-    fl = UI.ExpressionFileLocationData(folds_file,'','',''); species='Mm'; platform = 'RNASeq'
-    fl.setSpecies(species); fl.setVendor(platform)
-    fl.setOutputDir(output)
-    DEGs_combined = aggregateRegulatedGenes('/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
-    clustered_groups_file = findSimilarImpactedCellStates(folds_file,DEGs_combined)
-    sys.exit()
+
     exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined)
     sys.exit()
     

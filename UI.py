@@ -4374,6 +4374,7 @@ class ExpressionFileLocationData:
     def setPerformLineageProfiler(self, run_lineage_profiler): self.run_lineage_profiler = run_lineage_profiler
     def setCompendiumType(self,compendiumType): self.compendiumType = compendiumType
     def setCompendiumPlatform(self,compendiumPlatform): self.compendiumPlatform = compendiumPlatform
+    def set_reference_exp_file(self,exp_file): self._reference_exp_file = exp_file
     def setClassificationAnalysis(self, classificationAnalysis): self.classificationAnalysis = classificationAnalysis
     def setReturnCentroids(self,returnCentroids): self.returnCentroids = returnCentroids
     def setMultiThreading(self, multithreading): self.multithreading = multithreading
@@ -4405,6 +4406,11 @@ class ExpressionFileLocationData:
         except Exception: rpkm_threshold = rpkm_threshold
         self.rpkm_threshold = rpkm_threshold
     def setMarkerFinder(self,marker_finder): self.marker_finder = marker_finder
+    def reference_exp_file(self):
+        try:
+            return self._reference_exp_file
+        except:
+            return False
     def ReturnCentroids(self): return self.returnCentroids
     def FDRStatistic(self): return self.FDR_statistic
     def multiThreading(self): return self.multithreading
