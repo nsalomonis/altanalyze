@@ -7,8 +7,11 @@ import numpy
 import time
 import math
 from scipy import sparse, stats
-import h5py
 import gzip
+try:
+    import h5py
+except:
+    print ('Missing the h5py library (hdf5 support)...')
 
 def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True):
     start_time = time.time()

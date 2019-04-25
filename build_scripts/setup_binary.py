@@ -8,10 +8,10 @@ import export
 
 _script = 'AltAnalyze.py'
 _appName = "AltAnalyze"
-_appVersion = '2.1.2'
-_appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to take RNASeq or "
-_appDescription +="relatively raw microarray data (CEL files or normalized), identify predicted alternative splicing or alternative "
-_appDescription +="promoter changes and view how these changes may affect protein sequence, domain composition, and microRNA targeting."
+_appVersion = '2.1.3'
+_appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to processes raw bulk or single-cell RNASeq and "
+_appDescription +="microarray data, identify predicted alternative splicing or alternative promoter changes and "
+_appDescription +="view how these changes may affect protein sequence, domain composition, and microRNA targeting."
 _authorName = 'Nathan Salomonis'
 _authorEmail = 'altanalyze@gmail.com'
 _authorURL = 'http://www.altanalyze.org'

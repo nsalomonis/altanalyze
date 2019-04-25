@@ -2138,10 +2138,11 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     try: FoldCutoff = fl.FoldCutoff()
     except: FoldCutoff = 1.5
     
+    customLabels = None
     try:
         if len(fl.Labels())>0:
             customLabels = fl.Labels()
-    except: customLabels = None
+    except: pass
             
     ### Output the alignment results and perform the differential expression analysis
     output_file,query_output_file,folds_file,DEGs_combined = importAndCombineExpressionFiles(species,reference_exp_file,
@@ -2675,6 +2676,8 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
         original_sample_id=sample
         if ':' in sample:
             sample_alt = string.split(sample,':')[1]
+        else:
+            sample_alt = sample
         if sample in query_header_proppegated_clusters or sample_alt in query_header_proppegated_clusters:
             try: ref_sample = query_header_proppegated_clusters[sample]
             except: ref_sample = query_header_proppegated_clusters[sample_alt]
@@ -4214,6 +4217,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     
     if combineFullDatasets:
         """ Merge the query and the reference expression files """
+        print 'Producing a merged input and query expression file (be patient)...'
         query_exp_matrix, query_header, query_row_header, null, group_db_exp = clustering.importData(query_exp_file)
         reference_exp_matrix, reference_header, ref_row_header, null, group_db_exp = clustering.importData(expdir)
 

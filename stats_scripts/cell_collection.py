@@ -1,6 +1,11 @@
 from __future__ import print_function
 
-import h5py
+try:
+    import h5py
+    from h5py import defs, utils, h5ac, _proxy # for py2app
+except:
+    print ('Missing the h5py library (hdf5 support)...')
+
 import gzip
 import scipy.io
 from scipy import sparse, stats, io
@@ -96,17 +101,18 @@ class CellCollection:
             mtx_directory = os.path.abspath(os.path.join(mtx_file, os.pardir))
         else:
             mtx_file = os.path.join(mtx_directory, "matrix.mtx")
+            
         if not os.path.exists(mtx_file):
             cellranger_version = 3
             mtx_file = mtx_file + ".gz"
             if not os.path.exists(mtx_file):
                 raise Exception("Directory {} does not contain a recognizable matrix file".format(mtx_directory))
-
-        coll._gene_ids = np.empty((coll._matrix.shape[0], ), np.object)
-        coll._gene_names = np.empty((coll._matrix.shape[0], ), np.object)
-
+        if '.gz' in mtx_file:
+            cellranger_version = 3
         sparse_matrix = io.mmread(mtx_file)
         coll._matrix = sparse_matrix.tocsc()
+        coll._gene_ids = np.empty((coll._matrix.shape[0], ), np.object)
+        coll._gene_names = np.empty((coll._matrix.shape[0], ), np.object)
         
         if cellranger_version == 2:
             with open(os.path.join(mtx_directory, "genes.tsv"), "rU") as f:
@@ -141,7 +147,7 @@ class CellCollection:
         return coll
 
     @staticmethod
-    def from_tsvfile_old(tsv_file, genome=None, returnGenes=False, gene_list=None):
+    def from_tsvfile_alt(tsv_file, genome=None, returnGenes=False, gene_list=None):
         """
         Creates a CellCollection from the contents of a tab-separated text file.
         """

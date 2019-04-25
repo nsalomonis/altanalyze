@@ -5,6 +5,7 @@ import numpy
 import LineageProfilerIterate
 import cluster_corr
 from import_scripts import ChromiumProcessing
+import traceback
 
 """ cellHarmony with Louvain Clustering Funcitons """
 
@@ -14,15 +15,31 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
     (txt, mtx, h5) or ICGS results file (marker genes and cell clusters). In the absence of
     an ICGS results file, a customMarkers gene file (list of genes) and customLabels two
     column text files with barcodes (left) and group labels (right) should be supplied"""
-  
+    
+    if customLabels==None:
+        try: customLabels = fl.Labels()
+        except: pass
+    if customLabels !=None:
+        customLabels = cluster_corr.read_labels_dictionary(customLabels)
     try:
         reference_exp_file = fl.reference_exp_file()
     except:
         reference_exp_file = False
     
-    sparse_ref, full_ref_dense, peformDiffExpAnalysis = pre_process_files(reference_exp_file,fl,'reference',customMarkers)
-    sparse_query, full_query_dense, peformDiffExpAnalysis = pre_process_files(query_exp_file,fl,'query',customMarkers)
-        
+    sparse_ref, full_ref_dense, peformDiffExpAnalysis = pre_process_files(reference_exp_file,species,fl,'reference',customMarkers)
+    sparse_query, full_query_dense, peformDiffExpAnalysis = pre_process_files(query_exp_file,fl,species,'query',customMarkers)
+
+    if sparse_ref and sparse_query:
+        ### Both files are h5 or mtx
+        reference = reference_exp_file ### Use the sparse input file for alignment (faster)
+    elif sparse_ref or sparse_query:
+        ### One file is h5 or mtx
+        if sparse_ref:
+            reference_exp_file = full_ref_dense
+            reference = full_ref_dense
+        if sparse_query:
+            query_exp_file = full_query_dense
+            
     #if peformDiffExpAnalysis == False and sparse_ref == True and sparse_query == True and customLabels!=None:
     #    """ Proceed with alignment only - Rapid-Mode (no advanced visualization) """
     #    pass
@@ -32,13 +49,10 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
         try: customMarkers = LineageProfilerIterate.convertICGSClustersToExpression(customMarkers,query_exp_file,returnCentroids=False,species=species)
         except:
             print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."
-            pass
+            print traceback.format_exc()
 
     reference = customMarkers ### Not sparse
-
-    if sparse_ref == True:
-        reference = reference_exp_file ### Use the sparse input file for alignment (faster)
-        
+    
     gene_list = None
     if species != None:
         gene_list = cluster_corr.read_gene_list(customMarkers)
@@ -68,13 +82,14 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
         LineageProfilerIterate.harmonizeClassifiedSamples(species, reference, query_exp_file, output_classification_file,fl=fl)
     except:
         print '\nFAILED TO COMPLETE THE FULL CELLHARMONY ANALYSIS (SEE LOG FILE)...'
+        print traceback.format_exc()
     
     return True
 
-def pre_process_files(exp_file,fl,type,customMarkers):
+def pre_process_files(exp_file,species,fl,type,customMarkers):
     """ If a matrix or h5 file, produce the full matrix if performing a full analysis """
     
-    ICGS=False
+    ICGS=True
     with open(customMarkers, 'rU') as f:
         for line in f:
             if len(line.split('\t', 1))>10:
@@ -93,7 +108,8 @@ def pre_process_files(exp_file,fl,type,customMarkers):
         if 'h5' in exp_file or 'mtx' in exp_file:
             sparse_file = True
             if ICGS: ### Hence, cellHarmony can visualize the data as combined heatmaps
-                file_path = ChromiumProcessing.import10XSparseMatrix(query_exp_file,species,'cellHarmony-'+type)
+                print 'Pre-Processing matrix file'
+                file_path = ChromiumProcessing.import10XSparseMatrix(exp_file,species,'cellHarmony-'+type)
 
     return sparse_file, file_path, peformDiffExpAnalysis
 

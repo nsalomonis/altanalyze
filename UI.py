@@ -3877,10 +3877,10 @@ def importUserOptions(array_type,vendor=None):
                 data = string.replace(data,'CEL file','Feature Extraction file')
                 data = string.replace(data,' (required)','')
         if array_type == '10XGenomics':
-            data = string.replace(data,'CEL file containing folder','Chromium filtered matrix.mtx file')
+            data = string.replace(data,'CEL file containing folder','Chromium filtered matrix.mtx or .h5 file')
         try:
             if '10X' in vendor:
-                data = string.replace(data,'CEL file containing folder','Chromium filtered matrix.mtx file')
+                data = string.replace(data,'CEL file containing folder','Chromium filtered matrix.mtx or .h5file')
         except Exception: pass
         
         t = string.split(data,'\t')
@@ -5845,8 +5845,7 @@ def getUserParameters(run_parameter,Multi=None):
                                     raise Exception("{} contains multiple genomes ({}).  Explicitly select one".format(h5_filename, ", ".join(possible_genomes)))
                                 genome = possible_genomes[0]
                                 barcodes = f[genome]['barcodes']
-                                barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
-                                print len(barcodes);sys.exit()
+                                #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
                                 return barcodes
                             
                             if '.mtx' in sparse_matrix_file:
@@ -6056,7 +6055,7 @@ def getUserParameters(run_parameter,Multi=None):
                         IndicatorWindow(print_out,'Continue'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()  
                     if len(cel_files)>0: status = 'continue'
                     else:
-                        if '.mtx' in input_exp_file:
+                        if '.mtx' in input_exp_file or '.h5' in input_exp_file:
                             array_type = '10XGenomics'
                             array_full == '10X Genomics sparse matrix'
                             vendor = '10x'

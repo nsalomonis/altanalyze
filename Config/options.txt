@@ -120,16 +120,16 @@ pca_algorithm	Algorithm to use	comboBox	PCA			SVD	SVD|Eigen Vectors|t-SNE|UMAP	S
 dimensions	Dimensions to display	comboBox	PCA			3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D
 colorByGene	(Optional) Enter a gene to color the PCA by	enter	PCA				---	---	---	---	---	---	---
 pcaGeneSets	(Optional) Store top 200 component genes as	enter	PCA				---	---	---	---	---	---	---
-input_lineage_file	Select the tab-delimited expression file for cell classification	file	LineageProfiler	Recommended: Select an un-filtered log2 expression file (query)			---	---	---	---	---	---	---
+input_lineage_file	"Select an expression file to be aligned (txt, mtx or h5)"	file	LineageProfiler	Recommended: Select an un-filtered log2 expression file (query)			---	---	---	---	---	---	---
 classificationAnalysis	Analysis to perform	comboBox	LineageProfiler			cellHarmony	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler
-markerFinder_file	Select an ICGS or MarkerFinder reference classification file	file	LineageProfiler	Recommended: Any heatmap text output file from AltAnalyze (reference)			---	---	---	---	---	---	---
+markerFinder_file	Select an ICGS or MarkerFinder clusters file	file	LineageProfiler	Recommended: Any heatmap text output file from AltAnalyze (reference)			---	---	---	---	---	---	---
 labels	(optional) Supply a reference cell annotation file	file	LineageProfiler				---	---	---	---	---	---	---
 performDiffExp	Perform differential expression analysis	comboBox	LineageProfiler			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 returnCentroids	Align to cluster centroid instead of cell	comboBox	LineageProfiler			community	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell
 PearsonThreshold	Enter cellHarmony Pearson correlation threshold	enter	LineageProfiler			0.4	---	---	---	---	---	---	---
 FoldCutoff	Enter differential expression fold threshold	enter	LineageProfiler			1.5	---	---	---	---	---	---	---
 pvalThreshold	Enter differential expression p-value threshold	enter	LineageProfiler			0.05	---	---	---	---	---	---	---
-UseAdjPval	Filter by adjusted rather than raw p-value	comboBox	LineageProfiler			no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
+UseAdjPval	Filter by adjusted rather than raw p-value	comboBox	LineageProfiler			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 geneModel_file	(LineageProflier) Optional restricted marker models	file	LineageProfiler	Note: These options are not applicable for cellHarmony			---	---	---	---	---	---	---
 compendiumType	(LineageProflier) Data type to evaluate	comboBox	LineageProfiler			protein_coding	protein_coding|ncRNA|AltExon	protein_coding|ncRNA|AltExon	protein_coding|ncRNA|AltExon	protein_coding|ncRNA|AltExon	protein_coding|ncRNA|AltExon	protein_coding|ncRNA|AltExon	protein_coding|ncRNA|AltExon
 compendiumPlatform	(LineageProflier) Reference platform	comboBox	LineageProfiler			exon	exon|gene|3'array	exon|gene|3'array	exon|gene|3'array	exon|gene|3'array	exon|gene|3'array	exon|gene|3'array	exon|gene|3'array

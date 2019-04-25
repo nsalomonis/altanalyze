@@ -174,9 +174,9 @@ def hgvfinder(inputfile):
             q= string.split(line,'\t')
             count=len(q)-1
             if count >20000:
-                umap=True
+                community=True
             else:
-                umap=False
+                community=False
             header=q
             head=1
             continue
@@ -196,7 +196,7 @@ def hgvfinder(inputfile):
             coun=len(set(val))
             qq=q[0].lower()
           
-            if (qq.startswith("rpl") or qq.startswith("rps") or qq.startswith("mt-") or qq.startswith("ig")) and umap:
+            if (qq.startswith("rpl") or qq.startswith("rps") or qq.startswith("mt-") or qq.startswith("ig")) and community:
                 continue
             else:
              if coun >5:
@@ -206,7 +206,7 @@ def hgvfinder(inputfile):
                 
             counter+=1
             #if counter%500==0: print counter,
-            #   break
+             #   break
     #with open('hgv_0.1.txt', 'w') as f:
     #    for item in hgv:
     #        f.write(str(item)+"\t"+str(hgv[item]))
@@ -227,9 +227,8 @@ def hgvfinder(inputfile):
     sampleIndexSelection.filterRows(inputfile,output_file,hgvgenes)
     return output_file,count
 
-def UMAPsampling(inputfile):
-    """ This function performs downsampling of the input data using UMAP for non-linear
-    Uniform Manifold Approximation and Projection dimensionality reduction used to identify
+def community_sampling(inputfile):
+    """ This function performs downsampling of the input data using networkx to identify
     initial distribution of cells, then Louvain clustering using the minimum resolution to
     identify discrete initial clusters. """
     
@@ -269,32 +268,27 @@ def UMAPsampling(inputfile):
     sampmark=[]    
     nn=X.shape[0]
     nm=X.shape[1]
-    """
-    try: import umap
-    except: from visualization_scripts.umap_learn import umap
-    print "running UMAP"  
-    model=umap.UMAP()
-    """
+    
+
     from annoy import AnnoyIndex
-    t=AnnoyIndex(nm)
+    t=AnnoyIndex(nm,metric="euclidean")
     for i in range(nn):
-        try:  t.add_item(i,X[i])
-        except Exception: print i
+      try:  t.add_item(i,X[i])
+      except Exception: print i
     t.build(100)
-    #t.save('test.ann')
-    #u=AnnoyIndex(nm)
+    ### t.save('ICGS.ann')
+    ### u=AnnoyIndex(nm,metric="euclidean")
     diclst={}
-    #u.load('test.ann')
+    #### u.load('ICGS.ann')
     #n1=25
     print "creating graphs"
     for i in range(nn):
-        #ind = tree.query([Xtemp[i]],k=10,return_distance=False,dualtree=True)
+    #ind = tree.query([Xtemp[i]],k=10,return_distance=False,dualtree=True)
         ind=t.get_nns_by_item(i,10)
         diclst[i]=ind
 
-    print "creating graphs"
     G=nx.from_dict_of_lists(diclst)
-    #nx.write_adjlist(G,"test.adjlist")
+   # nx.write_adjlist(G,"test.adjlist")
     #G=nx.read_adjlist("test.adjlist")
     dendrogram= community.generate_dendrogram(G)
     #for level in range(len(dendrogram) - 1):
@@ -373,7 +367,7 @@ def PageRankSampling(inputfile,downsample_cutoff):
     X=np.array(X)
     n=X.shape[0]
     sampmark1=[]
-    
+   
     for iq in range(0,n,20000):
         jj=downsample_cutoff
         if iq+24999>n:
@@ -391,15 +385,20 @@ def PageRankSampling(inputfile,downsample_cutoff):
  
         diclst={}
         from annoy import AnnoyIndex
+       
         t=AnnoyIndex(nm)
+        
         for i in range(nn):
             t.add_item(i,Xtemp[i])
             
         t.build(100)
-        t.save('test.ann')
+        
+        t.save('ICGS.ann')
+       
         u=AnnoyIndex(nm)
-        u.load('test.ann')
-        tree = KDTree(X, leaf_size=10, metric='euclidean')
+        u.load('ICGS.ann')
+       
+        #tree = KDTree(X, leaf_size=10, metric='euclidean')
         #n1=25
         for i in range(nn):
             #ind = tree.query([Xtemp[i]],k=10,return_distance=False,dualtree=True)
@@ -457,6 +456,7 @@ def PageRankSampling(inputfile,downsample_cutoff):
         key=pr[0][0]
         keylist=[]
         keylist.append(key)
+ 
         while len(keylist) <len(sampdict):
             key=caldist(X,key,sampdict,keylist)
             keylist.append(key)
@@ -469,7 +469,7 @@ def PageRankSampling(inputfile,downsample_cutoff):
         #for item in range(len(sampmark)):
         #f.write(str(sampmark[item])+"\n")
         #f.write("\n")
-
+   
     samptemp=[]
     for i in range(len(header)):
        if header[i] in sampmark:
@@ -751,7 +751,7 @@ def DetermineClusterFitness(allgenesfile,markerfile,filterfile,BinarizedOutput,r
         
     for key in markerdict:
         countr=1
-        if len(markerdict[key])>=1 and key in nametemp:
+        if len(markerdict[key])>=2 and key in nametemp:
             name.append(key+"_vs_Others.txt")
             group.append(counter)
       
@@ -763,10 +763,16 @@ def DetermineClusterFitness(allgenesfile,markerfile,filterfile,BinarizedOutput,r
 
     return upd_guides,name,group
 
-def sortFile(allgenesfile,rho_cutoff):
+def sortFile(allgenesfile,rho_cutoff,name):
+    
     markergenes={}
     val=[]
     header=True
+    namelst=[]
+    for i in range(len(name)):
+        s=string.split(name[i],"_")[0]
+        namelst.append(s)
+    
     for line in open(allgenesfile,'rU').xreadlines():
         data = line.rstrip()
         t = string.split(data,'\t')
@@ -780,7 +786,13 @@ def sortFile(allgenesfile,rho_cutoff):
                 if i ==2:
                     values.append(float(t[2]))
                 if i==4:
-                    values.append(t[4])
+                    
+                    if "V" in t[4] and t[4] in namelst:		
+                        t[4]=string.replace(t[4],"V","")
+                        values.append(t[4])
+                        
+                    else:
+                        values.append(t[4])
             
             val.append(values)
     val = sorted(val, key = operator.itemgetter(1),reverse=True)
@@ -947,16 +959,18 @@ def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_clus
 
     return status, graphic_links
 
+
 def callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp):
     
     #Run ICGS recursively to dynamically identify the best rho cutoff
-    graphic_links3,n = RNASeq.singleCellRNASeqWorkflow(species,platform,processedInputExpFile,mlp,rpkm_threshold=0, parameters=gsp)
+    graphic_links3,n = RNASeq.singleCellRNASeqWorkflow(species,platform,processedInputExpFile,mlp,dynamicCorrelation, rpkm_threshold=0, parameters=gsp)
     if n>5000 and dynamicCorrelation:
             rho_cutoff=rho_cutoff+0.1
             gsp.setRhoCutoff(rho_cutoff)
             print 'Increasing the Pearson rho threshold to:',rho_cutoff
             graphic_links3,n,rho_cutoff=callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp)
     return graphic_links3,n,rho_cutoff
+
 
 def getAllSourceIDs(fileame,species):
     unique_ids={}
@@ -1011,8 +1025,9 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
     if platform=='PSI':
         ### For splice-ICGS, the method performs signature depletion (removes correlated events from the prior round) on the Event Annotation file
         FilteredEventAnnot=filterEventAnnotation.FilterFile(processedInputExpFile,EventAnnot,iteration)
-        graphic_links3 = RNASeq.singleCellRNASeqWorkflow(species, 'exons', processedInputExpFile,mlp,exp_threshold=0, rpkm_threshold=0, parameters=gsp)
+        graphic_links3 = RNASeq.singleCellRNASeqWorkflow(species, 'exons', processedInputExpFile,mlp, rpkm_threshold=0, parameters=gsp)
     else:
+        
         ### For single-cell RNA-Seq - run ICGS recursively to dynamically identify the best rho cutoff
         graphic_links3,n,rho_cutoff=callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp)
     Guidefile=graphic_links3[-1][-1]
@@ -1035,24 +1050,41 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
         except: k = None; #print traceback.format_exc()
         
         if k==None:
-            Rank=estimateK(NMFinput)
-            Rank=Rank*2
-        else:
-            Rank=k
-        print "The number target number of clusters (k/rank) is:",k
-        
-        if Rank>1:
+            k=estimateK(NMFinput)
+            Rank=k*2
             if Rank>2 and platform=='PSI':
                 Rank=30
             if Rank<5 and platform!='PSI':
                 Rank=10
-            print "Running NMF analyses for dimension reduction using "+str(Rank)+" ranks - Round"+str(iteration)
-            
             ### This function prepares files for differential expression analsyis (MetaDataAnalysis), MarkerFinder
             filteredInputExpFile = string.replace(processedInputExpFile,'exp.','filteredExp.')
+            
             if '-OutliersRemoved' in Guidefile:
                 filteredInputExpFile = string.replace(filteredInputExpFile,'.txt','-OutliersRemoved.txt')
-            NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
+
+            try: NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
+            except:
+                try:
+                    Rank=k*1.5
+                    NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
+                except:
+                    Rank=k
+                    NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
+        else:
+            Rank=k
+            
+            print "Running NMF analyses for dimension reduction using "+str(Rank)+" ranks - Round"+str(iteration)
+            print "The number target number of clusters (k/rank) is:",k
+            filteredInputExpFile = string.replace(processedInputExpFile,'exp.','filteredExp.')
+            
+            if '-OutliersRemoved' in Guidefile:
+                filteredInputExpFile = string.replace(filteredInputExpFile,'.txt','-OutliersRemoved.txt')
+            try:
+                NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
+            except Exception:
+                "Exception, choose a lower k value."
+        if Rank>1:
+
             
             if platform == 'PSI':
                 print "Identifying cluster-specific differential splicing events"
@@ -1085,7 +1117,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 guides=[]
                 ### See if any unique genes are found in a cluster before using it for SVM
                 guides,name,group=DetermineClusterFitness(allgenesfile,markerfile,input_exp_file,BinarizedOutput,rho_cutoff)
-                counter=group
+                counter=len(group)
             else:
                 if platform=="PSI":
                     rootdir,CovariateQuery=metaDataAnalysis.remoteAnalysis(species,FilteredEventAnnot,Metadata,'PSI',0.1,use_adjusted_p,0.05,Annotation)
@@ -1179,7 +1211,10 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 ### Identify markers for the our final un-ordered clusters (clustering will need to be run after this)
                 markerFinder.analyzeData(processedInputExpFile,species,platform,compendiumType,geneToReport=genesToReport,correlateAll=correlateAll,AdditionalParameters=fl,logTransform=logTransform)
                 allgenesfile=root_dir+"/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt"
-                markergrps,markerlst=sortFile(allgenesfile,rho_cutoff)
+                markergrps,markerlst=sortFile(allgenesfile,rho_cutoff,name)
+                if len(markergrps)!=len(name):
+                    allgenesfile1 = root_dir+'/NMF-SVM/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
+                    markergrps,markerlst=sortFile(allgenesfile1,rho_cutoff,name)
                 ### To plot the heatmap, use the MarkerFinder genes (function pulls those genes out)
                 ExpandSampleClusters.filterRows(EventAnnot,processedInputExpFile[:-4]+'-markers.txt',filterDB=markerlst,logData=False) ### the processedInputExpFile is overwritten
                 
@@ -1259,19 +1294,27 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 flag=True
                 
             else:
-                try:
-                    print "Running K-means analyses instead of NMF - Round"+str(iteration)
-                    header=[]
-                    header=Kmeans.header_file(Guidefile_block)
-                    Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
-                    flag=False
-                except Exception:
-                    flag=False
+                if iteration<2:
+                    gsp.setK(k)
+                    iteration=1
+                    flag,processedInputExpFile,inputExpFile,graphic_links3=CompleteICGSWorkflow(root_dir,processedInputExpFile,inputExpFile,iteration,gsp.RhoCutoff(),dynamicCorrelation,platform,species,scaling,gsp)
+                else:
+                    "No groups found!!! Re-analyze the data with a small k"
+                #try:
+                 #   print "Running K-means analyses instead of NMF - Round"+str(iteration)
+                  #  print "Extremely sparse data!! choose a small k"
+                  #  header=[]
+                   # header=Kmeans.header_file(Guidefile_block)
+                    #Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
+                    #flag=False
+                #except Exception:
+                 #   flag=False
                 
         else:
             if Rank==1:
                 try:
                     print "Running K-means analyses instead of NMF - Round"+str(iteration)
+                    print "Extremely sparse data!! choose a small k"
                     header=[]
                     header=Kmeans.header_file(Guidefile_block)
                     Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
@@ -1282,7 +1325,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
             else:
                 flag=False
          
-        return flag,processedInputExpFile,EventAnnot
+        return flag,processedInputExpFile,EventAnnot,graphic_links3
     except:
         print traceback.format_exc()
         print 'WARNING!!!! Error encountered in the NMF ICGS analysis... See the above report.'
@@ -1318,7 +1361,6 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     try: downsample_cutoff = gsp.DownSample()
     except: downsample_cutoff = 2500
     print 'DownSample threshold =',downsample_cutoff, 'cells'
-
     print 'Filtering the expression dataset (be patient).',
     print_out, inputExpFile = RNASeq.singleCellRNASeqWorkflow(species,platform,inputExpFile,mlp,rpkm_threshold=0,parameters=gsp,reportOnly=True)
     
@@ -1328,7 +1370,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     if 'ExpressionInput' in inputExpFile:
         root_dir = export.findParentDir(root_dir)
     exp_file_name = export.findFilename(inputExpFile)
-    
+   
     ### Assign the expression filename (for single-cell RNA-Seq rather than splicing)
     if 'exp.' not in exp_file_name:
         exp_file_name = 'exp.' + exp_file_name
@@ -1337,22 +1379,24 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     
     ### Use dispersion (variance by mean) to define initial variable genes
     inputExpFileVariableGenesDir,n=hgvfinder(inputExpFile) ### returns filtered expression file with 500 variable genes
-        
+    
     if n>downsample_cutoff and scaling:
-        if n>25000: ### For extreemly large datasets, UMAP is used as a preliminary downsampling before pagerank
-            inputExpFileScaled=inputExpFile[:-4]+'-UMAP-downsampled.txt'
-            ### UMAP and Louvain clustering for down-sampling from >25,000 to 10,000 cells
-            sampmark=UMAPsampling(inputExpFileVariableGenesDir) ### returns list of UMAP downsampled cells
+       
+        if n>25000: ### For extreemly large datasets, Louvain is used as a preliminary downsampling before pagerank
+            print 'Performing Community Clustering...'
+            inputExpFileScaled=inputExpFile[:-4]+'-Louvain-downsampled.txt'
+            ### Louvain clustering for down-sampling from >25,000 to 10,000 cells
+            sampmark=community_sampling(inputExpFileVariableGenesDir) ### returns list of Louvain downsampled cells
             ### Filer the original expression file using these downsampled cells
             sampleIndexSelection.filterFile(inputExpFile,inputExpFileScaled,sampmark)
-            ### Use dispersion (variance by mean) to define post-UMAP/Louvain selected cell variable genes
+            ### Use dispersion (variance by mean) to define post-Louvain selected cell variable genes
             inputExpFileVariableGenesDir,n=hgvfinder(inputExpFileScaled) ### returns filtered expression file with 500 variable genes
-            ### Run PageRank on the UMAP/Louvain/dispersion downsampled dataset
+            ### Run PageRank on the Louvain/dispersion downsampled dataset
             sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
         else:
             ### Directly run PageRank on the initial dispersion based dataset
             sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
-        
+       
         ### Write out final downsampled results to a new file
         output_dir = root_dir+'/ExpressionInput'
         try: export.createExportFolder(output_dir)
@@ -1360,6 +1404,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
         processedInputExpFile = root_dir+'/ExpressionInput/'+exp_file_name[:-4]+'-PageRank-downsampled.txt' ### down-sampled file
         sampleIndexSelection.filterFile(inputExpFile,processedInputExpFile,sampmark)
     else:
+        
         output_dir = root_dir+'/ExpressionInput'
         try: export.createExportFolder(output_dir)
         except: pass ### Already exists
@@ -1376,6 +1421,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     iteration=1 ### Always equal to 1 for scRNA-Seq but can increment for splice-ICGS
 
     ### Recursively run ICGS with NMF
+    
     flag,processedInputExpFile,inputExpFile,graphic_links3=CompleteICGSWorkflow(root_dir,processedInputExpFile,
             inputExpFile,iteration,gsp.RhoCutoff(),dynamicCorrelation,platform,species,scaling,gsp)
   
