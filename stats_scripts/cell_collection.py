@@ -151,7 +151,6 @@ class CellCollection:
         """
         Creates a CellCollection from the contents of a tab-separated text file.
         """
-
         startT = time.time()
         coll = CellCollection()
         UseDense=False
@@ -166,8 +165,11 @@ class CellCollection:
                     skip=True
                 if '\t' in line:
                     delimiter = '\t' # TSV file
+                barcodes = string.split(line.rstrip(),delimiter)[start:]
+                if ':' in line:
+                    barcodes = map(lambda x:x.split(':')[1],barcodes)
 
-                coll._barcodes=string.split(line.rstrip(),delimiter)[start:]
+                coll._barcodes=barcodes
                 coll._gene_names=[]
                 data_array=[]
                 header=False
@@ -176,15 +178,15 @@ class CellCollection:
             else:
                 values = line.rstrip().split(delimiter)
                 gene = values[0]
-                if gene_list!=None:
-                    if gene not in gene_list:
-                        continue
                 if ' ' in gene:
                     gene = string.split(gene,' ')[0]
                 if ':' in gene:
-                    coll._gene_names.append((gene.rstrip().split(':'))[1])
-                else:
-                    coll._gene_names.append(gene)
+                    gene = (gene.rstrip().split(':'))[1]
+                if gene_list!=None:
+                    if gene not in gene_list:
+                        continue
+                coll._gene_names.append(gene)
+
 
                 """ If the data (always log2) is a float, increment by 0.5 to round up """
                 if returnGenes==False:
@@ -209,6 +211,7 @@ class CellCollection:
         coll._gene_ids = coll._gene_names
 
         print('sparse matrix data imported from TSV file in %s seconds' % str(time.time()-startT))
+        #print (len(coll._gene_ids),len(coll._barcodes))
         return coll
     
     @staticmethod

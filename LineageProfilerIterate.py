@@ -42,6 +42,7 @@ except Exception: pass
 import traceback
 import warnings
 import random
+import collections
 
 try: import unique ### Not required (used in AltAnalyze)
 except Exception: None
@@ -245,7 +246,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     if 'ICGS' in customMarkers or 'MarkerGene' in customMarkers:
         """ When performing cellHarmony, build an ICGS expression reference with log2 TPM values rather than fold """
         print 'Converting ICGS folds to ICGS expression values as a reference first...'
-        try: customMarkers = convertICGSClustersToExpression(customMarkers,exp_input,returnCentroids=returnCentroids,species=species)
+        try: customMarkers = convertICGSClustersToExpression(customMarkers,exp_input,returnCentroids=returnCentroids,species=species,fl=fl)
         except:
             print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."
             pass
@@ -1771,7 +1772,6 @@ def crossValidation(filename,setsToOutput=10,outputName=None):
                         group_list.append(group)
                   
     try:
-        import collections
         group_samples=collections.OrderedDict()
     except Exception: import ordereddict as collections
     group_samples=collections.OrderedDict()
@@ -2267,6 +2267,7 @@ def cleanupOutputFolder(output_dir):
     createFolder(other_files_dir)
     createFolder(other_files_dir+'DataPlots/')
     createFolder(other_files_dir+'GO-Elite/')
+    createFolder(other_files_dir+'PValues/')
     
     dir_list = unique.read_directory(output_dir)
     for file in dir_list:
@@ -2283,6 +2284,7 @@ def cleanupOutputFolder(output_dir):
         
     moveFolder('DataPlots/')
     moveFolder('GO-Elite/')
+    moveFolder('PValues/')
     
 def exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined):
     """ Produce a hierarchically ordered heatmap of differential expression differences
@@ -2450,7 +2452,6 @@ def exportCombinedMarkerFinderResults(species,platform,fl,folds_file,DEGs_combin
     os.rename(fl.OutputDir()+'/MarkerFinder',fl.OutputDir()+'/MarkerFinder-all-down')
     directories.append(fl.OutputDir()+'/MarkerFinder-all-down')
         
-    import collections
     marker_db=collections.OrderedDict()
 
     def importMarkerFinderResults(input_file,direction):
@@ -2537,7 +2538,6 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             peformDiffExpAnalysis=True, pvalThreshold=0.05,fold_cutoff=1.5, use_adjusted_pval=False, customLabels = None):
     """Harmonize the numerical types and feature IDs of the input files, then combine """
      
-    import collections
     from visualization_scripts import clustering
     original_reference_exp_file = reference_exp_file
     reference_exp_file_alt = string.replace(reference_exp_file,'-centroid.txt','.txt')
@@ -2782,7 +2782,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     filter_names = new_headers
     
     """ Remove the correlation outliers """
-    group_export_object = export.ExportFile(root_dir+'/groups.cellHarmony.txt')
+    group_export_object = export.ExportFile(root_dir+'/QueryGroups.cellHarmony.txt')
     filter_names2=[]
     new_query_headers2=[]
     added=[]
@@ -3119,7 +3119,6 @@ def combineSummaryFiles(gene_summaries,gene_summary_combined):
                 
 def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
     import numpy, scipy
-    import collections
     similar_groups=collections.OrderedDict()    
 
     folds_header_clean=[]
@@ -3399,7 +3398,6 @@ def aggregateRegulatedGenes(folder,filterGenes=None):
                     
 def convertFromEnsemblToSymbol(exp_db,gene_to_symbol):
     ### covert primary ID to symbol
-    import collections
     exp_db_symbol=collections.OrderedDict()
     for UID in exp_db:
         if UID in gene_to_symbol:
@@ -3409,7 +3407,6 @@ def convertFromEnsemblToSymbol(exp_db,gene_to_symbol):
 
 def checkForGroupsFile(filename,headers):
     new_headers = headers
-    import collections
     groups_db=collections.OrderedDict()
     if ('exp.' in filename or 'filteredExp.' in filename):
         filename = string.replace(filename,'-steady-state.txt','.txt')
@@ -3440,7 +3437,6 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False,customL
     else:
         customLabels={}
 
-    import collections
     expression_db=collections.OrderedDict()
     column_cluster_index=collections.OrderedDict()
     row_cluster_index=collections.OrderedDict()
@@ -3474,6 +3470,16 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False,customL
                 numStart = 2 ### Start numeric import at column 3
                 inputFormat = 'Clustering'
                 header_row = values[numStart:]
+                if ':' in line:
+                    ### For a MarkerFinder format file with folds (no separate cluster columns/rows)
+                    column_cluster_index_alt=collections.OrderedDict()
+                    new_headers=[]
+                    for header in header_row:
+                        cluster,header = header.split(':')
+                        column_cluster_index_alt[header] = cluster
+                        new_headers.append(header)
+                    original_header = header_row
+                    header_row = new_headers
             else:
                 numStart = 1 ### Start numeric import at column 2
                 header_row = values[numStart:]
@@ -3483,29 +3489,42 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False,customL
             ### We can simply retain this column for the output
             if 'column_clusters-flat' in values:
                 clusters = values[numStart:]
-                i=0
-                for header in header_row:
-                    cluster = clusters[i]
-                    """ If labels provided by the user """
-                    try: cluster = customLabels[header]
-                    except:
-                        try:
-                            h=string.split(header,':')[1]
-                            cluster = customLabels[h]
-                        except: pass
-                    column_cluster_index[header]=cluster 
-                    i+=1
+                if 'NA' not in clusters:
+                    i=0
+                    for header in header_row:
+                        cluster = clusters[i]
+                        """ If labels provided by the user """
+                        try: cluster = customLabels[header]
+                        except:
+                            try:
+                                h=string.split(header,':')[1]
+                                cluster = customLabels[h]
+                            except: pass
+                        column_cluster_index[header]=cluster 
+                        i+=1
+                    
+                    ### Replace the cluster with the sample name if there is only one sample per cluster (centroid name)
+                    if len(unique.unique(clusters)) == len(column_cluster_index):
+                        for header in column_cluster_index:
+                            column_cluster_index[header]=header
+                    continue
+                else:
+                    #header_row=original_header
+                    column_cluster_index = column_cluster_index_alt
+                    cluster_format_file = True
+                    continue
                 
-                ### Replace the cluster with the sample name if there is only one sample per cluster (centroid name)
-                if len(unique.unique(clusters)) == len(column_cluster_index):
-                    for header in column_cluster_index:
-                        column_cluster_index[header]=header
-                continue
             elif row_count==2:
                 header_row=original_header
                 column_cluster_index = column_cluster_index_alt
                 cluster_format_file = False
             uid = values[0]
+            cluster = values[1] 
+            if ':' in uid:
+                cluster = string.split(uid,':')[0]
+                uid = string.split(uid,':')[1]
+            if ' ' in uid:
+                uid = string.split(uid,' ')[0]
             if filterIDs !=False:
                 if uid not in filterIDs:
                     if uid in gene_to_symbol:
@@ -3520,7 +3539,7 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False,customL
                         continue ### Skip additional processing of this line
             if inputFormat == 'Clustering':
                 ### store the row cluster ID
-                row_cluster_index[uid]=values[1] 
+                row_cluster_index[uid]=cluster
             numericVals = map(float, values[numStart:])
             if increment<-1 and convertNonLogToLog == False:
                 ### Indicates the data is really fold changes (if the increment is a small negative,
@@ -3539,11 +3558,11 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False,customL
                     kill
             numericVals = map(str,numericVals) ### we are saving to a file
             if inputFormat == 'Clustering' and ignoreClusters==False:
-                expression_db[uid] = [values[1]]+numericVals
+                expression_db[uid] = [cluster]+numericVals
             else:
                 expression_db[uid] = numericVals
     print len(expression_db),'IDs imported'
-
+    
     return expression_db, header_row, column_cluster_index, cluster_format_file
       
 def createMetaICGSAllCells(ICGS_files,outputDir,CenterMethod='median',
@@ -3602,7 +3621,6 @@ def importMergedICGS(final_output_dir,outputDir,groups_db,CenterMethod):
     """ Reimport the final ICGS centroids and genes for merging the all cell results """
     expression_db = {}
     rowNumber = 1
-    import collections
     genes=collections.OrderedDict()
     for line in open(final_output_dir,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -3708,7 +3726,6 @@ def retreive_groups_from_file(filename,groups_db):
         t = string.split(data,'\t')
         if rowNumber==1:
             header = t[2:]
-            import collections
             clusters = collections.OrderedDict()
             cluster_number=1
             for h in header:
@@ -3740,7 +3757,6 @@ def renameICGSfiles(ICGS_files,CenterMethod,ReturnAllCells=False):
     """ Rename the input files """
     files_to_merge = []
     all_cells={}
-    import collections
     groups_db = collections.OrderedDict()
     for heatmap_file in ICGS_files:
         root_dir = os.path.abspath(os.path.join(heatmap_file, os.pardir))
@@ -3847,7 +3863,6 @@ def exportMergedReference(unclustered_centroids,input,output,outputDir,species,p
             logTransform=False)
 
     markerfinder_dir= outputDir+'CellHarmonyReference/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
-    import collections
     marker_db = collections.OrderedDict()
     
     def importMarkerFinderResults(input_file):
@@ -4004,7 +4019,7 @@ def collapseSimilarMedoids(outputfile,cutoff=0.9):
     return collapsed_dir, unclustered_collapsed
     
 def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=False,
-                CenterMethod='median',geneOverride=None,combineFullDatasets=True,species='Hs'):
+                CenterMethod='median',geneOverride=None,combineFullDatasets=True,species='Hs',fl=None):
     """This function will import an ICGS row normalized heatmap and return raw
     expression values substituted for the values. """
 
@@ -4012,11 +4027,14 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     graphic_links=[]
     filename = export.findFilename(heatmap_file)
     ICGS_dir = export.findParentDir(heatmap_file)
+
     if 'DataPlots' in ICGS_dir: ### For MarkerFinder input
         ### Go one more level up
         ICGS_dir = export.findParentDir(ICGS_dir[:-1])
     root_dir = export.findParentDir(ICGS_dir[:-1])
-    files = unique.read_directory(root_dir+'/ExpressionInput')
+
+    try: files = unique.read_directory(root_dir+'/ExpressionInput')
+    except: files=[]
 
     exp_dir_prefix = string.split(string.replace(filename,'Clustering-',''),'-')[0]
 
@@ -4040,16 +4058,27 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     steady_state_files.sort()
     exp_files.sort()
     filteredExp_files.sort()
-    
+
     if len(specific_matches)>0:
         expdir = root_dir+'/ExpressionInput/'+specific_matches[-1][1]
     elif len(steady_state_files)>0:
         expdir = root_dir+'/ExpressionInput/'+steady_state_files[-1][1]
     else:
-        expdir = root_dir+'/ExpressionInput/'+exp_files[-1][1]
+        try: expdir = root_dir+'/ExpressionInput/'+exp_files[-1][1]
+        except: expdir = ''
     try: filtered_expdir = root_dir+'/ExpressionInput/'+filteredExp_files[-1][1]
     except: filtered_expdir = ''
-
+    
+    try:
+        ### Allow for custom expression file paths
+        full_ref_exp_path = fl.reference_exp_file()
+        if full_ref_exp_path != False:
+            expdir = full_ref_exp_path
+            filtered_expdir = ''
+            root_dir = ICGS_dir
+    except:
+        pass
+        
     print 'Selected the full expression file:',expdir
     if '-Guide' in filename:
         guide = string.split(filename,'-Guide')[1][:1]
@@ -4156,7 +4185,6 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         eo.write(string.join(['column_clusters-flat','']+priorColumnClusters,'\t')+'\n')
     index=0
     
-    import collections
     reference_matrix = collections.OrderedDict() ### store the reordered data for later medioid calculation
     for uid in row_header:
         if uid in row_header_exp:
@@ -4283,7 +4311,6 @@ def simpleICGSGeneImport(files):
     """ Import the gene IDs from different ICGS or MarkerFinder results prior
     to combining to derive combined ICGS results and making combined medoid file"""
     try:
-        import collections
         gene_db=collections.OrderedDict()
     except Exception:
         import ordereddict as collections
@@ -4346,7 +4373,7 @@ if __name__ == '__main__':
     import UI
     folds_file = '/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/exp.ICGS-cellHarmony-reference__AML-AllCells-folds.txt'
     output = '/data/salomonis2/LabFiles/TabulaMuris/10x-GSE109774_RAW/all/cellHarmony/'
-    DEGs_combined = aggregateRegulatedGenes('/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
+    #DEGs_combined = aggregateRegulatedGenes('/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
     
     #folds_file = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/exp.ICGS-cellHarmony-reference__MI-AllCells-folds.txt'
     #output = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/'
@@ -4358,18 +4385,18 @@ if __name__ == '__main__':
     fl.setSpecies(species); fl.setVendor(platform)
     fl.setOutputDir(output)
     
-    clustered_groups_file = findSimilarImpactedCellStates(folds_file,DEGs_combined)
+    #clustered_groups_file = findSimilarImpactedCellStates(folds_file,DEGs_combined)
     #sys.exit()
-    exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined)
+    #exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined)
 
-    sys.exit()
+    #sys.exit()
 
 
 
     species = 'Hs'
-    reference_exp_file = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/post/CellHarmonyReference/MarkerFinder-cellHarmony-reference.txt'
-    query_exp_file = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/exp.AML-p27-D.txt'
-    classification_file = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/CellClassification/AML-p27-D-CellClassification.txt'
+    reference_exp_file = '/Users/saljh8/Desktop/DemoData/sample_data/tempRef/FinalMarkerHeatmap_all.txt'
+    query_exp_file = '/Users/saljh8/Desktop/DemoData/sample_data/tempRef/cellHarmony-query_matrix_CPTT.txt'
+    classification_file = '/Users/saljh8/Desktop/DemoData/sample_data/tempRef/CellClassification/cellHarmony-query_matrix_CPTT-CellClassification.txt'
     pearsonThreshold=0.3
     peformDiffExpAnalysis=True
     pvalThreshold=0.05

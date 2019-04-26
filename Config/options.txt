@@ -120,10 +120,11 @@ pca_algorithm	Algorithm to use	comboBox	PCA			SVD	SVD|Eigen Vectors|t-SNE|UMAP	S
 dimensions	Dimensions to display	comboBox	PCA			3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D
 colorByGene	(Optional) Enter a gene to color the PCA by	enter	PCA				---	---	---	---	---	---	---
 pcaGeneSets	(Optional) Store top 200 component genes as	enter	PCA				---	---	---	---	---	---	---
-input_lineage_file	"Select an expression file to be aligned (txt, mtx or h5)"	file	LineageProfiler	Recommended: Select an un-filtered log2 expression file (query)			---	---	---	---	---	---	---
 classificationAnalysis	Analysis to perform	comboBox	LineageProfiler			cellHarmony	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler
-markerFinder_file	Select an ICGS or MarkerFinder clusters file	file	LineageProfiler	Recommended: Any heatmap text output file from AltAnalyze (reference)			---	---	---	---	---	---	---
-labels	(optional) Supply a reference cell annotation file	file	LineageProfiler				---	---	---	---	---	---	---
+markerFinder_file	Select Reference File	file	LineageProfiler	ICGS or MarkerFinder formatted clustered expression txt file			---	---	---	---	---	---	---
+referenceFull	(optional) Full Reference Expression File	file	LineageProfiler	"Un-filtered expression file (txt, mtx or h5)"			---	---	---	---	---	---	---
+labels	(optional) Reference Cell Annotation File	file	LineageProfiler	Cell-to-groups annotation/labels txt file for the reference			---	---	---	---	---	---	---
+input_lineage_file	Select Query File	file	LineageProfiler	"Un-filtered expression file (txt, mtx or h5)"			---	---	---	---	---	---	---
 performDiffExp	Perform differential expression analysis	comboBox	LineageProfiler			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 returnCentroids	Align to cluster centroid instead of cell	comboBox	LineageProfiler			community	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell	community|centroid|cell
 PearsonThreshold	Enter cellHarmony Pearson correlation threshold	enter	LineageProfiler			0.4	---	---	---	---	---	---	---

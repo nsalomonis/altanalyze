@@ -16,9 +16,11 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
     an ICGS results file, a customMarkers gene file (list of genes) and customLabels two
     column text files with barcodes (left) and group labels (right) should be supplied"""
     
-    if customLabels==None:
+    if customLabels==None or customLabels == '':
         try: customLabels = fl.Labels()
         except: pass
+    if customLabels == '':
+        customLabels = None
     if customLabels !=None:
         customLabels = cluster_corr.read_labels_dictionary(customLabels)
     try:
@@ -29,30 +31,32 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
     sparse_ref, full_ref_dense, peformDiffExpAnalysis = pre_process_files(reference_exp_file,species,fl,'reference',customMarkers)
     sparse_query, full_query_dense, peformDiffExpAnalysis = pre_process_files(query_exp_file,fl,species,'query',customMarkers)
 
-    if sparse_ref and sparse_query:
-        ### Both files are h5 or mtx
-        reference = reference_exp_file ### Use the sparse input file for alignment (faster)
-    elif sparse_ref or sparse_query:
+    if sparse_ref or sparse_query:
         ### One file is h5 or mtx
         if sparse_ref:
+            ref = reference_exp_file
             reference_exp_file = full_ref_dense
             reference = full_ref_dense
+            try: ### Should always replace the h5 file with dense matrix
+                fl.set_reference_exp_file(full_ref_dense)
+            except: pass
         if sparse_query:
+            query = query_exp_file
             query_exp_file = full_query_dense
-            
-    #if peformDiffExpAnalysis == False and sparse_ref == True and sparse_query == True and customLabels!=None:
-    #    """ Proceed with alignment only - Rapid-Mode (no advanced visualization) """
-    #    pass
-    if 'ICGS' in customMarkers or 'MarkerGene' in customMarkers:
-        """ When performing cellHarmony, build an ICGS expression reference with log2 TPM values rather than fold """
-        print 'Converting ICGS folds to ICGS expression values as a reference first...'
-        try: customMarkers = LineageProfilerIterate.convertICGSClustersToExpression(customMarkers,query_exp_file,returnCentroids=False,species=species)
-        except:
-            print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."
-            print traceback.format_exc()
 
-    reference = customMarkers ### Not sparse
+    #if 'ICGS' in customMarkers or 'MarkerGene' in customMarkers:
+    """ When performing cellHarmony, build an ICGS expression reference with log2 TPM values rather than fold """
+    print 'Attempting to converting ICGS folds to ICGS expression values as a reference first...'
+    try: customMarkers = LineageProfilerIterate.convertICGSClustersToExpression(customMarkers,query_exp_file,returnCentroids=False,species=species,fl=fl)
+    except:
+        print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."
+        peformDiffExpAnalysis = False
+        try: fl.setPeformDiffExpAnalysis(peformDiffExpAnalysis)
+        except: pass
+        #print traceback.format_exc()
     
+    reference = customMarkers ### Not sparse
+
     gene_list = None
     if species != None:
         gene_list = cluster_corr.read_gene_list(customMarkers)
@@ -62,9 +66,16 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
     try: os.mkdir(export_directory+'/CellClassification/')
     except: pass
     output_classification_file = export_directory+'/CellClassification/'+dataset_name+'-CellClassification.txt'
-
-    louvain_results = cluster_corr.find_nearest_cells(reference,
-                    query_exp_file,
+    
+    if sparse_ref and sparse_query:
+        ### Use the h5 files for alignment
+        pass
+    else:
+        ref = reference
+        query = query_exp_file
+        
+    louvain_results = cluster_corr.find_nearest_cells(ref,
+                    query,
                     gene_list=gene_list,
                     num_neighbors=10,
                     num_trees=100,
@@ -72,11 +83,6 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
                     min_cluster_correlation=-1,
                     genome=species)
     cluster_corr.write_results_to_file(louvain_results, output_classification_file, labels=customLabels)
-    
-    if sparse_ref == True:
-        reference = customMarkers ### Not sparse
-    if sparse_query == True and full_query_dense != False:
-        query_exp_file = full_query_dense ### Not sparse
         
     try:
         LineageProfilerIterate.harmonizeClassifiedSamples(species, reference, query_exp_file, output_classification_file,fl=fl)
@@ -108,6 +114,7 @@ def pre_process_files(exp_file,species,fl,type,customMarkers):
         if 'h5' in exp_file or 'mtx' in exp_file:
             sparse_file = True
             if ICGS: ### Hence, cellHarmony can visualize the data as combined heatmaps
+                #if not os.path.exists(output_file): 
                 print 'Pre-Processing matrix file'
                 file_path = ChromiumProcessing.import10XSparseMatrix(exp_file,species,'cellHarmony-'+type)
 

@@ -1024,7 +1024,7 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
         print '****Running LineageProfiler****'
         graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,expr_input_dir,array_type,species,vendor,customMarkers=custom_markerFinder,specificPlatform=True,visualizeNetworks=False)
         if len(graphic_links)>0:
-            print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
+            print_out = 'Alignments and images saved to the folder "DataPlots" in the input file folder.'
             try: InfoWindow(print_out, 'Continue')
             except Exception: None
         else:
@@ -1816,6 +1816,10 @@ class GUI:
                 label_text_str = "AltAnalyze Expression Dataset Parameters"
                 height = 350; width = 400; use_scroll = 'yes'
                 if os.name != 'nt': width+=100
+            elif 'input_lineage_file' in option_list:
+                label_text_str = "Align and Compare Distinct Single-Cell RNA-Seq Datasets"
+                height = 400; width = 420; use_scroll = 'yes'
+                #if os.name != 'nt': width+=50
             elif 'Genes_network' in option_list:
                 label_text_str = "Network Analysis Parameters"
                 height = 350; width = 400; use_scroll = 'yes'
@@ -1956,7 +1960,7 @@ class GUI:
               if proceed == 'yes':
                 self._option = option
                 group = PmwFreeze.Group(parent_type,tag_text = self.title)
-                group.pack(fill = 'both', expand = 1, padx = 10, pady = 2)
+                group.pack(fill = 'both', expand = 1, padx = 10, pady = 0)
                 def filecallback(callback=self.callback,option=option): self.getPath(option)
                 entrytxt = StringVar(); #self.entrytxt.set(self.default_dir)
                 try: default_option = string.replace(override_default,'---','')
@@ -1968,11 +1972,11 @@ class GUI:
                     od.setDisplayObject('file')
                 #l = Label(group.interior(), text=self.title); l.pack(side=LEFT)        
                 entry = Entry(group.interior(),textvariable=self.pathdb[option]);
-                entry.pack(side='left',fill = 'both', expand = 1, padx = 10, pady = 2)
-                button = Button(group.interior(), text="select "+od.DisplayObject(), width = 10, fg="black", command=filecallback); button.pack(side=LEFT, padx = 2,pady = 2)                    
+                entry.pack(side='left',fill = 'both', expand = 1, padx = 10, pady = 0)
+                button = Button(group.interior(), text="select "+od.DisplayObject(), width = 10, fg="black", command=filecallback); button.pack(side=LEFT, padx = 2,pady = 0)                    
 
                 #print option,run_mappfinder, self.title, self.default_option
-                if len(notes)>0: ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10)
+                if len(notes)>0: ln = Label(parent_type, text=notes,fg="blue"); ln.pack(padx = 10, pady = 0)
 
             if ('update-entry' in od.DisplayObject()) and self.display_options != ['NA']:
               if use_scroll == 'yes': parent_type = self.sf.interior()
@@ -5702,6 +5706,8 @@ def getUserParameters(run_parameter,Multi=None):
                     pvalThreshold = gu.Results()['pvalThreshold']
                     foldCutoff = gu.Results()['FoldCutoff']
                     labels = gu.Results()['labels']
+                    try: referenceFull = gu.Results()['referenceFull']
+                    except: referenceFull=None
                     if '.png' in markerFinder_file or '.pdf' in markerFinder_file:
                         markerFinder_file=markerFinder_file[:-4]+'.txt'
                     if len(geneModel_file) == 0: geneModel_file = None
@@ -5719,6 +5725,7 @@ def getUserParameters(run_parameter,Multi=None):
                         fl.setPvalThreshold(pvalThreshold)
                         fl.setFoldCutoff(foldCutoff)
                         fl.setLabels(labels)
+                        fl.set_reference_exp_file(referenceFull)
                         """
                         print fl.PeformDiffExpAnalysis()
                         print fl.CompendiumType()

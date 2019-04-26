@@ -1447,7 +1447,9 @@ def convertAllGPML(specific_species,all_species):
             except Exception: null=[]
             
             ### Download all species GPML from .zip
-            url = 'http://wikipathways.org//wpi/cache/wikipathways_'+species+'_Curation-AnalysisCollection__gpml.zip'
+            #url = 'http://wikipathways.org//wpi/cache/wikipathways_'+species+'_Curation-AnalysisCollection__gpml.zip'
+            url = 'http://data.wikipathways.org/20190410/gpml/wikipathways-20190410-gpml-'+species+'.zip'
+            print url
             fln,status = update.download(url,'GPML/','')
             
             if 'Internet' not in status:
@@ -1643,13 +1645,17 @@ def parseGPML(custom_sets_folder):
             graphID = i.getAttribute("GraphId") ### WikiPathways graph ID
             groupID = i.getAttribute('GroupRef')### Group node ID
             #graph_node_data.append([graphID,groupID,label,type])
-            gi = GeneIDInfo(str(system_name),str(id),pathway_name)
-            gi.setGroupID(str(groupID)) ### Include internal graph IDs for determining edges
-            gi.setGraphID(graphID)
-            gi.setLabel(label)
-            if len(id)>0 or 'Tissue' in pathway_name: ### Applies to the Lineage Profiler pathway which doesn't have IDs
-                gene_data.append(gi)
-                pathway_gene_data.append(gi)
+            try:
+                gi = GeneIDInfo(str(system_name),str(id),pathway_name)
+                gi.setGroupID(str(groupID)) ### Include internal graph IDs for determining edges
+                gi.setGraphID(graphID)
+                gi.setLabel(label)
+                if len(id)>0 or 'Tissue' in pathway_name: ### Applies to the Lineage Profiler pathway which doesn't have IDs
+                    gene_data.append(gi)
+                    pathway_gene_data.append(gi)
+            except:
+                #Can occur as  - UnicodeEncodeError: 'ascii' codec can't encode character u'\xa0' in position 15: ordinal not in range(128)
+                pass
         wpd=WikiPathwaysData(pathway_name,wpid,revision,organism,pathway_gene_data)
         pathway_db[wpid]=wpd
         interaction_data = getInteractions(complexes_data,edge_data,wpd)

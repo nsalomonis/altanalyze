@@ -6276,6 +6276,7 @@ def commandLineRun():
     PearsonThreshold = 0.1
     returnCentroids = 'community'
     runCompleteWorkflow=True
+    referenceFull=None
     k=None
     labels=None
     
@@ -6343,7 +6344,7 @@ def commandLineRun():
                                                          'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
                                                          'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
-                                                         'downsample=','query='])
+                                                         'downsample=','query=','referenceFull='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -8049,6 +8050,7 @@ def commandLineRun():
                     elif opt == '--centerMethod': CenterMethod = arg
                     elif opt == '--labels': labels = arg
                     elif opt == '--genes': genes = arg
+                    elif opt == '--referenceFull': referenceFull = arg
                 fl = UI.ExpressionFileLocationData('','','','')
                 fl.setSpecies(species)
                 fl.setVendor(manufacturer)
@@ -8087,10 +8089,12 @@ def commandLineRun():
                 if len(genes)>0 and ('h5' in custom_reference or 'mtx' in custom_reference):
                     fl.set_reference_exp_file(custom_reference)
                     custom_reference = genes
+                if referenceFull != None:
+                    fl.set_reference_exp_file(referenceFull)
 
                 UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize, CenterMethod=CenterMethod) #,display=display
                 #graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,input_file_dir,array_type,species,manufacturer)
-                print_out = 'Lineage profiles and images saved to the folder "DataPlots" in the input file folder.'
+                print_out = 'Alignments and images saved to the folder "DataPlots" in the input file folder.'
                 print print_out
             except Exception:
                 print traceback.format_exc() 

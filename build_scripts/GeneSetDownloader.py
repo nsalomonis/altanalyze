@@ -100,6 +100,7 @@ def getSourceData():
             
 ############# File download/extraction #############           
 def downloadPAZARAssocations():
+    """ This database is no longer available - Will replace with TRRUST """
     url = 'http://www.pazar.info/tftargets/tftargets.zip'
     print 'Downloading Transcription Factor to Target associations'
     fln,status = update.downloadSuppressPrintOuts(url,'BuildDBs/tftargets/','')
@@ -186,7 +187,7 @@ def downloadPhenotypeOntologyGeneAssociations():
 def downloadBioGRIDAssociations():
     print 'Downloading BioGRID associations'
     url = 'http://thebiogrid.org/downloads/archives/Latest%20Release/BIOGRID-ALL-LATEST.tab2.zip'
-    fln,status = update.downloadSuppressPrintOuts(url,'BuildDBs/BioGRID/','')
+    fln,status = update.download(url,'BuildDBs/BioGRID/','')
 
 def downloadDrugBankAssociations():
     print 'Downloading DrugBank associations'
@@ -194,6 +195,7 @@ def downloadDrugBankAssociations():
     fln,status = update.downloadSuppressPrintOuts(url,'BuildDBs/DrugBank/','')
     
 def downloadPathwayCommons():
+    #### See - https://www.pathwaycommons.org/archives/PC2/v11/
     print 'Downloading PathwayCommons associations'
     url = 'http://www.pathwaycommons.org/pc-snapshot/current-release/gsea/by_species/homo-sapiens-9606-gene-symbol.gmt.zip'
     fln,status = update.downloadSuppressPrintOuts(url,'BuildDBs/PathwayCommons/','')
@@ -1114,6 +1116,7 @@ def importDrugBank(selected_species,force):
 def importBioGRID(selected_species,force):
     if force == 'yes':
         downloadBioGRIDAssociations()
+    
     for species in selected_species:
         importSpeciesData() ### Creates the global species_taxids
         if species in species_taxids:
@@ -1188,10 +1191,15 @@ def buildAccessoryPathwayDatabases(selected_species,additional_resources,force):
     print 'Attempting to update:', string.join(additional_resources,',')
     if 'Latest WikiPathways' in additional_resources:
         try: importWikiPathways(selected_species,force)
-        except Exception: print 'WikiPathways import failed (cause unknown)'
+        except Exception:
+            #print traceback.format_exc()
+            print 'WikiPathways import failed (cause unknown)'
     if 'KEGG' in additional_resources:
-        try: importKEGGAssociations(selected_species,force)
-        except Exception: print 'KEGG import failed (cause unknown)'
+        try:
+            importKEGGAssociations(selected_species,force)
+            #print traceback.format_exc()
+        except Exception:
+            print 'KEGG import failed (cause unknown)'
     if 'Transcription Factor Targets' in additional_resources:
         try: importTranscriptionTargetAssociations(selected_species,force)
         except Exception:
@@ -1217,14 +1225,19 @@ def buildAccessoryPathwayDatabases(selected_species,additional_resources,force):
         try: importDomainAssociations(selected_species,force)
         except Exception: print 'Domains import failed (cause unknown)'
     if 'PathwayCommons' in additional_resources:
-        try: importPathwayCommons(selected_species,force)
-        except Exception: print 'PathwayCommons import failed (cause unknown)'
+        try:
+            importPathwayCommons(selected_species,force)
+        except Exception:
+            #print traceback.format_exc()
+            print 'PathwayCommons import failed (cause unknown)'
     if 'RVista Transcription Factor Sites' in additional_resources:
         try: importRVistaAssocations(selected_species,force)
         except Exception: print 'R Vista Transcription Factor Site import failed (cause unknown)'
     if 'BioGRID' in additional_resources:
         try: importBioGRID(selected_species,force)
-        except Exception: print 'BioGRID import failed (cause unknown)'
+        except Exception:
+            #print traceback.format_exc()
+            print 'BioGRID import failed (cause unknown)'
     if 'DrugBank' in additional_resources:
         try: importDrugBank(selected_species,force)
         except Exception: print 'Drug Bank import failed (cause unknown)'

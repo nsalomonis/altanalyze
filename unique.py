@@ -28,6 +28,7 @@ from os.path import expanduser
 userHomeDir = expanduser("~")+'/altanalyze/'
 
 dirfile = unique
+ignoreHome = True
 
 py2app_adj = '/GO_Elite.app/Contents/Resources/Python/site-packages.zip'
 py2app_adj1 = '/GO_Elite.app/Contents/Resources/lib/python2.4/site-packages.zip'
@@ -105,7 +106,7 @@ def filepath(filename,force=None):
             #print 'filename:',filename, fileExists
             """"When AltAnalyze installed through pypi - AltDatabase and possibly Config in user-directory """
             if 'Config' in fn:
-                if fileExists == False and force !='application-path':
+                if fileExists == False and force !='application-path' and ignoreHome==False:
                     fn=os.path.join(userHomeDir,filename)
             if 'AltDatabase' in fn:
                 getCurrentGeneDatabaseVersion()
@@ -118,7 +119,7 @@ def filepath(filename,force=None):
                     fileExists=True
                 except Exception: pass
                 #print 2, [fn],fileExists
-                if fileExists == False:
+                if fileExists == False and ignoreHome==False:
                     fn=os.path.join(userHomeDir,filename)
                     fn = correctGeneDatabaseDir(fn)
                 altDatabaseCheck = False
