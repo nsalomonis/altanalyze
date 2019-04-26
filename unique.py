@@ -28,7 +28,7 @@ from os.path import expanduser
 userHomeDir = expanduser("~")+'/altanalyze/'
 
 dirfile = unique
-ignoreHome = True
+ignoreHome = False
 
 py2app_adj = '/GO_Elite.app/Contents/Resources/Python/site-packages.zip'
 py2app_adj1 = '/GO_Elite.app/Contents/Resources/lib/python2.4/site-packages.zip'
