@@ -1,0 +1,5 @@
+Combined Clusters	Filename
+HSCP-1_AML__HSCP-2_AML__IG2_AML__Mono_AML	HSCP-1_AML|co-1
+DC_AML__Mono_AML	DC_AML|co-2
+DC_AML__IG2_AML	DC_AML|co-3
+IG2_AML__Mono_AML	IG2_AML|co-4

@@ -384,7 +384,7 @@ class StatusWindow:
             else:
                 root = Tk()
             self._parent = root
-            root.title('AltAnalyze version 2.1.2')
+            root.title('AltAnalyze version 2.1.3')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
 
             height = 300; width = 700
@@ -4192,7 +4192,7 @@ class MainMenu:
         
         """
         ###Display the information using a messagebox
-        about = 'AltAnalyze version 2.1.2.\n'
+        about = 'AltAnalyze version 2.1.3.\n'
         about+= 'AltAnalyze is an open-source, freely available application covered under the\n'
         about+= 'Apache open-source license. Additional information can be found at:\n'
         about+= 'http://www.altanalyze.org\n'
@@ -4213,7 +4213,7 @@ class MainMenu:
         #can.create_image(2, 2, image=img, anchor=NW)
         
         txt.pack(expand=True, fill="both")
-        txt.insert(END, 'AltAnalyze version 2.1.2.\n')
+        txt.insert(END, 'AltAnalyze version 2.1.3.\n')
         txt.insert(END, 'AltAnalyze is an open-source, freely available application covered under the\n')
         txt.insert(END, 'Apache open-source license. Additional information can be found at:\n')
         txt.insert(END, "http://www.altanalyze.org\n", ('link', str(0)))
@@ -5826,7 +5826,7 @@ def getUserParameters(run_parameter,Multi=None):
                         cel_files = RNASeq.runKallisto(species,'',input_fastq_dir,input_fastq_dir,mlp,returnSampleNames=True)
                         try: output_dir = gu.Results()['output_CEL_dir']
                         except KeyError: output_dir = input_fastq_dir
-                        """ ### Change made in version 2.1.2
+                        """ ### Change made in version 2.1.3
                         option_db['perform_alt_analysis'].setArrayOptions(['NA'])
                         option_db['exon_exp_threshold'].setArrayOptions(['NA'])
                         option_db['exon_rpkm_threshold'].setArrayOptions(['NA'])
@@ -6797,7 +6797,7 @@ def getUserParameters(run_parameter,Multi=None):
             button_text = 'Download Annotations'; url = 'http://www.affymetrix.com/support/technical/byproduct.affx?cat=arrays'
             IndicatorLinkOutWindow(print_out,button_text,url)
             """
-    """ ### Change made in version 2.1.2
+    """ ### Change made in version 2.1.3
     if len(input_fastq_dir)>0:
         array_type = "3'array"
         vendor = 'other:Ensembl' ### Ensembl linked system name

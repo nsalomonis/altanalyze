@@ -5,8 +5,3 @@ Mono_AML_vs_Mono_cellHarmony-Reference	385	229	156
 HSCP-2_AML_vs_HSCP-2_cellHarmony-Reference	153	133	20
 IG2_AML_vs_IG2_cellHarmony-Reference	148	109	39
 Myelocyte_AML_vs_Myelocyte_cellHarmony-Reference	4	2	2
-AML_vs_cellHarmony-Reference	2498	473	2025
-DC_AML__co-2-Query_vs_DC_AML__co-2-Ref	4212	545	3667
-DC_AML__co-3-Query_vs_DC_AML__co-3-Ref	2234	283	1951
-HSCP-1_AML__co-1-Query_vs_HSCP-1_AML__co-1-Ref	436	347	89
-IG2_AML__co-4-Query_vs_IG2_AML__co-4-Ref	693	403	290
