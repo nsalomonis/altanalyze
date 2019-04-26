@@ -53,7 +53,7 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
         peformDiffExpAnalysis = False
         try: fl.setPeformDiffExpAnalysis(peformDiffExpAnalysis)
         except: pass
-        #print traceback.format_exc()
+        print traceback.format_exc()
     
     reference = customMarkers ### Not sparse
 

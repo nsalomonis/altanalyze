@@ -4072,7 +4072,6 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     try:
         ### Allow for custom expression file paths
         full_ref_exp_path = fl.reference_exp_file()
-
         if full_ref_exp_path != False and full_ref_exp_path != '':
             expdir = full_ref_exp_path
             filtered_expdir = ''
@@ -4128,7 +4127,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
             index+=1
 
     ### Correct fileheader if group prefix present
-    try: column_header = map(lambda x: string.split(x,':')[1],column_header)
+    try: column_header = map(lambda x: string.split(x,':')[-1],column_header)
     except Exception: pass ### If no ":" in cell library names
     
     updated_column_header=[]
@@ -4178,7 +4177,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
             if cell in column_header_exp:
                 sample_index_list.append(column_header_exp.index(cell))
         print "WARNING... only",len(sample_index_list), "out of",len(column_header), "cells found in the expression file."
-        
+
     if geneOverride != None:
         eo.write(string.join(['UID']+column_header,'\t')+'\n')
     else:
