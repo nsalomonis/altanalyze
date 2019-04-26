@@ -46,7 +46,7 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
 
     #if 'ICGS' in customMarkers or 'MarkerGene' in customMarkers:
     """ When performing cellHarmony, build an ICGS expression reference with log2 TPM values rather than fold """
-    print 'Attempting to converting ICGS folds to ICGS expression values as a reference first...'
+    print 'Attempting to convert ICGS folds to ICGS expression values as a reference first...'
     try: customMarkers = LineageProfilerIterate.convertICGSClustersToExpression(customMarkers,query_exp_file,returnCentroids=False,species=species,fl=fl)
     except:
         print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."

@@ -4068,17 +4068,18 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         except: expdir = ''
     try: filtered_expdir = root_dir+'/ExpressionInput/'+filteredExp_files[-1][1]
     except: filtered_expdir = ''
-    
+
     try:
         ### Allow for custom expression file paths
         full_ref_exp_path = fl.reference_exp_file()
-        if full_ref_exp_path != False:
+
+        if full_ref_exp_path != False and full_ref_exp_path != '':
             expdir = full_ref_exp_path
             filtered_expdir = ''
             root_dir = ICGS_dir
     except:
         pass
-        
+
     print 'Selected the full expression file:',expdir
     if '-Guide' in filename:
         guide = string.split(filename,'-Guide')[1][:1]

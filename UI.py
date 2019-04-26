@@ -4412,7 +4412,10 @@ class ExpressionFileLocationData:
     def setMarkerFinder(self,marker_finder): self.marker_finder = marker_finder
     def reference_exp_file(self):
         try:
-            return self._reference_exp_file
+            if len(self._reference_exp_file)>1:
+                return self._reference_exp_file
+            else:
+                return False
         except:
             return False
     def ReturnCentroids(self): return self.returnCentroids
