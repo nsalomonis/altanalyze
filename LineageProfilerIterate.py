@@ -3178,8 +3178,9 @@ def findSimilarImpactedCellStates(folds_file,cellstate_DEGs):
                     if '-' in expression_db[uid][i]:
                         pattern[i] = -1
                 except:
-                    print pattern
-                    print i,expression_db[uid];kill
+                    #print pattern
+                    #print i,expression_db[uid];kill
+                    pass
             i+=1
         try: pval_patterns[tuple(pattern)]+=1
         except: pval_patterns[tuple(pattern)]=1

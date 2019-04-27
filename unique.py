@@ -23,11 +23,9 @@ and reading the propper Ensembl database version to allow for version specific a
 import sys, string
 import os.path, platform
 import traceback
-import unique ### Import itself as a reference to it's location
 from os.path import expanduser
 userHomeDir = expanduser("~")+'/altanalyze/'
 
-dirfile = unique
 ignoreHome = False
 
 py2app_adj = '/GO_Elite.app/Contents/Resources/Python/site-packages.zip'
@@ -74,6 +72,9 @@ else:
     else:
         application_path = os.path.dirname(__file__)
 
+if len(application_path)==0:
+    application_path = os.getcwd()
+
 if 'AltAnalyze?' in application_path:
     application_path = string.replace(application_path,'//','/')
     application_path = string.replace(application_path,'\\','/') ### If /// present
@@ -86,21 +87,36 @@ if 'GO_Elite?' in application_path:
 
 for py2app_dir in py2app_dirs:
     application_path = string.replace(application_path,py2app_dir,'')
-    
+
+def applicationPath():
+    return application_path
+
 def filepath(filename,force=None):
     altDatabaseCheck = True
     #dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
     dir = application_path
 
+    """
+    if os.path.isfile(filename):
+        fn = filename
+    elif os.path.isfile(dir+'/'+filename):
+        fn = filename
+    """
     if filename== '':  ### Windows will actually recognize '' as the AltAnalyze root in certain situations but not others
         fn = dir
     elif ':' in filename:
         fn = filename
     else:
-        try: dir_list = os.listdir(filename); fn = filename ### test to see if the path can be found (then it is the full path)
+        try:
+            try:
+                dir_list = os.listdir(dir+'/'+filename)
+                fn = dir+'/'+filename
+            except:
+                dir_list = os.listdir(filename)
+                fn = filename ### test to see if the path can be found (then it is the full path)
         except Exception:
+            
             fn=os.path.join(dir,filename)
-            #print 'dir:',dir
 
             fileExists = os.path.isfile(fn)
             #print 'filename:',filename, fileExists
@@ -166,7 +182,7 @@ def returnDirectories(sub_dir):
         except Exception: print dir, sub_dir; bad_exit
     return dir_list
 
-def returnDirectoriesNoReplace(sub_dir):
+def returnDirectoriesNoReplace(sub_dir,search=None):
     dir=application_path
     for py2app_dir in py2app_dirs:
         dir = string.replace(dir,py2app_dir,'')
@@ -177,6 +193,11 @@ def returnDirectoriesNoReplace(sub_dir):
         except Exception:
             try: dir_list = os.listdir(sub_dir[1:]) ### For linux
             except: dir_list = os.listdir(userHomeDir + sub_dir)
+    if search!=None:
+        for file in dir_list:
+            if search in file:
+                file = string.replace(file,'.lnk','')
+                dir_list = file
     return dir_list
 
 def refDir():
@@ -215,7 +236,8 @@ def correctGeneDatabaseDir(fn):
 def getCurrentGeneDatabaseVersion():
     global gene_database_dir
     try:
-        filename = 'Config/version.txt'; fn=filepath(filename)
+        filename = 'Config/version.txt'
+        fn=filepath(filename)
         for line in open(fn,'r').readlines():
             gene_database_dir, previous_date = string.split(line,'\t')
     except Exception:
@@ -228,6 +250,7 @@ def getCurrentGeneDatabaseVersion():
                     break
         except Exception:
             pass
+
     return gene_database_dir
 
 def unique(s):
@@ -274,9 +297,19 @@ def list(d):
     for i in d: t.append(i)
     return t
 
+def exportVersionData(version,version_date,dir,force='application-path'):
+    new_file = dir+'version.txt'
+    new_file_default = filepath(new_file,force=force) ### can use user directory local or application local
+    print new_file_default;sys.exit()
+    try:
+        data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
+    except:
+        data = export.ExportFile(new_file)
+        data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
+        
 if __name__ == '__main__':
-    fn = filepath('/Volumes/SEQ-DATA/Dan_TRAF6/averaged/AltDatabase/Mm/RNASeq/Mm_Ensembl_junctions.txt')
-    print fn; sys.exit()
-    fn = filepath('BuildDBs/Amadeus/symbol-Metazoan-Amadeus.txt')
-    print fn;sys.exit()
-    unique_db([1,2,3,4,4,4,5])
+    #db = returnDirectoriesNoReplace('/AltDatabase',search='EnsMart')
+    exportVersionData('EnsMart72','12/17/19','Config/')
+    path = filepath('Config/',force=None)
+    print path
+

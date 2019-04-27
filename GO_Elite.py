@@ -224,9 +224,10 @@ def moveMAPPFinderFiles(input_dir):
                 try: shutil.copyfile(fn, destination_dir)
                 except Exception:
                     print_out = "WARNING!!! Unable to move ORA results to an archived directory."
-                    try: UI.WarningWindow(print_out,' Exit ')
-                    except Exception: print print_out
-                    sys.exit()
+                    #print traceback.format_exc()
+                    print print_out
+                    #try: UI.WarningWindow(print_out,' Exit ')
+                    #except Exception: print print_out
                 proceed = 'no'
                 while proceed == 'no':
                     try: os.remove(fn); proceed = 'yes'

@@ -6560,7 +6560,7 @@ def commandLineRun():
             PathwaySelection = ''
             GeneSetSelection = 'None Selected'
             excludeCellCycle = True
-            rho_cutoff = 0.4
+            rho_cutoff = 0.2
             restrictBy = None
             featurestoEvaluate = 'Genes'
             ExpressionCutoff = 1
@@ -6575,7 +6575,7 @@ def commandLineRun():
             runCompleteWorkflow=False
             downsample=2500
             if ChromiumSparseMatrix != '':
-                rho_cutoff = 0.3
+                rho_cutoff = 0.2
                 column_metric = 'euclidean'
                 restrictBy = 'protein_coding'
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
@@ -8041,7 +8041,7 @@ def commandLineRun():
                 FoldDiff=1.5
                 performDiffExp=True
                 pval = 0.05
-                adjp = False
+                adjp = True
                 for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                     if opt == '--fold': FoldDiff=float(arg)
                     elif opt == '--pval': pval = float(arg)

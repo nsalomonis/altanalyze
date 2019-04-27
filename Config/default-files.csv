@@ -7,7 +7,7 @@
 "temp","temp","ftp://ftp.geneontology.org/pub/go/ontology-archive/function.ontology.2008-08-01.gz","all"
 "Program/Download","Status","Location","Species"
 "url","url","http://altanalyze.org/archiveDBs/","all"
-"PathFile","local","/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/reference/ExpressionInput","all"
+"PathFile","local","/Users/saljh8/Desktop/DemoData/sample_data/tempRef","all"
 "TrEMBL","ftp","ftp://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/taxonomic_divisions/uniprot_trembl_human.dat.gz","Hs"
 "TrEMBL","ftp","ftp://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/taxonomic_divisions/uniprot_trembl_rodents.dat.gz","Mm|Rn"
 "APT","local","AltDatabase/affymetrix/APT","all"

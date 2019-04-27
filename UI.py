@@ -3077,7 +3077,7 @@ class PreviousResults:
     def Results(self): return self._user_variables
         
 def getSpeciesList(vendor):
-    try: current_species_dirs = unique.read_directory('/AltDatabase')
+    try: current_species_dirs = unique.read_directory('/AltDatabase') 
     except Exception: ### Occurs when the version file gets over-written with a bad directory name
         try:
             ### Remove the version file and wipe the species file
@@ -3086,7 +3086,7 @@ def getSpeciesList(vendor):
             os.mkdir(filepath('AltDatabase'))
             AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
         except Exception:
-            #print traceback.format_exc()
+            print traceback.format_exc()
             print 'Cannot write Config/version.txt to the Config directory (likely Permissions Error)'
         try: db_versions = returnDirectoriesNoReplace('/AltDatabase')
         except Exception:
@@ -3125,20 +3125,23 @@ def getSpeciesList(vendor):
 def exportDBversion(db_version):
     import datetime
     db_version = string.replace(db_version,'Plant','')
+    if len(db_version)==0:
+        db_version = unique.returnDirectoriesNoReplace('/AltDatabase',search='EnsMart')
     today = str(datetime.date.today()); today = string.split(today,'-'); today = today[1]+'/'+today[2]+'/'+today[0]
-    try: exportVersionData(db_version,today,'Config/')
-    except Exception:
-        print traceback.format_exc()
-        print 'Cannot write Config/version.txt to the Config directory (likely Permissions Error)'
-
-def exportVersionData(version,version_date,dir):
-    new_file = dir+'version.txt'
-    new_file_default = unique.filepath(new_file,force='application-path') ### can use user directory local or application local
     try:
-        data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
-    except:
-        data = export.ExportFile(new_file)
-        data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
+        exportVersionData(db_version,today,'Config/')
+    except Exception:
+        try: exportVersionData(db_version,today,'Config/',force=None)
+        except:
+            print traceback.format_exc()
+            print 'Cannot write Config/version.txt to the Config directory (likely Permissions Error)'
+    return db_version
+
+def exportVersionData(version,version_date,dir,force='application-path'):
+    new_file = dir+'/version.txt'
+    new_file_default = unique.filepath(new_file,force=force) ### can use user directory local or application local
+    data = export.ExportFile(new_file_default)
+    data.write(str(version)+'\t'+str(version_date)+'\n'); data.close()
 
 def importResourceList():
     filename = 'Config/resource_list.txt'
@@ -4797,8 +4800,12 @@ def verifyLineageProfilerDatabases(species,run_mode):
     import AltAnalyze
     installed = False
     download_species = species
-    try: gene_database = unique.getCurrentGeneDatabaseVersion()
-    except Exception: gene_database='00'
+    try:
+        gene_database = unique.getCurrentGeneDatabaseVersion()
+    except Exception:
+        gene_database = exportDBversion('')
+        gene_database = string.replace(gene_database,'EnsMart','')
+        print gene_database
     try:
         if int(gene_database[-2:]) < 62:
             print_out = 'LineageProfiler is not supported in this database version (EnsMart62 and higher required).'
