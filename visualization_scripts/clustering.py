@@ -1771,7 +1771,11 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,
             try:
                 if 'NA' in t:
                     kill
-                try: prior = map(lambda x: int(float(x)),t[2:])
+                try:
+                    if forceClusters==False:
+                        prior = map(lambda x: int(float(x)),t[2:])
+                    else:
+                        prior = map(lambda x: x,t[2:])
                 except Exception:
                     ### Replace the cluster string with number
                     index=0
@@ -2123,7 +2127,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         print traceback.format_exc()
         #print e
         group_db={}
-
+        
     if reimportModelScores:
         print 'Re-importing',method,'model scores rather than calculating from scratch',
         print root_dir+dataset_name+'-'+method+'_scores.txt'
@@ -2208,6 +2212,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         marker_size = 4
     if len(column_header)>2000:
         marker_size = 3
+    if len(column_header)>4000:
+        marker_size = 2
+    if len(column_header)>6000:
+        marker_size = 1
         
     ### Color By Gene
     if colorByGene != None and len(matrix)==0:
@@ -2347,16 +2355,6 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     group_names={}
     i=0
     for sample_name in column_header: #scores[0]
-        ### Add the text labels for each
-        try:
-            ### Get group name and color information
-            group_name,color,k = group_db[sample_name]
-            if group_name not in group_names:
-                label = group_name ### Only add once for each group
-            else: label = None
-            group_names[group_name] = color
-        except Exception:
-            color = 'r'; label=None
         if maskGroups != None:
             base_name = sample_name
             if ':' in sample_name:
@@ -2364,6 +2362,16 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             if base_name not in restricted_samples:
                 exclude[i]=None ### Don't visualize this sample
         if i not in exclude:
+            ### Add the text labels for each
+            try:
+                ### Get group name and color information
+                group_name,color,k = group_db[sample_name]
+                if group_name not in group_names:
+                    label = group_name ### Only add once for each group
+                else: label = None
+                group_names[group_name] = color
+            except Exception:
+                color = 'r'; label=None
             ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
             #except Exception: print i, len(scores[pcB]);kill
             if showLabels:
