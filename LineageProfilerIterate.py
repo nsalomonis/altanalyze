@@ -1771,9 +1771,6 @@ def crossValidation(filename,setsToOutput=10,outputName=None):
                     if group not in group_list:
                         group_list.append(group)
                   
-    try:
-        group_samples=collections.OrderedDict()
-    except Exception: import ordereddict as collections
     group_samples=collections.OrderedDict()
     
     firstLine = True
@@ -4099,7 +4096,12 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         new_row_header = []
         for uid in row_header:
             if ':' in uid:
-                cluster,uid = string.split(uid,':')
+                try: cluster,uid = string.split(uid,':')
+                except:
+                    ### Occurs with zebrafish IDs
+                    vals = string.split(uid,':')
+                    cluster = vals[0]
+                    uid = string.join(vals[1:],':')
                 if cluster not in clusters:
                     clusters.append(cluster)
                     cluster_number+=1
@@ -4112,7 +4114,12 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         new_column_header = []
         for uid in column_header:
             if ':' in uid:
-                cluster,uid = string.split(uid,':')
+                try: cluster,uid = string.split(uid,':')
+                except:
+                    ### Occurs with zebrafish IDs
+                    vals = string.split(uid,':')
+                    cluster = vals[0]
+                    uid = string.join(vals[1:],':')
                 if cluster not in clusters:
                     clusters.append(cluster)
                     cluster_number+=1
@@ -4227,23 +4234,26 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         eo.write(string.join(['UID','row_clusters-flat']+map(str,group_index_db),'\t')+'\n')
         eo.write(string.join(['column_clusters-flat','']+map(lambda x: string.replace(x,'cluster-',''),group_index_db),'\t')+'\n')
     from stats_scripts import statistics
-    for uid in reference_matrix:
-        median_matrix=[]
-        for cluster in group_index_db:
-            if CenterMethod == 'mean' or CenterMethod == 'centroid':
-                try: median_matrix.append(str(statistics.avg(map(lambda x: reference_matrix[uid][x], group_index_db[cluster]))))
-                except Exception: ### Only one value
-                    median_matrix.append(str(map(lambda x: reference_matrix[uid][x], group_index_db[cluster])))
-            else: ### Median
-                try: median_matrix.append(str(statistics.median(map(lambda x: reference_matrix[uid][x], group_index_db[cluster]))))
-                except Exception: ### Only one value
-                    median_matrix.append(str(map(lambda x: reference_matrix[uid][x], group_index_db[cluster])))
-        if geneOverride != None:
-            eo.write(string.join([uid[0]]+median_matrix,'\t')+'\n')
-        else:
-            eo.write(string.join([uid[0],uid[1]]+median_matrix,'\t')+'\n')
-    eo.close()
-    
+    try:
+        for uid in reference_matrix:
+            median_matrix=[]
+            for cluster in group_index_db:
+                if CenterMethod == 'mean' or CenterMethod == 'centroid':
+                    try: median_matrix.append(str(statistics.avg(map(lambda x: reference_matrix[uid][x], group_index_db[cluster]))))
+                    except Exception: ### Only one value
+                        median_matrix.append(str(map(lambda x: reference_matrix[uid][x], group_index_db[cluster])))
+                else: ### Median
+                    try: median_matrix.append(str(statistics.median(map(lambda x: reference_matrix[uid][x], group_index_db[cluster]))))
+                    except Exception: ### Only one value
+                        median_matrix.append(str(map(lambda x: reference_matrix[uid][x], group_index_db[cluster])))
+            if geneOverride != None:
+                eo.write(string.join([uid[0]]+median_matrix,'\t')+'\n')
+            else:
+                eo.write(string.join([uid[0],uid[1]]+median_matrix,'\t')+'\n')
+        eo.close()
+    except:
+        returnCentroids = False ### When an error occurs, use community alignment
+        
     if combineFullDatasets:
         """ Merge the query and the reference expression files """
         print 'Producing a merged input and query expression file (be patient)...'
@@ -4311,11 +4321,7 @@ def simpleExpressionFileImport(filename,filterUID={}):
 def simpleICGSGeneImport(files):
     """ Import the gene IDs from different ICGS or MarkerFinder results prior
     to combining to derive combined ICGS results and making combined medoid file"""
-    try:
-        gene_db=collections.OrderedDict()
-    except Exception:
-        import ordereddict as collections
-        gene_db=collections.OrderedDict()
+    gene_db=collections.OrderedDict()
 
     for file in files:
         fn=filepath(file)
@@ -4373,7 +4379,7 @@ if __name__ == '__main__':
         
     import UI
     folds_file = '/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/exp.ICGS-cellHarmony-reference__AML-AllCells-folds.txt'
-    output = '/data/salomonis2/LabFiles/TabulaMuris/10x-GSE109774_RAW/all/cellHarmony/'
+    output = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/C202SC19040013/raw_data/Tanja445/Tanja445/outs/filtered_feature_bc_matrix/AltAnalyze-Outliers-removed/cellHarmony/OtherFiles'
     #DEGs_combined = aggregateRegulatedGenes('/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
     
     #folds_file = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/exp.ICGS-cellHarmony-reference__MI-AllCells-folds.txt'
@@ -4385,14 +4391,28 @@ if __name__ == '__main__':
     fl = UI.ExpressionFileLocationData(folds_file,'','',''); species='Mm'; platform = 'RNASeq'
     fl.setSpecies(species); fl.setVendor(platform)
     fl.setOutputDir(output)
-    
+    species = 'Mm'
     #clustered_groups_file = findSimilarImpactedCellStates(folds_file,DEGs_combined)
     #sys.exit()
     #exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined)
 
     #sys.exit()
-
-
+    
+    root_dir = output+'/DifferentialExpression_Fold_1.5_adjp_0.05/'
+    print 'Generating gene regulatory networks...'
+    import InteractionBuilder
+    """
+    pdfs = InteractionBuilder.remoteBuildNetworks(species, root_dir)
+    
+    networks_dir = output+'/networks/'
+    try: os.mkdir(networks_dir)
+    except: pass
+    for pdf in pdfs:
+        file = export.findFilename(pdf)
+        file = string.replace(file,'AltAnalyze-network-WKT_GE.','')
+        file = string.replace(file,'_cellHarmony-Reference-interactions','')
+        shutil.copy(pdf,output+'/networks/'+file)
+    #sys.exit()
 
     species = 'Hs'
     reference_exp_file = '/Users/saljh8/Desktop/DemoData/sample_data/tempRef/FinalMarkerHeatmap_all.txt'
@@ -4408,11 +4428,9 @@ if __name__ == '__main__':
             query_exp_file,classification_file,pearsonThreshold=pearsonThreshold,peformDiffExpAnalysis=peformDiffExpAnalysis,
             pvalThreshold=pvalThreshold,fold_cutoff=FoldCutoff,use_adjusted_pval=use_adjusted_pval,customLabels=customLabels)
     sys.exit()
+    """
     
-    
-
-
-    output_file = '/data/salomonis2/LabFiles/TabulaMuris/10x-GSE109774_RAW/all/cellHarmony/exp.MarkerFinder-cellHarmony-reference__12_tissues-CellOntologyCommon-ReOrdered.txt'
+    output_file = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/C202SC19040013/raw_data/Tanja445/Tanja445/outs/filtered_feature_bc_matrix/AltAnalyze-Outliers-removed/cellHarmony/OtherFiles/exp.MarkerFinder-cellHarmony-reference__Tanja445_matrix_CPTT-ReOrdered.txt'
 
     ### Build-UMAP plot
     import UI

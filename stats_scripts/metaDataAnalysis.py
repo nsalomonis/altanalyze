@@ -1684,6 +1684,7 @@ if __name__ == '__main__':
     species='Hs'
     probability_statistic = 'moderated t-test'
     #probability_statistic = 'Kolmogorov Smirnov'
+    #probability_statistic = 'Mann Whitney U'
     #probability_statistic = 'unpaired t-test'
     minRPKM=-1000
     PercentExp = 75

@@ -289,7 +289,7 @@ def community_sampling(inputfile):
         diclst[i]=ind
 
     G=nx.from_dict_of_lists(diclst)
-   # nx.write_adjlist(G,"test.adjlist")
+    #nx.write_adjlist(G,"test.adjlist")
     #G=nx.read_adjlist("test.adjlist")
     dendrogram= community.generate_dendrogram(G)
     #for level in range(len(dendrogram) - 1):
@@ -901,7 +901,9 @@ def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_clus
     for i in range(len(genes)):
         exportnam.write(genes2[i][1]+"\t"+genes2[i][0])
         for j in range(len(samples)):
-            exportnam.write("\t"+matrix[genes[i],samples2[j]])
+            try: exportnam.write("\t"+matrix[genes[i],samples2[j]])
+            except:
+                continue
         exportnam.write("\n")
         
     exportnam.close()

@@ -243,7 +243,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
             #print ICGS_State,HitsCount
             eo.write(string.join([ICGS_State]+scoreMatrix,'\t')+'\n')
     eo.close()
-    sys.exit()
+    #sys.exit()
     def multiply(values):
         p = 1
         for i in values:
@@ -337,7 +337,7 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
     """
     for i in state_scores2:
         print str(i[0])+'\t'+str(i[1])"""
-    sys.exit()
+    #sys.exit()
     return numpy.mean(state_scores)
 
 def calculateGeneExpressProbilities(values, useZ=False):

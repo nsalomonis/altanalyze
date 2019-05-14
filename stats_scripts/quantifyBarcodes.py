@@ -77,7 +77,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
                 if viral not in cells_with_virus[cellular]:
                     cells_with_virus[cellular].append(viral)
             except Exception: cells_with_virus[cellular]=[viral]
-            if len(viral)<48:
+            if len(viral)<48 and len(reference_48mers)>1:
             #if len(viral)<38:
                 if viral not in repair:
                     repair[viral]=[cellular]
@@ -108,9 +108,12 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
     #sys.exit()
     
     valid_barcodes = 0
-    for viral in viral_barcodes:
-        if viral in reference_48mers:
-            valid_barcodes+=1
+    if len(reference_48mers)>0:
+        for viral in viral_barcodes:
+            if viral in reference_48mers:
+                valid_barcodes+=1
+    else:
+        valid_barcodes = len(viral_barcodes)
     print valid_barcodes, 'unique valid viral barcodes present'
     #"""
     ### If the viral barcodes have frequent errors - associate the error with the reference in a cell-specific manner
@@ -121,90 +124,88 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
     cells_with_valid_barcodes=0
     viral_barcodes_overide={}
     cellular_barcodes_overide={}
-    for cellular in cells_with_virus:
-        cell_5prime={}
-        cell_3prime={}
-        ref_sequences=[]
-        if len(cells_with_virus[cellular])>1:
-            for i in cells_with_virus[cellular]:
-                try: cell_5prime[i[:10]].append(i)
-                except Exception: cell_5prime[i[:10]]=[i]
-                try: cell_3prime[i[-10:]].append(i)
-                except Exception: cell_3prime[i[-10:]]=[i]
-                if i in reference_48mers:
-                    ref_sequences.append(i)
-            if len(ref_sequences)>0:
-                cells_with_valid_barcodes+=1 ### Determine how many cells have valid viral barcodes
-            cell_5prime_ls=[]
-            cell_3prime_ls=[]
-            for i in cell_5prime:
-                cell_5prime_ls.append([len(cell_5prime[i]),i])
-            for i in cell_3prime:
-                cell_3prime_ls.append([len(cell_3prime[i]),i])
-            cell_5prime_ls.sort(); cell_3prime_ls.sort()
-            
-            for seq in ref_sequences:
-                if cell_5prime_ls[-1][1] in seq and cell_3prime_ls[-1][1] in seq:
-                    ref_seq = seq
-            try: viral_barcodes_overide[ref_seq].append(cellular)
-            except: viral_barcodes_overide[ref_seq]=[cellular]
-            cellular_barcodes_overide[cellular]=[ref_seq]
-            for y in cell_5prime[cell_5prime_ls[-1][1]]:
-                mismatch_to_match[y] = ref_seq
-            for y in cell_3prime[cell_3prime_ls[-1][1]]:
-                mismatch_to_match[y] = ref_seq
-                
-        else:
-            for i in cells_with_virus[cellular]:
-                if i in reference_48mers:
+    if len(reference_48mers)>0:
+        for cellular in cells_with_virus:
+            cell_5prime={}
+            cell_3prime={}
+            ref_sequences=[]
+            if len(cells_with_virus[cellular])>1:
+                for i in cells_with_virus[cellular]:
+                    try: cell_5prime[i[:10]].append(i)
+                    except Exception: cell_5prime[i[:10]]=[i]
+                    try: cell_3prime[i[-10:]].append(i)
+                    except Exception: cell_3prime[i[-10:]]=[i]
+                    if i in reference_48mers:
+                        ref_sequences.append(i)
+                if len(ref_sequences)>0:
                     cells_with_valid_barcodes+=1 ### Determine how many cells have valid viral barcodes
-                try: viral_barcodes_overide[i].append(cellular)
-                except: viral_barcodes_overide[i]=[cellular]
-
-    viral_barcodes = viral_barcodes_overide
-    cells_with_virus = cellular_barcodes_overide
-    
-    ### Update the viral_barcodes dictionary
-    viral_barcodes2={}; cells_with_virus2={}
-    for v in viral_barcodes:
-        cell_barcodes = viral_barcodes[v]
-        proceed = False
-        if v in mismatch_to_match:
-            v = mismatch_to_match[v]
-            proceed = True
-        elif v in reference_48mers:
-            proceed = True
-        if proceed:
-            if v in viral_barcodes2:
-                for c in cell_barcodes:
-                    if c not in viral_barcodes2:
-                        viral_barcodes2[v].append(c)
+                cell_5prime_ls=[]
+                cell_3prime_ls=[]
+                for i in cell_5prime:
+                    cell_5prime_ls.append([len(cell_5prime[i]),i])
+                for i in cell_3prime:
+                    cell_3prime_ls.append([len(cell_3prime[i]),i])
+                cell_5prime_ls.sort(); cell_3prime_ls.sort()
+                
+                for seq in ref_sequences:
+                    if cell_5prime_ls[-1][1] in seq and cell_3prime_ls[-1][1] in seq:
+                        ref_seq = seq
+                try: viral_barcodes_overide[ref_seq].append(cellular)
+                except: viral_barcodes_overide[ref_seq]=[cellular]
+                cellular_barcodes_overide[cellular]=[ref_seq]
+                for y in cell_5prime[cell_5prime_ls[-1][1]]:
+                    mismatch_to_match[y] = ref_seq
+                for y in cell_3prime[cell_3prime_ls[-1][1]]:
+                    mismatch_to_match[y] = ref_seq
+                    
             else:
-                viral_barcodes2[v] = cell_barcodes
+                for i in cells_with_virus[cellular]:
+                    if i in reference_48mers:
+                        cells_with_valid_barcodes+=1 ### Determine how many cells have valid viral barcodes
+                    try: viral_barcodes_overide[i].append(cellular)
+                    except: viral_barcodes_overide[i]=[cellular]
+        viral_barcodes = viral_barcodes_overide
+        cells_with_virus = cellular_barcodes_overide
 
-
+        ### Update the viral_barcodes dictionary
+        viral_barcodes2={}; cells_with_virus2={}
+        for v in viral_barcodes:
+            cell_barcodes = viral_barcodes[v]
+            proceed = False
+            if v in mismatch_to_match:
+                v = mismatch_to_match[v]
+                proceed = True
+            elif v in reference_48mers:
+                proceed = True
+            if proceed:
+                if v in viral_barcodes2:
+                    for c in cell_barcodes:
+                        if c not in viral_barcodes2:
+                            viral_barcodes2[v].append(c)
+                else:
+                    viral_barcodes2[v] = cell_barcodes
+        
+        print cells_with_valid_barcodes, 'cells with valid viral barcodes.'
+        viral_barcodes = viral_barcodes2
+        ### Update the cells_with_virus dictionary
+        for v in viral_barcodes:
+            cell_barcodes = viral_barcodes[v]
+            for c in cell_barcodes:
+                if c in cells_with_virus2:
+                    if v not in cells_with_virus2[c]:
+                        cells_with_virus2[c].append(v)
+                else:
+                    cells_with_virus2[c]=[v]
+        cells_with_virus = cells_with_virus2
     
-    print cells_with_valid_barcodes, 'cells with valid viral barcodes.'
-    viral_barcodes = viral_barcodes2
-    ### Update the cells_with_virus dictionary
-    for v in viral_barcodes:
-        cell_barcodes = viral_barcodes[v]
-        for c in cell_barcodes:
-            if c in cells_with_virus2:
-                if v not in cells_with_virus2[c]:
-                    cells_with_virus2[c].append(v)
-            else:
-                cells_with_virus2[c]=[v]
-    cells_with_virus = cells_with_virus2
-    
-    for c in cells_with_virus:
-        if len(cells_with_virus[c])>1:
-            doublet_cell[c]=[]
-    print len(doublet_cell),'doublets'
-    #print cells_with_virus['ACGCCGATCTGTTGAG']
-    #print cells_with_virus['CAGAATCCAAACTGCT']
-    #sys.exit()
-    
+        for c in cells_with_virus:
+            if len(cells_with_virus[c])>1:
+                doublet_cell[c]=[]
+        print len(doublet_cell),'doublets'
+        #print cells_with_virus['ACGCCGATCTGTTGAG']
+        #print cells_with_virus['CAGAATCCAAACTGCT']
+        #sys.exit()
+        
     print len(cells_with_virus),'updated cells with virus'
     print len(viral_barcodes),'updated unique viral barcodes'
     #"""
@@ -302,6 +303,7 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
         final_ranked_cluster_hits.append([cluster_hits_counts[clusters],clusters])
     final_ranked_cluster_hits.sort()
     final_ranked_cluster_hits.reverse()
+
     for (counts,clusters) in final_ranked_cluster_hits:
         try:
             print str(counts)+'\t'+clusters+'\t'+str(len(unique.unique(cells_per_pattern[clusters])))
@@ -329,15 +331,17 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
         
 
 if __name__ == '__main__':
-    
-    cellBarcodes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/cellular-viral_und-det.txt'
+    use_preprocessed = True
+    cellBarcodes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/Phil-Singlets/singletons.txt'
     cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime-Merged.txt'
     #cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime-MultiMerge.txt'
     #cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime-Baso.txt'
     barcode1 = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/14mer.txt'
     barcode2 = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/30mer.txt'
-    references = importViralBarcodeReferences(barcode1,barcode2)
-    #references={}
+    references={}
+    if use_preprocessed == False:
+        references = importViralBarcodeReferences(barcode1,barcode2)
+
     processBarcodes(cellBarcodes,cellClusters,references);sys.exit()
     import getopt
     filter_rows=False

@@ -16,7 +16,11 @@ def normalizeDropSeqCounts(expFile,log=True):
     for line in open(expFile,'rU').xreadlines():
         line = string.replace(line,'"','')
         data = line.rstrip('\n')
-        t = string.split(data,'\t')
+        if '\t' in line:
+            delimeter = '\t'
+        else:
+            delimeter = ','
+        t = string.split(data,delimeter)
         if firstLine:
             barcodes = t[1:]
             firstLine = False

@@ -1098,10 +1098,10 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     fig.text(0.015, 0.970, dataset_name, fontsize = fontsize)
     
     ### Render and save the graphic
-    pylab.savefig(root_dir + filename)
+    pylab.savefig(root_dir + filename,dpi=1000)
     #print 'Exporting:',filename
     filename = filename[:-3]+'png'
-    pylab.savefig(root_dir + filename, dpi=100) #,dpi=200
+    pylab.savefig(root_dir + filename, dpi=1000) #,dpi=200
     
     includeBackground=False
     try:
@@ -4878,7 +4878,13 @@ def importDataSimple(filename,species,fold_db,mod):
         t = string.split(data,'\t')
         if data[0]=='#': x=0
         
-        elif x==0: x=1
+        elif x==0:
+            si=None; symbol_present = False
+            try:
+                si= t.index('Symbol')
+                symbol_present = True
+            except: pass
+            x=1
         else:
             if x == 1:
                 system_code = t[1]
@@ -4906,7 +4912,7 @@ def importDataSimple(filename,species,fold_db,mod):
                 try: met_to_symbol = gene_associations.importGeneData(species,'HMDB',simpleImport=True)
                 except Exception: met_to_symbol={}
                 for i in met_to_symbol: gene_to_symbol[i] = met_to_symbol[i] ### Add metabolite names
-
+                
             x+=1
             if source_is_mod == True:
                 if t[0] in gene_to_symbol:
@@ -4915,6 +4921,12 @@ def importDataSimple(filename,species,fold_db,mod):
                     except Exception: fold_db[symbol] = 0
                 else:
                     fold_db[t[0]] = 0 ### If not found (wrong ID with the wrong system) still try to color the ID in the network as yellow
+            elif symbol_present:
+                fold_db[t[si]] = 0
+                try: fold_db[t[si]] = float(t[2])
+                except Exception:
+                    try: fold_db[t[si]] = 0
+                    except: fold_db[t[0]] = 0
             elif t[0] in source_to_gene:
                 mod_ids = source_to_gene[t[0]]
                 try: mod_ids+=source_to_gene[t[2]] ###If the file is a SIF
@@ -7142,9 +7154,8 @@ if __name__ == '__main__':
     #stackedbarchart(filename,display=True,output=OutputFile);sys.exit()
     index1=2;index2=3; x_axis='Number of DEGs'; y_axis = 'Reference clusters'; title='cellHarmony Differentially Expressed Genes'
     index1=-2;index2=-1; x_axis='Cell-State Percentage'; y_axis = 'Reference clusters'; title='Assigned Cell Frequencies'
-    barchart(filename,index1,index2,x_axis,y_axis,title,display=True)
-    sys.exit()
-    barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='IndianRed',color2='SkyBlue');sys.exit()
+    #barchart(filename,index1,index2,x_axis,y_axis,title,display=True)
+    #barchart(filename,index1,index2,x_axis,y_axis,title,display=True,color1='IndianRed',color2='SkyBlue');sys.exit()
     diff=0.7
     print 'diff:',diff
     #latteralMerge(file1, file2);sys.exit()
@@ -7161,7 +7172,7 @@ if __name__ == '__main__':
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Liron/MRD-positive-GE/groups.GE.txt'
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Liron/MRD-positive-GE/exp.GE.txt'
-    convertGroupsToBinaryMatrix(b,a,cellHarmony=False);sys.exit()
+    #convertGroupsToBinaryMatrix(b,a,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
@@ -7256,8 +7267,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Marie.Dominique/ExpressionInput/genes2.txt'
-    genesets = importGeneList(gene_list_file,n=30)
+    gene_list_file = '/Volumes/salomonis2/CCHMC-Collaborations/Joshua_Waxman-10X-Zebrafish/Run2713/AltAnalyze-5000-cells/10X_WT_20180831_3zf/markers.txt'
+    genesets = importGeneList(gene_list_file,n=43)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -7273,7 +7284,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Marie.Dominique/ExpressionInput/exp.Cdt1-H2b.txt'
+    filename = '/Volumes/salomonis2/CCHMC-Collaborations/Joshua_Waxman-10X-Zebrafish/Run2713/AltAnalyze-5000-cells/10X_WT_20180831_3zf/ExpressionInput/exp.10X_WT_matrix-5000-filterted_matrix_CPTT-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
     #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
@@ -7283,7 +7294,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=30)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=43)
     sys.exit()
 
     plotHistogram(filename);sys.exit()
