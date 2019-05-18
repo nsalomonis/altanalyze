@@ -2181,8 +2181,6 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
         file = graphics[-1][-1][:-4]+'.txt'
         shutil.copy(plot,output_dir+'/heatmaps/heatmap-all-cells-combined.pdf')
         shutil.copy(file,output_dir+'/heatmaps/heatmap-all-cells-combined.txt')
-        
-        
     except:
         print traceback.format_exc()
     
@@ -2236,6 +2234,7 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
                 shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-clusters.pdf')
     except:
         try:
+            print traceback.format_exc() 
             print 'UMAP error encountered (dependency not met), trying t-SNE'
             UI.performPCA(output_file, 'no', 't-SNE', False, None, plotType='2D',
                 display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
@@ -4379,7 +4378,7 @@ if __name__ == '__main__':
         
     import UI
     folds_file = '/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/exp.ICGS-cellHarmony-reference__AML-AllCells-folds.txt'
-    output = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/C202SC19040013/raw_data/Tanja445/Tanja445/outs/filtered_feature_bc_matrix/AltAnalyze-Outliers-removed/cellHarmony/OtherFiles'
+    output = '/Volumes/salomonis2/CCHMC-Collaborations/Doug-Millay-Novo-Seq/10X_Millay_WT_Muscle_20190131_3v3_2/10X_Millay_WT_Muscle/outs/filtered_feature_bc_matrix/cellHarmony'
     #DEGs_combined = aggregateRegulatedGenes('/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
     
     #folds_file = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/exp.ICGS-cellHarmony-reference__MI-AllCells-folds.txt'
@@ -4398,10 +4397,10 @@ if __name__ == '__main__':
 
     #sys.exit()
     
-    root_dir = output+'/DifferentialExpression_Fold_1.5_adjp_0.05/'
+    root_dir = output+'/DifferentialExpression_Fold_1.5_rawp_0.05/'
     print 'Generating gene regulatory networks...'
     import InteractionBuilder
-    """
+    
     pdfs = InteractionBuilder.remoteBuildNetworks(species, root_dir)
     
     networks_dir = output+'/networks/'
@@ -4412,7 +4411,8 @@ if __name__ == '__main__':
         file = string.replace(file,'AltAnalyze-network-WKT_GE.','')
         file = string.replace(file,'_cellHarmony-Reference-interactions','')
         shutil.copy(pdf,output+'/networks/'+file)
-    #sys.exit()
+    """
+    sys.exit()
 
     species = 'Hs'
     reference_exp_file = '/Users/saljh8/Desktop/DemoData/sample_data/tempRef/FinalMarkerHeatmap_all.txt'
@@ -4430,7 +4430,7 @@ if __name__ == '__main__':
     sys.exit()
     """
     
-    output_file = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/C202SC19040013/raw_data/Tanja445/Tanja445/outs/filtered_feature_bc_matrix/AltAnalyze-Outliers-removed/cellHarmony/OtherFiles/exp.MarkerFinder-cellHarmony-reference__Tanja445_matrix_CPTT-ReOrdered.txt'
+    output_file = '/Volumes/salomonis2/CCHMC-Collaborations/Doug-Millay-Novo-Seq/10X_Millay_WT_Muscle_20190131_3v3_2/10X_Millay_WT_Muscle/outs/filtered_feature_bc_matrix/cellHarmony/OtherFiles/exp.MarkerFinder-cellHarmony-reference__10X_Millay_WT_Muscle_matrix_CPTT-ReOrdered.txt'
 
     ### Build-UMAP plot
     import UI
@@ -4466,6 +4466,7 @@ if __name__ == '__main__':
             else:
                 shutil.copy(plot,output+'/UMAP-plots/UMAP-query-clusters.pdf')
     except ZeroDivisionError:
+        print traceback.format_exc() 
         pass
     sys.exit()
 
