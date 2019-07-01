@@ -309,7 +309,7 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
         export_class1.close()
         export_class3.close()
     else:
-        if platfrm=="PSI":
+        if platform=="PSI":
             prob_=regr.fit(Xobs,X[:,0]).decision_function(Y)
             #k=list(prob_)
             export_class1.write("uid"+"\t")
@@ -338,6 +338,40 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
                         export_class2.write("\t"+str(0)+"\t"+str(0))
                 export_class1.write("\n")
                 export_class2.write("\n")
+        else:
+            prob_=regr.fit(Xobs,X[:,0]).decision_function(Y)
+        #k=list(prob_)
+
+            export_class1.write("uid")
+            #export_class2.write("uid")
+            export_class3.write("uid")
+            for ni in name:
+                export_class1.write("\t"+"R"+str(turn)+"-"+ni)
+                #export_class2.write("\t"+"R"+str(turn)+"-"+ni)
+                export_class3.write("\t"+"R"+str(turn)+"-"+ni)
+            export_class1.write("\n")
+            #export_class2.write("\n")
+            export_class3.write("\n")
+            #print prob_
+            for iq in range(0,len(header)-1):
+                export_class1.write(header[iq+1])
+                #export_class2.write(header[iq+1])
+                export_class3.write(header[iq+1])
+               # for jq in range(0,len(name)):
+                export_class1.write("\t"+str(prob_[iq]))
+                if prob_[iq]>0.0:
+                        #print ordersamp[header[iq+1]],name[jq]
+                    if ordersamp[header[iq+1]][0]==name[jq]: 
+                        order.append([header[iq+1],name[jq],prob_[iq],ordersamp[header[iq+1]][1]])
+                        export_class3.write("\t"+str(1))
+                    else:
+                        export_class3.write("\t"+str(0))
+                    
+                export_class1.write("\n")
+                #export_class2.write("\n")
+                export_class3.write("\n")
+        export_class1.close()
+        export_class3.close()
     order = sorted(order, key = operator.itemgetter(2),reverse=True)
     order = sorted(order, key = operator.itemgetter(1))
     for i in range(len(order)):

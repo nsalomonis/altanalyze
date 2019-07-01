@@ -15,4 +15,5 @@ Dm	Drosophila melanogaster
 Xl	Test	
 Zm	Zea mays	
 Sc	Saccharomyces cerevisiae	
-Dr	Danio rerio	
+Pn	Papio anubis
+	

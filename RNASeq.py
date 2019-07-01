@@ -2738,6 +2738,17 @@ def getMaxCounts(fn,cutoff,filterExport=False,filterExportDir=False):
                     expressed_uids[uid] = []
     return expressed_uids
         
+def check_for_ADT(gene):
+    if '.ADT' in gene or '-ADT' in gene:
+        return True
+    elif len(gene)>17 and '-' in gene:
+        if len(string.split(gene,'-')[1])>11:
+            return True
+        else:
+            return False
+    else:
+        return False
+    
 def importBiologicalRelationships(species):
     ### Combine non-coding Ensembl gene annotations with UniProt functional annotations
     import ExpressionBuilder
@@ -2753,6 +2764,7 @@ def importBiologicalRelationships(species):
             coding_type = 'protein_coding'
         else:
             coding_type = 'ncRNA'
+            status = check_for_ADT(gene)
         if gene in gene_to_symbol_db:
             symbol = string.lower(gene_to_symbol_db[gene][0])
             ### The below genes cause issues with many single cell datasets in terms of being highly correlated
@@ -2929,10 +2941,15 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=0, r
             geneID = string.split(geneID,' ')[-1]
             if geneID in genes: expressed_uids.append(uid)
     else:
-        try: expressed_uids = genes.viewkeys() & expressed_uids_db.viewkeys() ### common
-        except Exception: expressed_uids = getOverlappingKeys(genes,expressed_uids_db)
+        expressed_uids2=[]
+        for gene in expressed_uids:
+            ADT_status = check_for_ADT(gene)
+            if ADT_status:
+                expressed_uids2.append(gene)
+            elif gene in genes:
+                expressed_uids2.append(gene)
+        expressed_uids = expressed_uids2
 
-        #print len(expressed_uids)
         expressed_uids_db2={}
         for id in expressed_uids: expressed_uids_db2[id]=[]
         
@@ -3423,6 +3440,11 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
                 if x<30: ### cap it at 30
                     try: atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
                     except Exception: pass
+                elif k not in atleast_10:
+                    ADT_status = check_for_ADT(k)
+                    if ADT_status:
+                        try: atleast_10[k]=correlated_genes[k] ### add all correlated keys and values
+                        except Exception: pass
                 x+=1
 
     if len(atleast_10)<30:
@@ -3443,7 +3465,7 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     print len(atleast_10), 'genes correlated to multiple other members (initial filtering)'
     ### go through the list from the most linked to the least linked genes, only reported the most linked partners
     if len(atleast_10)>5000:
-        print_out=""
+        print '\n'
         return print_out,atleast_10
         
     removeOutlierDrivenCorrelations=True
@@ -4050,9 +4072,13 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
         column_header, row_header = row_header, column_header
         
     Platform = None
+    ADTs=[]
     for i in row_header:
         if 'ENS' in i and '-' in i and ':' in i: Platform = 'exons'
-            
+        else:
+            ADT_status = check_for_ADT(i)
+            if ADT_status: ADTs.append(i)
+    print ADTs
     #print hits_to_report
     if hits_to_report == 1:
         ### Select the best gene using correlation counts and TFs
@@ -4170,6 +4196,9 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 else:
                     guideGenes[gene]=[]
             print 'additional Cell Cycle guide genes removed:',addition_cell_cycle_associated
+            
+        for ADT in ADTs: guideGenes[ADT]=[]
+        
         print len(guideGenes), 'novel guide genes discovered:', guideGenes.keys()
         return guideGenes,addition_cell_cycle_associated
         
@@ -4218,7 +4247,8 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 final_rows[tuple(ls)]=[]
             for i in indexes:
                 retained_ids[row_header[i]]=[]
-                
+    
+    added_genes=[]
     if len(final_rows)==0:
         for block in block_db:
             indexes = block_db[block]
@@ -4226,13 +4256,19 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                 indexes = indexes[:hits_to_report]
             for ls in map(lambda i: [row_header[i]]+map(str,(matrix[i])), indexes):
                 final_rows[tuple(ls)]=[]
+                added_genes.append(ls[0])
     if len(final_rows)==0:
         for block in block_db:
             indexes = block_db[block]
             for ls in map(lambda i: [row_header[i]]+map(str,(matrix[i])), indexes):
                 final_rows[tuple(ls)]=[]
+                added_genes.append(ls[0])
+    if len(ADTs)>0:
+        for ADT in ADTs:
+            if ADT not in added_genes:
+                ls = [ADT]+matrix[row_header.index(ADT)]
+                final_rows[tuple(ls)]=[]
     #print 'block length:',len(block_db), 'genes retained:',len(retained_ids)
-
     return final_rows, column_header
 
 def exportGroupsFromClusters(cluster_file,expFile,platform,suffix=None):
@@ -4954,7 +4990,8 @@ def filterFASTAFiles(fasta_files):
     
     for file in fasta_files:
         if 'filtered.fa' in file:
-            filter_fasta_files.append(file)
+            if file not in filter_fasta_files:
+                filter_fasta_files.append(file)
         else:
             filtered_fasta = file[:-3]+'-filtered.fa'
             filter_fasta_files.append(filtered_fasta)
@@ -4967,6 +5004,9 @@ def filterFASTAFiles(fasta_files):
                     if 'PATCH' in line or '_1_' in line or '_1:' in line or ':HSCHR' in line or 'putative' in line or 'supercontig' in line or 'NOVEL_TEST' in line:
                         skip=True
                     else:
+                        space_delim=string.split(line,' ')
+                        space_delim=[string.split(space_delim[0],'.')[0]]+space_delim[1:]
+                        line=string.join(space_delim,' ')
                         eo.write(line)
                 elif skip==False:
                     eo.write(line)

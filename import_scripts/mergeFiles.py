@@ -286,7 +286,6 @@ def joinFiles(files_to_merge,CombineType,unique_join,outputDir):
     output_dir = outputDir
     combine_type = string.lower(CombineType)
     permform_all_pairwise = 'yes'
-    permform_all_pairwise = 'no' ### Uses only one reference gene ID
 
     print 'combine type:',combine_type
     print 'join type:', unique_join

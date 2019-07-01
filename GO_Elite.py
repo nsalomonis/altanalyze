@@ -2445,7 +2445,7 @@ def commandLineRun():
             try: species = species_names[species_code]
             except Exception: print 'Species code %s not found. Please add the species to the database.' % species_code; sys.exit()
             print "Starting to update databases for",species, string.join(update_method,',')
-            
+
             ### Update EntrezGene-GO Databases
             if 'EntrezGene' in update_method:
                 ncbi_go_file = file_location_defaults['EntrezGO'].Location(); status = 'null'
@@ -2762,7 +2762,9 @@ def commandLineRun():
         print '\nInsufficient flags entered (requires --species, --input and --output)'; sys.exit()
     if 'metabolites' in update_method:
         import MetabolomicsParser
-        MetabolomicsParser.buildMetabolomicsDatabase(force) ### will update any installed species
+        try: MetabolomicsParser.buildMetabolomicsDatabase(force) ### will update any installed species
+        except:
+            print 'WARNING!!!! No metabolite database present... skipping metabolite build'
     sys.exit()
     
 if __name__ == '__main__':
