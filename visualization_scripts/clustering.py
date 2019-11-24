@@ -2121,7 +2121,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             i=0
             for sample_name in column_header:
                 newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
-                i+=1
+                i+=1 
             group_db, column_header = assignGroupColors(newColumnHeader)    
     except Exception,e:
         print traceback.format_exc()

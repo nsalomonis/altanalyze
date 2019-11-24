@@ -19,7 +19,7 @@ import traceback
 import anydbm
 import dbhash
 count_sum_array_db={}
-sampleReadDepth={}
+sampleReadDepth={} 
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')

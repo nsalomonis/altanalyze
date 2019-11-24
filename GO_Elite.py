@@ -2110,7 +2110,7 @@ def returnDirectoriesNoReplace(dir):
     dir_list = unique.returnDirectoriesNoReplace(dir); dir_list2 = []
     for entry in dir_list:
         if '.' not in entry: dir_list2.append(entry)
-    return dir_list2
+    return dir_list2 
 
 ###### Command Line Functions (AKA Headless Mode) ######
 def commandLineRun():

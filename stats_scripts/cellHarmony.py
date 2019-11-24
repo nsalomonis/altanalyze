@@ -2,7 +2,7 @@ import sys,string,os
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
 from scipy import sparse, io
 import numpy
-import LineageProfilerIterate
+import LineageProfilerIterate  
 import cluster_corr
 from import_scripts import ChromiumProcessing
 import traceback
@@ -68,7 +68,7 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
     output_classification_file = export_directory+'/CellClassification/'+dataset_name+'-CellClassification.txt'
     
     if sparse_ref and sparse_query:
-        ### Use the h5 files for alignment
+        ### Use the h5 files for alignment 
         pass
     else:
         ref = reference

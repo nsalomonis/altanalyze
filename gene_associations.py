@@ -1653,7 +1653,7 @@ def parseGPML(custom_sets_folder):
                 if len(id)>0 or 'Tissue' in pathway_name: ### Applies to the Lineage Profiler pathway which doesn't have IDs
                     gene_data.append(gi)
                     pathway_gene_data.append(gi)
-            except:
+            except:  
                 #Can occur as  - UnicodeEncodeError: 'ascii' codec can't encode character u'\xa0' in position 15: ordinal not in range(128)
                 pass
         wpd=WikiPathwaysData(pathway_name,wpid,revision,organism,pathway_gene_data)

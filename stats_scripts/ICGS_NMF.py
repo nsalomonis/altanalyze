@@ -963,7 +963,7 @@ def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_clus
 
 def callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp):
     
-    #Run ICGS recursively to dynamically identify the best rho cutoff
+    #Run ICGS recursively to dynamically identify the best rho cutoff 
     graphic_links3,n = RNASeq.singleCellRNASeqWorkflow(species,platform,processedInputExpFile,mlp,dynamicCorrelation, rpkm_threshold=0, parameters=gsp)
     if n>5000 and dynamicCorrelation:
             rho_cutoff=rho_cutoff+0.1

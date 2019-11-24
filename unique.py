@@ -138,7 +138,7 @@ def filepath(filename,force=None):
                 if fileExists == False and ignoreHome==False:
                     fn=os.path.join(userHomeDir,filename)
                     fn = correctGeneDatabaseDir(fn)
-                altDatabaseCheck = False
+                altDatabaseCheck = False 
     
     if '/Volumes/' in filename and altDatabaseCheck:
         filenames = string.split(filename,'/Volumes/'); fn = '/Volumes/'+filenames[-1]

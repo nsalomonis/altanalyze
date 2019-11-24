@@ -762,7 +762,7 @@ def exportPathwayData(original_pathway_z_score_data,gene_file,headers,resource_n
     for values in sort_results:
         results = values[2]
         data.write(results)
-    data.close()
+    data.close()  
     
 def swapKeyValuesTuple(db):
     swapped={}

@@ -150,7 +150,7 @@ def find_shared_genes(h5_filename,genome=None,gene_list=None):
     """
     Selects genes shared by the reference, query and gene_list
     for filtering genes
-    """    
+    """     
     
     if gene_list !=None:
         if 'h5' in h5_filename:

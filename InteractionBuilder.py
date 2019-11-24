@@ -364,7 +364,7 @@ def associateQueryGenesWithInteractions(query_db,query_interactions,dir_file):
     connections = 1
     primary=0
     secondary=0
-    terciary=0
+    terciary=0 
     for ensemblGene in query_db:
         if ensemblGene in interaction_db:
             for interacting_ensembl in interaction_db[ensemblGene]:

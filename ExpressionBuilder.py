@@ -4112,7 +4112,7 @@ if __name__ == '__main__':
     try: genesToExclude = excludeGenesImport(excludeGenes)
     except Exception: genesToExclude = {}
     print analysis
-    if array_type == 'RNASeq':
+    if array_type == 'RNASeq': 
         gene_exp_threshold = 50
         gene_rpkm_threshold = 3
     if analysis == 'matchAndCorrelate':

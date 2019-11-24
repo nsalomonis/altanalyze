@@ -1,5 +1,5 @@
 ### Based on code from AltAnalyze's LineageProfiler (http://altanalyze.org)
-#Author Nathan Salomonis - nsalomonis@gmail.com
+#Author Nathan Salomonis - nsalomonis@gmail.com  
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
 #of this software and associated documentation files (the "Software"), to deal 

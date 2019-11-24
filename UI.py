@@ -3084,7 +3084,7 @@ def getSpeciesList(vendor):
             os.remove(filepath('Config/version.txt'))
             #raw = export.ExportFile('Config/species.txt'); raw.close()
             os.mkdir(filepath('AltDatabase'))
-            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
+            AltAnalyze.AltAnalyzeSetup('no'); sys.exit() 
         except Exception:
             print traceback.format_exc()
             print 'Cannot write Config/version.txt to the Config directory (likely Permissions Error)'

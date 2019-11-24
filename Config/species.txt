@@ -16,4 +16,5 @@ Xl	Test
 Zm	Zea mays	
 Sc	Saccharomyces cerevisiae	
 Pn	Papio anubis
+Ma	Macaca mulatta
 	

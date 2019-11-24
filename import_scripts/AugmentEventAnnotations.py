@@ -197,7 +197,7 @@ def importIsoformAnnotations(species,platform,psievents,annotType=None,junctionP
     return junctionPairFeatures
 
 def DetermineIntronRetention(coordinates):
-    intronRetention = False
+    intronRetention = False 
     coordinates1,coordinates2 = string.split(coordinates,'|')
     coordinates1 = string.split(coordinates1,':')[1]
     coordinate1a, coordinate1b = string.split(coordinates1,'-')
