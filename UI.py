@@ -5172,7 +5172,8 @@ def getUserParameters(run_parameter,Multi=None):
                     print_out = "Valid species data was not added. You must\nindicate a two letter species code and full species name."
                     IndicatorWindow(print_out,'Continue')  
         else: species = species_codes[species_full].SpeciesCode()    
-        array_full = gu.Results()['array_type'] ### Can be 10X Genomics
+        try: array_full = gu.Results()['array_type'] ### Can be 10X Genomics
+        except: array_full = 'RNASeq'
         vendor = gu.Results()['manufacturer_selection']
         if '10X' in array_full:
             vendor = '10XGenomics'

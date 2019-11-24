@@ -314,7 +314,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         gene_to_symbol,system_code = getAnnotations(species,platform)
         from import_scripts import OBO_import
         symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
-    except ZeroDivisionError: gene_to_symbol={}; system_code=''
+    except: gene_to_symbol={}; system_code=''
 
     for groups in comps_db:
         group1, group2 = groups
@@ -1724,7 +1724,7 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['m=','i=','d=','c=','u=','p=','s=','f=',
             'g=','e=','ce=','rc=','cd=','o=','md=','in=','target=','parent=','urls=','used=','mf=',
-            'adjp=','dPSI=','pval=','percentExp='])
+            'adjp=','dPSI=','pval=','percentExp=','percentExp=', 'fold=', 'species=', 'platform=', 'expdir='])
         for opt, arg in options:
             if opt == '--m': metadata_files.append(arg)
             if opt == '--o':
@@ -1732,17 +1732,17 @@ if __name__ == '__main__':
                     output_dir = arg
                 else:
                     output_dir = [output_dir,arg]
-            if opt == '--i': expression_files.append(arg)
+            if opt == '--i' or opt == '--expdir': expression_files.append(arg)
             if opt == '--e': runGOElite=True
-            if opt == '--f':
+            if opt == '--f' or opt == '--fold':
                 try: logfold_threshold = math.log(float(arg),2)
                 except Exception: logfold_threshold = 0
             if opt == '--ce': compareEnrichmentProfiles = True
             if opt == '--d': sampleSetQuery=arg
             if opt == '--c': CovariateQuery=arg
-            if opt == '--p': platforms.append(arg)
+            if opt == '--p' or opt == '--platform': platforms.append(arg)
             if opt == '--g': gender_restricted=arg
-            if opt == '--s': species=arg
+            if opt == '--s' or opt == '--species': species=arg
             if opt == '--rc': restrictCovariateTerm=arg
             if opt == '--cd': compDiffState=arg
             if opt == '--md': mirDataDir=arg

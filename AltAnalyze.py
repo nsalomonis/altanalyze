@@ -6347,7 +6347,7 @@ def commandLineRun():
                                                          'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
                                                          'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
-                                                         'downsample=','query=','referenceFull='])
+                                                         'downsample=','query=','referenceFull=', 'maskGroups='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()

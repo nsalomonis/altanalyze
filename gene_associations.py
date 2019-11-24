@@ -196,9 +196,14 @@ def importGeneData(species_code,mod):
         t = string.split(data,'\t')
         if x == 0: x = 1
         else:
-            gene = t[0]; symbol = t[1]; name = t[2]
-            s = GeneAnnotations(gene,symbol,name,system_type)
-            gene_annotations[gene] = s
+            try:	
+                gene = t[0]; symbol = t[1]; name = t[2]	
+            except:	
+                gene = t[0]; symbol = t[0]; name = t[0]	
+            else:	
+                s = GeneAnnotations(gene, symbol, name, system_type)	
+                gene_annotations[gene] = s	
+
     if export_status == 'export':
         export_dir = database_dir+'/'+species_code+'/uid-gene/'+mod+'-Symbol'+'.txt'
         data = export.ExportFile(export_dir)

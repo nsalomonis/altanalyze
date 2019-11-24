@@ -304,8 +304,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if color_gradient == 'yellow_orange_red':
         cmap=pylab.cm.YlOrRd
     if color_gradient == 'Spectral':
-        cmap=pylab.cm.Spectral_r
-
+        cmap = pylab.cm.Spectral_r
+        
     vmin=x.min()
     vmax=x.max()
     vmax = max([vmax,abs(vmin)])
@@ -1179,8 +1179,11 @@ def remoteGOElite(elite_dir,SystemCode = None):
             enrichmentAnalysisType = 'ORA'
             #enrichmentAnalysisType = 'URA'
             variables = species,mod,pathway_permutations,filter_method,z_threshold,p_val_threshold,change_threshold,resources_to_analyze,returnPathways,file_dirs,enrichmentAnalysisType,root
-            try: GO_Elite.remoteAnalysis(variables,'non-UI Heatmap')
-            except Exception: 'GO-Elite failed for:',elite_dir
+            try:
+                GO_Elite.remoteAnalysis(variables, 'non-UI Heatmap')
+            except Exception:
+                print 'GO-Elite failed for:', elite_dir
+                print traceback.format_exc()
             if commandLine==False:
                 try: UI.openDirectory(elite_dir+'/GO-Elite_results') 
                 except Exception: None
@@ -1391,7 +1394,9 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
         try:
             id = new_row_header[i]
             original_id = str(id)
-            if sy == '$En:Sy':
+            if sy == 'Ae' and '--' in id:
+                cluster = 'cluster-' + string.split(id, ':')[0]
+            elif sy == '$En:Sy':
                 cluster = 'cluster-'+string.split(id,':')[0]
             elif sy == 'S' and ':' in id:
                 cluster = 'cluster-'+string.split(id,':')[0]
@@ -1404,17 +1409,14 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     
         try:
             if 'MarkerGenes' in originalFilename:
-                cluster = 'cluster-'+string.split(id,':')[0]
-                id = string.split(id,':')[1]
+                cluster = 'cluster-' + string.split(id, ':')[0]
+                id = string.split(id, ':')[1]
                 if ' ' in id:
-                    id = string.split(id,' ')[0]
+                    id = string.split(id, ' ')[0]
                 if 'G000' in id:
-                    ids = tring.split(id,':')
-                    ids_alt = tring.split(id,'__')
-                    if len(ids)>1 or len(ids_alt)>1:
-                        sy = 'Ae'
-                    else: sy = 'En'
-                else: sy = 'Sy'
+                    sy = 'En'
+                else:
+                    sy = 'Sy'        
         except Exception: pass
         try: cluster_db[cluster].append(id)
         except Exception: cluster_db[cluster] = [id]
@@ -1429,64 +1431,81 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
         export_text.write(line)
     export_text.close()
 
-
     ### Export GO-Elite input files
     allGenes={}
     for cluster in cluster_db:
-        export_elite = export.ExportFile(elite_dir+'/'+cluster+'.txt')
-        if sy==None:
+        export_elite = export.ExportFile(elite_dir + '/' + cluster + '.txt')
+        if sy == None:
             export_elite.write('ID\n')
         else:
             export_elite.write('ID\tSystemCode\n')
         for id in cluster_db[cluster]:
             try:
-                i1,i2 = string.split(id,' ')
-                if i1==i2: id = i1
-            except Exception: pass  
-            if sy == '$En:Sy':
-                id = string.split(id,':')[1]
-                ids = string.split(id,' ')
-                if 'ENS' in ids[0] or 'G0000' in ids[0]: id = ids[0]
-                else: id = ids[-1]
-                sc = 'En'
-            elif sy == 'Sy' and ':' in id:
-                id = string.split(id,':')[1]
-                ids = string.split(id,' ')
-                sc = 'Sy'
-            elif sy == 'En:Sy':
-                id = string.split(id,' ')[0]
-                sc = 'En'
-            elif sy == 'Ae':
-                l = string.split(id,':')
-                if len(l)==2:
-                    id = string.split(id,':')[0] ### Use the Ensembl
-                if len(l) == 3:
-                    id = string.split(id,':')[1] ### Use the Ensembl
-                sc = 'En'
-                if ' ' in id:
-                    ids = string.split(id,' ')
-                    if 'ENS' in ids[-1] or 'G0000' in ids[-1]: id = ids[-1]
-                    else: id = ids[0]
-            elif sy == 'En' and '&' in id:
-                for i in string.split(id,'&'):
-                    if 'G0000' in i: id = i; sc = 'En'; break
-            elif sy == 'Sy' and 'EFN' in id:
-                sc = 'En'
+                i1, i2 = string.split(id, ' ')
+                if i1 == i2:
+                    id = i1
+            except Exception:
+                pass
             else:
-                sc = sy
-            if sy == 'S':
-                if ':' in id:
-                    id = string.split(id,':')[-1]
+                if sy == '$En:Sy':
+                    id = string.split(id, ':')[1]
+                    ids = string.split(id, ' ')
+                    if 'ENS' in ids[0] or 'G0000' in ids[0]:
+                        id = ids[0]
+                    else:
+                        id = ids[(-1)]
+                    sc = 'En'
+                elif sy == 'Sy' and ':' in id:
+                    id = string.split(id, ':')[1]
+                    ids = string.split(id, ' ')
+                    sc = 'Sy'
+                elif sy == 'En:Sy':
+                    id = string.split(id, ' ')[0]
+                    sc = 'En'
+                elif sy == 'Ae':
+                    if '--' in id:
+                        sc = 'En'
+                        id = string.split(id, ':')[(-1)]
+                    else:
+                        l = string.split(id, ':')
+                        if len(l) == 2:
+                            id = string.split(id, ':')[0]
+                        if len(l) == 3:
+                            id = string.split(id, ':')[1]
+                        sc = 'En'
+                        if ' ' in id:
+                            ids = string.split(id, ' ')
+                            if 'ENS' in ids[(-1)] or 'G0000' in ids[(-1)]:
+                                id = ids[(-1)]
+                            else:
+                                id = ids[0]
+                elif sy == 'En' and '&' in id:
+                    for i in string.split(id, '&'):
+                        if 'G0000' in i:
+                            id = i
+                            sc = 'En'
+                            break
+
+                elif sy == 'Sy' and 'EFN' in id:
+                    sc = 'En'
+                else:
+                    sc = sy
+                if sy == 'S':
+                    if ':' in id:
+                        id = string.split(id, ':')[(-1)]
+                        sc = 'Ae'
+                if '&' in id:
                     sc = 'Ae'
-            if '&' in id:
-                sc = 'Ae'
-            if (len(id)==9 and "SRS" in id) or (len(id)==15 and "TCGA-" in id):
-                sc = 'En'
-            try: export_elite.write(id+'\t'+sc+'\n')
-            except Exception: export_elite.write(id+'\n') ### if no System Code known
-            allGenes[id]=[]
+                if len(id) == 9 and 'SRS' in id or len(id) == 15 and 'TCGA-' in id:
+                    sc = 'En'
+                try:
+                    export_elite.write(id + '\t' + sc + '\n')
+                except Exception:
+                    export_elite.write(id + '\n')
+                else:
+                    allGenes[id] = []
         export_elite.close()
-    
+            
     try:
         if storeGeneSetName != None:
             if len(storeGeneSetName)>0 and ('guide' not in justShowTheseIDs):
@@ -1935,7 +1954,7 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,
     #if '.cdt' in filename: matrix.reverse(); row_header.reverse()
     for i in group_db2:
         if i not in group_db: group_db[i] = group_db2[i]
-            
+    ##print group_db;sys.exit()
     return matrix, column_header, row_header, dataset_name, group_db
 
 def importSIF(filename):
@@ -4399,6 +4418,8 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
                 """ Mask the samples not present in each examined group below """
                 import ExpressionBuilder
                 sample_group_db = ExpressionBuilder.simplerGroupImport(maskGroups)
+                ##print maskGroups
+                #print sample_group_db;sys.exit()
                 group_sample_db = {}
                 for sample in sample_group_db:
                     try: group_sample_db[sample_group_db[sample]].append(sample)
@@ -6199,25 +6220,37 @@ def simpleCombine(folder):
     
     ea.close()
     
-def simpleCombineFiles(folder):
-    filename = folder+'/combined/combined.txt'
+def simpleCombineFiles(folder, elite_output=True, uniqueOnly=False):
+    filename = folder + '/combined/combined.txt'
     ea = export.ExportFile(filename)
     files = UI.read_directory(folder)
-    firstRow=True
+    unique_entries = []
+    firstRow = True
     for file in files:
         if '.txt' in file:
-            fn = filepath(folder+'/'+file)
-            firstRow=True
-            for line in open(fn,'rU').xreadlines():
+            fn = filepath(folder + '/' + file)
+            firstRow = True
+            for line in open(fn, 'rU').xreadlines():
                 data = cleanUpLine(line)
-                t = string.split(data,'\t')
-                if firstRow:
+                t = string.split(data, '\t')
+                if elite_output:
+                    if firstRow:
+                        t = 'UID\tSystemCode\tCategory'
+                        ea.write(t + '\n')
+                        firstRow = False
+                    elif uniqueOnly:
+                        if t[0] not in unique_entries:
+                            ea.write(t[0] + '\t' + t[0] + '\t\n')
+                        unique_entries.append(t[0])
+                    else:
+                        ea.write(string.join([string.split(t[0], '|')[0], 'Ae', string.replace(file[:-4], 'PSI.', '')], '\t') + '\n')
+                elif firstRow:
                     t.append('Comparison')
-                    ea.write(string.join(t,'\t')+'\n')
+                    ea.write(string.join(t, '\t') + '\n')
                     firstRow = False
                 else:
                     t.append(file[:-4])
-                    ea.write(string.join(t,'\t')+'\n')
+                    ea.write(string.join(t, '\t') + '\n')
     ea.close()
                     
 def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGenes,state,query=None):
@@ -6645,6 +6678,7 @@ def compareEventLists(folder):
                 t = string.split(data,'\t')
                 if firstLine:
                     file_headers[file[:-4]] = t ### Store the headers
+                    cid = t.index('ClusterID')
                     try: event_index = t.index('Event-Direction')
                     except:
                         try: event_index = t.index('Inclusion-Junction') ### legacy
@@ -6653,6 +6687,7 @@ def compareEventLists(folder):
                     continue
                 uid = t[0]
                 uid = string.split(uid,'|')[0]
+                #uid = t[cid]
                 if 'U2AF1-l' in file or 'U2AF1-E' in file:
                     if t[2] == "inclusion":
                         ls[(uid,t[event_index])]=t ### Keep the event data for output
@@ -6960,6 +6995,33 @@ def convertSymbolLog(input_file,ensembl_symbol):
 
     eo.close()
 
+def convertXenaBrowserIsoformDataToStandardRatios(input_file):
+    eo = open(input_file[:-4]+'-log2.txt','w')
+    header=0
+    count=0
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data,'\t')
+        uid = string.split(values[0],'.')[0]
+        isoform = values[0]
+        if header == 0:
+            eo.write(line)
+            header +=1
+        else:
+            values = map(lambda x: math.pow(2,float(x)),values[1:]) # convert list out of log space
+            values = map(lambda x: math.log(float(x)+1,2),values) # convert to value+1 log2
+            def percentExp(x):
+                if x>1: return 1
+                else: return 0
+            counts = map(lambda x: percentExp(x),values) # find how many values > 1
+            if sum(counts)/(len(values)*1.000)>0.1: # only write out genes with >10% of values > 1
+                values = map(str,values)
+                values = string.join([uid]+values,'\t')
+                eo.write(values+'\n')
+                count+=1
+    eo.close()
+    print count,'genes written'
+    
 def outputForGOElite(folds_dir):
     
     matrix, column_header, row_header, dataset_name, group_db = importData(folds_dir,Normalize=False)
@@ -7124,7 +7186,7 @@ def removeMarkerFinderDoublets(heatmap_file,diff=1):
     try: sampleIndexSelection.filterFile(input_file,output_file,remove)
     except: sampleIndexSelection.filterFile(input_file,output_file,remove_alt)
     
-def exportTFcorrelations(filename,TF_file,threshold):
+def exportTFcorrelations(filename,TF_file,threshold,anticorrelation=False):
     
     eo = export.ExportFile(filename[:-4]+'-TF-correlations.txt')
     TFs = simpleListImport(TF_file)
@@ -7144,13 +7206,583 @@ def exportTFcorrelations(filename,TF_file,threshold):
                     #print row_header[i], row_header[k], v
                     if row_header[i] in TFs or row_header[k] in TFs:
                         #correlation_pairs.append([row_header[i],row_header[k],v])
-                        if v<(-1*threshold) or v>threshold:
+                        if anticorrelation:
+                            if v<(-1*threshold):
+                                eo.write(row_header[i]+'\t'+row_header[k]+'\t'+str(v)+'\n')
+                        elif v<(-1*threshold) or v>threshold:
                             eo.write(row_header[i]+'\t'+row_header[k]+'\t'+str(v)+'\n')
             k+=1    
         i+=1
     eo.close()
+    
+def TFisoformImport(filename):
+    isoform_db = {}
+    for line in open(filename, 'rU').xreadlines():
+        data = line.rstrip()
+        trans, prot, gene, symbol, uid, uid2, uid3 = string.split(data, '\t')
+        isoform_db[trans] = (symbol, prot)
 
+    return isoform_db
+
+def exportIntraTFIsoformCorrelations(filename, TF_file, threshold, anticorrelation=False):
+    eo = export.ExportFile(filename[:-4] + '-TF-correlations.txt')
+    isoform_db = TFisoformImport(TF_file)
+    x, column_header, row_header, dataset_name, group_db = importData(filename)
+    ### For methylation data or other data with redundant signatures, remove these and only report the first one
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=RuntimeWarning)
+        D1 = numpy.corrcoef(x)
+    i = 0
+    correlation_pairs = []
+    for score_ls in D1:
+        k = 0
+        for v in score_ls:
+            if str(v) != 'nan':
+                if k != i:
+                    if row_header[i] in isoform_db or row_header[k] in isoform_db:
+                        try:
+                            gene1, prot1 = isoform_db[row_header[i]]
+                            gene2, prot2 = isoform_db[row_header[k]]
+                            if gene1 == gene2:
+                                if anticorrelation:
+                                    if v < -1 * threshold:
+                                        eo.write(row_header[i] + '\t' + row_header[k] + '\t' + str(v) + '\n')
+                                elif v < -1 * threshold or v > threshold:
+                                    eo.write(row_header[i] + '\t' + row_header[k] + '\t' + str(v) + '\n')
+                        except:
+                            pass
+            k += 1
+        i += 1
+    eo.close()
+
+def PSIfilterAndImpute(folder):
+    ### Filter a PSI file and impute missing values based on neighbors
+    files = UI.read_directory(folder)
+    for file in files:
+        filename = folder + '/' + file
+        if '.txt' in file:
+            eo = export.ExportFile(filename[:-4] + '-impute.txt')
+            header = True
+            count = 0
+            for line in open(filename, 'rU').xreadlines():
+                data = cleanUpLine(line)
+                values = string.split(data, '\t')
+                t0 = values[1]
+                tl = values[(-1)]
+                vs = values[1:]
+                if header:
+                    header = False
+                    eo.write(line)
+                elif len(vs) == len(vs) - vs.count(''):
+                    sum_val = sum(map(float, vs)) / len(vs)
+                    if sum_val != 1 and sum_val != 0:
+                        eo.write(line)
+                        count += 1
+                elif len(vs) - vs.count('') > len(vs) - 3:
+                    new_values = []
+                    i = 0
+                    for v in vs:
+                        if v=='':
+                            if i==0: ### if the first element is null
+                                try: new_values.append((float(vs[i+1])+float(tl))/2)
+                                except: new_values.append(None) ### If two nulls occur in a row
+                            elif i==len(vs)-1: ### if the last element is null
+                                try: new_values.append((float(vs[i-1])+float(t0))/2)
+                                except: new_values.append(None) ### If two nulls occur in a row
+                            else: ### if the another element is null
+                                try: new_values.append((float(vs[i-1])+float(vs[i+1]))/2)
+                                except: new_values.append(None) ### If two nulls occur in a row
+                        else:
+                            new_values.append(v)
+                        i += 1
+
+                    if None not in new_values:
+                        sum_val = sum(map(float, new_values)) / len(new_values)
+                        if sum_val != 1 and sum_val != 0:
+                            eo.write(string.join([values[0]] + map(str, new_values), '\t') + '\n')
+                            count += 1
+            eo.close()
+            print count, '\t', fileg
+
+def summarizePSIresults(folder, TF_file):
+    TFs = simpleListImport(TF_file)
+    ### Import PSI results and report number of impacted TFs
+    files = UI.read_directory(folder)
+    eo = export.ExportFile(folder + '/TF_events.txt')
+    all_TFs = []
+    for file in files:
+        TFs_in_file = []
+        filename = folder + '/' + file
+        if '.txt' in file and 'PSI.' in file:
+            header = True
+            count = 0
+            header = True
+            for line in open(filename, 'rU').xreadlines():
+                if header:
+                    header = False
+                else:
+                    data = cleanUpLine(line)
+                    t = string.split(data, '\t')
+                    symbol = string.split(t[0], ':')[0]
+                    dPSI = abs(float(t[(-5)]))
+                    if symbol in TFs and symbol not in TFs_in_file and dPSI > 0.2:
+                        eo.write(string.join(t + [file], '\t') + '\n')
+                        TFs_in_file.append(symbol)
+                        if symbol not in all_TFs:
+                            all_TFs.append(symbol)
+                        count += 1
+            print file, count, len(all_TFs), string.join(TFs_in_file, ',')
+
+    eo.close()
+
+def convertPSICoordinatesToBED(folder):
+    files = UI.read_directory(folder)
+    eo = export.ExportFile(folder + '/combined.bed')
+    all_TFs = []
+    for file in files:
+        TFs_in_file = []
+        filename = folder + '/' + file
+        if '.txt' in file:
+            header = True
+            count = 0
+            header = True
+            for line in open(filename, 'rU').xreadlines():
+                if header:
+                    header = False
+                else:
+                    data = cleanUpLine(line)
+                    t = string.split(data, '\t')
+                    symbol = string.split(t[0], ':')[0]
+                    try:
+                        coordinates = t[7]
+                    except:
+                        print t
+                        sys.exit()
+                    else:
+                        j1, j2 = string.split(coordinates, '|')
+                        c1a, c1b = map(int, string.split(j1.split(':')[1], '-'))
+                        strand = '+'
+                        if c1a > c1b:
+                            c1a, c1b = c1b, c1a
+                            strand = '-'
+                        c2a, c2b = map(int, string.split(j2.split(':')[1], '-'))
+                        if c2a > c2b:
+                            c2a, c2b = c2b, c2a
+                        chr = string.split(coordinates, ':')[0]
+                        uid = string.replace(t[0], ':', '__')
+                        eo.write(string.join([chr, str(c1a), str(c1b), uid + '--' + file, strand, str(c1a), str(c1b), '0'], '\t') + '\n')
+                        eo.write(string.join([chr, str(c2a), str(c2b), uid + '--' + file, strand, str(c2a), str(c2b), '0'], '\t') + '\n')
+    eo.close()
+
+def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
+    if 'Baboon' in Mm_Ba_coordinates:
+            equivalencies={'Heart':['Heart'],
+                   'Kidney':['Kidney-cortex','Kidney-medulla'],
+                   'WFAT':['White-adipose-pericardial','White-adipose-mesenteric','White-adipose-subcutaneous','Omental-fat'],
+                   'BFAT':['White-adipose-pericardial','White-adipose-mesenteric','White-adipose-subcutaneous','Omental-fat'],
+                   'Lung':['Lungs'],
+                   'Cere':['Cerebellum','Ventromedial-hypothalamus','Habenula','Pons','Pineal-gland','Visual-cortex','Lateral-globus-pallidus',
+                           'Paraventricular-nuclei','Arcuate-nucleus','Suprachiasmatic-nuclei','Putamen','Optic-nerve-head', 'Medial-globus-pallidus',
+                           'Amygdala','Prefontal-cortex','Dorsomedial-hypothalamus'],
+                   'BS':['Cerebellum','Ventromedial-hypothalamus','Habenula','Pons','Pineal-gland','Visual-cortex','Lateral-globus-pallidus',
+                           'Paraventricular-nuclei','Arcuate-nucleus','Suprachiasmatic-nuclei','Putamen','Optic-nerve-head', 'Medial-globus-pallidus',
+                           'Amygdala','Prefontal-cortex','Dorsomedial-hypothalamus'],
+                   'Hypo':['Cerebellum','Ventromedial-hypothalamus','Habenula','Pons','Pineal-gland','Visual-cortex','Lateral-globus-pallidus',
+                           'Paraventricular-nuclei','Arcuate-nucleus','Suprachiasmatic-nuclei','Putamen','Optic-nerve-head', 'Medial-globus-pallidus',
+                           'Amygdala','Prefontal-cortex','Dorsomedial-hypothalamus'],
+                   'Adrenal':['Adrenal-cortex','Adrenal-medulla'],
+                   'SM':['Muscle-gastrocnemian','Muscle-abdominal'],
+                   'Liver':['Liver'],
+                    }
+    else:
+            equivalencies={'Heart':['Heart'],
+                   'Kidney':['Kidney','Kidney'],
+                   'WFAT':['WFAT'],
+                   'BFAT':['BFAT'],
+                   'Lung':['Lungs'],
+                   'Adrenal':['Adrenal'],
+                   'Liver':['Liver'],
+                    }
+    eo = export.ExportFile(Mm_Ba_coordinates[:-4] + '-matched.txt')
+    eo2 = export.ExportFile(Mm_Ba_coordinates[:-4] + '-matrix.txt')
+    mouse_events = {}
+    baboon_events = {}
+    baboon_corridinates = {}
+    ### This mouse circadian events file has been lifted over to baboon coordinates
+    countX = 0
+    for line in open(Mm_Ba_coordinates, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data, '\t')
+        chr, c1, c2, event, strand, null, null, null = values
+        event = string.replace(event, '__', ':')
+        event, tissue = event.split('--')
+        junctions = string.split(event, ':')[1:]
+        junctions = string.join(junctions, ':')
+        junctions = string.split(junctions, '|')
+        junctions.sort() ### make a unique event
+        junctions = string.join(junctions, '|')
+        symbol = string.split(event, ':')[0]
+        event = symbol + ':' + junctions
+        countX += 1
+        tissue = string.replace(tissue, '_event_annot_file.txt', '')
+        tissue = string.replace(tissue, 'PSI.', '')
+        tissue = string.replace(tissue, '_Mm', '')
+        junction = chr + ':' + c2 + '-' + c1
+        alt_junction1 = chr + ':' + str(int(c2) + 1) + '-' + str(int(c1) + 1)
+        alt_junction2 = chr + ':' + str(int(c2) - 1) + '-' + str(int(c1) - 1)
+        try:
+            mouse_events[junction].append([event, tissue])
+        except:
+            mouse_events[junction] = [[event, tissue]]
+        else:
+            try:
+                mouse_events[alt_junction1].append([event, tissue])
+            except:
+                mouse_events[alt_junction1] = [[event, tissue]]
+            else:
+                try:
+                    mouse_events[alt_junction2].append([event, tissue])
+                except:
+                    mouse_events[alt_junction2] = [[event, tissue]]
+                else:
+                    junction = chr + ':' + c1 + '-' + c2
+                    alt_junction1 = chr + ':' + str(int(c1) + 1) + '-' + str(int(c2) + 1)
+                    alt_junction2 = chr + ':' + str(int(c1) - 1) + '-' + str(int(c2) - 1)
+                    try:
+                        mouse_events[junction].append([event, tissue])
+                    except:
+                        mouse_events[junction] = [[event, tissue]]
+
+                try:
+                    mouse_events[alt_junction1].append([event, tissue])
+                except:
+                    mouse_events[alt_junction1] = [[event, tissue]]
+
+            try:
+                mouse_events[alt_junction2].append([event, tissue])
+            except:
+                mouse_events[alt_junction2] = [[event, tissue]]
+
+    for line in open(Ba_events, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data, '\t')
+        event, tissue_num, tissues, coordinates = values
+        junctions = string.split(event, ':')[1:]
+        junctions = string.join(junctions, ':')
+        junctions = string.split(junctions, '|')
+        junctions.sort()
+        junctions = string.join(junctions, '|')
+        symbol = string.split(event, ':')[0]
+        event = symbol + ':' + junctions
+        baboon_corridinates[event] = coordinates
+        try:
+            j1, j2 = string.split(coordinates, '|')
+        except:
+            continue
+        else:
+            tissues = tissues.split('|')
+            try:
+                baboon_events[j1].append([event, tissues])
+            except:
+                baboon_events[j1] = [[event, tissues]]
+
+            try:
+                baboon_events[j2].append([event, tissues])
+            except:
+                baboon_events[j2] = [[event, tissues]]
+
+    print len(mouse_events), len(baboon_events)
+    common = 0
+    matched_events = {}
+    matched_mm_events = {}
+    tissue_matrix = {}
+    mm_single_tissue_counts = {}
+    ba_single_tissue_counts = {}
+    for junction in mouse_events:
+        if junction in baboon_events:
+            common += 1
+            mm_events = {}
+            for mm_event, mm_tissue in mouse_events[junction]:
+                try:
+                    mm_events[mm_event].append(mm_tissue)
+                except:
+                    mm_events[mm_event] = [mm_tissue]
+
+            for mm_event in mm_events:
+                mm_tissues = mm_events[mm_event]
+                mm_tissues = unique.unique(mm_tissues)
+                for ba_event, ba_tissues in baboon_events[junction]:
+                    ba_tissues = unique.unique(ba_tissues)
+                    matched_events[(mm_event, ba_event)] = (mm_tissues, ba_tissues)
+                    matched_mm_events[mm_event] = []
+
+    def matchingTissues(mouse, baboon):
+        m_matches = []
+        b_matches = []
+        for m in mouse:
+            for b in baboon:
+                if m in equivalencies:
+                    if b in equivalencies[m]:
+                        m_matches.append(m)
+                        b_matches.append(b)
+
+        if len(m_matches) == 0:
+            return ''
+        m_matches = string.join(unique.unique(m_matches), ', ')
+        b_matches = string.join(unique.unique(b_matches), ', ')
+        return m_matches + ':' + b_matches
+
+    for mm_event, ba_event in matched_events:
+        mm_tissues, ba_tissues = matched_events[(mm_event, ba_event)]
+        matching_tissues = matchingTissues(mm_tissues, ba_tissues)
+        eo.write(string.join([mm_event, ba_event, string.join(mm_tissues, '|'), string.join(ba_tissues, '|'), str(len(mm_tissues)), str(len(ba_tissues)), matching_tissues], '\t') + '\n')
+        for mt in mm_tissues:
+            for bt in ba_tissues:
+                try:
+                    tissue_matrix[(mt, bt)] += 1
+                except:
+                    tissue_matrix[(mt, bt)] = 1
+                else:
+                    try:
+                        mm_single_tissue_counts[mt] += 1
+                    except:
+                        mm_single_tissue_counts[mt] = 1
+
+                    try:
+                        ba_single_tissue_counts[bt] += 1
+                    except:
+                        ba_single_tissue_counts[bt] = 1
+
+    print mm_single_tissue_counts['Heart']
+    print tissue_matrix[('Heart', 'Heart')]
+    tissue_matrix_table = []
+    ba_tissues = ['Tissues']
+    for bt in ba_single_tissue_counts:
+        ba_tissues.append(bt)
+
+    eo2.write(string.join(ba_tissues, '\t') + '\n')
+    for mt in mm_single_tissue_counts:
+        table = []
+        for bt in ba_single_tissue_counts:
+            if bt == 'Thyroid' and mt == 'Heart':
+                print tissue_matrix[(mt, bt)]
+                print tissue_matrix[(mt, bt)] / (1.0 * ba_single_tissue_counts[bt])
+            try:
+                table.append(str(tissue_matrix[(mt, bt)] / (1.0 * ba_single_tissue_counts[bt])))
+            except:
+                table.append('0')
+
+        eo2.write(string.join([mt] + table, '\t') + '\n')
+
+    print common, len(matched_events), len(matched_mm_events)
+    eo.close()
+    eo2.close()
+
+def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repair2_folds, reference_fold_dir, repair_dir1, repair_dir2):
+
+    def importCellHarmonyDEGs(folder, repair=False):
+        print folder
+        files = os.listdir(folder)
+        DEG_db = {}
+        for file in files:
+            filename = folder + '/' + file
+            if '.txt' in file and 'GE.' in file:
+                header = True
+                count = 0
+                header = True
+                file = file[:-4]
+                file = string.split(file[3:], '_')[0]
+                if file[:2] == 'DM':
+                    file = 'global'
+                for line in open(filename, 'rU').xreadlines():
+                    if header:
+                        header = False
+                    else:
+                        data = cleanUpLine(line)
+                        t = string.split(data, '\t')
+                        GeneID, SystemCode, LogFold, rawp, adjp, Symbol, avg_g2, avg_g1 = t
+                        rawp = float(rawp)
+                        adjp = float(adjp)
+                        if float(LogFold) > 0:
+                            direction = 'positive'
+                        else:
+                            direction = 'negative'
+                        if repair:
+                            if float(LogFold) > 0:
+                                fold = math.pow(2, float(LogFold))
+                            else:
+                                fold = -1 / math.pow(2, float(LogFold))
+                            if Symbol == 'BC049762':
+                                print 'BC049762', file, LogFold, fold
+                            if abs(fold) > 1.5 and adjp < 0.05:
+                                try:
+                                    DEG_db[Symbol].append([file, direction])
+                                except:
+                                    DEG_db[Symbol] = [[file, direction]]
+
+                        else:
+                            try:
+                                DEG_db[Symbol].append([file, direction])
+                            except:
+                                DEG_db[Symbol] = [[file, direction]]
+
+        return DEG_db
+
+    ref_DEGs = importCellHarmonyDEGs(reference_fold_dir)
+    repaired_DEGs = importCellHarmonyDEGs(repair_dir1, repair=True)
+    repaired2_DEGs = importCellHarmonyDEGs(repair_dir2, repair=True)
+
+    def importCellHarmonyPseudoBulkFolds(filename):
+        fold_db = {}
+        header = True
+        for line in open(filename, 'rU').xreadlines():
+            data = cleanUpLine(line)
+            t = string.split(data, '\t')
+            if header:
+                fold_db['header'] = t[1:]
+                header = False
+            else:
+                uid = t[0]
+                folds = t[1:]
+                fold_db[uid] = folds
+
+        return fold_db
+
+    repaired_fold_db = importCellHarmonyPseudoBulkFolds(repair1_folds)
+    repaired2_fold_db = importCellHarmonyPseudoBulkFolds(repair2_folds)
+    import collections
+    ordered_ref_degs = collections.OrderedDict()
+    ordered_cluster_genes = collections.OrderedDict()
+    repair_verified = collections.OrderedDict()
+    repair2_verified = collections.OrderedDict()
+    cluster_ordered_ref_db = collections.OrderedDict()
+    header = True
+    for line in open(organized_diff_ref, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data, '\t')
+        if header:
+            ref_header = t
+            header = False
+        else:
+            cluster, geneID = string.split(t[0], ':')
+            cluster = string.split(cluster, '_')[0]
+            if cluster[:2] == 'DM':
+                cluster = 'global'
+            ordered_ref_degs[(geneID, cluster)] = t
+            try:
+                cluster_ordered_ref_db[cluster].append(geneID)
+            except:
+                cluster_ordered_ref_db[cluster] = [geneID]
+
+    repaired_verified = {}
+    verified = {}
+    for geneID, ref_cluster in ordered_ref_degs:
+        for cluster, ref_direction in ref_DEGs[geneID]:
+            if geneID in repaired_DEGs:
+                for repair_cluster, repair_direction in repaired_DEGs[geneID]:
+                    if repair_cluster == cluster and ref_direction != repair_direction and ('Neu' in repair_cluster or 'global' in repair_cluster):
+                        try:
+                            repair_verified[repair_cluster].append(geneID)
+                        except:
+                            repair_verified[repair_cluster] = [geneID]
+                        else:
+                            print geneID + '\t' + repair_direction + '\t' + repair_cluster + '\tR412X-HMZ'
+                            try:
+                                verified[geneID].append('R412X-HMZ')
+                            except:
+                                verified[geneID] = ['R412X-HMZ']
+
+            if geneID in repaired2_DEGs:
+                for repair_cluster, repair_direction in repaired2_DEGs[geneID]:
+                    if repair_cluster == cluster and ref_direction != repair_direction and ('Neu' in cluster or 'global' in cluster):
+                        try:
+                            repair2_verified[repair_cluster].append(geneID)
+                        except:
+                            repair2_verified[repair_cluster] = [geneID]
+                        else:
+                            print geneID + '\t' + repair_direction + '\t' + repair_cluster + '\t' + 'R412X-Irf8'
+                            try:
+                                verified[geneID].append('R412X-Irf8')
+                            except:
+                                verified[geneID] = ['R412X-Irf8']
+
+    for gene in verified:
+        verified[gene] = unique.unique(verified[gene])
+
+    eo1 = export.ExportFile(organized_diff_ref[:-4] + '-Repair-Sorted.txt')
+    eo2 = export.ExportFile(organized_diff_ref[:-4] + '-Repaired-Only.txt')
+    header = ref_header + repaired_fold_db['header'] + repaired2_fold_db['header']
+    eo1.write(string.join(header, '\t') + '\n')
+    eo2.write(string.join(header, '\t') + '\n')
+    print len(ordered_ref_degs)
+    print len(repaired_fold_db)
+    print len(repaired2_fold_db)
+    print len(repair_verified)
+    print len(repair2_verified)
+    print len(verified)
+    print len(ordered_ref_degs)
+    prior_cluster = None
+    added_genes = []
+    for geneID, cluster in ordered_ref_degs:
+        try:
+            folds = ordered_ref_degs[(geneID, cluster)] + repaired_fold_db[geneID] + repaired2_fold_db[geneID]
+        except:
+            print '...Error in identifying match UID for:', geneID
+            added_genes.append(geneID)
+            continue
+        else:
+            if geneID not in verified:
+                eo1.write(string.join(folds, '\t') + '\n')
+            elif len(verified[geneID]) > 1:
+                added_genes.append(geneID)
+            elif 'R412X-HMZ' in verified[geneID]:
+                added_genes.append(geneID)
+            else:
+                eo2.write(string.join(folds, '\t') + '\n')
+                added_genes.append(geneID)
+
+    eo1.close()
+    eo2.close()
+    
 if __name__ == '__main__':
+    organized_diff_ref = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-4-Gfi1-R412X-ModGMP-1694-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/centroid-revised/custom/cellHarmony/OrganizedDifferentials.txt'
+    repair1_folds = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-5-Gfi1-R412X-R412X-ModGMP-1362-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/hybrid/cellHarmony-vs-DM2-1.2-fold-adjp/OtherFiles/exp.ICGS-cellHarmony-reference__DM-5-Gfi1-R412X-R412X-ModGMP-1362-D7Cells-ADT-Merged_matrix_CPTT-AllCells-folds.txt'
+    repair2_folds = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT/outs/filtered_gene_bc_matrices/Merged-Cells-iseq/cellHarmony-centroid-revsied/hybrid/cellHarmony/OtherFiles/exp.ICGS-cellHarmony-reference__DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT_matrix-3_matrix_CPTT-hybrid-AllCells-folds.txt'
+    reference_fold_dir = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-4-Gfi1-R412X-ModGMP-1694-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/centroid-revised/custom/cellHarmony/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir1 = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-5-Gfi1-R412X-R412X-ModGMP-1362-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/hybrid/vs-R412X-het/cellHarmony/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir1 = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-5-Gfi1-R412X-R412X-ModGMP-1362-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/hybrid/vs-R412X-het/cellHarmony/OtherFiles/DEGs-LogFold_0.0_rawp'
+    repair_dir2 = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT/outs/filtered_gene_bc_matrices/Merged-Cells-iseq/cellHarmony-centroid-revsied/hybrid/vs-R412X-Het/cellHarmony/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir2 = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT/outs/filtered_gene_bc_matrices/Merged-Cells-iseq/cellHarmony-centroid-revsied/hybrid/vs-R412X-Het/cellHarmony/OtherFiles/DEGs-LogFold_0.0_rawp'
+    TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/NCI-R01/CCSB_TFIso_Clones.txt'
+    PSI_dir = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/TCGA-files-Ens91/bams/AltResults/AlternativeOutput/OncoSPlice-All-Samples-filtered-names/SubtypeAnalyses-Results/round1/Events-dPSI_0.1_adjp/'
+    simpleCombineFiles('/Volumes/salomonis2/NCI-R01/Harvard/BRC_PacBio_Seq/metadataanalysis/PSICluster/TCGA/FilteredTF')
+    sys.exit()
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/TF_ratio_correlation-analysis/tcga_rsem_isopct_filtered-filtered.2-filtered.txt'
+    TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/Ensembl-isoform-key-CCSB.txt'
+    input_file = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana/UO1analysis/xenabrowserFiles/tcga_rsem_isoform_tpm_filtered.txt'
+    Mm_Ba_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Mouse/mm10-circadian_liftOverTo_baboon.txt'
+    Ba_events = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Mouse/Baboon_metacycle-significant-AS-coordinates.txt'
+    Mm_Ba_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Human-Mouse/hg19-mm10-12-tissue-circadian.txt'
+    Ba_events = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Human-Mouse/Human_CYCLOPS-significant-AS-coordinates.txt'
+    filename = '/Users/saljh8/Desktop/DemoData/Venetoclax/D4/cellHarmony-rawp-stringent/gene_summary.txt'
+    filename = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/cellHarmony-latest/gene_summary-p27.txt'
+    filename = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/cell-frequency-stats.txt'
+    
+    TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/NCI-R01/CCSB_TFIso_Clones.txt'
+    PSI_dir = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/TCGA-files-Ens91/bams/AltResults/AlternativeOutput/OncoSPlice-All-Samples-filtered-names/SubtypeAnalyses-Results/round1/Events-dPSI_0.1_adjp/'
+    #convertPSICoordinatesToBED(PSI_dir);sys.exit()
+    summarizePSIresults(PSI_dir,TF_file);sys.exit()
+    
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/TF_ratio_correlation-analysis/tcga_rsem_isopct_filtered-filtered.2-filtered.txt'
+    TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/Ensembl-isoform-key-CCSB.txt'
+    exportIntraTFIsoformCorrelations(filename,TF_file,0.3,anticorrelation=True);sys.exit()
+    input_file= '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana/UO1analysis/xenabrowserFiles/tcga_rsem_isoform_tpm_filtered.txt'
+    #convertXenaBrowserIsoformDataToStandardRatios(input_file);sys.exit()
+    Mm_Ba_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Mouse/mm10-circadian_liftOverTo_baboon.txt'
+    Ba_events = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Mouse/Baboon_metacycle-significant-AS-coordinates.txt'
+    #convertPSICoordinatesToBED(Mm_Ba_coordinates,Ba_events);sys.exit()
+
+    #PSIfilterAndImpute('/Volumes/salomonis2/LabFiles/krithika_circadian/GSE98965-Papio_Anubis/files/grp-files/Filtered-Psi-groups-files'); sys.exit()
     filename='/Users/saljh8/Desktop/DemoData/Venetoclax/D4/cellHarmony-rawp-stringent/gene_summary.txt'
     filename = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/cellHarmony-latest/gene_summary-p27.txt'
     filename = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/cell-frequency-stats.txt'
@@ -7169,24 +7801,24 @@ if __name__ == '__main__':
     #removeMarkerFinderDoublets('/Volumes/salomonis2/Nancy_ratner/2mo-NF/exp.Figure_SX-ICGS-MarkerFinder.filt.txt',diff=diff);sys.exit()
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
-    a = '/Volumes/salomonis2/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all/header.txt'
+    a = '/Users/saljh8/Downloads/groups.CellTypes-Predicted-Label-Transfer-For-Nuclei-matrix.txt'
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     #b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
     #a = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/head.txt'
-    #transposeMatrix(a);sys.exit()
+    ##transposeMatrix(a);sys.exit()
     #convertSymbolLog(a,b);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Liron/MRD-positive-GE/groups.GE.txt'
-    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Liron/MRD-positive-GE/exp.GE.txt'
+    b = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/C202SC19040013/raw_data/ModGMP_PMLRARTG/ModGMP_PMLRARTG/outs/filtered_feature_bc_matrix/AltAnalyze-Outliers-removed/ICGS-NMF-euclidean-ref/groups.ICGS.txt'
+    a = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/C202SC19040013/raw_data/ModGMP_PMLRARTG/ModGMP_PMLRARTG/outs/filtered_feature_bc_matrix/AltAnalyze-Outliers-removed/ICGS-NMF-euclidean-ref/exp.ICGS.txt'
     #convertGroupsToBinaryMatrix(b,a,cellHarmony=False);sys.exit()
-    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/events.txt'
+    a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
     #removeRedundantCluster(a,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
-    #a = '/Users/saljh8/Desktop/circadian_splicing_concordance'
-    #compareEventLists(a);sys.exit()
+    #a = '/Users/saljh8/Desktop/Ashish/all/Events-dPSI_0.1_rawp-0.01/'
+    compareEventLists(a);sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/CORNEL-AML/PSI/exp.Cornell-Bulk.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()
@@ -7274,8 +7906,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
-    gene_list_file = '/Volumes/salomonis2/CCHMC-Collaborations/Joshua_Waxman-10X-Zebrafish/Run2713/AltAnalyze-5000-cells/10X_WT_20180831_3zf/markers.txt'
-    genesets = importGeneList(gene_list_file,n=43)
+    gene_list_file = '/Users/saljh8/Dropbox/Manuscripts/MBNL1/genes.txt'
+    genesets = importGeneList(gene_list_file,n=1)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -7291,7 +7923,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
-    filename = '/Volumes/salomonis2/CCHMC-Collaborations/Joshua_Waxman-10X-Zebrafish/Run2713/AltAnalyze-5000-cells/10X_WT_20180831_3zf/ExpressionInput/exp.10X_WT_matrix-5000-filterted_matrix_CPTT-ICGS.txt'
+    filename = '/Users/saljh8/Dropbox/Manuscripts/MBNL1/exp.MBNL1-all.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
     #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
@@ -7301,7 +7933,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=43)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=1)
     sys.exit()
 
     plotHistogram(filename);sys.exit()
