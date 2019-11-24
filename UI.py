@@ -430,9 +430,9 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, self._parent))
             except Exception,e: createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose,contrast,None)
         if analysis_type == 'performPCA':
-            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores = info_list
-            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores))
-            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores)
+            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores, maskGroups = info_list
+            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, maskGroups=maskGroups))
+            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, maskGroups=maskGroups)
         if analysis_type == 'runLineageProfiler':
             fl, filename, vendor, custom_markerFinder, geneModel_file, modelDiscovery = info_list
             try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent, modelSize=modelDiscovery))
@@ -689,7 +689,7 @@ def exportAdditionalICGSOutputs(expFile,group_selected,outputTSNE=True):
     ### Create the new groups file but don't over-write the old
     import RNASeq
     new_groups_dir = RNASeq.exportGroupsFromClusters(group_selected,expFile,array_type,suffix='ICGS')
-    from import_scripts import sampleIndexSelection
+    from import_scripts import sampleIndexSelection; reload(sampleIndexSelection)
 
     ### Look to see if a UMAP file exists in ICGS-NMF
     if 'ICGS-NMF' in group_selected or 'NMF-SVM' in group_selected:
@@ -769,6 +769,9 @@ def predictSampleExpGroups(expFile, mlp_instance, gsp, reportOnly, root, exportA
             reload(ICGS_NMF)
             scaling = True ### Performs pagerank downsampling if over 2,500 cells - currently set as a hard coded default
             dynamicCorrelation=True
+            status = verifyFile(expFile)
+            if status=='no':
+                expFile = string.replace(expFile,'-steady-state','') ### Occurs for Kallisto processed
             graphic_links=ICGS_NMF.runICGS_NMF(expFile,scaling,array_type,species,gsp,enrichmentInput='',dynamicCorrelation=True)
             #graphic_links = RNASeq.singleCellRNASeqWorkflow(species, array_type, expFile, mlp_instance, parameters=gsp, reportOnly=reportOnly)
         if gsp.FeaturestoEvaluate() != 'Genes':
@@ -2193,8 +2196,11 @@ class GUI:
                         self.arraycomp.selectitem(selected_default)
                         self.callbackComboBox(selected_default,option) 
                     except Exception:
-                        self.arraycomp.selectitem(self.default_option[0])
-                        self.callbackComboBox(self.default_option[0],option)
+                        try:
+                            self.arraycomp.selectitem(self.default_option[0])
+                            self.callbackComboBox(self.default_option[0],option)
+                        except:
+                            pass
                 elif 'manufacturer_selection' in option:
                     self.vendorcomp = self.comp; self.vendorcomp.pack(anchor = 'w', padx = 10, pady = 0)
                     try: self.vendorcomp.component('entryfield_entry').bind('<Button-1>', lambda event, self=self: self.vendorcomp.invoke())
@@ -3084,7 +3090,7 @@ def getSpeciesList(vendor):
             os.remove(filepath('Config/version.txt'))
             #raw = export.ExportFile('Config/species.txt'); raw.close()
             os.mkdir(filepath('AltDatabase'))
-            AltAnalyze.AltAnalyzeSetup('no'); sys.exit() 
+            AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
         except Exception:
             print traceback.format_exc()
             print 'Cannot write Config/version.txt to the Config directory (likely Permissions Error)'
@@ -5655,6 +5661,12 @@ def getUserParameters(run_parameter,Multi=None):
                     zscore = gu.Results()['zscore']
                     transpose = gu.Results()['transpose']
                     geneSetName = gu.Results()['pcaGeneSets']
+                    try:
+                        maskGroups = gu.Results()['maskGroups']
+                        if len(maskGroups)<1:
+                            maskGroups=None
+                    except:
+                        maskGroups = None
                     reimportModelScores = gu.Results()['reimportModelScores']
                     if reimportModelScores == 'yes':
                         reimportModelScores = True
@@ -5681,7 +5693,7 @@ def getUserParameters(run_parameter,Multi=None):
                         analysis = 'performPCA'
                         if transpose == 'yes': transpose = True
                         else: transpose = False
-                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores
+                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores, maskGroups
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:

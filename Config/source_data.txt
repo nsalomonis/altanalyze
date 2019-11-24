@@ -76,4 +76,4 @@ DEDb	De
 OTT	Ot	
 Symbol	Sy	
 KEGG_Enzyme	KEG	
-AltExon	Ae	
+AltExon	Ae	MOD

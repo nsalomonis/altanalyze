@@ -298,7 +298,7 @@ def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499):
     stdev = int(statistics.stdev(distribution))
     min_exp = int(min(distribution))
     cutoff = avg - (stdev*2)
-    dev = 2  
+    dev = 2
     print 'The average number of genes expressed above %s is %s, (SD is %s, min is %s)' % (threshold,avg,stdev,min_exp)
     if cutoff<0:
         if (stdev-avg)>0:

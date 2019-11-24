@@ -128,6 +128,7 @@ def importInteractionDatabases(interactionDirs):
                             except Exception: None
                     except Exception:
                         proceed = False
+
                 if proceed: ### If the interaction data conformed to one of the two above types (typically two valid interacting gene IDs)
                     if (len(ens_ls1)>0 and len(ens_ls2)>0):
                         secondary_proceed = True
@@ -218,7 +219,7 @@ def importInteractionDatabases(interactionDirs):
     ### Evaluate the most promiscous interactors (e.g., UBC)
     remove_list=[]
     for ID in interaction_db:
-        if len(interaction_db[ID])>2000:
+        if len(interaction_db[ID])>20000:
             remove_list.append(ID)
             #print len(interaction_db[ID]),ensembl_symbol_db[ID]
     for ID in remove_list:
@@ -364,7 +365,8 @@ def associateQueryGenesWithInteractions(query_db,query_interactions,dir_file):
     connections = 1
     primary=0
     secondary=0
-    terciary=0 
+    terciary=0
+
     for ensemblGene in query_db:
         if ensemblGene in interaction_db:
             for interacting_ensembl in interaction_db[ensemblGene]:

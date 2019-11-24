@@ -2110,7 +2110,7 @@ def returnDirectoriesNoReplace(dir):
     dir_list = unique.returnDirectoriesNoReplace(dir); dir_list2 = []
     for entry in dir_list:
         if '.' not in entry: dir_list2.append(entry)
-    return dir_list2 
+    return dir_list2
 
 ###### Command Line Functions (AKA Headless Mode) ######
 def commandLineRun():
@@ -2243,7 +2243,7 @@ def commandLineRun():
 
     if len(resources)>1: resources_to_analyze = resources
     elif len(resources)>0: resources_to_analyze = resources[0]
-    
+
     species_full_original = species_full; species_code_original = species_code
     if image_export != None:
         if image_export == 'WikiPathways':
@@ -2753,8 +2753,11 @@ def commandLineRun():
         try:
             import UI
             species_dirs = UI.returnDirectoriesNoReplace('/Databases')
-        except Exception:
-            print '\nPlease install a species database (to install: python GO_Elite.py --update Official --species Hs --version EnsMart62Plus)';sys.exit()
+        except:
+            try:
+                species_dirs = UI.returnDirectoriesNoReplace('/AltDatabase')
+            except Exception:
+                print '\nPlease install a species database (to install: python GO_Elite.py --update Official --species Hs --version EnsMart62Plus)';sys.exit()
 
         print ''
         root = parent; runGOElite(mod)

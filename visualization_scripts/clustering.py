@@ -303,7 +303,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         cmap=pylab.cm.Greys
     if color_gradient == 'yellow_orange_red':
         cmap=pylab.cm.YlOrRd
-        
+    if color_gradient == 'Spectral':
+        cmap=pylab.cm.Spectral_r
+
     vmin=x.min()
     vmax=x.max()
     vmax = max([vmax,abs(vmin)])
@@ -1406,7 +1408,12 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
                 id = string.split(id,':')[1]
                 if ' ' in id:
                     id = string.split(id,' ')[0]
-                if 'G000' in id: sy = 'En'
+                if 'G000' in id:
+                    ids = tring.split(id,':')
+                    ids_alt = tring.split(id,'__')
+                    if len(ids)>1 or len(ids_alt)>1:
+                        sy = 'Ae'
+                    else: sy = 'En'
                 else: sy = 'Sy'
         except Exception: pass
         try: cluster_db[cluster].append(id)
@@ -2121,7 +2128,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             i=0
             for sample_name in column_header:
                 newColumnHeader.append(str(prior_clusters[i])+':'+sample_name)
-                i+=1 
+                i+=1
             group_db, column_header = assignGroupColors(newColumnHeader)    
     except Exception,e:
         print traceback.format_exc()

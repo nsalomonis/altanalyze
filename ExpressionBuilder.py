@@ -365,8 +365,6 @@ def simpleGroupImport(group_dir,splitHeaders=False, ignoreComps=False, reverseOr
         data = cleanUpLine(line)
         try: sample_filename,group_number,group_name = string.split(data,'\t')
         except Exception:
-            print group_dir
-            print data
             print traceback.format_exc()
             print "\nWARNING!!! Impropper groups file format detected. Terminating AltAnalyze. The groups file must have only three columns (sampleName, groupNumber, groupName).\n"
             forceGroupsError
@@ -4112,7 +4110,7 @@ if __name__ == '__main__':
     try: genesToExclude = excludeGenesImport(excludeGenes)
     except Exception: genesToExclude = {}
     print analysis
-    if array_type == 'RNASeq': 
+    if array_type == 'RNASeq':
         gene_exp_threshold = 50
         gene_rpkm_threshold = 3
     if analysis == 'matchAndCorrelate':

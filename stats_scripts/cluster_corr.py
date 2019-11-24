@@ -40,7 +40,7 @@ def read_labels_dictionary(filename):
 
 def data_check(ref_h5_filename, query_h5_filename):
     """ If h5 files, are both h5? """
-    if 'h5' in ref_h5_filename and 'h5' not in query_h5_filename:
+    if '.h5' in ref_h5_filename and '.h5' not in query_h5_filename:
         return False
     else:
         return True
@@ -150,10 +150,10 @@ def find_shared_genes(h5_filename,genome=None,gene_list=None):
     """
     Selects genes shared by the reference, query and gene_list
     for filtering genes
-    """     
+    """    
     
     if gene_list !=None:
-        if 'h5' in h5_filename:
+        if '.h5' in h5_filename:
             genes = CellCollection.from_cellranger_h5(h5_filename,returnGenes=True)
         elif 'txt' in h5_filename:
             try:
@@ -183,7 +183,7 @@ def partition_h5_file(h5_filename, gene_list=None, num_neighbors=10, num_trees=1
 
     Return Result: A dictionary, where the keys are partition ids and the values are the CellCollection for that partition
     """
-    if 'h5' in h5_filename:
+    if '.h5' in h5_filename:
         collection = CellCollection.from_cellranger_h5(h5_filename)
         data_type = 'h5'
     elif 'txt' in h5_filename:

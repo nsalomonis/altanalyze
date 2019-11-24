@@ -5,7 +5,7 @@ try:
     from h5py import defs, utils, h5ac, _proxy # for py2app
 except:
     print ('Missing the h5py library (hdf5 support)...')
- 
+
 import gzip
 import scipy.io
 from scipy import sparse, stats, io

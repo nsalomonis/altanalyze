@@ -289,7 +289,7 @@ def community_sampling(inputfile):
         diclst[i]=ind
 
     G=nx.from_dict_of_lists(diclst)
-    #nx.write_adjlist(G,"test.adjlist")
+   # nx.write_adjlist(G,"test.adjlist")
     #G=nx.read_adjlist("test.adjlist")
     dendrogram= community.generate_dendrogram(G)
     #for level in range(len(dendrogram) - 1):
@@ -480,7 +480,7 @@ def PageRankSampling(inputfile,downsample_cutoff):
     if len(sampmark)>downsample_cutoff:
         output_file=inputfile[:-4]+'-filtered.txt'
         sampleIndexSelection.filterFile(inputfile,output_file,sampmark)
-        sampmark=sampling(output_file)
+        sampmark=PageRankSampling(output_file,downsample_cutoff)
         return sampmark
     else:
         return sampmark
@@ -901,9 +901,7 @@ def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_clus
     for i in range(len(genes)):
         exportnam.write(genes2[i][1]+"\t"+genes2[i][0])
         for j in range(len(samples)):
-            try: exportnam.write("\t"+matrix[genes[i],samples2[j]])
-            except:
-                continue
+            exportnam.write("\t"+matrix[genes[i],samples2[j]])
         exportnam.write("\n")
         
     exportnam.close()
@@ -963,7 +961,7 @@ def generateMarkerheatmap(processedInputExpFile,output_file,NMFSVM_centroid_clus
 
 def callICGS(processedInputExpFile,species,rho_cutoff,dynamicCorrelation,platform,gsp):
     
-    #Run ICGS recursively to dynamically identify the best rho cutoff 
+    #Run ICGS recursively to dynamically identify the best rho cutoff
     graphic_links3,n = RNASeq.singleCellRNASeqWorkflow(species,platform,processedInputExpFile,mlp,dynamicCorrelation, rpkm_threshold=0, parameters=gsp)
     if n>5000 and dynamicCorrelation:
             rho_cutoff=rho_cutoff+0.1
@@ -1389,7 +1387,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     
     if n>downsample_cutoff and scaling:
        
-        if n>25000: ### For extreemly large datasets, Louvain is used as a preliminary downsampling before pagerank
+        if n>15000: ### For extreemly large datasets, Louvain is used as a preliminary downsampling before pagerank
             print 'Performing Community Clustering...'
             inputExpFileScaled=inputExpFile[:-4]+'-Louvain-downsampled.txt'
             ### Louvain clustering for down-sampling from >25,000 to 10,000 cells

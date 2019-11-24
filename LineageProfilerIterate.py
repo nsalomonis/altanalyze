@@ -1,5 +1,5 @@
 ### Based on code from AltAnalyze's LineageProfiler (http://altanalyze.org)
-#Author Nathan Salomonis - nsalomonis@gmail.com  
+#Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
 #of this software and associated documentation files (the "Software"), to deal 
@@ -2208,14 +2208,14 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
         except: pass
         """ Output UMAP combined plot colored by reference and query cell identity """
         plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+            display=False, geneSetName=None, species=species, zscore=False, reimportModelScores=False,
             separateGenePlots=False, returnImageLoc=True)
         plot = plot[-1][-1][:-4]+'.pdf'
         shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-vs-ref.pdf')
 
         """ Output UMAP combined plot colored by cell tates """
         plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species='Mm', zscore=True, reimportModelScores=True,
+            display=False, geneSetName=None, species='Mm', zscore=False, reimportModelScores=True,
             separateGenePlots=False, returnImageLoc=True, forceClusters=True)
         plot = plot[-1][-1][:-4]+'.pdf'
         shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-vs-ref-clusters.pdf')
@@ -2223,7 +2223,7 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
         """ Output individual UMAP plots colored by cell tates """
         groups_file = string.replace(output_file,'exp.','groups.')
         plots = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species='Mm', zscore=True, reimportModelScores=True,
+            display=False, geneSetName=None, species='Mm', zscore=False, reimportModelScores=True,
             separateGenePlots=False, returnImageLoc=True, forceClusters=True, maskGroups=groups_file)
         for plot in plots:
             plot = plot[-1][:-4]+'.pdf'
@@ -4252,46 +4252,50 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         eo.close()
     except:
         returnCentroids = False ### When an error occurs, use community alignment
-        
-    if combineFullDatasets:
-        """ Merge the query and the reference expression files """
-        print 'Producing a merged input and query expression file (be patient)...'
-        query_exp_matrix, query_header, query_row_header, null, group_db_exp = clustering.importData(query_exp_file)
-        reference_exp_matrix, reference_header, ref_row_header, null, group_db_exp = clustering.importData(expdir)
-
-        """ Simple combine of the two expression files without normalization """
-        try:
-            #ref_filename = export.findFilename(expdir)
-            ref_filename = export.findFilename(cellHarmonyReferenceFile)
-            query_filename = export.findFilename(query_exp_file)
-            root_dir = export.findParentDir(query_exp_file)
-            output_dir = ref_filename[:-4]+'__'+query_filename[:-4]+'-AllCells.txt' ### combine the filenames and query path
-            output_dir = string.replace(output_dir,'OutliersRemoved-','')
-            output_dir = string.replace(output_dir,'-centroid__','__')
-            ### Matches the outputdir name from the function importAndCombineExpressionFiles
-            output_dir = string.replace(root_dir,'/ExpressionInput','')+'/cellHarmony/exp.'+string.replace(output_dir,'exp.','')
-            group_ref_export_dir = string.replace(output_dir,'exp.','groups.')
-            group_ref_export_dir = string.replace(group_ref_export_dir,'-AllCells.','-Reference.')
-        
-            eo = export.ExportFile(output_dir)
-            eo.write(string.join(['UID']+reference_header+query_header,'\t')+'\n')
-            for uid in ref_row_header:
-                ri=ref_row_header.index(uid)
-                if uid in query_row_header:
-                    qi=query_row_header.index(uid)
-                    eo.write(string.join([uid]+map(str,reference_exp_matrix[ri])+map(str,query_exp_matrix[qi]),'\t')+'\n')
-            eo.close()
-            print 'Combined query and reference expression file exported to:'
-            eo = export.ExportFile(group_ref_export_dir)
+    try:
+        if combineFullDatasets:
+            """ Merge the query and the reference expression files """
+            print 'Producing a merged input and query expression file (be patient)...'
+            query_exp_matrix, query_header, query_row_header, null, group_db_exp = clustering.importData(query_exp_file)
+            reference_exp_matrix, reference_header, ref_row_header, null, group_db_exp = clustering.importData(expdir)
+    
+            """ Simple combine of the two expression files without normalization """
+            try:
+                #ref_filename = export.findFilename(expdir)
+                ref_filename = export.findFilename(cellHarmonyReferenceFile)
+                query_filename = export.findFilename(query_exp_file)
+                root_dir = export.findParentDir(query_exp_file)
+                output_dir = ref_filename[:-4]+'__'+query_filename[:-4]+'-AllCells.txt' ### combine the filenames and query path
+                output_dir = string.replace(output_dir,'OutliersRemoved-','')
+                output_dir = string.replace(output_dir,'-centroid__','__')
+                ### Matches the outputdir name from the function importAndCombineExpressionFiles
+                output_dir = string.replace(root_dir,'/ExpressionInput','')+'/cellHarmony/exp.'+string.replace(output_dir,'exp.','')
+                group_ref_export_dir = string.replace(output_dir,'exp.','groups.')
+                group_ref_export_dir = string.replace(group_ref_export_dir,'-AllCells.','-Reference.')
             
-            index=0
-            for cell in column_header:
-                eo.write(cell+'\t'+str(priorColumnClusters[index])+'\t'+str(priorColumnClusters[index])+'\n')
-                index+=1
-            eo.close()
-        except:
-            print 'Failed to join the query and reference expression files due to:'
-            print traceback.format_exc()
+                eo = export.ExportFile(output_dir)
+                eo.write(string.join(['UID']+reference_header+query_header,'\t')+'\n')
+                for uid in ref_row_header:
+                    ri=ref_row_header.index(uid)
+                    if uid in query_row_header:
+                        qi=query_row_header.index(uid)
+                        eo.write(string.join([uid]+map(str,reference_exp_matrix[ri])+map(str,query_exp_matrix[qi]),'\t')+'\n')
+                eo.close()
+                print 'Combined query and reference expression file exported to:'
+                eo = export.ExportFile(group_ref_export_dir)
+                
+                index=0
+                for cell in column_header:
+                    eo.write(cell+'\t'+str(priorColumnClusters[index])+'\t'+str(priorColumnClusters[index])+'\n')
+                    index+=1
+                eo.close()
+            except:
+                print 'Failed to join the query and reference expression files due to:'
+                print traceback.format_exc()
+    except:
+        print 'Failed to join the query and reference expression files due to:'
+        print traceback.format_exc()
+        
     if returnCentroids == True or returnCentroids == 'yes' or returnCentroids == 'centroid':
         print 'Using centroids rather than individual cells for alignment.'
         return cellHarmonyReferenceFileMediod
@@ -4377,14 +4381,15 @@ def compareICGSpopulationFrequency(folder):
 if __name__ == '__main__':
         
     import UI
-    folds_file = '/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/exp.ICGS-cellHarmony-reference__AML-AllCells-folds.txt'
-    output = '/Volumes/salomonis2/CCHMC-Collaborations/Doug-Millay-Novo-Seq/10X_Millay_WT_Muscle_20190131_3v3_2/10X_Millay_WT_Muscle/outs/filtered_feature_bc_matrix/cellHarmony'
+    folds_file = '/Users/saljh8/Desktop/CCHMC-Board/exp.MarkerFinder-cellHarmony-reference__MergedFiles-ReOrdered.txt'
+    output = '/Users/saljh8/Desktop/CCHMC-Board/'
     #DEGs_combined = aggregateRegulatedGenes('/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
     
     #folds_file = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/exp.ICGS-cellHarmony-reference__MI-AllCells-folds.txt'
     #output = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/'
     #DEGs_combined = aggregateRegulatedGenes('/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/DifferentialExpression_Fold_1.5_adjp_0.05_less')
-    #DEGs_combined = aggregateRegulatedGenes('/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/DifferentialExpression_Fold_1.5_adjp_0.05',filterGenes=DEGs_combined)
+    #DEGs_combined = aggregateRegulatedGenes('/Volumes/salomonis2/CCHMC-Collaborations/Harinder-singh/scRNASeq/Day_35_Plasma_Cell_Precursors/Day_35/outs/filtered_feature_bc_matrix/cellHarmony/DifferentialExpression_Fold_1.2_adjp_0.05_less')
+    #DEGs_combined = aggregateRegulatedGenes('/Volumes/salomonis2/CCHMC-Collaborations/Harinder-singh/scRNASeq/Day_35_Plasma_Cell_Precursors/Day_35/outs/filtered_feature_bc_matrix/cellHarmony/DifferentialExpression_Fold_1.2_adjp_0.05',filterGenes=DEGs_combined)
 
     platform = 'RNASeq'
     fl = UI.ExpressionFileLocationData(folds_file,'','',''); species='Mm'; platform = 'RNASeq'
@@ -4396,11 +4401,11 @@ if __name__ == '__main__':
     #exportPvalueRankedGenes(species,platform,fl,folds_file,DEGs_combined)
 
     #sys.exit()
-    
-    root_dir = output+'/DifferentialExpression_Fold_1.5_rawp_0.05/'
+    """
+    root_dir = output+'/DifferentialExpression_Fold_1.2_adjp_0.05/'
     print 'Generating gene regulatory networks...'
     import InteractionBuilder
-    
+    pdfs=[]
     pdfs = InteractionBuilder.remoteBuildNetworks(species, root_dir)
     
     networks_dir = output+'/networks/'
@@ -4412,8 +4417,8 @@ if __name__ == '__main__':
         file = string.replace(file,'_cellHarmony-Reference-interactions','')
         shutil.copy(pdf,output+'/networks/'+file)
     """
-    sys.exit()
-
+    #sys.exit()
+    """
     species = 'Hs'
     reference_exp_file = '/Users/saljh8/Desktop/DemoData/sample_data/tempRef/FinalMarkerHeatmap_all.txt'
     query_exp_file = '/Users/saljh8/Desktop/DemoData/sample_data/tempRef/cellHarmony-query_matrix_CPTT.txt'
@@ -4430,8 +4435,45 @@ if __name__ == '__main__':
     sys.exit()
     """
     
-    output_file = '/Volumes/salomonis2/CCHMC-Collaborations/Doug-Millay-Novo-Seq/10X_Millay_WT_Muscle_20190131_3v3_2/10X_Millay_WT_Muscle/outs/filtered_feature_bc_matrix/cellHarmony/OtherFiles/exp.MarkerFinder-cellHarmony-reference__10X_Millay_WT_Muscle_matrix_CPTT-ReOrdered.txt'
+    output_file = '/Users/saljh8/Desktop/CCHMC-Board/exp.MarkerFinder-cellHarmony-reference__MergedFiles-ReOrdered.txt'
+    """
+    if len(folds_file)<1:
+        folds_file = string.replace(output_file,'-ReOrdered','-AllCells-folds')
+        
+    ### Output the cellHarmony heatmaps
+    from visualization_scripts import clustering
+    row_method = None; row_metric = 'cosine'; column_method = None; column_metric = 'euclidean'; color_gradient = 'yellow_black_blue'
+    transpose = False; Normalize='median'
+    
+    if runningCommandLine:
+        display = False
+    else:
+        display = True
+        display = False
+    query_output_file = '/Volumes/salomonis2/CCHMC-Collaborations/Harinder-singh/scRNASeq/Day_35_Plasma_Cell_Precursors/Day_35/outs/filtered_feature_bc_matrix/cellHarmony/exp.MarkerFinder-cellHarmony-reference__Day_35-ReOrdered-Query.txt'
+    print 'Exporting cellHarmony heatmaps...'
+    heatmaps_dir = output+'/heatmaps/'
+    try: os.mkdir(heatmaps_dir)
+    except: pass
+    try:
+        graphics = clustering.runHCexplicit(query_output_file, [], row_method, row_metric, column_method,
+                column_metric, color_gradient, transpose, Normalize=Normalize, contrast=5, display=display)
+        plot = graphics[-1][-1][:-4]+'.pdf'
+        file = graphics[-1][-1][:-4]+'.txt'
+        shutil.copy(plot,output+'/heatmaps/heatmap-query-aligned.pdf')
+        shutil.copy(file,output+'/heatmaps/heatmap-query-aligned.txt')
 
+        graphics = clustering.runHCexplicit(output_file, [], row_method, row_metric, column_method,
+                column_metric, color_gradient, transpose, Normalize=Normalize, contrast=5, display=display)
+        plot = graphics[-1][-1][:-4]+'.pdf'
+        file = graphics[-1][-1][:-4]+'.txt'
+        shutil.copy(plot,output+'/heatmaps/heatmap-all-cells-combined.pdf')
+        shutil.copy(file,output+'/heatmaps/heatmap-all-cells-combined.txt')
+    except:
+        print traceback.format_exc()
+    sys.exit()
+    """
+    
     ### Build-UMAP plot
     import UI
     import warnings
@@ -4439,16 +4481,17 @@ if __name__ == '__main__':
     try:
         try: os.mkdir(output+'/UMAP-plots')
         except: pass
+        
         """ Output UMAP combined plot colored by reference and query cell identity """
         plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+            display=False, geneSetName=None, species=species, zscore=False, reimportModelScores=True,
             separateGenePlots=False, returnImageLoc=True)
         plot = plot[-1][-1][:-4]+'.pdf'
         shutil.copy(plot,output+'/UMAP-plots/UMAP-query-vs-ref.pdf')
-
-        """ Output UMAP combined plot colored by cell tates """
+        
+        """ Output UMAP combined plot colored by cell states """
         plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species='Mm', zscore=True, reimportModelScores=True,
+            display=False, geneSetName=None, species='Dr', zscore=False, reimportModelScores=True,
             separateGenePlots=False, returnImageLoc=True, forceClusters=True)
         plot = plot[-1][-1][:-4]+'.pdf'
         shutil.copy(plot,output+'/UMAP-plots/UMAP-query-vs-ref-clusters.pdf')
@@ -4456,7 +4499,7 @@ if __name__ == '__main__':
         """ Output individual UMAP plots colored by cell tates """
         groups_file = string.replace(output_file,'exp.','groups.')
         plots = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species='Mm', zscore=True, reimportModelScores=True,
+            display=False, geneSetName=None, species='Mm', zscore=False, reimportModelScores=True,
             separateGenePlots=False, returnImageLoc=True, forceClusters=True, maskGroups=groups_file)
         for plot in plots:
             plot = plot[-1][:-4]+'.pdf'

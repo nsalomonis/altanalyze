@@ -213,7 +213,10 @@ def importGroupsComps(groups_file):
     comps_db={}
     for line in open(groups_file,'rU').xreadlines():
         data = cleanUpLine(line)
-        sample,ID,group_name = string.split(data,'\t')
+        try: sample,ID,group_name = string.split(data,'\t')
+        except:
+            print [data]
+            print traceback.format_exc();sys.exit()
         sample = string.replace(sample,'.bed','')
         group_id_lookup[ID]=group_name
         try: initial_groups[group_name].append(sample)
@@ -387,9 +390,10 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 psi_annotations[uid]=ps
             group_expression_values={}
             original_group={}
+            
             for group in group_index_db:
                 sample_index_list = group_index_db[group]
-                if platform != 'PSI':
+                if platform != 'PSI' and platform != 'methylation':
                     try: filtered_values = map(lambda x: float(values[x]), sample_index_list) ### simple and fast way to reorganize the samples
                     except ValueError:
                         ### Strings rather than values present - skip this row
@@ -409,7 +413,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                         unfiltered.append(x)
                     #if uid == 'ENSG00000105321:E3.2-E4.2 ENSG00000105321:E2.3-E4.2' and 'inner cell mass' in group:
                     #print filtered_values;sys.exit()
-                if platform == 'PSI':
+                if platform == 'PSI' or platform == 'methylation':
                     original_group[group]=unfiltered
                 else:
                     original_group[group]=filtered_values
@@ -1668,7 +1672,7 @@ def compareDomainComposition(folder):
     sys.exit()
     
 if __name__ == '__main__':
-    species = 'Hs';  
+    species = 'Hs';
     expression_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     groups_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/groups.KD.txt'
     computed_results_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
@@ -1685,6 +1689,7 @@ if __name__ == '__main__':
     probability_statistic = 'moderated t-test'
     #probability_statistic = 'Kolmogorov Smirnov'
     #probability_statistic = 'unpaired t-test'
+    #probability_statistic = 'paired t-test'
     minRPKM=-1000
     PercentExp = 75
     minSampleNumber = 2

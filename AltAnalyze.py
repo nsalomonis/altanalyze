@@ -1,5 +1,5 @@
 ###AltAnalyze
-#Copyright 2005-20019
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -5266,16 +5266,19 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
   if use_direct_domain_alignments_only == 'direct-alignment': use_direct_domain_alignments_only = 'yes'
   if run_from_scratch == 'Process CEL files': expression_data_format = 'log'
   print "Beginning AltAnalyze Analysis... Format:", expression_data_format
-
     
   if array_type == 'RNASeq': id_name = 'exon/junction IDs'
   else: id_name = 'array IDs'
 
   print_items=[]; #print [permute_p_threshold]; sys.exit()
+  if 'array' in array_type:
+    dataType='Gene Expression'
+  else:
+    dataType=array_type
   print_items.append("AltAnalyze version 2.1.3 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'database'+': '+unique.getCurrentGeneDatabaseVersion())
   print_items.append('\t'+'species'+': '+species)
-  print_items.append('\t'+'method'+': '+array_type)
+  print_items.append('\t'+'method'+': '+dataType)
   print_items.append('\t'+'manufacturer'+': '+manufacturer)
   print_items.append('\t'+'probability_statistic'+': '+probability_statistic)
   print_items.append('\t'+'constitutive_source'+': '+constitutive_source)
@@ -6985,6 +6988,7 @@ def commandLineRun():
             colorByGene=None
             separateGenePlots = False
             reimportModelScores = True
+            maskGroups = None
             if 't-SNE' in image_export:
                 pca_algorithm = 't-SNE'
             if 'UMAP' in image_export or 'umap' in image_export:
@@ -7001,6 +7005,7 @@ def commandLineRun():
                 if opt == '--algorithm': pca_algorithm=arg
                 if opt == '--geneSetName': geneSetName=arg
                 if opt == '--genes': colorByGene=arg
+                if opt == '--maskGroups': maskGroups=arg
                 if opt == '--reimportModelScores':
                     if arg == 'yes' or arg == 'True' or arg == 'true':
                         reimportModelScores = True
@@ -7023,7 +7028,9 @@ def commandLineRun():
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
             UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
-                          plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots)
+                          plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore,
+                          colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots,
+                          maskGroups=maskGroups)
             sys.exit()
 
         if 'VennDiagram' in image_export:

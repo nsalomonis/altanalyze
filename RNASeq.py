@@ -1,5 +1,5 @@
 ###RNASeq
-#Copyright 2005-2019
+#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -203,33 +203,37 @@ def reformatExonFile(species,type,chr_status):
         filename = 'AltDatabase/ensembl/'+species+'/'+species+'_Ensembl_junction.txt'
         export_path = 'AltDatabase/'+species+'/RNASeq/'+species + '_Ensembl_junctions.txt'
     print 'Writing',export_path
-    export_data = export.ExportFile(export_path)
-    fn=filepath(filename); x=0
-    for line in open(fn,'rU').xreadlines():
-        data = cleanUpLine(line)
-        t = string.split(data,'\t')
-        if x==0:
-            x+=1
-            export_title = ['AltAnalyzeID','exon_id','ensembl_gene_id','transcript_cluster_id','chromosome','strand','probeset_start','probeset_stop']
-            export_title +=['affy_class','constitutive_probeset','ens_exon_ids','ens_constitutive_status','exon_region','exon-region-start(s)','exon-region-stop(s)','splice_events','splice_junctions']
-            export_title = string.join(export_title,'\t')+'\n'; export_data.write(export_title)
-        else:
-            try: gene, exonid, chr, strand, start, stop, constitutive_call, ens_exon_ids, splice_events, splice_junctions = t
-            except Exception: print t;kill
-            if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
-            if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention,
-            if constitutive_call == 'yes': ens_constitutive_status = '1'
-            else: ens_constitutive_status = '0'
-            export_values = [gene+':'+exonid, exonid, gene, '', chr, strand, start, stop, 'known', constitutive_call, ens_exon_ids, ens_constitutive_status]
-            export_values+= [exonid, start, stop, splice_events, splice_junctions]
-            export_values = string.join(export_values,'\t')+'\n'; export_data.write(export_values)
-            if type == 'exon':
-                if chr_status == False:
-                    chr = string.replace(chr,'chr','') ### This will thus match up to the BAM files
-                bed_values = [chr,start,stop,gene+':'+exonid+'_'+ens_exon_ids,'0',strand]
-                bed_values = string.join(bed_values,'\t')+'\n'; bed_data.write(bed_values)
-    export_data.close()
-    if type == 'exon': bed_data.close()
+    try:
+        export_data = export.ExportFile(export_path)
+        fn=filepath(filename); x=0
+        for line in open(fn,'rU').xreadlines():
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            if x==0:
+                x+=1
+                export_title = ['AltAnalyzeID','exon_id','ensembl_gene_id','transcript_cluster_id','chromosome','strand','probeset_start','probeset_stop']
+                export_title +=['affy_class','constitutive_probeset','ens_exon_ids','ens_constitutive_status','exon_region','exon-region-start(s)','exon-region-stop(s)','splice_events','splice_junctions']
+                export_title = string.join(export_title,'\t')+'\n'; export_data.write(export_title)
+            else:
+                try: gene, exonid, chr, strand, start, stop, constitutive_call, ens_exon_ids, splice_events, splice_junctions = t
+                except Exception: print t;kill
+                if chr == 'chrM': chr = 'chrMT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention
+                if chr == 'M': chr = 'MT' ### MT is the Ensembl convention whereas M is the Affymetrix and UCSC convention,
+                if constitutive_call == 'yes': ens_constitutive_status = '1'
+                else: ens_constitutive_status = '0'
+                export_values = [gene+':'+exonid, exonid, gene, '', chr, strand, start, stop, 'known', constitutive_call, ens_exon_ids, ens_constitutive_status]
+                export_values+= [exonid, start, stop, splice_events, splice_junctions]
+                export_values = string.join(export_values,'\t')+'\n'; export_data.write(export_values)
+                if type == 'exon':
+                    if chr_status == False:
+                        chr = string.replace(chr,'chr','') ### This will thus match up to the BAM files
+                    bed_values = [chr,start,stop,gene+':'+exonid+'_'+ens_exon_ids,'0',strand]
+                    bed_values = string.join(bed_values,'\t')+'\n'; bed_data.write(bed_values)
+        export_data.close()
+    except: pass ### occurs for machines with write permission errors to the AltAnalyze directory  (fixed in 2.1.4)
+    try:
+        if type == 'exon': bed_data.close()
+    except: pass
 
 def importExonAnnotations(species,type,search_chr):
     if 'exon' in type:
@@ -2849,7 +2853,12 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=0, r
     onlyIncludeDrivers=True
                 
     if platform != 'exons' and platform != 'PSI':
-        platform = checkExpressionFileFormat(expFile,platform)
+        try: platform = checkExpressionFileFormat(expFile,platform)
+        except:
+            if '-steady-state' in expFile:
+                expFile = string.replace(expFile,'-steady-state','') ### Occurs for Kallisto processed
+                
+            platform = checkExpressionFileFormat(expFile,platform)
 
     if platform != 'RNASeq':
         if rpkm_threshold>1.9999:
@@ -3466,7 +3475,8 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     ### go through the list from the most linked to the least linked genes, only reported the most linked partners
     if len(atleast_10)>5000:
         print '\n'
-        return print_out,atleast_10
+        try: return print_out,atleast_10
+        except: return [],atleast_10
         
     removeOutlierDrivenCorrelations=True
     exclude_corr=[]
@@ -4078,7 +4088,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
         else:
             ADT_status = check_for_ADT(i)
             if ADT_status: ADTs.append(i)
-    print ADTs
+    #print ADTs
     #print hits_to_report
     if hits_to_report == 1:
         ### Select the best gene using correlation counts and TFs
@@ -5438,6 +5448,10 @@ def findPairs(fastq_paths):
                 n=str(i)
                 n = string.replace(n,'fastq.gz','')
                 n = string.replace(n,'fastq','')
+                n = string.replace(n,'fq.gz','')
+                n = string.replace(n,'fq','')
+                n = string.replace(n,'FASTQ.gz','')
+                n = string.replace(n,'FASTQ','')
                 for p in pairs: n = string.replace(n,p,'')
                 if '/' in n or '\\' in n:
                     n = export.findFilename(n)
@@ -5493,11 +5507,60 @@ def getFASTAFile(species):
             fasta_files.append(filepath(fasta_folder)+file)
     return fasta_files
 
+def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
+    ### Import groups
+    group_db={}
+    clusters=[]
+    for line in open(icgs_groups_path,'rU').xreadlines():
+        line=cleanUpLine(line)
+        t = string.split(line,'\t')
+        cell_barcode=t[0]
+        cluster=t[-1]
+        try: group_db[cluster].append(cell_barcode)
+        except: group_db[cluster] = [cell_barcode]
+        if cluster not in clusters:
+            clusters.append(cluster)
+    
+    ### Import cell-type predictions
+    firstLine=True
+    celltype_db={}
+    for line in open(goelite_path,'rU').xreadlines():
+        line=cleanUpLine(line)
+        t = string.split(line,'\t')
+        try:
+            pvalue = float(t[10])
+            cluster = string.split(t[0][1:],'-')[0]
+            cell_type = t[2]
+            try: celltype_db[cluster].append([pvalue,cell_type])
+            except: celltype_db[cluster] = [[pvalue,cell_type]]
+        except:
+            pass ### header rows or blanks
+
+    eo1=export.ExportFile(icgs_groups_path[:-4]+'-CellTypes.txt')
+    eo2=export.ExportFile(icgs_groups_path[:-4]+'-CellTypesFull.txt')
+    
+    for cluster in clusters:
+        if cluster in celltype_db:
+            celltype_db[cluster].sort()
+            cell_type = celltype_db[cluster][0][1] + '__c'+cluster
+            eo1.write(string.join([cluster,cell_type],'\t')+'\n')
+            for cell in group_db[cluster]:
+                eo2.write(string.join([cell,cluster,cell_type],'\t')+'\n')
+        else:
+            eo1.write(string.join([cluster,'UNK-c'+cluster],'\t')+'\n')
+            for cell in group_db[cluster]:
+                eo2.write(string.join([cell,cluster,cell_type],'\t')+'\n')
+    eo1.close()
+    eo2.close()
+ 
 if __name__ == '__main__':
     samplesDiffering = 3
     column_method = 'hopach'
     species = 'Hs'
     excludeCellCycle = False
+    icgs_groups_path='/Volumes/salomonis2/CCHMC-Collaborations/Yina/10X_Normal_Female_31Y_5hg/10X_Normal_Female_31Y/outs/filtered_feature_bc_matrix/ICGS-NMF_euclidean/FinalGroups.txt'
+    goelite_path='/Volumes/salomonis2/CCHMC-Collaborations/Yina/10X_Normal_Female_31Y_5hg/10X_Normal_Female_31Y/outs/filtered_feature_bc_matrix/ICGS-NMF_euclidean/GO-Elite/clustering/FinalMarkerHeatmap_sampled/GO-Elite_results/pruned-results_z-score_elite.txt'
+    predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
     platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
     """
     graphic_links,new_results_file = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',
@@ -5508,7 +5571,6 @@ if __name__ == '__main__':
 
     #runKallisto('Mm','BoneMarrow','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ',mlp);sys.exit()
     runKallisto('Hs','BreastCancer','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input',mlp);sys.exit()
-
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
     #correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
