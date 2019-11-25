@@ -8477,6 +8477,19 @@ class Logger(object):
         self.log.close()
 
     def flush(self): pass
+
+class SysLogger(object):
+    def __init__(self,null): 
+        self.terminal = sys.stdout
+        self.log = open(sys_log_file, "w")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log = open(sys_log_file, "a")
+        self.log.write(message)
+        self.log.close()
+
+    def flush(self): pass
     
 def verifyPath(filename):
     ### See if the file is in the current working directory
@@ -8579,31 +8592,51 @@ def unpackConfigFiles():
             zip_ref.extractall(userdir+"/altanalyze")
         print '...written'
 
+def systemLog():
+    global sys_log_file
+    sys_log_file = filepath('Config/report.log')
+    sys_report = open(sys_log_file,'w'); sys_report.close()
+    sys.stdout = SysLogger('')
+    
+def versionCheck():
+    import platform
+    if platform.system()=='Darwin':
+        if platform.mac_ver()[0] == '10.14.6':
+            print 'CRITICAL ERROR. AltAanlyze has a critical incompatibility with this specific OS version.'
+            url = 'http://www.altanalyze.org/MacOS-critical-error.html'
+            try: webbrowser.open(url)
+            except Exception: pass
+            sys.exit()
+            
 if __name__ == '__main__':
     try: mlp.freeze_support()
     except Exception: pass
-
+    
+    systemLog()
+    sys_log_file = filepath('Config/report.log')
+    print 'Using the Config location:',sys_log_file
+    
+    versionCheck()
+    
     try: unpackConfigFiles()
     except: pass
     #testResultsPanel()
     skip_intro = 'yes'; #sys.exit()
     #skip_intro = 'remoteViewer'
     dependencyCheck()
-    runCommandLineVersion()
-    
-    if use_Tkinter == 'yes': AltAnalyzeSetup(skip_intro)
+    try:
+        runCommandLineVersion()
+        
+        if use_Tkinter == 'yes':
+            AltAnalyzeSetup(skip_intro)
+    except:
+        print traceback.format_exc()
+        pass
 
     """ To do list:
-    1) RNA-Seq and LineageProfiler: threshold based RPKM expression filtering for binary absent present gene and exon calls
     3) SQLite for gene-set databases prior to clustering and network visualization
-    5) (explored - not good) Optional algorithm type of PCA
     7) (partially) Integrate splicing factor enrichment analysis (separate module?)
-    11) Update fields in summary combined alt.exon files (key by probeset)
-    12) Check field names for junction, exon, RNA-Seq in summary alt.exon report
-    14) Proper FDR p-value for alt.exon analyses (include all computed p-values)
-    15) Add all major clustering and LineageProfiler options to UI along with stats filtering by default
     17) Support R check (and response that they need it) along with GUI gcrma, agilent array, hopach, combat
-    18) Probe-level annotations from Ensembl (partial code in place) and probe-level RMA in R (or possibly APT) - google pgf for U133 array
     19) Update the software from the software
     
     Advantages of this tool kit:
@@ -8620,11 +8653,5 @@ if __name__ == '__main__':
     1) MySQL or equivalent transition for all large database queries (e.g., HuEx 2.1 on-the-fly coordinate mapping).
     3) Isoform-domain network visualization and WP overlays.
     4) Webservice calls to in silico protein translation, domain prediction, splicing factor regulation.
-    
-    ### 2.0.9
-    moncole integration
-    generic and cell classification machine learning
-    PCR primer design (gene centric after file selection)
-    BAM->BED (local SAMTools)
-    updated APT
+
     """

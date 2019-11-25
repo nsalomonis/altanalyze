@@ -1,5 +1,5 @@
 ###unique
-#Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
+#Copyright 2005-2019
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy 
@@ -95,13 +95,23 @@ def filepath(filename,force=None):
     altDatabaseCheck = True
     #dir=os.path.dirname(dirfile.__file__)       #directory file is input as a variable under the main
     dir = application_path
-
     """
     if os.path.isfile(filename):
         fn = filename
+        return fn
     elif os.path.isfile(dir+'/'+filename):
         fn = filename
-    """
+        return fn
+    #"""
+
+    """ If a local file without the full path (e.g., Config/options.txt). Checks in the software directory."""
+    import export
+    parent_dir = export.findParentDir(filename)
+    actual_file = export.findFilename(filename)
+    if os.path.isdir(dir+'/'+parent_dir):
+        fn = dir+'/'+parent_dir+'/'+actual_file
+        return fn
+    
     if filename== '':  ### Windows will actually recognize '' as the AltAnalyze root in certain situations but not others
         fn = dir
     elif ':' in filename:
@@ -115,9 +125,7 @@ def filepath(filename,force=None):
                 dir_list = os.listdir(filename)
                 fn = filename ### test to see if the path can be found (then it is the full path)
         except Exception:
-            
             fn=os.path.join(dir,filename)
-
             fileExists = os.path.isfile(fn)
             #print 'filename:',filename, fileExists
             """"When AltAnalyze installed through pypi - AltDatabase and possibly Config in user-directory """
