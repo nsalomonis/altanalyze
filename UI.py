@@ -2544,11 +2544,8 @@ class GUI:
                 button_instance = Button(self._parent, text='Kallisto License', command=self.openPDFHelp)
                 button_instance.pack(side = 'left', padx = 5, pady = 5)
                 
-            try:
-                self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
-                self._parent.mainloop()
-            except:
-                pass
+            self._parent.protocol("WM_DELETE_WINDOW", self.deleteWindow)
+            self._parent.mainloop()
         
     def verifyExpressionFile(self):
         continue_analysis = False ### See if the input file is already present
@@ -4026,8 +4023,7 @@ class IndicatorWindow:
         Label(parent, text='\n'+self.message+'\n'+nulls).pack()  
         quit_button = Button(parent, text='Quit', command=self.quit); quit_button.pack(side = 'bottom', padx = 5, pady = 5)
         text_button = Button(parent, text=self.button_text, command=parent.destroy); text_button.pack(side = 'bottom', padx = 5, pady = 5)
-        try: parent.mainloop()
-        except: pass
+        parent.mainloop()
     def quit(self):
         try: self._parent.quit(); self._parent.destroy(); sys.exit()
         except Exception: self._parent.quit(); sys.exit()
@@ -5557,8 +5553,7 @@ def getUserParameters(run_parameter,Multi=None):
                         IndicatorWindow(print_out,'Continue')
                         
             if additional_analyses == 'Hierarchical Clustering':
-                print 'Hierarchical Clustering'
-                
+                print 'Performing Hierarchical Clustering'
                 selected_parameters.append('Hierarchical Clustering')
                 
                 supported_geneset_types = getSupportedGeneSetTypes(species,'gene-mapp')

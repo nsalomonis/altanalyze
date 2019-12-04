@@ -1433,6 +1433,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
 
     ### Export GO-Elite input files
     allGenes={}
+    sc=sy
     for cluster in cluster_db:
         export_elite = export.ExportFile(elite_dir + '/' + cluster + '.txt')
         if sy == None:
@@ -1440,12 +1441,10 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
         else:
             export_elite.write('ID\tSystemCode\n')
         for id in cluster_db[cluster]:
-            try:
-                i1, i2 = string.split(id, ' ')
-                if i1 == i2:
-                    id = i1
-            except Exception:
-                pass
+            if ' ' in id:
+                ids = string.split(id, ' ')
+                if ids[0] == ids[1]:
+                    id = ids[0]
             else:
                 if sy == '$En:Sy':
                     id = string.split(id, ':')[1]
@@ -7744,7 +7743,36 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
     eo1.close()
     eo2.close()
     
+def exportSeuratMarkersToClusters(filename):
+    prior_cluster = None
+    for line in open(filename, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        cluster,gene = string.split(data, '\t')
+        if cluster!= prior_cluster:
+            try: eo.close()
+            except: pass
+            path = filename[:-4]+'_'+cluster+'.txt'
+            eo = export.ExportFile(path)
+            eo.write('UID\tSy\n')
+        eo.write(gene+'\tSy\n')
+        prior_cluster = cluster
+    eo.close()
+            
+def tempFunction(filename):
+    path = filename[:-4]+'_cleaned'+'.txt'
+    eo = export.ExportFile(path)
+    for line in open(filename, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data, '\t')
+        eo.write(string.join(t[1:],'\t')+'\n')
+    eo.close()
+            
 if __name__ == '__main__':
+    tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
+    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/StatisticalEnrichment-MNBL1'
+    compareEventLists(a);sys.exit()
+    filename = '/Users/saljh8/Downloads/Kerscher_lists_mouse_versus_mouse_and_human_gene_lists/Top50MouseandHuman1-clusters.txt'
+    #exportSeuratMarkersToClusters(filename); sys.exit()
     organized_diff_ref = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-4-Gfi1-R412X-ModGMP-1694-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/centroid-revised/custom/cellHarmony/OrganizedDifferentials.txt'
     repair1_folds = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-5-Gfi1-R412X-R412X-ModGMP-1362-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/hybrid/cellHarmony-vs-DM2-1.2-fold-adjp/OtherFiles/exp.ICGS-cellHarmony-reference__DM-5-Gfi1-R412X-R412X-ModGMP-1362-D7Cells-ADT-Merged_matrix_CPTT-AllCells-folds.txt'
     repair2_folds = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT/outs/filtered_gene_bc_matrices/Merged-Cells-iseq/cellHarmony-centroid-revsied/hybrid/cellHarmony/OtherFiles/exp.ICGS-cellHarmony-reference__DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT_matrix-3_matrix_CPTT-hybrid-AllCells-folds.txt'
@@ -7771,11 +7799,11 @@ if __name__ == '__main__':
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/NCI-R01/CCSB_TFIso_Clones.txt'
     PSI_dir = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/TCGA-files-Ens91/bams/AltResults/AlternativeOutput/OncoSPlice-All-Samples-filtered-names/SubtypeAnalyses-Results/round1/Events-dPSI_0.1_adjp/'
     #convertPSICoordinatesToBED(PSI_dir);sys.exit()
-    summarizePSIresults(PSI_dir,TF_file);sys.exit()
+    #summarizePSIresults(PSI_dir,TF_file);sys.exit()
     
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/TF_ratio_correlation-analysis/tcga_rsem_isopct_filtered-filtered.2-filtered.txt'
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/Ensembl-isoform-key-CCSB.txt'
-    exportIntraTFIsoformCorrelations(filename,TF_file,0.3,anticorrelation=True);sys.exit()
+    #exportIntraTFIsoformCorrelations(filename,TF_file,0.3,anticorrelation=True);sys.exit()
     input_file= '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana/UO1analysis/xenabrowserFiles/tcga_rsem_isoform_tpm_filtered.txt'
     #convertXenaBrowserIsoformDataToStandardRatios(input_file);sys.exit()
     Mm_Ba_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Mouse/mm10-circadian_liftOverTo_baboon.txt'
@@ -7818,7 +7846,7 @@ if __name__ == '__main__':
     #removeRedundantCluster(a,b);sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
     #a = '/Users/saljh8/Desktop/Ashish/all/Events-dPSI_0.1_rawp-0.01/'
-    compareEventLists(a);sys.exit()
+
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/CORNEL-AML/PSI/exp.Cornell-Bulk.txt');sys.exit()
     #compareGenomicLocationAndICGSClusters();sys.exit()
     #ViolinPlot();sys.exit()

@@ -408,7 +408,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                         initial_filtered.append(values[x])
                     filtered_values=[]
                     for x in initial_filtered:
-                        if x != '':
+                        if x != '' and x!= 'NA':
                             filtered_values.append(float(x))
                         unfiltered.append(x)
                     #if uid == 'ENSG00000105321:E3.2-E4.2 ENSG00000105321:E2.3-E4.2' and 'inner cell mass' in group:

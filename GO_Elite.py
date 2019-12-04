@@ -2251,7 +2251,7 @@ def commandLineRun():
             if wpid==None:
                 print 'Please provide a valid WikiPathways ID (e.g., WP1234)';sys.exit()
             if species_code==None:
-                print 'Please provide a valid species ID for an installed database (to install: --update Official --species Hs --version EnsMart62Plus)';sys.exit()
+                print 'Please provide a valid species ID for an installed database (to install: --update Official --species Hs --version EnsMart91Plus)';sys.exit()
             if criterion_input_folder==None:
                 print 'Please provide a valid file location for your input IDs (also needs to inlcude system code and value column)';sys.exit()
             from visualization_scripts import WikiPathways_webservice

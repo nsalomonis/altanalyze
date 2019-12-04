@@ -6347,7 +6347,8 @@ def commandLineRun():
                                                          'correlationCutoff=','referenceType=','DE=','cellHarmonyMerge=',
                                                          'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
-                                                         'downsample=','query=','referenceFull=', 'maskGroups='])
+                                                         'downsample=','query=','referenceFull=', 'maskGroups=',
+                                                         'elite_dir='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6533,6 +6534,15 @@ def commandLineRun():
 
     ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
     if len(image_export) > 0 or len(accessoryAnalysis)>0 or runICGS:
+        """ Annotate existing ICGS groups with selected GO-Elite results """
+        if 'annotateICGS' in accessoryAnalysis:
+            for opt, arg in options: ### Accept user input for these hierarchical clustering variables
+                if opt == '--elite_dir':
+                    goelite_path = arg
+            import RNASeq
+            RNASeq.predictCellTypesFromClusters(groups_file, goelite_path)
+            sys.exit()
+            
         if runICGS:
             #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Hs --column_method hopach --column_metric euclidean --rho 0.3 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 3 --restrictBy protein_coding --excludeCellCycle conservative --removeOutliers yes --expdir /RNA-Seq/run1891_normalized.txt
             #python AltAnalyze.py --runICGS yes --expdir "/Users/saljh8/Desktop/demo/Myoblast/ExpressionInput/exp.myoblast.txt" --platform "3'array" --species Hs --GeneSetSelection BioMarkers --PathwaySelection Heart --column_method hopach --rho 0.4 --ExpressionCutoff 200 --justShowTheseIDs "NKX2-5 T TBX5" --FoldDiff 10 --SamplesDiffering 3 --excludeCellCycle conservative
@@ -8630,8 +8640,8 @@ if __name__ == '__main__':
         if use_Tkinter == 'yes':
             AltAnalyzeSetup(skip_intro)
     except:
-        print traceback.format_exc()
-        pass
+        if 'SystemExit' not in traceback.format_exc():
+            print traceback.format_exc()
 
     """ To do list:
     3) SQLite for gene-set databases prior to clustering and network visualization

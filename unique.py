@@ -108,10 +108,15 @@ def filepath(filename,force=None):
     import export
     parent_dir = export.findParentDir(filename)
     actual_file = export.findFilename(filename)
-    if os.path.isdir(dir+'/'+parent_dir):
+    try:
+        #if os.path.exists(dir+'/'+parent_dir):
+        dir_list = os.listdir(dir+'/'+parent_dir)
         fn = dir+'/'+parent_dir+'/'+actual_file
-        return fn
-    
+        if '.txt' in fn or '.log' in fn:
+            return fn
+    except:
+        pass
+
     if filename== '':  ### Windows will actually recognize '' as the AltAnalyze root in certain situations but not others
         fn = dir
     elif ':' in filename:
