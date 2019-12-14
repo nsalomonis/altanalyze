@@ -67,7 +67,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                         for x in filter_names:
                             if x not in values:
                                 temp_count+=1
-                                if temp_count>50: print 'too many to print';kill
+                                if temp_count>500: print 'too many to print';kill
                                 print x,
                         print 'are missing';kill
                         
@@ -241,7 +241,7 @@ def cleanUpLine(line):
         print data
     return data
 
-def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499):
+def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499,binarize=True):
     if 'exp.' in input_file:
         counts_file = string.replace(input_file,'exp.','geneCount.')
     else:
@@ -279,7 +279,11 @@ def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499):
                 
             binarized_values = []
             for v in values:
-                if v>threshold: binarized_values.append(1)
+                if v>threshold:
+                    if binarize:
+                        binarized_values.append(1)
+                    else:
+                        binarized_values.append(v) ### When summarizing counts and not genes expressed
                 else: binarized_values.append(0)
             count_sum_array = [sum(value) for value in zip(*[count_sum_array,binarized_values])]
             
@@ -344,13 +348,14 @@ if __name__ == '__main__':
     expressionCutoff=1
     returnComparisons=False
     comparisons=[]
+    binarize=True
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         filter_names = ['test-1','test-2','test-3']
         input_file = makeTestFile()
         
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
-                            'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter='])
+                            'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
@@ -367,10 +372,13 @@ if __name__ == '__main__':
             elif opt == '--geneCountFilter': geneCountFilter=True
             elif opt == '--expressionCutoff': expressionCutoff=float(arg)
             elif opt == '--minGeneCutoff': minGeneCutoff=int(arg)
+            elif opt == '--binarize':
+                if 'alse' in arg or 'no' in arg:
+                    binarize=False
             
     output_file = input_file[:-4]+'-filtered.txt'
     if geneCountFilter:
-        statisticallyFilterFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',1,minGeneCutoff=199); sys.exit()
+        statisticallyFilterFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',expressionCutoff,minGeneCutoff=199,binarize=binarize); sys.exit()
     if filter_rows:
         filter_names = getFilters(filter_file)
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)

@@ -7304,10 +7304,10 @@ def PSIfilterAndImpute(folder):
             print count, '\t', fileg
 
 def summarizePSIresults(folder, TF_file):
-    TFs = simpleListImport(TF_file)
+    #TFs = simpleListImport(TF_file)
     ### Import PSI results and report number of impacted TFs
     files = UI.read_directory(folder)
-    eo = export.ExportFile(folder + '/TF_events.txt')
+    #eo = export.ExportFile(folder + '/TF_events.txt')
     all_TFs = []
     for file in files:
         TFs_in_file = []
@@ -7324,15 +7324,19 @@ def summarizePSIresults(folder, TF_file):
                     t = string.split(data, '\t')
                     symbol = string.split(t[0], ':')[0]
                     dPSI = abs(float(t[(-5)]))
-                    if symbol in TFs and symbol not in TFs_in_file and dPSI > 0.2:
-                        eo.write(string.join(t + [file], '\t') + '\n')
-                        TFs_in_file.append(symbol)
-                        if symbol not in all_TFs:
-                            all_TFs.append(symbol)
-                        count += 1
-            print file, count, len(all_TFs), string.join(TFs_in_file, ',')
+                    if symbol=='HOXA1':
+                        """
+                        if symbol in TFs and symbol not in TFs_in_file and dPSI > 0.2:
+                            eo.write(string.join(t + [file], '\t') + '\n')
+                            TFs_in_file.append(symbol)
+                            if symbol not in all_TFs:
+                                all_TFs.append(symbol)
+                            count += 1
+                        """
+                        print file+"\t"+t[-5]+"\t"+t[-4]+"\t"+t[0]
+            ##print file, count, len(all_TFs), string.join(TFs_in_file, ',')
 
-    eo.close()
+    #eo.close()
 
 def convertPSICoordinatesToBED(folder):
     files = UI.read_directory(folder)
@@ -7768,6 +7772,8 @@ def tempFunction(filename):
     eo.close()
             
 if __name__ == '__main__':
+    PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
+    summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
     tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/StatisticalEnrichment-MNBL1'
     compareEventLists(a);sys.exit()
@@ -7799,7 +7805,7 @@ if __name__ == '__main__':
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/NCI-R01/CCSB_TFIso_Clones.txt'
     PSI_dir = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/TCGA-files-Ens91/bams/AltResults/AlternativeOutput/OncoSPlice-All-Samples-filtered-names/SubtypeAnalyses-Results/round1/Events-dPSI_0.1_adjp/'
     #convertPSICoordinatesToBED(PSI_dir);sys.exit()
-    #summarizePSIresults(PSI_dir,TF_file);sys.exit()
+
     
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/TF_ratio_correlation-analysis/tcga_rsem_isopct_filtered-filtered.2-filtered.txt'
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/Ensembl-isoform-key-CCSB.txt'
