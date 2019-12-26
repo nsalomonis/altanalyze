@@ -7,7 +7,7 @@ try: from stats_scripts import statistics
 except Exception: pass
 
 def makeTestFile():
-    all_data = [['name','harold','bob','frank','sally','kim','jim'],
+    all_data = [['name','harold','bob','frank','sally','kim','tim'],
         ['a','0','0','1','2','0','5'],['b','0','0','1','2','0','5'],
         ['c','0','0','1','2','0','5'],['d','0','0','1','2','0','5']]
     
