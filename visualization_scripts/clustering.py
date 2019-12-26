@@ -6251,6 +6251,36 @@ def simpleCombineFiles(folder, elite_output=True, uniqueOnly=False):
                     t.append(file[:-4])
                     ea.write(string.join(t, '\t') + '\n')
     ea.close()
+    
+def simpleCombineBedFiles(folder):
+    filename = folder + '/combined/annotations.bed'
+    ea = export.ExportFile(filename)
+    files = UI.read_directory(folder)
+    for file in files:
+        if '.bed' in file:
+            fn = filepath(folder + '/' + file)
+            for line in open(fn, 'rU').xreadlines():
+                data = cleanUpLine(line)
+                t = string.split(data, '\t')
+                t[3]+=';'+file[5:-4]
+                ea.write(string.join(t, '\t') + '\n')
+    ea.close()
+    
+def advancedCombineBedFiles(folder):
+    filename = folder + '/combined/annotations.bed'
+    ea = export.ExportFile(filename)
+    files = UI.read_directory(folder)
+    annotations=[]
+    for file in files:
+        if '.bed' in file:
+            fn = filepath(folder + '/' + file)
+            for line in open(fn, 'rU').xreadlines():
+                data = cleanUpLine(line)
+                t = string.split(data, '\t')
+                t[3]+=';'+file[5:-4]
+                uid = (t[0],int(t[1]),int(t[2]))
+                #ea.write(string.join(t, '\t') + '\n')
+    ea.close()
                     
 def evaluateMultiLinRegulatoryStructure(all_genes_TPM,MarkerFinder,SignatureGenes,state,query=None):
     """Predict multi-lineage cells and their associated coincident lineage-defining TFs"""
@@ -7772,10 +7802,14 @@ def tempFunction(filename):
     eo.close()
             
 if __name__ == '__main__':
+    filterPSIValues('/Volumes/salomonis2/External-Collaborations/Gladstone/Spindler/Tophat-hg19-bams/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt');sys.exit()
+    folder = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/eCLIP/ENCODE/annotations'
+    #simpleCombineBedFiles(folder);sys.exit()
+    
     PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
-    summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
-    tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
-    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/StatisticalEnrichment-MNBL1'
+    ##summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
+    #tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
+    a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
     compareEventLists(a);sys.exit()
     filename = '/Users/saljh8/Downloads/Kerscher_lists_mouse_versus_mouse_and_human_gene_lists/Top50MouseandHuman1-clusters.txt'
     #exportSeuratMarkersToClusters(filename); sys.exit()

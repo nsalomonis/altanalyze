@@ -84,7 +84,6 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                 continue ### skip the below code
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
         except Exception:
-            print 'aaaaaa'
             print traceback.format_exc()
             print len(values), len(sample_index_list)
             print input_file, len(filter_names)
@@ -108,7 +107,9 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
             for cluster in group_index_db:
                 #### group_index_db[cluster] is all of the indeces for samples in a noted group, cluster is the actual cluster name (not number)
                 try: mean=statistics.avg(map(lambda x: float(filtered_values[x]), group_index_db[cluster]))
-                except Exception: mean = map(lambda x: filtered_values[uid][x], group_index_db[cluster]) ### Only one value
+                except:
+                    continue
+                #mean = map(lambda x: filtered_values[uid][x], group_index_db[cluster]) ### Only one value
                 means[cluster]=mean
                 mean_matrix.append(str(mean))
             filtered_values = mean_matrix

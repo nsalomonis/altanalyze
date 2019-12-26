@@ -393,7 +393,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
             
             for group in group_index_db:
                 sample_index_list = group_index_db[group]
-                if platform != 'PSI' and platform != 'methylation':
+                if platform != 'PSI' and platform != 'methylation' and '' not in values and 'NA' not in values and len(values)==len(header):
                     try: filtered_values = map(lambda x: float(values[x]), sample_index_list) ### simple and fast way to reorganize the samples
                     except ValueError:
                         ### Strings rather than values present - skip this row
@@ -434,7 +434,10 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                 except KeyError:
                     ### This error is linked to the above Strings rather than values present error
                     continue
-                data_list2 = group_expression_values[group2]
+                try:
+                    data_list2 = group_expression_values[group2]
+                except:
+                    continue
                 combined = data_list1+data_list2
                 if g1_headers==0 or g2_headers==0:
                     continue ### no samples matching the criterion
