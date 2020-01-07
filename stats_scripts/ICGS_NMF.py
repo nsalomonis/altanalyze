@@ -645,7 +645,6 @@ def MergeResults(dire):
                     for i in range(1,len(t)):
                         header.append(t[i])
                     heads[filename]=header
-                        
                     continue
                 else:
                     
@@ -1232,9 +1231,11 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                     except:
                         print traceback.format_exc()
         
-                #clustering.tSNE(processedInputExpFile,group_db=groupsdict,display=True,showLabels=False,row_header=None,colorByGene=None,species=None,reimportModelScores=False)
-                ##MV need to code 
-                #Orderedfile,groupsdict=FindcentroidGroups(filtered,groupfile)
+                """
+                clustering.tSNE(processedInputExpFile,group_db=groupsdict,display=True,showLabels=False,row_header=None,colorByGene=None,species=None,reimportModelScores=False)
+                ### MV need to do 
+                Orderedfile,groupsdict=FindcentroidGroups(filtered,groupfile)
+                """
                 SVMBinOutput=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max.txt"
                 SVMBinOutput_t=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max_t.txt"
                 import csv
@@ -1297,24 +1298,25 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 Depleted=Correlationdepletion.DepleteSplicingevents(commonkeys,output_file,count,processedInputExpFile)
                 processedInputExpFile=Deplete
                 flag=True
-                
             else:
+                print "No groups found!!! Re-analyze the data with a small k"
+                """### Commented out in version 2.1.14
                 if iteration<2:
-                    gsp.setK(k)
+                    gsp.setK(2)
                     iteration=1
-                    flag,processedInputExpFile,inputExpFile,graphic_links3=CompleteICGSWorkflow(root_dir,processedInputExpFile,inputExpFile,iteration,gsp.RhoCutoff(),dynamicCorrelation,platform,species,scaling,gsp)
-                else:
-                    "No groups found!!! Re-analyze the data with a small k"
-                #try:
-                 #   print "Running K-means analyses instead of NMF - Round"+str(iteration)
-                  #  print "Extremely sparse data!! choose a small k"
-                  #  header=[]
-                   # header=Kmeans.header_file(Guidefile_block)
-                    #Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
-                    #flag=False
-                #except Exception:
-                 #   flag=False
+                    flag,processedInputExpFile,inputExpFile,graphic_links3=CompleteICGSWorkflow(root_dir,processedInputExpFile,originalExpFile,iteration,gsp.RhoCutoff(),dynamicCorrelation,platform,species,scaling,gsp)
                 
+                try:
+                    print "Running K-means analyses instead of NMF - Round"+str(iteration)
+                    print "Extremely sparse data!! choose a small k"
+                    header=[]
+                    header=Kmeans.header_file(Guidefile_block)
+                    Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
+                    flag=False
+                except Exception:
+                    flag=False
+                """
+                flag=False
         else:
             if Rank==1:
                 try:
@@ -1323,7 +1325,6 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                     header=[]
                     header=Kmeans.header_file(Guidefile_block)
                     Kmeans.KmeansAnalysis(Guidefile_block,header,processedInputExpFile,iteration)
-            
                     flag=False
                 except Exception:
                     flag=False

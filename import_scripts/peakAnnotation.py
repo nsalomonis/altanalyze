@@ -24,6 +24,7 @@ def eCLIPimport(folder):
             print dataset
             key_db={}
             fn = unique.filepath(folder+'/'+file)
+            eo = export.ExportFile(folder+'/3-prime-peaks/'+file)
             for line in open(fn,'rU').xreadlines():
                 data = cleanUpLine(line)
                 t = string.split(data,'\t')
@@ -33,6 +34,8 @@ def eCLIPimport(folder):
                 strand = t[5]
                 gene = string.split(t[-3],'.')[0]
                 annotation = string.split(t[-3],';')[-1]
+                if 'three_prime_utrs' in annotation:
+                    eo.write(line)
                 if annotation not in annotations:
                     annotations.append(annotation)
                 symbol = t[-2]
@@ -65,6 +68,7 @@ def eCLIPimport(folder):
                     else:
                         peaks[annotation]=1
             eCLIP_dataset_peaks[dataset]=peaks
+    eo.close()
     
     annotations.sort()
     eo = export.ExportFile(folder+'/summary-annotations/summary.txt')
@@ -86,12 +90,8 @@ def eCLIPimport(folder):
 if __name__ == '__main__':
     ################  Comand-line arguments ################
     import getopt
-    splicing_events_dir = None
     CLIP_dir = None
-    circRNA_dir =  None
     species = 'Hs'
-    extendFlanking = False
-    circ_p = 0.05
     
     """ Usage:
     bedtools intersect -wb -a /Clip_merged_reproducible_ENCODE/K562/AARS-human.bed -b /annotations/combined/hg19_annotations-full.bed > /test.bed
@@ -101,29 +101,16 @@ if __name__ == '__main__':
         print 'WARNING!!!! Too commands supplied.'
         
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['species=','clip=','events=', 'extendFlanking=', 'circ=', 'circ_p='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['species=','clip='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--species':
                 species = arg
             elif opt == '--clip':
                 CLIP_dir = arg
-            elif opt == '--circ':
-                circRNA_dir = arg
-            elif opt == '--circ_p':
-                circ_p = float(arg)
-            elif opt == '--events':
-                splicing_events_dir = arg
-            elif opt == '--extendFlanking':
-                if 'true' in string.lower(arg) or 'yes' in string.lower(arg):
-                    extendFlanking = True
-                    print 'Extend Flanking = TRUE'
 
     import ExpressionBuilder
     coding_db = ExpressionBuilder.importTranscriptBiotypeAnnotations(species)
-
-    #gene_to_symbol, symbol_to_gene = importGeneSymbols(species)
-    
     dataset_peaks = eCLIPimport(CLIP_dir)
 
             

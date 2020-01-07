@@ -18,6 +18,7 @@
 
 #import matplotlib
 #matplotlib.use('GTKAgg')
+useDefaultBackend=False
 
 import sys,string,os,copy
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
@@ -44,11 +45,13 @@ try:
             except Exception: pass
         else:
             try:
-                import matplotlib.backends.backend_tkagg
-                matplotlib.use('TkAgg')
+                if useDefaultBackend == False:
+                    import matplotlib.backends.backend_tkagg
+                    matplotlib.use('TkAgg')
             except Exception: pass
-            try: matplotlib.rcParams['backend'] = 'TkAgg'
-            except Exception: pass
+            if useDefaultBackend == False: 
+                try: matplotlib.rcParams['backend'] = 'TkAgg'
+                except Exception: pass
         try:
             import matplotlib.pyplot as pylab
             import matplotlib.colors as mc
@@ -1150,6 +1153,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
 def openTreeView(filename):
     import subprocess
     fn = filepath("AltDatabase/TreeView/TreeView.jar")
+    print 'java', "-Xmx500m", '-jar', fn, "-r", filename
     retcode = subprocess.Popen(['java', "-Xmx500m", '-jar', fn, "-r", filename])
 
 def remoteGOElite(elite_dir,SystemCode = None):
@@ -7802,7 +7806,7 @@ def tempFunction(filename):
     eo.close()
             
 if __name__ == '__main__':
-    filterPSIValues('/Volumes/salomonis2/External-Collaborations/Gladstone/Spindler/Tophat-hg19-bams/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt');sys.exit()
+    filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/BEAT-AML/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt');sys.exit()
     folder = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/eCLIP/ENCODE/annotations'
     #simpleCombineBedFiles(folder);sys.exit()
     

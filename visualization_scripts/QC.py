@@ -27,6 +27,7 @@ if len(sys.argv[1:])>0 and '--' in command_args: commandLine=True
 else: commandLine=False
 
 display_label_names = True
+useDefaultBackend = False
 
 import traceback
 try:
@@ -44,11 +45,13 @@ try:
             except Exception: pass
         else:
             try:
-                import matplotlib.backends.backend_tkagg
-                matplotlib.use('TkAgg')
+                if useDefaultBackend == False:
+                    import matplotlib.backends.backend_tkagg
+                    matplotlib.use('TkAgg')
             except Exception: pass
-            try: matplotlib.rcParams['backend'] = 'TkAgg'
-            except Exception: pass
+            if useDefaultBackend == False:
+                try: matplotlib.rcParams['backend'] = 'TkAgg'
+                except Exception: pass
         try:
             import matplotlib.pyplot as pylab
             import matplotlib.colors as mc

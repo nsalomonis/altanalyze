@@ -336,6 +336,19 @@ def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499,b
     print output_file
     filterFile(input_file,output_file,samples_to_retain)
 
+def transposeMatrix(input_file):
+    arrays=[]
+    import export
+    eo = export.ExportFile(input_file[:-4]+'-transposed.txt')
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data,'\t')
+        arrays.append(values)
+    t_arrays = zip(*arrays)
+    for t in t_arrays:
+        eo.write(string.join(t,'\t')+'\n')
+    eo.close()
+
 if __name__ == '__main__':
     ################  Comand-line arguments ################
 
@@ -350,16 +363,19 @@ if __name__ == '__main__':
     returnComparisons=False
     comparisons=[]
     binarize=True
+    transpose=False
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         filter_names = ['test-1','test-2','test-3']
         input_file = makeTestFile()
         
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
-                            'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize='])
+                            'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize=',
+                            'transpose='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
+            elif opt == '--transpose': transpose = True
             elif opt == '--f': filter_file=arg
             elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateCentroids = True
             elif opt == '--fold': returnComparisons = True
@@ -378,6 +394,9 @@ if __name__ == '__main__':
                     binarize=False
             
     output_file = input_file[:-4]+'-filtered.txt'
+    if transpose:
+        transposeMatrix(input_file)
+        sys.exit()
     if geneCountFilter:
         statisticallyFilterFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',expressionCutoff,minGeneCutoff=199,binarize=binarize); sys.exit()
     if filter_rows:

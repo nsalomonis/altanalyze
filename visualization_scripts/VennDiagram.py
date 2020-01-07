@@ -1,11 +1,14 @@
 ### Original source from: https://github.com/icetime/pyinfor/blob/master/venn.py
 
+useDefaultBackend=False
+
 try:
     import warnings
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
         import matplotlib
-        matplotlib.rcParams['backend'] = 'TkAgg'
+        if useDefaultBackend == False:
+            matplotlib.rcParams['backend'] = 'TkAgg'
         import matplotlib.pyplot as pylab
         matplotlib.rcParams['axes.linewidth'] = 0.5
         matplotlib.rcParams['pdf.fonttype'] = 42

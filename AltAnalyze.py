@@ -8571,7 +8571,7 @@ def dependencyCheck():
     if count>1:
         print '\nWARNING!!!! Some dependencies are not currently met.'
         print "This may impact AltAnalyze's performance\n"
-
+    
 def unpackConfigFiles():
     """ When pypi installs AltAnalyze in site-packages, a zip file for the Config
     and AltDatabase in the pypi installed AltAnalyze library directory. To allow
