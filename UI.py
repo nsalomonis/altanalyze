@@ -1069,9 +1069,11 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
         else:
             """ Directly match cells between datasets either all cells by all cells or cells
             by centroids (same ICGS genes) """
+            try: cellLabels = fl.Labels()
+            except: cellLabels = False
             try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,
                     codingtype,compendium_platform,customMarkers=custom_markerFinder,
-                    geneModels=geneModel,modelSize=modelSize,fl=fl)
+                    geneModels=geneModel,modelSize=modelSize,fl=fl,label_file=cellLabels)
             except Exception:
                 print_out = traceback.format_exc()
                 try: InfoWindow(print_out, 'Continue') ### Causes an error when peforming heatmap visualizaiton
@@ -7109,6 +7111,9 @@ class GeneSelectionParameters:
         self._Normalize = Normalize
     def Normalize(self): return self._Normalize
     def setDownsample(self,downsample): self.downsample = downsample
+    def setNumGenesExp(self,numGenesExp): self.numGenesExp = numGenesExp
+    def NumGenesExp(self):
+        return int(self.numGenesExp)
     def DownSample(self):
         try:
             return int(self.downsample)

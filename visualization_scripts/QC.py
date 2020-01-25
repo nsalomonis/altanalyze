@@ -27,7 +27,12 @@ if len(sys.argv[1:])>0 and '--' in command_args: commandLine=True
 else: commandLine=False
 
 display_label_names = True
-useDefaultBackend = False
+
+import platform
+useDefaultBackend=False
+if platform.system()=='Darwin':
+    if platform.mac_ver()[0] == '10.14.6':
+        useDefaultBackend=True
 
 import traceback
 try:

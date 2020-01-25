@@ -221,8 +221,27 @@ def importGeneModels(filename):
             geneModels[tuple(models)] = thresholds
     return geneModels
                 
+def convertClusterOrderToGroupLabels(filename):
+    """ Lookup for cluster number to assigned cell-type name (used for cellHarmony centroid alignment)"""
+    clusterNumber = 1
+    fn=filepath(filename)
+    prior_label=None
+    groupNumber_label_db={}
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        label = t[-1]; ICGS_cluster_number = t[-2]
+        if label != prior_label:
+            clusterNumber+=1
+        if str(ICGS_cluster_number) not in groupNumber_label_db:
+            groupNumber_label_db[str(ICGS_cluster_number)]=label
+        prior_label = label
+    return groupNumber_label_db
+    
 ######### Below code deals is specific to this module #########
-def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compendium_platform,modelSize=None,customMarkers=False,geneModels=False,permute=False,useMulti=False,fl=None):
+def runLineageProfiler(species,array_type,exp_input,exp_output,
+                codingtype,compendium_platform,modelSize=None,customMarkers=False,
+                geneModels=False,permute=False,useMulti=False,fl=None,label_file=None):
     """ This code differs from LineageProfiler.py in that it is able to iterate through the LineageProfiler functions with distinct geneModels
     that are either supplied by the user or discovered from all possible combinations. """
     #global inputType
@@ -238,7 +257,11 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     
     try: returnCentroids = fl.ReturnCentroids()
     except Exception: returnCentroids = False
-    
+
+    if label_file != None: 
+        label_file = convertClusterOrderToGroupLabels(label_file)
+        #print label_file
+
     print 'platform:',array_type
     
     collapse_override = True
@@ -456,7 +479,10 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
     
     print ''
     class_headers = map(lambda x: x+' Predicted Hits',tissue_list)
-    headers = string.join(['Samples']+class_headers+['Composite Classification Score','Combined Correlation DiffScore','Predicted Class','Max-Rho'],'\t')+'\n'
+    export_header = ['Samples']+class_headers+['Composite Classification Score','Combined Correlation DiffScore','Predicted Class','Max-Rho']
+    if label_file != None: 
+        export_header.append('CentroidLabel')
+    headers = string.join(export_header,'\t')+'\n'
     export_summary.write(headers)
     
     sorted_results=[] ### sort the results
@@ -539,7 +565,17 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,codingtype,compen
                 overall_prog_score = str(float(overall_prog_score)*-1)
                 sum_score = sum_score*-1
         values = [sample]+class_scores_str+[overall_prog_score,str(sum_score),call]
-        values = string.join(values+zscore_distribution[:-1]+[str(max(correlations))],'\t')+'\n'
+        if label_file != None:
+            sampleLabel=''
+            if call in label_file:
+                groupLabel = label_file[call] ### This is the unique label for the cluster number
+            else:
+                print [call]
+                for c in label_file:
+                    print [c]
+            values = string.join(values+zscore_distribution[:-1]+[str(max(correlations)),groupLabel],'\t')+'\n' ### Export line for cellHarmony classification results
+        else:
+            values = string.join(values+zscore_distribution[:-1]+[str(max(correlations))],'\t')+'\n' ### Export line for cellHarmony classification results
         if ':' in sample:
             sample = string.split(sample,':')[0]
         if ':' in call:
@@ -2642,8 +2678,10 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             header_row = values
             try: score_index = header_row.index('Max-Rho')
             except: score_index = header_row.index('Correlation')
-            try: class_index = header_row.index('Predicted Class')
-            except: class_index = header_row.index('Ref Barcode')
+            try: class_index = header_row.index('CentroidLabel')
+            except:
+                try: class_index = header_row.index('Predicted Class')
+                except: class_index = header_row.index('Ref Barcode')
         else:
             sample = values[0]
             score = float(values[score_index])
@@ -2651,8 +2689,15 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             assigned_class = values[class_index]
             if sample in original_sampleID_translation:
                 sample = original_sampleID_translation[sample]
+            ### groups_to_reference_cells is from the labels file - will have the labels as the assigned_class
             if len(groups_to_reference_cells)>0: ### Hence, centroids - replace centroids with individual reference cells
-                assigned_class = groups_to_reference_cells[assigned_class][-1]
+                try:
+                    assigned_class = groups_to_reference_cells[assigned_class][-1]
+                except:
+                    print assigned_class, 'not found in the groups_to_reference_cells database'
+                    print [assigned_class]
+                    for ac in groups_to_reference_cells:
+                        print [ac]
             cd = ClassificationData(sample,score,assigned_class)
             try: sample_classes[assigned_class].append([score,cd])
             except Exception: sample_classes[assigned_class] = [[score,cd]]
@@ -4261,6 +4306,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
     
             """ Simple combine of the two expression files without normalization """
             try:
+                matchingUIDs=0
                 #ref_filename = export.findFilename(expdir)
                 ref_filename = export.findFilename(cellHarmonyReferenceFile)
                 query_filename = export.findFilename(query_exp_file)
@@ -4280,8 +4326,9 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
                     if uid in query_row_header:
                         qi=query_row_header.index(uid)
                         eo.write(string.join([uid]+map(str,reference_exp_matrix[ri])+map(str,query_exp_matrix[qi]),'\t')+'\n')
+                        matchingUIDs+=1
                 eo.close()
-                print 'Combined query and reference expression file exported to:'
+                print matchingUIDs,'Combined query and reference expression file exported to:',output_dir
                 eo = export.ExportFile(group_ref_export_dir)
                 
                 index=0

@@ -872,7 +872,7 @@ def identifyMarkers(filename,cluster_comps,binarize=False):
             if symbol not in ranked_list:
                 ranked_list.append(symbol); ranked_lookup.append([probeset,symbol,(rho,p)])
         for (probeset,symbol,(rho,p)) in ranked_lookup[:genesToReport]:  ### Here is where we would compare rho values between tissues with the same probesets
-            if rho>0.1 and p<0.1:
+            if rho>0.01 and p<0.1:
                 if compare_clusters == 'yes':
                     try: tissue_specific_IDs[tissue].append(probeset)
                     except Exception: tissue_specific_IDs[tissue] = [probeset]

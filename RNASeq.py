@@ -2842,6 +2842,8 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=0, r
         exp_threshold = parameters.CountsCutoff()
         rho_cutoff = parameters.RhoCutoff()
         restrictBy = parameters.RestrictBy()
+        try: numGenesExp = parameters.NumGenesExp()-1
+        except: numGenesExp = 499
         try: removeOutliers = parameters.RemoveOutliers()
         except Exception: pass
         if platform == 'exons' or platform == 'PSI':
@@ -2871,7 +2873,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=0, r
             from import_scripts import sampleIndexSelection
             reload(sampleIndexSelection)
             output_file = expFile[:-4]+'-OutliersRemoved.txt'
-            sampleIndexSelection.statisticallyFilterFile(expFile,output_file,rpkm_threshold)
+            sampleIndexSelection.statisticallyFilterFile(expFile,output_file,rpkm_threshold,minGeneCutoff=numGenesExp)
             if 'exp.' in expFile:
                 ### move the original groups and comps files
                 groups_file = string.replace(expFile,'exp.','groups.')
@@ -5542,7 +5544,12 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
     for cluster in clusters:
         if cluster in celltype_db:
             celltype_db[cluster].sort()
-            cell_type = celltype_db[cluster][0][1] + '__c'+cluster
+            cell_type = celltype_db[cluster][0][1] + '_c'+cluster
+            cell_type = string.replace(cell_type,'(MCA)','')
+            cell_type = string.replace(cell_type,'/','')
+            cell_type = string.replace(cell_type,'(','')
+            cell_type = string.replace(cell_type,')','')
+            cell_type = string.replace(cell_type,'  ','')
             eo1.write(string.join([cluster,cell_type],'\t')+'\n')
             for cell in group_db[cluster]:
                 eo2.write(string.join([cell,cluster,cell_type],'\t')+'\n')
@@ -5558,8 +5565,8 @@ if __name__ == '__main__':
     column_method = 'hopach'
     species = 'Hs'
     excludeCellCycle = False
-    icgs_groups_path='/Volumes/salomonis2/CCHMC-Collaborations/Yina/10X_Normal_Female_31Y_5hg/10X_Normal_Female_31Y/outs/filtered_feature_bc_matrix/ICGS-NMF_euclidean/FinalGroups.txt'
-    goelite_path='/Volumes/salomonis2/CCHMC-Collaborations/Yina/10X_Normal_Female_31Y_5hg/10X_Normal_Female_31Y/outs/filtered_feature_bc_matrix/ICGS-NMF_euclidean/GO-Elite/clustering/FinalMarkerHeatmap_sampled/GO-Elite_results/pruned-results_z-score_elite.txt'
+    icgs_groups_path='/Volumes/salomonis2/External-Collaborations/Vdr-SingleCellRNAseq-project/S2-CalT18/ICGS-NMF_cosine/FinalGroups.txt'
+    goelite_path='/Volumes/salomonis2/External-Collaborations/Vdr-SingleCellRNAseq-project/S2-CalT18/ICGS-NMF_cosine/GO-Elite/clustering/FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
     predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
     platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
     """

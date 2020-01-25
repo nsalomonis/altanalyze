@@ -174,10 +174,10 @@ def hgvfinder(inputfile):
             line=line.rstrip('\r\n')
             q= string.split(line,'\t')
             count=len(q)-1
-            if count >20000:
-                community=True
-            else:
-                community=False
+           # if count >20000:
+            #    community=True
+            #else:
+             #   community=False
             header=q
             head=1
             continue
@@ -228,7 +228,7 @@ def hgvfinder(inputfile):
     sampleIndexSelection.filterRows(inputfile,output_file,hgvgenes)
     return output_file,count
 
-def community_sampling(inputfile):
+def community_sampling(inputfile,downsample_cutoff):
     """ This function performs downsampling of the input data using networkx to identify
     initial distribution of cells, then Louvain clustering using the minimum resolution to
     identify discrete initial clusters. """
@@ -305,9 +305,9 @@ def community_sampling(inputfile):
     
     print "Finding medians"
     comindices=[]
-   
+    downsamp_lim=downsample_cutoff*4
     for key1 in comval:
-        k=10000/len(comval)
+        k=downsamp_lim/len(comval)
         if k<1: k=1
         k2=len(comval[key1])
         matri=np.array(comval[key1])
@@ -368,13 +368,13 @@ def PageRankSampling(inputfile,downsample_cutoff):
     X=np.array(X)
     n=X.shape[0]
     sampmark1=[]
-   
-    for iq in range(0,n,20000):
+    downsamp_lim=downsample_cutoff*4
+    for iq in range(0,n,downsamp_lim):
         jj=downsample_cutoff
-        if iq+24999>n:
+        if iq+downsamp_lim>n:
             j=n-iq
         else:
-            j=24999
+            j=downsamp_lim
         jj=int(float(j+1)/4.0)
         jj=downsample_cutoff
         #if jj<downsample_cutoff and n<3000:
@@ -1282,7 +1282,16 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                     shutil.copy(NMFSVM_centroid_cluster_graphics_dir2+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.pdf")
                     shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
                 
+                try:
+                    ### Build cell-type annotation FinalGroups file
+                    goelite_path = export.findParentDir(NMFSVM_centroid_cluster_dir)[:-1]+'/GO-Elite/clustering/'+export.findFilename(NMFSVM_centroid_cluster_dir)+'/GO-Elite_results/pruned-results_z-score_elite.txt'
+                    RNASeq.predictCellTypesFromClusters(finalgrpfile, goelite_path)
+                except:
+                    print traceback.format_exc()
+                    print 'Unable to export annotated groups file with predicted cell type names.'
+                    
                 ### write final groups ordered
+
                 #exportGroups(root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt",root_dir+"/ICGS-NMF/FinalGroups.txt",platform)
                 
                 if scaling:
@@ -1392,7 +1401,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             print 'Performing Community Clustering...'
             inputExpFileScaled=inputExpFile[:-4]+'-Louvain-downsampled.txt'
             ### Louvain clustering for down-sampling from >25,000 to 10,000 cells
-            sampmark=community_sampling(inputExpFileVariableGenesDir) ### returns list of Louvain downsampled cells
+            sampmark=community_sampling(inputExpFileVariableGenesDir,downsample_cutoff) ### returns list of Louvain downsampled cells
             ### Filer the original expression file using these downsampled cells
             sampleIndexSelection.filterFile(inputExpFile,inputExpFileScaled,sampmark)
             ### Use dispersion (variance by mean) to define post-Louvain selected cell variable genes

@@ -1,6 +1,10 @@
 ### Original source from: https://github.com/icetime/pyinfor/blob/master/venn.py
 
+import platform
 useDefaultBackend=False
+if platform.system()=='Darwin':
+    if platform.mac_ver()[0] == '10.14.6':
+        useDefaultBackend=True
 
 try:
     import warnings

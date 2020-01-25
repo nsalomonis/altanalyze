@@ -6348,7 +6348,7 @@ def commandLineRun():
                                                          'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
-                                                         'elite_dir='])
+                                                         'elite_dir=','numGenesExp='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6587,6 +6587,7 @@ def commandLineRun():
             dynamicCorrelation=True
             runCompleteWorkflow=False
             downsample=2500
+            numGenesExp=500
             if ChromiumSparseMatrix != '':
                 rho_cutoff = 0.2
                 column_metric = 'euclidean'
@@ -6616,6 +6617,7 @@ def commandLineRun():
                 elif opt == '--dynamicCorrelation': dynamicCorrelation=arg
                 elif opt == '--k': k=int(arg)
                 elif opt == '--downsample': downsample=int(arg)
+                elif opt == '--numGenesExp': numGenesExp=int(arg)
                 elif opt == '--runCompleteWorkflow':
                     runCompleteWorkflow=arg
                     if string.lower(arg)=='false' or string.lower(arg)=='no':
@@ -6662,6 +6664,7 @@ def commandLineRun():
                 gsp.setExcludeGuides(excludeGuides)
                 gsp.setK(k)
                 gsp.setDownsample(downsample)
+                gsp.setNumGenesExp(numGenesExp)
                 gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering, dynamicCorrelation,  
                     removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff) 
 

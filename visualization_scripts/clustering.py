@@ -16,9 +16,11 @@
 #OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#import matplotlib
-#matplotlib.use('GTKAgg')
+import platform
 useDefaultBackend=False
+if platform.system()=='Darwin':
+    if platform.mac_ver()[0] == '10.14.6':
+        useDefaultBackend=True
 
 import sys,string,os,copy
 sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir dependencies
@@ -74,6 +76,8 @@ try:
         import scipy
         try: from scipy.sparse.csgraph import _validation
         except Exception: pass
+        try: from scipy import stats
+        except: pass
         try:
             from scipy.linalg import svd
             import scipy.special._ufuncs_cxx
@@ -601,7 +605,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         time_stamp = timestamp() ### Don't overwrite the previous version
         filename = string.replace(filename,'hierarchical',time_stamp)
 
-    elite_dir, cdt_file, SystemCode = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display)
+    elite_dir, cdt_file, markers, SystemCode = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display)
 
     def ViewPNG(png_file_dir):
         if os.name == 'nt':
@@ -650,7 +654,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #print traceback.format_exc()
             pass
     try:
-        if len(justShowTheseIDs)<1 and len(top_genes) > 0 and column_fontsize < 9:
+        if len(justShowTheseIDs)<1 and len(markers) > 0 and column_fontsize < 9: ### substituted top_genes with markers
             column_fontsize = 10
         if len(justShowTheseIDs)<1:
             additional_symbols=[]
@@ -774,7 +778,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 else: color = 'black'
             except Exception: pass
             try:
-                if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in top_genes) or original_feature_id in justShowTheseIDs:
+                if feature_id in justShowTheseIDs or (len(justShowTheseIDs)<1 and feature_id in markers) or original_feature_id in justShowTheseIDs: ### substitutes top_genes with markers
                     if original_feature_id in justShowTheseIDs:
                         feature_id = original_feature_id
                     if display_label_names and 'ticks' not in justShowTheseIDs:
@@ -949,6 +953,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 #cmap_c = matplotlib.colors.ListedColormap(['#7CFC00','k'])
                 cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
+            elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
+                cmap_c = pylab.cm.nipy_spectral
+            """
             elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
                 #cmap_c = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
@@ -969,8 +976,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #elif len(unique.unique(ind2))==9:  cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w', 'w', 'w', 'w', 'w', 'w'])
             #elif len(unique.unique(ind2))==11: 
             #cmap_c = matplotlib.colors.ListedColormap(['w', '#DC2342', '#0B9B48', '#FDDF5E', '#E0B724', 'k', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
-            elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
-                cmap_c = pylab.cm.nipy_spectral
+            """
     
         dc = numpy.array(ind2, dtype=int)
         dc.shape = (1,len(ind2)) 
@@ -993,6 +999,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                     if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
                         #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                         cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
+                    elif len(unique.unique(ind2_clust))>0: ### cmap_c is too few colors
+                        cmap_c = pylab.cm.nipy_spectral
+                    """
                     elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
                         #cmap_c = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
@@ -1005,8 +1014,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
                     elif len(unique.unique(ind2_clust))==7: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-                    elif len(unique.unique(ind2_clust))>0: ### cmap_c is too few colors
-                        cmap_c = pylab.cm.nipy_spectral
+                    """
                     dc = numpy.array(ind2_clust, dtype=int)
                     dc.shape = (1,len(ind2_clust)) 
                     im_cd = axcd.matshow(dc, aspect='auto', origin='lower', cmap=cmap_c)
@@ -1025,6 +1033,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if len(unique.unique(ind2))==2: ### cmap_c is too few colors
                 #cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 cmap_d = matplotlib.colors.ListedColormap(['w', 'k'])
+            elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
+                cmap_d = pylab.cm.nipy_spectral
+            """
             elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
                 #cmap_d = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
@@ -1045,8 +1056,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #elif len(unique.unique(ind2))==11:
             #Eryth Gfi1 Gran HSCP-1 HSCP-2 IG2 MDP Meg Mono Multi-Lin Myelo
             #cmap_d = matplotlib.colors.ListedColormap(['#DC2342', 'k', '#0B9B48', '#FDDF5E', '#E0B724', 'w', '#5D82C1', '#F79020', '#4CB1E4', '#983894', '#71C065'])
-            elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
-                cmap_d = pylab.cm.nipy_spectral
+            """
             dc = numpy.array(group_colors, dtype=int)
             dc.shape = (1,len(group_colors)) 
             im_c = axd.matshow(dc, aspect='auto', origin='lower', cmap=cmap_d)
@@ -1070,7 +1080,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             #print ind1, len(ind1)
             cmap_r = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF', '#FFFF00', '#FF1493'])
             if len(unique.unique(ind1))>4: ### cmap_r is too few colors
-                cmap_r = pylab.cm.nipy_spectral_r
+                cmap_r = pylab.cm.nipy_spectral
+                if 'MarkerGenes' in dataset_name:  ### reverse the order of the colors to match the top color bar
+                    cmap_r = pylab.cm.nipy_spectral_r
             if len(unique.unique(ind1))==2:
                 cmap_r = matplotlib.colors.ListedColormap(['w', 'k'])
             im_r = axr.matshow(dr, aspect='auto', origin='lower', cmap=cmap_r)
@@ -1394,9 +1406,12 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     i=0
     cluster_db={}
     export_lines = []
+    last_cluster=None
+    cluster_top_marker={}
     for row in xt:
         try:
             id = new_row_header[i]
+            new_id = id
             original_id = str(id)
             if sy == 'Ae' and '--' in id:
                 cluster = 'cluster-' + string.split(id, ':')[0]
@@ -1408,6 +1423,13 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
                 cluster = 'cluster-'+string.split(id,':')[0]
             else:
                 cluster = 'c'+str(ind1[i])
+            if ':' in id:
+                new_id = string.split(id,':')[1]
+                if ' ' in new_id:
+                    new_id = string.split(new_id,' ')[0]
+            #if cluster not in cluster_top_marker: ### Display the top marker gene
+            cluster_top_marker[cluster] = new_id
+            last_cluster = cluster
         except Exception:
             pass
     
@@ -1445,7 +1467,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
         else:
             export_elite.write('ID\tSystemCode\n')
         for id in cluster_db[cluster]:
-            if ' ' in id:
+            if ' ' in id and ':' not in id:
                 ids = string.split(id, ' ')
                 if ids[0] == ids[1]:
                     id = ids[0]
@@ -1537,9 +1559,14 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
     cdt_lines.reverse()
     for line in cdt_lines:
         export_cdt.write(line)
+        
+    ### Save the top marker gene IDs
+    markers=[]
+    for cluster in cluster_top_marker:
+        markers.append(cluster_top_marker[cluster])
     
     export_cdt.close()
-    return elite_dir, filename, sc
+    return elite_dir, filename, markers, sc
 
 def exportJTV(cdt_dir, column_header, row_header,vmax=None):
     ### This is a config file for TreeView
@@ -2014,7 +2041,7 @@ def assignGroupColors(t):
         color_list = []
         cm = pylab.cm.get_cmap('nipy_spectral') #gist_ncar # binary
         for i in range(len(group_number_db)):
-            color_list.append(cm(1.*i/len(group_number_db)))  # color will now be an RGBA tuple
+            color_list.append(cm(1.*i/(len(group_number_db)-1)))  # color will now be an RGBA tuple
     #color_list=[]
     #color_template = [1,1,1,0,0,0,0.5,0.5,0.5,0.25,0.25,0.25,0.75,0.75,0.75]
     t.sort() ### Ensure that all clusters have the same order of groups
@@ -2287,6 +2314,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 #cm = matplotlib.colors.ListedColormap(['w', 'k']) ### If you want to hide one of the groups
+            else:
+                cm = pylab.cm.get_cmap('gist_rainbow')
+                cm = pylab.cm.get_cmap('nipy_spectral')
+            """
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -2297,9 +2328,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             elif numberGenesPresent==7:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-            else:
-                cm = pylab.cm.get_cmap('gist_rainbow')
-                
+            """
+
         def get_cmap(n, name='hsv'):
             '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
             RGB color; the keyword argument name must be a standard mpl colormap name.'''
@@ -2382,6 +2412,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     pylab.title(method+' - '+dataset_name)
     
     group_names={}
+    group_scores={}
     i=0
     for sample_name in column_header: #scores[0]
         if maskGroups != None:
@@ -2399,6 +2430,9 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                     label = group_name ### Only add once for each group
                 else: label = None
                 group_names[group_name] = color
+                ### Get the mean coordinates for each group label
+                try: group_scores[group_name].append([scores[i][0],scores[i][1]])
+                except: group_scores[group_name] = [[scores[i][0],scores[i][1]]]
             except Exception:
                 color = 'r'; label=None
             ax.plot(scores[i][0],scores[i][1],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
@@ -2408,7 +2442,40 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 except Exception: pass
                 ax.text(scores[i][0],scores[i][1],sample_name,fontsize=11)
         i+=1
-
+    try:
+    
+        font_size = 12
+        if len(group_scores)>10:
+            font_size = 10
+        if len(group_scores)>20:
+            font_size = 8
+        if len(group_scores)>40:
+            font_size = 6
+        ### Compute the mode coordinate pair to assign the group label to a fragmented population
+        for group_name in group_scores:
+            coords = group_scores[group_name]
+            coords.sort()
+            new_font_size = font_size
+            #avg = [float(sum(col))/len(col) for col in zip(*coords)] ### separate average values
+            #avg = [float(numpy.median(col)) for col in zip(*coords)] ### separate median values
+            #avg = coords[len(coords)/2]  ### median list
+            coord1 = stats.mode(map(lambda x: int(x[0]), coords))[0][0]
+            coord2 = stats.mode(map(lambda x: int(x[1]), coords))[0][0]
+            for coord in coords:
+                if int(coord[0]) == coord1:
+                    coord1 = coord[0]
+                    coord2 = coord[1]
+                    break
+            if len(group_name)>10:
+                new_font_size = font_size-2
+                print group_name
+            ax.text(coord1+0.02,coord2+0.02,group_name,fontsize=new_font_size,color='white',ha='center')
+            ax.text(coord1-0.02,coord2-0.02,group_name,fontsize=new_font_size,color='white',ha='center')
+            ax.text(coord1,coord2,group_name,fontsize=new_font_size,color='black',ha='center')
+    except:
+        #print traceback.format_exc()
+        pass
+    
     group_count = []
     for i in group_db:
         if group_db[i][0] not in group_count:
@@ -2689,6 +2756,10 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 #cm = matplotlib.colors.ListedColormap(['w', 'k']) ### If you want to hide one of the groups
+            else:
+                cm = pylab.cm.get_cmap('gist_rainbow')
+                cm = pylab.cm.get_cmap('nipy_spectral')
+            """
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -2699,9 +2770,8 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
             elif numberGenesPresent==7:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#63C6BB', '#29C3EC', '#3D3181', '#7B4976','#FEBC18', '#EE2C3C'])
-            else:
-                cm = pylab.cm.get_cmap('gist_rainbow')
-                
+
+            """
         def get_cmap(n, name='hsv'):
             '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
             RGB color; the keyword argument name must be a standard mpl colormap name.'''
@@ -5219,7 +5289,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
         else:
             cm = pylab.cm.get_cmap('gist_rainbow') #gist_ncar
         for i in range(len(groups)):
-            color_list.append(cm(1.*i/len(groups)))  # color will now be an RGBA tuple
+            color_list.append(cm(1.*i/(len(groups)-1))) # color will now be an RGBA tuple
             
     for i in range(len(matrix)):
         ax = pylab.subplot(n,1,1+i)
@@ -7796,17 +7866,103 @@ def exportSeuratMarkersToClusters(filename):
         prior_cluster = cluster
     eo.close()
             
-def tempFunction(filename):
-    path = filename[:-4]+'_cleaned'+'.txt'
+def reorganizeMetaData(filename):
+    path = filename[:-4]+'_reorganized'+'.txt'
     eo = export.ExportFile(path)
+    firstRow=True
+    for line in open(filename, 'rU').xreadlines():
+        if firstRow:
+            firstRow=False
+        else:
+            data = cleanUpLine(line)
+            t = string.split(data, '\t')
+            uid = t[0]
+            for val in t[1:]:
+                if len(val)>1:
+                    eo.write(uid+'\t'+val+'\n')
+    eo.close()
+
+def formatMetaData(filename):
+    """ Export metadata annotations from a matrix that consist of mutations, numerical values
+    categorical values and true/false values to a simple two column format for OncoSplice"""
+    
+    export_path = filename[:-4]+'_reorganized'+'.txt'
+    eo = export.ExportFile(export_path)
+    metadata=[]
+    quantitative_values={}
+    quantitative_sample_values={}
+    row_count=1
     for line in open(filename, 'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data, '\t')
-        eo.write(string.join(t[1:],'\t')+'\n')
+        if row_count==1:
+            headers = t[1:]
+        elif row_count==2:
+            if t[0] == 'FORMAT':
+                dataFormat = t[1:]
+        else:
+            sampleID = t[0]
+            index=0
+            for value in t[1:]:
+                if dataFormat[index] == 'TRUE-FALSE':
+                    if value == 'TRUE' or value == 'y' or value == 'yes' or value == 'true' or value == 'YES' or value == 'True':
+                        ### The sample is labeled as the column header (e.g., Alive)
+                        metadata.append([sampleID,headers[index]])
+                if dataFormat[index] == 'QUANTITATIVE':
+                    if len(headers[index])>0 and value != '':
+                        ### Prior to export, define low, median and high clusters
+                        try:
+                            value = float(value)
+                            try:
+                                quantitative_values[headers[index]].append(value)
+                            except:
+                                quantitative_values[headers[index]] = [value]
+                            try:
+                                quantitative_sample_values[headers[index]].append([sampleID,value])
+                            except:
+                                quantitative_sample_values[headers[index]] = [[sampleID,value]]
+                        except:
+                            pass ### Invalid non-numeric
+                if dataFormat[index] == 'VERBOSE':
+                    if len(headers[index])>0 and value != '':
+                        metadata.append([sampleID,headers[index]+'('+value+')'])
+                if dataFormat[index] == 'MUTATION':
+                    if len(headers[index])>0 and value != '':
+                        metadata.append([sampleID,headers[index]])
+                        if 'p.' in value:
+                            value = string.replace(value,'p.','')
+                        if '; ' in value:
+                            value = string.split(value,';')[0]
+                        if len(value)>1:
+                            metadata.append([sampleID,headers[index]+'-'+value[:-1]])
+                index+=1
+        row_count+=1
+    
+    for annotation in quantitative_values:
+        values = quantitative_values[annotation]
+        one_third = len(values)/3
+        bottom = values[:one_third]
+        middle = values[one_third:-1*one_third]
+        top = values[-1*one_third:]
+        for (sampleID, value) in quantitative_sample_values[annotation]:
+            if value in bottom:
+                metadata.append([sampleID,annotation+'-low'])
+            elif value in middle:
+                metadata.append([sampleID,annotation+'-mid'])
+            elif value in top:
+                metadata.append([sampleID,annotation+'-high'])
+            else:
+                print value,'value is out-of-range!!!'; sys.exit()
+                
+    ### Write these metadata annotations out to a two column file
+    for (sampleID,annotation) in metadata:
+        if len(sampleID)>1:
+            eo.write(sampleID+'\t'+annotation+'\n') 
     eo.close()
             
 if __name__ == '__main__':
-    filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/BEAT-AML/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt');sys.exit()
+    formatMetaData('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/BEAT-AML/metadata/BEAT-AML_MetaData-STRUCTURED.txt');sys.exit()
+    reorganizeMetaData('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/BEAT-AML/metadata/metadata_same-format.txt');sys.exit()
     folder = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/eCLIP/ENCODE/annotations'
     #simpleCombineBedFiles(folder);sys.exit()
     
