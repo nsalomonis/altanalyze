@@ -56,7 +56,12 @@ def cleanUpLine(line):
     return data
     
 def combineAllLists(files_to_merge,original_filename,includeColumns=False):
-    headers =[]; all_keys={}; dataset_data={}; files=[]
+    headers =[]; files=[]
+    
+    import collections 
+    all_keys=collections.OrderedDict()
+    dataset_data=collections.OrderedDict()
+    
     for filename in files_to_merge:
         print filename
         duplicates=[]
@@ -103,7 +108,7 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
     for i in dataset_data:
         print len(dataset_data[i]), i
     ###Add null values for key's in all_keys not in the list for each individual dataset
-    combined_file_data = {}
+    combined_file_data = collections.OrderedDict()
     for filename in files:
         combined_data = dataset_data[filename]
         ###Determine the number of unique values for each key for each dataset

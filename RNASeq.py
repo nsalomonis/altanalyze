@@ -596,6 +596,8 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                         algorithm = 'TCGA format'
                         if 'barcode' in t: junction_position = 1
                         else: junction_position = 0
+                        if 'Hybridization' in line:
+                            rows = 0
                     elif '.tab' in fn and len(t)==9:
                         try: start = float(t[1]) ### expect this to be a numerical coordinate
                         except Exception: continue
@@ -679,7 +681,8 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     except Exception: print t;sys.exit()
                                     chr,pos2,strand = string.split(coordinates[1],':')
                                     if 'chr' not in chr: chr = 'chr'+chr
-                                    pos2 = str(int(pos2)-1) ### This is the bed format conversion with exons of 0 length
+                                    if abs(int(pos1)-int(pos2))<2:
+                                        pos2 = str(int(pos2)-1) ### This is the bed format conversion with exons of 0 length
                                     exon1_start, exon2_stop = pos1, pos2
                                     reads = t[junction_position+1]
                                     junction_id = t[junction_position]
@@ -4106,6 +4109,9 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
                     cell_cycle = {}
                 try: cell_cycle_go = importGeneSets('GeneOntology',filterType='GO:0022402',geneAnnotations=gene_to_symbol_db)
                 except Exception: cell_cycle_go={}
+                if len(cell_cycle_go)<10:
+                    try: cell_cycle_go = importGeneSets('GeneOntology',filterType='GO:0007049',geneAnnotations=gene_to_symbol_db)
+                    except: pass
                 for i in cell_cycle_go:
                     cell_cycle[i]=[]
                 print len(cell_cycle),'cell cycle genes being considered.'
@@ -5053,11 +5059,16 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
 
     kallisto_dir_objects = os.listdir(unique.filepath('AltDatabase/kallisto'))
     ### Determine version
-    version = '0.43.1'
-    for subdir in kallisto_dir_objects:
-        if subdir.count('.')>1: version = subdir
+    version = '0.43.1-splice'
+    alt_version = '0.46.1'
+    if version not in kallisto_dir_objects:
+        for subdir in kallisto_dir_objects: ### Use whatever version is there (can be replaced by the user)
+            if subdir.count('.')>1: version = subdir
+    if alt_version not in kallisto_dir_objects:
+        for subdir in kallisto_dir_objects: ### Use whatever version is there (can be replaced by the user)
+            if subdir.count('.')>1 and 'splice' not in subdir: alt_version = subdir
+        
     kallisto_dir= 'AltDatabase/kallisto/'+version+'/'
-
     if os.name == 'nt':
         kallisto_file = kallisto_dir + 'PC/bin/kallisto.exe'; plat = 'Windows'
     elif 'darwin' in sys.platform:
@@ -5069,8 +5080,8 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
     kallisto_root = string.split(kallisto_file,'bin/kallisto')[0]
     fn = filepath(kallisto_file)
     try: os.chmod(fn,0777) ### It's rare, but this can be a write issue
-    except: pass    
-
+    except: pass
+    
     output_dir=root_dir+'/ExpressionInput/kallisto/'
     try: os.mkdir(root_dir+'/ExpressionInput')
     except Exception: pass
@@ -5174,6 +5185,10 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
     headers=['UID']
 
     ### Verify, import, create and/or ignore the transcript exon coordinate file for BAM file creation
+    if paired == 'paired':
+        s=[]
+    else:
+        s=["--single","-l","200","-s","20"]
     geneCoordFile = getCoordinateFile(species)
     for n in fastq_paths:
         output_path = output_dir+n
@@ -5192,11 +5207,6 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
                 else:
                     err_out = None
                 kallisto_out.seek(0, 2)  # Subprocess doesn't move the file pointer when appending!
-
-            if paired == 'paired':
-                s=[]
-            else:
-                s=["--single","-l","200","-s","20"]
             
             #geneCoordFile=None - force to run simple Kallisto
             if geneCoordFile==None:
@@ -5223,7 +5233,32 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
                     kill
                     retcode = subprocess.call(['kallisto', "quant","-i", indexFile, "-o", output_path]+p)"""
             if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
-            else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
+            else:
+                print 'kallisto failed due to an unknown error (report to altanalyze.org help).\nTrying without BAM file creation.'
+                
+                """ The below code should be run once, when changing to the alternative kallisto version """
+                kallisto_file = string.replace(kallisto_file,version,alt_version)
+                try: os.chmod(kallisto_file,0777) ### It's rare, but this can be a write issue
+                except: pass
+                print 'Re-Building kallisto index file...'
+                try: os.remove(root_dir+n+'.bam') ### Remove the failed BAM file attempt - will confuse user and trigger BAM analysis later
+                except: pass
+                arguments = [kallisto_file, "index","-i", indexFile]
+                fasta_files = getFASTAFile(species)
+                fasta_files = filterFASTAFiles(fasta_files)
+                for fasta_file in fasta_files:
+                    arguments.append(fasta_file)
+                try:
+                    retcode = subprocess.call(arguments)
+                except Exception:
+                    print traceback.format_exc()
+                geneCoordFile = None ### Skips BAM file generation going forward
+                try: ### Without BAM and BED file generation
+                    retcode = subprocess.call([kallisto_file, "quant","-i", indexFile, "-o", output_path]+s+p)
+                except Exception:
+                    print traceback.format_exc()
+                if retcode == 0: print 'completed in', int(time.time()-begin_time), 'seconds'
+                else: print 'kallisto failed due to an unknown error (report to altanalyze.org help).'
 
             #"""
         input_path = output_path+'/abundance.txt'
@@ -5537,36 +5572,92 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
             except: celltype_db[cluster] = [[pvalue,cell_type]]
         except:
             pass ### header rows or blanks
-
+    annotatedGroupsFile = icgs_groups_path[:-4]+'-CellTypesFull.txt'
     eo1=export.ExportFile(icgs_groups_path[:-4]+'-CellTypes.txt')
-    eo2=export.ExportFile(icgs_groups_path[:-4]+'-CellTypesFull.txt')
+    eo2=export.ExportFile(annotatedGroupsFile)
     
+    """ Determine the most appropriate tissue to compare to then weight higher based on that tissue """
+    tissue_preference = {}
     for cluster in clusters:
         if cluster in celltype_db:
             celltype_db[cluster].sort()
-            cell_type = celltype_db[cluster][0][1] + '_c'+cluster
-            cell_type = string.replace(cell_type,'(MCA)','')
-            cell_type = string.replace(cell_type,'/','')
-            cell_type = string.replace(cell_type,'(','')
-            cell_type = string.replace(cell_type,')','')
-            cell_type = string.replace(cell_type,'  ','')
+            x = celltype_db[cluster][0]
+            if "Adult" in x or 'Fetal'in x or 'Embryo' in x or 'Embryonic' in x or 'Term' in x:
+                cell_type = celltype_db[cluster][0][1]
+                ids = string.split(cell_type,' ')
+                if len(ids)>1:
+                    tissue = ids[1]
+                    tissue_preference[cluster] = tissue
+
+    tissue_count = {}
+    tissue_count_ls=[]
+    for cluster in tissue_preference:
+        tissue = tissue_preference[cluster]
+        if tissue in tissue_count:
+            tissue_count[tissue]+=1
+        else:
+            tissue_count[tissue]=1
+    for tissue in tissue_count:
+        tissue_count_ls.append([tissue_count[tissue],tissue])
+    try:
+        tissue_count_ls.sort()
+        tissue_count_ls.reverse()
+        if ((len(tissue_count_ls)*1.00)/tissue_preference)>0.5: ### At least half of the clusters
+            tissue_preference = tissue_count_ls[0][-1]
+            print 'Likely tissue based on GO-Elite =',tissue_preference
+        else:
+            tissue_preference = 'NONE'
+    except:
+        tissue_preference = 'NONE'
+        
+    for cluster in clusters:
+        if cluster in celltype_db:
+            celltype_db[cluster].sort()
+            cell_type = None
+            ### Preferentially select cell type names that correspond to the preferential tissue
+            original_cell_type = celltype_db[cluster][0][1]
+            for (p,term) in celltype_db[cluster]:
+                if tissue_preference in term:
+                    cell_type = term
+                    break
+            if cell_type == None: 
+                cell_type = original_cell_type
+            cell_type = string.replace(cell_type,'/','-')
+            if ' (' in cell_type:
+                cell_type = string.split(cell_type,' (')[0]
+            if '(' in cell_type:
+                cell_type = string.split(cell_type,'(')[0]
+            cell_type += '_c'+cluster
+            ### Now, shorten the name to exclude the tissue type
+            cell_type = string.replace(cell_type,'Adult ','')
+            cell_type = string.replace(cell_type,'Fetal ','')
+            cell_type = string.replace(cell_type,'Embryonic','')
+            cell_type = string.replace(cell_type,'Embryo','')
+            cell_type = string.replace(cell_type,'Term','')
+
+            if tissue_preference != original_cell_type:
+                cell_type = string.replace(cell_type,tissue_preference,'')
+            if cell_type[0]=='_':cell_type = original_cell_type + '_c'+cluster
+            if cell_type[0]==' ':cell_type = cell_type[1:]
+            if cell_type[0]==' ':cell_type = cell_type[1:]
             eo1.write(string.join([cluster,cell_type],'\t')+'\n')
             for cell in group_db[cluster]:
                 eo2.write(string.join([cell,cluster,cell_type],'\t')+'\n')
         else:
             eo1.write(string.join([cluster,'UNK-c'+cluster],'\t')+'\n')
             for cell in group_db[cluster]:
-                eo2.write(string.join([cell,cluster,cell_type],'\t')+'\n')
+                eo2.write(string.join([cell,cluster,'UNK-c'+cluster],'\t')+'\n')
     eo1.close()
     eo2.close()
+    return annotatedGroupsFile
  
 if __name__ == '__main__':
     samplesDiffering = 3
     column_method = 'hopach'
     species = 'Hs'
     excludeCellCycle = False
-    icgs_groups_path='/Volumes/salomonis2/External-Collaborations/Vdr-SingleCellRNAseq-project/S2-CalT18/ICGS-NMF_cosine/FinalGroups.txt'
-    goelite_path='/Volumes/salomonis2/External-Collaborations/Vdr-SingleCellRNAseq-project/S2-CalT18/ICGS-NMF_cosine/GO-Elite/clustering/FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
+    icgs_groups_path='/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/FinalGroups.txt'
+    goelite_path='/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/GO-Elite/clustering/FinalMarkerHeatmap/GO-Elite_results/pruned-results_z-score_elite.txt'
     predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
     platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
     """

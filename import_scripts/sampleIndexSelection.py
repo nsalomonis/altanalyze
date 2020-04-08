@@ -18,26 +18,44 @@ def makeTestFile():
     export_object.close()
     return input_file
 
-def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[]):
+def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[],log2=False):
     if calculateCentroids:
         filter_names,group_index_db=filter_names
         
     export_object = open(output_file,'w')
     firstLine = True
+    row_count=0
     for line in open(input_file,'rU').xreadlines():
         data = cleanUpLine(line)
         if '.csv' in input_file:
             values = string.split(data,',')
         else:
             values = string.split(data,'\t')
+        row_count+=1
         if firstLine:
             uid_index = 0
             if data[0]!='#':
-                if force:
+                if force == True:
+                    values2=[]
+                    for x in values:
+                        if ':' in x:
+                            x=string.split(x,':')[1]
+                            values2.append(x)
+                        else:
+                            values2.append(x)
                     filter_names2=[]
                     for f in filter_names:
                         if f in values: filter_names2.append(f)
-                    filter_names = filter_names2
+                    if len(filter_names2)<2:
+                        filter_names2=[]
+                        for f in filter_names:
+                            if f in values2: filter_names2.append(f)
+                        filter_names = filter_names2
+                    else:
+                        filter_names = filter_names2
+                if force == 'include':
+                    values= ['UID']+filter_names
+                    pass
                 try:
                     sample_index_list = map(lambda x: values.index(x), filter_names)
                 except:
@@ -47,6 +65,14 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                         for x in values:
                             if ':' in x:
                                 x=string.split(x,':')[1]
+                            values2.append(x)
+                        values = values2
+                        sample_index_list = map(lambda x: values.index(x), filter_names)
+                    elif '.' in line:
+                        values2=[]
+                        for x in values:
+                            if '.' in x:
+                                x=string.split(x,'.')[0]
                             values2.append(x)
                         values = values2
                         sample_index_list = map(lambda x: values.index(x), filter_names)
@@ -67,14 +93,21 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                         for x in filter_names:
                             if x not in values:
                                 temp_count+=1
-                                if temp_count>500: print 'too many to print';kill
-                                print x,
-                        print 'are missing';kill
+                                if temp_count==500: print 'too many to print'
+                                elif temp_count>500:
+                                    pass
+                                else: print x,
+                        print temp_count,'are missing';kill
                         
                 firstLine = False
                 header = values
             if 'PSI_EventAnnotation' in input_file:
                 uid_index = values.index('UID')
+            if log2:
+                try:
+                    values = map(lambda x: math.log(x+1,2))
+                except:
+                    pass
             if calculateCentroids:
                 if len(comparisons)>0:
                     export_object.write(string.join(['UID']+map(lambda x: x[0]+'-fold',comparisons),'\t')+'\n') ### Use the numerator group name                  
@@ -82,6 +115,11 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                     clusters = map(str,group_index_db)
                     export_object.write(string.join([values[uid_index]]+clusters,'\t')+'\n')
                 continue ### skip the below code
+            
+        if force == 'include':
+            if row_count>1:
+                values += ['0']
+            
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
         except Exception:
             print traceback.format_exc()
@@ -242,6 +280,54 @@ def cleanUpLine(line):
         print data
     return data
 
+def statisticallyFilterTransposedFile(input_file,output_file,threshold,minGeneCutoff=499,binarize=True):
+    """ The input file is a large expression matrix with the rows as cells and the columns as genes to filter """
+    
+    if 'exp.' in input_file:
+        counts_file = string.replace(input_file,'exp.','geneCount.')
+    else:
+        counts_file = input_file[:-4]+'-geneCount.txt'
+        
+    import export
+    eo = export.ExportFile(counts_file)
+    eo.write('Sample\tGenes Expressed(threshold:'+str(threshold)+')\n')
+    eo_full = export.ExportFile(output_file)
+    
+    sample_expressed_genes={}
+    header=True
+    count_sum_array=[]
+    cells_retained=0
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if '.csv' in input_file:
+            t = string.split(data,',')
+        else:
+            t = string.split(data,'\t')
+        if header:
+            eo_full.write(line)
+            gene_len = len(t)
+            genes = t[1:]
+            header=False
+        else:
+            cell = t[0]
+            values = map(float,t[1:])
+            binarized_values = []
+            for v in values:
+                if v>threshold:
+                    if binarize: ### do not count the individual read counts, only if a gene is expressed or not
+                        binarized_values.append(1)
+                    else:
+                        binarized_values.append(v) ### When summarizing counts and not genes expressed
+                else: binarized_values.append(0)
+            genes_expressed = sum(binarized_values)
+            if genes_expressed>minGeneCutoff:
+                eo_full.write(line)
+                cells_retained+=1
+                eo.write(cell+'\t'+str(genes_expressed)+'\n')
+    eo.close()
+    eo_full.close()
+    print cells_retained, 'Cells with genes expressed above the threshold'
+            
 def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499,binarize=True):
     if 'exp.' in input_file:
         counts_file = string.replace(input_file,'exp.','geneCount.')
@@ -364,6 +450,9 @@ if __name__ == '__main__':
     comparisons=[]
     binarize=True
     transpose=False
+    log2=False
+    
+    fileFormat = 'columns'
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         filter_names = ['test-1','test-2','test-3']
         input_file = makeTestFile()
@@ -371,7 +460,7 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
                             'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize=',
-                            'transpose='])
+                            'transpose=','fileFormat=','log2='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
@@ -379,26 +468,36 @@ if __name__ == '__main__':
             elif opt == '--f': filter_file=arg
             elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateCentroids = True
             elif opt == '--fold': returnComparisons = True
+            elif opt == '--log2': log2 = True
             elif opt == '--r':
                 if arg == 'exclude':
                     filter_rows=True
                     exclude=True
                 else:
                     filter_rows=True
-            elif opt == '--force': force=True
+            elif opt == '--force':
+                if arg == 'include': force = arg
+                else: force=True
             elif opt == '--geneCountFilter': geneCountFilter=True
             elif opt == '--expressionCutoff': expressionCutoff=float(arg)
             elif opt == '--minGeneCutoff': minGeneCutoff=int(arg)
             elif opt == '--binarize':
                 if 'alse' in arg or 'no' in arg:
                     binarize=False
+            elif opt == '--fileFormat':
+                fileFormat=arg
+                if fileFormat != 'columns':
+                    fileFormat = 'rows'
             
     output_file = input_file[:-4]+'-filtered.txt'
     if transpose:
         transposeMatrix(input_file)
         sys.exit()
     if geneCountFilter:
-        statisticallyFilterFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',expressionCutoff,minGeneCutoff=199,binarize=binarize); sys.exit()
+        if fileFormat == 'columns':
+            statisticallyFilterFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',expressionCutoff,minGeneCutoff=199,binarize=binarize); sys.exit()
+        else:
+            statisticallyFilterTransposedFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',expressionCutoff,minGeneCutoff=199,binarize=binarize); sys.exit()
     if filter_rows:
         filter_names = getFilters(filter_file)
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)
@@ -414,5 +513,5 @@ if __name__ == '__main__':
         filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids,comparisons=comparisons)
     else:
         filter_names = getFilters(filter_file)
-        filterFile(input_file,output_file,filter_names,force=force)
+        filterFile(input_file,output_file,filter_names,force=force,log2=log2)
 

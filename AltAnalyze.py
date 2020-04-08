@@ -4512,7 +4512,7 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            root.title('AltAnalyze version 2.1.3')
+            root.title('AltAnalyze version 2.1.4')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
             self.root = root
             height = 450; width = 500
@@ -4610,7 +4610,7 @@ class SummaryResultsWindow:
         self.emergency_exit = False            
         self.LINKS = []
         self.tl = tl
-        self.tl.title('AltAnalyze version 2.1.3')
+        self.tl.title('AltAnalyze version 2.1.4')
         self.analysis_type = analysis_type
 
         filename = 'Config/icon.gif'
@@ -5275,7 +5275,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
     dataType='Gene Expression'
   else:
     dataType=array_type
-  print_items.append("AltAnalyze version 2.1.3 - Expression Analysis Parameters Being Used...")
+  print_items.append("AltAnalyze version 2.1.4 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'database'+': '+unique.getCurrentGeneDatabaseVersion())
   print_items.append('\t'+'species'+': '+species)
   print_items.append('\t'+'method'+': '+dataType)
@@ -5467,6 +5467,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             biotypes = 'ran'
             dir_list = unique.read_directory(root_dir)
             ### If we are performing a splicing analysis
+            
             if perform_alt_analysis != 'no' and perform_alt_analysis != 'expression':
                 print '...Performing analyses on junction-RPKM versus Kallisto-TPM.'
                 for file in dir_list:
@@ -5474,26 +5475,33 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                         processBEDfiles=True
                     if '.bed' in string.lower(file):
                         processBEDfiles=True
-                try: rpkm_threshold = fl.RPKMThreshold()
-                except Exception: rpkm_threshold = []
-                if isinstance(rpkm_threshold, int) ==False:
-                    array_type = 'RNASeq'
+                if processBEDfiles:
+                    try: rpkm_threshold = fl.RPKMThreshold()
+                    except Exception: rpkm_threshold = []
+                    if isinstance(rpkm_threshold, int) ==False:
+                        array_type = 'RNASeq'
+                        fl.setArrayType(array_type)
+                        fl.setBEDFileDir(root_dir)
+                        fl.setRPKMThreshold(1.0)
+                        fl.setExonExpThreshold(5.0)
+                        fl.setGeneExpThreshold(200.0)
+                        fl.setExonRPKMThreshold(0.5)
+                        fl.setJunctionExpThreshold(5.0)
+                        fl.setVendor('RNASeq')
+                    ### Export BAM file indexes
+                    try:
+                        from import_scripts import BAMtoJunctionBED
+                        try: BAMtoJunctionBED.exportIndexes(root_dir)
+                        except:
+                            print 'BAM file indexing failed...'
+                            print traceback.format_exc()
+                    except: print 'BAM file support missing due to lack of pysam...'
+                else:
+                    print '...Performing analyses on Kallisto-TPM values directly.'
+                    array_type = "3'array"
                     fl.setArrayType(array_type)
-                    fl.setBEDFileDir(root_dir)
-                    fl.setRPKMThreshold(1.0)
-                    fl.setExonExpThreshold(5.0)
-                    fl.setGeneExpThreshold(200.0)
-                    fl.setExonRPKMThreshold(0.5)
-                    fl.setJunctionExpThreshold(5.0)
-                    fl.setVendor('RNASeq')
-                ### Export BAM file indexes
-                try:
-                    from import_scripts import BAMtoJunctionBED
-                    try: BAMtoJunctionBED.exportIndexes(root_dir)
-                    except:
-                        print 'BAM file indexing failed...'
-                        print traceback.format_exc()
-                except: print 'BAM file support missing due to lack of pysam...'
+                    vendor = 'other:Ensembl' ### Ensembl linked system name
+                    fl.setVendor(vendor)         
             else:
                 print '...Performing analyses on Kallisto-TPM values directly.'
                 array_type = "3'array"
@@ -6348,7 +6356,8 @@ def commandLineRun():
                                                          'o=','dynamicCorrelation=','runCompleteWorkflow=','adjp=',
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
-                                                         'elite_dir=','numGenesExp='])
+                                                         'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
+                                                         'dataFormat='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6449,13 +6458,13 @@ def commandLineRun():
             compendiumType=arg
         elif opt == '--denom':
             denom_file_dir=arg ### Indicates that GO-Elite is run independent from AltAnalyze itself
-        elif opt == '--accessoryAnalysis':
+        elif opt == '--accessoryAnalysis' or opt == '--accessoryAnalyses':
             accessoryAnalysis = arg
         elif opt == '--channelToExtract': channel_to_extract=arg
         elif opt == '--genesToReport': genesToReport = int(arg)
         elif opt == '--correlateAll': correlateAll = True
         elif opt == '--direction': direction = arg
-        elif opt == '--logexp': expression_data_format=arg
+        elif opt == '--logexp' or opt == '--dataFormat': expression_data_format=arg
         elif opt == '--geneRPKM': rpkm_threshold=arg
         elif opt == '--correlationCutoff': PearsonThreshold=float(arg)
         elif opt == '--DE':
@@ -6472,6 +6481,8 @@ def commandLineRun():
                 returnCentroids = 'community'; CenterMethod='community'
             elif string.lower(arg) == 'cells' or string.lower(arg) == 'cell':
                 returnCentroids = False; CenterMethod='centroid'
+            elif string.lower(arg) == 'none' or string.lower(arg) == ' ':
+                returnCentroids = 'None'; CenterMethod='None'     
             else:
                 returnCentroids = 'community'; CenterMethod='community'     
         elif opt == '--multiThreading' or opt == '--multiProcessing':
@@ -6588,6 +6599,7 @@ def commandLineRun():
             runCompleteWorkflow=False
             downsample=2500
             numGenesExp=500
+            numVarGenes=500
             if ChromiumSparseMatrix != '':
                 rho_cutoff = 0.2
                 column_metric = 'euclidean'
@@ -6615,9 +6627,14 @@ def commandLineRun():
                 elif opt == '--SamplesDiffering':SamplesDiffering=int(float(arg))
                 elif opt == '--excludeGuides': excludeGuides=arg
                 elif opt == '--dynamicCorrelation': dynamicCorrelation=arg
-                elif opt == '--k': k=int(arg)
-                elif opt == '--downsample': downsample=int(arg)
-                elif opt == '--numGenesExp': numGenesExp=int(arg)
+                elif opt == '--k':
+                    try: k=int(arg)
+                    except:
+                        print 'Invalid k... setting to None'
+                        k=None
+                elif opt == '--downsample': downsample=int(arg) ### Number of cells to downsample to
+                elif opt == '--numVarGenes': numVarGenes=int(arg) ### Number of cells to downsample to
+                elif opt == '--numGenesExp': numGenesExp=int(arg) ### For barcode filtering
                 elif opt == '--runCompleteWorkflow':
                     runCompleteWorkflow=arg
                     if string.lower(arg)=='false' or string.lower(arg)=='no':
@@ -6665,6 +6682,9 @@ def commandLineRun():
                 gsp.setK(k)
                 gsp.setDownsample(downsample)
                 gsp.setNumGenesExp(numGenesExp)
+                gsp.setNumVarGenes(numVarGenes)
+                try: gsp.setCountsNormalization(expression_data_format)
+                except: pass
                 gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering, dynamicCorrelation,  
                     removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff) 
 
@@ -6728,7 +6748,7 @@ def commandLineRun():
             fl.setOutputDir(root_dir)
             fl.setMultiThreading(multiThreading)
             exp_file_location_db={}; exp_file_location_db[exp_name]=fl
-
+            
             ### Assign variables needed to run Kallisto from FASTQ files
             if runKallisto and len(input_fastq_dir)==0:
                 #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --fastq_dir /Users/saljh8/Desktop/Grimes/GEC14074 
@@ -6811,7 +6831,7 @@ def commandLineRun():
 
             ### Run ICGS through the GUI
             graphic_links = UI.RemotePredictSampleExpGroups(expFile, mlp_instance, gsp,(species,array_type)) ### proceed to run the full discovery analysis here!!!
-                        
+            
             ### Export Guide3 Groups automatically
             Guide3_results = graphic_links[-1][-1][:-4]+'.txt'
             new_groups_dir = RNASeq.exportGroupsFromClusters(Guide3_results,fl.ExpFile(),array_type,suffix='ICGS')
@@ -8055,7 +8075,7 @@ def commandLineRun():
                     print '\nPlease install a valid gene database before proceeding.\n'
                     print 'For example: python AltAnalyze.py --species Hs --update Official --version EnsMart72\n';sys.exit()
             if status == False:
-                print 'Please note: LineageProfiler not currently supported for this species...';sys.exit()
+                print 'Please note: LineageProfiler not currently supported for this species...'
                 
             try:
                 FoldDiff=1.5
@@ -8071,6 +8091,7 @@ def commandLineRun():
                     elif opt == '--labels': labels = arg
                     elif opt == '--genes': genes = arg
                     elif opt == '--referenceFull': referenceFull = arg
+                    
                 fl = UI.ExpressionFileLocationData('','','','')
                 fl.setSpecies(species)
                 fl.setVendor(manufacturer)
@@ -8102,6 +8123,7 @@ def commandLineRun():
                     LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod=CenterMethod,species=species,PearsonThreshold=PearsonThreshold)
                     #except: LineageProfilerIterate.createMetaICGSResults(ICGS_files,output_dir,CenterMethod=CenterMethod)
                     sys.exit()
+                print 'center method =',CenterMethod
                 try: CenterMethod=CenterMethod
                 except: CenterMethod='community'
                 
@@ -8111,7 +8133,6 @@ def commandLineRun():
                     custom_reference = genes
                 if referenceFull != None:
                     fl.set_reference_exp_file(referenceFull)
-
                 UI.remoteLP(fl, expr_input_dir, manufacturer, custom_reference, geneModel, None, modelSize=modelSize, CenterMethod=CenterMethod) #,display=display
                 #graphic_links = ExpressionBuilder.remoteLineageProfiler(fl,input_file_dir,array_type,species,manufacturer)
                 print_out = 'Alignments and images saved to the folder "DataPlots" in the input file folder.'
@@ -8625,8 +8646,11 @@ if __name__ == '__main__':
     try: mlp.freeze_support()
     except Exception: pass
     
-    systemLog()
-    sys_log_file = filepath('Config/report.log')
+    try:
+        systemLog()
+        sys_log_file = filepath('Config/report.log')
+    except:
+        pass
     print 'Using the Config location:',sys_log_file
     
     versionCheck()

@@ -3064,6 +3064,11 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
     genes_examined=0; gene_increment=1000
     prior_gene = None
     gene = None
+    
+    """ Import all exon-exon and exon-intron junction reads for a gene. Then look for
+    genomic overlapping coordinates to compute PSI models for each splicing event
+    and report exon-exon junctions clusters prior to annotating (EventAnnotation) """
+    
     for line in open(expFile,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -3077,9 +3082,8 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
             export_data.write(additional_headers)
             clust_export_data.write(line)
         else:
-            uid = t[0]
+            uid = t[0] ### Junction identifier
             if '=' in uid:
-               
                 try: uid,location = string.split(uid,'=')
                 except Exception: print t[0];sys.exit()
                 pos1,pos2 = string.split(string.split(location,':')[-1],'-')
@@ -3110,9 +3114,20 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                 if gene != prior_gene and prior_gene !=None:
                     genes_examined+=1
                     #if len(gene_junction_denom)>0:
+                    
+                    """ Now that all your exons have been imported into this sorted counts file,
+                    determine overlapping junctions to compute and quantify alternative splicing events """
+                    
                     if prior_gene == '!ENSG00000198001': ### For testing
-                        
-                        filterByLocalJunctionExp(prior_gene,feature_exp_db)
+                        novel_junc_count = 0
+                        for junc in feature_exp_db:
+                            if "_" in junc: novel_junc_count+=1
+                        if novel_junc_count>5000:
+                            ### Indicates genomic variation resulting in broad diversity
+                            ### Will prevent function from running in a reasonable amount of time
+                            pass
+                        else:
+                            filterByLocalJunctionExp(prior_gene,feature_exp_db)
                         #try: gene_junction_denom[prior_gene] = [max(value) for value in zip(*gene_junction_denom[prior_gene])] # sum the junction counts for all junctions across the gene
                         #except Exception: pass
                     if platform == 'RNASeq':

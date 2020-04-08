@@ -19,6 +19,10 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
     if customLabels==None or customLabels == '':
         try: customLabels = fl.Labels()
         except: pass
+        
+    try: returnCentroids = fl.ReturnCentroids()
+    except Exception: returnCentroids = 'community'
+    
     if customLabels == '':
         customLabels = None
     if customLabels !=None:

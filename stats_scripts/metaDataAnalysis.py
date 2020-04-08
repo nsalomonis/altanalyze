@@ -225,18 +225,31 @@ def importGroupsComps(groups_file):
     
     comps=[]
     comps_file = string.replace(groups_file,'groups.','comps.')
-    for line in open(comps_file,'rU').xreadlines():
-        data = cleanUpLine(line)
-        g1,g2 = string.split(data,'\t')
-        try: 
-            g1_name = group_id_lookup[g1]
-            g2_name = group_id_lookup[g2]
-            comps.append((g1_name,g2_name))
-        except Exception:
-            """ The group ID in the comps file does not exist in the groups file """
-            print g1, "or", g2, "groups do not exist in the groups file, but do in the comps."
-    groups_db[1] = initial_groups
-    comps_db[1] = comps
+    try:
+        for line in open(comps_file,'rU').xreadlines():
+            data = cleanUpLine(line)
+            g1,g2 = string.split(data,'\t')
+            try: 
+                g1_name = group_id_lookup[g1]
+                g2_name = group_id_lookup[g2]
+                comps.append((g1_name,g2_name))
+            except Exception:
+                """ The group ID in the comps file does not exist in the groups file """
+                print g1, "or", g2, "groups do not exist in the groups file, but do in the comps."
+        groups_db[1] = initial_groups
+        comps_db[1] = comps
+    except:
+        print traceback.format_exc()
+        print '\nNo comparison file identified... proceeding with all pairwise comparisons'
+        for group_name1 in initial_groups:
+            for group_name2 in initial_groups:
+                groups=[group_name1,group_name2]
+                groups.sort()
+                if group_name1 != group_name2:
+                    if groups not in comps:
+                        comps.append(groups)
+        groups_db[1] = initial_groups
+        comps_db[1] = comps
     return groups_db,comps_db
         
 class PSIData:

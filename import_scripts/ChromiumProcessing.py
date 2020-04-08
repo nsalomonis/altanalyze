@@ -23,7 +23,6 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=Tr
         if 'matrix' in f:
             # CellRanger v3
             barcodes = list(f['matrix']['barcodes'])
-            print barcodes;sys.exit()
             gene_ids = f['matrix']['features']['id']
             gene_names = f['matrix']['features']['name']
             mat = sparse.csc_matrix((f['matrix']['data'], f['matrix']['indices'], f['matrix']['indptr']), shape=f['matrix']['shape'])

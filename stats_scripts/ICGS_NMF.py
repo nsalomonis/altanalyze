@@ -161,7 +161,10 @@ def caldist(X,i,keys,keylist):
                 break
         return key1
 
-def hgvfinder(inputfile):
+def hgvfinder(inputfile,numVarGenes=500):
+    """ Find the highly variable genes by dispersion """
+    
+    print 'Number of variable genes for dispersion:',numVarGenes
     header=[]
     X=[]
     head=0
@@ -174,10 +177,12 @@ def hgvfinder(inputfile):
             line=line.rstrip('\r\n')
             q= string.split(line,'\t')
             count=len(q)-1
-           # if count >20000:
-            #    community=True
-            #else:
-             #   community=False
+            """
+            if count >20000:
+                community=True
+            else:
+                community=False
+            """
             header=q
             head=1
             continue
@@ -218,8 +223,7 @@ def hgvfinder(inputfile):
     counter=0
 
     for item,item2 in hgv:
-        if counter<500: 
-           
+        if counter<numVarGenes: ### Number of highly variable genes for dispersion
             hgvgenes.append(item)
             counter+=1
         
@@ -1217,25 +1221,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 ExpandSampleClusters.filterRows(EventAnnot,processedInputExpFile[:-4]+'-markers.txt',filterDB=markerlst,logData=False) ### the processedInputExpFile is overwritten
                 
                 groupsdict=grpDict(groupsfile)
-                matrix, column_header, row_header, dataset_name, group_db = clustering.importData(updated_expfile,geneFilter=markerlst)
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
-    
-                    #matrix = map(np.array, zip(*matrix)) ### coverts these to tuples
-                    #column_header, row_header = row_header, column_header
-                    finalOutputDir=root_dir+"/ICGS-NMF/"
-                    #clustering.tSNE(np.array(matrix),column_header,dataset_name,group_db,display=False,showLabels=False,species=species,reimportModelScores=False)
-                    try:
-                        clustering.runUMAP(np.array(matrix),column_header,dataset_name,group_db,display=False,
-                            showLabels=False,species=species,reimportModelScores=False,rootDir=root_dir,finalOutputDir=finalOutputDir)
-                    except:
-                        print traceback.format_exc()
-        
-                """
-                clustering.tSNE(processedInputExpFile,group_db=groupsdict,display=True,showLabels=False,row_header=None,colorByGene=None,species=None,reimportModelScores=False)
-                ### MV need to do 
-                Orderedfile,groupsdict=FindcentroidGroups(filtered,groupfile)
-                """
+
                 SVMBinOutput=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max.txt"
                 SVMBinOutput_t=root_dir+"/NMF-SVM/SVMOutputs/round1SVC_Results_max_t.txt"
                 import csv
@@ -1266,6 +1252,8 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                     shutil.copy(NMFSVM_centroid_cluster_graphics_dir+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.png")
                     shutil.copy(NMFSVM_centroid_cluster_graphics_dir+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap.pdf")
                     shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
+                    
+                    final_exp_file = root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt"
                 else:
                     NMFSVM_centroid_cluster_graphics_dir=graphic_links2[0][1][:-4]
                     NMFSVM_centroid_cluster_dir=graphic_links2[0][0][:-4]
@@ -1281,15 +1269,38 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                     shutil.copy(NMFSVM_centroid_cluster_graphics_dir2+'.png',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.png")
                     shutil.copy(NMFSVM_centroid_cluster_graphics_dir2+'.pdf',root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.pdf")
                     shutil.copy(allgenesfile,root_dir+"/ICGS-NMF/MarkerGenes.txt")
-                
+                    
+                    final_exp_file = root_dir+"/ICGS-NMF/FinalMarkerHeatmap_all.txt"
                 try:
-                    ### Build cell-type annotation FinalGroups file
+                    ### Build cell-type annotation FinalGroups file 
                     goelite_path = export.findParentDir(NMFSVM_centroid_cluster_dir)[:-1]+'/GO-Elite/clustering/'+export.findFilename(NMFSVM_centroid_cluster_dir)+'/GO-Elite_results/pruned-results_z-score_elite.txt'
-                    RNASeq.predictCellTypesFromClusters(finalgrpfile, goelite_path)
+                    annotatedGroupsFile = RNASeq.predictCellTypesFromClusters(finalgrpfile, goelite_path)
+                    group_alt = clustering.remoteAssignGroupColors(annotatedGroupsFile)
                 except:
                     print traceback.format_exc()
                     print 'Unable to export annotated groups file with predicted cell type names.'
-                    
+                    group_alt=None
+
+                ### Moved UMAP generation to the end (so the coordinates are the final coordinates and the user can review results earlier)
+                matrix, column_header, row_header, dataset_name, group_db = clustering.importData(final_exp_file,geneFilter=markerlst)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
+    
+                    #matrix = map(np.array, zip(*matrix)) ### coverts these to tuples
+                    #column_header, row_header = row_header, column_header
+                    finalOutputDir=root_dir+"/ICGS-NMF/"
+                    #clustering.tSNE(np.array(matrix),column_header,dataset_name,group_db,display=False,showLabels=False,species=species,reimportModelScores=False)
+                    try:
+                        clustering.runUMAP(np.array(matrix),column_header,dataset_name,group_db,display=False, group_alt=group_alt,
+                            showLabels=False,species=species,reimportModelScores=False,rootDir=root_dir,finalOutputDir=finalOutputDir)
+                    except:
+                        print traceback.format_exc()
+                """
+                clustering.tSNE(processedInputExpFile,group_db=groupsdict,display=True,showLabels=False,row_header=None,colorByGene=None,species=None,reimportModelScores=False)
+                ### MV need to do 
+                Orderedfile,groupsdict=FindcentroidGroups(filtered,groupfile)
+                """
+                
                 ### write final groups ordered
 
                 #exportGroups(root_dir+"/ICGS-NMF/FinalMarkerHeatmap.txt",root_dir+"/ICGS-NMF/FinalGroups.txt",platform)
@@ -1375,7 +1386,19 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     
     try: downsample_cutoff = gsp.DownSample()
     except: downsample_cutoff = 2500
+    try: numVarGenes = gsp.NumVarGenes()
+    except: numVarGenes = 500
     print 'DownSample threshold =',downsample_cutoff, 'cells'
+    
+    try: data_format = string.lower(gsp.CountsNormalization())
+    except: data_format = 'scaled'
+
+    ### Scale and log2 normalize a counts expression file
+    if 'count' in data_format:
+        print 'Scaling counts as column normalized log2 values.',
+        from import_scripts import CountsNormalize
+        inputExpFile = CountsNormalize.normalizeDropSeqCountsMemoryEfficient(inputExpFile)
+        
     print 'Filtering the expression dataset (be patient).',
     print_out, inputExpFile = RNASeq.singleCellRNASeqWorkflow(species,platform,inputExpFile,mlp,rpkm_threshold=0,parameters=gsp,reportOnly=True)
     
@@ -1393,7 +1416,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     ########## Perform Downsampling for large datasets ##########
     
     ### Use dispersion (variance by mean) to define initial variable genes
-    inputExpFileVariableGenesDir,n=hgvfinder(inputExpFile) ### returns filtered expression file with 500 variable genes
+    inputExpFileVariableGenesDir,n=hgvfinder(inputExpFile,numVarGenes=numVarGenes) ### returns filtered expression file with 500 variable genes
     
     if n>downsample_cutoff and scaling:
        
@@ -1405,7 +1428,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             ### Filer the original expression file using these downsampled cells
             sampleIndexSelection.filterFile(inputExpFile,inputExpFileScaled,sampmark)
             ### Use dispersion (variance by mean) to define post-Louvain selected cell variable genes
-            inputExpFileVariableGenesDir,n=hgvfinder(inputExpFileScaled) ### returns filtered expression file with 500 variable genes
+            inputExpFileVariableGenesDir,n=hgvfinder(inputExpFileScaled,numVarGenes=numVarGenes) ### returns filtered expression file with 500 variable genes
             ### Run PageRank on the Louvain/dispersion downsampled dataset
             sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
         else:

@@ -355,14 +355,14 @@ def calculateGeneExpressProbilities(values, useZ=False):
     
 if __name__ == '__main__':
     #query_dataset = '/Users/saljh8/Desktop/Old Mac/Desktop/demo/Mm_Gottgens_3k-scRNASeq/ExpressionInput/exp.GSE81682_HTSeq-cellHarmony-filtered.txt'
-    all_tpm = '/Users/saljh8/Desktop/Old Mac/Desktop/demo/BoneMarrow/ExpressionInput/exp.BoneMarrow-scRNASeq.txt'
-    markerfinder = '/Users/saljh8/Desktop/Old Mac/Desktop/demo/BoneMarrow/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
-    signature_genes = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/KashishNormalization/test/Panorama.txt'
+    all_tpm = '/Users/saljh8/Downloads/test1/exp.cellHarmony.txt'
+    markerfinder = '/Users/saljh8/Downloads/test1/AllGenes_correlations-ReplicateBased.txt'
+    signature_genes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq_mLSK-60ADT/Merged/ExpressionInput/MF.txt'
     state = 'DC'
 
-    all_tpm = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/exp.Guide3-cellHarmony-revised.txt'
+    #all_tpm = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionInput/exp.Guide3-cellHarmony-revised.txt'
     #markerfinder = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt'
-    signature_genes = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/KashishNormalization/test/Panorama.txt'
+    #signature_genes = '/Users/saljh8/Desktop/Old Mac/Desktop/Grimes/KashishNormalization/test/Panorama.txt'
     
     query_dataset = None
     query_dataset = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/exp.NaturePan-PreGM-CD150-.txt'

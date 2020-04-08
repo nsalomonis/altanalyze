@@ -363,7 +363,7 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
             if len(input_gene_list)>3:
                 missing = checkCorrectSystemAndSpecies(input_gene_list)
                 if missing:
-                    print_out = "None of the input IDs match the selected mod (%s) or species (%s)." % (mod,species_name)
+                    print_out = "None of the input IDs match the selected mod (%s) or species (%s) for %s." % (mod,species_name,gene_file)
                     print_out += '\nVerify the correct ID system is indicated in the input file and the correct species seleced.'
                     try:
                         if PoolVar: q.put([print_out]); return None
@@ -435,11 +435,16 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
             if len(available_genesets)>0:
                 if PoolVar==False:
                     print '    Analyzing input ID list with available gene-sets'
+                    
+            """ The resources_to_analyze can be one GO-Elite category (e.g., BioMarkers) or multiple (WikiPathways, PathwayCommons).
+                The below code checks for an exact match or then a partial match if not specific match."""
             for geneset_dir in available_genesets:
                 geneset_type = getResourceType(geneset_dir)
                 permuted_z_scores={}; original_mapp_z_score_data={}
-                #print geneset_type, resources_to_analyze;sys.exit()
-                if geneset_type in resources_to_analyze or resources_to_analyze == 'all' or (resources_to_analyze == 'both' and geneset_type == 'Pathways'):
+                if geneset_type == resources_to_analyze:
+                    status, mapp_to_mod_genes = performGeneSetORA(geneset_dir)
+                    run_status += status
+                elif resources_to_analyze == 'all' or (resources_to_analyze == 'both' and geneset_type == 'Pathways'):
                     status, mapp_to_mod_genes = performGeneSetORA(geneset_dir)
                     run_status += status
             if len(custom_sets_folder)>0:

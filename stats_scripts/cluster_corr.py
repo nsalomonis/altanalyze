@@ -85,8 +85,11 @@ def find_nearest_cells(ref_h5_filename, query_h5_filename, gene_list=None, genom
 
 def write_results_to_file(results, filename, labels=None):
     def add_labels(barcode):
+        alt_barcode = string.replace(barcode,'.Reference','')
         if barcode in labels:
             return labels[barcode]
+        if alt_barcode in labels:
+            return labels[alt_barcode]
         if ':' in barcode:
             return labels[barcode.split(':')[1]]
         else:

@@ -87,8 +87,8 @@ if sys.platform.startswith("darwin"):
 
 	import UI
 	import shutil
-	scr_root = '/Users/saljh8/GitHub/accessory/.dylibs/'
-	des_root = '/Users/saljh8/GitHub/altanalyze/dist/AltAnalyze.app/Contents/Resources/lib/python2.7/lib-dynload/PIL/.dylibs/'
+	scr_root = '/Users/saljh8/Documents/GitHub/accessory/.dylibs'
+	des_root = '/Users/saljh8/Documents/GitHub//altanalyze/dist/AltAnalyze.app/Contents/Resources/lib/python2.7/lib-dynload/PIL/.dylibs/'
 	os.mkdir(des_root)
 	files = UI.read_directory(scr_root[:-1])
 	for file in files: 

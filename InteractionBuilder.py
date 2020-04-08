@@ -813,15 +813,14 @@ def getGeneIDs(Genes):
                     except Exception: input_IDs[i] = i ### Currently not dealt with
     return input_IDs
 
-def remoteBuildNetworks(species, outputDir, interactions=['WikiPathways','KEGG','TFTargets']):
+def remoteBuildNetworks(species, outputDir, interactions=['WikiPathways','KEGG','TFTargets'],degrees='direct'):
     """ Attempts to output regulatory/interaction networks from a directory of input files """
-    
+    print degrees
     directory = 'gene-mapp'
     interactionDirs=[]
     obligatorySet=[] ### Always include interactions from these if associated with any input ID period
     secondarySet=[]
     inputType = 'IDs'
-    degrees = 'direct'
                 
     for i in interactions:
         fn = filepath('AltDatabase/goelite/'+species+'/gene-interactions/Ensembl-'+i+'.txt')
@@ -841,6 +840,20 @@ def remoteBuildNetworks(species, outputDir, interactions=['WikiPathways','KEGG',
     return pdfs
         
 if __name__ == '__main__':
+    
+    import getopt
+    species = 'Hs'
+    degrees = 'direct'
+    if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
+        print "Insufficient options provided";sys.exit()
+    else:
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','species=', 'degrees='])
+        for opt, arg in options:
+            if opt == '--i': output_dir=arg
+            elif opt == '--species': species=arg
+            elif opt == '--degrees': degrees = arg
+    remoteBuildNetworks(species,output_dir,degrees=degrees); sys.exit()
+    
     remoteBuildNetworks('Mm', '/Users/saljh8/Desktop/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/cellHarmony/DifferentialExpression_Fold_2.0_adjp_0.05')
     sys.exit()
     Species = 'Hs'

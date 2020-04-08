@@ -698,9 +698,12 @@ def extractKEGGAssociations(species,mod,system_codes):
         except Exception: null=[]
     return filedir
 
-def extractGMTAssociations(species,mod,system_codes,data_type):
+def extractGMTAssociations(species,mod,system_codes,data_type,customImportFile=None):
     if mod != 'HMDB':
-        import_dir = filepath('/BuildDBs/'+data_type)
+        if customImportFile != None:
+            import_dir = customImportFile
+        else:
+            import_dir = filepath('/BuildDBs/'+data_type)
         gmt_data = gene_associations.parseGMT(import_dir)
         gene_to_custom = gene_associations.unifyGeneSystems(gmt_data,species,mod)
         gene_associations.exportCustomPathwayMappings(gene_to_custom,mod,system_codes,filepath(database_dir+'/'+species+'/gene-mapp/'+mod+'-'+data_type+'.txt'))
@@ -1249,7 +1252,13 @@ if __name__ == '__main__':
     force = 'yes'
     download_species = 'Hs'
     species = 'Hs'
-    species = 'Mm'
+    #species = 'Mm'
+    mod = 'Ensembl'
+    #"""
+    getSourceData()
+    program_type,database_dir = unique.whatProgramIsThis()
+    extractGMTAssociations(species,mod,system_codes,'KidneyMouse',customImportFile='/Users/saljh8/Dropbox/scRNA-Seq Markers/Mouse/Markers/Kidney/gmt');sys.exit()
+    #"""
     #exportBioTypes(selected_species);sys.exit()
     additional_resources=['Latest WikiPathways']#'KEGG','BioGRID','DrugBank','miRNA Targets','Transcription Factor Targets']
     #translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species);sys.exit()
