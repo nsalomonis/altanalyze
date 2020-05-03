@@ -311,6 +311,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,
         print 'Converting ICGS folds to ICGS expression values as a reference first...'
         try: customMarkers = convertICGSClustersToExpression(customMarkers,exp_input,returnCentroids=returnCentroids,species=species,fl=fl)
         except:
+            print traceback.format_exc() 
             print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."
             pass
 
@@ -4317,7 +4318,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         eo.write(string.join(['UID','row_clusters-flat']+column_header,'\t')+'\n')
         eo.write(string.join(['column_clusters-flat','']+priorColumnClusters,'\t')+'\n')
     index=0
-    
+
     reference_matrix = collections.OrderedDict() ### store the reordered data for later medioid calculation
     for uid in row_header:
         if uid in row_header_exp:

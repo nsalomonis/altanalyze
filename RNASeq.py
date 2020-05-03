@@ -5561,15 +5561,24 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
     ### Import cell-type predictions
     firstLine=True
     celltype_db={}
+    top_pvalue=None
+    prior_cluster = None
     for line in open(goelite_path,'rU').xreadlines():
         line=cleanUpLine(line)
         t = string.split(line,'\t')
         try:
             pvalue = float(t[10])
             cluster = string.split(t[0][1:],'-')[0]
-            cell_type = t[2]
-            try: celltype_db[cluster].append([pvalue,cell_type])
-            except: celltype_db[cluster] = [[pvalue,cell_type]]
+            if cluster != prior_cluster or top_pvalue==None:
+                prior_cluster = cluster
+                top_pvalue = -1*math.log(pvalue,10)
+
+            log_pvalue = -1*math.log(pvalue,10)
+            if (top_pvalue-log_pvalue)<10:
+                #print cluster, int(top_pvalues), int(log_pvalue), t[2]
+                cell_type = t[2]
+                try: celltype_db[cluster].append([pvalue,cell_type])
+                except: celltype_db[cluster] = [[pvalue,cell_type]]
         except:
             pass ### header rows or blanks
     annotatedGroupsFile = icgs_groups_path[:-4]+'-CellTypesFull.txt'
@@ -5581,7 +5590,7 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
     for cluster in clusters:
         if cluster in celltype_db:
             celltype_db[cluster].sort()
-            x = celltype_db[cluster][0]
+            x = celltype_db[cluster][0][1]
             if "Adult" in x or 'Fetal'in x or 'Embryo' in x or 'Embryonic' in x or 'Term' in x:
                 cell_type = celltype_db[cluster][0][1]
                 ids = string.split(cell_type,' ')
@@ -5602,12 +5611,13 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
     try:
         tissue_count_ls.sort()
         tissue_count_ls.reverse()
-        if ((len(tissue_count_ls)*1.00)/tissue_preference)>0.5: ### At least half of the clusters
+        if ((tissue_count_ls[0][0]*1.00)/len(tissue_preference))>0.33: ### At least half of the clusters
             tissue_preference = tissue_count_ls[0][-1]
             print 'Likely tissue based on GO-Elite =',tissue_preference
         else:
             tissue_preference = 'NONE'
     except:
+        #print traceback.format_exc()
         tissue_preference = 'NONE'
         
     for cluster in clusters:
@@ -5617,7 +5627,7 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
             ### Preferentially select cell type names that correspond to the preferential tissue
             original_cell_type = celltype_db[cluster][0][1]
             for (p,term) in celltype_db[cluster]:
-                if tissue_preference in term:
+                if tissue_preference in term and 'ICGS2' not in term:
                     cell_type = term
                     break
             if cell_type == None: 
@@ -5640,6 +5650,8 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
             if cell_type[0]=='_':cell_type = original_cell_type + '_c'+cluster
             if cell_type[0]==' ':cell_type = cell_type[1:]
             if cell_type[0]==' ':cell_type = cell_type[1:]
+            if cell_type[0]=='-':cell_type = cell_type[1:]
+            if cell_type[0]=='_':cell_type = cell_type[1:]
             eo1.write(string.join([cluster,cell_type],'\t')+'\n')
             for cell in group_db[cluster]:
                 eo2.write(string.join([cell,cluster,cell_type],'\t')+'\n')
@@ -5656,8 +5668,8 @@ if __name__ == '__main__':
     column_method = 'hopach'
     species = 'Hs'
     excludeCellCycle = False
-    icgs_groups_path='/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/FinalGroups.txt'
-    goelite_path='/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/GO-Elite/clustering/FinalMarkerHeatmap/GO-Elite_results/pruned-results_z-score_elite.txt'
+    icgs_groups_path='/Volumes/salomonis2/CCHMC-Collaborations/Rafi-Kopan-10X-Rhesus/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-20190506-3v3rhe/10X-Kopan-Monkey-Kidney-Cortex-Nuclei/outs/soupX-without_GENEL-LIST-0.5/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-0.5_matrix_CPTT/ICGS-NMF_cosine_cc/FinalGroups.txt'
+    goelite_path='/Volumes/salomonis2/CCHMC-Collaborations/Rafi-Kopan-10X-Rhesus/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-20190506-3v3rhe/10X-Kopan-Monkey-Kidney-Cortex-Nuclei/outs/soupX-without_GENEL-LIST-0.5/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-0.5_matrix_CPTT/ICGS-NMF_cosine_cc/GO-Elite/clustering/exp.FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
     predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
     platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
     """

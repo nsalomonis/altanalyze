@@ -19,10 +19,15 @@ def cellHarmony(species,platform,query_exp_file,exp_output,
     reference_exp_file = customMarkers ### pre-formatted from Seurat or other outputs
         
     export_directory = os.path.abspath(os.path.join(query_exp_file, os.pardir))
+    if 'ExpressionInput' in query_exp_file:
+        ### Change to the root directory above ExpressionINput
+        export_directory = os.path.abspath(os.path.join(export_directory, os.pardir))
     dataset_name = string.replace(string.split(query_exp_file,'/')[-1][:-4],'exp.','')
-    try: os.mkdir(export_directory+'/CellClassification/')
-    except: pass
     try: os.mkdir(export_directory+'/cellHarmony/')
+    except: pass
+    try: os.mkdir(export_directory+'/cellHarmony/CellClassification/')
+    except: pass
+    try: os.mkdir(export_directory+'/cellHarmony/OtherFiles/')
     except: pass
     
     ### Get the query and reference cells, dataset names
@@ -54,9 +59,9 @@ def cellHarmony(species,platform,query_exp_file,exp_output,
             filtered_query_cells.append(cell_id)
     
     #reference_output_file = export.findParentDir(reference_exp_file)+'/'+reference_dataset+'.txt'
-    reference_output_file = export_directory+'/'+reference_dataset+'.txt'
+    reference_output_file = export_directory+'/cellHarmony/OtherFiles/'+reference_dataset+'.txt'
     reference_output_file2 = export_directory+'/cellHarmony/exp.'+reference_dataset+'__'+query_dataset+'-Reference.txt'
-    query_output_file = export.findParentDir(reference_exp_file)+'/'+query_dataset+'.txt'
+    query_output_file =export_directory+'/'+query_dataset+'.txt'
     ### Write out separate refernece and query files
     from import_scripts import sampleIndexSelection
     sampleIndexSelection.filterFile(reference_exp_file,reference_output_file,['row_clusters-flat']+filtered_reference_cells,force=True)
@@ -64,7 +69,7 @@ def cellHarmony(species,platform,query_exp_file,exp_output,
     shutil.copy(reference_output_file,reference_output_file2)
     
     ### export the CellClassification file
-    output_classification_file = export_directory+'/CellClassification/CellClassification.txt'
+    output_classification_file = export_directory+'/cellHarmony/CellClassification/CellClassification.txt'
     exportCellClassifications(output_classification_file,filtered_query_cells_db,filtered_query_cells,representative_refcluster_cell)
     labels_file = export_directory+'/labels.txt'
     exportLabels(labels_file,filtered_reference_cells,refererence_cells)
@@ -116,8 +121,13 @@ def simpleHeaderImport(filename):
         else:
             t = string.split(data,',')
         header = t[2:]
+        header2 = []
+        for h in header:
+            if ":" in h:
+                h = string.split(h,':')[-1]
+            header2.append(h)
         break
-    return header
+    return header2
 
 class CellInfo:
     def __init__(self,cell_id, cluster_number, dataset_name, dataset_type, label):

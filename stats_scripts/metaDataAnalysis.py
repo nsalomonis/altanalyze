@@ -322,7 +322,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
             convertNonLogToLog=True
     else:
         convertNonLogToLog=True
-        
+    print 'convertNonLogToLog:',convertNonLogToLog
     try:
         gene_to_symbol,system_code = getAnnotations(species,platform)
         from import_scripts import OBO_import

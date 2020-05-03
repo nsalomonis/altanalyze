@@ -7209,6 +7209,121 @@ def removeRedundantCluster(filename,clusterID_file):
 
     ea.close()
     print export_count,'Non-redundant splice-events exported'
+
+def correlateIsoformPSIvalues(isoform_data,psi_data,psi_annotations):
+    """ Determine if isoform predictions are valid, based on corresponding correlated PSI event """
+    from scipy import stats
+    import ExpressionBuilder
+    sort_col=0
+    export_count=0
+    new_file = isoform_data[:-4]+'-VerifiedEvents.txt'
+    print new_file
+    ea = export.ExportFile(new_file)
+    
+    header = True
+    event_annotations = {}
+    for line in open(psi_annotations,'rU').xreadlines():
+        data = line.rstrip()
+        t = string.split(data,'\t')
+        proteinPrediction =  t[5]
+        clusterID = t[7]
+        event = t[8]
+        eventType = t[10]
+        event_annotations[event] = proteinPrediction, clusterID, eventType
+                    
+    def importIsoData(filedir):
+        gene_to_event = {}
+        event_to_values = {}
+        header = True
+        for line in open(filedir,'rU').xreadlines():
+            data = line.rstrip()
+            t = string.split(data,'\t')
+            uid = t[0]
+            if header:
+                l = len(t)
+                header = False
+            else:
+                if ':' in uid:
+                    gene = string.split(uid,':')[0]
+                else:
+                    uids = string.split(uid,'-')
+                    if len(uids)==2:
+                        gene = uids[0]
+                    else:
+                        gene = string.join(uids[:-1],'-')
+                try: gene_to_event[gene].append(uid)
+                except: gene_to_event[gene] = [uid]
+                values = t[1:]
+                
+                empty_offset = l-len(t)
+                t+=['']*empty_offset
+                values = ['0.000101' if x=='' else x for x in t[1:]]
+                values = map(float,values)
+                values = numpy.ma.masked_values(values,0.000101)
+                event_to_values[uid] = values
+        return gene_to_event, event_to_values
+    
+    gene_to_isoform,isoform_to_values = importIsoData(isoform_data)
+    gene_to_event,event_to_values = importIsoData(psi_data)
+    
+    print len(gene_to_isoform)
+    print len(gene_to_event)
+    
+    common_genes = 0
+    for gene in gene_to_isoform:
+        if gene in gene_to_event:
+            common_genes+=1
+    print common_genes
+
+    export_count=0
+    gene_isoforms_confirmed = {}
+    event_type_confirmed = {}
+    event_protein_confirmed = {}
+    for gene in gene_to_event:
+        if gene in gene_to_isoform:
+            events = gene_to_event[gene]
+            isoforms = gene_to_isoform[gene]
+            for event in events:
+                psi_values = event_to_values[event]
+                for isoform in isoforms:
+                    iso_values = isoform_to_values[isoform]
+                    coefr=numpy.ma.corrcoef(iso_values,psi_values)
+                    rho = coefr[0][1]
+                    #print rho
+                    #print event, isoform;sys.exit()
+                    if rho>0.6 or rho<-0.6:
+                        if rho>0.6: cor = '+'
+                        else: cor = '-'
+                        proteinPrediction, clusterID, eventType = event_annotations[event]
+                        try:
+                            if eventType not in event_type_confirmed[gene,isoform]:
+                                event_type_confirmed[gene,isoform].append(eventType)
+                        except: event_type_confirmed[gene,isoform] = [eventType]
+                        if len(proteinPrediction)>1:
+                            try:
+                                if proteinPrediction not in event_protein_confirmed[gene,isoform]:
+                                    event_protein_confirmed[gene,isoform].append(proteinPrediction)
+                            except: event_protein_confirmed[gene,isoform] = [proteinPrediction]
+                        try: gene_isoforms_confirmed[gene,isoform].append(event+'('+cor+')')
+                        except: gene_isoforms_confirmed[gene,isoform] = [event+'('+cor+')']
+    
+    for (gene,isoform) in gene_isoforms_confirmed:
+        events = string.join(gene_isoforms_confirmed[(gene,isoform)],',')
+        eventTypes = string.join(event_type_confirmed[gene,isoform],'|')
+        try: proteinPredictions = string.join(event_protein_confirmed[gene,isoform],'|')
+        except: proteinPredictions = ''
+        try:
+            if eventTypes[0] == '|': eventTypes = eventTypes[1:]
+            if eventTypes[-1] == '|': eventTypes = eventTypes[:-1]
+        except: pass
+        try:
+            if proteinPredictions[0] == '|': proteinPredictions = proteinPredictions[1:]
+            if proteinPredictions[-1] == '|': proteinPredictions = proteinPredictions[:-1]
+        except: pass
+        ea.write(string.join([gene,isoform,events,eventTypes,proteinPredictions],'\t')+'\n')
+        export_count+=1
+    ea.close()
+    print export_count,'Correlated splicing events-isoforms reported'
     
 def convertToGOElite(folder):
     files = UI.read_directory(folder)
@@ -7562,10 +7677,12 @@ def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True):
     except:
         pass
     if species != None and len(gene_symbol_db)==0:
-        gene_to_symbol_db = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
-        for i in gene_to_symbol_db:
-            gene_to_symbol_db[i] = gene_to_symbol_db[i][0]
-        
+        import gene_associations
+        gene_symbol_db = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+        for i in gene_symbol_db:
+            gene_symbol_db[i] = gene_symbol_db[i][0]
+            #print [i], gene_to_symbol_db[i];sys.exit()
+
     convert = True
     if logNormalize:
         eo = export.ExportFile(input_file[:-4]+'-log2.txt')
@@ -7589,27 +7706,33 @@ def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True):
                 else:
                     headers.append(v)
             eo.write(string.join(headers,'\t')+'\n')
-        if 'column' in t[0]:
+            header+=1
+        elif 'column' in values[0]:
             eo.write(line)
-        header +=1
-        if gene in gene_symbol_db:
-            symbol = gene_symbol_db[gene]
-            if symbol not in added_symbols: 
-                added_symbols.append(symbol)
-                if logNormalize:
-                    values = map(lambda x: math.log(float(x)+1,2),values[1:])
-                    if max(values)> 0.5:
-                        values = map(lambda x: str(x)[:5],values)
-                        eo.write(string.join([symbol]+values,'\t')+'\n')
-                else:
-                    eo.write(string.join([symbol]+values,'\t')+'\n')
-        elif convert==False and header>1:
-            values = map(lambda x: math.log(float(x)+1,2),values[1:])
-            if max(values)> 0.5:
-                values = map(lambda x: str(x)[:5],values)
-                eo.write(string.join([gene]+values,'\t')+'\n')
+        
         else:
-            not_found.append(gene)
+            header +=1
+            if gene in gene_symbol_db:
+                symbol = gene_symbol_db[gene]
+                
+                if symbol not in added_symbols: 
+                    added_symbols.append(symbol)
+                    if logNormalize:
+                        values = map(lambda x: math.log(float(x)+1,2),values[1:])
+                        if max(values)> 0.5:
+                            values = map(lambda x: str(x)[:5],values)
+                            eo.write(string.join([symbol]+values,'\t')+'\n')
+                    else:
+                        max_val = max(map(float,values[1:]))
+                        if max_val>0.5:
+                            eo.write(string.join([symbol]+values[1:],'\t')+'\n')
+            elif convert==False and header>1:
+                values = map(lambda x: math.log(float(x)+1,2),values[1:])
+                if max(values)> 0.5:
+                    values = map(lambda x: str(x)[:5],values)
+                    eo.write(string.join([gene]+values,'\t')+'\n')
+            else:
+                not_found.append(gene)
     print len(not_found),not_found[:10]
 
     eo.close()
@@ -8669,16 +8792,118 @@ def aggregateMarkerFinderResults(folder):
                     prior_cell_type = cell_type
     eo.close()
     
+def computeIsoformRatio(gene_exp_file, isoform_exp_file):
+    path = isoform_exp_file[:-4]+'_ratios.txt'
+    eo = export.ExportFile(path)
+    firstRow=True
+    gene_exp_db={}
+    for line in open(gene_exp_file, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data, '\t')
+        if firstRow:
+            samples = t[1:]
+            firstRow=False
+        else:
+            uid = t[0]
+            values = map(float,t[1:])
+            if '.' in uid:
+                uid = string.split(uid,'.')[0]
+            gene_exp_db[uid] = values
+            
+    firstRow=True
+    isoform_exp_db={}
+    gene_to_isoform={}
+    for line in open(isoform_exp_file, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data, '\t')
+        if firstRow:
+            iso_samples = t[1:]
+            eo.write(line)
+            firstRow=False
+        else:
+            uid = t[0]
+            genes=None
+            original_uid = uid
+            uids = string.split(uid,'-')
+            if len(uids)>2:
+                gene = string.join(uids[:2],'-')
+            else:
+                gene = uids[0]
+            values = map(float,t[1:])
+            isoform_exp_db[original_uid]=values
+            if '.' in gene:
+                gene = string.split(gene,'.')[0]
+            gene = string.split(gene,': ')[1]
+
+            if '|' in gene:
+                gene = string.split(gene,'|')[0]
+            if '-' in gene:
+                genes = string.split(gene,'-')
+                if 'NKX' in genes[0]:
+                    gene = string.join(genes,'-')
+                elif len(genes)>2:
+                    gene = string.join(genes[:2],'-')
+                else:
+                    gene = genes[0]
+
+            try: gene_exp = gene_exp_db[gene]
+            except:
+                gene = string.join(genes,'-')
+                try:
+                    gene_exp = gene_exp_db[gene]
+                except:
+                    gene = string.split(gene,'-')[0]
+                    gene_exp = gene_exp_db[gene]
+            try: gene_to_isoform[gene].append(original_uid)
+            except: gene_to_isoform[gene] = [original_uid]
+
+    for gene in gene_to_isoform:
+        if len(gene_to_isoform[gene])>1:
+            for isoform in gene_to_isoform[gene]:
+                values = isoform_exp_db[isoform]
+                gene_exp = gene_exp_db[gene]
+                index=0
+                ratios=[]
+                for i in values:
+                    #v = math.log(i+1,2)-math.log(gene_exp[index]+1,2)
+                    k = gene_exp[index]
+                    if k>1:
+                        try: v = i/k
+                        except: v = 1
+                    else:
+                        v=''
+                    index+=1
+                    try: ratios.append(str(round(v,2)))
+                    except: ratios.append('')
+                """
+                if 'MYRFL' in isoform:
+                    print isoform
+                    print gene_exp[:10]
+                    print values[:10]
+                    print ratios[:10]"""
+                eo.write(string.join([isoform]+ratios,'\t')+'\n')
+                #max_ratios = max(map(float,ratios))
+
+    eo.close()
+                
 if __name__ == '__main__':
-    aggregateMarkerFinderResults('/Volumes/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/');sys.exit()
+    psi_data = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/AS/ExpressionInput/exp.PSI-filtered.txt'
+    isoform_data = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/Alt-Analyze/ExpressionInput/exp.GC30-basic-MainTissues_ratios-sparse-filtered.txt'
+    psi_annotations = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/GTEx/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
+    correlateIsoformPSIvalues(isoform_data,psi_data,psi_annotations);sys.exit()
+    
+    isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/protein.GC30-basic-MainTissues.txt'
+    gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/gene.TF.GC30-basic-MainTissues.txt'
+    #computeIsoformRatio(gene_exp,isoform_exp);sys.exit()
+    #aggregateMarkerFinderResults('/Volumes/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/');sys.exit()
     groups_file = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/FACS_annotation-edit.txt'
     exp_dir = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/MergedFiles.txt'
-    massMarkerFinder(groups_file,exp_dir);sys.exit()
+    #massMarkerFinder(groups_file,exp_dir);sys.exit()
     all_samples = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GTEX-30-sample/SraRunTable-All-SamplesRnaSeq.txt'
     selected_samples = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GTEX-30-sample/summary.GC30.txt'
-    findGTEXsubsets(all_samples,selected_samples);sys.exit()
-    remoteAssignGroupColors('/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/FinalGroups-CellTypesFull.txt');sys.exit()
-    parseCellMarkerDB('/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Markers/SourceFiles/Cross-Tissue/Single_cell_markers.txt');sys.exit()
+    #findGTEXsubsets(all_samples,selected_samples);sys.exit()
+    #remoteAssignGroupColors('/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/FinalGroups-CellTypesFull.txt');sys.exit()
+    #parseCellMarkerDB('/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Markers/SourceFiles/Cross-Tissue/Single_cell_markers.txt');sys.exit()
     #reformatCellDistanceNetworks('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Lucas/pvalue.txt');sys.exit()
     #formatMetaData('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/BEAT-AML/metadata/BEAT-AML_MetaData-STRUCTURED.txt');sys.exit()
     #reorganizeMetaData('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/BEAT-AML/metadata/metadata_same-format.txt');sys.exit()
@@ -8751,13 +8976,13 @@ if __name__ == '__main__':
     a = '/Users/saljh8/Downloads/groups.CellTypes-Predicted-Label-Transfer-For-Nuclei-matrix.txt'
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
-    input_file = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/head.txt'
+    input_file = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/PRJEB31843/Lungs-filtered.txt'
     ##transposeMatrix(a);sys.exit()
-    #convertSymbolLog(input_file,None,species='Hs',logNormalize=False); sys.exit()
+    convertSymbolLog(input_file,None,species='Hs',logNormalize=False); sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Downloads/SC_RNAseq/sample3.txt'
-    a = '/Volumes/salomonis2/CCHMC-Collaborations/Doug-Millay-Novo-Seq/Merged/MergedFiles/ICGS-NMF_cosine/exp.FinalMarkerHeatmap_all.txt'
+    b = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/PRJEB31843/1k-T0-cellHarmony-groups2.txt'
+    a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'

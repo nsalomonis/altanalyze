@@ -50,6 +50,7 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=Tr
             barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
         else:
             gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
+            print gene_ids[0:10]
             gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
             barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
     #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes) ### could possibly cause issues with comparative analyses

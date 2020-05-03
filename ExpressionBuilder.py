@@ -133,7 +133,7 @@ def checkExpressionFileFormat(expFile,reportNegatives=False,filterIDs=False):
             
             if max(values)>inputMax: inputMax = max(values)
             if min(values)<inputMin: inputMin = min(values)
-            
+
     if inputMax>100: ### Thus, not log values
         expressionDataFormat = 'non-log'
         if inputMin<=1: #if inputMin<=1:
@@ -156,6 +156,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
     
     try: expressionDataFormat,increment,convertNonLogToLog = checkExpressionFileFormat(expr_input_dir)
     except Exception:
+        print traceback.format_exc()
         expressionDataFormat = expression_data_format; increment = 0
         if expressionDataFormat == 'non-log': convertNonLogToLog=True
         else: convertNonLogToLog = False
@@ -203,7 +204,8 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
                         log_fold = math.log((float(fold)+increment),2) ### changed from - log_fold = math.log((float(fold)+1),2) - version 2.05
                         fold_data3.append(log_fold)
                     except ValueError:  ###Not an ideal situation: Value is negative - Convert to zero
-                        if float(fold)<=0: log_fold = math.log(1.01,2); fold_data3.append(log_fold)
+                        if float(fold)<=0:
+                            log_fold = math.log(1.01,2); fold_data3.append(log_fold)
                         else:
                             fold_data3.append('')
                             blanksPresent = True

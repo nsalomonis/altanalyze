@@ -256,8 +256,6 @@ def getFilters(filter_file,calculateCentroids=False):
         sample = string.split(data,'\t')[0]
         filter_list.append(sample)
         if calculateCentroids:
-            if 'row_clusters-flat' in data:
-                forceHeatmapError
             sample,group_num,group_name = string.split(data,'\t')
             try: group_index_db[group_name].append(index)
             except Exception: group_index_db[group_name] = [index]
