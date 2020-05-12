@@ -155,7 +155,7 @@ def importCelltoClusterAnnotations(filename):
             ci = t.index('cell_id')
             cn = t.index('cluster_number')
             try: cm = t.index('cluster_name')
-            except: cn = False
+            except: cm = False
             dn = t.index('dataset_name')
             dt = t.index('dataset_type')
             firstRow = False

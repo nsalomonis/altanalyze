@@ -8791,7 +8791,56 @@ def aggregateMarkerFinderResults(folder):
                         eo.write(gene+'\t'+cell_type+'\n')
                     prior_cell_type = cell_type
     eo.close()
+   
+def summarizeCovariates(fn):
+    eo = export.ExportFile(fn[:-4]+'-summary.txt')
+    eo2 = export.ExportFile(fn[:-4]+'-cells.txt')
+    cluster_patient={}
+    clusters=[]
+    individuals = []
+    firstRow=True
+    patient_cells={}
+    for line in open(fn, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        Barcode,Cluster,ClusterName,PublishedClusterName,individual,region,age,sex,diagnosis = string.split(data, '\t')
+        individual = diagnosis+' '+sex+' '+region+' '+age+' '+individual+''
+        
+        if firstRow:
+            #headers = t
+            firstRow=False
+        else:
+            if individual not in individuals:
+                individuals.append(individual)
+            if ClusterName not in clusters:
+                clusters.append(ClusterName)
+            if ClusterName in cluster_patient:
+                patients = cluster_patient[ClusterName]
+                try: patients[individual]+=1
+                except: patients[individual]=1
+            else:
+                patients={}
+                patients[individual]=1
+                cluster_patient[ClusterName]=patients
+            try: patient_cells[individual,ClusterName].append(Barcode)
+            except: patient_cells[individual,ClusterName]= [Barcode]
     
+    eo.write(string.join(['ClusterName']+individuals,'\t')+'\n')
+    
+    for ClusterName in clusters:
+        values = []
+        patients = cluster_patient[ClusterName]
+        for i in individuals:
+            if i in patients:
+                if patients[i]>29:
+                    if (i,ClusterName) in patient_cells:
+                        for barcode in patient_cells[(i,ClusterName)]:
+                            eo2.write(barcode+'\t'+ClusterName+'--'+i+'\n')
+                values.append(str(patients[i]))
+            else:
+                values.append('0')
+        eo.write(string.join([ClusterName]+values,'\t')+'\n')
+    eo.close()
+     
 def computeIsoformRatio(gene_exp_file, isoform_exp_file):
     path = isoform_exp_file[:-4]+'_ratios.txt'
     eo = export.ExportFile(path)
@@ -8887,10 +8936,12 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file):
     eo.close()
                 
 if __name__ == '__main__':
+    input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Autism/PRJNA434002/ICGS-NMF/CellFrequencies/FinalGroups-CellTypesFull-Author.txt'
+    summarizeCovariates(input_file);sys.exit()
     psi_data = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/AS/ExpressionInput/exp.PSI-filtered.txt'
     isoform_data = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/Alt-Analyze/ExpressionInput/exp.GC30-basic-MainTissues_ratios-sparse-filtered.txt'
     psi_annotations = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/GTEx/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
-    correlateIsoformPSIvalues(isoform_data,psi_data,psi_annotations);sys.exit()
+    #correlateIsoformPSIvalues(isoform_data,psi_data,psi_annotations);sys.exit()
     
     isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/protein.GC30-basic-MainTissues.txt'
     gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/gene.TF.GC30-basic-MainTissues.txt'
@@ -8976,9 +9027,9 @@ if __name__ == '__main__':
     a = '/Users/saljh8/Downloads/groups.CellTypes-Predicted-Label-Transfer-For-Nuclei-matrix.txt'
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
-    input_file = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/PRJEB31843/Lungs-filtered.txt'
+    input_file = '/Users/saljh8/Downloads/exprMatrix.txt'
     ##transposeMatrix(a);sys.exit()
-    convertSymbolLog(input_file,None,species='Hs',logNormalize=False); sys.exit()
+    convertSymbolLog(input_file,b,species='Hs',logNormalize=False); sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
     b = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/PRJEB31843/1k-T0-cellHarmony-groups2.txt'

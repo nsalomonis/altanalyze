@@ -68,20 +68,31 @@ def find_nearest_cells(ref_h5_filename, query_h5_filename, gene_list=None, genom
     query_partition = partition_h5_file(query_h5_filename, gene_list=gene_list, num_neighbors=num_neighbors, 
                             num_trees=num_trees, louvain_level=louvain_level,genome=genome)
     best_match = find_closest_cluster(query_partition, ref_partition, min_correlation=min_cluster_correlation)
-    result = {}
+    q_result = {}
+    r_result = {}
     for query_part_id, ref_part_id in best_match:
         ref = ref_partition[ref_part_id]
         query = query_partition[query_part_id]
         for idx in range(query.num_cells()):
             q_barcode = query.get_barcode(idx)
             best_bc, best_cor = ref.find_best_correlated(query.get_cell_expression_vector(idx))
-            result[q_barcode] = {'barcode': best_bc, 
+            q_result[q_barcode] = {'barcode': best_bc, 
                                  'correlation': best_cor, 
                                  'query_partition': query_part_id,
                                  'ref_partition': ref_part_id}
+    
+    ### Prepare the reference partition data for export
+    for ref_part_id in ref_partition:
+        ref = ref_partition[ref_part_id]
+        for idx in range(ref.num_cells()):
+            r_barcode = ref.get_barcode(idx)
+            r_result[r_barcode] = {'barcode': r_barcode, 
+                                 'correlation': 'NA', 
+                                 'query_partition': 'NA',
+                                 'ref_partition': ref_part_id}
             
     print('cellHarmony-community alignment complete in %s seconds' % str(time.time()-startT))
-    return result
+    return q_result, r_result
 
 def write_results_to_file(results, filename, labels=None):
     def add_labels(barcode):
@@ -269,7 +280,7 @@ if __name__ == "__main__":
     if args.genome != None:
         genome = args.genome
 
-    results = find_nearest_cells(args.reference_h5,
+    q_results, r_results = find_nearest_cells(args.reference_h5,
                                  args.query_h5,
                                  gene_list=gene_list,
                                  num_neighbors=args.num_neighbors,
@@ -277,4 +288,5 @@ if __name__ == "__main__":
                                  louvain_level=args.louvain,
                                  min_cluster_correlation=args.min_correlation,
                                  genome=genome)
-    write_results_to_file(results, args.output,labels=labels)
+    write_results_to_file(q_results, args.output,labels=labels)
+    write_results_to_file(r_results, args.output[:-4]+'-refererence.txt',labels=labels)

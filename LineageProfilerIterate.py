@@ -3015,7 +3015,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             added=[]
             g2_all = len(ref_headers)
             g1_all = len(query_headers)
-            if len(query_header_proppegated_clusters) > 200:
+            if len(query_header_proppegated_clusters) > 600:
                 min_cells = 19
             else:
                 min_cells = 3
