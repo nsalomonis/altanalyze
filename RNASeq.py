@@ -2877,6 +2877,14 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=0, r
             reload(sampleIndexSelection)
             output_file = expFile[:-4]+'-OutliersRemoved.txt'
             sampleIndexSelection.statisticallyFilterFile(expFile,output_file,rpkm_threshold,minGeneCutoff=numGenesExp)
+            """
+            if '-OutliersRemoved' in expFile:
+                ### Don't add twice -OutlierRemoved twice
+                try:
+                    shutil.move(output_file,expFile)
+                    output_file = expFile
+                except: pass
+            """
             if 'exp.' in expFile:
                 ### move the original groups and comps files
                 groups_file = string.replace(expFile,'exp.','groups.')
@@ -3564,14 +3572,17 @@ def findCommonExpressionProfiles(expFile,species,platform,expressed_uids,guide_g
     #atleast_10 = expressed_values
 
     results_file = string.replace(expFile[:-4]+'-CORRELATED-FEATURES.txt','exp.','/SamplePrediction/')
+    export_filename = export.findFilename(results_file)
+    export_parent_dir = export.findParentDir(results_file)
+    if os.name == 'nt': ### R cannot deal with long file paths often
+        results_file = export_parent_dir+'/CORRELATED-FEATURES.txt'
     writeFilteredFile(results_file,platform,headers,gene_to_symbol_db,expressed_values,atleast_10)
     
     print len(atleast_10),'final correlated genes'
     end_time = time.time()
     print 'Initial clustering completed in',int(end_time-begin_time),'seconds'
     
-    
-    results_file = string.replace(expFile[:-4]+'-CORRELATED-FEATURES.txt','exp.','/SamplePrediction/')
+    #results_file = string.replace(expFile[:-4]+'-CORRELATED-FEATURES.txt','exp.','/SamplePrediction/')
 
     if len(atleast_10)<1200 and column_method == 'hopach':
         row_method = 'hopach'; row_metric = 'correlation'
@@ -5049,13 +5060,13 @@ def getCoordinateFile(species):
     return geneCoordFile
 
 def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames=False,customFASTA=None,log_output=True):
-
+    #kallisto quant -i /Users/saljh8/Documents/GitHub/altanalyze/AltDatabase/EnsMart72/Hs/SequenceData/Hs -o /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input///ExpressionInput/kallisto/TripNeg-SRR791051 -g /Users/saljh8/Documents/GitHub/altanalyze/AltDatabase/EnsMart72/ensembl/Hs/Hs_Ensembl_transcript-annotations.txt -j /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input/TripNeg-SRR791051__junction.bed --threads=1 --sortedbam /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input/TripNeg-SRR791051_1.fastq.gz /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input/TripNeg-SRR791051_2.fastq.gz > /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input/TripNeg-SRR791051.bam
     #print 'Running Kallisto...please be patient'
     import subprocess
 
     n_threads = mlp.cpu_count()
-    print 'Number of threads =',n_threads
-    #n_threads = 1
+    #print 'Number of threads =',n_threads
+    n_threads = 1 ### Force, due to a Mac error with Multi-threading (errors in the BAM file or empty BAM)
 
     kallisto_dir_objects = os.listdir(unique.filepath('AltDatabase/kallisto'))
     ### Determine version

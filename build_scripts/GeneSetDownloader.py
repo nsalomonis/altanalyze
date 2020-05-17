@@ -562,7 +562,12 @@ def exportSymbolRelationships(pathway_to_symbol,selected_species,pathway_type,ty
     
     for species in current_species_dirs:
         if '.' not in species:
-            ens_dir = database_dir+'/'+species+'/gene-'+type+'/Ensembl-'+pathway_type+'.txt'
+            ens_dir = filepath(database_dir+'/'+species+'/gene-'+type+'/Ensembl-'+pathway_type+'.txt')
+            
+            try: pathway_to_symbol = importExistingGeneTermRelationships(ens_dir,pathway_to_symbol)
+            except: pass #print traceback.format_exc()
+            
+            #print len(pathway_to_symbol)
             ens_data = export.ExportFile(ens_dir)
             try:
                 if determine_tf_geneids == 'yes':
@@ -598,10 +603,16 @@ def exportSymbolRelationships(pathway_to_symbol,selected_species,pathway_type,ty
             except Exception: gene_to_source_id={}
             source_to_gene = OBO_import.swapKeyValues(gene_to_source_id)
             source_to_gene = lowerSymbolDB(source_to_gene)
+ 
             for pathway in pathway_to_symbol:
                 for symbol in pathway_to_symbol[pathway]:
                     try:
-                        genes = source_to_gene[symbol]
+                        if 'ENS' not in symbol:
+                            genes = source_to_gene[symbol]
+                        else:
+                            genes = [symbol]
+                            try: symbol = gene_to_source_id[symbol][0]
+                            except: pass
                         for gene in genes:
                             if len(genes)<5: ### don't propagate redundant associations
                                 if 'mapp' in type: ens_data.write(gene+'\tEn\t'+pathway+'\n')
@@ -622,19 +633,25 @@ def exportSymbolRelationships(pathway_to_symbol,selected_species,pathway_type,ty
                                             proceed = False
                                     if proceed ==True or proceed == False:
                                         try: symbols = tf_to_target_symbol[source_name]
-                                        except Exception: symbols = tf_to_target_symbol[pathway]
+                                        except Exception:
+                                            try: symbols = tf_to_target_symbol[pathway]
+                                            except: symbols = [symbol]
                                         for symbol in symbols:
-                                            tf_gene = source_to_gene[symbol][0] ### meta-species converted symbol -> species Ensembl gene
-                                            tf_symbol = gene_to_source_id[tf_gene][0] ### species formatted symbol for TF
-                                            symbol = gene_to_source_id[gene][0] ### species formatted symbol for target
+                                            try: 
+                                                tf_gene = source_to_gene[symbol][0] ### meta-species converted symbol -> species Ensembl gene
+                                                tf_symbol = gene_to_source_id[tf_gene][0] ### species formatted symbol for TF
+                                                symbol = gene_to_source_id[gene][0] ### species formatted symbol for target
+                                            except:
+                                                tf_symbol = symbol
+                                                tf_gene = gene
                                             if (tf_symbol,symbol,pathway) not in unique_interactions:
                                                 tf_network_data.write(string.join([tf_symbol,interaction,symbol,tf_gene,gene,pathway],'\t')+'\n')
                                                 unique_interactions[tf_symbol,symbol,pathway]=[]
                                                 try: merged_tf_interactions[tf_symbol].append(string.lower(symbol))
                                                 except Exception: merged_tf_interactions[tf_symbol] = [string.lower(symbol)]
                                                 tf_count+=1
-                            except Exception: None
-                    except Exception: null=[]
+                            except: None
+                    except: null=[]
             ens_data.close()
             try: entrez_data.close()
             except Exception: null=[]
@@ -985,9 +1002,14 @@ def importPathwayCommons(selected_species,force):
         for species in selected_species:
             for mod in mod_types:
                 extractGMTAssociations(species,mod,system_codes,'PathwayCommons')
-    
+
 def importTranscriptionTargetAssociations(selected_species,force):
     original_species = selected_species
+    selected_species2 = [] ### remove mouse and human, which are currently manually currated
+    for s in selected_species:
+        if s != 'Hs' and s != 'Mm':
+            selected_species2.append(s)
+    selected_species = selected_species2
     selected_species = considerOnlyMammalian(selected_species)
     x=[]
     if len(selected_species) == 0:
@@ -1101,6 +1123,11 @@ def importMiRAssociations(selected_species,force):
             
 def importBioMarkerAssociations(selected_species,force):
     original_species = selected_species
+    selected_species2 = [] ### remove mouse and human, which are currently manually currated
+    for s in selected_species:
+        if s != 'Hs' and s != 'Mm':
+            selected_species2.append(s)
+    selected_species = selected_species2
     selected_species = considerOnlyMammalian(selected_species)
     if len(selected_species) == 0:
         print 'PLEASE NOTE: %s does not support BioMarker association update.' % string.join(original_species,',')
@@ -1108,6 +1135,7 @@ def importBioMarkerAssociations(selected_species,force):
         if force == 'yes':
             downloadBioMarkers('BuildDBs/BioMarkers/')
         x = importBioMarkerGeneAssociations('BuildDBs/BioMarkers')
+
         exportSymbolRelationships(x,selected_species,'BioMarkers','mapp')
 
 def importDrugBank(selected_species,force):
@@ -1246,9 +1274,34 @@ def buildAccessoryPathwayDatabases(selected_species,additional_resources,force):
         except Exception: print 'Drug Bank import failed (cause unknown)'
     try: exportBioTypes(selected_species)
     except Exception: pass
-    
+
+def importExistingGeneTermRelationships(fn,new_term_to_gene):
+    """ Import the existing relationships and augment with the new """
+    firstRow=True
+
+    import collections
+    term_to_gene = collections.OrderedDict()
+
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if firstRow:
+            firstRow = False
+        else:
+            gene,symbol,term = string.split(data,'\t')
+            try:
+                if gene not in term_to_gene[term]:
+                    term_to_gene[term].append(gene)
+            except: term_to_gene[term] = [gene]
+
+    for term in new_term_to_gene:
+        for gene in new_term_to_gene[term]:
+            try: term_to_gene[term].append(gene)
+            except: term_to_gene[term] = [gene]
+
+    return term_to_gene
+
 if __name__ == '__main__':
-    selected_species = ['Mm']
+    selected_species = ['Hs']
     force = 'yes'
     download_species = 'Hs'
     species = 'Hs'
@@ -1257,7 +1310,7 @@ if __name__ == '__main__':
     #"""
     getSourceData()
     program_type,database_dir = unique.whatProgramIsThis()
-    extractGMTAssociations(species,mod,system_codes,'KidneyMouse',customImportFile='/Users/saljh8/Dropbox/scRNA-Seq Markers/Mouse/Markers/Kidney/gmt');sys.exit()
+    #extractGMTAssociations(species,mod,system_codes,'KidneyMouse',customImportFile='/Users/saljh8/Dropbox/scRNA-Seq Markers/Mouse/Markers/Kidney/gmt');sys.exit()
     #"""
     #exportBioTypes(selected_species);sys.exit()
     additional_resources=['Latest WikiPathways']#'KEGG','BioGRID','DrugBank','miRNA Targets','Transcription Factor Targets']

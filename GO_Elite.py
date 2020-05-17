@@ -225,7 +225,7 @@ def moveMAPPFinderFiles(input_dir):
                 except Exception:
                     print_out = "WARNING!!! Unable to move ORA results to an archived directory."
                     #print traceback.format_exc()
-                    print print_out
+                    #print print_out
                     #try: UI.WarningWindow(print_out,' Exit ')
                     #except Exception: print print_out
                 proceed = 'no'

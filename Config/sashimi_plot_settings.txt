@@ -1,6 +1,6 @@
 [data]
-bam_prefix = /Volumes/salomonis2/Bruce_conklin_data/Pig-RNASeq/bams/
-bam_files =["B503_S6_L001_R1.bam","B504_S7_L001_R1.bam","B501_S4_L001_R1.bam","B505_S8_L001_R1.bam","B507_S10_L001_R1.bam","B508_S11_L002_R1.bam","B506_S9_L001_R1.bam","B502_S5_L001_R1.bam","B498_S1_L001_R1.bam","B499_S2_L001_R1.bam","B500_S3_L001_R1.bam","Y298_S17_L002_R1.bam","Y217_S14_L002_R1.bam","Y296_S16_L002_R1.bam","Y299_S18_L002_R1.bam"]
+bam_prefix = /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/
+bam_files =["TripNeg-SRR791053.bam","TripNeg-SRR791060.bam","TripNeg-SRR791051.bam","TripNeg-SRR791055.bam","ERpos-SRR791046.bam","ERpos-SRR791044.bam","ERpos-SRR791047.bam","ERpos-SRR791045.bam"]
 
 [plotting]
 fig_width = 7 
@@ -19,7 +19,7 @@ number_junctions = True
 resolution = .5 
 posterior_bins = 40 
 gene_posterior_ratio = 5 
-colors =["red","red","red","blue","blue","blue","blue","green","green","green","green","grey","grey","grey","grey"]
-coverages =[2978786,1507384,3548158,2123645,3767753,3433304,2669995,2549247,2134986,2068888,1851962,3030695,2316757,3841438,4716207]
+colors =["red","red","red","red","blue","blue","blue","blue"]
+coverages =[179157,145989,166820,167005,264837,366206,425825,349878]
 bar_color = "b" 
 bf_thresholds = [0, 1, 2, 5, 10, 20]

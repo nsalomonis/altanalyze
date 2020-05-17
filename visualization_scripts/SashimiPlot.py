@@ -19,7 +19,9 @@ import traceback
 import anydbm
 import dbhash
 count_sum_array_db={}
-sampleReadDepth={} 
+sampleReadDepth={}
+
+verbosePrint = True
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
@@ -162,15 +164,16 @@ def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=None):
     ### Determine Groups for Coloring
     groups_file = 'None'
     dir_list = unique.read_directory(root_dir+'/ExpressionInput')
-
+    import ExpressionBuilder
     for file in dir_list:
          if 'groups.' in file:
-            groups_file = root_dir+'/ExpressionInput/'+file
+            groups_file = root_dir+'/ExpressionInput/'+file ### There can be multiple groups files
+            sample_group_db = ExpressionBuilder.simplerGroupImport(groups_file)
+            for sample in sample_group_db: break
+            if '.bed' in sample: break ### use this groups file
 
     if groups_file != None:
         try:
-            import ExpressionBuilder
-            sample_group_db = ExpressionBuilder.simplerGroupImport(groups_file)
             groups=[]
             for sample in sample_group_db:
                 if sample_group_db[sample] not in groups:
@@ -348,7 +351,8 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                             try: initial_group_psi_values[group].append([float(i),index])
                             except Exception: initial_group_psi_values[group] = [[float(i),index]]
                         except Exception:
-                            #print traceback.format_exc();sys.exit()
+                            #if verbosePrint:
+                                #print traceback.format_exc()#;sys.exit()
                             pass ### Ignore the NULL values
                         index+=1
                     if restrictToTheseGroups !=None: ### Exclude unwanted groups
@@ -398,13 +402,19 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
 			reordered = string.split(reordered[0], ' ')
 		    #print reordered
                     if 'PSI' in filename:
+                        print [filename]
                         try: formatted_splice_event = string.replace(reordered[1], ':', '__')
                         except Exception: pass
                         ### Submit the query
+                        print formatted_splice_event
+                        print index_dir
+                        print setting
+                        print outputdir
                         try: ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir); success = True
                         except Exception:
                             success = False
-                            #print traceback.format_exc()
+                            if verbosePrint:
+                                print traceback.format_exc()
                     
                     else:
                         for event in events:
@@ -415,7 +425,8 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                                 try: ssp.plot_event(geneID,index_dir,setting,outputdir); success = True
                                 except Exception:
                                     success = False
-                                    #print traceback.format_exc()
+                                    if verbosePrint:
+                                        print traceback.format_exc()
 		    """
                     ### Second attempt
                     if 'PSI' in filename and success==False: ### Only relevant when parsing the junction pairs but not genes
@@ -573,11 +584,11 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    root_dir = '/Volumes/salomonis2/Bruce_conklin_data/Pig-RNASeq/bams/'
-    events = ['ENSSSCG00000024564']
+    root_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/'
+    events = ['ENSG00000133110:E19.1-E20.2|ENSG00000133110:E17.1-E20.2']
     events = None
     eventsToVisualizeFilename = None
-    eventsToVisualizeFilename = '/Volumes/salomonis2/Bruce_conklin_data/Pig-RNASeq/events.txt'
+    eventsToVisualizeFilename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/AltResults/AlternativeOutput/top50/MultiPath-PSI.txt'
     bamdir = root_dir
-    remoteSashimiPlot('Ss', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
+    remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

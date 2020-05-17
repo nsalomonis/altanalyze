@@ -4272,8 +4272,14 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
             else: FileName = PathwayFilter
             if len(FileName)>40:
                 FileName = FileName[:40]
+                """
+                if '-OutliersRemoved' in FileName:
+                    FileName = string.replace(FileName,'-OutliersRemoved','')
+                """
             try: inputFilename = string.replace(newInput,'.txt','_'+FileName+'.txt') ### update the pathway reference for HOPACH
             except Exception: inputFilename = string.replace(newInput,'.txt','_GeneSets.txt')
+            #try: inputFilename = string.replace(inputFilename,'-OutliersRemoved','')
+            #except: pass
             vars = filterByPathway(matrix,row_header,column_header,species,platform,vendor,GeneSet,PathwayFilter,OntologyID,transpose)
             try: dataset_name += '-'+FileName
             except Exception: dataset_name += '-GeneSets'
@@ -4307,11 +4313,21 @@ def runHCexplicit(filename, graphics, row_method, row_metric, column_method, col
                 targetGene = string.replace(targetGene, '\r',' ')
                 targetGene = string.replace(targetGene, '\n',' ')
             if len(targetGene)>15:
-                inputFilename = string.replace(newInput,'.txt','-'+targetGene[:50]+'.txt') ### update the pathway reference for HOPACH
-                dataset_name += '-'+targetGene[:50]
+                if 'Guide' in targetGene:
+                    Round = string.split(targetGene,'Guide')[1][0]
+                    inputFilename = string.replace(newInput,'.txt','-Guide'+Round+'.txt') ### update the pathway reference for HOPACH
+                    dataset_name += '-'+'Guide'+Round
+                else:    
+                    inputFilename = string.replace(newInput,'.txt','-'+targetGene[:50]+'.txt') ### update the pathway reference for HOPACH
+                    dataset_name += '-'+targetGene[:50]
             else:
-                inputFilename = string.replace(newInput,'.txt','-'+targetGene+'.txt') ### update the pathway reference for HOPACH
-                dataset_name += '-'+targetGene
+                if 'Guide' in targetGene:
+                    Round = string.split(targetGene,'Guide')[1][0]
+                    inputFilename = string.replace(newInput,'.txt','-Guide'+Round+'.txt') ### update the pathway reference for HOPACH
+                    dataset_name += '-'+'Guide'+Round
+                else:
+                    inputFilename = string.replace(newInput,'.txt','-'+targetGene+'.txt') ### update the pathway reference for HOPACH
+                    dataset_name += '-'+targetGene
             inputFilename = root_dir+'/'+string.replace(findFilename(inputFilename),'|',' ')
             inputFilename = root_dir+'/'+string.replace(findFilename(inputFilename),':',' ') ### need to be careful of C://
             dataset_name = string.replace(dataset_name,'|',' ')

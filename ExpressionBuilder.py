@@ -1715,7 +1715,7 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False,spec
                 print 'Coloring LineageMap profiles using WikiPathways webservice...'
                 graphic_links = WikiPathways_webservice.viewLineageProfilerResults(export_path,graphic_links)
     except Exception:
-        print traceback.format_exc(),'\n'
+        #print traceback.format_exc(),'\n'
         ### Analysis may not be supported for species or data is incompatible
         try:
             if remoteAnalysis:
@@ -1799,7 +1799,7 @@ def visualizeQCPlots(expr_input_dir):
         except Exception: pass
     except Exception:
         print 'Unable to generate QC plots:'
-        print traceback.format_exc()
+        #print traceback.format_exc()
         try: graphic_links = graphic_links
         except Exception: graphic_links=None ### Matplotlib likely not installed - or other unknown issue
     return graphic_links
