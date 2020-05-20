@@ -607,7 +607,7 @@ def exportDataForGenMAPP(headers,input_type):
     exportGOEliteInput(headers,system_code)
     print 'Exported GO-Elite input files...'
 
-def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_folder, operation, UseDownRegulatedLabel=False, genesToExclude={}):
+def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_folder, operation, UseDownRegulatedLabel=False, genesToExclude={}, ExpName = None):
     global array_folds; global m_cutoff; global p_cutoff; global expression_dataset_output_dir
     global ptype_to_use; global use_downregulated_label; use_downregulated_label = UseDownRegulatedLabel
     m_cutoff = math.log(float(ge_fold_cutoffs),2); p_cutoff = ge_pvalue_cutoffs; ptype_to_use = ge_ptype
@@ -615,8 +615,14 @@ def buildCriterion(ge_fold_cutoffs, ge_pvalue_cutoffs, ge_ptype, main_output_fol
     dir_list = read_directory(expression_dataset_output_dir[:-1])
     if operation == 'summary': filetype = 'DATASET-'
     else: filetype = 'GenMAPP-'
+
     for filename in dir_list:
+        if ExpName != None:
+            expectedDatasetName = filetype + ExpName + '.txt' ### There can be multiple in ExpressionOutput (Kallisto/stead-state)
+            if filename != expectedDatasetName:
+                continue
         if filetype in filename:
+            print 'Examining:',filename
             fn=filepath(expression_dataset_output_dir+filename)
             array_folds = {}; x=0
             for line in open(fn,'rU').xreadlines():
@@ -641,27 +647,26 @@ def excludeGenesImport(filename):
         exclude_genes[uid] = None
     return exclude_genes
 
-def importCountSummary():
+def importCountSummary(DATASETfile):
     ### Copied code from buildCriterion
     count_summary_db={}
     indexed_headers={}
     filetype = 'COUNTS-'
-    dir_list = read_directory(expression_dataset_output_dir[:-1])
-    for filename in dir_list:
-        if filetype in filename: 
-            fn=filepath(expression_dataset_output_dir+filename)
-            count_summary_db = {}; x=0
-            for line in open(fn,'rU').xreadlines():
-                data = cleanUpLine(line); t = string.split(data,'\t')
-                if x==0:
-                    x=1; i=0
-                    for header in t:
-                        indexed_headers[header]=i
-                        i+=1
-                else: 
-                    values = t[1:-2]; probeset = t[0]; system_code = t[1]
-                    count_summary_db[probeset] = values
-            return count_summary_db, indexed_headers
+    filename = string.replace(DATASETfile,'DATASET-','COUNTS-')
+    fn=filepath(expression_dataset_output_dir+filename)
+    print 'Examining:',filename
+    count_summary_db = {}; x=0
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line); t = string.split(data,'\t')
+        if x==0:
+            x=1; i=0
+            for header in t:
+                indexed_headers[header]=i
+                i+=1
+        else: 
+            values = t[1:-2]; probeset = t[0]; system_code = t[1]
+            count_summary_db[probeset] = values
+    return count_summary_db, indexed_headers
         
 def exportGOEliteInput(headers,system_code):
     ### Filter statistics based on user-defined thresholds as input for GO-Elite analysis
@@ -820,7 +825,7 @@ def exportGeneRegulationSummary(filename,headers,system_code):
         if 'avg-' in column: avg_columns.append(index-1)
         if 'Symbol' in column: sy = index-1
 
-    try: count_summary_db,indexed_headers = importCountSummary()
+    try: count_summary_db,indexed_headers = importCountSummary(filename)
     except Exception: count_summary_db={}
 
     ### Had to introduce the below code to see if any p-values for a criterion are < 1 (otherwise, include them for GO-Elite)
@@ -1152,8 +1157,13 @@ def exportGeometricFolds(filename,platform,genes_to_import,probeset_symbol,expor
                         else:
                             gene2 = gene
                         """
-                        gene2 = gene+' '+probeset_symbol[gene]
+
+                        if gene in probeset_symbol[gene]:
+                            gene2 = gene
+                        else:
+                            gene2 = gene+' '+probeset_symbol[gene]
                     except Exception: gene2 = gene
+
                     #print [gene2,gene];sys.exit()
                     if len(t[1:])!=len(log_folds):
                         log_folds = t[1:] ### If NAs - output the original values
@@ -1712,8 +1722,9 @@ def performLineageProfiler(expr_input_dir,graphic_links,customMarkers=False,spec
                 
             ### Color the TissueMap from WikiPathways using their webservice
             if customMarkers==False and visualizeNetworks:
-                print 'Coloring LineageMap profiles using WikiPathways webservice...'
-                graphic_links = WikiPathways_webservice.viewLineageProfilerResults(export_path,graphic_links)
+                print 'Coloring LineageMap profiles using WikiPathways webservice...',
+                try: graphic_links = WikiPathways_webservice.viewLineageProfilerResults(export_path,graphic_links)
+                except: print 'This webservice appears to no longer be supported.'
     except Exception:
         #print traceback.format_exc(),'\n'
         ### Analysis may not be supported for species or data is incompatible
@@ -1998,7 +2009,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
                 original_platform = 'RNASeq'
 
         calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db)
-        buildCriterion(GE_fold_cutoffs, p_cutoff, ptype_to_use, root_dir+'/ExpressionOutput/','summary') ###Outputs a summary of the dataset and all comparisons to ExpressionOutput/summary.txt
+        buildCriterion(GE_fold_cutoffs, p_cutoff, ptype_to_use, root_dir+'/ExpressionOutput/','summary',ExpName = experiment_name) ###Outputs a summary of the dataset and all comparisons to ExpressionOutput/summary.txt
         #except Exception: null=[]
         graphic_links = None
         if fl.ProducePlots() == 'yes':
@@ -3147,7 +3158,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
     export_data.close()
     clust_export_data.close()
     clusterID_export_data.close()
-    
+    """
     graphic_links=[]
     if (len(exported)/2)<7000:
         if (len(exported)/2)<4000:
@@ -3157,8 +3168,9 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
         if size<4000:
             try: graphic_links = exportHeatmap(clust_export_dir,useHOPACH=False,color_gradient='yellow_black_blue',normalize=True,columnMethod='hopach',size=len(exported)/2,filter=True)
             except Exception: graphic_links=[]
+    """
     print len(exported)/2,'junctions exported' #,len(retained_introns)/2, 'retained introns exported...'
-    return graphic_links, clust_export_dir
+    return
         
 def getGeneAnnotations(species):
     gene_annotations={}
@@ -3237,9 +3249,15 @@ def unbiasedComparisonSpliceProfiles(root_dir,species,platform,expFile=None,min_
                         #if '.1' not in critical_exon: print critical_exon,inclusion_list,exclusion_list
 
     if expFile != None:
-        graphic_links, cluster_input = compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expFile,min_events=min_events,med_events=med_events)
+        if '-Kallisto' in expFile:
+            expFile = string.replace(expFile,'-Kallisto','')
+        if 'exp.' in expFile:
+            expFile = string.replace(expFile,'exp.','counts.')
+        compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expFile,min_events=min_events,med_events=med_events)
         print 'finished in',int(time.time()-begin_time), 'seconds'
-        return graphic_links, cluster_input
+        #return graphic_links, cluster_input
+        return
+        
     ### Determine the location of the gene expression file
     input_folder = root_dir+'AltResults/RawSpliceDataTemp/'+species+'/splicing-index/'
     dir_list = read_directory(input_folder) ### get all of the RawSplice files

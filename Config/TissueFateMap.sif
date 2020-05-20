@@ -1,0 +1,342 @@
+Adipocyte Progenitor	Parent-Child	Adipocytes
+Adipose Tissue	Parent-Child	Perivascular Adipose
+Adipose Tissue	Parent-Child	White Adipose
+Adrenal Gland	Parent-Child	Splanchnic Mesoderm
+Allantois	Parent-Child	Urinary Bladder
+Anal Canal	Parent-Child	Colon
+Appendage Muscles	Parent-Child	Deltoid Muscle
+Appendecular Skeleton	Parent-Child	Muscle
+Astrocyte Progenitor	Parent-Child	Astrocytes
+Atrium	Parent-Child	Right Atrium
+Atrium	Parent-Child	Left Atrium
+Blastocyst	Parent-Child	Trophoectoderm Stem Cells
+Blastocyst	Parent-Child	Pluripotent Stem Cells
+Blood Vessels	Parent-Child	Coronary Artery
+Blood Vessels	Parent-Child	Vena Cava
+Blood Vessels	Parent-Child	Aorta
+Blood Vessels	Parent-Child	Saphenous Vein
+Bone Marrow	Parent-Child	Bone Marrow Hematopoietic Progenitors
+Bone Marrow Stem Cells	Parent-Child	Bone Marrow Mesenchymal Stem Cells
+Brain	Parent-Child	Subcortical
+Brain	Parent-Child	Hindbrain
+Brain	Parent-Child	Cortex
+Brain	Parent-Child	Forebrain
+Brain	Parent-Child	Midbrain
+Brain	Parent-Child	Pathway
+Breast	Parent-Child	Nipple
+Brown Adipose	Parent-Child	Adipose Tissue
+Cardiac Fibroblast Progenitor	Parent-Child	Cardiac Fibroblasts
+Cardiac Fibroblast Progenitor	Parent-Child	Splanchnic Mesoderm
+Cardiomyocytes	Parent-Child	Cardiac Progenitor
+Caudate	Parent-Child	Striatum Putamen and Caudate Nucleus
+CD19+	Parent-Child	B Cells
+CD71+	Parent-Child	Bone Marrow Stem Cells
+Cholinergic Progenitor	Parent-Child	Cholinergic
+Colon Cecum	Parent-Child	Colon
+Connective Tissue	Parent-Child	Joint Tissue Synovium
+Connective Tissue	Parent-Child	Viscera
+Connective Tissue	Parent-Child	Blood Vessels
+Connective Tissue	Parent-Child	Synovial Membrane
+Cortex	Parent-Child	Motor Somatosensory Neocortex
+Cortex	Parent-Child	Occipital Lobe
+Cortex	Parent-Child	Frontal Lobe
+Cortex	Parent-Child	Prefrontal Cortex
+Cortex	Parent-Child	Parietal Lobe
+Cortex	Parent-Child	Frontal Cortex
+Cortex	Parent-Child	Temporal Lobe
+Cytotrophoblast	Parent-Child	Chorion
+Dermal Stem Cell	Parent-Child	Dermal Progenitor
+Dermal Stem Cell	Parent-Child	Neural Crest
+Dermatomes	Parent-Child	Connective Tissue Layers of Skin
+Digestive Tube	Parent-Child	Hepatoblasts
+Digestive Tube	Parent-Child	Thymocytes
+Digestive Tube	Parent-Child	Fetal Liver
+Digestive Tube	Parent-Child	Stomach
+Digestive Tube	Parent-Child	Spleen
+Digestive Tube	Parent-Child	Fetal Small Intestine
+Digestive Tube	Parent-Child	Fetal Pancreas
+Digestive Tube	Parent-Child	Fetal Large Intestine
+Digestive Tube	Parent-Child	Esophagus
+Digestive Tube	Parent-Child	Allantois
+Dopaminergic Progenitor	Parent-Child	Dopaminergic
+Dorsal-Paraxial Mesoderm	Parent-Child	Scleroteomes
+Dorsal-Paraxial Mesoderm	Parent-Child	Myotomes
+Dorsal-Paraxial Mesoderm	Parent-Child	Dermatomes
+Dorsal-Paraxial Mesoderm	Parent-Child	Tongue
+Early Endoderm Progenitor	Parent-Child	Endoderm Progenitor
+Early First Trimester	Parent-Child	Middle First Trimester
+Ectoderm Progenitor	Parent-Child	Outer Epithelium of Body
+Ectoderm Progenitor	Parent-Child	Eye Lens
+Ectoderm Progenitor	Parent-Child	Auditory Vescicle
+Ectoderm Progenitor	Parent-Child	Keratinocytes
+Ectoderm Progenitor	Parent-Child	Neural Tube
+Embryo	Parent-Child	Fetus
+Embryo	Parent-Child	Blastocyst
+Embryonic Fibroblasts	Parent-Child	Fibroblasts
+Endoderm	Parent-Child	Pharynx
+Endoderm	Parent-Child	Primitive Gut
+Endoderm Progenitor	Parent-Child	Endoderm
+Epithelial Cells	Parent-Child	Embryonic Fibroblasts
+Erythroblast Progenitor	Parent-Child	Erythrocytes
+Fetal Adrenal Cortex	Parent-Child	Adrenal Cortex
+Fetal Arm Muscle	Parent-Child	Arm Muscle
+Fetal Brain	Parent-Child	Brain
+Fetal Heart	Parent-Child	Heart
+Fetal Kidney	Parent-Child	Fetal Kidney Renal Pelvis
+Fetal Kidney	Parent-Child	Kidney
+Fetal Kidney Renal Cortex	Parent-Child	Fetal Kidney
+Fetal Large Intestine	Parent-Child	Large Intestine
+Fetal Leg Muscle	Parent-Child	Leg Muscle
+Fetal Liver	Parent-Child	Liver
+Fetal Lungs	Parent-Child	Lungs
+Fetal Pancreas	Parent-Child	Pancreas
+Fetal Skeletal Muscle	Parent-Child	Skeletal Muscle
+Fetal Small Intestine	Parent-Child	Small Intestine
+Fetal Spinal Cord	Parent-Child	Spinal Cord
+Fetal Thymus	Parent-Child	Thymus
+Fetal Thyroid	Parent-Child	Thyroid
+Fetus	Parent-Child	Early First Trimester
+Forebrain	Parent-Child	Thalamus Subthalamic Nucleus
+Forebrain	Parent-Child	Thalamus
+Forebrain	Parent-Child	Hippocampus
+Forebrain	Parent-Child	Hypothalamus
+GABAergic Progenitor	Parent-Child	GABAergic
+Glial Cells	Parent-Child	Oligodendrocyte Progenitor
+Glial Cells	Parent-Child	Schwann Cell Progenitor
+Glial Cells	Parent-Child	Astrocyte Progenitor
+Glutamatergic Progenitor	Parent-Child	Glutamatergic
+Head Mesenchyme	Parent-Child	Head Muscles
+Head Mesenchyme	Parent-Child	Skull and Branchial Cartilages
+Head Mesenchyme	Parent-Child	Outer Layers of Eye
+Head Mesenchyme	Parent-Child	Cephalic Connective tissue
+Heart	Parent-Child	Epicardium
+Heart	Parent-Child	Myocardium
+Heart	Parent-Child	Epimyocardium
+Hemangioblast Tissue	Parent-Child	Blood Corpuscles
+Hemangioblast Tissue	Parent-Child	Lymph Nodes
+Hemangioblast Tissue	Parent-Child	Endothelium of Blood Vessels
+Hemangioblast Tissue	Parent-Child	Endocardium
+Hemangioblastic Stem Cells	Parent-Child	Hematopoietic Progenitor
+Hemangioblastic Stem Cells	Parent-Child	Endothelial Cells
+Hematopoietic Progenitor	Parent-Child	CD34+
+Hematopoietic Progenitor	Parent-Child	Lymphoid Progentior
+Hematopoietic Progenitor	Parent-Child	Myeloid Progenitor
+Hepatoblasts	Parent-Child	Hepatocytes
+Hepatoblasts	Parent-Child	Digestive Tube
+Hindbrain	Parent-Child	Cerebellar Hemisphere
+Hindbrain	Parent-Child	Pons
+Hindbrain	Parent-Child	Cerebral Cortex
+Hindbrain	Parent-Child	Vestibular Nuclei Superior
+Hindbrain	Parent-Child	Cerebellum
+Hindbrain	Parent-Child	Cerebellar Vermis
+Hindbrain	Parent-Child	Nodose Nucleus
+Hindbrain	Parent-Child	Medulla
+Hypophysis Anteriror Lobe	Parent-Child	Pituitary Gland
+Induced Pluripotent Stem Cells	Parent-Child	Pluripotent Stem Cells
+Islet Cells	Parent-Child	Digestive Tube
+Itermediate Mesoderm	Parent-Child	Fetal Kidney
+Itermediate Mesoderm	Parent-Child	Mullerian Ducts
+Itermediate Mesoderm	Parent-Child	Mesonephric Ducts
+Kidney	Parent-Child	Kidney Medulla
+Kidney	Parent-Child	Kidney Cortex
+Late First Trimester	Parent-Child	Second Trimester
+Lateral Mesoderm	Parent-Child	Splanchnic Mesoderm
+Lateral Mesoderm	Parent-Child	Somatic Mesoderm
+Liver Hematopoietic Stem Cells	Parent-Child	Liver
+Lymphoid Progentior	Parent-Child	NK Cells
+Lymphoid Progentior	Parent-Child	B Cells
+Lymphoid Progentior	Parent-Child	Thymocyte
+Mediodorsal Thalamus	Parent-Child	Thalamus
+Mesenchyme	Parent-Child	Bone
+Mesenchyme	Parent-Child	Mesenchymal Stem Cells
+Mesenchyme	Parent-Child	Primordial Germ Cells
+Mesenchyme	Parent-Child	Epithelial Cells
+Mesenchyme	Parent-Child	Connective Tissue
+Mesenchyme	Parent-Child	Adipose Tissue
+Mesenchyme	Parent-Child	Smooth Muscle Cells
+Mesenchyme	Parent-Child	Chondrocytes
+Mesenchyme	Parent-Child	Osteoblasts
+Mesenchyme	Parent-Child	Stroma of Gonads
+Mesenchyme	Parent-Child	Adipocyte Progenitor
+Mesendoderm	Parent-Child	Chorion
+Mesendoderm	Parent-Child	Mesoderm Progenitor
+Mesendoderm	Parent-Child	Early Endoderm Progenitor
+Mesoderm Progenitor	Parent-Child	Ventral Mesoderm
+Mesoderm Progenitor	Parent-Child	Dorsal-Paraxial Mesoderm
+Mesoderm Progenitor	Parent-Child	Head Mesenchyme
+Mesoderm Progenitor	Parent-Child	Itermediate Mesoderm
+Mesoderm Progenitor	Parent-Child	Lateral Mesoderm
+Mesonephric Ducts	Parent-Child	Epididymis
+Mesonephric Ducts	Parent-Child	Vas Deferens
+Midbrain	Parent-Child	Ventral Tegmental Area
+Middle First Trimester	Parent-Child	Late First Trimester
+Macrophages	Parent-Child	CD14+
+Monocytes	Parent-Child	CD14+
+Monocytes	Parent-Child	Macrophages
+Monocytes	Parent-Child	Microglia
+Morula	Parent-Child	Blastocyst
+Mullerian Ducts	Parent-Child	Vagina
+Mullerian Ducts	Parent-Child	Fallopian Tube
+Mullerian Ducts	Parent-Child	Cervix
+Mullerian Ducts	Parent-Child	Uterus
+Mullerian Ducts	Parent-Child	Oviducts
+Muscle	Parent-Child	Fetal Arm Muscle
+Muscle	Parent-Child	Fetal Leg Muscle
+Myeloid Progenitor	Parent-Child	Megakaryocyte
+Myeloid Progenitor	Parent-Child	Erythroblast Progenitor
+Myeloid Progenitor	Parent-Child	Granulocytes
+Myeloid Progenitor	Parent-Child	Monocytes
+Myoblast	Parent-Child	Myotube
+Myocardium	Parent-Child	Ventricle
+Myocardium	Parent-Child	Atrium
+Myotomes	Parent-Child	Appendage Muscles
+Myotomes	Parent-Child	Appendecular Skeleton
+Myotomes	Parent-Child	Myoblast
+Myotube	Parent-Child	Fetal Skeletal Muscle
+Neural Crest	Parent-Child	Melanocyte
+Neural Crest	Parent-Child	Neural Crest Mesenchymal Stem Cells
+Neural Crest Mesenchymal Stem Cells	Parent-Child	Spinal Dorsal Root Ganglia
+Neural Crest Mesenchymal Stem Cells	Parent-Child	Dentin of Teeth
+Neural Crest Mesenchymal Stem Cells	Parent-Child	Cranial Sensory Ganglia and Nerves
+Neural Crest Stem Cells	Parent-Child	Neural Crest
+Neural Crest Stem Cells	Parent-Child	Ectoderm Progenitor
+Neural Progenitor	Parent-Child	Serotonergic Progenitor
+Neural Progenitor	Parent-Child	Glutamatergic Progenitor
+Neural Progenitor	Parent-Child	Dopaminergic Progenitor
+Neural Progenitor	Parent-Child	Cholinergic Progenitor
+Neural Progenitor	Parent-Child	GABAergic Progenitor
+Neural Stem Cells	Parent-Child	Neural Progenitor
+Neural Stem Cells	Parent-Child	Glial Cells
+Neural Tube	Parent-Child	Optic Nerve
+Neural Tube	Parent-Child	Neural Stem Cells
+Neural Tube	Parent-Child	Crainial Motor Nerves
+Neural Tube	Parent-Child	Fetal Brain
+Neural Tube	Parent-Child	Retina
+Neural Tube	Parent-Child	Fetal Spinal Cord
+Neural Tube	Parent-Child	Pars Neuralis of Hypophysis
+Occipital Lobe	Parent-Child	Occipital Visual Neocortex
+Oligodendrocyte Progenitor	Parent-Child	Oligodendrocytes
+Oral Epithelium	Parent-Child	Tongue Superior With Papillae
+Oral Epithelium	Parent-Child	Oral Mucosa
+Outer Epithelium of Body	Parent-Child	Salivary Gland
+Outer Epithelium of Body	Parent-Child	Sweat Glands
+Outer Epithelium of Body	Parent-Child	Nasal-Olfactory Epithelium
+Outer Epithelium of Body	Parent-Child	Anal Canal
+Outer Epithelium of Body	Parent-Child	Skin
+Outer Epithelium of Body	Parent-Child	Breast
+Outer Epithelium of Body	Parent-Child	Stomodaeal Epithelium
+Outer Epithelium of Body	Parent-Child	Mammary Glands
+Outer Epithelium of Body	Parent-Child	Sebacious Glands
+Outer Epithelium of Body	Parent-Child	Hair
+Outer Epithelium of Body	Parent-Child	Nails
+Parathyroids	Parent-Child	Pharyngeal Pouches
+Parietal Lobe	Parent-Child	Parietal Association Neocortex
+Pars Neuralis of Hypophysis	Parent-Child	Pituitary Gland
+Partially Reprogrammed iPS Cells	Parent-Child	Induced Pluripotent Stem Cells
+Pathway	Parent-Child	Corpus Callosum
+Pathway	Parent-Child	Dorsal Root Ganglia
+Pathway	Parent-Child	Trigeminal Ganglia
+Pathway	Parent-Child	Spinal Cord
+Pharyngeal Pouches	Parent-Child	Tonsil
+Pharynx	Parent-Child	Fetal Thyroid
+Photoreceptor Cells	Parent-Child	Retina
+Pluripotent Stem Cells	Parent-Child	Mesendoderm
+Pluripotent Stem Cells	Parent-Child	Ectoderm Progenitor
+Prefrontal Cortex	Parent-Child	Ventrolateral Prefrontal Neocortex
+Prefrontal Cortex	Parent-Child	Orbital Prefrontal Neocortex
+Prefrontal Cortex	Parent-Child	Medial Prefrontal Neocortex
+Prefrontal Cortex	Parent-Child	Dorsolateral Prefrontal Neocortex
+Primitive Gut	Parent-Child	Tonsillar Recesses
+Primitive Gut	Parent-Child	Fetal Lungs
+Primitive Gut	Parent-Child	Middle ear
+Primitive Gut	Parent-Child	Bronchi
+Primitive Gut	Parent-Child	Fetal Thymus
+Primitive Gut	Parent-Child	Trachea
+Primitive Gut	Parent-Child	Prostate
+Primitive Gut	Parent-Child	Parathyroids
+Primitive Gut	Parent-Child	Urethra
+Primitive Gut	Parent-Child	Digestive Tube
+Primitive Gut	Parent-Child	Pharyngeal Mucosa
+Primordial Germ Cells	Parent-Child	Oocytes
+Primordial Germ Cells	Parent-Child	Spermatogonial Stem Cells
+Prostate	Parent-Child	Prostate Gland
+Retina Ganglion Cells	Parent-Child	Retina
+Retina Inner Nuclear Cells	Parent-Child	Retina
+Retina Inner Plexiform Cells	Parent-Child	Retina
+Schwann Cell Progenitor	Parent-Child	Schwann Cells
+Scleroteomes	Parent-Child	Axial Skeleton
+Serotonergic Progenitor	Parent-Child	Serotonergic
+Small Intestine	Parent-Child	Duodenum
+Small Intestine	Parent-Child	Jejunum
+Smooth Muscle Cells	Parent-Child	Aorta Smooth Muscle Cells
+Somatic Mesoderm	Parent-Child	Pericardium
+Somatic Mesoderm	Parent-Child	Peritoneum
+Somatic Mesoderm	Parent-Child	Pleura
+Spinal Dorsal Root Ganglia	Parent-Child	Sensory Sinal Nerve Roots
+Spinal Dorsal Root Ganglia	Parent-Child	Sympathetic Ganglia
+Spinal Dorsal Root Ganglia	Parent-Child	Medulla of Adrenal
+Early Cardiac Progenitor	Parent-Child	Cardiac Progenitor
+Cardiac Progenitor	Parent-Child	Fetal Heart
+Splanchnic Mesoderm	Parent-Child	Cardiac Progenitor
+Splanchnic Mesoderm	Parent-Child	Mesenchymal Stem Cells
+Splanchnic Mesoderm	Parent-Child	Visceral Pleura
+Splanchnic Mesoderm	Parent-Child	Retrocervical Infiltrate
+Splanchnic Mesoderm	Parent-Child	Fetal Heart
+Splanchnic Mesoderm	Parent-Child	Fetal Adrenal Cortex
+Splanchnic Mesoderm	Parent-Child	Hemangioblast Tissue
+Splanchnic Mesoderm	Parent-Child	Visceral Peritoneum
+Splanchnic Mesoderm	Parent-Child	Mesentaries
+Splanchnic Mesoderm	Parent-Child	Vulva
+Splanchnic Mesoderm	Parent-Child	Penis
+Stomach	Parent-Child	Stomach Fundus
+Stomach	Parent-Child	Stomach Cardiac
+Stomach	Parent-Child	Stomach Pyloric
+Stomodaeal Epithelium	Parent-Child	Teeth Enamel
+Stomodaeal Epithelium	Parent-Child	Hypophysis Anteriror Lobe
+Stomodaeal Epithelium	Parent-Child	Oral Epithelium
+Stroma of Gonads	Parent-Child	Testes
+Stroma of Gonads	Parent-Child	Placenta
+Stroma of Gonads	Parent-Child	Ovaries
+Subcortical	Parent-Child	Subthalamic Nucleus
+Subcortical	Parent-Child	Accumbens
+Subcortical	Parent-Child	Amygdala
+Subcortical	Parent-Child	Substantia Nigra Reticulata
+Subcortical	Parent-Child	Caudate
+Subcortical	Parent-Child	Gloubus Pallidum External
+Subcortical	Parent-Child	Putamen
+Subcortical	Parent-Child	Substantia Nigra
+Subcortical	Parent-Child	Globus Pallidus
+Subcortical	Parent-Child	Gloubus Pallidum Internal
+Subcortical	Parent-Child	Substantia Nigra Pars Compacta
+T Cells	Parent-Child	CD4+
+T Cells	Parent-Child	CD8+
+Temporal Lobe	Parent-Child	Temporal Association Cortex
+Temporal Lobe	Parent-Child	Temporal Auditory Neocortex
+Thalamus	Parent-Child	Thalamus Lateral Nuclei
+Thymocyte	Parent-Child	T Cells
+Tongue	Parent-Child	Tongue Superior With Papillae
+Tongue	Parent-Child	Tongue Main Corpus
+Trophoectoderm	Parent-Child	Trophoectoderm Stem Cells
+Trophoectoderm	Parent-Child	Cytotrophoblast
+Trophoectoderm	Parent-Child	Syncytiotrophoblast
+Uterus	Parent-Child	Myometrium
+Uterus	Parent-Child	Endometrium
+Ventral Mesoderm	Parent-Child	Bone Marrow Stem Cells
+Ventral Mesoderm	Parent-Child	Blood
+Ventral Mesoderm	Parent-Child	Bone Marrow
+Ventral Mesoderm	Parent-Child	Hemangioblastic Stem Cells
+Ventricle	Parent-Child	Right Ventricle
+Ventricle	Parent-Child	Left Ventricle
+Visual Cortex	Parent-Child	Cortex
+White Adipose	Parent-Child	Epididymal Adipose
+White Adipose	Parent-Child	Omental Adipose
+White Adipose	Parent-Child	Subcutaneous Adipose
+Zygote	Parent-Child	Morula
+T Cells	Parent-Child	T Cell Activation 24h
+T Cells	Parent-Child	T Cell Activation 48h
+T Cells	Parent-Child	T Cell Activation 72h
+B Cells	Parent-Child	B Cell Activation 24h
+B Cells	Parent-Child	B Cell Activation 48h
+B Cells	Parent-Child	B Cell Activation 72h
+Liver Hematopoietic Stem Cells	Parent-Child	Hepatoblasts
+Hepatocytes	Parent-Child	Liver

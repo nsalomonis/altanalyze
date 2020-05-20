@@ -329,10 +329,12 @@ def reorderInputFile(custom_path,marker_list,marker_condition_db):
             header = line
             x=1
         else:
-            uid = string.join(string.split(t[0],' ')[0:-1],' ') ### IDs can have spaces
+            uid = t[0]
+            uid2 = string.join(string.split(t[0],' ')[0:-1],' ') ### IDs can have spaces
             if '///' in uid:
-                uid = string.split(uid,' ')[0] ### Affy ID with multiple annotations
+                uid2 = string.split(uid,' ')[0] ### Affy ID with multiple annotations
             exp_db[uid] = line
+            exp_db[uid2] = line ### The lookup below is finiky... having both uids added fixes splicing and gene-based markerfinder analyses (without creating redundancy)
                 
     ### Over-write read in file
     export_obj = export.ExportFile(custom_path)
@@ -467,18 +469,20 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
     except Exception:
         print 'nope'
     """
-    global AvgExpDir
+    global AvgExpDir ### This global stored variable can persist even after MarkerFinder.py is reloaded
     if len(filename) == 2:
         filename, AvgExpDir = filename  #### Used when there are replicate samples: avg_exp_dir is non-replicate
         if AvgExpDir==None:
             AvgExpDir = string.replace(filename,'-steady-state','')
             AvgExpDir = string.replace(AvgExpDir,'exp.','AVERAGE-')
             AvgExpDir = string.replace(AvgExpDir,'ExpressionInput','ExpressionOutput')
+    else:
+        AvgExpDir = None ### Delete the global stored AvgExpDir variable from previous MarkerFinder runs
     if 'ExpressionOutput' in filename:
         use_replicates = False
     else:
         use_replicates = True
-    
+
     import RNASeq
     try: Platform = RNASeq.checkExpressionFileFormat(filename,Platform)
     except Exception: Platform = "3'array"
@@ -590,8 +594,9 @@ def analyzeData(filename,Species,Platform,codingType,geneToReport=60,correlateAl
     ### If no mean file provided
     #print [use_replicates, filename, tissue]
     if use_replicates:
-        try: filename = AvgExpDir
-        except Exception: pass ### For AltExon queries
+        if AvgExpDir != None:
+            try: filename = AvgExpDir
+            except Exception: pass ### For AltExon queries
     try:
         expression_relative,annotations,tissue_headers, annot_header = getArrayData(filename,tissue_specific_IDs)
         if use_replicates:
@@ -620,8 +625,8 @@ def getReplicateData(expr_input,t):
     groups_dir = string.replace(groups_dir,'filter.','groups.')
     groups_dir = string.replace(groups_dir,'-steady-state','') ### groups is for the non-steady-state file
     #groups_dir = string.replace(groups_dir,'-average.txt','.txt') ### groups is for the non-steady-state file
-    if 'groups.' not in groups_dir and 'AltResults' in groups_dir:
-            parent_dir = string.split(expr_input,'AltResults')[0]
+    if 'groups.' not in groups_dir and 'Alt1Results' in groups_dir:
+            parent_dir = string.split(expr_input,'Alt1Results')[0]
             file = export.findFilename(expr_input)
             file = string.replace(file,'AltExonConfirmed-','groups.')
             file = string.replace(file,'AltExon-','groups.')
@@ -901,7 +906,7 @@ def identifyMarkers(filename,cluster_comps,binarize=False):
 def exportMarkerGeneProfiles(original_filename,annotations,expression_relative,title_row):
     destination_dir = 'AltDatabase/ensembl/'+species+'/' ### Original default
     destination_dir = export.findParentDir(original_filename)
-    if 'AltResults' in original_filename: dataset_type = '_AltExon'
+    if 'Alt1Results' in original_filename: dataset_type = '_AltExon'
     elif 'FullDatasets' in original_filename: dataset_type = '_AltExon'
     else: dataset_type = ''
     #filename = species+'_'+platform+'_tissue-specific'+dataset_type+'_'+coding_type+'.txt'
@@ -956,7 +961,7 @@ def exportAllGeneCorrelations(filename,allGenesRanked):
 def exportCorrelations(original_filename,interim_correlations):
     destination_dir = 'AltDatabase/ensembl/'+species+'/'
     destination_dir = export.findParentDir(original_filename)
-    if 'AltResults' in original_filename: dataset_type = '_AltExon'
+    if 'Alt1Results' in original_filename: dataset_type = '_AltExon'
     elif 'FullDatasets' in original_filename: dataset_type = '_AltExon'
     else: dataset_type = ''
     filename = species+'_'+platform+'_tissue-specific_correlations'+dataset_type+'_'+coding_type+'.txt'
@@ -1970,7 +1975,7 @@ def importAndAverageExport(expr_input,platform,annotationDB=None,annotationHeade
     if 'AltExon' in expr_input:
         groups_dir = string.replace(expr_input,'AltExonConfirmed-','groups.')
         groups_dir = string.replace(groups_dir,'AltExon-','groups.')
-        groups_dir = string.replace(groups_dir,'AltResults/Clustering','ExpressionInput')
+        groups_dir = string.replace(groups_dir,'Alt1Results/Clustering','ExpressionInput')
     export_data = export.ExportFile(export_path)
     
     if annotationDB == None:

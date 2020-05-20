@@ -1,2 +1,2 @@
-ICGS/Search:Clustering-
-Restriction:.txt,.png,interactive
+ICGS-NMFSearch:FinalMarker*
+Restriction:.png

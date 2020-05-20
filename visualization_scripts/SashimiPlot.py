@@ -21,7 +21,7 @@ import dbhash
 count_sum_array_db={}
 sampleReadDepth={}
 
-verbosePrint = True
+verbosePrint = False
 
 def cleanUpLine(line):
     line = string.replace(line,'\n','')
@@ -123,19 +123,18 @@ def importSplicingEventsToVisualize(eventsToVisualizeFilename):
                 splicing_events.append(a+'-'+b +' '+ c+'-'+d)
                 splicing_events.append(c+'-'+d +' '+ a+'-'+b)
             except Exception: pass
-	else:
-	   splicing_events.append(t[0])
+        else:
+           splicing_events.append(t[0])
     splicing_events = unique.unique(splicing_events)
     return splicing_events,expandedSearch
 
 def sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=None):
     try:
-	import gene_associations
-	gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
-	from import_scripts import OBO_import; symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)	
+        import gene_associations
+        gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
+        from import_scripts import OBO_import; symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)	
     except Exception:
-	symbol_to_gene={}
-
+        symbol_to_gene={}
 
     if events==None:
         splicing_events,expandedSearch = importSplicingEventsToVisualize(eventsToVisualizeFilename)
@@ -357,14 +356,14 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                         index+=1
                     if restrictToTheseGroups !=None: ### Exclude unwanted groups
                         initial_group_psi_values2={}
-			groups2 = collections.OrderedDict()
+                        groups2 = collections.OrderedDict()
                         for group in groups:
-			    if group in initial_group_psi_values:
-				if group in restrictToTheseGroups:
-				    initial_group_psi_values2[group]=initial_group_psi_values[group]
-				    groups2[group]=[]
+                            if group in initial_group_psi_values:
+                                if group in restrictToTheseGroups:
+                                    initial_group_psi_values2[group]=initial_group_psi_values[group]
+                                    groups2[group]=[]
                         initial_group_psi_values = initial_group_psi_values2
-			groups = groups2
+                        groups = groups2
                     ### limit the number of events reported and sort based on the PSI values in each group
                     if 'None' in groups and len(groups)==1:
                         initial_group_psi_values['None'].sort()
@@ -376,46 +375,40 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                     else:
                         gn=0
                         for group in groups:
-			    #print group
-			    gn+=1
-			    #if gn>4: break
+                            #print group
+                            gn+=1
+                            #if gn>4: break
                             if group in initial_group_psi_values:
                                 initial_group_psi_values[group].sort()
-				if len(groups)>7:
-				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:1])
-				elif len(groups)>5:
-				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:2])
-				elif len(groups)>3:
-				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:4])
-				else:
-				    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:5])
+                                if len(groups)>7:
+                                    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:1])
+                                elif len(groups)>5:
+                                    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:2])
+                                elif len(groups)>3:
+                                    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:4])
+                                else:
+                                    filtered_group_indexes = map(lambda x: x[1], initial_group_psi_values[group][:5])
                                 group_psi_values[group]=filtered_group_indexes
                     try: update_plot_settings(bamdir,group_psi_values,sample_headers)
-		    except Exception:
-			print 'Cannot update the settings file. Likely permissions issue.'
-
-		    try:
-			reordered = reorderEvents([t[2] + ' ' + t[3]])
-			reordered = string.split(reordered[0], ' ')
-		    except Exception:
-			reordered = [t[2] + ' ' + t[3]]
-			reordered = string.split(reordered[0], ' ')
-		    #print reordered
+                    except Exception:
+                        print 'Cannot update the settings file. Likely permissions issue.'
+        
+                    try:
+                        reordered = reorderEvents([t[2] + ' ' + t[3]])
+                        reordered = string.split(reordered[0], ' ')
+                    except Exception:
+                        reordered = [t[2] + ' ' + t[3]]
+                        reordered = string.split(reordered[0], ' ')
+                    #print reordered
                     if 'PSI' in filename:
-                        print [filename]
                         try: formatted_splice_event = string.replace(reordered[1], ':', '__')
                         except Exception: pass
                         ### Submit the query
-                        print formatted_splice_event
-                        print index_dir
-                        print setting
-                        print outputdir
                         try: ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir); success = True
                         except Exception:
                             success = False
                             if verbosePrint:
                                 print traceback.format_exc()
-                    
                     else:
                         for event in events:
                             try:
@@ -427,14 +420,14 @@ def formatAndSubmitSplicingEventsToSashimiPlot(filename,bamdir,splicing_events,s
                                     success = False
                                     if verbosePrint:
                                         print traceback.format_exc()
-		    """
+                    """
                     ### Second attempt
                     if 'PSI' in filename and success==False: ### Only relevant when parsing the junction pairs but not genes
                         try: formatted_splice_event=string.replace(reordered[0],':','__')
                         except Exception: pass
                         try: ssp.plot_event(formatted_splice_event,index_dir,setting,outputdir); # print 'success'
                         except Exception: pass
-		    """
+                    """
     return processed_events
 
 def findParentDir(filename):
@@ -451,20 +444,20 @@ def Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,event
     count_sum_array=[]
     count=0
     for line in open(countsin,'rU').xreadlines():
-	data = cleanUpLine(line)
-	t = string.split(data,'\t')
-	if header:
-	    samples = []
-	    for s in t[1:]:
-		if '.bed' not in s: s+='.bed'
-		samples.append(s)
-	    header=False
-	    count_sum_array=[0]*len(samples)
-	else:
-	    values = map(float,t[1:])
-	    count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
-	    count+=1
-	    if count >30000 and 'salomonis' in bamdir: break
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if header:
+            samples = []
+            for s in t[1:]:
+                if '.bed' not in s: s+='.bed'
+                samples.append(s)
+            header=False
+            count_sum_array=[0]*len(samples)
+        else:
+            values = map(float,t[1:])
+            count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
+            count+=1
+            if count >30000 and 'salomonis' in bamdir: break
 
     index=0
     for sample in samples:

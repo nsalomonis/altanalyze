@@ -294,13 +294,15 @@ def remoteIndexing(species,fl):
         ### When fl is strand dataset information object
         countsFileDir = fl.CountsFile() ### Counts file containing exon and junction positions
         root_dir = fl.RootDir() ### Root folder location
+        countsFileDir = string.replace(countsFileDir,'-Kallisto','')
+        countsFileDir = string.replace(countsFileDir,'exp.','counts.')
     except Exception:
         ### STRAND proper object may not be supplied with this information. Use the root directory alone to infer these
         root_dir = fl
         search_dir = root_dir+'/ExpressionInput'
         files = unique.read_directory(search_dir) ### all files in ExpressionInput
         for file in files:
-            if 'counts.' in file and 'steady-state.txt' not in file:
+            if 'counts.' in file and 'steady-state.txt' not in file and 'Kallisto' not in file:
                 countsFileDir = search_dir+'/'+file ### counts file with exon positions
 
     PSIFileDir = root_dir+'/AltResults/AlternativeOutput/'+species+'_RNASeq_top_alt_junctions-PSI.txt'
@@ -381,7 +383,7 @@ def obtainTopGeneResults():
 if __name__ == '__main__':
     Species = 'Hs'
     root = 'C:/Users/saljh8/Desktop/Hs_GSE45419_FASTQs/'
-    #root = '/Users/saljh8/Desktop/Grimes/GEC14074/'
+    root = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/'
     remoteIndexing(Species,root)
     sys.exit()
     #"""

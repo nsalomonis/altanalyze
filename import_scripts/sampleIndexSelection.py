@@ -18,7 +18,8 @@ def makeTestFile():
     export_object.close()
     return input_file
 
-def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[],log2=False):
+def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[],
+               log2=False,convertPSIUID=False):
     if calculateCentroids:
         filter_names,group_index_db=filter_names
         
@@ -157,8 +158,17 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                     fold = means[group2]-means[group1]
                     fold_matrix.append(str(fold))
                 filtered_values = fold_matrix
-        ########################  End Centroid Calculation  ######################## 
-        export_object.write(string.join([values[uid_index]]+filtered_values,'\t')+'\n')
+        ########################  End Centroid Calculation  ########################
+        new_uid = values[uid_index]
+        if convertPSIUID:
+            new_uid = string.replace(new_uid,':','__')
+            if '|' in new_uid:
+                new_uid = string.split(new_uid,'|')[0]
+            new_uids = string.split(new_uid,'__')
+            if len(new_uids)>2:
+                if 'ENS' in new_uids[1]:
+                    new_uid = string.join([new_uids[0]]+new_uids[2:],' ')
+        export_object.write(string.join([new_uid]+filtered_values,'\t')+'\n')
     export_object.close()
     print 'Filtered columns printed to:',output_file
     return output_file

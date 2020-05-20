@@ -1,2 +1,2 @@
-AltResults/AlternativeOutput/Search:PSI
+AltResults/AlternativeOutput/Events-dPSI_0.1_rawpSearch:PSI
 Restriction:.txt

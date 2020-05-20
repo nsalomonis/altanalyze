@@ -61,7 +61,6 @@ if sys.platform.startswith("darwin"):
                      #"frameworks": frameworks,
                      #"resources": resources,
                      "argv_emulation": True,
-                     'arch': 'i386', ## for wx 
                      "iconfile": "Viewer.icns"}
         }
         setup(name=_appName,

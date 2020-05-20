@@ -135,7 +135,14 @@ class Main(wx.Frame):
         self.tree = self.browser                                           
 
         #self.sortdict groups the table headers to integers---this works with sort function.
-        self.sortdict = {"A" : 0, "B" : 1, "C" : 2, "D" : 3, "E" : 4, "F" : 5, "G" : 6, "H" : 7, "I" : 8, "J" : 9, "K" : 10, "L" : 11, "M" : 12, "N" : 13, "O" : 14, "P" : 15, "Q" : 16, "R" : 17, "S" : 18, "T" : 19, "U" : 20, "V" : 21, "W" : 22, "X" : 23, "Y" : 24, "Z" : 25, "AA" : 26, "AB" : 27, "AC" : 28, "AD" : 29, "AE" : 30, "AF" : 31, "AG" : 32, "AH" : 33, "AI" : 34, "AJ" : 35, "AK" : 36, "AL" : 37, "AM" : 38, "AN" : 39, "AO" : 40, "AP" : 41, "AQ" : 42, "AR" : 43, "AS" : 44, "AT" : 45, "AU" : 46, "AV" : 47, "AW" : 48, "AX" : 49, "AY" : 50, "AZ" : 51}
+        self.sortdict = {"A" : 0, "B" : 1, "C" : 2, "D" : 3, "E" : 4, "F" : 5, "G" : 6,
+                         "H" : 7, "I" : 8, "J" : 9, "K" : 10, "L" : 11, "M" : 12, "N" : 13,
+                         "O" : 14, "P" : 15, "Q" : 16, "R" : 17, "S" : 18, "T" : 19, "U" : 20,
+                         "V" : 21, "W" : 22, "X" : 23, "Y" : 24, "Z" : 25, "AA" : 26, "AB" : 27,
+                         "AC" : 28, "AD" : 29, "AE" : 30, "AF" : 31, "AG" : 32, "AH" : 33,
+                         "AI" : 34, "AJ" : 35, "AK" : 36, "AL" : 37, "AM" : 38, "AN" : 39,
+                         "AO" : 40, "AP" : 41, "AQ" : 42, "AR" : 43, "AS" : 44, "AT" : 45,
+                         "AU" : 46, "AV" : 47, "AW" : 48, "AX" : 49, "AY" : 50, "AZ" : 51}
 
         #SIZER--main sizer for the program.
         ver = wx.BoxSizer(wx.VERTICAL)
@@ -875,7 +882,7 @@ class Main(wx.Frame):
             self.analyzeSplicing=False
 
             for (dirpath, dirnames, filenames) in os.walk(root):
-                #print 'x',[dirpath, dirnames, filenames]#;sys.exit()
+                print 'x',[dirpath, dirnames, filenames]#;sys.exit()
                 for dirname in dirnames:
                     #print dirpath, dirname
                     if 'Splicing' in dirpath: self.analyzeSplicing=True
@@ -895,12 +902,13 @@ class Main(wx.Frame):
                             SearchSplit = SearchSplit + ";" + i[0]
                             SearchSplit = SearchSplit + ";" + i[2]
                             DisplayColor = [130, 170, 250]
-                            self.tree.SetItemData(self.ids[fullpath],SearchSplit) 
+                            self.tree.SetItemData(self.ids[fullpath],wx.TreeItemData(SearchSplit)) 
                             self.tree.SetItemBackgroundColour(self.ids[fullpath], DisplayColor)
             self.tree.SetItemBackgroundColour(self.ids[root], [100, 140, 240])
             self.tree.Expand(self.ids[root])
-
-            self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.SelectedTopTreeID, self.tree)
+                                              
+            try: self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.SelectedTopTreeID, self.tree)
+            except Exception: pass
                                     
             #OPENING DISPLAY
             try:
@@ -1480,12 +1488,12 @@ class Main(wx.Frame):
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     def SelectedTopTreeID(self, event):
-        item = event.GetItem()  
+      item = event.GetItem()
+
+      try:  
         #This handles the selection of an item in the TOP tree browser.
         item = event.GetItem()
-        print(item)
-        print(self.tree.GetItemData(item))
-        itemObject = self.tree.GetItemData(item)       
+        itemObject = self.tree.GetItemData(item).GetData()        
         SearchObject = itemObject.split(";")
         SearchSuffix = SearchObject[0]
         SearchPath = SearchObject[1]
@@ -1523,10 +1531,7 @@ class Main(wx.Frame):
                         ID_Strings.append(display_name)                
         ID_Strings = list(set(ID_Strings))
         change_path = currentDirectory + "/UseDir" ### NS-91615 alternative to __file__
-        try:
-            shutil.rmtree("UseDir")
-        except:
-            pass
+        shutil.rmtree("UseDir")
         os.mkdir("UseDir")
         #self.control.write(ID_Strings[0] + "\n")
         os.chdir(change_path)            
@@ -1711,11 +1716,12 @@ class Main(wx.Frame):
             self.nb.SetSelection(1)
             self.Layout()
             self.page1.Layout()
+      except Exception: pass
       
     def SelectedBottomTreeID(self, event):
         #This handles the selection of an item in the BOTTOM tree browser; represents a file most of the time.
         item = event.GetItem()
-        itemObject = self.browser2.GetItemData(item)
+        itemObject = self.browser2.GetItemData(item).GetData()
         Parameters = itemObject.split("|")
         file_extension = Parameters[1][1:-1]
         file_extension.replace("'", "")

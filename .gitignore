@@ -10,6 +10,7 @@ output*
 build/*
 dist/*
 AltAnalyze.app*
+AltAnalyzeViewer.app*
 .DS_Store
 .DS_Store?
 ArchiveDBs*

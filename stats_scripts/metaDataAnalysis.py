@@ -1438,7 +1438,7 @@ def exportGeneSetsFromCombined(filename):
 
 def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,
                 use_adjusted_pval=True,pvalThreshold=0.05,use_custom_output_dir='',
-                suppressPrintOuts=False):
+                exportHeatmap=False, suppressPrintOuts=False):
     
     print "Performing a differential expression analysis (be patient)..."
     global pval_threshold
@@ -1528,13 +1528,52 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
         groups_db = all_groups_db[specificCovariate]
         rootdir,splicingEventTypes = performDifferentialExpressionAnalysis(species,platform,expression_file,
                 groups_db,comps_db,CovariateQuery,splicingEventTypes,suppressPrintOuts=suppressPrintOuts)
-
+        
     if platform == 'PSI':
         graphics = outputSplicingSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
+        #print 'a',graphics
     else:
         graphics=[]
         outputGeneExpressionSummaries(rootdir+'/'+CovariateQuery,splicingEventTypes)
         #except: pass
+        
+    if exportHeatmap:
+        try:
+            ### Perform MarkerFinder of PSI events for all groups
+            psi_dir=export.findParentDir(expression_file)
+            psi_marker_dir = psi_dir+'/MarkerHeatmaps/ExpressionInput/exp.PSI.txt'
+            psi_group_dir = psi_dir+'/MarkerHeatmaps/ExpressionInput/groups.PSI.txt'
+            psi_comp_dir = psi_dir+'/MarkerHeatmaps/ExpressionInput/comps.PSI.txt'
+            output_dir = psi_dir+'/MarkerHeatmaps/'
+            eo = export.ExportFile(psi_marker_dir); eo.close() ### create the full directory path
+            
+            import ExpressionBuilder
+            from import_scripts import sampleIndexSelection
+            sample_group_db = ExpressionBuilder.simplerGroupImport(groups_file)
+            sampleIndexSelection.filterFile(expression_file,psi_marker_dir,sample_group_db,convertPSIUID=True)
+            import shutil
+            shutil.copyfile(groups_file,psi_group_dir)
+            shutil.copyfile(groups_file,psi_comp_dir)
+            
+            import markerFinder
+            import UI
+            #group_exp_file = (psi_marker_dir,output_dir) ### still analyze the primary sample
+    
+            fl = UI.ExpressionFileLocationData(psi_marker_dir,'','',''); fl.setOutputDir(output_dir)
+            fl.setSpecies(species); fl.setVendor('PSI'); fl.setVendor('PSI')
+            fl.setRPKMThreshold(0)
+            fl.setCorrelationDirection('up')
+            logTransform = False
+            markerFinder.analyzeData(psi_marker_dir,species,'exon','protein_coding',geneToReport=50,correlateAll=True,AdditionalParameters=fl,logTransform=logTransform)
+            try: graphics_mf = markerFinder.generateMarkerHeatMaps(fl,'PSI',convertNonLogToLog=logTransform,Species=species)
+            except Exception: graphics_mf = []; print traceback.format_exc()
+            #print 'b',graphics_mf
+            for i in graphics_mf: ### Add this image results to the output
+                graphics.append(i)
+        except:
+            print 'PSI Heatmap failed to export...'
+            print traceback.format_exc() 
+            
     return graphics
 
 def compareDomainComposition(folder):
@@ -1689,11 +1728,11 @@ def compareDomainComposition(folder):
     
 if __name__ == '__main__':
     species = 'Hs';
-    expression_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
-    groups_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Kumar/July-26-2017/groups.KD.txt'
-    computed_results_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD'
+    expression_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
+    groups_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/ExpressionInput/groups.test.txt'
+    computed_results_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/ExpressionInput/comps.test.txt'
     #exportUpDownGenes('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/cellHarmony-evaluation/HCA-alignment/DEGs');sys.exit()
-    #remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05);sys.exit()
+    #remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05,exportHeatmap=True);sys.exit()
     #compareDomainComposition(computed_results_dir)
     ################  Comand-line arguments ################
     #buildAdditionalMirTargetGeneSets();sys.exit()

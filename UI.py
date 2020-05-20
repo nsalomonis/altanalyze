@@ -6623,7 +6623,7 @@ def getUserParameters(run_parameter,Multi=None):
                         agd = ArrayGroupData(cel_file,batch,batch_name); array_batch_list.append(agd); batch_db=[]
             if comps_name in dir_files and len(group_db)>0:
                 try:
-                    comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir)
+                    comp_group_list, null = ExpressionBuilder.importComparisonGroups(comps_file_dir) 
                     for group1,group2 in comp_group_list:
                         try:
                             group_name1 = group_db[int(group1)]; group_name2 = group_db[int(group2)]
@@ -6632,7 +6632,7 @@ def getUserParameters(run_parameter,Multi=None):
                             print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
                             #WarningWindow(print_out,'Exit'); AltAnalyze.AltAnalyzeSetup('no'); sys.exit()
                             #print print_out
-                        original_comp_group_list=[]
+                            original_comp_group_list=[]
                 except:
                     print_out = 'The "comps." file for this dataset has group numbers\nnot listed in the "groups." file.'
                     original_comp_group_list=[]
@@ -6783,7 +6783,7 @@ def getUserParameters(run_parameter,Multi=None):
                     option_db[option] = od
                     try: option_list[category].append(option) ###group is the name of the GUI menu group
                     except KeyError: option_list[category] = [option]
-     
+      
                 proceed = 'no'
                 while proceed == 'no' and analyze_all_conditions != 'all groups':
                     identical_groups = 'no'; comp_groups_db={}; proceed = 'no'

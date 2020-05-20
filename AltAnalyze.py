@@ -5591,7 +5591,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             if array_type != "3'array": exp_file = string.replace(exp_file,'.txt','-steady-state.txt')
             try:
                 exp_file = fl.KallistoFile() ### Override with the Kallisto expression file if present
-                print 'Using the Kallisto expressio file for MarkerFinder...'
+                print 'Using the Kallisto expression file for MarkerFinder...'
             except: pass
             markerFinder_inputs = [exp_file,fl.DatasetFile()] ### Output a replicate and non-replicate version
             markerFinder_inputs = [exp_file] ### Only considers the replicate and not mean analysis (recommended)
@@ -5630,7 +5630,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             for file in dir_list:
                 input_file_dir = parent_dir+'/'+file
                 inputType = 'IDs'
-                interactionDirs = ['WikiPathways','KEGG','BioGRID','TFTargets']
+                interactionDirs = ['WikiPathways','KEGG','TFTargets']
                 output_dir = parent_dir
                 degrees = 'direct'
                 input_exp_file = input_file_dir
@@ -5825,18 +5825,13 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     fl.setGroupsFile(search_dir+'/'+file)
 
       try:
-          #"""
           try:
-             #"""
-             graphic_links2,cluster_input_file=ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(),
-                    species,array_type,expFile=fl.CountsFile(),min_events=1,med_events=1)
-             #"""
-             from import_scripts import AugmentEventAnnotations
-             psi_annotated = AugmentEventAnnotations.parse_junctionfiles(fl.RootDir()+'/AltResults/AlternativeOutput/',species,array_type) ### Added in 2.1.1 - adds cassette and domains annotations
+                ExpressionBuilder.unbiasedComparisonSpliceProfiles(fl.RootDir(), species,array_type,expFile=fl.CountsFile(),min_events=1,med_events=1)
+                from import_scripts import AugmentEventAnnotations
+                psi_annotated = AugmentEventAnnotations.parse_junctionfiles(fl.RootDir()+'/AltResults/AlternativeOutput/',species,array_type) ### Added in 2.1.1 - adds cassette and domains annotations
           except Exception:
-            print traceback.format_exc()
-            pass
-          #"""
+                print traceback.format_exc()
+                pass
           inputpsi = fl.RootDir()+'AltResults/AlternativeOutput/'+species+'_'+array_type+'_top_alt_junctions-PSI-clust.txt'
           
           useAdvancedMetaDataAnalysis = True
@@ -5861,21 +5856,20 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
                     try:
                         graphics_alt = metaDataAnalysis.remoteAnalysis(species,psi_annotated,fl.GroupsFile(),
                                 platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=use_adjusted_pval,
-                                pvalThreshold=ge_pvalue_cutoffs)
+                                pvalThreshold=ge_pvalue_cutoffs,exportHeatmap=True)
                         try: summary_data_db['QC'] += graphics_alt
                         except Exception: summary_data_db['QC'] = graphics_alt
-                        try: summary_data_db['QC'] += graphic_links2
-                        except Exception: pass
-                        
+
                     except Exception:
                         print traceback.format_exc()
+                """
                 else:
                     matrix,compared_groups,original_data = statistics.matrixImport(inputpsi)
                     matrix_pvalues=statistics.runANOVA(inputpsi,matrix,compared_groups)
                     significantFilteredDir = statistics.returnANOVAFiltered(inputpsi,original_data,matrix_pvalues)
                     graphic_link1 = ExpressionBuilder.exportHeatmap(significantFilteredDir)
                     try: summary_data_db['QC']+=graphic_link1
-                    except Exception: summary_data_db['QC']=graphic_link1
+                    except Exception: summary_data_db['QC']=graphic_link1 """
       except Exception:
         print traceback.format_exc()
       
@@ -5926,19 +5920,19 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
       if array_type != 'exon' and array_type != 'gene':
             ### SashimiPlot Visualization
             try:
-              expression_results_folder = fl.RootDir()+'/ExpressionInput/'
-              expression_dir = UI.getValidExpFile(expression_results_folder)
-              show_introns=False
-              analysisType='plot'
-              top_PSI_junction = inputpsi
-              #isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
-              altoutput_dir = export.findParentDir(top_PSI_junction)
-              isoform_dir2 = altoutput_dir+'/top'+str(50)+'/MultiPath-PSI.txt'
-              gene_string = UI.importGeneList(isoform_dir2,limit=50)
-              UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None); print 'completed'
-              UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
+                expression_results_folder = fl.RootDir()+'/ExpressionInput/'
+                expression_dir = UI.getValidExpFile(expression_results_folder)
+                show_introns=False
+                analysisType='plot'
+                top_PSI_junction = inputpsi
+                #isoform_dir2 = UI.exportJunctionList(top_PSI_junction,limit=50) ### list of gene IDs or symbols
+                altoutput_dir = export.findParentDir(top_PSI_junction)
+                isoform_dir2 = altoutput_dir+'/top'+str(50)+'/MultiPath-PSI.txt'
+                gene_string = UI.importGeneList(isoform_dir2,limit=50)
+                UI.altExonViewer(species,array_type,expression_dir, gene_string, show_introns, analysisType, None); print 'completed'
+                UI.altExonViewer(species,array_type,altresult_dir, gene_string, show_introns, analysisType, None); print 'completed'
             except Exception:
-              print traceback.format_exc()
+                print traceback.format_exc()
             try:
                 analyzeBAMs = False
                 dir_list = unique.read_directory(fl.RootDir())
@@ -7589,7 +7583,7 @@ def commandLineRun():
             when a group notation is present in the sample name (e.g., 0~Heart, 0~Brain, 1~Stem Cell)"""
             
             import markerFinder
-            if 'AltResults' in input_exp_file and 'Clustering' not in input_exp_file:
+            if 'Alt1Results' in input_exp_file and 'Clustering' not in input_exp_file:
                 ### This applies to a file compoosed of exon-level normalized intensities (calculae average group expression)
                 markerFinder.getAverageExonExpression(species,platform,input_exp_file)
                 if 'Raw' in input_exp_file:

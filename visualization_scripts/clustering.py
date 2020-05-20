@@ -555,15 +555,15 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     #fix_verts(ax2,0)
 
     ### Adjust the size of the fonts for genes and arrays based on size and character length
-    row_fontsize = 5
+    row_fontsize = 4
     column_fontsize = 5
     column_text_max_len = max(map(lambda x: len(x), column_header)) ### Get the maximum length of a column annotation
     if len(row_header)<75:
-        row_fontsize = 6.5
+        row_fontsize = 4.5
         if len(row_header)<50:
-            row_fontsize = 8
+            row_fontsize = 5.5
             if len(row_header)<25:
-                row_fontsize = 11
+                row_fontsize = 7
     if len(column_header)<75:
         column_fontsize = 6.5
         if len(column_header)<50:
@@ -701,13 +701,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if cluster_num>15:
         interval = int(float(string.split(str(len(row_header)/40.0),'.')[0]))+1 ### for enrichment term labels with over 100 genes
         increment=interval-2
-        ge_fontsize = 7
-        column_fontsize = 7
+        ge_fontsize = 6
+        column_fontsize = 6
         if cluster_num>25:
             interval = int(float(string.split(str(len(row_header)/50.0),'.')[0]))+1 ### for enrichment term labels with over 100 genes
             increment=interval-2
-            ge_fontsize = 6
-            column_fontsize = 6
+            ge_fontsize = 5
+            column_fontsize = 5
             if cluster_num>40:
                 ge_fontsize = 4
                 column_fontsize = 4
@@ -865,7 +865,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                             term += ' (c'+str(cluster)+')'
                         try: cluster_elite_terms[term] = cluster_elite_terms[cluster,original_term]  ### store the new term name with the associated genes
                         except Exception: pass
-                        axm.text(label_pos, i-radj, term,horizontalalignment='right',fontsize=ge_fontsize, picker=True, color = 'blue')
+                        axm.text(label_pos-0.1, i-radj, term,horizontalalignment='right',fontsize=ge_fontsize, picker=True, color = 'blue')
                         increment=0
                         ci+=1
                 except Exception,e:
@@ -1185,6 +1185,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         clusterType = 'Groups'
 
     try:
+        fontsize = 6
+        if len(cluster_to_cell)<10:
+            fontsize = 10
         last_cluster = None
         group_index=0
         cluster_count = 0
@@ -1195,7 +1198,6 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cadj = 0.6
                 try: cluster = str(ind2_clust[i])
                 except Exception: cluster = 'NA'
-                fontsize = 5
                 middle_cluster_index = len(cluster_to_cell[cluster])/3
                 if cluster != last_cluster:
                     cluster_count=0
@@ -1205,9 +1207,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 if cluster_count == middle_cluster_index:
                     if clusterType == 'Numbers':
                         try:
-                            axcd.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=5) # rotation could also be degrees
+                            axcd.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=fontsize) # rotation could also be degrees
                         except:
-                            axc.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=5) # rotation could also be degrees
+                            axc.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=fontsize) # rotation could also be degrees
                     else:
                         try:
                             axcd.text(adji, cadj, ''+group_name_list[group_index][1], rotation=45, verticalalignment="bottom",fontsize=fontsize) # rotation could also be degrees
@@ -1216,9 +1218,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                                 axc.text(adji, cadj, ''+group_name_list[group_index][1], rotation=45, verticalalignment="bottom",fontsize=fontsize) # rotation could also be degrees
                             except:
                                 try:
-                                    axcd.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=5) # rotation could also be degrees
+                                    axcd.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=fontsize) # rotation could also be degrees
                                 except:
-                                    axc.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=5) # rotation could also be degrees
+                                    axc.text(adji, cadj, ''+cluster, rotation=45, verticalalignment="bottom",fontsize=fontsize) # rotation could also be degrees
                     group_index+=1
                 last_cluster = cluster
                 cluster_count+=1
@@ -1241,7 +1243,10 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     if 'LineageCorrelations' in dataset_name:
         cb.set_label("Lineage Correlation Z Scores",fontsize=11)
     elif 'Heatmap' in root_dir:
-        cb.set_label("GO-Elite Z Scores",fontsize=11)
+        if 'psi' in filename or 'PSI' in filename or 'MarkerHeatmaps' in root_dir:
+            cb.set_label("Percent Spliced In (PSI) normalized",fontsize=11)
+        else:
+            cb.set_label("GO-Elite Z Scores",fontsize=11)
     else:
         cb.set_label("Differential Expression (log2)",fontsize=10)
 
@@ -1254,7 +1259,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     pylab.savefig(root_dir + filename,dpi=1000)
     #print 'Exporting:',filename
     filename = filename[:-3]+'png'
-    pylab.savefig(root_dir + filename, dpi=100) #,dpi=200
+    pylab.savefig(root_dir + filename, dpi=150) #,dpi=200
     
     includeBackground=False
     try:
@@ -3007,7 +3012,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         print 10,time.time() - start, 'seconds'
         start = time.time()
     
-    try: pylab.savefig(root_dir + filename) #dpi=200, transparent=True
+    try: pylab.savefig(root_dir + filename, dpi=150) #dpi=200, transparent=True
     except Exception: None ### Rare error
     graphic_link.append(['Principal Component Analysis',root_dir+filename])
 
@@ -3406,7 +3411,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
     except Exception: None ### Rare error
     #print 'Exporting:',filename
     filename = filename[:-3]+'png'
-    try: pylab.savefig(root_dir + filename) #dpi=200
+    try: pylab.savefig(root_dir + filename, dpi=150) #dpi=200
     except Exception: None ### Rare error
     graphic_link.append(['Principal Component Analysis',root_dir+filename])
     if display:
@@ -3892,7 +3897,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
     pylab.savefig(root_dir + filename)
     #print 'Exporting:',filename
     filename = filename[:-3]+'png'
-    pylab.savefig(root_dir + filename) #dpi=200
+    pylab.savefig(root_dir + filename, dpi=150) #dpi=200
     graphic_link.append(['Principal Component Analysis',root_dir+filename])
     if display:
         print 'Exporting:',filename
@@ -3983,26 +3988,67 @@ def Kmeans(features, column_header, row_header):
     pylab.plot([p[0] for p in centroids],[p[1] for p in centroids],'go') 
     pylab.show()
 
-"""
-def displaySimpleNetworkX():
+def displaySimpleNetworkX(sif_filename,fold_db,pathway_name):
+    """ Alternative to iGraph. The visualization functions are not as sophisticated but, less tempermental """
+    
     import networkx as nx
     print 'Graphing output with NetworkX'
+    from networkx.drawing.nx_agraph import graphviz_layout
     gr = nx.Graph(rotate=90,bgcolor='white') ### commands for neworkx and pygraphviz are the same or similiar
 
-    edges = importSIF('Config/TissueFateMap.sif')
-
-    ### Add nodes and edges
-    for (node1,node2,type) in edges:
-        gr.add_edge(node1,node2)
-        draw_networkx_edges
-   
-    #gr['Myometrium']['color']='red'
+    #edges = importSIF('Config/TissueFateMap.sif')
+    edges = importSIF(sif_filename)
+    vars = formatiGraphEdges(edges,pathway_name,{},[]) ### get colors for edges
+    edge_colors = vars[-1]
     
-    # Draw as PNG
-    nx.draw_shell(gr) #wopi, gvcolor, wc, ccomps, tred, sccmap, fdp, circo, neato, acyclic, nop, gvpr, dot, sfdp. - fdp
-    pylab.savefig('LineageNetwork.png')
-
-
+    ### Add nodes and edges
+    edge_list = []
+    node_list = []
+    index=0
+    edge_color_db={}
+    for (node1,node2,type) in edges:
+        gr.add_edge(node1,node2,weight=0.5)
+        node_list.append(node1)
+        node_list.append(node2)
+        color = edge_colors[index]
+        try: edge_color_db[color].append((node1,node2))
+        except: edge_color_db[color] = [(node1,node2)]
+        index+=1
+        
+    #selected_edges = [(u, v) for (u, v, d) in gr.edges(data=True) if d['weight'] <= 0.6]
+    up = []
+    down = []
+    other = []
+    for gene in fold_db:
+        if gene in node_list:
+            if fold_db[gene]<0:
+                down.append(gene)
+            else:
+                up.append(gene)
+    for node in node_list:
+        if node not in up and node not in down and node not in other:
+            other.append(gene)
+    #print 'up:',len(up)
+    #print 'down:',len(down)
+    #print 'other:',len(other)
+    pos = nx.spring_layout(gr,k=0.15,iterations=30)  # positions for all nodes -  pos = graphviz_layout(gr)
+    # nodes
+    nx.draw_networkx_nodes(gr, pos, node_size=50, node_color = 'grey', alpha=0.3)
+    nx.draw_networkx_nodes(gr, pos, nodelist=down, node_size=50, node_color = 'c', alpha=0.6)
+    nx.draw_networkx_nodes(gr, pos, nodelist=up, node_size=50, node_color = 'r', alpha=0.6)
+    # edges
+    for color in edge_color_db:
+        selected_edges = edge_color_db[color]
+        nx.draw_networkx_edges(gr, pos, edgelist=selected_edges,width=0.3,edge_color=color) #style='dashed'
+    # labels
+    nx.draw_networkx_labels(gr, pos, font_size=6, font_family='arial')
+    pylab.axis('off')
+    #pylab.show()
+    try: os.remove(sif_filename[:-4]+'.pdf')
+    except: pass
+    pylab.savefig(sif_filename[:-4]+'.pdf')
+    pylab.savefig(sif_filename[:-4]+'.png', dpi=200)
+    return sif_filename[:-4]+'.png'
 
 def displaySimpleNetwork(sif_filename,fold_db,pathway_name):
     import pygraphviz as pgv
@@ -4053,7 +4099,6 @@ def displaySimpleNetwork(sif_filename,fold_db,pathway_name):
         output_filename = '%s.png' % sif_filename[:-4]
         #print output_filename
         gr.draw(output_filename)
-"""
     
 def findParentDir(filename):
     filename = string.replace(filename,'//','/')
@@ -5243,15 +5288,19 @@ def buildGraphFromSIF(mod,species,sif_filename,ora_input_dir):
         ### This is an optional accessory function that adds fold changes from genes that are NOT in the GO-Elite pruned results (TFs regulating these genes)
         try: fold_db = importDataSimple(ora_input_dir,species,fold_db,mod)
         except Exception: None
+    import copy
+    original_fold_db = copy.deepcopy(fold_db) ### fold_db is updated in iGraphSimple with color code instead of fold change
     try:
         ### Alternative Approaches dependening on the availability of GraphViz
         #displaySimpleNetXGraph(sif_filename,fold_db,pathway_name)
         output_filename = iGraphSimple(sif_filename,fold_db,pathway_name)
     except Exception:
-        print 'igraph export failed due to an unknown error (not installed)'
-        print traceback.format_exc()
-        try: displaySimpleNetwork(sif_filename,fold_db,pathway_name)
-        except Exception: pass ### GraphViz problem
+        print 'igraph export failed (not installed - or too large of a network)... Trying NetworkX.'
+        #print traceback.format_exc()
+        try: output_filename = displaySimpleNetworkX(sif_filename,original_fold_db,pathway_name)
+        except Exception:
+            #print traceback.format_exc()
+            pass 
     return output_filename
 
 def iGraphSimple(sif_filename,fold_db,pathway_name):
@@ -5680,10 +5729,10 @@ def stackedbarchart(filename,display=False,output=False):
     #pylab.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
     if output==False:
         pylab.savefig(filename[:-4]+'.pdf')
-        pylab.savefig(filename[:-4]+'.png')
+        pylab.savefig(filename[:-4]+'.png',dpi=150)
     else:
         pylab.savefig(output[:-4]+'.pdf')
-        pylab.savefig(output[:-4]+'.png')
+        pylab.savefig(output[:-4]+'.png',dpi=150)
     
     if display:
         print 'Exporting:',filename
@@ -5748,10 +5797,10 @@ def barchart(filename,index1,index2,x_axis,y_axis,title,display=False,color1='go
 
     if output==False:
         pylab.savefig(filename[:-4]+'.pdf')
-        #pylab.savefig(filename[:-4]+'.png')
+        pylab.savefig(filename[:-4]+'.png',dpi=150)
     else:
         pylab.savefig(output[:-4]+'.pdf')
-        #pylab.savefig(output[:-4]+'.png')
+        pylab.savefig(output[:-4]+'.png',dpi=150)
         
     if display:
         print 'Exporting:',filename
@@ -8889,19 +8938,33 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file):
             uid = t[0]
             genes=None
             original_uid = uid
+            uid = string.replace(uid,'GC grp: ','')
             uids = string.split(uid,'-')
-            if len(uids)>2:
+            if len(uids)>1:
                 gene = string.join(uids[:2],'-')
             else:
                 gene = uids[0]
             values = map(float,t[1:])
             isoform_exp_db[original_uid]=values
             if '.' in gene:
-                gene = string.split(gene,'.')[0]
-            gene = string.split(gene,': ')[1]
+                if '-' in gene:
+                    gene = string.split(gene,'-')[0]
+                genes = string.split(gene,'.')
+                #if 'AC118549' in gene:
+                    #print 'd',gene; sys.exit()
+                if gene in gene_exp_db:
+                    pass
+                elif len(genes)>2:
+                    gene = string.join(genes[:2],'.')
+                    #print gene;sys.exit()
+                else:
+                    gene = genes[0]
+            if ':' in gene:
+                gene = string.split(gene,': ')[1]
 
             if '|' in gene:
                 gene = string.split(gene,'|')[0]
+
             if '-' in gene:
                 genes = string.split(gene,'-')
                 if 'NKX' in genes[0]:
@@ -8910,10 +8973,12 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file):
                     gene = string.join(genes[:2],'-')
                 else:
                     gene = genes[0]
-
+            #gene_exp = gene_exp_db[gene]      
             try: gene_exp = gene_exp_db[gene]
             except:
-                gene = string.join(genes,'-')
+                #print genes;sys.exit()
+                try: gene = string.join(genes,'-')
+                except: print [genes];sys.exit()
                 try:
                     gene_exp = gene_exp_db[gene]
                 except:
@@ -8952,16 +9017,17 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file):
     eo.close()
                 
 if __name__ == '__main__':
+    #displaySimpleNetworkX();sys.exit()
     input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Autism/PRJNA434002/ICGS-NMF/CellFrequencies/FinalGroups-CellTypesFull-Author.txt'
-    summarizeCovariates(input_file);sys.exit()
+    #summarizeCovariates(input_file);sys.exit()
     psi_data = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/AS/ExpressionInput/exp.PSI-filtered.txt'
     isoform_data = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/Alt-Analyze/ExpressionInput/exp.GC30-basic-MainTissues_ratios-sparse-filtered.txt'
     psi_annotations = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/GTEx/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     #correlateIsoformPSIvalues(isoform_data,psi_data,psi_annotations);sys.exit()
     
-    isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/protein.GC30-basic-MainTissues.txt'
-    gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/gene.TF.GC30-basic-MainTissues.txt'
-    #computeIsoformRatio(gene_exp,isoform_exp);sys.exit()
+    isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/protein.Gtex-GC30_6k-selected-tissues-TFs.txt'
+    gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/gene.Gtex-GC30_6k-selected-tissues-TFs.txt'
+    computeIsoformRatio(gene_exp,isoform_exp);sys.exit()
     #aggregateMarkerFinderResults('/Volumes/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/');sys.exit()
     groups_file = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/FACS_annotation-edit.txt'
     exp_dir = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/MergedFiles.txt'

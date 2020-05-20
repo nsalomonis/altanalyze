@@ -827,6 +827,9 @@ def remoteBuildNetworks(species, outputDir, interactions=['WikiPathways','KEGG',
         interactionDirs.append(fn)
 
     pdfs=[]
+    if '.txt' in outputDir:
+        import export
+        outputDir = export.findParentDir(outputDir)
     dir_list = read_directory(outputDir)
     for file in dir_list:
         if 'GE.' in file:

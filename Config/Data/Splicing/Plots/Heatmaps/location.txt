@@ -1,2 +1,2 @@
-AltResults/Clustering/DataPlotsSearch:Clustering-
+AltResults/AlternativeOutput/MarkerHeatmaps/DataPlots/MarkerFinderSearch:Clustering-
 Restriction:.txt,.png,interactive
