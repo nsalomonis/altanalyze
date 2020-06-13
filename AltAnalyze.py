@@ -5114,7 +5114,7 @@ def AltAnalyzeSetup(skip_intro):
     if 'remoteViewer' == skip_intro:
         if os.name == 'nt':
             callWXPython()
-        elif os.name == 'ntX':
+        elif os.name == 'nt':
             package_path = filepath('python')
             win_package_path = string.replace(package_path,'python','AltAnalyzeViewer.exe')
             import subprocess
@@ -8597,7 +8597,20 @@ def unpackConfigFiles():
     are written to the user home directory in the folder 'altanalyze'."""
     
     fn = filepath('Config/options.txt') ### See if a Config folder is already available
+    print fn
     fileExists = os.path.isfile(fn)
+    print 'Options.txt found in local Config = ',fileExists,
+
+    try:
+        for line in open(fn,'r').readlines():
+            break
+        print '...confirmed found'
+    except:
+        print '...confirmed not found'
+            
+    if 'AltAnalyze.app' in os.getcwd(): ### Overcomes potential problems with the above
+        fileExists = True
+        
     if fileExists == False:
         import subprocess
         import shutil

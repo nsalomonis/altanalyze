@@ -98,7 +98,10 @@ def exportCellClassifications(output_file,query_cells,filtered_query_cells,repre
         CI = query_cells[query_barcode]
         cluster_number = CI.ClusterNumber()
         label = CI.Label()
-        ref_barcode = representative_refcluster_cell[label][-1]
+        try:
+            ref_barcode = representative_refcluster_cell[label][-1]
+        except:
+            continue
         values = [query_barcode,ref_barcode,'1.0',cluster_number,cluster_number,label]
         o.write(string.join(values,'\t')+'\n')
     o.close()
@@ -153,29 +156,40 @@ def importCelltoClusterAnnotations(filename):
             t = string.split(data,',')
         if firstRow:
             ci = t.index('cell_id')
-            cn = t.index('cluster_number')
+            try: cn = t.index('cluster_number')
+            except: cn = 'False'
             try: cm = t.index('cluster_name')
-            except: cm = False
+            except: cm = 'False'
+            try: cnm = t.index('ClustNameNum')
+            except: cnm = 'False'
+            try: cnm = t.index('label')
+            except: pass
             dn = t.index('dataset_name')
             dt = t.index('dataset_type')
             firstRow = False
         else:
             cell_id = t[ci]
-            cluster_number = t[cn]
+            try: cluster_number = t[cn]
+            except: cluster_number = 'False'
             dataset_name = t[dn]
             dataset_type = t[dt]
-            if cm != False:
+            if cnm !='False':
+                label = t[cnm]
+                if cluster_number == 'False':
+                    cluster_number = label
+            elif cm != False:
                 cluster_name = t[cm]
                 label = cluster_name + '_c'+cluster_number
+            elif cluster_number == False:
+                label = t[cm]
             else:
                 label = 'c'+cluster_number
-            
             if string.lower(dataset_type)[0] == 'r':
                 dataset_type = 'Reference'
                 reference_dataset = dataset_name
                 CI = CellInfo(cell_id, cluster_number, dataset_name, dataset_type, label)
                 refererence_cells[cell_id]=CI
-            else:
+            elif string.lower(dataset_type)[0] == 'q':
                 dataset_type = 'Query'
                 query_dataset = dataset_name
                 CI = CellInfo(cell_id, cluster_number, dataset_name, dataset_type, label)             

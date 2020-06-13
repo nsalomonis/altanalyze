@@ -78,7 +78,7 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
         ref = reference
         query = query_exp_file
         
-    louvain_results = cluster_corr.find_nearest_cells(ref,
+    louvain_results, ref_results = cluster_corr.find_nearest_cells(ref,
                     query,
                     gene_list=gene_list,
                     num_neighbors=10,
@@ -87,6 +87,7 @@ def manage_louvain_alignment(species,platform,query_exp_file,exp_output,
                     min_cluster_correlation=-1,
                     genome=species)
     cluster_corr.write_results_to_file(louvain_results, output_classification_file, labels=customLabels)
+    cluster_corr.write_results_to_file(ref_results, output_classification_file[:-4]+'-reference.txt', labels=customLabels)
         
     try:
         LineageProfilerIterate.harmonizeClassifiedSamples(species, reference, query_exp_file, output_classification_file,fl=fl)

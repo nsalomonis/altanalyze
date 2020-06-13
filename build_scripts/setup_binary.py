@@ -8,7 +8,7 @@ import export
 
 _script = 'AltAnalyze.py'
 _appName = "AltAnalyze"
-_appVersion = '2.1.3'
+_appVersion = '2.1.4.1'
 _appDescription = "AltAnalyze is a freely available, open-source and cross-platform program that allows you to processes raw bulk or single-cell RNASeq and "
 _appDescription +="microarray data, identify predicted alternative splicing or alternative promoter changes and "
 _appDescription +="view how these changes may affect protein sequence, domain composition, and microRNA targeting."
@@ -68,6 +68,7 @@ if sys.platform.startswith("darwin"):
         options = {"py2app":
                     {"excludes": excludes,
                      "includes": includes,
+                     'plist': 'Info.plist',
                      #"frameworks": frameworks,
                      #"resources": resources,
                      #"argv_emulation": True,

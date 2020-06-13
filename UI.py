@@ -2539,7 +2539,7 @@ class GUI:
             quit_win.pack(side = 'right', padx =10, pady = 5)
             
             button_text = 'Help'
-            url = 'http://www.altanalyze.org/help_main.htm'; self.url = url
+            url = 'https://altanalyze.readthedocs.io/en/latest/'; self.url = url
             pdf_help_file = 'Documentation/AltAnalyze-Manual.pdf'; pdf_help_file = filepath(pdf_help_file); self.pdf_help_file = pdf_help_file
             
             try: help_button = Button(self._parent, text=button_text, command=self.GetHelpTopLevel); help_button.pack(side = 'left', padx = 5, pady = 5)

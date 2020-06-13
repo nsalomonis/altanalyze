@@ -13,7 +13,7 @@ try:
 except:
     print ('Missing the h5py library (hdf5 support)...')
 
-def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True):
+def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True, geneIDs=False):
     start_time = time.time()
     
     if '.h5' in matrices_dir:
@@ -50,9 +50,11 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=Tr
             barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
         else:
             gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
-            print gene_ids[0:10]
             gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
             barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
+    
+    if geneIDs:
+        gene_names = gene_ids       
     #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes) ### could possibly cause issues with comparative analyses
     matrices_dir = os.path.abspath(os.path.join(matrices_dir, os.pardir))
 
@@ -128,15 +130,19 @@ if __name__ == '__main__':
     filter_file=None
     genome = 'hg19'
     dataset_name = '10X_filtered'
+    geneID = False
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
         #Filtering samples in a datasets
         #python 10XProcessing.py --i /Users/test/10X/outs/filtered_gene_bc_matrices/ --g hg19 --n My10XExperiment
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','n='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','n=','geneID='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': matrices_dir=arg
             elif opt == '--g': genome=arg
             elif opt == '--n': dataset_name=arg
-    import10XSparseMatrix(matrices_dir,genome,dataset_name)
+            elif opt == '--geneID':
+                geneID = True
+                
+    import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID)

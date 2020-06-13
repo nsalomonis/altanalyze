@@ -5679,8 +5679,8 @@ if __name__ == '__main__':
     column_method = 'hopach'
     species = 'Hs'
     excludeCellCycle = False
-    icgs_groups_path='/Volumes/salomonis2/CCHMC-Collaborations/Rafi-Kopan-10X-Rhesus/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-20190506-3v3rhe/10X-Kopan-Monkey-Kidney-Cortex-Nuclei/outs/soupX-without_GENEL-LIST-0.5/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-0.5_matrix_CPTT/ICGS-NMF_cosine_cc/FinalGroups.txt'
-    goelite_path='/Volumes/salomonis2/CCHMC-Collaborations/Rafi-Kopan-10X-Rhesus/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-20190506-3v3rhe/10X-Kopan-Monkey-Kidney-Cortex-Nuclei/outs/soupX-without_GENEL-LIST-0.5/10X-Kopan-Monkey-Kidney-Cortex-Nuclei-0.5_matrix_CPTT/ICGS-NMF_cosine_cc/GO-Elite/clustering/exp.FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
+    icgs_groups_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/FinalGroups.txt'
+    goelite_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/GO-Elite/clustering/exp.FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
     predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
     platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
     """
@@ -5690,7 +5690,7 @@ if __name__ == '__main__':
     """
     import UI; import multiprocessing as mlp
 
-    #runKallisto('Mm','BoneMarrow','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ',mlp);sys.exit()
+    runKallisto('Mm','ALP-ILC','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/',mlp);sys.exit()
     runKallisto('Hs','BreastCancer','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input',mlp);sys.exit()
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'

@@ -111,7 +111,7 @@ def write_results_to_file(results, filename, labels=None):
             print("\t".join( ("Query Barcode", "Ref Barcode", "Correlation", "Query Partition", "Ref Partition") ), file=f)
             for q in results.keys():
                 print("\t".join( (q, 
-                    results[q]['barcode'], 
+                    results[q]['barcode'].replace('.Reference',''), 
                     str(results[q]['correlation']), 
                     str(results[q]['query_partition']),
                     str(results[q]['ref_partition'])) ), file=f)
@@ -119,8 +119,8 @@ def write_results_to_file(results, filename, labels=None):
         with open(filename, 'w') as f:
             print("\t".join( ("Query Barcode", "Ref Barcode", "Correlation", "Query Partition", "Ref Partition", "Label") ), file=f)
             for q in results.keys():
-                print("\t".join( (q, 
-                    results[q]['barcode'], 
+                print("\t".join( (q.replace('.Reference',''), 
+                    results[q]['barcode'].replace('.Reference',''), 
                     str(results[q]['correlation']), 
                     str(results[q]['query_partition']),
                     str(results[q]['ref_partition']),

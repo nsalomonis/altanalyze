@@ -185,6 +185,14 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
         ### differentiate data from column headers
         if x == 1:
             fold_data = fold_data[1:]; fold_data2=[]
+            """
+            if len(array_names) != len(fold_data):
+                diff = len(fold_data)-len(fold_data)
+                fold_data+=diff*['']
+            if arrayid == 'FOXN4|1/2|10F06_ENSP00000299162':
+                print fold_data;sys.exit()
+            """
+
             for fold in fold_data:
                 fold = string.replace(fold,'"','')
                 try:
@@ -3133,19 +3141,40 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                     
                     if prior_gene == '!ENSG00000198001': ### For testing
                         novel_junc_count = 0
+                        all_junc_count = 0
                         for junc in feature_exp_db:
                             if "_" in junc: novel_junc_count+=1
-                        if novel_junc_count>5000:
+                            all_junc_count+=1
+                        if novel_junc_count>1000:
                             ### Indicates genomic variation resulting in broad diversity
                             ### Will prevent function from running in a reasonable amount of time
+                            #print "skipping"
                             pass
                         else:
+                            start_time = time.time()
+                            #print novel_junc_count, all_junc_count, prior_gene,
                             filterByLocalJunctionExp(prior_gene,feature_exp_db)
+                            end_time = time.time(); time_diff = int(end_time-start_time)
+                            #print time_diff
                         #try: gene_junction_denom[prior_gene] = [max(value) for value in zip(*gene_junction_denom[prior_gene])] # sum the junction counts for all junctions across the gene
                         #except Exception: pass
                     if platform == 'RNASeq':
-                        
-                        filterByLocalJunctionExp(prior_gene,feature_exp_db)
+                        novel_junc_count = 0
+                        all_junc_count = 0
+                        for junc in feature_exp_db:
+                            if "_" in junc: novel_junc_count+=1
+                            all_junc_count+=1
+                        if novel_junc_count>1000:
+                            ### Indicates genomic variation resulting in broad diversity
+                            ### Will prevent function from running in a reasonable amount of time
+                            #print "skipping"
+                            pass
+                        else:
+                            start_time = time.time()
+                            #print novel_junc_count, all_junc_count, prior_gene,
+                            filterByLocalJunctionExp(prior_gene,feature_exp_db)
+                            end_time = time.time(); time_diff = int(end_time-start_time)
+                            #print time_diff
                     else:
                         compareJunctionExpression(prior_gene)
                     feature_exp_db={}
@@ -3170,7 +3199,7 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
             except Exception: graphic_links=[]
     """
     print len(exported)/2,'junctions exported' #,len(retained_introns)/2, 'retained introns exported...'
-    return
+    return []
         
 def getGeneAnnotations(species):
     gene_annotations={}

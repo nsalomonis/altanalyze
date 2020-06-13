@@ -145,9 +145,16 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
             means={}
             for cluster in group_index_db:
                 #### group_index_db[cluster] is all of the indeces for samples in a noted group, cluster is the actual cluster name (not number)
-                try: mean=statistics.avg(map(lambda x: float(filtered_values[x]), group_index_db[cluster]))
-                except:
-                    continue
+                raw_values = map(lambda x: filtered_values[x], group_index_db[cluster])
+                raw_values2=[]
+                for vx in raw_values:
+                    if vx != '':
+                        raw_values2.append(float(vx))
+
+                if len(raw_values2)>2:
+                    mean=statistics.avg(raw_values2)
+                else:
+                    mean = ""
                 #mean = map(lambda x: filtered_values[uid][x], group_index_db[cluster]) ### Only one value
                 means[cluster]=mean
                 mean_matrix.append(str(mean))

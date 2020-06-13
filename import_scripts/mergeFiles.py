@@ -72,7 +72,12 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False):
             file = string.split(filename,'\\')[-1][:-4]
         for line in open(fn,'rU').xreadlines():         
             data = cleanUpLine(line)
-            t = string.split(data,'\t')
+            if '\t' in data:
+                t = string.split(data,'\t')
+            elif ',' in data:
+                t = string.split(data,',')
+            else:
+                t = string.split(data,'\t')
             if x==0:
                 if data[0]!='#':
                     x=1
@@ -201,7 +206,12 @@ def combineUniqueAllLists(files_to_merge,original_filename):
             file = string.split(filename,'\\')[-1][:-4]
         for line in open(fn,'rU').xreadlines():         
             data = cleanUpLine(line)
-            t = string.split(data,'\t')
+            if '\t' in data:
+                t = string.split(data,'\t')
+            elif ',' in data:
+                t = string.split(data,',')
+            else:
+                t = string.split(data,'\t')
             if x==0:
                 if data[0]!='#':
                     x=1

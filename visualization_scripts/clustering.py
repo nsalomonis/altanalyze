@@ -815,7 +815,9 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                             feature_id = gene_to_symbol[feature_id][0]
                     if original_feature_id in justShowTheseIDs:
                         feature_id = original_feature_id
-                    if display_label_names and 'ticks' not in justShowTheseIDs:
+                    if len(justShowTheseIDs)<40:
+                        axm.text(x.shape[1]-0.4, i-radj, feature_id,fontsize=column_fontsize, color=color,picker=True) ### When not clustering rows
+                    elif display_label_names and 'ticks' not in justShowTheseIDs:
                         if alternate==1: buffer=1.2; alternate=2
                         elif alternate==2: buffer=2.4; alternate=3
                         elif alternate==3: buffer=3.6; alternate=4
@@ -993,13 +995,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 #cmap_c = matplotlib.colors.ListedColormap(['#7CFC00','k'])
                 cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
+            elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
+                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                cmap_c = matplotlib.colors.ListedColormap(['b', 'y', 'r'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
                 #cmap_c = pylab.cm.Paired
                 cmap_c = PairedColorMap()
             """
-            elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
-                cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
-                #cmap_c = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
                 cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C','#FEBC18']) #['#FEBC18','#EE2C3C','#3D3181','#88BF47']
                 #cmap_c = matplotlib.colors.ListedColormap(['k', 'w', 'w', 'w'])
@@ -1045,13 +1047,13 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                     if len(unique.unique(ind2_clust))==2: ### cmap_c is too few colors
                         #cmap_c = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                         cmap_c = matplotlib.colors.ListedColormap(['w', 'k'])
+                    elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
+                        cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                        cmap_c = matplotlib.colors.ListedColormap(['b', 'y', 'r'])
                     elif len(unique.unique(ind2_clust))>0: ### cmap_c is too few colors
                         #cmap_c = pylab.cm.Paired
                         cmap_c = PairedColorMap()
                     """
-                    elif len(unique.unique(ind2_clust))==3: ### cmap_c is too few colors
-                        cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
-                        #cmap_c = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
                     elif len(unique.unique(ind2_clust))==4: ### cmap_c is too few colors
                         cmap_c = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
                         #cmap_c = matplotlib.colors.ListedColormap(['black', '#1DA532', 'b','r'])
@@ -1084,13 +1086,14 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if len(unique.unique(ind2))==2: ### cmap_c is too few colors
                 #cmap_d = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 cmap_d = matplotlib.colors.ListedColormap(['w', 'k'])
+            elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
+                cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                cmap_d = matplotlib.colors.ListedColormap(['b', 'y', 'r'])
+                #cmap_d = matplotlib.colors.ListedColormap(['b', 'y', 'r'])
             elif len(unique.unique(ind2))>0: ### cmap_c is too few colors
                 #cmap_d = pylab.cm.Paired
                 cmap_d = PairedColorMap()
             """
-            elif len(unique.unique(ind2))==3: ### cmap_c is too few colors
-                cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
-                #cmap_d = matplotlib.colors.ListedColormap(['r', 'y', 'b'])
             elif len(unique.unique(ind2))==4: ### cmap_c is too few colors
                 cmap_d = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
             elif len(unique.unique(ind2))==5: ### cmap_c is too few colors
@@ -1512,6 +1515,8 @@ def systemCodeCheck(IDs):
     import gene_associations
     id_type_db={}
     for id in IDs:
+        if ':' in id:
+            id = string.split(id,':')[1]
         id_type = gene_associations.predictIDSourceSimple(id)
         try: id_type_db[id_type]+=1
         except Exception: id_type_db[id_type]=1
@@ -1585,6 +1590,7 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
                 else:
                     sy = 'Sy'        
         except Exception: pass
+
         try: cluster_db[cluster].append(id)
         except Exception: cluster_db[cluster] = [id]
         try: export_lines.append(string.join([original_id,str(ind1[i])]+map(str, row),'\t')+'\n')
@@ -2741,12 +2747,13 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 #cm = matplotlib.colors.ListedColormap(['w', 'k']) ### If you want to hide one of the groups
-            else:
-                cm = pylab.cm.get_cmap('gist_rainbow')
-                cm = pylab.cm.get_cmap('Paired')
-            """
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+                cm = matplotlib.colors.ListedColormap(['b', 'y', 'r'])
+            else:
+                #cm = pylab.cm.get_cmap('gist_rainbow')
+                cm = pylab.cm.get_cmap('Paired')
+            """
             elif numberGenesPresent==4:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
             elif numberGenesPresent==5:
@@ -2792,7 +2799,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                     colors = get_cmap(len(genes))
                     for i in range(len(ranges)):
                         if i==0:
-                            color = '#C0C0C0'
+                            color = '#F1F1F1'
                         else:
                             if numberGenesPresent==1:
                                 ### use a single color gradient
@@ -2805,7 +2812,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                                     else:
                                         color = colors(k)
                                 else:
-                                    color = '#C0C0C0'
+                                    color = '#F1F1F1'
                         color_db[ranges[i]] = color
                     i=0
                     for val in values:
@@ -3196,7 +3203,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             ### transform u into the same structure as the original scores from linalg.eig coeff
             scores = vt
         
-        writetSNEScores(scores,root_dir+dataset_name+'-PCA_scores.txt')
+        #writetSNEScores(scores,root_dir+dataset_name+'-PCA_scores.txt')
     
     fig = pylab.figure()
     ax = fig.add_subplot(111)
@@ -3261,12 +3268,12 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
                 #cm = matplotlib.colors.ListedColormap(['w', 'k']) ### If you want to hide one of the groups
-            else:
-                cm = pylab.cm.get_cmap('gist_rainbow')
-                cm = pylab.cm.get_cmap('Paired')
-            """
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
+            else:
+                #cm = pylab.cm.get_cmap('gist_rainbow')
+                cm = pylab.cm.get_cmap('Paired')
+            """
             elif numberGenesPresent==4:
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C', '#FEBC18'])
             elif numberGenesPresent==5:
@@ -9015,8 +9022,72 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file):
                 #max_ratios = max(map(float,ratios))
 
     eo.close()
+       
+def TFisoToGene(filename,marker_genes):
+
+    firstRow=True
+    gene_db={}
+    for line in open(marker_genes, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data, '\t')
+        gene = t[0]
+        tissue = t[-1]
+        if firstRow:
+            firstRow=False
+        else:
+            try: gene_db[gene].append(tissue)
+            except: gene_db[gene] = [tissue]
                 
+    firstRow=True
+    interaction_TF_db={}
+    tf_iso_db={}
+    for line in open(filename, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        TFiso,gene,interaction = string.split(data, '\t')
+        if firstRow:
+            firstRow=False
+        else:
+            try: tf_iso_db[gene].append(TFiso)
+            except: tf_iso_db[gene] = [TFiso]
+            if gene in interaction_TF_db:
+                db = interaction_TF_db[gene]
+                try: db[interaction].append(TFiso)
+                except: db[interaction] = [TFiso]
+            else:
+                db = {}
+                db[interaction] = [TFiso]
+                interaction_TF_db[gene] = db
+                
+    for gene in interaction_TF_db:
+        eo = export.ExportFile(filename[:-4]+'/'+gene+'.txt')
+        iso_db = interaction_TF_db[gene]
+        isos=[]
+        for tf_iso in tf_iso_db[gene]:
+            if tf_iso not in isos:
+                isos.append(tf_iso)
+        eo.write(string.join(['Partner']+isos,'\t')+'\n')
+        for interaction in iso_db:
+            values=[]
+            for tf_iso in isos:
+                if tf_iso in iso_db[interaction]:
+                    values.append('1')
+                else:
+                    values.append('0')
+            if interaction in gene_db:
+                name = interaction+'--'+gene_db[interaction][0]
+            else:
+                name = interaction
+            eo.write(string.join([name]+values,'\t')+'\n')
+        eo.close()
+
 if __name__ == '__main__':
+    b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
+    b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
+    input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Scadden-90k/exp.BoneMarrow-90k-filtered.txt'
+    #convertSymbolLog(input_file,b,species='Mm',logNormalize=False); sys.exit()
+    
+    marker_genes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx/Gene-level/ExpressionInput/Genes-MarkerFinder.txt'
+    #TFisoToGene('/Users/saljh8/Downloads/clones.txt',marker_genes);sys.exit()
     #displaySimpleNetworkX();sys.exit()
     input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Autism/PRJNA434002/ICGS-NMF/CellFrequencies/FinalGroups-CellTypesFull-Author.txt'
     #summarizeCovariates(input_file);sys.exit()
@@ -9027,7 +9098,11 @@ if __name__ == '__main__':
     
     isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/protein.Gtex-GC30_6k-selected-tissues-TFs.txt'
     gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/gene.Gtex-GC30_6k-selected-tissues-TFs.txt'
-    computeIsoformRatio(gene_exp,isoform_exp);sys.exit()
+    
+    isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/TCGA-BRCA/protein.BreastCancer-GC30-6K.txt'
+    gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/TCGA-BRCA/gene.BreastCancer-GC30-6K.txt'
+    
+    #computeIsoformRatio(gene_exp,isoform_exp);sys.exit()
     #aggregateMarkerFinderResults('/Volumes/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/');sys.exit()
     groups_file = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/FACS_annotation-edit.txt'
     exp_dir = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/MergedFiles.txt'
@@ -9107,14 +9182,10 @@ if __name__ == '__main__':
     #outputForGOElite('/Users/saljh8/Desktop/R412X/completed/centroids.WT.R412X.median.txt');sys.exit()
     #simpleStatsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/Mean-Comparisons/ExpressionInput/MergedFiles.Counts.UMI.txt');sys.exit()
     a = '/Users/saljh8/Downloads/groups.CellTypes-Predicted-Label-Transfer-For-Nuclei-matrix.txt'
-    b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
-    b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
-    input_file = '/Users/saljh8/Downloads/exprMatrix.txt'
     ##transposeMatrix(a);sys.exit()
-    convertSymbolLog(input_file,b,species='Hs',logNormalize=False); sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/PRJEB31843/1k-T0-cellHarmony-groups2.txt'
+    b = '/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/groups.FinalMarkerHeatmap_all.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
