@@ -5104,7 +5104,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
     fastq_paths = []
     for file in dir_list:
         file_lower = string.lower(file)
-        if 'fastq' in file_lower and '._' not in file[:4]: ### Hidden files
+        if ('fastq' in file_lower or '.fq' in file_lower) and '._' not in file[:4]: ### Hidden files
             fastq_paths.append(fastq_folder+file)
     fastq_paths,paired = findPairs(fastq_paths)
 

@@ -41,6 +41,7 @@ BDGP_insitu_expr	Bd
 Platypus_olfactory_receptor	Pr	
 Vega	Vg	
 Ensembl	En	MOD
+AltExon	Ae	MOD
 Zfin	Z	
 HPA	Hpa	
 CloneID	Clb	

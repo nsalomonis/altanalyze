@@ -46,11 +46,13 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=Tr
             genes_path = string.replace(matrix_dir,'matrix.mtx','features.tsv')
         if '.gz' in genes_path:
             gene_ids = [row[0] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
-            gene_names = [row[1] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
+            try: gene_names = [row[1] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
+            except: gene_names = gene_ids
             barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
         else:
             gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
-            gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
+            try: gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
+            except: gene_names = gene_ids
             barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
     
     if geneIDs:

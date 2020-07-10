@@ -175,11 +175,13 @@ def downloadDomainAssociations(selected_species):
 def downloadPhenotypeOntologyOBO():
     print 'Downloading Phenotype Ontology structure and associations'
     url = 'ftp://ftp.informatics.jax.org/pub/reports/MPheno_OBO.ontology'
+    url = 'http://www.informatics.jax.org/downloads/reports/MPheno_OBO.ontology'
     
     fln,status = update.downloadSuppressPrintOuts(url,program_dir+'OBO/','')
 
 def downloadPhenotypeOntologyGeneAssociations():
     url = 'ftp://ftp.informatics.jax.org/pub/reports/HMD_HumanPhenotype.rpt'
+    url = 'http://www.informatics.jax.org/downloads/reports/HMD_HumanPhenotype.rpt'
     #url = 'http://www.genmapp.org/go_elite/Databases/ExternalSystems/HMD_HumanPhenotype.rpt'
     ### Mouse and human gene symbols and gene IDs (use the gene symbols)
     fln,status = update.downloadSuppressPrintOuts(url,'BuildDBs/Pheno/','')
@@ -487,19 +489,17 @@ def importPhenotypeOntologyGeneAssociations():
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        hs_symbol=t[0]; hs_entrez=t[1]; mm_symbol=t[2]; mgi=t[3]; pheno_ids=t[4]
-        if 'MP' not in pheno_ids:
-            try: pheno_ids = t[5]
-            except Exception: pass
-        hs_symbol = string.lower(hs_symbol)
-        mm_symbol = string.lower(mm_symbol)
-        symbols = [mm_symbol,hs_symbol]
-        pheno_ids = string.split(pheno_ids,' '); phen+=pheno_ids
-        for pheno_id in pheno_ids:
-            if len(pheno_id)>0:
-                for symbol in symbols:
-                    try: pheno_symbol[pheno_id].append(symbol)
-                    except Exception: pheno_symbol[pheno_id]=[symbol]
+        hs_symbol=t[0]; hs_entrez=t[1]; mm_symbol=t[4]; mgi=t[5]; pheno_ids=t[6]
+        if len(pheno_ids)>0:
+            hs_symbol = string.lower(hs_symbol)
+            mm_symbol = string.lower(mm_symbol)
+            symbols = [mm_symbol,hs_symbol]
+            pheno_ids = string.split(pheno_ids,' '); phen+=pheno_ids
+            for pheno_id in pheno_ids:
+                if len(pheno_id)>0:
+                    for symbol in symbols:
+                        try: pheno_symbol[pheno_id].append(symbol)
+                        except Exception: pheno_symbol[pheno_id]=[symbol]
     phen = unique.unique(phen)
     pheno_symbol = gene_associations.eliminate_redundant_dict_values(pheno_symbol)
     return pheno_symbol
@@ -1304,7 +1304,7 @@ if __name__ == '__main__':
     selected_species = ['Hs']
     force = 'yes'
     download_species = 'Hs'
-    species = 'Hs'
+    species = 'Mm'
     #species = 'Mm'
     mod = 'Ensembl'
     #"""
@@ -1317,6 +1317,6 @@ if __name__ == '__main__':
     #translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species);sys.exit()
     additional_resources=['Latest WikiPathways','PathwayCommons','Transcription Factor Targets','Domains','BioMarkers']
     additional_resources+=['miRNA Targets','GOSlim','Disease Ontology','Phenotype Ontology','KEGG','RVista Transcription Factor Sites']
-    additional_resources=['Latest WikiPathways']
+    additional_resources=['Phenotype Ontology']
     buildAccessoryPathwayDatabases(selected_species,additional_resources,force)
     

@@ -7054,6 +7054,7 @@ def commandLineRun():
                         display=True
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
+
             UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
                           plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore,
                           colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots,

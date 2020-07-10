@@ -29,6 +29,7 @@ EntrezGene	L	MOD
 CioInt	Cio	
 UniGene	Ug	
 HMDB	Ch	MOD
+AltExon	Ae	MOD
 Osford_FGU	Of	
 ProteinID	Pi	
 FlyBase	F	

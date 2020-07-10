@@ -578,7 +578,7 @@ def justConvertFilenames(species,outputdir):
             
 if __name__ == '__main__':
     root_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/'
-    events = ['ENSG00000133110:E19.1-E20.2|ENSG00000133110:E17.1-E20.2']
+    events = ['Psip1:ENSMUSG00000028484:E10.2-I10.1|ENSMUSG00000028484:E10.1-E12.1']
     events = None
     eventsToVisualizeFilename = None
     eventsToVisualizeFilename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/AltResults/AlternativeOutput/top50/MultiPath-PSI.txt'

@@ -5871,9 +5871,11 @@ def getUserParameters(run_parameter,Multi=None):
                     print_out = "Please provide a name for the dataset before proceeding."
                     IndicatorWindow(print_out,'Continue')
                 elif 'input_cel_dir' in gu.Results() or 'input_fastq_dir' in gu.Results():
+                    print input_fastq_dir
                     if len(input_fastq_dir)>0:
                         import RNASeq
                         cel_files = RNASeq.runKallisto(species,'',input_fastq_dir,input_fastq_dir,mlp,returnSampleNames=True)
+                        print cel_files
                         try: output_dir = gu.Results()['output_CEL_dir']
                         except KeyError: output_dir = input_fastq_dir
                         """ ### Change made in version 2.1.4

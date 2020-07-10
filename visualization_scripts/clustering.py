@@ -616,7 +616,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         filename = string.replace(filename,'hierarchical',time_stamp)
 
     elite_dir, cdt_file, markers, SystemCode = exportFlatClusterData(root_dir + filename, root_dir, dataset_name, new_row_header,new_column_header,xt,ind1,ind2,vmax,display)
-    
+
     def ViewPNG(png_file_dir):
         if os.name == 'nt':
             try: os.startfile('"'+png_file_dir+'"')
@@ -657,9 +657,10 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         try:
             elite_dirs = string.split(elite_dir,'GO-Elite')
             old_elite_dir = elite_dirs[0]+'GO-Elite'+elite_dirs[-1] ### There are actually GO-Elite/GO-Elite directories for the already clustered
+
             old_elite_dir = string.replace(old_elite_dir,'ICGS/','')
-            if len(PriorColumnClusters)>0 and len(PriorRowClusters)>0 and skipClustering:
-                cluster_elite_terms,top_genes = importGOEliteResults(old_elite_dir)
+            #if skipClustering and len(PriorColumnClusters)>0 and len(PriorRowClusters)>0 
+            cluster_elite_terms,top_genes = importGOEliteResults(old_elite_dir)
         except Exception,e:
             #print traceback.format_exc()
             pass
@@ -711,8 +712,14 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if cluster_num>40:
                 ge_fontsize = 4
                 column_fontsize = 4
+    
     label_pos=-0.03*len(column_header)-.8
     alternate=1
+    
+    #increment =1 # 7
+    #interval = 1  #9  controls number of terms you see per cluster (smaller = more terms)
+    #ge_fontsize = 1
+    
     #print ge_fontsize, cluster_num
     #print label_pos
     try:
@@ -5045,7 +5052,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         if algorithm == 't-SNE' or algorithm == 'UMAP':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
             column_header, row_header = row_header, column_header
-            if separateGenePlots and (len(colorByGene)>0 or colorByGene==None):
+            if separateGenePlots and (len(colorByGene)>0 or colorByGene==None) and maskGroups==None:
                 for gene in geneFilter:
                     tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=False,
                          showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
@@ -5067,9 +5074,15 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
                     except: group_sample_db[sample_group_db[sample]] = [sample]
                 for group in group_sample_db:
                     restricted_samples = group_sample_db[group]
-                    tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
-                        showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
-                        reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples))
+                    if separateGenePlots and (len(colorByGene)>0 or colorByGene==None):
+                        for gene in geneFilter:
+                            tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=False,
+                                 showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
+                                 reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples))
+                    else:
+                        tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
+                            showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
+                            reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples))
             else:
                 tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
                      showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
@@ -7523,7 +7536,7 @@ def compareEventLists(folder):
             if denom == 0: denom = 0.00001
             #comparison_db[comparison1,comparison2]=overlap
             if min_events1 == 0: min_events1 = 1
-            if (overlap+inverse_overlap)<20:
+            if (overlap+inverse_overlap)<10:
                 hits1.append('0.5')
                 hits2.append('0.5')
                 hits3.append('0.5|0.5')
@@ -8404,14 +8417,15 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
         DEG_db = {}
         for file in files:
             filename = folder + '/' + file
-            if '.txt' in file and 'GE.' in file:
+            if '.txt' in file and 'GE.' in file and 'GE.RR44' not in file and 'GE.ThPOK' not in file:
                 header = True
                 count = 0
                 header = True
                 file = file[:-4]
                 file = string.split(file[3:], '_')[0]
-                if file[:2] == 'DM':
+                if 'GE.RR44' in file or 'GE.ThPOK' in file:
                     file = 'global'
+                    continue
                 for line in open(filename, 'rU').xreadlines():
                     if header:
                         header = False
@@ -8430,9 +8444,9 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
                                 fold = math.pow(2, float(LogFold))
                             else:
                                 fold = -1 / math.pow(2, float(LogFold))
-                            if Symbol == 'BC049762':
-                                print 'BC049762', file, LogFold, fold
-                            if abs(fold) > 1.5 and adjp < 0.05:
+                            if Symbol == 'S100a8':
+                                print 'S100a8', file, LogFold, fold
+                            if abs(fold) > 1.0 and rawp < 0.05:
                                 try:
                                     DEG_db[Symbol].append([file, direction])
                                 except:
@@ -8449,7 +8463,18 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
     ref_DEGs = importCellHarmonyDEGs(reference_fold_dir)
     repaired_DEGs = importCellHarmonyDEGs(repair_dir1, repair=True)
     repaired2_DEGs = importCellHarmonyDEGs(repair_dir2, repair=True)
-
+    
+    total_repaired_genes ={}
+    for gene in ref_DEGs:
+        if gene in repaired_DEGs:
+            for (file1,direction1) in ref_DEGs[gene]:
+                for (file2,direction2) in repaired_DEGs[gene]:
+                    if direction1 == direction2:
+                        try: total_repaired_genes[gene].append([direction1,file1,file2])
+                        except: total_repaired_genes[gene] = [[direction1,file1,file2]]
+    for gene in total_repaired_genes:
+        print gene+'\t'+str(total_repaired_genes[gene])
+    print len(total_repaired_genes);sys.exit()
     def importCellHarmonyPseudoBulkFolds(filename):
         fold_db = {}
         header = True
@@ -9083,7 +9108,7 @@ def TFisoToGene(filename,marker_genes):
 if __name__ == '__main__':
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
-    input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Scadden-90k/exp.BoneMarrow-90k-filtered.txt'
+    input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Scadden-90k/ICGS-cH/exp.MF-cellHarmony.txt'
     #convertSymbolLog(input_file,b,species='Mm',logNormalize=False); sys.exit()
     
     marker_genes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx/Gene-level/ExpressionInput/Genes-MarkerFinder.txt'
@@ -9099,8 +9124,8 @@ if __name__ == '__main__':
     isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/protein.Gtex-GC30_6k-selected-tissues-TFs.txt'
     gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/gene.Gtex-GC30_6k-selected-tissues-TFs.txt'
     
-    isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/TCGA-BRCA/protein.BreastCancer-GC30-6K.txt'
-    gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/TCGA-BRCA/gene.BreastCancer-GC30-6K.txt'
+    isoform_exp = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/protein.BRC-GC30-6k.txt'
+    gene_exp = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/gene.BRC-GC30-6k.txt'
     
     #computeIsoformRatio(gene_exp,isoform_exp);sys.exit()
     #aggregateMarkerFinderResults('/Volumes/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/');sys.exit()
@@ -9119,10 +9144,11 @@ if __name__ == '__main__':
     #simpleCombineBedFiles(folder);sys.exit()
     
     PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
-    ##summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
+    PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/6.16.2020/AltResults/AlternativeOutput/compare_rawp-20p'
+    #summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
     #tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
-    #compareEventLists(a);sys.exit()
+    #compareEventLists(PSI_dir);sys.exit()
     filename = '/Users/saljh8/Downloads/Kerscher_lists_mouse_versus_mouse_and_human_gene_lists/Top50MouseandHuman1-clusters.txt'
     #exportSeuratMarkersToClusters(filename); sys.exit()
     organized_diff_ref = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-4-Gfi1-R412X-ModGMP-1694-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/centroid-revised/custom/cellHarmony/OrganizedDifferentials.txt'
@@ -9133,6 +9159,16 @@ if __name__ == '__main__':
     repair_dir1 = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-5-Gfi1-R412X-R412X-ModGMP-1362-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/hybrid/vs-R412X-het/cellHarmony/OtherFiles/DEGs-LogFold_0.0_rawp'
     repair_dir2 = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT/outs/filtered_gene_bc_matrices/Merged-Cells-iseq/cellHarmony-centroid-revsied/hybrid/vs-R412X-Het/cellHarmony/DifferentialExpression_Fold_1.2_adjp_0.05'
     repair_dir2 = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-6-Gfi1-R412X-Irf8-ModGMP-1499-ADT/outs/filtered_gene_bc_matrices/Merged-Cells-iseq/cellHarmony-centroid-revsied/hybrid/vs-R412X-Het/cellHarmony/OtherFiles/DEGs-LogFold_0.0_rawp'
+
+    organized_diff_ref = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Merged-GFP-WT-RR44/cellHarmony_KO-vs-WT/OrganizedDifferentials.txt'
+    repair1_folds = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/OtherFiles/exp.WT__ThPOK-AllCells-folds.txt'
+    repair2_folds = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/OtherFiles/exp.WT__ThPOK-AllCells-folds.txt'
+    reference_fold_dir = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Merged-GFP-WT-RR44/cellHarmony_KO-vs-WT/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir1 = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/DifferentialExpression_Fold_1.2_rawp_0.05'
+    repair_dir2 = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/DifferentialExpression_Fold_1.2_rawp_0.05'
+    print 'comparing cellHarmony outputs'
+    #rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repair2_folds, reference_fold_dir, repair_dir1, repair_dir2);sys.exit()
+    
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/NCI-R01/CCSB_TFIso_Clones.txt'
     PSI_dir = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/TCGA-files-Ens91/bams/AltResults/AlternativeOutput/OncoSPlice-All-Samples-filtered-names/SubtypeAnalyses-Results/round1/Events-dPSI_0.1_adjp/'
     #simpleCombineFiles('/Volumes/salomonis2/NCI-R01/Harvard/BRC_PacBio_Seq/metadataanalysis/PSICluster/TCGA/FilteredTF')
@@ -9185,7 +9221,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/groups.FinalMarkerHeatmap_all.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Rafi/Rhesus/scRNA-Seq/ExpressionInput/groups.Merged-revised-300-names.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'

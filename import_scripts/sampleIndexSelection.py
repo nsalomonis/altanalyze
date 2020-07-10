@@ -148,7 +148,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                 raw_values = map(lambda x: filtered_values[x], group_index_db[cluster])
                 raw_values2=[]
                 for vx in raw_values:
-                    if vx != '':
+                    if vx != '' and vx != 'NA':
                         raw_values2.append(float(vx))
 
                 if len(raw_values2)>2:

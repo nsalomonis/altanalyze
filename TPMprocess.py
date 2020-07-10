@@ -5393,7 +5393,7 @@ def calculateGeneTPMs(species,expMatrix):
     gene_matrix = {}
     present_gene_transcripts={}
     for transcript in expMatrix:
-        if '.' in transcript:
+        if '.' in transcript and 'ENS' in transcript:
             transcript_alt = string.split(transcript,'.')[0]
         else:
             transcript_alt = transcript
@@ -5681,9 +5681,12 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
     return annotatedGroupsFile
  
 if __name__ == '__main__':
-    expMatrix =  '/Volumes/salomonis2/NCI-R01/GTEx_data/NewData/files/kallisto_output-GC30_basic/transcript.GC30-basic.txt'
-    output = '/Volumes/salomonis2/NCI-R01/GTEx_data/NewData/files/kallisto_output-GC30_basic/protein.GC30-basic.txt'
-    lookup = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/symbol-isoforms.txt'
+    expMatrix =  '/Volumes/salomonis2/PublicDatasets/GSE127270-hPSCs-Hs/kallsito-GC30-6k-hPSCs/ExpressionInput/protein.kallsito-GC30-6k-hPSCs.txt'
+    output = '/Volumes/salomonis2/PublicDatasets/GSE127270-hPSCs-Hs/kallsito-GC30-6k-hPSCs/ExpressionInput/gene.kallsito-GC30-6k-hPSCs.txt'
+    expMatrix =  '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/protein.BRC-GC30-6k.txt'
+    output = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/gene.BRC-GC30-6k.txt'
+    lookup = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/gene-protein.6k.txt'
+    #lookup = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/protein-transcript6k.txt'
     po = export.ExportFile(output)
     expMatrix,headers = importTranscriptMatrix(expMatrix)
     print len(expMatrix)

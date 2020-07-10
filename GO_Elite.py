@@ -1905,7 +1905,7 @@ def remoteAnalysis(variables,run_type,Multi=None):
         resources_to_analyze = 'Pathways'
     speciesData()
     species = species_names[species_code]
-    max_member_count = 10000; sort_only_by_zscore = 'yes'; run_mappfinder = 'yes'
+    max_member_count = 100000; sort_only_by_zscore = 'yes'; run_mappfinder = 'yes'
     criterion_input_folder, criterion_denom_folder, main_output_folder = file_dirs; custom_sets_folder = '' ### Variable not currently used for AltAnalyze
     
     time_stamp = timestamp() 
@@ -2163,6 +2163,7 @@ def commandLineRun():
     returnPathways = None
     imageType = True
     resources=[]
+    max_member_count = 100000
     
     #input_var = ['--update', 'EntrezGene', '--species' ,'Mm'] ###used for testing
 
@@ -2178,7 +2179,8 @@ def commandLineRun():
                                     'taxid=', 'addspecies=', 'force=', 'version=', 'delfiles=',
                                     'archive=','exportinfo=','dataToAnalyze=','buildNested=',
                                     'customSet=','OBOurl=','GOtype=','nestTerms=','additional=',
-                                    'image=','wpid=','returnPathways=','imageType=','enrichment='])
+                                    'image=','wpid=','returnPathways=','imageType=','enrichment=',
+                                    'max_member_count='])
     except Exception, e: print e;sys.exit()
     
     for opt, arg in options:
@@ -2186,6 +2188,8 @@ def commandLineRun():
         elif opt == '--mod': mod=arg
         elif opt == '--image': image_export=arg
         elif opt == '--wpid': wpid=arg
+        elif opt == '--max_member_count':
+            max_member_count = int(arg)
         elif opt == '--imageType':
             imageType=arg
             if imageType=='all':
@@ -2745,7 +2749,7 @@ def commandLineRun():
         try: speciesData(); species = species_names[species_code]
         except Exception: print 'Species code not found. Please add the species to the database.'; sys.exit()
         
-        max_member_count = 10000; sort_only_by_zscore = 'yes'; run_mappfinder = 'yes'
+        sort_only_by_zscore = 'yes'; run_mappfinder = 'yes'
         #criterion_input_folder, criterion_denom_folder, main_output_folder, custom_sets_folder = file_dirs
         analysis_method = 'non-UI'
         change_threshold = change_threshold-1
