@@ -3933,7 +3933,10 @@ def correlateClusteredGenes(platform,results_file,stringency='medium',numSamples
     
     #combined_results = highVarHighComplexity
     for tuple_ls in combined_results:
-        eo.write(string.join(list(tuple_ls),'\t')+'\n')
+        try: eo.write(string.join(list(tuple_ls),'\t')+'\n')
+        except:
+            print traceback.format_exc()
+            print tuple_ls
     eo.close()
 
     cluster = True
@@ -4295,7 +4298,7 @@ def correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,
     if len(ADTs)>0:
         for ADT in ADTs:
             if ADT not in added_genes:
-                ls = [ADT]+matrix[row_header.index(ADT)]
+                ls = [ADT]+map(str,matrix[row_header.index(ADT)])
                 final_rows[tuple(ls)]=[]
     #print 'block length:',len(block_db), 'genes retained:',len(retained_ids)
     return final_rows, column_header
@@ -5568,7 +5571,7 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
         except: group_db[cluster] = [cell_barcode]
         if cluster not in clusters:
             clusters.append(cluster)
-    
+
     ### Import cell-type predictions
     firstLine=True
     celltype_db={}
@@ -5576,6 +5579,7 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
     prior_cluster = None
     for line in open(goelite_path,'rU').xreadlines():
         line=cleanUpLine(line)
+        line = string.replace(line,'cluster','')
         t = string.split(line,'\t')
         try:
             pvalue = float(t[10])

@@ -2682,7 +2682,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     ax = fig.add_subplot(111)
     pylab.xlabel(method.upper()+'-X')
     pylab.ylabel(method.upper()+'-Y')
-
+    ncol = 1
     axes = getAxesTransposed(scores,exclude=exclude) ### adds buffer space to the end of each axis and creates room for a legend
     pylab.axis(axes)
 
@@ -3136,7 +3136,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
         
         label1 = 'PC%i (%2.1f%%)' %(pcA+1, fracs[0]*100)
         label2 = 'PC%i (%2.1f%%)' %(pcB+1, fracs[1]*100)
-    
+        #print string.join(map(str,fracs[:-1]*100),'\t')
         #http://docs.scipy.org/doc/scipy/reference/sparse.html
         #scipy.sparse.linalg.svds - sparse svd
         #idx = numpy.argsort(vt[0,:])
@@ -9144,11 +9144,11 @@ if __name__ == '__main__':
     #simpleCombineBedFiles(folder);sys.exit()
     
     PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
-    PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/6.16.2020/AltResults/AlternativeOutput/compare_rawp-20p'
+    PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/6.16.2020/AltResults/AlternativeOutput/KD-concordance/'
     #summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
     #tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
-    #compareEventLists(PSI_dir);sys.exit()
+    compareEventLists(PSI_dir);sys.exit()
     filename = '/Users/saljh8/Downloads/Kerscher_lists_mouse_versus_mouse_and_human_gene_lists/Top50MouseandHuman1-clusters.txt'
     #exportSeuratMarkersToClusters(filename); sys.exit()
     organized_diff_ref = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-4-Gfi1-R412X-ModGMP-1694-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/centroid-revised/custom/cellHarmony/OrganizedDifferentials.txt'
@@ -9221,7 +9221,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Rafi/Rhesus/scRNA-Seq/ExpressionInput/groups.Merged-revised-300-names.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Epi/ICGS-NMF/groups.MergedFiles-Rhesus-filtered-epi.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'

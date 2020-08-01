@@ -6351,7 +6351,7 @@ def commandLineRun():
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
-                                                         'dataFormat='])
+                                                         'dataFormat=','geneTPM=','markerPearsonCutoff='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6459,7 +6459,9 @@ def commandLineRun():
         elif opt == '--correlateAll': correlateAll = True
         elif opt == '--direction': direction = arg
         elif opt == '--logexp' or opt == '--dataFormat': expression_data_format=arg
-        elif opt == '--geneRPKM': rpkm_threshold=arg
+        elif opt == '--geneRPKM' or opt == '--geneTPM':
+            rpkm_threshold=float(arg)
+            revised_rpkm_threshold = rpkm_threshold
         elif opt == '--correlationCutoff': PearsonThreshold=float(arg)
         elif opt == '--DE':
             if string.lower(arg) == 'true':
@@ -6621,6 +6623,9 @@ def commandLineRun():
                 elif opt == '--SamplesDiffering':SamplesDiffering=int(float(arg))
                 elif opt == '--excludeGuides': excludeGuides=arg
                 elif opt == '--dynamicCorrelation': dynamicCorrelation=arg
+                elif opt == '--markerPearsonCutoff':
+                    try: markerPearsonCutoff=float(arg)
+                    except: markerPearsonCutoff=0.3
                 elif opt == '--k':
                     try: k=int(arg)
                     except:
@@ -6677,6 +6682,8 @@ def commandLineRun():
                 gsp.setDownsample(downsample)
                 gsp.setNumGenesExp(numGenesExp)
                 gsp.setNumVarGenes(numVarGenes)
+                try: gsp.setMarkerPearsonCutoff(markerPearsonCutoff)
+                except: pass
                 try: gsp.setCountsNormalization(expression_data_format)
                 except: pass
                 gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering, dynamicCorrelation,  
@@ -6767,7 +6774,8 @@ def commandLineRun():
                 ### Import expression defaults
                 expr_defaults, alt_exon_defaults, functional_analysis_defaults, goelite_defaults = UI.importDefaults(array_type,species)
                 dabg_p, rpkm_threshold, gene_exp_threshold, exon_exp_threshold, exon_rpkm_threshold, expression_threshold, perform_alt_analysis, analyze_as_groups, expression_data_format, normalize_feature_exp, normalize_gene_data, avg_all_for_ss, include_raw_data, probability_statistic, FDR_statistic, batch_effects, marker_finder, visualize_qc_results, run_lineage_profiler, null = expr_defaults
-                fl.setRPKMThreshold(rpkm_threshold)
+                try: fl.setRPKMThreshold(revised_rpkm_threshold)
+                except: fl.setRPKMThreshold(rpkm_threshold)
                 fl.setExonExpThreshold(exon_exp_threshold)
                 fl.setGeneExpThreshold(gene_exp_threshold)
                 fl.setExonRPKMThreshold(exon_rpkm_threshold)
@@ -7857,6 +7865,7 @@ def commandLineRun():
         elif opt == '--dabgp': dabg_p=arg
         elif opt == '--rawexp': expression_threshold=arg
         elif opt == '--geneRPKM': rpkm_threshold=arg
+        elif opt == '--geneTPM': rpkm_threshold=arg
         elif opt == '--exonRPKM': exon_rpkm_threshold=arg
         elif opt == '--geneExp': gene_exp_threshold=arg
         elif opt == '--exonExp': exon_exp_threshold=arg
@@ -8286,6 +8295,8 @@ def commandLineRun():
                 elif run_lineage_profiler == 'yes' and input_file_dir != None and pipelineAnalysis == False and ('--runLineageProfiler' in arguments or '--cellHarmony' in arguments): pass 
                 else: print '...groups and comps files not found. Create before running AltAnalyze in command line mode.';sys.exit()
             fl = UI.ExpressionFileLocationData(input_exp_file,input_stats_file,groups_file_dir,comps_file_dir)
+            try: fl.setRPKMThreshold(revised_rpkm_threshold)
+            except: pass
             dataset_name = exp_name
             if analyze_all_conditions == "all groups":
                 try: array_group_list,group_db = UI.importArrayGroupsSimple(groups_file_dir,cel_files)

@@ -1088,6 +1088,8 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
             by centroids (same ICGS genes) """
             try: cellLabels = fl.Labels()
             except: cellLabels = False
+            if cellLabels == '':
+                cellLabels = None
             try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,
                     codingtype,compendium_platform,customMarkers=custom_markerFinder,
                     geneModels=geneModel,modelSize=modelSize,fl=fl,label_file=cellLabels)
@@ -7146,8 +7148,11 @@ class GeneSelectionParameters:
     def NumGenesExp(self):
         return int(self.numGenesExp)
     def setNumVarGenes(self,numVarGenes): self.numVarGenes = numVarGenes
+    def setMarkerPearsonCutoff(self,markerPearsonCutoff): self.markerPearsonCutoff = markerPearsonCutoff
     def NumVarGenes(self):
         return int(self.numVarGenes)
+    def MarkerPearsonCutoff(self):
+        return self.markerPearsonCutoff
     def DownSample(self):
         try:
             return int(self.downsample)

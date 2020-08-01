@@ -253,6 +253,7 @@ def convertClusterOrderToGroupLabels(filename,refCells=None):
     fn=filepath(filename)
     prior_label=None
     groupNumber_label_db={}
+    cell_to_label_db={}
     for line in open(fn,'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data,'\t')
@@ -266,9 +267,11 @@ def convertClusterOrderToGroupLabels(filename,refCells=None):
                 else:
                     ICGS_cluster_number = refCells[alt_cell] ### Use the original cluster number if avaialble
                     clusterNumber = ICGS_cluster_number
+                    cell_to_label_db[alt_cell]=label
             else:
                 ICGS_cluster_number = refCells[cell] ### Use the original cluster number if avaialble
                 clusterNumber = ICGS_cluster_number
+                cell_to_label_db[cell]=label
         else:
             try: ICGS_cluster_number = t[-2]
             except: ICGS_cluster_number = t[-1]
@@ -280,7 +283,7 @@ def convertClusterOrderToGroupLabels(filename,refCells=None):
             groupNumber_label_db[str(ICGS_cluster_number)]=label
         prior_label = label
     #for i in groupNumber_label_db: print [i,groupNumber_label_db[i]] 
-    return groupNumber_label_db
+    return groupNumber_label_db, cell_to_label_db
     
 ######### Below code deals is specific to this module #########
 def runLineageProfiler(species,array_type,exp_input,exp_output,
@@ -315,15 +318,14 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,
             print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."
             pass
 
-    if label_file != None:
+    if label_file != None and  label_file != '':
         refCells = None
         reference_exp_file = string.replace(customMarkers,'-centroid.txt','.txt')
         status = verifyFile(reference_exp_file) ### Organized cells in the final cluster order
         if status==True:
             refCells = getGroupsFromExpFile(reference_exp_file)
 
-        label_file = convertClusterOrderToGroupLabels(label_file,refCells=refCells)
-        #print label_file
+        label_file,cell_to_label_db = convertClusterOrderToGroupLabels(label_file,refCells=refCells)
 
 
     customMarkerFile = customMarkers
@@ -619,8 +621,11 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,
         values = [sample]+class_scores_str+[overall_prog_score,str(sum_score),call]
         if label_file != None:
             sampleLabel=''
+            call2 = string.replace(call,'.Reference','')
             if call in label_file:
                 groupLabel = label_file[call] ### This is the unique label for the cluster number
+            elif call in cell_to_label_db:
+                groupLabel = cell_to_label_db[call] ### This is the unique label for the cluster number
             else:
                 print [call]
                 for c in label_file:
@@ -2763,11 +2768,18 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 try:
                     assigned_class = groups_to_reference_cells[assigned_class][-1]
                 except:
+                    assigned_class+=".Reference"
+                    ### Hence, cells not, centroids
+                    pass
+                    """
                     print assigned_class, 'not found in the groups_to_reference_cells database'
+                    for ac in groups_to_reference_cells: print [ac],groups_to_reference_cells[ac]
+                    kill
                     """
-                    print [assigned_class]
-                    for ac in groups_to_reference_cells: print [ac]
-                    """
+            else:
+                assigned_class2=assigned_class+".Reference"
+                if assigned_class2 in ref_headers:
+                    assigned_class = assigned_class2
             cd = ClassificationData(sample,score,assigned_class)
             try: sample_classes[assigned_class].append([score,cd])
             except Exception: sample_classes[assigned_class] = [[score,cd]]
@@ -3975,8 +3987,8 @@ def exportMergedReference(unclustered_centroids,input,output,outputDir,species,p
     genesToReport = 50
     correlateAll = True
     import markerFinder
-    print [unclustered_centroids]
-    print [input]
+    #print [unclustered_centroids]
+    #print [input]
     print 'Running MarkerFinder'
     markerFinder.analyzeData(unclustered_centroids,species,platform,compendiumType,
             geneToReport=genesToReport,correlateAll=correlateAll,AdditionalParameters=fl,
@@ -4435,7 +4447,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         print 'Using centroids rather than individual cells for alignment.'
         return cellHarmonyReferenceFileMediod
     else:
-        print 'Using invidual cells rather than cell centroids for alignment.'
+        print 'Using individual cells rather than cell centroids for alignment.'
         return cellHarmonyReferenceFile
 
 def simpleExpressionFileImport(filename,filterUID={}):

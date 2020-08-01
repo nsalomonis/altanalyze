@@ -1822,7 +1822,7 @@ if __name__ == '__main__':
                     uniqueDonors = False
                     if string.lower(arg) == 'both':
                         runAgain = True
-
+                        
     if len(used)>0:
         ###Upload existing results folder to Synapse
         import synapseclient

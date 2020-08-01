@@ -1950,7 +1950,6 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         except Exception: batch_effects = 'NA'
         try: norm = fl.FeatureNormalization()
         except Exception: norm = 'NA'
-      
         try: probability_statistic = fl.ProbabilityStatistic()
         except Exception: probability_statistic = 'unpaired t-test'
         try: gene_exp_threshold = fl.GeneExpThreshold()
@@ -1963,6 +1962,11 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         else:
             try: expr_threshold = float(expression_threshold)
             except Exception: expr_threshold = 0
+
+        """
+        print 'gene_rpkm_threshold',[gene_rpkm_threshold]
+        print 'expr_threshold',[expr_threshold]
+        print norm"""
         
         residuals_input_dir = string.replace(expr_input_dir,'exp.','residuals.')
         root_dir = fl.RootDir()
