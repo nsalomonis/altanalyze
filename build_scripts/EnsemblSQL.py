@@ -1359,7 +1359,7 @@ def getEnsemblVersions(ftp_server,subdir):
     ftp.dir(data.append); ftp.quit()
     for line in data:
         line = string.split(line,' '); file_dir = line[-1]
-        if 'release' in file_dir and '/' not in file_dir:
+        if 'release' in file_dir and '/' not in file_dir and 'release' not in file_dir:
             version_number = int(string.replace(file_dir,'release-',''))
             if version_number>46: ###Before this version, the SQL FTP folder structure differed substantially
                 ensembl_versions.append(file_dir)

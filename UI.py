@@ -2628,6 +2628,10 @@ class GUI:
         gsp.setNormalize('median')
         try: gsp.setCountsNormalization(fl.CountsNormalization())
         except: pass
+        try:
+            downsample = int(self.Results()['downsample'])
+            gsp.setDownsample(downsample)
+        except: pass
         gsp.setSampleDiscoveryParameters(ExpressionCutoff,CountsCutoff,FoldDiff,SamplesDiffering,dynamicCorrelation,
             removeOutliers,featurestoEvaluate,restrictBy,excludeCellCycle,column_metric,column_method,rho_cutoff)
         self._user_variables['gsp'] = gsp
@@ -3106,7 +3110,7 @@ class PreviousResults:
     def Results(self): return self._user_variables
         
 def getSpeciesList(vendor):
-    try: current_species_dirs = unique.read_directory('/AltDatabase') 
+    try: current_species_dirs = unique.read_directory('/AltDatabase')
     except Exception: ### Occurs when the version file gets over-written with a bad directory name
         try:
             ### Remove the version file and wipe the species file

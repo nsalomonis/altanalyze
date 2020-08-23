@@ -421,7 +421,7 @@ def generateMarkerHeatMaps(fl,platform,convertNonLogToLog=False,graphics=[],Spec
             reload(clustering)
             try:
                 graphics = clustering.runHCexplicit(custom_path, graphics, row_method, row_metric,
-                                    column_method, column_metric, color_gradient, gsp, contrast=4, display=False)
+                                    column_method, column_metric, color_gradient, gsp, contrast=5, display=False)
             except Exception:
                 print traceback.format_exc()
                 print 'Error occured in generated MarkerGene clusters... see ExpressionOutput/MarkerFinder files.'

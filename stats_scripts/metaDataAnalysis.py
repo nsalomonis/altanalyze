@@ -1731,7 +1731,7 @@ if __name__ == '__main__':
     expression_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     groups_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/ExpressionInput/groups.test.txt'
     computed_results_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/ExpressionInput/comps.test.txt'
-    #exportUpDownGenes('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/cellHarmony-evaluation/HCA-alignment/DEGs');sys.exit()
+    #exportUpDownGenes('/Users/saljh8/Dropbox/Salomonis-Lab/Students/Erica/Van-Galen_Healthy-Filtered/cellHarmony-results/Gran/cellHarmony/DifferentialExpression_Fold_1.2_rawp_0.05');sys.exit()
     #remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05,exportHeatmap=True);sys.exit()
     #compareDomainComposition(computed_results_dir)
     ################  Comand-line arguments ################

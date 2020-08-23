@@ -1269,11 +1269,14 @@ def buildAccessoryPathwayDatabases(selected_species,additional_resources,force):
         except Exception:
             #print traceback.format_exc()
             print 'BioGRID import failed (cause unknown)'
+    """
+    ### Now requires a license to use - only use the prior version
     if 'DrugBank' in additional_resources:
         try: importDrugBank(selected_species,force)
         except Exception: print 'Drug Bank import failed (cause unknown)'
     try: exportBioTypes(selected_species)
     except Exception: pass
+    """
 
 def importExistingGeneTermRelationships(fn,new_term_to_gene):
     """ Import the existing relationships and augment with the new """

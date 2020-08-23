@@ -107,11 +107,13 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
     #print cells_with_virus['CAGAATCCAAACTGCT']
     #sys.exit()
     
-    valid_barcodes = 0
-    for viral in viral_barcodes:
-        if viral in reference_48mers:
-            valid_barcodes+=1
-    print valid_barcodes, 'unique valid viral barcodes present'
+    if reference_48mers !=None:
+        valid_barcodes = 0
+        for viral in viral_barcodes:
+            if viral in reference_48mers:
+                valid_barcodes+=1
+        print valid_barcodes, 'unique valid viral barcodes present'
+        
     #"""
     ### If the viral barcodes have frequent errors - associate the error with the reference in a cell-specific manner
     ### Only one virus for cell should be present unless it is a doublet
@@ -131,7 +133,9 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
                 except Exception: cell_5prime[i[:10]]=[i]
                 try: cell_3prime[i[-10:]].append(i)
                 except Exception: cell_3prime[i[-10:]]=[i]
-                if i in reference_48mers:
+                if reference_48mers == None:
+                    ref_sequences.append(i)
+                elif i in reference_48mers:
                     ref_sequences.append(i)
             if len(ref_sequences)>0:
                 cells_with_valid_barcodes+=1 ### Determine how many cells have valid viral barcodes
@@ -156,7 +160,9 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
                 
         else:
             for i in cells_with_virus[cellular]:
-                if i in reference_48mers:
+                if reference_48mers == None:
+                    cells_with_valid_barcodes+=1
+                elif i in reference_48mers:
                     cells_with_valid_barcodes+=1 ### Determine how many cells have valid viral barcodes
                 try: viral_barcodes_overide[i].append(cellular)
                 except: viral_barcodes_overide[i]=[cellular]
@@ -172,6 +178,8 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
         if v in mismatch_to_match:
             v = mismatch_to_match[v]
             proceed = True
+        elif reference_48mers == None:
+            proceed = True
         elif v in reference_48mers:
             proceed = True
         if proceed:
@@ -182,8 +190,6 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
             else:
                 viral_barcodes2[v] = cell_barcodes
 
-
-    
     print cells_with_valid_barcodes, 'cells with valid viral barcodes.'
     viral_barcodes = viral_barcodes2
     ### Update the cells_with_virus dictionary
@@ -230,7 +236,9 @@ def processBarcodes(viral_barcode_file,cell_cluster_file,reference_48mers):
         k=len(unique.unique(viral_barcodes[viral]))
         if k>k_value:
             proceed=True
-            if len(reference_48mers)>0:
+            if reference_48mers == None:
+                proceed = True
+            elif len(reference_48mers)>0:
                 if viral in reference_48mers:
                     proceed = True
                 else: proceed = False
@@ -336,23 +344,25 @@ if __name__ == '__main__':
     #cellClusters = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/groups.cellHarmony-Celexa5prime-Baso.txt'
     barcode1 = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/14mer.txt'
     barcode2 = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Viral-tracking/3-prime/30mer.txt'
-    references = importViralBarcodeReferences(barcode1,barcode2)
     #references={}
-    processBarcodes(cellBarcodes,cellClusters,references);sys.exit()
     import getopt
-    filter_rows=False
-    filter_file=None
-    genome = 'hg19'
-    dataset_name = '10X_filtered'
+    barcode1 = None
+    barcode2 = None
+
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
-        #Filtering samples in a datasets
-        #python 10XProcessing.py --i /Users/test/10X/outs/filtered_gene_bc_matrices/ --g hg19 --n My10XExperiment
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','g=','n='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['c=','v=','b1=','b2='])
         #print sys.argv[1:]
         for opt, arg in options:
-            if opt == '--i': matrices_dir=arg
-            elif opt == '--g': genome=arg
-            elif opt == '--n': dataset_name=arg
+            if opt == '--c': cellClusters=arg
+            elif opt == '--v': cellBarcodes=arg
+            elif opt == '--b1': barcode1=arg
+            elif opt == '--b2': barcode2=arg
+            
+    if barcode1!=None:
+        references = importViralBarcodeReferences(barcode1,barcode2)
+    else:
+        references = None
+    processBarcodes(cellBarcodes,cellClusters,references);sys.exit()
      

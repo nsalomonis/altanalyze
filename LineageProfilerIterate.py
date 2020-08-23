@@ -2841,7 +2841,8 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             if ':' in sample:
                 sample_alt = string.split(sample,':')[1]
             try: cluster = classified_samples[sample]
-            except: cluster = classified_samples[sample_alt]
+            except:
+                cluster = classified_samples[sample_alt]
             column_clusters.append(cluster)
          
     """ Combine the two datasets, before re-ordering """

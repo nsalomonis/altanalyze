@@ -8938,7 +8938,7 @@ def summarizeCovariates(fn):
         eo.write(string.join([ClusterName]+values,'\t')+'\n')
     eo.close()
      
-def computeIsoformRatio(gene_exp_file, isoform_exp_file):
+def computeIsoformRatio(gene_exp_file, isoform_exp_file, pairs=False):
     path = isoform_exp_file[:-4]+'_ratios.txt'
     eo = export.ExportFile(path)
     firstRow=True
@@ -9018,33 +9018,55 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file):
                     gene_exp = gene_exp_db[gene]
             try: gene_to_isoform[gene].append(original_uid)
             except: gene_to_isoform[gene] = [original_uid]
-
-    for gene in gene_to_isoform:
-        if len(gene_to_isoform[gene])>1:
-            for isoform in gene_to_isoform[gene]:
-                values = isoform_exp_db[isoform]
-                gene_exp = gene_exp_db[gene]
-                index=0
-                ratios=[]
-                for i in values:
-                    #v = math.log(i+1,2)-math.log(gene_exp[index]+1,2)
-                    k = gene_exp[index]
-                    if k>1:
-                        try: v = i/k
-                        except: v = 1
-                    else:
-                        v=''
-                    index+=1
-                    try: ratios.append(str(round(v,2)))
-                    except: ratios.append('')
-                """
-                if 'MYRFL' in isoform:
-                    print isoform
-                    print gene_exp[:10]
-                    print values[:10]
-                    print ratios[:10]"""
-                eo.write(string.join([isoform]+ratios,'\t')+'\n')
-                #max_ratios = max(map(float,ratios))
+            
+    if pairs == False: ### Export isoform to gene ratios
+        for gene in gene_to_isoform:
+            if len(gene_to_isoform[gene])>1:
+                for isoform in gene_to_isoform[gene]:
+                    values = isoform_exp_db[isoform]
+                    gene_exp = gene_exp_db[gene]
+                    index=0
+                    ratios=[]
+                    for i in values:
+                        #v = math.log(i+1,2)-math.log(gene_exp[index]+1,2)
+                        k = gene_exp[index]
+                        if k>1:
+                            try: v = i/k
+                            except: v = 1
+                        else:
+                            v=''
+                        index+=1
+                        try: ratios.append(str(round(v,2)))
+                        except: ratios.append('')
+                    """
+                    if 'MYRFL' in isoform:
+                        print isoform
+                        print gene_exp[:10]
+                        print values[:10]
+                        print ratios[:10]"""
+                    eo.write(string.join([isoform]+ratios,'\t')+'\n')
+                    #max_ratios = max(map(float,ratios))
+    else:
+        for gene in gene_to_isoform:
+            if len(gene_to_isoform[gene])>1:
+                for isoform1 in gene_to_isoform[gene]:
+                    values1 = isoform_exp_db[isoform1]
+                    for isoform2 in gene_to_isoform[gene]:
+                        values2 = isoform_exp_db[isoform2]
+                        if isoform1 != isoform2:
+                            index=0
+                            ratios=[]
+                            for i in values1:
+                                k = values2[index]
+                                if k>1:
+                                    try: v = i/k
+                                    except: v = 1
+                                else:
+                                    v=''
+                                index+=1
+                                try: ratios.append(str(round(v,2)))
+                                except: ratios.append('')
+                            eo.write(string.join([isoform1+'@'+isoform2]+ratios,'\t')+'\n')
 
     eo.close()
        
@@ -9120,14 +9142,14 @@ if __name__ == '__main__':
     isoform_data = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/Alt-Analyze/ExpressionInput/exp.GC30-basic-MainTissues_ratios-sparse-filtered.txt'
     psi_annotations = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/GTEx/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     #correlateIsoformPSIvalues(isoform_data,psi_data,psi_annotations);sys.exit()
-    
-    isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/protein.Gtex-GC30_6k-selected-tissues-TFs.txt'
-    gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/gene.Gtex-GC30_6k-selected-tissues-TFs.txt'
-    
+
     isoform_exp = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/protein.BRC-GC30-6k.txt'
     gene_exp = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/gene.BRC-GC30-6k.txt'
     
-    #computeIsoformRatio(gene_exp,isoform_exp);sys.exit()
+    isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx-revised/protein.GC30-6k-GTEx-filtered.txt'
+    gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx-revised/gene.GC30-6k-GTEx-filtered.txt'
+    
+    #computeIsoformRatio(gene_exp,isoform_exp,pairs=True);sys.exit()
     #aggregateMarkerFinderResults('/Volumes/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/');sys.exit()
     groups_file = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/FACS_annotation-edit.txt'
     exp_dir = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/MergedFiles.txt'
@@ -9148,7 +9170,7 @@ if __name__ == '__main__':
     #summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
     #tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
-    compareEventLists(PSI_dir);sys.exit()
+    #compareEventLists(PSI_dir);sys.exit()
     filename = '/Users/saljh8/Downloads/Kerscher_lists_mouse_versus_mouse_and_human_gene_lists/Top50MouseandHuman1-clusters.txt'
     #exportSeuratMarkersToClusters(filename); sys.exit()
     organized_diff_ref = '/Volumes/salomonis2/Grimes/RNA/scRNA-Seq/10x-Genomics/WuXi-David-Nature-Revision/PROJ-00584/fastqs/DM-4-Gfi1-R412X-ModGMP-1694-ADT/outs/filtered_gene_bc_matrices/Merged-Cells/centroid-revised/custom/cellHarmony/OrganizedDifferentials.txt'
@@ -9221,9 +9243,9 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Epi/ICGS-NMF/groups.MergedFiles-Rhesus-filtered-epi.txt'
+    b = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GTEX-30-sample/TCGA-BRCA/ForAnu/forICGS/ICGS-NMF-cosine/FinalGroups.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
-    convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
+    #convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
@@ -9318,8 +9340,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Churko/ExpressionInput/genes.txt'
-    genesets = importGeneList(gene_list_file,n=22)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Erica/VanGalen/Health-ICGS/CellHarmonyReference/genes.txt'
+    genesets = importGeneList(gene_list_file,n=30)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -9335,7 +9357,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Churko/ExpressionInput/exp.10x-Multi-CCA-iPS-CM-CPTT-non-log.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Erica/VanGalen/Health-ICGS/CellHarmonyReference/exp.MarkerFinder-cellHarmony-reference-filtered.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
     #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
@@ -9345,7 +9367,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=22)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=30)
     sys.exit()
 
     plotHistogram(filename);sys.exit()

@@ -412,7 +412,7 @@ def PageRankSampling(inputfile,downsample_cutoff):
             diclst[i]=ind
            # diclst[i]=ind.tolist()[0]
         
-        print "creating graphs"
+        print "creating graphs...",
         G=nx.from_dict_of_lists(diclst)
         #nx.write_adjlist(G,"test.adjlist")
         #G=nx.read_adjlist("test.adjlist")
@@ -1045,7 +1045,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
         Guidefile=graphic_links3[-1][-1]
         Guidefile=Guidefile[:-4]+'.txt'
     else:
-        Guidefile="/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq_mLSK-60ADT/mLSKTA-soupX-0.1/AltAnalyze/ExpressionInput/amplify/DataPlots/Clustering-exp.10X_filtered_matrix_counts-filtered_CPTT-log2-VarGenes-PageRank-downsampled-Guide3-hierarchical_cosine_correlation.txt"
+        Guidefile="/Users/saljh8/Desktop/dataAnalysis/Collaborative/Harinder/D21-D35-PC-5p/forICGS/Euclidean/ICGS/Clustering-exp.D21-D35-PageRank-downsampled-Guide3-hierarchical_euclidean_correlation.txt"
 
     rho_cutoff=0.2
     try:
@@ -1446,10 +1446,26 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
                 ### Use dispersion (variance by mean) to define post-Louvain selected cell variable genes
                 inputExpFileVariableGenesDir,n=hgvfinder(inputExpFileScaled,numVarGenes=numVarGenes) ### returns filtered expression file with 500 variable genes
                 ### Run PageRank on the Louvain/dispersion downsampled dataset
-                sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
+                """ PageRank can fail at neighbours=list(G.adj[key1]) when the downsample threshold is too low """
+                while PageRankCompleted == False:
+                    try:
+                        sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
+                        PageRankCompleted = True
+                    except:
+                        downsample_cutoff+=1000
+                        print 'PageRank encountered an error... increasing cells to downsample to', downsample_cutoff
             else:
                 ### Directly run PageRank on the initial dispersion based dataset
-                sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
+                PageRankCompleted = False
+                """ PageRank can fail at neighbours=list(G.adj[key1]) when the downsample threshold is too low """
+                while PageRankCompleted == False:
+                    try:
+                        sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)
+                        PageRankCompleted = True
+                    except:
+                        #print traceback.format_exc()
+                        downsample_cutoff+=1000
+                        print 'PageRank encountered an error... increasing cells to downsample to', downsample_cutoff
            
             ### Write out final downsampled results to a new file
             output_dir = root_dir+'/ExpressionInput'
@@ -1472,7 +1488,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             else: processedInputExpFile = inputExpFile
     else:
         ### Re-run using a prior produced ICGS2 result
-        processedInputExpFile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq_mLSK-60ADT/mLSKTA-soupX-0.1/AltAnalyze/ExpressionInput/exp.10X_filtered_matrix_counts-filtered_CPTT-log2-VarGenes-PageRank-downsampled.txt'
+        processedInputExpFile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Harinder/D21-D35-PC-5p/forICGS/Euclidean/ExpressionInput/exp.D21-D35-PageRank-downsampled.txt'
 
     flag=True
     iteration=1 ### Always equal to 1 for scRNA-Seq but can increment for splice-ICGS

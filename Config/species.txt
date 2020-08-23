@@ -1,20 +1,70 @@
 species_code	species_name	compatible_algorithms
-Hs	Homo sapiens	
-At	Arabidopsis thaliana	
-Ma	Macaca mulatta	
-Ce	Caenorhabditis elegans	
-Cf	Canis familiaris	
-Bt	Bos taurus	
-Mm	Mus musculus	
-Rn	Rattus norvegicus	
-Xl	Xenopus laevis	
-Gg	Gallus gallus	
-Nc	Neurospora crassa	
-Ac	Anolis carolinensis	
-Dm	Drosophila melanogaster	
-Xl	Test	
-Zm	Zea mays	
-Sc	Saccharomyces cerevisiae	
-Pn	Papio anubis
-Ma	Macaca mulatta
-	
+Hs	Homo sapiens	ASPIRE|splicing_index|MiDAS
+Mm	Mus musculus	ASPIRE|linearregres|splicing_index|MiDAS
+Nc	Neurospora crassa	ASPIRE|splicing_index|MiDAS
+Rn	Rattus norvegicus	ASPIRE|splicing_index|MiDAS
+Pn	Papio anubis	ASPIRE|splicing_index|MiDAS
+Ac	Anolis carolinensis	ASPIRE|splicing_index|MiDAS
+Ag	Anopheles gambiae	ASPIRE|splicing_index|MiDAS
+At	Arabidopsis thaliana	ASPIRE|splicing_index|MiDAS
+Am	Ailuropoda melanoleuca	ASPIRE|splicing_index|MiDAS
+Bt	Bos taurus	ASPIRE|splicing_index|MiDAS
+Ce	Caenorhabditis elegans	ASPIRE|splicing_index|MiDAS
+Cf	Canis familiaris	ASPIRE|splicing_index|MiDAS
+Ch	Choloepus hoffmanni	ASPIRE|splicing_index|MiDAS
+Ci	Ciona intestinalis	ASPIRE|splicing_index|MiDAS
+Cj	Callithrix jacchus	ASPIRE|splicing_index|MiDAS
+Cp	Cavia porcellus	ASPIRE|splicing_index|MiDAS
+Cs	Ciona savignyi	ASPIRE|splicing_index|MiDAS
+Dm	Drosophila melanogaster	ASPIRE|splicing_index|MiDAS
+Dn	Dasypus novemcinctus	ASPIRE|splicing_index|MiDAS
+Do	Dipodomys ordii	ASPIRE|splicing_index|MiDAS
+Dr	Danio rerio	ASPIRE|splicing_index|MiDAS
+Ec	Equus caballus	ASPIRE|splicing_index|MiDAS
+Ee	Erinaceus europaeus	ASPIRE|splicing_index|MiDAS
+Et	Echinops telfairi	ASPIRE|splicing_index|MiDAS
+Fc	Felis catus	ASPIRE|splicing_index|MiDAS
+Ga	Gasterosteus aculeatus	ASPIRE|splicing_index|MiDAS
+Gg	Gallus gallus	ASPIRE|splicing_index|MiDAS
+Gm	Glycine max	ASPIRE|splicing_index|MiDAS
+Go	Gorilla gorilla	ASPIRE|splicing_index|MiDAS
+Hv	Hordeum vulgare	ASPIRE|splicing_index|MiDAS
+La	Loxodonta africana	ASPIRE|splicing_index|MiDAS
+Ma	Macaca mulatta	ASPIRE|splicing_index|MiDAS
+Md	Monodelphis domestica	ASPIRE|splicing_index|MiDAS
+Me	Macropus eugenii	ASPIRE|splicing_index|MiDAS
+Mi	Microcebus murinus	ASPIRE|splicing_index|MiDAS
+Ml	Myotis lucifugus	ASPIRE|splicing_index|MiDAS
+Mg	Meleagris gallopavo	ASPIRE|splicing_index|MiDAS
+Oa	Ornithorhynchus anatinus	ASPIRE|splicing_index|MiDAS
+Oc	Oryctolagus cuniculus	ASPIRE|splicing_index|MiDAS
+Og	Otolemur garnettii	ASPIRE|splicing_index|MiDAS
+Ol	Oryzias latipes	ASPIRE|splicing_index|MiDAS
+Op	Ochotona princeps	ASPIRE|splicing_index|MiDAS
+Os	Oryza sativa	ASPIRE|splicing_index|MiDAS
+Pa	Pseudomonas aeruginosa	ASPIRE|splicing_index|MiDAS
+Pc	Procavia capensis	ASPIRE|splicing_index|MiDAS
+Pf	Plasmodium falciparum	ASPIRE|splicing_index|MiDAS
+Pb	Pongo abelii	ASPIRE|splicing_index|MiDAS
+Po	Populus tremula	ASPIRE|splicing_index|MiDAS
+Pp	Pongo pygmaeus	ASPIRE|splicing_index|MiDAS
+Pt	Pan troglodytes	ASPIRE|splicing_index|MiDAS
+Pv	Pteropus vampyrus	ASPIRE|splicing_index|MiDAS
+Sa	Sorex araneus	ASPIRE|splicing_index|MiDAS
+Sc	Saccharomyces cerevisiae	ASPIRE|splicing_index|MiDAS
+Sl	Solanum lycopersicum	ASPIRE|splicing_index|MiDAS
+Ss	Sus scrofa	ASPIRE|splicing_index|MiDAS
+St	Spermophilus tridecemlineatus	ASPIRE|splicing_index|MiDAS
+Su	Staphylococcus aureus	ASPIRE|splicing_index|MiDAS
+Ta	Triticum aestivum	ASPIRE|splicing_index|MiDAS
+Tb	Tupaia belangeri	ASPIRE|splicing_index|MiDAS
+Tg	Taeniopygia guttata	ASPIRE|splicing_index|MiDAS
+Tn	Tetraodon nigroviridis	ASPIRE|splicing_index|MiDAS
+Tr	Takifugu rubripes	ASPIRE|splicing_index|MiDAS
+Ts	Tarsius syrichta	ASPIRE|splicing_index|MiDAS
+Tt	Tursiops truncatus	ASPIRE|splicing_index|MiDAS
+Vp	Vicugna pacos	ASPIRE|splicing_index|MiDAS
+Vv	Vitis vinifera	ASPIRE|splicing_index|MiDAS
+Xl	Xenopus laevis	ASPIRE|splicing_index|MiDAS
+Xt	Xenopus tropicalis	ASPIRE|splicing_index|MiDAS
+Zm	Zea mays	ASPIRE|splicing_index|MiDAS

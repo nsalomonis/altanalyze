@@ -162,7 +162,10 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
             if len(comparisons)>0:
                 fold_matrix=[]
                 for (group2, group1) in comparisons:
-                    fold = means[group2]-means[group1]
+                    try: fold = means[group2]-means[group1]
+                    except:
+                        ### Indicates a missing value - exclude
+                        fold = 0
                     fold_matrix.append(str(fold))
                 filtered_values = fold_matrix
         ########################  End Centroid Calculation  ########################
@@ -443,7 +446,10 @@ def transposeMatrix(input_file):
     eo = export.ExportFile(input_file[:-4]+'-transposed.txt')
     for line in open(input_file,'rU').xreadlines():
         data = cleanUpLine(line)
-        values = string.split(data,'\t')
+        if '.csv' in input_file:
+            values = string.split(data,',')
+        else:
+            values = string.split(data,'\t')
         arrays.append(values)
     t_arrays = zip(*arrays)
     for t in t_arrays:

@@ -6351,7 +6351,7 @@ def commandLineRun():
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
-                                                         'dataFormat=','geneTPM=','markerPearsonCutoff='])
+                                                         'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6452,7 +6452,7 @@ def commandLineRun():
             compendiumType=arg
         elif opt == '--denom':
             denom_file_dir=arg ### Indicates that GO-Elite is run independent from AltAnalyze itself
-        elif opt == '--accessoryAnalysis' or opt == '--accessoryAnalyses':
+        elif opt == '--accessoryAnalysis' or opt == '--accessoryAnalyses' or opt == '--additionalAnalyses':
             accessoryAnalysis = arg
         elif opt == '--channelToExtract': channel_to_extract=arg
         elif opt == '--genesToReport': genesToReport = int(arg)
@@ -6541,6 +6541,7 @@ def commandLineRun():
 
     ######## Perform analyses independent from AltAnalyze database centric analyses that require additional parameters
     if len(image_export) > 0 or len(accessoryAnalysis)>0 or runICGS:
+        ### python AltAnalyze.py --accessoryAnalysis annotateICGS --elite_dir path --groupdir path
         """ Annotate existing ICGS groups with selected GO-Elite results """
         if 'annotateICGS' in accessoryAnalysis:
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables

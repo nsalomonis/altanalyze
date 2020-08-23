@@ -212,16 +212,20 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
                         log_fold = math.log((float(fold)+increment),2) ### changed from - log_fold = math.log((float(fold)+1),2) - version 2.05
                         fold_data3.append(log_fold)
                     except ValueError:  ###Not an ideal situation: Value is negative - Convert to zero
-                        if float(fold)<=0:
-                            log_fold = math.log(1.01,2); fold_data3.append(log_fold)
-                        else:
+                        try:
+                            if float(fold)<=0:
+                                log_fold = math.log(1.01,2); fold_data3.append(log_fold)
+                            else:
+                                fold_data3.append('')
+                                blanksPresent = True
+                                """
+                                print_out = 'WARNING!!! The ID'+arrayid+ 'has an invalid expression value:'+fold+'\n. Correct and re-run'
+                                try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); sys.exit()
+                                except NameError: print print_out; sys.exit()
+                                """
+                        except:
                             fold_data3.append('')
                             blanksPresent = True
-                            """
-                            print_out = 'WARNING!!! The ID'+arrayid+ 'has an invalid expression value:'+fold+'\n. Correct and re-run'
-                            try: UI.WarningWindow(print_out,'Critical Error - Exiting Program!!!'); sys.exit()
-                            except NameError: print print_out; sys.exit()
-                            """
                 fold_data2 = fold_data3
             if (array_type == "AltMouse"):
                 if arrayid in probeset_db: array_folds[arrayid] = fold_data2; y = y+1

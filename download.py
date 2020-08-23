@@ -27,6 +27,7 @@ import sys
 import unique
 import string
 import export
+import traceback
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -84,7 +85,7 @@ def unzipFiles(filename,dir):
 def download(url,dir,file_type):
     try: dp = download_protocol(url,dir,file_type); gz_filepath, status  = dp.getStatus()
     except Exception:
-        gz_filepath='failed'; status = "Internet connection was not established. Re-establsih and try again."
+        gz_filepath='failed'; status = "Internet connection was not established. Re-establish and try again."
 
     if status == 'remove':
         #print "\nRemoving zip file:",gz_filepath
@@ -103,16 +104,28 @@ class download_protocol:
         print "Downloading the following file:",filename,' ',
         self.original_increment = 10
         self.increment = 0
-        import urllib
+        import urllib,urllib2
         from urllib import urlretrieve
         try:
             try: webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
-            except IOError:
+            except:
                 if 'Binary' in traceback.format_exc(): #IOError: [Errno ftp error] 200 Switching to Binary mode.
                     ### https://bugs.python.org/issue1067702 - some machines the socket doesn't close and causes an error - reload to close the socket
                     reload(urllib)
                     webfile, msg = urlretrieve(url,output_filepath,reporthook=self.reporthookFunction)
                     reload(urllib)
+                if 'SSL' in traceback.format_exc():
+                    ### SSL error encountered for the target website
+                    #https://github.com/NagiosEnterprises/ncpa/issues/195
+                    import urllib2, ssl
+                    try:
+                        _create_unverified_https_context = ssl._create_unverified_context
+                    except AttributeError:
+                        # Legacy Python that doesn't verify HTTPS certificates by default
+                        pass
+                    ssl._create_default_https_context = _create_unverified_https_context
+                    print '...downloading (be patient)'
+                    webfile, msg = urlretrieve(url,output_filepath)
         except:
             print 'Unknown URL error encountered...'; forceURLError
         print ''
@@ -228,5 +241,8 @@ def decompressZipStackOverflow(zip_file,dir):
     src.close()
 
 if __name__ == '__main__':
-    dp = download_protocol('http://may2009.archive.ensembl.org/biomart/martresults/136?file=martquery_1117221814_599.txt.gz','downloaded','')
+    path = 'http://thebiogrid.org/downloads/archives/Latest%20Release/BIOGRID-ALL-LATEST.tab2.zip'
+    #import urllib
+    #path = urllib.quote(path)
+    dp = download_protocol(path,'downloaded/','')
     
