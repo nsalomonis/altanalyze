@@ -1447,6 +1447,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
                 inputExpFileVariableGenesDir,n=hgvfinder(inputExpFileScaled,numVarGenes=numVarGenes) ### returns filtered expression file with 500 variable genes
                 ### Run PageRank on the Louvain/dispersion downsampled dataset
                 """ PageRank can fail at neighbours=list(G.adj[key1]) when the downsample threshold is too low """
+                PageRankCompleted = False
                 while PageRankCompleted == False:
                     try:
                         sampmark=PageRankSampling(inputExpFileVariableGenesDir,downsample_cutoff)

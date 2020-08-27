@@ -1200,7 +1200,7 @@ def importGeneExpressionValuesSimple(filename,translation_db,translate=False):
                 exp_vals=[]
                 for i in t[sampleIndex:]:
                     try: exp_vals.append(float(i))
-                    except Exception: exp_vals.append(i)
+                    except Exception: exp_vals.append(0)
             gene_expression_db[gene] = exp_vals
     #print len(gene_expression_db), 'matching genes in the dataset and tissue compendium database'
     

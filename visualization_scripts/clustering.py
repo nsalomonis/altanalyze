@@ -9223,7 +9223,7 @@ if __name__ == '__main__':
     #PSIfilterAndImpute('/Volumes/salomonis2/LabFiles/krithika_circadian/GSE98965-Papio_Anubis/files/grp-files/Filtered-Psi-groups-files'); sys.exit()
     filename='/Users/saljh8/Desktop/DemoData/Venetoclax/D4/cellHarmony-rawp-stringent/gene_summary.txt'
     filename = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/cellHarmony-latest/gene_summary-p27.txt'
-    filename = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/cell-frequency-stats.txt'
+    filename = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/SoupX/cellHarmony/gene_summary2.txt'
     index1=2;index2=3; x_axis='Number of Differentially Expressed Genes'; y_axis = 'Comparisons'; title='Hippocampus - Number of Differentially Expressed Genes'
     #OutputFile = export.findParentDir(filename)
     #OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
@@ -9243,9 +9243,9 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GTEX-30-sample/TCGA-BRCA/ForAnu/forICGS/ICGS-NMF-cosine/FinalGroups.txt'
+    b = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GTEX-30-sample/TCGA-BRCA/forICGS/ICGS-NMF-cosine-rho.0.4/FinalGroups.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
-    #convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
+    convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
