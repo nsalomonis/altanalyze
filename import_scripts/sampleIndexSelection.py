@@ -123,6 +123,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
             
         try: filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
         except Exception:
+            """
             print traceback.format_exc()
             print len(values), len(sample_index_list)
             print input_file, len(filter_names)
@@ -130,8 +131,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                 if i not in header:
                     print i, 'not found'
             sys.exit()
-            
-            sys.exit()
+            """
             ### For PSI files with missing values at the end of each line, often
             if len(header) != len(values):
                 diff = len(header)-len(values)

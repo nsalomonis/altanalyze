@@ -7,13 +7,16 @@ import numpy
 import time
 import math
 from scipy import sparse, stats
+import traceback
 import gzip
 try:
     import h5py
 except:
     print ('Missing the h5py library (hdf5 support)...')
 
-def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True, geneIDs=False):
+def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=True, geneIDs=False, minReads=1000, maxCells=15000):
+    """ Process a filtered or full sparse matrix expression dataset in mtx, mtx.gz or .h5 format """
+    
     start_time = time.time()
     
     if '.h5' in matrices_dir:
@@ -66,6 +69,29 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=Tr
         if 'exp.' in expFile:
             counts_path = string.replace(expFile,'exp.','counts.')
             
+    barcode_sum = numpy.ndarray.tolist(numpy.sum(mat,axis=0))[0] ### Get the sum counts for all barcodes, 0 is the y-axis in the matrix
+    if len(barcodes)>maxCells:
+        print "Dataset too large, with",len(barcodes), 'cell barcodes... filtering...'
+        ind = 0
+        barcode_rank=[]
+        for count in barcode_sum:
+            if count>minReads: ### Require at least 100 reads/cell
+                barcode_rank.append([count,ind,barcodes[ind]])
+            ind+=1
+        barcode_rank.sort()
+        barcode_rank.reverse()
+        barcode_rank = barcode_rank[:maxCells+5000] ### Don't all more than 20k cells
+        barcode_ind = map(lambda x: x[1],barcode_rank)
+        barcodes = map(lambda x: x[2],barcode_rank) ### Replace barcodes
+        try: mat = mat[:,barcode_ind]
+        except: ### for coo_matrix formats (newer 10x) which don't support slicing
+            mat = mat.tocsr()
+            mat = mat[:,barcode_ind]
+        barcode_sum = numpy.ndarray.tolist(numpy.sum(mat,axis=0))[0] ### Get the sum counts for all barcodes, 0 is the y-axis in the matrix
+        print 'Dataset filterd to',len(barcodes), 'cell barcodes with >',minReads,'UMI/cell.'
+    else:
+        print 'Dataset has',len(barcodes), 'cell barcodes'
+    
     ### Efficiently write the data to an external file (fastest way)
     mat_array_original = mat.toarray() ### convert sparse matrix to numpy array
     mat_array = numpy.ndarray.tolist(mat_array_original) ### convert to non-numpy list
@@ -89,8 +115,6 @@ def import10XSparseMatrix(matrices_dir,genome,dataset_name, expFile=None, log=Tr
         norm_path = expFile ### AltAnalyze designated ExpressionInput file (not counts)
 
     print 'Normalizing gene counts to counts per ten thousand (CPTT)'
-    
-    barcode_sum = numpy.sum(mat_array,axis=0) ### Get the sum counts for all barcodes, 0 is the y-axis in the matrix
     
     start_time = time.time()
     mat_array = mat_array.transpose()
@@ -146,5 +170,22 @@ if __name__ == '__main__':
             elif opt == '--n': dataset_name=arg
             elif opt == '--geneID':
                 geneID = True
-                
-    import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID)
+    
+    completed = False
+    minReads = 1000
+    maxCells = 15000
+    count=0
+    while completed == False:
+        try:
+            import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID, minReads=minReads, maxCells=maxCells)
+            completed = True
+        except MemoryError:
+            ### Make the requirement for how many cells to process more stringent
+            completed = False
+            minReads += 1000
+            maxCells -= 1000
+        count+=1
+        if count>3:
+            print 'Chromium file import failed...'
+            print traceback.format_exc()
+            break

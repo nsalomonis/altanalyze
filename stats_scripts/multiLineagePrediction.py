@@ -240,6 +240,43 @@ def evaluateStateRegulatoryStructure(expressionData, all_indexes,group_index,Mar
             else:
                 p = p*1.e-16
         return p
+    
+    ### Compute a matrix of Cell-State to LineagePotential
+    eo = export.ExportFile(MarkerFinder[:-4]+'-primingMatrix.txt')
+    cell_state_matrix = {}
+    lineages = []
+    cell_population_count = {}
+    for cell in expressedStatesPerCell:
+        cell_state = string.split(cell,':')[0]
+        #print cell, cell_state; sys.exit()
+        try: cell_population_count[cell_state]+=1
+        except: cell_population_count[cell_state]=1
+        if cell_state not in lineages:
+            lineages.append(cell_state)
+        primed_lineages = expressedStatesPerCell[cell]
+        for primed_lineage in primed_lineages:
+            if cell_state not in cell_state_matrix:
+                priming_count={}
+                priming_count[primed_lineage]=1
+                cell_state_matrix[cell_state] = priming_count
+            else:
+                priming_count = cell_state_matrix[cell_state]
+                try: priming_count[primed_lineage]+=1
+                except: priming_count[primed_lineage]=1
+    eo.write(string.join(['Cell Populations']+lineages,'\t')+'\n')
+    for cell_state in lineages:
+        priming_count_db = cell_state_matrix[cell_state]
+        sum_scores = []
+        for cell_state2 in lineages:
+            if cell_state2 in priming_count_db:
+                sum_score = priming_count_db[cell_state2]
+                sum_scores.append((sum_score*1.000/cell_population_count[cell_state2]))
+            else:
+                sum_scores.append(0)
+        eo.write(string.join([cell_state]+map(str,sum_scores),'\t')+'\n')
+    eo.close()
+    
+    
     cell_mutlilin_ranking=[]   
     for cell in expressedStatesPerCell:
         #if 'Multi-Lin:Gmp.R3.10' in cell: sys.exit()
