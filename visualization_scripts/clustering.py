@@ -773,7 +773,10 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
                 feature_id = row_header[i]
                 if ':' in feature_id:
                     feature_id = string.split(feature_id,':')[1]
-                    if feature_id[-1]==' ': feature_id = feature_id[:-1]
+                    try:
+                        if feature_id[-1]==' ': feature_id = feature_id[:-1]
+                    except:
+                        pass
                 if feature_id in JustShowTheseIDs:
                     color = 'red'
                 else: color = 'black'
@@ -804,7 +807,10 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
             if ':' in feature_id:
                 if 'ENS' != feature_id[:3] or 'G0000' in feature_id:
                     feature_id = string.split(feature_id,':')[1]
-                    if feature_id[-1]==' ': feature_id = feature_id[:-1]
+                    try:
+                        if feature_id[-1]==' ': feature_id = feature_id[:-1]
+                    except:
+                        pass
                 else:
                     feature_id = string.split(feature_id,':')[0]
                     try: feature_id = gene_to_symbol[feature_id][0]
@@ -9243,9 +9249,9 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Senad-scRNA-Seq-Il17/Mm-FatPad-10x/ICGS-NMF/FinalGroups2.txt'
+    b = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GTEX-30-sample/TCGA-BRCA/forICGS/ICGS-NMF-cosine/groups.PAM50-all.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
-    #convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
+    convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')

@@ -1,13 +1,12 @@
 System	SystemCode	MOD_status
 Xenopus_Jamboree	Xj	
-Kyotograil	Ky	
 modCB	Mg	
 MIM	Mi	
 sharesCDS	Sc	
-RefSeq	Q	
 Illumina	Il	
 CAS	Ca	
-Ensembl	En	MOD
+RFAM	Rf	
+TubercuList	Tb	
 GadFly	Gf	
 Ens_Tg_translation	Ens	
 Vega_transcript	Vr	
@@ -15,56 +14,57 @@ XenTro	Xen
 goslim_goa	gos	
 wormpep_id	Wp	
 CCDS	Cc	
-Cint	Cj	
 EPD	Epd	
+Cint	Cj	
 ENST	Enst	
-TetNig	Tet	
+TakRub	Tak	
 Symbol	Sy	
 WikiGene	Wg	
 Agilent	Ag	
 Genoscope_pred_gene	Gen	
-TakRub	Tak	
+miRBase	Mb	
 GPCR	Gpcr	
-EntrezGene	L	MOD
+Vega	Vg	
 CioInt	Cio	
-UniGene	Ug	
 HMDB	Ch	MOD
 AltExon	Ae	MOD
 Osford_FGU	Of	
-ProteinID	Pi	
+TransFac	Transfac	
 FlyBase	F	
 SGD	D	
 Fantom	Fa	
 FlyGrid	Fg	
 KeggCompound	Ck	
+Vega_translation	Vt	
 EMBL	Em	
 DBASS3	Dba	
 Affymetrix	X	
-Vega_translation	Vt	
+MiscArray	Ma	
+ProteinID	Pi	
 CloneID	Clb	
 BDGP_insitu_expr	Bd	
 Platypus_olfactory_receptor	Pr	
-Vega	Vg	
+PUBMED	Pu	
 Uniprot	S	
-TubercuList	Tb	
+Ensembl	En	MOD
 Zfin	Z	
 HPA	Hpa	
 ChEBI	Ce	
 PDB	Pd	
-miRBase	Mb	
+UniGene	Ug	
 IMGT	Im	
 Tgut_symbol	Ts	
 Codelink	Co	
-MEROPS	Merops	
 MGI	M	
 IPI	Ip	
-MiscArray	Ma	
+TetNig	Tet	
+MEROPS	Merops	
 PubChem	Cp	
 UCSC	Ucsc	
-PUBMED	Pu	
-TransFac	Transfac	
+EntrezGene	L	MOD
+Kyotograil	Ky	
 Sanger	Sh	
-RFAM	Rf	
+RefSeq	Q	
 DEDb	De	
 OTT	Ot	
 Wormbase	Wb	

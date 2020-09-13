@@ -295,11 +295,16 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
             export_class3.write(header[iq+1])
             for jq in range(0,len(name)):
                 export_class1.write("\t"+str(prob_[iq][jq]))
+                #print prob_[iq][jq],'\t',max(prob_[iq,:])
                 if prob_[iq][jq]==max(prob_[iq,:]):
                     #print ordersamp[header[iq+1]],name[jq]
-                    if ordersamp[header[iq+1]][0]==name[jq]: 
-                        order.append([header[iq+1],name[jq],prob_[iq][jq],ordersamp[header[iq+1]][1]])
-                    export_class3.write("\t"+str(1))
+                    if ordersamp[header[iq+1]][0]==name[jq]:
+                        if max(prob_[iq,:])>0: ### Increase this value to increase SVM alignment specificity
+                            class_assignment = 1
+                            order.append([header[iq+1],name[jq],prob_[iq][jq],ordersamp[header[iq+1]][1]])
+                        else:
+                            class_assignment = 0 ### The best match is poor, hence, the cell will be excluded from final results!!!
+                    export_class3.write("\t"+str(class_assignment))
                 else:
                     export_class3.write("\t"+str(0))
                 
@@ -340,7 +345,7 @@ def Classify(header,Xobs,output_file,grplst,name,turn,platform,output_dir,root_d
                 export_class2.write("\n")
         else:
             prob_=regr.fit(Xobs,X[:,0]).decision_function(Y)
-        #k=list(prob_)
+            #k=list(prob_)
 
             export_class1.write("uid")
             #export_class2.write("uid")

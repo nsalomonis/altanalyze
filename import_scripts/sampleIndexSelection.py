@@ -19,7 +19,7 @@ def makeTestFile():
     return input_file
 
 def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[],
-               log2=False,convertPSIUID=False):
+               log2=False,convertPSIUID=False,partialMatch=False):
     if calculateCentroids:
         filter_names,group_index_db=filter_names
         
@@ -88,7 +88,16 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                         filter_names = filter_names2
                         #filter_names = map(lambda x: string.split(x,'.')[0], filter_names)
                         #values = map(lambda x: string.split(x,'.')[0], values)
-                        sample_index_list = map(lambda x: values.index(x), filter_names)              
+                        sample_index_list = map(lambda x: values.index(x), filter_names)
+                    elif partialMatch:
+                        filter_names_upated = []
+                        for x in filter_names:
+                            if x not in values:
+                                for y in values:
+                                    if x in y:
+                                        filter_names_upated.append(y)
+                        filter_names = filter_names_upated
+                        sample_index_list = map(lambda x: values.index(x), filter_names)
                     else:
                         temp_count=1
                         for x in filter_names:
@@ -472,6 +481,7 @@ if __name__ == '__main__':
     binarize=True
     transpose=False
     log2=False
+    partialMatch=False
     
     fileFormat = 'columns'
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
@@ -481,7 +491,7 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
                             'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize=',
-                            'transpose=','fileFormat=','log2='])
+                            'transpose=','fileFormat=','log2=','partialMatch='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
@@ -490,6 +500,7 @@ if __name__ == '__main__':
             elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateCentroids = True
             elif opt == '--fold': returnComparisons = True
             elif opt == '--log2': log2 = True
+            elif opt == '--partialMatch': partialMatch = True
             elif opt == '--r':
                 if arg == 'exclude':
                     filter_rows=True
@@ -534,5 +545,5 @@ if __name__ == '__main__':
         filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids,comparisons=comparisons)
     else:
         filter_names = getFilters(filter_file)
-        filterFile(input_file,output_file,filter_names,force=force,log2=log2)
+        filterFile(input_file,output_file,filter_names,force=force,log2=log2,partialMatch=partialMatch)
 

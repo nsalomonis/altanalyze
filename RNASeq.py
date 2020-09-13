@@ -578,7 +578,10 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
             if testImport == 'yes': print "Reading the bed file", [fn], condition
             ### If the BED was manually created on a Mac, will neeed 'rU' - test this
             for line in open(fn,delim).xreadlines(): break
-            if len(line)>500: delim = 'rU'
+            try:
+                if len(line)>500: delim = 'rU'
+            except:
+                pass
             for line in open(fn,delim).xreadlines(): ### changed rU to r to remove \r effectively, rather than read as end-lines
                 data = cleanUpLine(line)
                 t = string.split(data,'\t')

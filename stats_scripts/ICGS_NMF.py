@@ -84,23 +84,16 @@ def estimateK(inputfile):
             head=1
             continue
         else:
-            val=[]
-            
+            val=[]      
             line=line.rstrip('\r\n')
             q= string.split(line,'\t')
-            #header.append(q[0])
             for i in range(1,len(q)):
                 try:
                     val.append(float(q[i]))
                    
                 except Exception:
                     continue
-           
-                
             counter+=1
-            
-             #   break
-
         X.append(val)
     #X=zip(*X)
     X=np.array(X)
@@ -135,32 +128,28 @@ def estimateK(inputfile):
     return k
 
 def caldist(X,i,keys,keylist):
-        D=[]
-        Xxd=[]
-        newlist=[]
-    #for i in range(len(visited)):
-        #Xd=np.array(X[i])
-        #Xd=Xd.reshape(1, -1)
-        for ii in keys:
-            if ii==i: continue
-            newlist.append(ii)
-            Xxd.append(X[ii].tolist())
-        
-        Xxd=np.array(Xxd)
-        Xd=X[i]
-        
-        #Xd=Xxd
-        #Xxd=Xxd.tolist()
-        Xd=Xd.reshape(1, -1)
-        D=pairwise_distances(Xd,Xxd,metric='euclidean').tolist()
-        
-        for q in range(len(np.argsort(D)[0])):
-            if newlist[q] in keylist:
-                continue
-            else:
-                key1=newlist[q]
-                break
-        return key1
+    D=[]
+    Xxd=[]
+    newlist=[]
+    for ii in keys:
+        if ii==i: continue
+        newlist.append(ii)
+        Xxd.append(X[ii].tolist())
+    
+    Xxd=np.array(Xxd)
+    Xd=X[i]
+
+    #Xxd=Xxd.tolist()
+    Xd=Xd.reshape(1, -1)
+    D=pairwise_distances(Xd,Xxd,metric='euclidean').tolist()
+    
+    for q in range(len(np.argsort(D)[0])):
+        if newlist[q] in keylist:
+            continue
+        else:
+            key1=newlist[q]
+            break
+    return key1
 
 def hgvfinder(inputfile,numVarGenes=500):
     """ Find the highly variable genes by dispersion """
@@ -1045,7 +1034,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
         Guidefile=graphic_links3[-1][-1]
         Guidefile=Guidefile[:-4]+'.txt'
     else:
-        Guidefile="/Users/saljh8/Desktop/dataAnalysis/Collaborative/Harinder/D21-D35-PC-5p/forICGS/Euclidean/ICGS/Clustering-exp.D21-D35-PageRank-downsampled-Guide3-hierarchical_euclidean_correlation.txt"
+        Guidefile="/Users/saljh8/Dropbox/Collaborations/KPMP-Eric/3e284c30-51a6-480f-a248-0497b9863486_expression_matrix/ICGS/Clustering-exp.3e284c30-PageRank-downsampled-OutliersRemoved-Guide3-hierarchical_cosine_correlation.txt"
 
     rho_cutoff=0.2
     try:
@@ -1078,11 +1067,24 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
             try: NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
             except:
                 try:
-                    Rank=k*1.5
+                    if Rank>60:
+                        Rank = 60
+                    if Rank < 10:
+                        Rank=k*1.5
+                    print 'Forcing k =',Rank
                     NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
                 except:
-                    Rank=k
-                    NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
+                    try:
+                        if Rank>40:
+                            Rank = 30
+                        else:
+                            Rank = 15
+                        print 'Forcing k =',Rank
+                        NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
+                    except:
+                        Rank=k
+                        print 'Forcing k =',Rank
+                        NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
         else:
             Rank=k
             
@@ -1414,9 +1416,10 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
         print 'Scaling counts as column normalized log2 values.',
         from import_scripts import CountsNormalize
         inputExpFile = CountsNormalize.normalizeDropSeqCountsMemoryEfficient(inputExpFile)
-        
-    print 'Filtering the expression dataset (be patient).',
-    #print_out, inputExpFile = RNASeq.singleCellRNASeqWorkflow(species,platform,inputExpFile,mlp,rpkm_threshold=0,parameters=gsp,reportOnly=True)
+    
+    if test_mode == False:
+        print 'Filtering the expression dataset (be patient).',
+        print_out, inputExpFile = RNASeq.singleCellRNASeqWorkflow(species,platform,inputExpFile,mlp,rpkm_threshold=0,parameters=gsp,reportOnly=True)
     
     print 'Running ICGS-NMF'
     ### Find the parent dir of the output directory (expression file from the GUI will be stored in the output dir [ExpressionInput])
@@ -1475,7 +1478,6 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             processedInputExpFile = root_dir+'/ExpressionInput/'+exp_file_name[:-4]+'-PageRank-downsampled.txt' ### down-sampled file
             sampleIndexSelection.filterFile(inputExpFile,processedInputExpFile,sampmark)
         else:
-            
             output_dir = root_dir+'/ExpressionInput'
             try: export.createExportFolder(output_dir)
             except: pass ### Already exists
@@ -1489,7 +1491,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             else: processedInputExpFile = inputExpFile
     else:
         ### Re-run using a prior produced ICGS2 result
-        processedInputExpFile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Harinder/D21-D35-PC-5p/forICGS/Euclidean/ExpressionInput/exp.D21-D35-PageRank-downsampled.txt'
+        processedInputExpFile = '/Users/saljh8/Dropbox/Collaborations/KPMP-Eric/3e284c30-51a6-480f-a248-0497b9863486_expression_matrix/ExpressionInput/exp.3e284c30-PageRank-downsampled.txt'
 
     flag=True
     iteration=1 ### Always equal to 1 for scRNA-Seq but can increment for splice-ICGS

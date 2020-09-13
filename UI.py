@@ -5898,8 +5898,13 @@ def getUserParameters(run_parameter,Multi=None):
                             sparse_matrix_file = gu.Results()['input_cel_dir'] # 'filtered_gene_bc_matrices'
                             def import10XSparseMatrixHeaders(matrix_file):
                                 import csv
+                                import gzip
                                 barcodes_path = string.replace(matrix_file,'matrix.mtx','barcodes.tsv' )
-                                barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
+                                try:
+                                    barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
+                                except:
+                                    print barcodes_path
+                                    barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
                                 barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
                                 return barcodes
                             def importH5(h5_filename):
