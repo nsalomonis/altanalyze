@@ -73,6 +73,45 @@ def LinearRegression(ls1,ls2,return_rsqrd):
     else:
         return slope
 
+def BenjaminiHochberg(filename):
+    #1. Sort ascending the original input p value vector.  Call this spval.  Keep the original indecies so you can sort back.
+    #2. Define a new vector called tmp.  tmp= spval.  tmp will contain the BH p values.
+    #3. m is the length of tmp (also spval)
+    #4. i=m-1
+    #5  tmp[ i ]=min(tmp[i+1], min((m/i)*spval[ i ],1)) - second to last, last, last/second to last
+    #6. i=m-2
+    #7  tmp[ i ]=min(tmp[i+1], min((m/i)*spval[ i ],1))
+    #8  repeat step 7 for m-3, m-4,... until i=1
+    #9. sort tmp back to the original order of the input p values.
+
+    pval_db = {}
+    firstRow=True
+    for line in open(filename,'rU').xreadlines():
+        if firstRow:
+            firstRow=False
+        else:
+            data = line.rstrip()
+            uid,p = string.split(data,'\t')
+            pval_db[uid] = float(p)
+
+    global spval; spval=[]
+    for element in pval_db:
+        p = pval_db[element]
+        spval.append([p,element])
+
+    spval.sort(); tmp = spval; m = len(spval); i=m-2; x=0 ###Step 1-4       
+    #spval.sort(); tmp = spval; m = len(spval)-1; i=m-1; x=0 ###Step 1-4
+    
+    while i > -1:
+        tmp[i]=min(tmp[i+1][0], min((float(m)/(i+1))*spval[i][0],1)),tmp[i][1]; i -= 1
+        
+    eo = open(filename[:-4]+'_BH.txt','w')
+    eo.write('UID\trawp\tBH-p\n')
+    for (adjp,element) in tmp:
+        p = pval_db[element]
+        eo.write(element+'\t'+str(p)+'\t'+str(adjp)+'\n')
+    eo.close()
+        
 def adjustPermuteStats(pval_db):
     #1. Sort ascending the original input p value vector.  Call this spval.  Keep the original indecies so you can sort back.
     #2. Define a new vector called tmp.  tmp= spval.  tmp will contain the BH p values.
@@ -1155,7 +1194,8 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/top_alt_junctions-clust-Grimes_relativePE.txt'
     filename = '/Volumes/SEQ-DATA/Jared/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI-clust.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Mm_Simulation_AltAnalyze/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
-    #filename = '/Volumes/salomonis2/Grimes/tophat SKI KO/bams/AltResults/AlternativeOutput/Mm_RNASeq_top_alt_junctions-PSI-clust.txt'
+    filename = '/Users/saljh8/Downloads/LRT.txt'
+    BenjaminiHochberg(filename);sys.exit()
     matrix,compared_groups,original_data = matrixImport(filename)
     matrix_pvalues=runANOVA(filename,matrix,compared_groups)
     returnANOVAFiltered(filename,original_data,matrix_pvalues); sys.exit()

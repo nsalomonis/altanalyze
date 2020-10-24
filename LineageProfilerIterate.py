@@ -2645,6 +2645,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     output_dir = root_dir+'/exp.'+string.replace(output_dir,'exp.','')
     output_dir =string.replace(output_dir,'-OutliersRemoved','')
     groups_dir = string.replace(output_dir,'exp.','groups.')
+
     ref_exp_db,ref_headers,ref_col_clusters,cluster_format_reference = importExpressionFile(reference_exp_file,customLabels=customLabels)
     cluster_results = clustering.remoteImportData(query_exp_file,geneFilter=ref_exp_db)
     if len(cluster_results[0])>0: filterIDs = ref_exp_db
@@ -3587,6 +3588,7 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False,customL
             gene_to_symbol={}
             symbol_to_gene={}
     row_count=0
+    
     for line in open(input_file,'rU').xreadlines():
         data = line.rstrip()
         data = string.replace(data,'"','')
@@ -4290,6 +4292,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
 
     matrix_exp, column_header_exp, row_header_exp, dataset_name, group_db_exp = clustering.importData(expdir,geneFilter=row_header)
     percent_found = (len(row_header_exp)*1.00)/len(row_header)
+    
     if percent_found<0.5:
         print "...Incompatible primary ID (Symbol), converting to Ensembl"
         import gene_associations; from import_scripts import OBO_import

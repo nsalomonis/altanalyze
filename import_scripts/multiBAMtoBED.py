@@ -186,10 +186,10 @@ def runBAMtoJunctionBED(paths_to_run):
 def runBAMtoExonBED(paths_to_run):
     bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path = paths_to_run
     if os.path.exists(output_bedfile_path) == False: ### Only run if the file doesn't exist
-        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=False)
+        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=True)
     else:
         print output_bedfile_path, 'already exists... re-writing'
-        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=False)
+        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=True)
 
 def getChrFormat(directory):
     ### Determine if the chromosomes have 'chr' or nothing

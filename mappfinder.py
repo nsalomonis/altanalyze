@@ -955,7 +955,9 @@ def calculateZScores(pathway_input_gene_count,pathway_denominator_gene_count,N,R
             #if '06878' in pathway: print pathway, z, null_z, r,n, N, R;kill
             if use_FET == 'yes':
                 ### Alternatively calculate p using the Fisher's Exact Test
-                p = FishersExactTest(r,n,R,N)
+                try: p = FishersExactTest(r,n,R,N)
+                except:
+                    print r, n, R, N, pathway; forceIncompleteDenominator ### add missing genes to the Genes file!!!
                 zsd.SetP(p)
 
 def Zscore(r,n,N,R):

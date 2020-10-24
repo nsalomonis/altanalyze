@@ -229,12 +229,14 @@ def moveMAPPFinderFiles(input_dir):
                     #try: UI.WarningWindow(print_out,' Exit ')
                     #except Exception: print print_out
                 proceed = 'no'
-                while proceed == 'no':
-                    try: os.remove(fn); proceed = 'yes'
-                    except Exception:
-                        print 'Tried to move the file',mappfinder_input,'to an archived folder, but it is currently open.'
-                        print 'Please close this file and hit return or quit GO-Elite'
-                        inp = sys.stdin.readline()
+                
+                #while proceed == 'no':
+                try: os.remove(fn); proceed = 'yes'
+                except Exception:
+                    pass
+                    #print 'Tried to move the file',mappfinder_input,'to an archived folder, but it is currently open.'
+                    #print 'Please close this file and hit return or quit GO-Elite'
+                    #inp = sys.stdin.readline()
 
 def checkPathwayType(filename):
     type='GeneSet'
@@ -1982,7 +1984,7 @@ def visualizePathways(species_code,oraDirTogeneDir,combined_results):
     except Exception:
         pass
     wp_end_time = time.time(); time_diff = int(wp_end_time-wp_start_time)
-    print "Wikipathways output in %d seconds" % time_diff
+    print "Gene set results output in %d seconds" % time_diff
     
 def makeVariableList(wp_to_visualize,species_code,mod,imageType):
     variable_list=[]

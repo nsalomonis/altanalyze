@@ -757,7 +757,7 @@ def DetermineClusterFitness(allgenesfile,markerfile,filterfile,BinarizedOutput,r
                     upd_guides.append(i)
                     countr+=1
             counter+=1
-
+    print len(group), len(upd_guides),name
     return upd_guides,name,group
 
 def sortFile(allgenesfile,rho_cutoff,name):
@@ -1034,7 +1034,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
         Guidefile=graphic_links3[-1][-1]
         Guidefile=Guidefile[:-4]+'.txt'
     else:
-        Guidefile="/Users/saljh8/Dropbox/Collaborations/KPMP-Eric/3e284c30-51a6-480f-a248-0497b9863486_expression_matrix/ICGS/Clustering-exp.3e284c30-PageRank-downsampled-OutliersRemoved-Guide3-hierarchical_cosine_correlation.txt"
+        Guidefile="/Users/saljh8/Downloads/Clustering-exp.type2b_cell_to_cluster-VarGenes-Guide3-hierarchical_cosine_correlation.txt"
 
     rho_cutoff=0.2
     try:
@@ -1491,7 +1491,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             else: processedInputExpFile = inputExpFile
     else:
         ### Re-run using a prior produced ICGS2 result
-        processedInputExpFile = '/Users/saljh8/Dropbox/Collaborations/KPMP-Eric/3e284c30-51a6-480f-a248-0497b9863486_expression_matrix/ExpressionInput/exp.3e284c30-PageRank-downsampled.txt'
+        processedInputExpFile = '/Users/saljh8/Downloads/Type2b/ExpressionInput/exp.type2b_cell_to_cluster-VarGenes.txt'
 
     flag=True
     iteration=1 ### Always equal to 1 for scRNA-Seq but can increment for splice-ICGS

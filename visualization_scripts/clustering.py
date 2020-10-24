@@ -3393,7 +3393,7 @@ def PrincipalComponentAnalysis(matrix, column_header, row_header, dataset_name,
             color = 'r'; label=None
         try: ax.plot(scores[pcA][i],scores[1][i],color=color,marker='o',markersize=marker_size,label=label,markeredgewidth=0,picker=True)
         except Exception, e: print e; print i, len(scores[pcB]);kill
-        if showLabels:
+        if showLabels and len(column_header)<100:
             try: sample_name = '   '+string.split(sample_name,':')[1]
             except Exception: pass
             ax.text(scores[pcA][i],scores[pcB][i],sample_name,fontsize=11)
@@ -3786,7 +3786,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
         else:
             if numberGenesPresent==2:
                 cm = matplotlib.colors.ListedColormap(['#00FF00', '#1E90FF'])
-                cm = matplotlib.colors.ListedColormap(['w', 'k'])
+                #cm = matplotlib.colors.ListedColormap(['w', 'k'])
             elif numberGenesPresent==3: 
                 cm = matplotlib.colors.ListedColormap(['#88BF47', '#3D3181', '#EE2C3C'])
             elif numberGenesPresent==4:
@@ -3899,7 +3899,7 @@ def PCA3D(matrix, column_header, row_header, dataset_name, group_db,
             color = 'r'; label=None
 
         ax.plot([scores[0][i]],[scores[1][i]],[scores[2][i]],color=color,marker='o',markersize=markersize,label=label,markeredgewidth=0,picker=True) #markeredgecolor=color
-        if showLabels:
+        if showLabels and len(column_header)<100:
             #try: sample_name = '   '+string.split(sample_name,':')[1]
             #except Exception: pass
             ax.text(scores[0][i],scores[1][i],scores[2][i], '   '+sample_name,fontsize=9)
@@ -5322,11 +5322,12 @@ def buildGraphFromSIF(mod,species,sif_filename,ora_input_dir):
         output_filename = iGraphSimple(sif_filename,fold_db,pathway_name)
     except Exception:
         print 'igraph export failed (not installed - or too large of a network)... Trying NetworkX.'
-        #print traceback.format_exc()
-        try: output_filename = displaySimpleNetworkX(sif_filename,original_fold_db,pathway_name)
-        except Exception:
+        if 'Elite' not in sif_filename:
             #print traceback.format_exc()
-            pass 
+            try: output_filename = displaySimpleNetworkX(sif_filename,original_fold_db,pathway_name)
+            except Exception:
+                #print traceback.format_exc()
+                pass 
     return output_filename
 
 def iGraphSimple(sif_filename,fold_db,pathway_name):
@@ -7828,6 +7829,25 @@ def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True):
 
     eo.close()
 
+def Log2Only(input_file):
+    eo = export.ExportFile(input_file[:-4]+'-log2.txt')
+    header=0
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data,'\t')
+        gene = values[0]
+        if header == 0:
+            data = cleanUpLine(line)
+            headers = []
+            values = string.split(data,'\t')
+            eo.write(string.join(headers,'\t')+'\n')
+            header+=1
+        else:
+            values = map(lambda x: math.log(float(x)+1,2),values[1:])
+            values = map(lambda x: str(x)[:5],values)
+            eo.write(string.join([gene]+values,'\t')+'\n')
+    eo.close()
+    
 def convertXenaBrowserIsoformDataToStandardRatios(input_file):
     eo = open(input_file[:-4]+'-log2.txt','w')
     header=0
@@ -8452,7 +8472,7 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
                                 fold = -1 / math.pow(2, float(LogFold))
                             if Symbol == 'S100a8':
                                 print 'S100a8', file, LogFold, fold
-                            if abs(fold) > 1.0 and rawp < 0.05:
+                            if abs(fold) > 0.0 and rawp < 0.05:
                                 try:
                                     DEG_db[Symbol].append([file, direction])
                                 except:
@@ -8467,20 +8487,20 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
         return DEG_db
 
     ref_DEGs = importCellHarmonyDEGs(reference_fold_dir)
-    repaired_DEGs = importCellHarmonyDEGs(repair_dir1, repair=True)
-    repaired2_DEGs = importCellHarmonyDEGs(repair_dir2, repair=True)
+    repaired_DEGs = importCellHarmonyDEGs(repair_dir1)
+    repaired2_DEGs = importCellHarmonyDEGs(repair_dir2)
     
     total_repaired_genes ={}
     for gene in ref_DEGs:
         if gene in repaired_DEGs:
             for (file1,direction1) in ref_DEGs[gene]:
                 for (file2,direction2) in repaired_DEGs[gene]:
-                    if direction1 == direction2:
+                    if direction1 == direction2 and file1 == file2:
                         try: total_repaired_genes[gene].append([direction1,file1,file2])
                         except: total_repaired_genes[gene] = [[direction1,file1,file2]]
     for gene in total_repaired_genes:
         print gene+'\t'+str(total_repaired_genes[gene])
-    print len(total_repaired_genes);sys.exit()
+    sys.exit()
     def importCellHarmonyPseudoBulkFolds(filename):
         fold_db = {}
         header = True
@@ -8506,14 +8526,18 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
     repair2_verified = collections.OrderedDict()
     cluster_ordered_ref_db = collections.OrderedDict()
     header = True
+    eo1 = export.ExportFile(organized_diff_ref[:-4] + '-Filtered.txt')
     for line in open(organized_diff_ref, 'rU').xreadlines():
         data = cleanUpLine(line)
         t = string.split(data, '\t')
         if header:
+            eo1.write(line)
             ref_header = t
             header = False
         else:
             cluster, geneID = string.split(t[0], ':')
+            if geneID in total_repaired_genes:
+                eo1.write(line)
             cluster = string.split(cluster, '_')[0]
             if cluster[:2] == 'DM':
                 cluster = 'global'
@@ -8522,7 +8546,8 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
                 cluster_ordered_ref_db[cluster].append(geneID)
             except:
                 cluster_ordered_ref_db[cluster] = [geneID]
-
+    eo1.close()
+    sys.exit()
     repaired_verified = {}
     verified = {}
     for geneID, ref_cluster in ordered_ref_degs:
@@ -9136,8 +9161,9 @@ def TFisoToGene(filename,marker_genes):
 if __name__ == '__main__':
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
-    input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Scadden-90k/ICGS-cH/exp.MF-cellHarmony.txt'
-    #convertSymbolLog(input_file,b,species='Mm',logNormalize=False); sys.exit()
+    input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/LungMAP/Perl/exp.ExplantBronchiolitisObliterans.txt'
+    #Log2Only(input_file);sys.exit()
+    #convertSymbolLog(input_file,b,species='Hs',logNormalize=True); sys.exit()
     
     marker_genes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx/Gene-level/ExpressionInput/Genes-MarkerFinder.txt'
     #TFisoToGene('/Users/saljh8/Downloads/clones.txt',marker_genes);sys.exit()
@@ -9194,6 +9220,14 @@ if __name__ == '__main__':
     reference_fold_dir = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Merged-GFP-WT-RR44/cellHarmony_KO-vs-WT/DifferentialExpression_Fold_1.2_adjp_0.05'
     repair_dir1 = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/DifferentialExpression_Fold_1.2_rawp_0.05'
     repair_dir2 = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/DifferentialExpression_Fold_1.2_rawp_0.05'
+    
+    organized_diff_ref = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp2/OrganizedDifferentials.txt'
+    repair1_folds = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/OtherFiles/exp.WTB__JB-AllCells-folds.txt'
+    repair2_folds = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/OtherFiles/exp.WTB__JB-AllCells-folds.txt'
+    reference_fold_dir = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp2/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir1 = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir2 = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/DifferentialExpression_Fold_1.2_adjp_0.05'
+    
     print 'comparing cellHarmony outputs'
     #rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repair2_folds, reference_fold_dir, repair_dir1, repair_dir2);sys.exit()
     
@@ -9229,10 +9263,10 @@ if __name__ == '__main__':
     #PSIfilterAndImpute('/Volumes/salomonis2/LabFiles/krithika_circadian/GSE98965-Papio_Anubis/files/grp-files/Filtered-Psi-groups-files'); sys.exit()
     filename='/Users/saljh8/Desktop/DemoData/Venetoclax/D4/cellHarmony-rawp-stringent/gene_summary.txt'
     filename = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/cellHarmony-latest/gene_summary-p27.txt'
-    filename = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/SoupX/cellHarmony/gene_summary2.txt'
+    filename = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/ICGS-NMF_euclidean_cc/cellHarmony-exp2/cell-frequency-stats-avg.txt'
     index1=2;index2=3; x_axis='Number of Differentially Expressed Genes'; y_axis = 'Comparisons'; title='Hippocampus - Number of Differentially Expressed Genes'
-    #OutputFile = export.findParentDir(filename)
-    #OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
+    OutputFile = export.findParentDir(filename)
+    OutputFile = export.findParentDir(OutputFile[:-1])+'/test.pdf'
     #exportTFcorrelations('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/SuperPan/ExpressionInput/exp.Cdt1-2139-genes.txt','/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Marie.Dominique/TF-to-gene/228-tfs.txt',0.1);sys.exit()
     #stackedbarchart(filename,display=True,output=OutputFile);sys.exit()
     index1=2;index2=3; x_axis='Number of DEGs'; y_axis = 'Reference clusters'; title='cellHarmony Differentially Expressed Genes'
@@ -9249,7 +9283,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GTEX-30-sample/TCGA-BRCA/forICGS/ICGS-NMF-cosine/groups.PAM50-all.txt'
+    b = '/Volumes/salomonis2/LabFiles/Kairavee/PseudoBulk_SJIA_ICGS_0.2_Pearson_final/ICGS-NMF/FinalGroups-1-celltypes.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
@@ -9346,8 +9380,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/TCF15/Exp1/Active-Inactive/ExpressionInput/genes.txt'
-    genesets = importGeneList(gene_list_file,n=25)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Naren/Combined/ICGS-NMF/cellHarmony-non-immune-10-cells/genes.txt'
+    genesets = importGeneList(gene_list_file,n=29)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -9363,7 +9397,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/TCF15/Exp1/Meg-Multi/ExpressionInput/exp.TCF15_S1_Raw.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Naren/Combined/ICGS-NMF/cellHarmony-non-immune-10-cells/exp.MET__METdF-AllCells-dF.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
     #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
@@ -9373,7 +9407,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=25)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=29)
     sys.exit()
 
     plotHistogram(filename);sys.exit()

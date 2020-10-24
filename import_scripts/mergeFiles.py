@@ -55,8 +55,142 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
     
+def latteralMerge(files_to_merge,original_filename):
+    """ Merging files can be dangerous, if there are duplicate IDs (e.g., gene symbols).
+    To overcome issues in redundant gene IDs that are improperly matched (one row with zeros
+    and the other with values), this function determines if a lateral merge is more appropriate.
+    The latter merge:
+    1) Checks to see if the IDs are the same with the same order between the two or more datasets
+    2) merges the two or more matrices without looking at the genes.
+    
+    Note: This function is attempts to be memory efficient and should be updated in the future to
+    merge blocks of row IDs sequentially."""
+    
+    files_to_merge_revised = []
+    for filename in files_to_merge:
+        ### If a sparse matrix - rename and convert to flat file
+        if '.h5' in filename or '.mtx' in filename:
+            from import_scripts import ChromiumProcessing
+            import export
+            file = export.findFilename(filename)
+            export_name = file[:-4]+'-filt'
+            if file == 'filtered_feature_bc_matrix.h5' or file == 'raw_feature_bc_matrix.h5' or 'filtered_gene_bc_matrix.h5' or file == 'raw_gene_bc_matrix.h5':
+                export_name = export.findParentDir(filename)
+                export_name = export.findFilename(export_name[:-1])
+            if file == 'matrix.mtx.gz' or file == 'matrix.mtx':
+                parent = export.findParentDir(filename)
+                export_name = export.findParentDir(parent)
+                export_name = export.findFilename(export_name[:-1])
+            filename = ChromiumProcessing.import10XSparseMatrix(filename,'species',export_name)
+        files_to_merge_revised.append(filename)
+    files_to_merge = files_to_merge_revised
+    print files_to_merge
+        
+    includeFilenames = True
+    file_uids = {}
+    for filename in files_to_merge:
+        firstRow=True
+        fn=filepath(filename); x=0
+        if '/' in filename:
+            file = string.split(filename,'/')[-1][:-4]
+        else:
+            file = string.split(filename,'\\')[-1][:-4]
+        for line in open(fn,'rU').xreadlines():         
+            data = cleanUpLine(line)
+            if '\t' in data:
+                t = string.split(data,'\t')
+            elif ',' in data:
+                t = string.split(data,',')
+            else:
+                t = string.split(data,'\t')
+            if firstRow:
+                firstRow = False
+            else:
+                uid = t[0]
+                try:
+                    file_uids[file].append(uid)
+                except:
+                    file_uids[file] = [uid]
+
+    perfectMatch = True
+    for file1 in file_uids:
+        uids1 = file_uids[file1]
+        for file2 in file_uids:
+            uids2 = file_uids[file2]
+            if uids1 != uids2:
+                print file1,file2
+                perfectMatch = False
+
+    if perfectMatch:
+        print 'All ordered IDs match in the files ... performing latteral merge instead of key ID merge to prevent multi-matches...'
+        firstRow=True
+        increment = 5000
+        low = 1
+        high = 5000
+        added = 1
+        eo = open(output_dir+'/MergedFiles.txt','w')
+        import collections 
+        
+        def exportMergedRows(low,high):
+            uid_values=collections.OrderedDict()
+            for filename in files_to_merge:
+                fn=filepath(filename); x=0; file_uids = {}
+                if '/' in filename:
+                    file = string.split(filename,'/')[-1][:-4]
+                else:
+                    file = string.split(filename,'\\')[-1][:-4]
+                firstRow=True
+                row_count = 0
+                uids=[] ### Over-ride this for each file
+                for line in open(fn,'rU').xreadlines():
+                    row_count+=1
+                    if row_count<=high and row_count>=low:
+                        data = cleanUpLine(line)
+                        if '\t' in data:
+                            t = string.split(data,'\t')
+                        elif ',' in data:
+                            t = string.split(data,',')
+                        else:
+                            t = string.split(data,'\t')
+                        if firstRow and low==1:
+                            file = string.replace(file,'_matrix_CPTT','')
+                            if includeFilenames:
+                                header = [s + "."+file for s in t[1:]] ### add filename suffix
+                            else:
+                                header = t[1:]
+                            try: uid_values[row_count]+=header
+                            except: uid_values[row_count]=header
+                            uids.append('UID')
+                            firstRow=False
+                        else:
+                            uid = t[0]
+                            try: uid_values[row_count] += t[1:]
+                            except: uid_values[row_count] = t[1:]
+                            uids.append(uid)
+            i=0
+            for index in uid_values:
+                uid = uids[i]
+                eo.write(string.join([uid]+uid_values[index],'\t')+'\n')
+                i+=1
+            print 'completed',low,high
+        
+        uid_list = file_uids[file]
+        while (len(uid_list)+increment)>high:
+            exportMergedRows(low,high)
+            high+=increment
+            low+=increment
+        eo.close()
+        return True
+    else:
+        print 'Different identifier order in the input files encountered...'
+        return False
+        
 def combineAllLists(files_to_merge,original_filename,includeColumns=False):
     headers =[]; files=[]
+    
+    run = latteralMerge(files_to_merge,original_filename)
+    if run:
+        return ### Exit Merge Function
     
     import collections 
     all_keys=collections.OrderedDict()

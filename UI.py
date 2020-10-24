@@ -1090,6 +1090,9 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
             except: cellLabels = False
             if cellLabels == '':
                 cellLabels = None
+            if '.h5' in expr_input_dir or '.mtx' in expr_input_dir:
+                from import_scripts import ChromiumProcessing
+                expr_input_dir = ChromiumProcessing.import10XSparseMatrix(expr_input_dir,species,'cellHarmony-Query')
             try: LineageProfilerIterate.runLineageProfiler(species,platform,expr_input_dir,expr_input_dir,
                     codingtype,compendium_platform,customMarkers=custom_markerFinder,
                     geneModels=geneModel,modelSize=modelSize,fl=fl,label_file=cellLabels)
@@ -3302,11 +3305,13 @@ def getOnlineEliteDatabase(file_location_defaults,db_version,new_species_codes,u
     dbs_added = 0
 
     AltAnalyze_folders = read_directory(''); Cytoscape_found = 'no'
+    """
     for dir in AltAnalyze_folders:
         if 'Cytoscape_' in dir: Cytoscape_found='yes'
     if Cytoscape_found == 'no':
         fln,status = update.download(goelite_url+'Cytoscape/cytoscape.tar.gz','','')
         if 'Internet' not in status: print "Cytoscape program folder downloaded."
+    """
 
     count = verifyFileLength('AltDatabase/TreeView/TreeView.jar')
     if count==0:
@@ -5415,6 +5420,12 @@ def getUserParameters(run_parameter,Multi=None):
                     input_file2 = gu.Results()['input_file2']
                     input_file3 = gu.Results()['input_file3']
                     input_file4 = gu.Results()['input_file4']
+                    input_file1 = gu.Results()['input_file5']
+                    input_file2 = gu.Results()['input_file6']
+                    input_file3 = gu.Results()['input_file7']
+                    input_file4 = gu.Results()['input_file8']
+                    input_file3 = gu.Results()['input_file9']
+                    input_file4 = gu.Results()['input_file10']
                     join_option = gu.Results()['join_option']
                     ID_option = gu.Results()['ID_option']
                     output_merge_dir = gu.Results()['output_merge_dir']
@@ -5426,6 +5437,12 @@ def getUserParameters(run_parameter,Multi=None):
                         files_to_merge = [input_file1, input_file2]
                         if len(input_file3)>0: files_to_merge.append(input_file3)
                         if len(input_file4)>0: files_to_merge.append(input_file4)
+                        if len(input_file5)>0: files_to_merge.append(input_file5)
+                        if len(input_file6)>0: files_to_merge.append(input_file6)
+                        if len(input_file7)>0: files_to_merge.append(input_file7)
+                        if len(input_file8)>0: files_to_merge.append(input_file8)
+                        if len(input_file7)>0: files_to_merge.append(input_file9)
+                        if len(input_file8)>0: files_to_merge.append(input_file10)
                         values = files_to_merge, join_option, ID_option, output_merge_dir
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()

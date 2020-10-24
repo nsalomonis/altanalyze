@@ -20,7 +20,7 @@ dataset_name	Give a name to this dataset	enter	InputCELFiles				---	---	---	---	
 input_cel_dir	Select the CEL file containing folder	folder	InputCELFiles				---	---	---	---	---	---	---
 input_fastq_dir	(optional) Select fastq files to run in Kallisto	folder	InputCELFiles				NA	NA	NA	NA	NA	---	NA
 output_CEL_dir	Select an AltAnalyze result output directory	folder	InputCELFiles				---	---	---	---	---	---	---
-multithreading	Use multithreading for read genomic annotation	comboBox	InputCELFiles			yes	NA	NA	NA	NA	NA	yes|no	NA
+multithreading	Use multithreading for read genomic annotation	comboBox	InputCELFiles			no	NA	NA	NA	NA	NA	yes|no	NA
 build_exon_bedfile	Build exon coordinate bed file to obtain BAM file exon counts\k(see the online tutorial for additional details and information)	single-checkbox	InputCELFiles				NA	NA	NA	NA	NA	---	NA
 channel_to_extract	Extract data from the following channels	comboBox	InputCELFiles				NA	NA	NA	green|red|green/red ratio|red/green ratio	NA	NA	NA
 remove_xhyb	Remove probesets that have large cross-hybridization scores 	single-checkbox	InputCELFiles				---	---	NA	NA	NA	NA	NA
@@ -139,10 +139,16 @@ modelDiscovery	(LineageProflier) Iterative model discovery	comboBox	LineageProfi
 input_data_file	Select the tab-delimited expression file for ID Translation	file	IDConverter				---	---	---	---	---	---	---
 input_source	Select the file ID system (first column)	comboBox	IDConverter				---	---	---	---	---	---	---
 output_source	Select the ID system to add to this file	comboBox	IDConverter				---	---	---	---	---	---	---
-input_file1	Select the first file to merge	file	MergeFiles				---	---	---	---	---	---	---
-input_file2	Select the second file to merge	file	MergeFiles				---	---	---	---	---	---	---
-input_file3	Select the third file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
-input_file4	Select the fourth file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file1	Select the 1st file to merge	file	MergeFiles				---	---	---	---	---	---	---
+input_file2	Select the 2nd file to merge	file	MergeFiles				---	---	---	---	---	---	---
+input_file3	Select the 3rd file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file4	Select the 4th file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file5	Select the 5th file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file6	Select the 6th file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file7	Select the 7th file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file8	Select the 8th file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file9	Select the 9th file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
+input_file10	Select the 10th file to merge (optional)	file	MergeFiles				---	---	---	---	---	---	---
 join_option	Join files based on their	comboBox	MergeFiles				Intersection|Union	Intersection|Union	Intersection|Union	Intersection|Union	Intersection|Union	Intersection|Union	Intersection|Union
 ID_option	Only return one-to-one ID relationships	comboBox	MergeFiles				False|True	False|True	False|True	False|True	False|True	False|True	False|True
 output_merge_dir	Select the folder to save the merged file	folder	MergeFiles				---	---	---	---	---	---	---
@@ -175,12 +181,13 @@ FoldDiff	Fold change filter cutoff	enter	PredictGroups			4	---	---	---	---	---	-
 rho_cutoff	Minimum Pearson correlation cutoff	enter	PredictGroups			0.2	---	---	---	---	---	---	---
 SamplesDiffering	Minimum number of cells differing	enter	PredictGroups			4	---	---	---	---	---	---	---
 dynamicCorrelation	ICGS will identify an optimal correlation cutoff	comboBox	PredictGroups			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
-removeOutliers	Remove low expression outlier samples	comboBox	PredictGroups			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
+removeOutliers	Remove low expression outlier cells	comboBox	PredictGroups			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 featuresToEvaluate	Features to evaluate	comboBox	PredictGroups			Genes	Genes|AltExon|Both	Genes|AltExon|Both	Genes|AltExon|Both	Genes	Genes|AltExon|Both	Genes|AltExon|Both	Genes
 restrictBy	Restrict genes to protein coding	comboBox	PredictGroups			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 column_metric_predict	Select the column clustering metric	comboBox	PredictGroups		http://docs.scipy.org/doc/scipy/reference/spatial.distance.html	cosine	braycurtis|canberra|chebyshev|cityblock|correlation|cosine|dice|euclidean|hamming|jaccard|kulsinski|mahalanobis|matching|minkowski|rogerstanimoto|russellrao|seuclidean|sokalmichener|sokalsneath|sqeuclidean|yule	braycurtis|canberra|chebyshev|cityblock|correlation|cosine|dice|euclidean|hamming|jaccard|kulsinski|mahalanobis|matching|minkowski|rogerstanimoto|russellrao|seuclidean|sokalmichener|sokalsneath|sqeuclidean|yule	braycurtis|canberra|chebyshev|cityblock|correlation|cosine|dice|euclidean|hamming|jaccard|kulsinski|mahalanobis|matching|minkowski|rogerstanimoto|russellrao|seuclidean|sokalmichener|sokalsneath|sqeuclidean|yule	braycurtis|canberra|chebyshev|cityblock|correlation|cosine|dice|euclidean|hamming|jaccard|kulsinski|mahalanobis|matching|minkowski|rogerstanimoto|russellrao|seuclidean|sokalmichener|sokalsneath|sqeuclidean|yule	braycurtis|canberra|chebyshev|cityblock|correlation|cosine|dice|euclidean|hamming|jaccard|kulsinski|mahalanobis|matching|minkowski|rogerstanimoto|russellrao|seuclidean|sokalmichener|sokalsneath|sqeuclidean|yule	braycurtis|canberra|chebyshev|cityblock|correlation|cosine|dice|euclidean|hamming|jaccard|kulsinski|mahalanobis|matching|minkowski|rogerstanimoto|russellrao|seuclidean|sokalmichener|sokalsneath|sqeuclidean|yule	braycurtis|canberra|chebyshev|cityblock|correlation|cosine|dice|euclidean|hamming|jaccard|kulsinski|mahalanobis|matching|minkowski|rogerstanimoto|russellrao|seuclidean|sokalmichener|sokalsneath|sqeuclidean|yule
 column_method_predict	Select the column clustering method	comboBox	PredictGroups		http://docs.scipy.org/doc/scipy/reference/cluster.hierarchy.html	hopach	average|single|complete|weighted|ward|hopach	average|single|complete|weighted|ward|hopach	average|single|complete|weighted|ward|hopach	average|single|complete|weighted|ward|hopach	average|single|complete|weighted|ward|hopach	average|single|complete|weighted|ward|hopach	average|single|complete|weighted|ward|hopach
 k	(optional) number of user-defined ICGS clusters (k)	enter	PredictGroups				---	---	---	---	---	---	---
+downsample	(optional) Cells to down-sample to (PageRank)	enter	PredictGroups			2500	---	---	---	---	---	---	---
 GeneSelectionPredict	(optional) Enter genes to build clusters from (guides)	enter	PredictGroups				---	---	---	---	---	---	---
 GeneSetSelectionPredict	(optional) Or select guide GeneSet/Ontology	comboBox	PredictGroups										
 PathwaySelectionPredict	(optional) Select guide specific GeneSet(s)	multiple-comboBox	PredictGroups										
