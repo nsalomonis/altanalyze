@@ -20,8 +20,9 @@ dataset_name	Give a name to this dataset	enter	InputCELFiles				---	---	---	---	
 input_cel_dir	Select the CEL file containing folder	folder	InputCELFiles				---	---	---	---	---	---	---
 input_fastq_dir	(optional) Select fastq files to run in Kallisto	folder	InputCELFiles				NA	NA	NA	NA	NA	---	NA
 output_CEL_dir	Select an AltAnalyze result output directory	folder	InputCELFiles				---	---	---	---	---	---	---
-multithreading	Use multithreading for read genomic annotation	comboBox	InputCELFiles			no	NA	NA	NA	NA	NA	yes|no	NA
-build_exon_bedfile	Build exon coordinate bed file to obtain BAM file exon counts\k(see the online tutorial for additional details and information)	single-checkbox	InputCELFiles				NA	NA	NA	NA	NA	---	NA
+multithreading	Use multithreading for read genomic annotation	comboBox	InputCELFiles			no	NA	NA	NA	NA	NA	no|yes	NA
+build_exon_bedfile	Build exon coordinate bed file to obtain BAM file exon counts\k(see the online tutorial for additional details and information)	single-checkbox	InputCELFiles				NA	NA	NA	NA	NA	NA	NA
+useExonReads	Export exon bed files (will slow down analyses)	single-checkbox	InputCELFiles				NA	NA	NA	NA	NA	---	NA
 channel_to_extract	Extract data from the following channels	comboBox	InputCELFiles				NA	NA	NA	green|red|green/red ratio|red/green ratio	NA	NA	NA
 remove_xhyb	Remove probesets that have large cross-hybridization scores 	single-checkbox	InputCELFiles				---	---	NA	NA	NA	NA	NA
 input_cdf_file	Select the PGF library file for your array (required)	file	InputLibraryFiles	note: the PGF file is apart of the standard library files for this array. This\kdirectory needs to also contain the CLF and BGP files for the array. These\kfiles can be downloaded from the Affymetrix website.			---	---	---	---	---	---	---

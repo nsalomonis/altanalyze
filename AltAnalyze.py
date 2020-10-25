@@ -5529,7 +5529,11 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
             analysisType = ['exon','junction','reference']
             #analysisType = ['junction']
             #print [fl.multiThreading()]
-            multiBAMtoBED.parallelBAMProcessing(bam_dir,refExonCoordinateFile,outputExonCoordinateRefBEDfile,analysisType=analysisType,useMultiProcessing=fl.multiThreading(),MLP=mlp,root=root)
+            try: useExonReads = fl.UseExonReads(); print 'useExonReads',[useExonReads]; print 'multiThreading2',[fl.multiThreading()]
+            except: useExonReads = False
+            multiBAMtoBED.parallelBAMProcessing(bam_dir,refExonCoordinateFile,
+                    outputExonCoordinateRefBEDfile,analysisType=analysisType,useMultiProcessing=fl.multiThreading(),
+                    useExonReads=useExonReads,MLP=mlp,root=root)
     
           biotypes = RNASeq.alignExonsAndJunctionsToEnsembl(species,exp_file_location_db,dataset,Multi=mlp)
       
@@ -6284,6 +6288,7 @@ def commandLineRun():
     referenceFull=None
     k=None
     labels=None
+    useExonReads=False
     
     original_arguments = sys.argv
     arguments=[]
@@ -6351,7 +6356,8 @@ def commandLineRun():
                                                          'fold=','performDiffExp=','centerMethod=', 'k=','bamdir=',
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
-                                                         'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses='])
+                                                         'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses=',
+                                                         'useExonReads='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6486,6 +6492,11 @@ def commandLineRun():
             if multiThreading == 'yes': multiThreading = True
             elif 'rue' in multiThreading: multiThreading = True
             else: multiThreading = False
+        elif opt == '--useExonReads':
+            if string.lower(arg) == 'no' or string.lower(arg) == 'false':
+                useExonReads = False
+            else:
+                useExonReads = True
 
     if perform_tests != False:
         ### Requires the mouse RNASeq database
@@ -6749,6 +6760,7 @@ def commandLineRun():
             fl.setArrayType(array_type)
             fl.setOutputDir(root_dir)
             fl.setMultiThreading(multiThreading)
+            fl.setUseExonReads(useExonReads)
             exp_file_location_db={}; exp_file_location_db[exp_name]=fl
             
             ### Assign variables needed to run Kallisto from FASTQ files
@@ -6768,6 +6780,7 @@ def commandLineRun():
                 #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --bedDir /Users/saljh8/Desktop/Grimes/GEC14074 --multiProcessing no
                 fl.setCELFileDir(cel_file_dir)
                 fl.setMultiThreading(multiThreading)
+                fl.setUseExonReads(useExonReads)
                 fl.setExonBedBuildStatus('no')
                 fl.setFeatureNormalization('RPKM')
                 fl.setArrayType(array_type)
@@ -7934,6 +7947,7 @@ def commandLineRun():
         fl.setArrayType(array_type)
         fl.setOutputDir(root_dir)
         fl.setMultiThreading(multiThreading)
+        fl.setUseExonReads(useExonReads)
         exp_file_location_db={}; exp_file_location_db[exp_name]=fl
 
         ### Assign variables needed to run Kallisto from FASTQ files
@@ -8251,6 +8265,7 @@ def commandLineRun():
             fl = UI.ExpressionFileLocationData('','','',''); fl.setExonBedBuildStatus('yes'); fl.setFeatureNormalization('none')
             fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir)
             fl.setMultiThreading(multiThreading)
+            fl.setUseExonReads(useExonReads)
             exp_file_location_db={}; exp_file_location_db[dataset_name]=fl; parent_dir = output_dir
             perform_alt_analysis = 'expression'
 
@@ -8375,6 +8390,7 @@ def commandLineRun():
             fl.setBatchEffectRemoval(batch_effects)
             fl.setChannelToExtract(channel_to_extract)
             fl.setMultiThreading(multiThreading)
+            fl.setUseExonReads(useExonReads)
             try: fl.setExcludeLowExpressionExons(excludeNonExpExons)
             except Exception: fl.setExcludeLowExpressionExons(True)
             if 'other' in manufacturer or 'Other' in manufacturer:

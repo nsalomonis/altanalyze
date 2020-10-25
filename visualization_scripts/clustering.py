@@ -1357,7 +1357,7 @@ def remoteGOElite(elite_dir,SystemCode = None):
             except Exception:
                 print 'GO-Elite failed for:', elite_dir
                 print traceback.format_exc()
-            if commandLine==False:
+            if commandLine==False and 'RelativeSampleLogFolds' not in elite_dir and 'OutlierLogFolds' not in elite_dir:
                 try: UI.openDirectory(elite_dir+'/GO-Elite_results') 
                 except Exception: None
             cluster_elite_terms,top_genes = importGOEliteResults(elite_dir)

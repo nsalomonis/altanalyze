@@ -774,15 +774,28 @@ def importProbesetTranscriptMatches(species,array_type,compare_all_features):
 
 def searchEntrez(accession_list,bio_type):
     start_time = time.time()
-    Entrez.email = "nsalomonis@gmail.com" # Always tell NCBI who you are
+    Entrez.email = "altanalyze@gmail.com" # Always tell NCBI who you are
     index=0; gi_list=[]
     while index<len(accession_list)+20:
         try: new_accession_list = accession_list[index:index+20]
         except IndexError: new_accession_list = accession_list[index:]
         if len(new_accession_list)<1: break
-        search_handle = Entrez.esearch(db=bio_type,term=string.join(new_accession_list,','))
-        search_results = Entrez.read(search_handle)
-        gi_list += search_results["IdList"]
+        try:
+            search_handle = Entrez.esearch(db=bio_type,term=string.join(new_accession_list,','))
+            search_results = Entrez.read(search_handle)
+            gi_list += search_results["IdList"]
+        except:
+            try:
+                search_handle = Entrez.esearch(db=bio_type,term=string.join(new_accession_list,','))
+                search_results = Entrez.read(search_handle)
+                gi_list += search_results["IdList"]
+            except Exception, e:
+                try:
+                    search_handle = Entrez.esearch(db=bio_type,term=string.join(new_accession_list,','))
+                    search_results = Entrez.read(search_handle)
+                    gi_list += search_results["IdList"]
+                except Exception, e:
+                    print 'UNEXPECTED ENTREZ SEARCH ERROR',new_accession_list, e
         index+=20
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "finished in %s seconds" % time_diff
@@ -797,7 +810,7 @@ def fetchSeq(accession_list,bio_type,version):
 
     print len(accession_list), "mRNA Accession numbers submitted to eUTILs."   
     start_time = time.time()
-    Entrez.email = "nsalomonis@gmail.com" # Always tell NCBI who you are
+    Entrez.email = "altanalyze@gmail.com" # Always tell NCBI who you are
     index=0
     while index<len(accession_list)+200:
         try: new_accession_list = accession_list[index:index+200]
@@ -1431,6 +1444,8 @@ def runProgramTest(Species,Array_type,Data_type,translate_seq,run_seqcomp):
             compareProteinComposition(species,array_type,translate,compare_all_features)
             
 if __name__ == '__main__':
+    missing_protein_data = ['AK039788', 'AK186469', 'MA433981', 'MA433983', 'MA433982', 'AK028416', 'MA433989', 'AK016482', 'AK132947', 'AK132946', 'AK078068', 'U96692', 'MA431639', 'AK039434', 'DQ907162', 'AK220471', 'AK220472', 'AK164168', 'AK007842', 'BC054751']
+    missing_gi_list = searchEntrez(missing_protein_data,'nucleotide');sys.exit()
     species = 'Mm'; array_type = 'AltMouse'; translate='no'; run_seqcomp = 'no'; data_type = 'exon'
     species = 'Mm'; array_type = 'RNASeq'; translate='yes'
     #species = 'Dr'; array_type = 'RNASeq'; translate='yes'; data_type = 'junction'

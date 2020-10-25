@@ -2744,6 +2744,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
     query_header_proppegated_clusters={}
     firstLine = True
     exclude=[]
+    cell_count=0
     for line in open(classification_file,'rU').xreadlines():
         data = line.rstrip()
         data = string.replace(data,'"','')
@@ -2760,7 +2761,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
         else:
             sample = values[0]
             score = float(values[score_index])
-            
+            cell_count+=1
             assigned_class = values[class_index]
             if sample in original_sampleID_translation:
                 sample = original_sampleID_translation[sample]
@@ -2788,7 +2789,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             if score<pearsonThreshold: ### Minimum allowed correlation threshold
                 exclude.append(sample)
     
-    print len(exclude), 'cells excluded due to correlation below the indicated threshold'
+    print len(exclude), 'out of', cell_count, 'cells excluded due to correlation below the indicated threshold'
     """ Assign a cluster label to the query sample if applicable """
     query_clusters=[]
     classified_samples={}

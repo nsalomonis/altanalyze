@@ -68,7 +68,8 @@ def getFolders(sub_dir):
         if '.' not in entry: dir_list2.append(entry)
     return dir_list2
 
-def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,analysisType=[],useMultiProcessing=False,MLP=None,root=None):
+def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,
+            analysisType=[],useExonReads=False,useMultiProcessing=False,MLP=None,root=None):
     paths_to_run=[]
     errors=[]
     if '.bam' in directory:
@@ -91,7 +92,7 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
             output_filename = string.replace(output_filename,'=','_')
             destination_file = directory+'/'+output_filename+'__exon.bed'
             destination_file = filepath(destination_file)
-            paths_to_run.append((source_file,refExonCoordinateFile,bed_reference_dir,destination_file))
+            paths_to_run.append((source_file,refExonCoordinateFile,bed_reference_dir,destination_file,useExonReads))
 
     ### Otherwise, check subdirectories for BAM files
     folders = getFolders(directory)
@@ -105,7 +106,7 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
                         source_file = filepath(source_file)
                         destination_file = directory+'/'+top_level+'__exon.bed'
                         destination_file = filepath(destination_file)
-                        paths_to_run.append((source_file,refExonCoordinateFile,bed_reference_dir,destination_file))
+                        paths_to_run.append((source_file,refExonCoordinateFile,bed_reference_dir,destination_file,useExonReads))
             except Exception: pass
     
     ### If a single BAM file is indicated
@@ -113,7 +114,7 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
         output_filename = string.replace(bam_file,'.bam','')
         output_filename = string.replace(output_filename,'=','_')
         destination_file = output_filename+'__exon.bed'
-        paths_to_run = [(bam_file,refExonCoordinateFile,bed_reference_dir,destination_file)]
+        paths_to_run = [(bam_file,refExonCoordinateFile,bed_reference_dir,destination_file,useExonReads)]
 
     if 'reference' in analysisType and len(analysisType)==1:
         augmentExonReferences(directory,refExonCoordinateFile,outputExonCoordinateRefBEDfile)
@@ -169,14 +170,17 @@ def parallelBAMProcessing(directory,refExonCoordinateFile,bed_reference_dir,anal
         if len(analysisType) == 0 or 'junction' in analysisType:
             for i in paths_to_run:
                 runBAMtoJunctionBED(i)
+                print '*',
+        print ''
         if len(analysisType) == 0 or 'reference' in analysisType:
             augmentExonReferences(directory,refExonCoordinateFile,outputExonCoordinateRefBEDfile)
         if len(analysisType) == 0 or 'exon' in analysisType:
             for i in paths_to_run:
                 runBAMtoExonBED(i)
-
+                print '*',
+        print ''
 def runBAMtoJunctionBED(paths_to_run):
-    bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path = paths_to_run
+    bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path,useExonReads = paths_to_run
     output_bedfile_path = string.replace(bamfile_dir,'.bam','__junction.bed')
     #if os.path.exists(output_bedfile_path) == False: ### Only run if the file doesn't exist
     results = BAMtoJunctionBED.parseJunctionEntries(bamfile_dir,multi=True,ReferenceDir=refExonCoordinateFile)
@@ -184,12 +188,16 @@ def runBAMtoJunctionBED(paths_to_run):
     return results
     
 def runBAMtoExonBED(paths_to_run):
-    bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path = paths_to_run
+    bamfile_dir,refExonCoordinateFile,bed_reference_dir,output_bedfile_path,useExonReads = paths_to_run
+    if useExonReads:
+        intronRetentionOnly = False
+    else:
+        intronRetentionOnly = True
     if os.path.exists(output_bedfile_path) == False: ### Only run if the file doesn't exist
-        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=True)
+        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=intronRetentionOnly)
     else:
         print output_bedfile_path, 'already exists... re-writing'
-        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=True)
+        BAMtoExonBED.parseExonReferences(bamfile_dir,bed_reference_dir,multi=True,intronRetentionOnly=intronRetentionOnly)
 
 def getChrFormat(directory):
     ### Determine if the chromosomes have 'chr' or nothing

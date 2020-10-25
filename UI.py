@@ -4423,9 +4423,13 @@ class ExpressionFileLocationData:
     def setClassificationAnalysis(self, classificationAnalysis): self.classificationAnalysis = classificationAnalysis
     def setReturnCentroids(self,returnCentroids): self.returnCentroids = returnCentroids
     def setMultiThreading(self, multithreading): self.multithreading = multithreading
+    def setUseExonReads(self, useExonReads): self.useExonReads = useExonReads
     def setVendor(self,vendor): self.vendor = vendor
     def setKallistoFile(self,kallisto_exp): self.kallisto_exp = kallisto_exp
     def KallistoFile(self): return self.kallisto_exp
+    def UseExonReads(self):
+        try: return self.useExonReads
+        except: return False
     def setPredictGroups(self, predictGroups): self.predictGroups = predictGroups
     def setPredictGroupsParams(self, predictGroupsObjects): self.predictGroupsObjects = predictGroupsObjects
     def setGraphicLinks(self,graphic_links): self.graphic_links = graphic_links ### file location of image files
@@ -5871,10 +5875,17 @@ def getUserParameters(run_parameter,Multi=None):
                 try: remove_xhyb = gu.Results()['remove_xhyb']
                 except KeyError: remove_xhyb = 'no'
                 try:
+                    useExonReads = gu.Results()['useExonReads']
+                    if useExonReads == 'yes':
+                        useExonReads = True
+                    else:
+                        useExonReads = False
+                except: useExonReads = False
+                try:
                     multiThreading = gu.Results()['multithreading']
                     if multiThreading == 'yes': multiThreading = True
                     else: multiThreading = False
-                except KeyError: multiThreading = True
+                except: multiThreading = True
                 try:
                     build_exon_bedfile = gu.Results()['build_exon_bedfile']
                     try: normalize_feature_exp = 'RPKM'
@@ -6628,7 +6639,7 @@ def getUserParameters(run_parameter,Multi=None):
         elif run_from_scratch == 'buildExonExportFiles':
                 fl = ExpressionFileLocationData('','','',''); fl.setExonBedBuildStatus('yes'); fl.setFeatureNormalization('none')
                 fl.setCELFileDir(cel_file_dir); fl.setArrayType(array_type); fl.setOutputDir(output_dir); fl.setMultiThreading(multiThreading)
-                exp_file_location_db={}; exp_file_location_db[dataset_name]=fl; parent_dir = output_dir
+                exp_file_location_db={}; exp_file_location_db[dataset_name]=fl; parent_dir = output_dir; fl.setUseExonReads(useExonReads)
                 perform_alt_analysis = 'expression'
         elif groups_name in dir_files:
             try:
@@ -6944,6 +6955,8 @@ def getUserParameters(run_parameter,Multi=None):
         try: fl.setPredictGroupsParams(gsp)
         except Exception: pass
         fl.setMultiThreading(multiThreading)
+        try:  fl.setUseExonReads(useExonReads)
+        except: pass
         if run_from_scratch == 'Process Expression file':
             fl.setRootDir(output_dir) ### When the data is not primary array data files, allow for option selection of the output directory
             fl.setOutputDir(output_dir)

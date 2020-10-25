@@ -21,6 +21,7 @@ sys.path.insert(1, os.path.join(sys.path[0], '..')) ### import parent dir depend
 import os.path
 import unique
 import copy
+import traceback
 
 def filepath(filename):
     fn = unique.filepath(filename)
@@ -167,7 +168,9 @@ def getUniProtURLsForAllSupportedSpecies():
     UI.exportDefaultFileLocations(file_location_defaults)
     
 def import_uniprot_db(filename):
+    
     fn=filepath(filename); global species_not_imported; species_not_imported=[]
+    spacer = '           '
     ac = '';sm='';id = '';sq = '';osd = ''; gn = '';dr = '';de = '';ft_string = ''; kw = ''; ft = []; ensembl = []; mgi = []; unigene = []; embl = []
     ft_call=''; rc=''; go=''; x = 0; y = 0; count = 0
     for line in open(fn,'r').xreadlines():
@@ -193,14 +196,37 @@ def import_uniprot_db(filename):
         elif 'GN   Name=' in data:
             null,gn = string.split(data,'GN   Name='); gn = gn[0:-1]
         elif data[0:2] == 'FT':
-            try:
-                if len(ft_string) > 0 and data[5] == ' ': ft_string = ft_string + data[33:]
-                elif len(ft_string) > 0 and data[5] != ' ': #if previous loop added data but the next ft line is a new piece of functional data
-                    ft.append(ft_string) #append the previous value
+            #"""
+            #if '/note=' in data or '/id' in data or '..' in data
+            data = string.replace(data,'"','')
+            if len(ft_string) > 0 and data[5] == ' ':
+                ft_val = data[21:]                
+                if '/note=' in ft_val:
+                    ft_val = string.replace(ft_val,'/note=','')
+                    try: int(ft_val) ### will cause issues
+                    except: ft_string += '  ' + ft_val
+                elif '..' in ft_val:
+                    ft_val = string.replace(ft_val,'..','  ')
+                    ft_string += '  ' + ft_val
+                else:
+                    try:
+                        site = str(int(data[21:])+1)
+                        ft_string += '  ' + ft_val + '  '+ site ### single AA site increment second position by 1AA
+                    except: pass
+            elif len(ft_string) > 0 and data[5] != ' ': #if previous loop added data but the next ft line is a new piece of functional data
+                ft.append(ft_string) #append the previous value
+                if '..' in data:
+                    data = string.replace(data,'..','  ')
+                try:
+                    site = str(int(data[21:])+1)
+                    ft_string = data[5:]+'  '+site ### single AA site increment second position by 1AA
+                except: 
                     ft_string = data[5:]
-                else: ft_string = ft_string + data[5:]
-            except IndexError:
-                print ft_string;kill
+            else:
+                if '..' in data:
+                    data = string.replace(data,'..','  ')
+                ft_string = ft_string + data[5:]
+            
         elif data[0:2] == 'CC': ###grab function description information
             if '-!-' in data: x=0;y=0
             if x == 1: ft_call = ft_call + data[8:]
@@ -258,12 +284,13 @@ def import_uniprot_db(filename):
                     except KeyError: uniprot_ensembl_db[secondary_ac]=[ens]
 
               ensembl += alternate_ensembls
+
               y = UniProtAnnotations(id,ac,sq,ft_list2,ensembl,gn,file_type,de,embl,unigene,mgi,ft_call,class_def,cellular_components)
               uniprot_db[id] = y
             else: species_not_imported.append(osd)
             ac = '';id = '';sq = '';osd = '';gn = '';dr = '';de = ''; ft_call=''; rc='';sm='';go=''; kw=''
             ft_string = '';ft = []; ensembl = []; mgi = []; unigene = []; embl = []
-            
+            #print ft_list2;sys.exit()
             x+=1
     print "Number of imported swissprot entries:", len(uniprot_db)
 
@@ -349,7 +376,7 @@ class UniProtAnnotations:
     def Name(self): return self._name
     def FTList(self):
         new_FTList = [] ### Transform this set of feature information into objects
-        exlcusion_list = ['CHAIN','VARIANT','CONFLICT','VAR_SEQ']
+        exlcusion_list = ['CHAIN','VARIANT','CONFLICT','VAR_SEQ','MUTAGEN','INIT_MET']
         for ft_entry in self._ft_list:
             try:
                 if len(ft_entry)>3: feature, start, stop, description = ft_entry
@@ -426,7 +453,7 @@ def export():
             if 'T0' not in ens_gene and 'P0' not in ens_gene: ### Exclude protein and transcript IDs
                 custom_annot=string.join([ens_gene,y.CellularComponent(), y.ClassDefinition(),gn,de,id,ac,unigene],'\t')+'\n'
                 if len(y.CellularComponent())>1 or len(y.ClassDefinition())>1: custom_annotations[ens_gene] = custom_annot
-                                     
+        #print ft_list;sys.exit()  
         if len(ft_list)>0:
             for dd in ft_list:  ### Export domain annotations
                 try:
@@ -476,7 +503,7 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
         uniprot_ens_location_built = string.replace(uniprot_ens_location_built,'uniprot','Uniprot-SWISSPROT')
         importEnsemblUniprot(uniprot_ens_location_built)
     except Exception: null=[]
-    
+
     ### Import UniProt annotations
     counts = update.verifyFile(uniprot_location,'counts')
     if force == 'no' or counts > 8: import_uniprot_db(uniprot_location)
@@ -488,7 +515,7 @@ def runExtractUniProt(species,species_full,uniprot_filename_url,trembl_filename_
             try: os.remove(gz_filepath) ### Not sure why this works now and not before
             except OSError: status = status     
         import_uniprot_db(uniprot_location)
-        
+
     if add_trembl_annotations == 'yes':
         ### Import TreMBL annotations
         try:
