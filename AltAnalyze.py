@@ -6277,6 +6277,7 @@ def commandLineRun():
     runKallisto = False
     input_fastq_dir = ''
     ChromiumSparseMatrix=''
+    ChromiumSparseMatrixDir=''
     perform_tests=False
     testType = "fast"
     inputTestData = "text"
@@ -6357,7 +6358,7 @@ def commandLineRun():
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
                                                          'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses=',
-                                                         'useExonReads='])
+                                                         'useExonReads=','ChromiumSparseMatrixDir='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6383,12 +6384,14 @@ def commandLineRun():
         elif opt == '--celdir':
             arg = verifyPath(arg)
             cel_file_dir=arg
-        elif opt == '--bedDir' or opt == '--BAM_dir' or opt == 'bamdir=' or opt == 'bamDir':
+        elif string.lower(opt) == '--beddir' or string.lower(opt) == '--bam_dir' or string.lower(opt) == '--bamdir':
             arg = verifyPath(arg)
             cel_file_dir=arg
         elif opt == '--ChromiumSparseMatrix':
             arg = verifyPath(arg)
             ChromiumSparseMatrix=arg
+        elif opt == '--ChromiumSparseMatrixDir':
+            ChromiumSparseMatrixDir=arg
         elif opt == '--FEdir':
             arg = verifyPath(arg)
             cel_file_dir = arg
@@ -6608,7 +6611,7 @@ def commandLineRun():
             downsample=2500
             numGenesExp=500
             numVarGenes=500
-            if ChromiumSparseMatrix != '':
+            if ChromiumSparseMatrix != '' or ChromiumSparseMatrixDir != '':
                 rho_cutoff = 0.2
                 column_metric = 'euclidean'
                 restrictBy = 'protein_coding'
@@ -6709,10 +6712,34 @@ def commandLineRun():
                 exp_name = string.replace(exp_name,'.txt','')
                 exp_name = string.replace(exp_name,'exp.','')
             
+            if '.' not in  export.findFilename(ChromiumSparseMatrix)[-4:]:
+                ChromiumSparseMatrixDir = ChromiumSparseMatrix
+                ChromiumSparseMatrix = ''
+                print 'Looking for sparse matrix files in the supplied directory'
+                
             if cel_file_dir != '':
                 expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt' ### cel_file_dir will point to the input directory
-            elif ChromiumSparseMatrix != '':
-                expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
+            elif ChromiumSparseMatrix != '' or ChromiumSparseMatrixDir != '':
+                try:
+                    expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
+                except:
+                    if ChromiumSparseMatrixDir != '':
+                        exp_name = export.findFilename(ChromiumSparseMatrixDir[:-1])
+                        print 'Setting experiment name to:',exp_name
+                        try: expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
+                        except:
+                            output_dir = ChromiumSparseMatrixDir
+                            print 'Setting output directory to:',output_dir
+                            expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
+                    if ChromiumSparseMatrix != '':
+                        exp_name = 'scRNA-Seq'
+                        print 'Setting experiment name to:',exp_name
+                        try: expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
+                        except:
+                            output_dir = export.findParentDir(ChromiumSparseMatrix)
+                            print 'Setting output directory to:',output_dir
+                            expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
+                                    
             elif input_exp_file !='':
                 if 'ExpressionInput' in input_exp_file: expFile = input_exp_file
                 else:
@@ -6795,9 +6822,16 @@ def commandLineRun():
                 fl.setExonRPKMThreshold(exon_rpkm_threshold)
                 fl.setJunctionExpThreshold(expression_threshold)
 
-            elif len(ChromiumSparseMatrix)>0:
+            elif len(ChromiumSparseMatrix)>0 or len(ChromiumSparseMatrixDir)>0:
                 #python AltAnalyze.py --runICGS yes --platform "RNASeq" --species Mm --column_method hopach --rho 0.4 --ExpressionCutoff 1 --FoldDiff 4 --SamplesDiffering 1 --excludeCellCycle strict --output  /Users/saljh8/Desktop/Grimes/GEC14074 --expname test --ChromiumSparseMatrix /Users/saljh8/Desktop/Grimes/GEC14074 --multiProcessing no
-                fl.setChromiumSparseMatrix(ChromiumSparseMatrix)
+                if len(ChromiumSparseMatrix)>0:
+                    fl.setChromiumSparseMatrix(ChromiumSparseMatrix)
+                    chromiumFile = export.findFilename(ChromiumSparseMatrix)
+                    if '.' not in chromiumFile:
+                        fl.setIntegrateChromiumFiles(True) ### Hence a directory
+                if len(ChromiumSparseMatrixDir)>0:
+                    fl.setChromiumSparseMatrix(ChromiumSparseMatrixDir)
+                    fl.setIntegrateChromiumFiles(True)
                 fl.setMultiThreading(multiThreading)
                 fl.setArrayType("3'array")
                 array_type = "3'array"
@@ -6824,7 +6858,7 @@ def commandLineRun():
             exonExpFile = str(expFile)
             if count>1:
                 expFile = expFile[:-4]+'-steady-state.txt'
-            elif array_type=='RNASeq' or len(ChromiumSparseMatrix)>0 or len(input_fastq_dir)>0:
+            elif array_type=='RNASeq' or len(ChromiumSparseMatrix)>0 or len(ChromiumSparseMatrixDir)>0 or len(input_fastq_dir)>0:
                 
                 try:
                     ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
@@ -7038,6 +7072,7 @@ def commandLineRun():
             separateGenePlots = False
             reimportModelScores = True
             maskGroups = None
+            coordinateFile = None
             if 't-SNE' in image_export:
                 pca_algorithm = 't-SNE'
             if 'UMAP' in image_export or 'umap' in image_export:
@@ -7055,6 +7090,7 @@ def commandLineRun():
                 if opt == '--geneSetName': geneSetName=arg
                 if opt == '--genes': colorByGene=arg
                 if opt == '--maskGroups': maskGroups=arg
+                if opt == '--coordinateFile': coordinateFile=arg
                 if opt == '--reimportModelScores':
                     if arg == 'yes' or arg == 'True' or arg == 'true':
                         reimportModelScores = True
@@ -7080,7 +7116,7 @@ def commandLineRun():
             UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
                           plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore,
                           colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots,
-                          maskGroups=maskGroups)
+                          maskGroups=maskGroups,coordinateFile=coordinateFile)
             sys.exit()
 
         if 'VennDiagram' in image_export:
@@ -7690,9 +7726,13 @@ def commandLineRun():
                 if '/' == output_dir[-1] or '\\' in output_dir[-2]: null=[]
                 else: output_dir +='/'
             except:
-                try: output_dir = export.findParentDir(input_file_dir)
-                except:
+                if len(cel_file_dir)>0:
+                    output_dir = cel_file_dir
+                elif len(input_fastq_dir)>0:
                     output_dir = input_fastq_dir
+                else: 
+                    output_dir = export.findParentDir(input_file_dir)
+
             log_file = filepath(output_dir+'/AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
             sys.stdout = Logger('')

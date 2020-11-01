@@ -55,7 +55,7 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
     
-def latteralMerge(files_to_merge,original_filename):
+def latteralMerge(files_to_merge,original_filename,outputPath = None):
     """ Merging files can be dangerous, if there are duplicate IDs (e.g., gene symbols).
     To overcome issues in redundant gene IDs that are improperly matched (one row with zeros
     and the other with values), this function determines if a lateral merge is more appropriate.
@@ -72,19 +72,25 @@ def latteralMerge(files_to_merge,original_filename):
         if '.h5' in filename or '.mtx' in filename:
             from import_scripts import ChromiumProcessing
             import export
+            
             file = export.findFilename(filename)
             export_name = file[:-4]+'-filt'
-            if file == 'filtered_feature_bc_matrix.h5' or file == 'raw_feature_bc_matrix.h5' or 'filtered_gene_bc_matrix.h5' or file == 'raw_gene_bc_matrix.h5':
+            if file == 'filtered_feature_bc_matrix.h5' or file == 'raw_feature_bc_matrix.h5' or file =='filtered_gene_bc_matrix.h5' or file == 'raw_gene_bc_matrix.h5':
                 export_name = export.findParentDir(filename)
                 export_name = export.findFilename(export_name[:-1])
-            if file == 'matrix.mtx.gz' or file == 'matrix.mtx':
+            elif file == 'matrix.mtx.gz' or file == 'matrix.mtx':
                 parent = export.findParentDir(filename)
                 export_name = export.findParentDir(parent)
                 export_name = export.findFilename(export_name[:-1])
+            else:
+                export_name = string.replace(file,'.mtx.gz','')
+                export_name = string.replace(export_name,'.mtx','')
+                export_name = string.replace(export_name,'.h5','')
+                export_name = string.replace(export_name,'_matrix','')
             filename = ChromiumProcessing.import10XSparseMatrix(filename,'species',export_name)
         files_to_merge_revised.append(filename)
     files_to_merge = files_to_merge_revised
-    print files_to_merge
+    print 'Files to merge:',files_to_merge
         
     includeFilenames = True
     file_uids = {}
@@ -442,6 +448,9 @@ def joinFiles(files_to_merge,CombineType,unique_join,outputDir):
     return output_dir+'/MergedFiles.txt'
 
 if __name__ == '__main__':
+    matrix_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test'
+    files_to_merge = ['/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test/GSM4848443_cv73_matrix.mtx.gz',  '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test/GSM4848452_c73_matrix.mtx.gz']
+    expFile = joinFiles(files_to_merge, 'Intersection', False, matrix_file)
     dirfile = unique
     includeColumns=-2
     includeColumns = False

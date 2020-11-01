@@ -1407,7 +1407,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     try: numVarGenes = gsp.NumVarGenes()
     except: numVarGenes = 500
     print 'DownSample threshold =',downsample_cutoff, 'cells'
-    
+            
     try: data_format = string.lower(gsp.CountsNormalization())
     except: data_format = 'scaled'
 

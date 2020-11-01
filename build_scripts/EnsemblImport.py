@@ -747,23 +747,26 @@ def getEnsExonStructureData(species,data_type):
     for key in initial_junction_db:
         for junction_info in initial_junction_db[key]:
             e5_pos = junction_info[0][1]; e3_pos = junction_info[1][0] ###grab the junction coordiantes
-            for exon_info in exon_annotation_db[key]:
-                exon_start,exon_stop,ed = exon_info
-                loc = [e5_pos,e3_pos]; loc.sort() ###The downstream functions need these two sorted
-                new_exon_info = loc[0],loc[1],ed
-                retained = compareExonLocations(e5_pos,e3_pos,exon_start,exon_stop)
-                exonid = ed.ExonID()
-                if retained == 'yes':
-                    #print exonid,e5_pos,e3_pos,exon_start,exon_stop
-                    intron_length = abs(e5_pos-e3_pos)
-                    if intron_length>500:
-                        ed.setIntronDeletionStatus('yes')
-                        try: delete_db[key].append(exon_info)
-                        except KeyError: delete_db[key] = [exon_info]
-                    try: intron_retention_db[key].append(new_exon_info)
-                    except KeyError: intron_retention_db[key]=[new_exon_info]
-                    retained_intron_exons[exonid]=[]
-                    #print key,ed.ExonID(),len(exon_annotation_db[key])
+            if key in exon_annotation_db:
+                for exon_info in exon_annotation_db[key]:
+                    exon_start,exon_stop,ed = exon_info
+                    loc = [e5_pos,e3_pos]; loc.sort() ###The downstream functions need these two sorted
+                    new_exon_info = loc[0],loc[1],ed
+                    retained = compareExonLocations(e5_pos,e3_pos,exon_start,exon_stop)
+                    exonid = ed.ExonID()
+                    if retained == 'yes':
+                        #print exonid,e5_pos,e3_pos,exon_start,exon_stop
+                        intron_length = abs(e5_pos-e3_pos)
+                        if intron_length>500:
+                            ed.setIntronDeletionStatus('yes')
+                            try: delete_db[key].append(exon_info)
+                            except KeyError: delete_db[key] = [exon_info]
+                        try: intron_retention_db[key].append(new_exon_info)
+                        except KeyError: intron_retention_db[key]=[new_exon_info]
+                        retained_intron_exons[exonid]=[]
+                        #print key,ed.ExonID(),len(exon_annotation_db[key])
+            else:
+                print 'UNEXPECTED MISSING KEY:',key, 'from exon_annotation_db'
 
     k=0 ### Below code removes exons that have been classified as retained introns - not needed when we can selective remove these exons with ed.IntronDeletionStatus()
     #exon_annotation_db2={}

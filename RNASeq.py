@@ -2875,7 +2875,7 @@ def singleCellRNASeqWorkflow(Species, platform, expFile, mlp, exp_threshold=0, r
     if removeOutliers:
         ### Remove samples with low relative number of genes expressed
         try:
-            print '***Removing outlier samples***'
+            print '\n***Removing outlier cells***'
             from import_scripts import sampleIndexSelection
             reload(sampleIndexSelection)
             output_file = expFile[:-4]+'-OutliersRemoved.txt'

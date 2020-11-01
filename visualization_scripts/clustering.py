@@ -2491,23 +2491,31 @@ def exportCustomGeneSet(geneSetName,species,allGenes):
     else:
         print 'Could not store since no species name provided.'
 
-def writetSNEScores(scores,outputdir):
+def writetSNEScores(scores,cells,outputdir):
     export_obj = export.ExportFile(outputdir)
+    i=0
     for matrix_row in scores:
         matrix_row = map(str,matrix_row)
-        export_obj.write(string.join(matrix_row,'\t')+'\n')
+        export_obj.write(string.join([cells[i]]+matrix_row,'\t')+'\n')
+        i+=1
     export_obj.close()
 
 def importtSNEScores(inputdir):
     #print inputdir
     scores=[]
+    cells=[]
     ### Imports tSNE scores to allow for different visualizations of the same scatter plot
     for line in open(inputdir,'rU').xreadlines():         
         data = cleanUpLine(line)
         t = string.split(data,'\t')
-        t=map(float,t)
+        if len(t)==2:
+            t=map(float,t)
+        if len(t)==3:
+            cell = t[0]
+            t = map(float,t[1:])
+            cells.append(cell)
         scores.append(t)
-    return scores
+    return scores, cells
 
 def runUMAP(matrix, column_header,dataset_name,group_db,display=False,showLabels=False,
          row_header=None,colorByGene=None,species=None,reimportModelScores=True,method="UMAP",
@@ -2561,8 +2569,8 @@ def runUMAP(matrix, column_header,dataset_name,group_db,display=False,showLabels
 
 def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=False,
          row_header=None,colorByGene=None,species=None,reimportModelScores=True,
-         method="tSNE",maskGroups=None):
-
+         method="tSNE",maskGroups=None,source_file=None,coordinateFile=None):
+    
     try: prior_clusters = priorColumnClusters
     except Exception: prior_clusters=[]
     try:
@@ -2601,18 +2609,43 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         print traceback.format_exc()
         #print e
         group_db={}
-        
+    
+    ### For the exported cell ID labels
+    if ':' in column_header[0]:
+        cleaned_headers = map(lambda x: string.split(x,':')[1],column_header) ### remove group prefix
+    else:
+        cleaned_headers = column_header
+    
     if reimportModelScores:
         start = time.time()
         
         print 'Re-importing',method,'model scores rather than calculating from scratch',
-        print root_dir+dataset_name+'-'+method+'_scores.txt'
-        try: scores = importtSNEScores(root_dir+dataset_name+'-'+method+'_scores.txt'); print '...import finished'
+        if coordinateFile == None:
+            coordinates_file = root_dir+dataset_name+'-'+method+'_scores.txt'
+            if source_file != None:
+                alt_coordinates_file = source_file[:-4]+'-'+method+'_coordinates.txt'
+        else:
+            coordinates_file = coordinateFile
+        
+        try:
+            try: scores,cells = importtSNEScores(coordinates_file); print '...import finished'
+            except:
+                scores,cells = importtSNEScores(alt_coordinates_file); print '...import finished'
         except Exception:
             reimportModelScores=False; print '...no existing score file found'
         
         if benchmark:
             print 0,time.time() - start, 'seconds'
+        try:
+            if len(cells)>0 and (cells!=cleaned_headers):
+                print "Cell order in the prior stored coordinates are different... trying to fix"
+                revised_scores = []
+                for cell in cleaned_headers:
+                    i = cells.index(cell)
+                    revised_scores.append(scores[i])
+                scores = revised_scores
+        except:
+            print 'Failed to link the prior coordinates file to the current dataset... rederiving'
         
     if reimportModelScores==False:
         start = time.time()
@@ -2645,10 +2678,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         #model = TSNE(n_components=2,init='pca', random_state=0, verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2,verbose=1, perplexity=40, n_iter=300)
         #model = TSNE(n_components=2, random_state=0, n_iter=10000, early_exaggeration=10)
-        scores=model.fit_transform(X)
+        scores = model.fit_transform(X)
         
         ### Export the results for optional re-import later
-        writetSNEScores(scores,root_dir+dataset_name+'-'+method+'_scores.txt')
+        writetSNEScores(scores,cleaned_headers,root_dir+dataset_name+'-'+method+'_scores.txt')
         #pylab.scatter(scores[:,0], scores[:,1], 20, labels);
         
         if benchmark:
@@ -2698,17 +2731,17 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     
     marker_size = 15
     if len(column_header)>20:
-        marker_size = 12
+        marker_size = 14
     if len(column_header)>40:
-        marker_size = 10
+        marker_size = 12
     if len(column_header)>150:
-        marker_size = 7
+        marker_size = 10
     if len(column_header)>500:
-        marker_size = 5
+        marker_size = 9
     if len(column_header)>1000:
-        marker_size = 4
+        marker_size = 5
     if len(column_header)>2000:
-        marker_size = 3
+        marker_size = 4
     if len(column_header)>4000:
         marker_size = 2
     if len(column_header)>6000:
@@ -5009,7 +5042,8 @@ def timestamp():
 
 def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display=True,
                algorithm='SVD',geneSetName=None, species=None, zscore=True, colorByGene=None,
-               reimportModelScores=True, separateGenePlots=False, forceClusters=False, maskGroups=None):
+               reimportModelScores=True, separateGenePlots=False, forceClusters=False, maskGroups=None,
+               coordinateFile=None):
 
     global root_dir
     global graphic_link
@@ -5062,12 +5096,14 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
                 for gene in geneFilter:
                     tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=False,
                          showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
-                         reimportModelScores=reimportModelScores,method=algorithm)
+                         reimportModelScores=reimportModelScores,method=algorithm,source_file=filename,
+                         coordinateFile=coordinateFile)
                 if display:
                     ### Show the last one
                     tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=True,
                         showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
-                        reimportModelScores=reimportModelScores,method=algorithm)
+                        reimportModelScores=reimportModelScores,method=algorithm,source_file=filename,
+                        coordinateFile=coordinateFile)
             elif maskGroups!=None:
                 """ Mask the samples not present in each examined group below """
                 import ExpressionBuilder
@@ -5084,15 +5120,18 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
                         for gene in geneFilter:
                             tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=False,
                                  showLabels=showLabels,row_header=row_header,colorByGene=gene,species=species,
-                                 reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples))
+                                 reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples),
+                                 source_file=filename,coordinateFile=coordinateFile)
                     else:
                         tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
                             showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
-                            reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples))
+                            reimportModelScores=reimportModelScores,method=algorithm,maskGroups=(group,restricted_samples),
+                            source_file=filename,coordinateFile=coordinateFile)
             else:
                 tSNE(numpy.array(matrix),column_header,dataset_name,group_db,display=display,
                      showLabels=showLabels,row_header=row_header,colorByGene=colorByGene,species=species,
-                     reimportModelScores=reimportModelScores,method=algorithm)
+                     reimportModelScores=reimportModelScores,method=algorithm,source_file=filename,
+                     coordinateFile=coordinateFile)
         elif plotType == '3D':
             try: PCA3D(numpy.array(matrix), row_header, column_header, dataset_name, group_db,
                        display=display, showLabels=showLabels, algorithm=algorithm, geneSetName=geneSetName,

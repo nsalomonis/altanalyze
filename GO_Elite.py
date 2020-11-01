@@ -2114,6 +2114,18 @@ def returnDirectoriesNoReplace(dir):
         if '.' not in entry: dir_list2.append(entry)
     return dir_list2
 
+def buildInferrenceTables(species_code):
+    try: gene_associations.swapAndExportSystems(species_code,'Ensembl','EntrezGene') ### Allows for analysis of Ensembl IDs with EntrezGene based GO annotations (which can vary from Ensembl)
+    except Exception: null=[] ### Occurs if EntrezGene not supported
+    try: gene_associations.augmentEnsemblGO(species_code)
+    except Exception: null=[] ### Occurs if EntrezGene not supported
+
+    ### Build out these symbol association files
+    try: gene_associations.importGeneData(species_code,('export','Ensembl'))
+    except Exception: null=[] ### Occurs if EntrezGene not supported
+    try: gene_associations.importGeneData(species_code,('export','EntrezGene'))
+    except Exception: null=[] ### Occurs if EntrezGene not supported
+    
 ###### Command Line Functions (AKA Headless Mode) ######
 def commandLineRun():
     import getopt
@@ -2250,6 +2262,15 @@ def commandLineRun():
     if len(resources)>1: resources_to_analyze = resources
     elif len(resources)>0: resources_to_analyze = resources[0]
 
+    if 'all' in update_method:
+        update_method.append('WikiPathways')
+        update_method.append('Ontology')
+        update_method.append('Ensembl')
+        update_method.append('EntrezGene')
+        #update_method.append('metabolites')
+        update_method.append('Affymetrix')
+        update_method.append('arrays')
+            
     species_full_original = species_full; species_code_original = species_code
     if image_export != None:
         if image_export == 'WikiPathways':
@@ -2515,7 +2536,7 @@ def commandLineRun():
                     fln,status = update.download(base_url+'Databases/'+select_version+'/'+species_code+'.zip','Databases/','')
                     
                     ### Creates gene-Symbol.txt, EntrezGene-Ensembl.txt and augements gene-GO tables for between system analyses
-                    UI.buildInferrenceTables(species_code)
+                    buildInferrenceTables(species_code)
                     
                     ### Attempt to download additional Ontologies and GeneSets
                     update_method.append('AdditionalResources')
@@ -2534,7 +2555,7 @@ def commandLineRun():
                 if 'Official' in update_method:
                     if 'Internet' not in status:
                         print 'Finished downloading the latest species database files.'
-                    
+            
             ### Download Ensembl Database
             if 'Ensembl' in update_method:
                 externalDBName_list=[]
@@ -2578,17 +2599,19 @@ def commandLineRun():
                 overwrite_previous = 'over-write previous'
                 configType = 'Basic'; iteration=0
                 from build_scripts import EnsemblSQL; reload(EnsemblSQL)
+                
                 if 'arrays' not in update_ensrel:
                     try: all_external_ids = EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,'GO',configType,'GeneAndExternal',overwrite_previous,replaceDB,external_system,force); iteration+=1
                     except Exception, e:
                         print traceback.format_exc()
                         print 'Critical Error!!!! Exiting GO-Elite...'; sys.exit()
                     externalDBName_list_updated = UI.filterExternalDBs(all_external_ids,externalDBName_list,external_ids,array_db)
-                    
+                
+                """
                 ###Add additional systems not in our annotated Config file if the user specified parsing of all systems or all array systems
                 if 'arrays' in update_ensrel or 'all' in update_ensrel:
                     externalDBName_list = externalDBName_list_updated
-                    
+                """
                 for externalDBName in externalDBName_list:
                     if externalDBName != ' ':
                         if force == 'yes' and iteration == 1: force = 'no'
@@ -2604,6 +2627,7 @@ def commandLineRun():
                             print [externalDBName], analysisType
                             if 'ProbeLevel' in update_method:
                                 analysisType = 'ProbeLevel'
+                                print ensembl_sql_description_dir;sys.exit()
                                 EnsemblSQL.buildGOEliteDBs(species_code,ensembl_sql_dir,ensembl_sql_description_dir,externalDBName,configType,analysisType,overwrite_previous,replaceDB,external_system,force); iteration+=1
                                 #except Exception,e: print e;sys.exit()
                             else:
@@ -2620,6 +2644,14 @@ def commandLineRun():
                 
                 if remove_download_files == 'yes': export.deleteFolder('BuildDBs/EnsemblSQL/'+species_code)
                 
+                ### Creates gene-Symbol.txt, EntrezGene-Ensembl.txt and augements gene-GO tables for between system analyses
+                buildInferrenceTables(species_code)
+                from build_scripts import EnsemblSQL
+                db_version = unique.getCurrentGeneDatabaseVersion()
+                EnsemblSQL.getGeneTranscriptOnly(species_code,'Basic',db_version,'yes')
+                import gene_associations
+                gene_to_transcript_db = gene_associations.getGeneToUid(species_code,('hide','Ensembl-EnsTranscript'))
+            
             if 'Affymetrix' in update_method or 'WikiPathways' in update_method:
                 continue_analysis = 'no'
                 if 'WikiPathways' in update_method:
@@ -2770,7 +2802,7 @@ def commandLineRun():
     else:
         print '\nInsufficient flags entered (requires --species, --input and --output)'; sys.exit()
     if 'metabolites' in update_method:
-        import MetabolomicsParser
+        from build_scripts import MetabolomicsParser
         try: MetabolomicsParser.buildMetabolomicsDatabase(force) ### will update any installed species
         except:
             print 'WARNING!!!! No metabolite database present... skipping metabolite build'

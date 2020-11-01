@@ -776,6 +776,8 @@ def searchEntrez(accession_list,bio_type):
     start_time = time.time()
     Entrez.email = "altanalyze@gmail.com" # Always tell NCBI who you are
     index=0; gi_list=[]
+    success=0
+    fail=0
     while index<len(accession_list)+20:
         try: new_accession_list = accession_list[index:index+20]
         except IndexError: new_accession_list = accession_list[index:]
@@ -784,19 +786,26 @@ def searchEntrez(accession_list,bio_type):
             search_handle = Entrez.esearch(db=bio_type,term=string.join(new_accession_list,','))
             search_results = Entrez.read(search_handle)
             gi_list += search_results["IdList"]
-        except:
+            success+=1
+        except Exception, e:
+            time.sleep(.4)
             try:
                 search_handle = Entrez.esearch(db=bio_type,term=string.join(new_accession_list,','))
                 search_results = Entrez.read(search_handle)
                 gi_list += search_results["IdList"]
+                success+=1
             except Exception, e:
                 try:
                     search_handle = Entrez.esearch(db=bio_type,term=string.join(new_accession_list,','))
                     search_results = Entrez.read(search_handle)
                     gi_list += search_results["IdList"]
+                    success+=1
                 except Exception, e:
                     print 'UNEXPECTED ENTREZ SEARCH ERROR',new_accession_list, e
+                    fail+=1
         index+=20
+    if fail>20 and success == 0: ### Something is wrong - give up
+        return gi_list
     end_time = time.time(); time_diff = int(end_time-start_time)
     print "finished in %s seconds" % time_diff
     return gi_list

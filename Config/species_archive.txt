@@ -68,3 +68,4 @@ Vv	Vitis vinifera	ASPIRE|splicing_index|MiDAS
 Xl	Xenopus laevis	ASPIRE|splicing_index|MiDAS
 Xt	Xenopus tropicalis	ASPIRE|splicing_index|MiDAS
 Zm	Zea mays	ASPIRE|splicing_index|MiDAS
+Pn	Papio anubis	ASPIRE|splicing_index|MiDAS

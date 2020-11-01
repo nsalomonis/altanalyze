@@ -19,6 +19,7 @@ new_run	Additional Options	button	AdditionalOptions				Perform GO/Pathway Analys
 dataset_name	Give a name to this dataset	enter	InputCELFiles				---	---	---	---	---	---	---
 input_cel_dir	Select the CEL file containing folder	folder	InputCELFiles				---	---	---	---	---	---	---
 input_fastq_dir	(optional) Select fastq files to run in Kallisto	folder	InputCELFiles				NA	NA	NA	NA	NA	---	NA
+input_matrix_dir	"OR select a directory of .mtx, .h5 or .txt to integrate"	folder	InputCELFiles				NA	NA	NA	NA	NA	NA	---
 output_CEL_dir	Select an AltAnalyze result output directory	folder	InputCELFiles				---	---	---	---	---	---	---
 multithreading	Use multithreading for read genomic annotation	comboBox	InputCELFiles			no	NA	NA	NA	NA	NA	no|yes	NA
 build_exon_bedfile	Build exon coordinate bed file to obtain BAM file exon counts\k(see the online tutorial for additional details and information)	single-checkbox	InputCELFiles				NA	NA	NA	NA	NA	NA	NA
@@ -119,9 +120,10 @@ zscore	Z-score normalize	comboBox	PCA			no	yes|no	yes|no	yes|no	yes|no	yes|no	ye
 reimportModelScores	Re-import prior t-SNE plot coordinates	comboBox	PCA			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 pca_algorithm	Algorithm to use	comboBox	PCA			UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP
 dimensions	Dimensions to display	comboBox	PCA			3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D
-colorByGene	(Optional) Enter a gene to color the PCA by	enter	PCA				---	---	---	---	---	---	---
+colorByGene	(Optional) Enter a gene to color the plot by	enter	PCA				---	---	---	---	---	---	---
 pcaGeneSets	(Optional) Store top 200 component genes as	enter	PCA				---	---	---	---	---	---	---
 maskGroups	(Optional) Select a groups file to produce separate plots for each group	file	PCA	"note: groups file has three columns (sample ID, group #, group name)"			---	---	---	---	---	---	---
+coordinateFile	(Optional) Select a cell/samples 2D coordinate file	file	PCA	"note: this is the ""coordinate"" or ""scores"" file produced by AltAnalyze"			---	---	---	---	---	---	---
 classificationAnalysis	Analysis to perform	comboBox	LineageProfiler			cellHarmony	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler	cellHarmony|LineageProfiler
 markerFinder_file	Select Reference File	file	LineageProfiler	ICGS or MarkerFinder formatted clustered expression txt file			---	---	---	---	---	---	---
 referenceFull	(optional) Full Reference Expression File	file	LineageProfiler	"Un-filtered expression file (txt, mtx or h5)"			---	---	---	---	---	---	---

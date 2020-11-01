@@ -443,7 +443,7 @@ def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499,b
     if len(samples_to_retain)<4: ### Don't remove any if too few samples
         samples_to_retain+=samples_to_exclude
     else:
-        print len(samples_to_exclude), 'samples removed (< %d genes expressed)' % minGeneCutoff
+        print len(samples_to_exclude), 'columns removed (< %d genes expressed)' % minGeneCutoff
     eo.close()
     print 'Exporting the filtered expression file to:'
     print output_file

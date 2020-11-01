@@ -430,9 +430,14 @@ class StatusWindow:
             try: sys.stdout = status; root.after(100,createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose, contrast, self._parent))
             except Exception,e: createHeatMap(filename, row_method, row_metric, column_method, column_metric, color_gradient, transpose,contrast,None)
         if analysis_type == 'performPCA':
-            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores, maskGroups = info_list
-            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm, transpose, self._parent, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, maskGroups=maskGroups))
-            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName, species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores, maskGroups=maskGroups)
+            filename, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores, maskGroups,coordinateFile = info_list
+            try: sys.stdout = status; root.after(100,performPCA(filename, pca_labels, pca_algorithm,
+                                transpose, self._parent, plotType = dimensions, geneSetName=geneSetName,
+                                species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores,
+                                maskGroups=maskGroups,coordinateFile=coordinateFile))
+            except Exception,e: performPCA(filename, pca_labels, pca_algorithm, transpose, None, plotType = dimensions, geneSetName=geneSetName,
+                                species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores,
+                                maskGroups=maskGroups,coordinateFile=coordinateFile)
         if analysis_type == 'runLineageProfiler':
             fl, filename, vendor, custom_markerFinder, geneModel_file, modelDiscovery = info_list
             try: sys.stdout = status; root.after(100,runLineageProfiler(fl, filename, vendor, custom_markerFinder, geneModel_file, self._parent, modelSize=modelDiscovery))
@@ -502,7 +507,26 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
         except Exception: customFASTA = None
         try: matrix_file = flx.ChromiumSparseMatrix()
         except Exception: matrix_file = []
-        if len(matrix_file)>0:
+        try: integrateChromiumFiles = flx.IntegrateChromiumFiles()
+        except: integrateChromiumFiles = False
+        processing10xData = False
+        if integrateChromiumFiles:
+            processing10xData = True
+            from import_scripts import mergeFiles
+            from import_scripts import ChromiumProcessing
+            files_to_merge = ChromiumProcessing.getMatrices(matrix_file)
+            if len(files_to_merge)==0:
+                files_to_merge = ChromiumProcessing.getTextMatrices(matrix_file)
+            if len(files_to_merge)>1:
+                combined_flat_file = mergeFiles.joinFiles(files_to_merge, 'Intersection', False, matrix_file)
+                shutil.move(combined_flat_file, expFile)
+                try: root.destroy()
+                except Exception: pass
+                return None
+            else:
+                matrix_file = files_to_merge[0]
+                integrateChromiumFiles = False ### Trigger below import10XSparseMatrix
+        if len(matrix_file)>0 and integrateChromiumFiles == False:
             print 'Exporting Chromium sparse matrix file to tab-delimited-text'
             try:
                 #print expFile, 'expFile'
@@ -535,7 +559,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             try: root.destroy()
             except Exception: pass
             return None ### Already run
-        elif count<2:
+        elif count<2 and processing10xData == False:
             print 'Pre-processing input BED/BAM files\n'
             analyzeBAMs=False
             bedFilesPresent=False
@@ -560,7 +584,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             except Exception:
                 print traceback.format_exc()
             biotypes = getBiotypes(expFile)
-        else:
+        elif processing10xData == False:
             biotypes = getBiotypes(expFile)
         
         array_linker_db,array_names = ExonArray.remoteExonProbesetData(expFile,{},'arraynames',flx.ArrayType())
@@ -1116,7 +1140,8 @@ def runLineageProfiler(fl, expr_input_dir, vendor, custom_markerFinder, geneMode
     
 def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3D',display=True,
             geneSetName=None, species=None, zscore=True, colorByGene=None, reimportModelScores=True,
-            separateGenePlots=False, returnImageLoc=False, forceClusters=False, maskGroups=None):
+            separateGenePlots=False, returnImageLoc=False, forceClusters=False, maskGroups=None,
+            coordinateFile=None):
     from visualization_scripts import clustering; reload(clustering)
     graphics = []
     if pca_labels=='yes' or pca_labels=='true'or pca_labels=='TRUE': pca_labels=True
@@ -1128,7 +1153,8 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
         pca_graphical_links = clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels,
                     plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName,
                     species=species, zscore=zscore, colorByGene=colorByGene, reimportModelScores=reimportModelScores,
-                    separateGenePlots=separateGenePlots, forceClusters=forceClusters, maskGroups=maskGroups)
+                    separateGenePlots=separateGenePlots, forceClusters=forceClusters, maskGroups=maskGroups,
+                    coordinateFile=coordinateFile)
         try: print'Finished building exporting plot.'
         except Exception: None ### Windows issue with the Tk status window stalling after pylab.show is called
     except Exception:
@@ -4430,6 +4456,8 @@ class ExpressionFileLocationData:
     def UseExonReads(self):
         try: return self.useExonReads
         except: return False
+    def setIntegrateChromiumFiles(self, integrateChromiumFiles): self.integrateChromiumFiles = integrateChromiumFiles
+    def IntegrateChromiumFiles(self): return self.integrateChromiumFiles
     def setPredictGroups(self, predictGroups): self.predictGroups = predictGroups
     def setPredictGroupsParams(self, predictGroupsObjects): self.predictGroupsObjects = predictGroupsObjects
     def setGraphicLinks(self,graphic_links): self.graphic_links = graphic_links ### file location of image files
@@ -5013,7 +5041,7 @@ def getUserParameters(run_parameter,Multi=None):
     change_threshold=2;pathway_permutations=na;mod=na; analyze_all_conditions=no; resources_to_analyze=na
     additional_algorithms = na; rpkm_threshold = na; exon_exp_threshold = na; run_lineage_profiler = no
     gene_exp_threshold = na; exon_rpkm_threshold = na; visualize_results = no; returnPathways = 'no'
-    batch_effects = na; marker_finder = na
+    batch_effects = na; marker_finder = na; force_ICGS_menu = False; integrateChromiumFiles = False
                 
     try: option_list,option_db = importUserOptions('exon')  ##Initially used to just get the info for species and array_type
     except IOError:
@@ -5722,6 +5750,12 @@ def getUserParameters(run_parameter,Multi=None):
                             maskGroups=None
                     except:
                         maskGroups = None
+                    try:
+                        coordinateFile = gu.Results()['coordinateFile']
+                        if len(coordinateFile)<1:
+                            coordinateFile = None
+                    except:
+                        coordinateFile = None
                     reimportModelScores = gu.Results()['reimportModelScores']
                     if reimportModelScores == 'yes':
                         reimportModelScores = True
@@ -5748,7 +5782,7 @@ def getUserParameters(run_parameter,Multi=None):
                         analysis = 'performPCA'
                         if transpose == 'yes': transpose = True
                         else: transpose = False
-                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores, maskGroups
+                        values = input_cluster_file, pca_labels, dimensions, pca_algorithm, transpose, geneSetName, species, zscore, colorByGene, reimportModelScores, maskGroups,coordinateFile
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()
                     else:
@@ -5904,8 +5938,8 @@ def getUserParameters(run_parameter,Multi=None):
                 if len(dataset_name)<1:
                     print_out = "Please provide a name for the dataset before proceeding."
                     IndicatorWindow(print_out,'Continue')
-                elif 'input_cel_dir' in gu.Results() or 'input_fastq_dir' in gu.Results():
-                    print input_fastq_dir
+                elif 'input_cel_dir' in gu.Results() or 'input_fastq_dir' in gu.Results() or 'input_matrix_dir' in gu.Results():
+                    #print input_fastq_dir
                     if len(input_fastq_dir)>0:
                         import RNASeq
                         cel_files = RNASeq.runKallisto(species,'',input_fastq_dir,input_fastq_dir,mlp,returnSampleNames=True)
@@ -5923,34 +5957,42 @@ def getUserParameters(run_parameter,Multi=None):
                     else:
                         cel_file_dir = gu.Results()['input_cel_dir']
                         if '10X' in vendor:
-                            sparse_matrix_file = gu.Results()['input_cel_dir'] # 'filtered_gene_bc_matrices'
-                            def import10XSparseMatrixHeaders(matrix_file):
-                                import csv
-                                import gzip
-                                barcodes_path = string.replace(matrix_file,'matrix.mtx','barcodes.tsv' )
-                                try:
-                                    barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
-                                except:
-                                    print barcodes_path
-                                    barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
-                                barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
-                                return barcodes
-                            def importH5(h5_filename):
-                                import h5py
-                                f = h5py.File(h5_filename, 'r')
-                                possible_genomes = f.keys()
-                                if len(possible_genomes) != 1:
-                                    raise Exception("{} contains multiple genomes ({}).  Explicitly select one".format(h5_filename, ", ".join(possible_genomes)))
-                                genome = possible_genomes[0]
-                                barcodes = f[genome]['barcodes']
-                                #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
-                                return barcodes
-                            
-                            if '.mtx' in sparse_matrix_file:
-                                barcodes = import10XSparseMatrixHeaders(sparse_matrix_file)
+                            sparse_matrix_dir = gu.Results()['input_matrix_dir'] ### folder of files
+                            if len(sparse_matrix_dir)>0:
+                                cel_files = os.listdir(sparse_matrix_dir)
+                                force_ICGS_menu = True
+                                predictGroups = True
+                                integrateChromiumFiles = True
+                                sparse_matrix_file = sparse_matrix_dir
                             else:
-                                barcodes = importH5(sparse_matrix_file)
-                            cel_files = barcodes
+                                sparse_matrix_file = gu.Results()['input_cel_dir'] # 'filtered_gene_bc_matrices'
+                                def import10XSparseMatrixHeaders(matrix_file):
+                                    import csv
+                                    import gzip
+                                    barcodes_path = string.replace(matrix_file,'matrix.mtx','barcodes.tsv' )
+                                    try:
+                                        barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
+                                    except:
+                                        print barcodes_path
+                                        barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
+                                    barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
+                                    return barcodes
+                                def importH5(h5_filename):
+                                    import h5py
+                                    f = h5py.File(h5_filename, 'r')
+                                    possible_genomes = f.keys()
+                                    if len(possible_genomes) != 1:
+                                        raise Exception("{} contains multiple genomes ({}).  Explicitly select one".format(h5_filename, ", ".join(possible_genomes)))
+                                    genome = possible_genomes[0]
+                                    barcodes = f[genome]['barcodes']
+                                    #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes)
+                                    return barcodes
+                                
+                                if '.mtx' in sparse_matrix_file:
+                                    barcodes = import10XSparseMatrixHeaders(sparse_matrix_file)
+                                else:
+                                    barcodes = importH5(sparse_matrix_file)
+                                cel_files = barcodes
                         else:
                             cel_files,cel_files_fn=identifyCELfiles(cel_file_dir,array_type,vendor)
                         try: output_dir = gu.Results()['output_CEL_dir']
@@ -6683,7 +6725,7 @@ def getUserParameters(run_parameter,Multi=None):
                 group = ''; group_name = ''    
                 agd = ArrayGroupData(cel_file,group,group_name); array_group_list.append(agd)
         
-        if len(array_group_list)>0: ### Thus we are not analyzing the default (ExpressionInput) directory of expression, group and comp data.
+        if len(array_group_list)>0 and force_ICGS_menu == False: ### Thus we are not analyzing the default (ExpressionInput) directory of expression, group and comp data.
             original_option_db,original_option_list = option_db,option_list
             if len(array_group_list)>200:
                 ### Only display the top 200 and don't record edits
@@ -6952,6 +6994,7 @@ def getUserParameters(run_parameter,Multi=None):
         except Exception: fl.setExcludeLowExpressionExons(True)
         try: fl.setPredictGroups(predictGroups)
         except Exception: fl.setPredictGroups(False)
+        fl.setIntegrateChromiumFiles(integrateChromiumFiles)
         try: fl.setPredictGroupsParams(gsp)
         except Exception: pass
         fl.setMultiThreading(multiThreading)
@@ -7012,6 +7055,7 @@ def getUserParameters(run_parameter,Multi=None):
             ### Indicates that the steady-state file doesn't exist. The exp. may exist, be could be junction only so need to re-build from bed files here
             values = species,exp_file_location_db,dataset,mlp_instance
             StatusWindow(values,'preProcessRNASeq') ### proceed to run the full discovery analysis here!!!
+            #preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,None)
             if array_type=='RNASeq':
                 expFile = expFile[:-4]+'-steady-state.txt'
         """
