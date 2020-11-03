@@ -1,4 +1,4 @@
-###MetabolomicsParser
+###GeneSetDownloader
 #Copyright 2005-2008 J. David Gladstone Institutes, San Francisco California
 #Author Nathan Salomonis - nsalomonis@gmail.com
 
@@ -1307,7 +1307,7 @@ if __name__ == '__main__':
     selected_species = ['Hs']
     force = 'yes'
     download_species = 'Hs'
-    species = 'Mm'
+    species = 'Hs'
     #species = 'Mm'
     mod = 'Ensembl'
     #"""
@@ -1320,6 +1320,6 @@ if __name__ == '__main__':
     #translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species);sys.exit()
     additional_resources=['Latest WikiPathways','PathwayCommons','Transcription Factor Targets','Domains','BioMarkers']
     additional_resources+=['miRNA Targets','GOSlim','Disease Ontology','Phenotype Ontology','KEGG','RVista Transcription Factor Sites']
-    additional_resources=['Phenotype Ontology']
+    additional_resources=['Phenotype Ontology','Disease Ontology']
     buildAccessoryPathwayDatabases(selected_species,additional_resources,force)
     
