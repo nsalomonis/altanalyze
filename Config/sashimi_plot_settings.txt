@@ -1,6 +1,6 @@
 [data]
-bam_prefix = /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/
-bam_files =["TripNeg-SRR791053.bam","TripNeg-SRR791060.bam","TripNeg-SRR791051.bam","TripNeg-SRR791055.bam","ERpos-SRR791046.bam","ERpos-SRR791044.bam","ERpos-SRR791047.bam","ERpos-SRR791045.bam"]
+bam_prefix = /Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/BAMs//
+bam_files =["ERpos-SRR791045.bam","ERpos-SRR791044.bam","ERpos-SRR791047.bam","TripNeg-SRR791055.bam","TripNeg-SRR791060.bam","TripNeg-SRR791053.bam","TripNeg-SRR791051.bam"]
 
 [plotting]
 fig_width = 7 
@@ -19,7 +19,7 @@ number_junctions = True
 resolution = .5 
 posterior_bins = 40 
 gene_posterior_ratio = 5 
-colors =["red","red","red","red","blue","blue","blue","blue"]
-coverages =[179157,145989,166820,167005,264837,366206,425825,349878]
+colors =["red","red","red","blue","blue","blue","blue"]
+coverages =[698207,664006,877201,290394,312321,360381,318686]
 bar_color = "b" 
 bf_thresholds = [0, 1, 2, 5, 10, 20]

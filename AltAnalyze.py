@@ -6358,7 +6358,7 @@ def commandLineRun():
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
                                                          'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses=',
-                                                         'useExonReads=','ChromiumSparseMatrixDir='])
+                                                         'useExonReads=','ChromiumSparseMatrixDir=','coordinateFile='])
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6712,7 +6712,7 @@ def commandLineRun():
                 exp_name = string.replace(exp_name,'.txt','')
                 exp_name = string.replace(exp_name,'exp.','')
             
-            if '.' not in  export.findFilename(ChromiumSparseMatrix)[-4:]:
+            if '.' not in  export.findFilename(ChromiumSparseMatrix)[-4:] and len(ChromiumSparseMatrix)>0:
                 ChromiumSparseMatrixDir = ChromiumSparseMatrix
                 ChromiumSparseMatrix = ''
                 print 'Looking for sparse matrix files in the supplied directory'

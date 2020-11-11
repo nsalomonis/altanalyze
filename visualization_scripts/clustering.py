@@ -3044,8 +3044,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         
         """ Plot the legend to the right of the plot """
-        ax.legend(ncol=ncol,loc='center left', bbox_to_anchor=(1, 0.5),fontsize = Lfontsize, markerscale = markerscale) ### move the legend over to the right of the plot
-        #except Exception: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        try: ax.legend(ncol=ncol,loc='center left', bbox_to_anchor=(1, 0.5),fontsize = Lfontsize, markerscale = markerscale) ### move the legend over to the right of the plot
+        except Exception: ax.legend(ncol=ncol,loc='center left', bbox_to_anchor=(1, 0.5),fontsize = Lfontsize) #ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     else:
         ax.set_position([box.x0, box.y0, box.width, box.height])
         pylab.legend(loc="upper left", prop={'size': 10})
@@ -9008,7 +9008,7 @@ def summarizeCovariates(fn):
         eo.write(string.join([ClusterName]+values,'\t')+'\n')
     eo.close()
      
-def computeIsoformRatio(gene_exp_file, isoform_exp_file, pairs=False):
+def computeIsoformRatio(gene_exp_file, isoform_exp_file, pairs=False, updatedFormat = True):
     path = isoform_exp_file[:-4]+'_ratios.txt'
     eo = export.ExportFile(path)
     firstRow=True
@@ -9022,8 +9022,9 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file, pairs=False):
         else:
             uid = t[0]
             values = map(float,t[1:])
-            if '.' in uid:
-                uid = string.split(uid,'.')[0]
+            if updatedFormat:
+                if '.' in uid:
+                    uid = string.split(uid,'.')[0]
             gene_exp_db[uid] = values
             
     firstRow=True
@@ -9040,61 +9041,75 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file, pairs=False):
             uid = t[0]
             genes=None
             original_uid = uid
-            uid = string.replace(uid,'GC grp: ','')
-            uids = string.split(uid,'-')
-            if len(uids)>1:
-                gene = string.join(uids[:2],'-')
-            else:
-                gene = uids[0]
             values = map(float,t[1:])
-            isoform_exp_db[original_uid]=values
-            if '.' in gene:
+            if updatedFormat:
+                gene = string.split(uid,':')[0]
+                isoform_exp_db[uid]=values
+            else:
+                uid = string.replace(uid,'GC grp: ','')
+                uids = string.split(uid,'-')
+                if len(uids)>1:
+                    gene = string.join(uids[:2],'-')
+                else:
+                    gene = uids[0]
+                isoform_exp_db[original_uid]=values
+                if '.' in gene:
+                    if '-' in gene:
+                        gene = string.split(gene,'-')[0]
+                    genes = string.split(gene,'.')
+                    #if 'AC118549' in gene:
+                        #print 'd',gene; sys.exit()
+                    if gene in gene_exp_db:
+                        pass
+                    elif len(genes)>2:
+                        gene = string.join(genes[:2],'.')
+                        #print gene;sys.exit()
+                    else:
+                        gene = genes[0]
+                if ':' in gene:
+                    gene = string.split(gene,': ')[1]
+    
+                if '|' in gene:
+                    gene = string.split(gene,'|')[0]
+    
                 if '-' in gene:
-                    gene = string.split(gene,'-')[0]
-                genes = string.split(gene,'.')
-                #if 'AC118549' in gene:
-                    #print 'd',gene; sys.exit()
-                if gene in gene_exp_db:
-                    pass
-                elif len(genes)>2:
-                    gene = string.join(genes[:2],'.')
-                    #print gene;sys.exit()
-                else:
-                    gene = genes[0]
-            if ':' in gene:
-                gene = string.split(gene,': ')[1]
-
-            if '|' in gene:
-                gene = string.split(gene,'|')[0]
-
-            if '-' in gene:
-                genes = string.split(gene,'-')
-                if 'NKX' in genes[0]:
-                    gene = string.join(genes,'-')
-                elif len(genes)>2:
-                    gene = string.join(genes[:2],'-')
-                else:
-                    gene = genes[0]
-            #gene_exp = gene_exp_db[gene]      
+                    genes = string.split(gene,'-')
+                    if 'NKX' in genes[0]:
+                        gene = string.join(genes,'-')
+                    elif len(genes)>2:
+                        gene = string.join(genes[:2],'-')
+                    else:
+                        gene = genes[0]
+                #gene_exp = gene_exp_db[gene]
+                
             try: gene_exp = gene_exp_db[gene]
             except:
-                #print genes;sys.exit()
-                try: gene = string.join(genes,'-')
-                except: print [genes];sys.exit()
-                try:
-                    gene_exp = gene_exp_db[gene]
-                except:
-                    gene = string.split(gene,'-')[0]
-                    gene_exp = gene_exp_db[gene]
+                if '.' in gene:
+                    gene_alt = string.split(gene,'.')[0]
+                    gene_exp = gene_exp_db[gene_alt]
+                else:
+                    #print genes;sys.exit()
+                    try: gene = string.join(genes,'-')
+                    except: print [genes];sys.exit()
+                    try:
+                        gene_exp = gene_exp_db[gene]
+                    except:
+                        gene = string.split(gene,'-')[0]
+                        gene_exp = gene_exp_db[gene]
             try: gene_to_isoform[gene].append(original_uid)
             except: gene_to_isoform[gene] = [original_uid]
-            
+
     if pairs == False: ### Export isoform to gene ratios
         for gene in gene_to_isoform:
             if len(gene_to_isoform[gene])>1:
                 for isoform in gene_to_isoform[gene]:
                     values = isoform_exp_db[isoform]
-                    gene_exp = gene_exp_db[gene]
+                    if isoform == 'HIF3A:::GENCPID8926__NA__NA':
+                        print values[:10]
+                    try: gene_exp = gene_exp_db[gene]
+                    except:
+                        gene_alt = string.split(gene,'.')[0]
+                        gene_exp = gene_exp_db[gene_alt]
                     index=0
                     ratios=[]
                     for i in values:
@@ -9117,6 +9132,8 @@ def computeIsoformRatio(gene_exp_file, isoform_exp_file, pairs=False):
                     eo.write(string.join([isoform]+ratios,'\t')+'\n')
                     #max_ratios = max(map(float,ratios))
     else:
+        print len(gene_to_isoform)
+        print len(isoform_exp_db);sys.exit()
         for gene in gene_to_isoform:
             if len(gene_to_isoform[gene])>1:
                 for isoform1 in gene_to_isoform[gene]:
@@ -9214,13 +9231,13 @@ if __name__ == '__main__':
     psi_annotations = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/GTEx/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     #correlateIsoformPSIvalues(isoform_data,psi_data,psi_annotations);sys.exit()
 
-    isoform_exp = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/protein.BRC-GC30-6k.txt'
-    gene_exp = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/gene.BRC-GC30-6k.txt'
-    
     isoform_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx-revised/protein.GC30-6k-GTEx-filtered.txt'
     gene_exp = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx-revised/gene.GC30-6k-GTEx-filtered.txt'
+
+    isoform_exp = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GC-33-Iso1-PacBio/Cell-Lines/protein.BreastCancer-Lines.txt'
+    gene_exp = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GC-33-Iso1-PacBio/Cell-Lines/gene.BreastCancer-Lines.txt'
     
-    #computeIsoformRatio(gene_exp,isoform_exp,pairs=True);sys.exit()
+    #computeIsoformRatio(gene_exp,isoform_exp,pairs=False);sys.exit()
     #aggregateMarkerFinderResults('/Volumes/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/');sys.exit()
     groups_file = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/FACS_annotation-edit.txt'
     exp_dir = '/data/salomonis2/LabFiles/TabulaMuris/Smart-Seq2_Nextera/CPTT-Files/all-comprehensive/MergedFiles.txt'
@@ -9322,7 +9339,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Volumes/salomonis2/LabFiles/Kairavee/PseudoBulk_SJIA_ICGS_0.2_Pearson_final/ICGS-NMF/FinalGroups-1-celltypes.txt'
+    b = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GC-33-Iso1-PacBio/TCGA-BRCA/analysis/Gene-ICGS/ICGS-NMF/matrix.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'

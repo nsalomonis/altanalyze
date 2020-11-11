@@ -5688,7 +5688,7 @@ if __name__ == '__main__':
     excludeCellCycle = False
     icgs_groups_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/FinalGroups.txt'
     goelite_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/GO-Elite/clustering/exp.FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
-    predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
+    #predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
     platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
     """
     graphic_links,new_results_file = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',
@@ -5697,8 +5697,8 @@ if __name__ == '__main__':
     """
     import UI; import multiprocessing as mlp
 
-    runKallisto('Mm','ALP-ILC','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/',mlp);sys.exit()
-    runKallisto('Hs','BreastCancer','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input',mlp);sys.exit()
+    #runKallisto('Mm','ALP-ILC','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/',mlp);sys.exit()
+    runKallisto('Hs','BreastCancer-Lines','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio',mlp);sys.exit()
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
     #correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
