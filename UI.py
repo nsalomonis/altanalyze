@@ -7423,7 +7423,7 @@ if __name__ == '__main__':
     sys.exit()"""
     #a = exportJunctionList(dir,limit=50)
     #print a;sys.exit()
-    print 'Starting AltAnalyze version 2.1.4.4'
+    
     try:
         import multiprocessing as mlp
         mlp.freeze_support()

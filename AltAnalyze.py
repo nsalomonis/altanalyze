@@ -8719,6 +8719,7 @@ def versionCheck():
             sys.exit()
             
 if __name__ == '__main__':
+    print 'Starting AltAnalyze version 2.1.4.4'
     try: mlp.freeze_support()
     except Exception: pass
     
