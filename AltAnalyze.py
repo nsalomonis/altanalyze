@@ -4512,7 +4512,7 @@ def universalPrintFunction(print_items):
     
 class StatusWindow:
     def __init__(self,root,expr_var,alt_var,goelite_var,additional_var,exp_file_location_db):
-            root.title('AltAnalyze version 2.1.4')
+            root.title('AltAnalyze version 2.1.4.4')
             statusVar = StringVar() ### Class method for Tkinter. Description: "Value holder for strings variables."
             self.root = root
             height = 450; width = 500
@@ -4610,7 +4610,7 @@ class SummaryResultsWindow:
         self.emergency_exit = False            
         self.LINKS = []
         self.tl = tl
-        self.tl.title('AltAnalyze version 2.1.4')
+        self.tl.title('AltAnalyze version 2.1.4.4')
         self.analysis_type = analysis_type
 
         filename = 'Config/icon.gif'
@@ -5275,7 +5275,7 @@ def AltAnalyzeMain(expr_var,alt_var,goelite_var,additional_var,exp_file_location
     dataType='Gene Expression'
   else:
     dataType=array_type
-  print_items.append("AltAnalyze version 2.1.4 - Expression Analysis Parameters Being Used...")
+  print_items.append("AltAnalyze version 2.1.4.4 - Expression Analysis Parameters Being Used...")
   print_items.append('\t'+'database'+': '+unique.getCurrentGeneDatabaseVersion())
   print_items.append('\t'+'species'+': '+species)
   print_items.append('\t'+'method'+': '+dataType)
