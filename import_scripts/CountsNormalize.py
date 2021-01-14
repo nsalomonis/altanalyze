@@ -88,7 +88,17 @@ def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
             count_sum_array=[0]*len(barcodes)
         else:
             gene_names.append(t[0])
-            values = map(float,t[1:])
+            try: values = map(float,t[1:])
+            except:
+                values=[]
+                for val in t[1:]:
+                    try: values.append(float(val))
+                    except:
+                        values.append(0)
+            if len(values)!= len(barcodes):
+                print 'WARNING!!!!', t[0], 'has a different length than the header'
+                print len(barcodes), len(values), len(count_sum_array)
+                continue
             count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
 
     ### Import the expression dataset again and now scale
@@ -109,11 +119,21 @@ def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
             gene = t[0]
             if 'ENS' in gene and '.' in gene:
                 gene = string.split(gene,'.')[0]
-            values = map(float,t[1:])
+            try: values = map(float,t[1:])
+            except:
+                values=[]
+                for val in t[1:]:
+                    try: values.append(float(val))
+                    except:
+                        values.append(0)
+            if len(values)!= len(barcodes):
+                continue
             index=0
             cptt_values = []
             for barcode in barcodes:
-                barcode_sum = count_sum_array[index]
+                try: barcode_sum = count_sum_array[index]
+                except:
+                    print [gene], len(count_sum_array), len(values),len(barcodes);sys.exit()
                 val = values[index]
                 cptt_val = calculateCPTT(val,barcode_sum)
                 cptt_values.append(cptt_val)

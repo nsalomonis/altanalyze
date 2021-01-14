@@ -124,7 +124,7 @@ def latteralMerge(files_to_merge,original_filename,outputPath = None):
         for file2 in file_uids:
             uids2 = file_uids[file2]
             if uids1 != uids2:
-                print file1,file2
+                print 'WARNING!!! Imperfect match in:',len(uids1),file1,len(uids2), file2
                 perfectMatch = False
 
     if perfectMatch:
@@ -448,44 +448,62 @@ def joinFiles(files_to_merge,CombineType,unique_join,outputDir):
     return output_dir+'/MergedFiles.txt'
 
 if __name__ == '__main__':
-    matrix_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test'
-    files_to_merge = ['/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test/GSM4848443_cv73_matrix.mtx.gz',  '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test/GSM4848452_c73_matrix.mtx.gz']
-    expFile = joinFiles(files_to_merge, 'Intersection', False, matrix_file)
+    #matrix_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test'
+    #files_to_merge = ['/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test/GSM4848443_cv73_matrix.mtx.gz',  '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/test/GSM4848452_c73_matrix.mtx.gz']
+    #expFile = joinFiles(files_to_merge, 'Intersection', False, matrix_file)
     dirfile = unique
     includeColumns=-2
     includeColumns = False
     output_dir = filepath('output')
     combine_type = 'union'
     permform_all_pairwise = 'yes'
-    print "Analysis Mode:"
-    print "1) Batch Analysis"
-    print "2) Single Output"
-    inp = sys.stdin.readline(); inp = inp.strip()
-    if inp == "1": batch_mode = 'yes'
-    elif inp == "2": batch_mode = 'no'
+    import getopt
     
-    print "Combine Lists Using:"
-    print "1) Grab Union"
-    print "2) Grab Intersection"
-    inp = sys.stdin.readline(); inp = inp.strip()
-    if inp == "1": combine_type = 'union'
-    elif inp == "2": combine_type = 'intersection'
+    if len(sys.argv[1:])>1:  ### Indicates that there are insufficient number of command-line arguments
 
-    if batch_mode == 'yes': import_dir = '/batch/general_input'
-    else: import_dir = '/input'
-    g = GrabFiles(); g.setdirectory(import_dir)
-    files_to_merge = g.searchdirectory('xyz') ###made this a term to excluded
-
-    if batch_mode == 'yes':
-        second_import_dir = '/batch/primary_input'
-        g = GrabFiles(); g.setdirectory(second_import_dir)
-        files_to_merge2 = g.searchdirectory('xyz') ###made this a term to excluded
-        for file in files_to_merge2:
-            temp_files_to_merge = customLSDeepCopy(files_to_merge)
-            original_filename = string.split(file,'/'); original_filename = original_filename[-1]
-            temp_files_to_merge.append(file)
-            if '.' in file:
-                combineAllLists(temp_files_to_merge,original_filename)
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','join='])
+        #print sys.argv[1:]
+        for opt, arg in options:
+            if opt == '--i': matrices_dir=arg
+            if opt == '--join': combine_type=arg
+        files_to_merge=[]
+        if '.' not in matrices_dir[:-4]:
+            for file in os.listdir(matrices_dir):
+                if '.txt' in file or '.csv' in file:
+                    files_to_merge.append(os.path.join(matrices_dir, file))
+            expFile = joinFiles(files_to_merge, combine_type, False, matrices_dir)
+        else:
+            print 'Directory path not provided... exiting.';sys.exit()
     else:
-        combineAllLists(files_to_merge,'',includeColumns=includeColumns)
-    print "Finished combining lists. Select return/enter to exit"; inp = sys.stdin.readline()
+        print "Analysis Mode:"
+        print "1) Batch Analysis"
+        print "2) Single Output"
+        inp = sys.stdin.readline(); inp = inp.strip()
+        if inp == "1": batch_mode = 'yes'
+        elif inp == "2": batch_mode = 'no'
+        
+        print "Combine Lists Using:"
+        print "1) Grab Union"
+        print "2) Grab Intersection"
+        inp = sys.stdin.readline(); inp = inp.strip()
+        if inp == "1": combine_type = 'union'
+        elif inp == "2": combine_type = 'intersection'
+    
+        if batch_mode == 'yes': import_dir = '/batch/general_input'
+        else: import_dir = '/input'
+        g = GrabFiles(); g.setdirectory(import_dir)
+        files_to_merge = g.searchdirectory('xyz') ###made this a term to excluded
+    
+        if batch_mode == 'yes':
+            second_import_dir = '/batch/primary_input'
+            g = GrabFiles(); g.setdirectory(second_import_dir)
+            files_to_merge2 = g.searchdirectory('xyz') ###made this a term to excluded
+            for file in files_to_merge2:
+                temp_files_to_merge = customLSDeepCopy(files_to_merge)
+                original_filename = string.split(file,'/'); original_filename = original_filename[-1]
+                temp_files_to_merge.append(file)
+                if '.' in file:
+                    combineAllLists(temp_files_to_merge,original_filename)
+        else:
+            combineAllLists(files_to_merge,'',includeColumns=includeColumns)
+        print "Finished combining lists. Select return/enter to exit"; inp = sys.stdin.readline()

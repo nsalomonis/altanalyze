@@ -541,6 +541,7 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
                 ChromiumProcessing.import10XSparseMatrix(matrix_file,genome,dataset,expFile=expFile)
             except Exception:
                 print 'Chromium export failed due to:',traceback.format_exc()
+                ChromiumProcessingError
             try: root.destroy()
             except Exception: pass
             return None
@@ -630,6 +631,8 @@ def preProcessRNASeq(species,exp_file_location_db,dataset,mlp_instance,root):
             except Exception: pass
         try: root.destroy()
         except Exception: pass
+        if 'ChromiumProcessingError' in error:
+            ChromiumProcessingError
 
 def getBiotypes(filename):
     biotypes={}

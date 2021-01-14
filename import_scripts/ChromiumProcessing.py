@@ -16,6 +16,7 @@ except:
 
 def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True, geneIDs=False, minReads=1000, maxCells=15000):
     """ Process a filtered or full sparse matrix expression dataset in mtx, mtx.gz or .h5 format """
+    print 'Processing:',matrices_dir
     
     start_time = time.time()
     
@@ -52,9 +53,24 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
         matrix_dir = matrices_dir
         mat = scipy.io.mmread(matrix_dir)
         genes_path = string.replace(matrix_dir,'matrix.mtx','genes.tsv')
+        genes_path = string.replace(matrix_dir,'counts.mtx','genes.tsv')
         barcodes_path = string.replace(matrix_dir,'matrix.mtx','barcodes.tsv')
+        barcodes_path = string.replace(matrix_dir,'counts.mtx','barcodes.tsv')
         if os.path.isfile(genes_path)==False:
             genes_path = string.replace(matrix_dir,'matrix.mtx','features.tsv')
+            genes_path = string.replace(matrix_dir,'counts.mtx','features.tsv')
+        if 'matrix' in genes_path:
+            genes_path = string.replace(genes_path,'matrix','features')
+            genes_path = string.replace(genes_path,'.mtx','.tsv')
+            if os.path.isfile(genes_path)==False:
+                genes_path = string.replace(genes_path,'features','genes')
+                if os.path.isfile(genes_path)==False:
+                    incorrectGenePathError
+        if 'matrix' in barcodes_path:
+            barcodes_path = string.replace(barcodes_path,'matrix','barcodes')
+            barcodes_path = string.replace(barcodes_path,'.mtx','.tsv')
+            if os.path.isfile(barcodes_path)==False:
+                incorrectBarcodePathError
         if '.gz' in genes_path:
             gene_ids = [row[0] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
             try: gene_names = [row[1] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
@@ -199,7 +215,6 @@ if __name__ == '__main__':
     completed = False
     minReads = 1000
     maxCells = 15000
-    
     
     if matrices_folder == None:
         matrices = [matrices_dir]

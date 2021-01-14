@@ -6873,7 +6873,7 @@ def commandLineRun():
                 except Exception:
                     ### RNASeq is an official datatype that requires a steady-state file. However, for scRNA-Seq, usually the input is a text file or FASTQ which gets
                     ### changed to "3'array". We correct for this by excepting this error without doing anything else
-                    #print traceback.format_exc();sys.exit()
+                    print traceback.format_exc();sys.exit()
                     pass
 
             if excludeCellCycle != False:

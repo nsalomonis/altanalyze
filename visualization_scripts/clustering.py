@@ -1272,10 +1272,14 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
     fig.text(0.015, 0.970, dataset_name, fontsize = fontsize)
     
     ### Render and save the graphic
-    pylab.savefig(root_dir + filename,dpi=1000)
+    try: pylab.savefig(root_dir + filename,dpi=1000)
+    except:
+        print 'Warning... pdf image export error. '
     #print 'Exporting:',filename
     filename = filename[:-3]+'png'
-    pylab.savefig(root_dir + filename, dpi=150) #,dpi=200
+    try: pylab.savefig(root_dir + filename, dpi=150) #,dpi=200
+    except:
+        print 'Warning... png image export error. '
     
     includeBackground=False
     try:
@@ -2247,11 +2251,25 @@ def importData(filename,Normalize=False,reverseOrder=True,geneFilter=None,
             if 'counts.' in filename:
                 s = map(lambda x: math.log(x+1,2),s)
             else:
-                try: s = map(lambda x: math.log(x+increment,2),s)
-                except Exception:
-                    print filename
-                    print Normalize
-                    print row_header[k], min(s),max(s); kill
+                ### When dealing with large negative z-scores in GO-Elite or elsewhere
+                if min(s)<0:
+                    s2=[]
+                    for val in s:
+                        if val<0:
+                            s2.append(-1* math.log(abs(val)+increment,2))
+                        else:
+                            s2.append(math.log(val+increment,2))
+                    s = s2
+                else:
+                    try: s = map(lambda x: math.log(x+increment,2),s)
+                    except Exception:
+                        for val in s:
+                            try: math.log(val+increment,2)
+                            except: print val
+                        """  
+                        print filename
+                        print Normalize"""
+                        print row_header[k], min(s),max(s); kill
             if Normalize!=False:
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
@@ -2743,10 +2761,17 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     if len(column_header)>2000:
         marker_size = 4
     if len(column_header)>4000:
-        marker_size = 2
+        marker_size = 3
     if len(column_header)>6000:
+        marker_size = 2
+    if len(column_header)>15000:
         marker_size = 1
-        
+    if len(column_header)>30000:
+        marker_size = 0.5
+    if len(column_header)>60000:
+        marker_size = 0.2
+    print 'Marker size =',marker_size
+    
     ### Color By Gene
     if colorByGene != None and len(matrix)==0:
         print 'Gene %s not found in the imported dataset... Coloring by groups.' % colorByGene
@@ -5066,9 +5091,17 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         try:
             ### if the scores are present, we only need to import the genes of interest (save time importing large matrices)
             if algorithm == 't-SNE':
-                importtSNEScores(root_dir+dataset_name+'-t-SNE_scores.txt')
+                if coordinateFile != None:
+                    coord_path = coordinateFile
+                else:
+                    coord_path = root_dir+dataset_name+'-t-SNE_scores.txt'
+                importtSNEScores(coord_path)
             if algorithm == 'UMAP':
-                importtSNEScores(root_dir+dataset_name+'-UMAP_scores.txt')
+                if coordinateFile != None:
+                    coord_path = coordinateFile
+                else:
+                    coord_path = root_dir+dataset_name+'-UMAP_scores.txt'
+                importtSNEScores(coord_path)
             if len(colorByGene)==None:
                 geneFilter = [''] ### It won't import the matrix, basically
             elif ' ' in colorByGene or ',' in colorByGene:
@@ -5077,7 +5110,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
             else:
                 geneFilter = [colorByGene]
         except Exception:
-            #print traceback.format_exc();sys.exit()
+            #print traceback.format_exc()
             geneFilter = None ### It won't import the matrix, basically
 
     matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,geneFilter=geneFilter,forceClusters=forceClusters)
@@ -5895,7 +5928,7 @@ def multipleSubPlots(filename,uids,SubPlotType='column',n=20):
             new_row_header.append(uid)
             try: update_exp_vals = map(lambda x: ReplaceZeros(x,0.0001),matrix[ind])
             except Exception: print uid, len(matrix[ind]);sys.exit()
-            #update_exp_vals = map(lambda x: math.pow(2,x+1),update_exp_vals) #- nonlog transform
+            update_exp_vals = map(lambda x: math.pow(2,x+1),update_exp_vals) #- nonlog transform
             matrix2.append(update_exp_vals)
     matrix = numpy.array(matrix2)
     row_header = new_row_header
@@ -7233,15 +7266,15 @@ def filterPSIValues(filename):
         t = string.split(data,'\t')
         if header:
             header = False
-            t = [t[1]]+t[8:]
+            t = [t[8]]+t[11:]
             header_length = len(t)-1
             minimum_values_present = int(0.75*int(header_length))
             not_detected = header_length-minimum_values_present
             new_line = string.join(t,'\t')+'\n'
             ea.write(new_line)
         else:
-            cID = t[5]
-            t = [t[1]]+t[8:]
+            cID = t[7]
+            t = [t[8]]+t[11:]
             missing_values_at_the_end = (header_length+1)-len(t)
             missing = missing_values_at_the_end+t.count('')
             if missing<not_detected:
@@ -7508,6 +7541,93 @@ def geneExpressionSummary(folder):
                 ls.append((uid,fold_dir))
     for file in event_db:
         print file,'\t',len(event_db[file])
+                    
+def countDEGs(folder, fold=1):
+    fold = math.log(fold,2)
+    print 'fold >',fold 
+    oe = export.ExportFile(folder+'/summmary.results.txt')
+    files = UI.read_directory(folder)
+    for file in files:
+        if '.txt' in file and 'GE.' in file:
+            fn = folder+'/'+file
+            firstLine = True
+            count=0
+            for line in open(fn,'rU').xreadlines():
+                data = line.rstrip()
+                t = string.split(data,'\t')
+                try:
+                    f =  float(t[2])
+                    if abs(f)>=fold:
+                        count+=1
+                except:
+                    pass ### header row
+            oe.write(file+'\t'+str(count)+'\n')
+    oe.close()
+    
+def filterByFoldAndExpression(folder, output, fold=1.5):
+    original_fold = fold
+    fold = math.log(fold,2)
+    print 'fold >',fold 
+    files = UI.read_directory(folder)
+    genes_up={}
+    genes_down={}
+    all_genes={}
+    oe2 = export.ExportFile(output+'/DEGs')
+    for file in files:
+        if '.txt' in file:
+            new_file = string.replace(file[:-4],'cancer','TCGA')+'-FDR-'+str(original_fold)+'.txt'
+            oe = export.ExportFile(output+'/'+new_file)
+            fn = folder+'/'+file
+            firstLine = True
+            count=0
+            header = True
+            original=0
+            filtered=0
+            for line in open(fn,'rU').xreadlines():
+                data = line.rstrip()
+                if header:
+                    oe.write(line)
+                    header = False
+                else:
+                    original+=1
+                    gene,sc,RPKM1,RPKM2,pval,fdr = string.split(data,'\t')
+                    rpkms = map(float,[RPKM1,RPKM2])
+                    max_rpkm = max(rpkms)
+                    gene_fold = abs(rpkms[1]-rpkms[0])
+                    if max_rpkm>1 and gene_fold>fold:
+                        oe.write(line)
+                        filtered+=1
+                        gene_fold = rpkms[1]-rpkms[0]
+                        if gene_fold>0:
+                            try: genes_up[gene].append(file)
+                            except: genes_up[gene]=[file]
+                        else:
+                            try: genes_down[gene].append(file)
+                            except: genes_down[gene]=[file]
+                        all_genes[gene]=[]
+            print original, filtered
+            oe.close()
+    
+    for gene in all_genes:
+        try: up_tissues = string.join(genes_up[gene],'|')
+        except: up_tissues = ''
+        try: down_tissues = string.join(genes_down[gene],'|')
+        except: down_tissues = ''
+        oe2.write(string.join([gene,up_tissues,down_tissues],'\t')+'\n')
+    oe2.close()
+
+def combineGeneExpressionResults(folder):
+    oe = export.ExportFile(folder+'/combined.results.txt')
+    files = UI.read_directory(folder)
+    for file in files:
+        if '.txt' in file and 'GE.' in file:
+            fn = folder+'/'+file
+            firstLine = True
+            for line in open(fn,'rU').xreadlines():
+                data = line.rstrip()
+                t = string.split(data,'\t')
+                oe.write(string.join([file]+t,'\t')+'\n')
+    oe.close()
                     
 def compareEventLists(folder):
     import collections
@@ -8252,22 +8372,21 @@ def convertPSICoordinatesToBED(folder):
                     try:
                         coordinates = t[7]
                     except:
-                        print t
-                        sys.exit()
-                    else:
-                        j1, j2 = string.split(coordinates, '|')
-                        c1a, c1b = map(int, string.split(j1.split(':')[1], '-'))
-                        strand = '+'
-                        if c1a > c1b:
-                            c1a, c1b = c1b, c1a
-                            strand = '-'
-                        c2a, c2b = map(int, string.split(j2.split(':')[1], '-'))
-                        if c2a > c2b:
-                            c2a, c2b = c2b, c2a
-                        chr = string.split(coordinates, ':')[0]
-                        uid = string.replace(t[0], ':', '__')
-                        eo.write(string.join([chr, str(c1a), str(c1b), uid + '--' + file, strand, str(c1a), str(c1b), '0'], '\t') + '\n')
-                        eo.write(string.join([chr, str(c2a), str(c2b), uid + '--' + file, strand, str(c2a), str(c2b), '0'], '\t') + '\n')
+                        coordinates = t[1]
+
+                    j1, j2 = string.split(coordinates, '|')
+                    c1a, c1b = map(int, string.split(j1.split(':')[1], '-'))
+                    strand = '+'
+                    if c1a > c1b:
+                        c1a, c1b = c1b, c1a
+                        strand = '-'
+                    c2a, c2b = map(int, string.split(j2.split(':')[1], '-'))
+                    if c2a > c2b:
+                        c2a, c2b = c2b, c2a
+                    chr = string.split(coordinates, ':')[0]
+                    uid = string.replace(t[0], ':', '__')
+                    eo.write(string.join([chr, str(c1a), str(c1b), uid + '--' + file, strand, str(c1a), str(c1b), '0'], '\t') + '\n')
+                    eo.write(string.join([chr, str(c2a), str(c2b), uid + '--' + file, strand, str(c2a), str(c2b), '0'], '\t') + '\n')
     eo.close()
 
 def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
@@ -8289,6 +8408,9 @@ def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
                    'Adrenal':['Adrenal-cortex','Adrenal-medulla'],
                    'SM':['Muscle-gastrocnemian','Muscle-abdominal'],
                    'Liver':['Liver'],
+                   'Aorta':['Aorta'],
+                   'Colon':['Descending-colon','Ascending-colon','Cecum','Duodenum','Ileum'],
+                   'Breast':['White-adipose-pericardial','White-adipose-mesenteric','White-adipose-subcutaneous','Omental-fat'],
                     }
     else:
             equivalencies={'Heart':['Heart'],
@@ -8359,6 +8481,7 @@ def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
             except:
                 mouse_events[alt_junction2] = [[event, tissue]]
 
+    print 'mouse_events',len(mouse_events)
     for line in open(Ba_events, 'rU').xreadlines():
         data = cleanUpLine(line)
         values = string.split(data, '\t')
@@ -8449,6 +8572,9 @@ def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
                     except:
                         ba_single_tissue_counts[bt] = 1
 
+    for i in mm_single_tissue_counts:
+        print [i]
+    sys.exit()
     print mm_single_tissue_counts['Heart']
     print tissue_matrix[('Heart', 'Heart')]
     tissue_matrix_table = []
@@ -9213,8 +9339,48 @@ def TFisoToGene(filename,marker_genes):
                 name = interaction
             eo.write(string.join([name]+values,'\t')+'\n')
         eo.close()
+        
+def pseudoBulkCellSumm(groups_file):
+    eo = export.ExportFile(groups_file[:-4]+'-summary-cell-counts.txt')
+    import collections
+    sample_cell_sum_counts=collections.OrderedDict()
+    cell_type_list=[]
+    for line in open(groups_file, 'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data, '\t')
+        cell_id=t[0];sample_id=t[1];cell_type=t[2]
+        if cell_type not in cell_type_list:
+            cell_type_list.append(cell_type)
+        if sample_id in sample_cell_sum_counts:
+            cell_type_db = sample_cell_sum_counts[sample_id]
+            try: cell_type_db[cell_type]+=1
+            except: cell_type_db[cell_type]=1
+        else:
+            cell_type_db={}
+            cell_type_db[cell_type]=1
+            sample_cell_sum_counts[sample_id]=cell_type_db
+        
+    eo.write('SampleID\t'+string.join(cell_type_list,'\t')+'\n')
+    for sample_id in sample_cell_sum_counts:
+        counts=[]
+        for cell_type in cell_type_list:
+            if cell_type in sample_cell_sum_counts[sample_id]:
+                Count = str(sample_cell_sum_counts[sample_id][cell_type])
+            else:
+                Count = '0'
+            counts.append(Count)
+        eo.write(sample_id+'\t'+string.join(counts,'\t')+'\n')
+    eo.close()
 
 if __name__ == '__main__':
+    #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-AS-correlation/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-75p.txt');sys.exit()
+    #convertPSICoordinatesToBED('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Human/temp/');sys.exit()
+    #filterByFoldAndExpression('/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/cancers', '/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/1.5-fold_and_RPKM-filtered', fold=1.5);sys.exit()
+    #countDEGs('/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/SF/MutationAll/GE/All',fold=2);sys.exit()
+    #combineGeneExpressionResults('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Naren/Combined/cellHarmony-immune-1.2-adjp/DifferentialExpression_Fold_1.2_adjp_0.05/temp');sys.exit()
+    #pseudoBulkCellSumm('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/CPTT/All-Merged/cellHarmony-all-vs-75/QueryGroups.cellHarmony-1b.txt');sys.exit()
+    #buildGraphFromSIF('Ensembl','Mm','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/Interactions-ALL.sif','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/'); sys.exit()
+    
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
     input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/LungMAP/Perl/exp.ExplantBronchiolitisObliterans.txt'
@@ -9297,14 +9463,17 @@ if __name__ == '__main__':
     Mm_Ba_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Mouse/mm10-circadian_liftOverTo_baboon.txt'
     Ba_events = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Mouse/Baboon_metacycle-significant-AS-coordinates.txt'
     Mm_Ba_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Human-Mouse/hg19-mm10-12-tissue-circadian.txt'
+    Mm_Ba_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Human/hg38-to-pnu3.0_Baboon-tissue-circadian.bed'
     Ba_events = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Human-Mouse/Human_CYCLOPS-significant-AS-coordinates.txt'
+    Ba_events = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Human/Baboon_metacycle-significant-AS-coordinates.txt'
     filename = '/Users/saljh8/Desktop/DemoData/Venetoclax/D4/cellHarmony-rawp-stringent/gene_summary.txt'
     filename = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/cellHarmony-latest/gene_summary-p27.txt'
     filename = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/cell-frequency-stats.txt'
     
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/NCI-R01/CCSB_TFIso_Clones.txt'
     PSI_dir = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/TCGA-files-Ens91/bams/AltResults/AlternativeOutput/OncoSPlice-All-Samples-filtered-names/SubtypeAnalyses-Results/round1/Events-dPSI_0.1_adjp/'
-    #convertPSICoordinatesToBED(PSI_dir);sys.exit()
+    print 'here'
+    #convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events);sys.exit()
 
     
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/TF_ratio_correlation-analysis/tcga_rsem_isopct_filtered-filtered.2-filtered.txt'
@@ -9339,9 +9508,9 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Dropbox/Collaborations/Isoform-U01/GC-33-Iso1-PacBio/TCGA-BRCA/analysis/Gene-ICGS/ICGS-NMF/matrix.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r1/ExpressionInput/groups.cellHarmony-9k-viewer-groups.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
-    convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
+    #convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')
@@ -9436,8 +9605,8 @@ if __name__ == '__main__':
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/genes.txt'
     gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/MixedLinPrimingGenes.txt'
-    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Naren/Combined/ICGS-NMF/cellHarmony-non-immune-10-cells/genes.txt'
-    genesets = importGeneList(gene_list_file,n=29)
+    gene_list_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/References/GSM3754380_Fig4-Rothenberg-Lymphoid/ExpressionInput/genes.txt'
+    genesets = importGeneList(gene_list_file,n=25)
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/exp.IG2_GG1-extended-output.txt'
     filename = '/Users/saljh8/Desktop/Grimes/KashishNormalization/3-25-2015/comb-plots/genes.tpm_tracking-ordered.txt'
     filename = '/Users/saljh8/Desktop/demo/Amit/ExpressedCells/GO-Elite_results/3k_selected_LineageGenes-CombPlotInput2.txt'
@@ -9453,7 +9622,7 @@ if __name__ == '__main__':
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/10X-DropSeq-comparison/DropSeq/MultiLinDetect/ExpressionInput/DataPlots/exp.DropSeq-2k-log2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.allcells-v2.txt'
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/HCA/BM1-8_CD34+/ExpressionInput/exp.CD34+.v5-log2.txt'
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Naren/Combined/ICGS-NMF/cellHarmony-non-immune-10-cells/exp.MET__METdF-AllCells-dF.txt'
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r1/ExpressionInput/exp.cellHarmony-9k-viewer.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq-MF-indexed/ExpressionInput/exp.cellHarmony.v3.txt'
     #filename = '/Volumes/salomonis2/Theodosia-Kalfa/Combined-10X-CPTT/ExpressionInput/exp.MergedFiles-ICGS.txt'
     #filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/R412X/exp.cellHarmony-WT-R412X-relative.txt'
@@ -9463,7 +9632,7 @@ if __name__ == '__main__':
 
     print genesets
     for gene_list in genesets:
-        multipleSubPlots(filename,gene_list,SubPlotType='column',n=29)
+        multipleSubPlots(filename,gene_list,SubPlotType='column',n=25)
     sys.exit()
 
     plotHistogram(filename);sys.exit()
@@ -9486,7 +9655,7 @@ if __name__ == '__main__':
     outputClusters(filenames,[]); sys.exit()
     #runPCAonly(filename,[],False);sys.exit()
     #VennDiagram(); sys.exit()
-    #buildGraphFromSIF('Ensembl','Mm',None,None); sys.exit()
+
     #clusterPathwayZscores(None); sys.exit()
     pruned_folder = '/Users/nsalomonis/Desktop/CBD/LogTransformed/GO-Elite/GO-Elite_results/CompleteResults/ORA_pruned/'
     input_ora_folder = '/Users/nsalomonis/Desktop/CBD/LogTransformed/GO-Elite/input/'

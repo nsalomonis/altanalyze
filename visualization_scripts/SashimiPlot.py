@@ -471,6 +471,38 @@ def Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,event
     gene_to_symbol=sashmi_plot_list(bamdir,eventsToVisualizeFilename,PSIFilename,events=events)
     return gene_to_symbol
 
+def ExportCountsSummary(countsin):
+    ### Accessory function not used in this module - just for reporting
+    header=True
+    junction_max=[]
+    countsin = unique.filepath(countsin)
+    count=0
+    for line in open(countsin,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if header:
+            samples = []
+            for s in t[1:]:
+                if '.bed' not in s: s+='.bed'
+                samples.append(s)
+            header=False
+            count_sum_array=[0]*len(samples)
+        else:
+            uid,location = string.split(t[0],'=')
+            if '-' not in uid and not '_' in uid:
+                values = map(float,t[1:])
+                count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
+                count+=1
+
+    index=0
+    
+    s = open(countsin[:-4]+'-SUMMARY.txt','w')
+    for sample in samples:
+        #count_sum_array_db[sample] = count_sum_array[index]
+        s.write(sample+'\t'+str(count_sum_array[index])+'\n')
+        index+=1
+    s.close()
+
 def remoteSashimiPlot(Species,fl,bamdir,eventsToVisualizeFilename,events=None,show=False):
     global PSIFilename
     global outputdir
@@ -508,7 +540,7 @@ def remoteSashimiPlot(Species,fl,bamdir,eventsToVisualizeFilename,events=None,sh
             steady_state_exp_file = root_dir+'/ExpressionInput/'+file
     global sample_group_db
     sample_group_db = ExpressionBuilder.simplerGroupImport(exp_file)
-    
+        
     #outputdir=findParentDir(PSIFilename)+"sashimiplots"
     outputdir = root_dir+'/ExonPlots'
     outputdir = root_dir+'/SashimiPlots'
@@ -577,6 +609,8 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
+    ExportCountsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/counts.TCGA-BRCA.txt');sys.exit()
+    Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,events=None)
     root_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/'
     events = ['Psip1:ENSMUSG00000028484:E10.2-I10.1|ENSMUSG00000028484:E10.1-E12.1']
     events = None

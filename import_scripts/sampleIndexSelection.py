@@ -19,7 +19,7 @@ def makeTestFile():
     return input_file
 
 def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[],
-               log2=False,convertPSIUID=False,partialMatch=False):
+               log2=False,convertPSIUID=False,partialMatch=False,expressionCutoff=1,count=False):
     if calculateCentroids:
         filter_names,group_index_db=filter_names
         
@@ -120,7 +120,8 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                     pass
             if calculateCentroids:
                 if len(comparisons)>0:
-                    export_object.write(string.join(['UID']+map(lambda x: x[0]+'-fold',comparisons),'\t')+'\n') ### Use the numerator group name                  
+                    exportType = '-fold'
+                    export_object.write(string.join(['UID']+map(lambda x: x[0]+exportType,comparisons),'\t')+'\n') ### Use the numerator group name                  
                 else:
                     clusters = map(str,group_index_db)
                     export_object.write(string.join([values[uid_index]]+clusters,'\t')+'\n')
@@ -160,7 +161,9 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                     if vx != '' and vx != 'NA':
                         raw_values2.append(float(vx))
 
-                if len(raw_values2)>2:
+                if count: ### count the number of instances the value > expressionCutoff
+                    mean=countIf(raw_values2,expressionCutoff)
+                elif len(raw_values2)>1:
                     mean=statistics.avg(raw_values2)
                 else:
                     mean = ""
@@ -191,6 +194,16 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
     export_object.close()
     print 'Filtered columns printed to:',output_file
     return output_file
+
+def countIf(raw_values,expressionCutoff):
+    counts=0
+    for v in raw_values:
+        try:
+            if float(v)>expressionCutoff:
+                counts+=1
+        except:
+            pass
+    return counts
 
 def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False):
     export_object = open(output_file,'w')
@@ -482,6 +495,7 @@ if __name__ == '__main__':
     transpose=False
     log2=False
     partialMatch=False
+    count=False
     
     fileFormat = 'columns'
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
@@ -491,13 +505,16 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
                             'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize=',
-                            'transpose=','fileFormat=','log2=','partialMatch='])
+                            'transpose=','fileFormat=','log2=','partialMatch=','count='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
             elif opt == '--transpose': transpose = True
             elif opt == '--f': filter_file=arg
-            elif opt == '--median' or opt=='--medoid' or opt=='--centroid': calculateCentroids = True
+            elif opt == '--median' or opt=='--medoid' or opt=='--centroid' or  opt=='--count':
+                calculateCentroids = True
+                if  opt=='--count':
+                    count = True
             elif opt == '--fold': returnComparisons = True
             elif opt == '--log2': log2 = True
             elif opt == '--partialMatch': partialMatch = True
@@ -534,7 +551,10 @@ if __name__ == '__main__':
         filter_names = getFilters(filter_file)
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)
     elif calculateCentroids:
-        output_file = input_file[:-4]+'-mean.txt'
+        if count:
+            output_file = input_file[:-4]+'-count-'+str(expressionCutoff)+'.txt'
+        else:
+            output_file = input_file[:-4]+'-mean.txt'
         if returnComparisons:
             comparisons = getComparisons(filter_file)
             output_file = input_file[:-4]+'-fold.txt'
@@ -542,7 +562,8 @@ if __name__ == '__main__':
         except Exception:
             print traceback.format_exc()
             filter_names,group_index_db = getFiltersFromHeatmap(filter_file)
-        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids,comparisons=comparisons)
+        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids,
+                   comparisons=comparisons,expressionCutoff=expressionCutoff,count=count)
     else:
         filter_names = getFilters(filter_file)
         filterFile(input_file,output_file,filter_names,force=force,log2=log2,partialMatch=partialMatch)

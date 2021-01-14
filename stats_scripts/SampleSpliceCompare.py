@@ -58,6 +58,7 @@ def importPSIData(PSI_dir,samples):
                 data_index = PSI_data.index('EventAnnotation')+1
                 uid_index = PSI_data.index('UID')
             else:
+                ### If no annotations are present
                 uid_index = 0
                 data_index = 1
             psi_samples = PSI_data[data_index:]
@@ -152,124 +153,8 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
         print '.',
     print '\n...Correlations obtained on average of %d seconds/gene' % numpy.mean(gene_correlation_time)
 
-def performEventEnrichment(output_dir,eventDir,species):
-    """Import significant splicing events from metaDataAnalysis.py comparisons and test for their
-    statistical enrichmet relative to the Splicing Factor correlated events."""
-    import collections
-    import mappfinder
-    event_db = collections.OrderedDict()
-    import UI
-    ### Import the splice-ICGS significant splicing events per signature
-    files = UI.read_directory(eventDir)
-    for file in files:
-        if '.txt' in file and 'PSI.' in file:
-            ls=[]
-            event_db[file[:-4]]=ls ### This list is subsequently updated below
-            fn = eventDir+'/'+file
-            firstLine = True
-            for line in open(fn,'rU').xreadlines():
-                data = line.rstrip()
-                t = string.split(data,'\t')
-                if firstLine:
-                    event_index = t.index('Event-Direction')
-                    firstLine= False
-                    continue
-                uid = t[0]
-                if 'U2AF1-like' in file:
-                    if t[1] == "inclusion":
-                        ls.append(uid) #ls.append((uid,t[event_index]))
-                else:
-                    ls.append(uid) #ls.append((uid,t[event_index]))
-                    
-    ### Import the splicing-factor correlated splicing events to identify associated signatures
-    splicing_factor_correlated_scores={}
-    gene_to_symbol=None
-    files = UI.read_directory(output_dir)
-    for file in files:
-        if '.txt' in file and '_' in file:
-            R_ls=[]
-            if 'ENS' in file:
-                splicing_factor = file[:-4]
-                if gene_to_symbol==None: ### Import only once
-                    import gene_associations
-                    gene_to_symbol = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
-                sf = 'ENS'+string.split(splicing_factor,'ENS')[1]
-                splicing_factor = string.split(sf,'_')[0]
-                if splicing_factor in gene_to_symbol:
-                    splicing_factor = gene_to_symbol[splicing_factor][0]
-            else:
-                splicing_factor = string.split(file[:-4],'_')[0]
-            fn = output_dir+'/'+file
-            firstLine = True
-            for line in open(fn,'rU').xreadlines():
-                data = line.rstrip()
-                t = string.split(data,'\t')
-                event = t[0]
-                R_ls.append(event)
-            R=len(R_ls)
-            N=80000
-            for signature in event_db:  
-                n_ls=event_db[signature]
-                n = len(n_ls)
-                r_ls=set(R_ls).intersection(n_ls)
-                r = len(r_ls)
-                ### Calculate a Z-score
-                try: z = Zscore(r,n,N,R)
-                except ZeroDivisionError: z = 0.0000
-                ### Calculate a Z-score assuming zero matching entries
-                try: null_z = Zscore(0,n,N,R)
-                except ZeroDivisionError: null_z = 0.000
-                ### Calculate a Fischer's Exact P-value
-                pval = mappfinder.FishersExactTest(r,n,R,N)
-                 ### Store these data in an object
-                zsd = mappfinder.ZScoreData(signature,r,n,z,null_z,n)
-                zsd.SetP(pval)
-                zsd.setAssociatedIDs(r_ls)
-                #print splicing_factor,'\t', signature,'\t', z, pval;sys.exit()
-                if splicing_factor in splicing_factor_correlated_scores:
-                    signature_db = splicing_factor_correlated_scores[splicing_factor]
-                    signature_db[signature]=zsd ### Necessary format for the permutation function
-                else:
-                    signature_db={signature:zsd}
-                    splicing_factor_correlated_scores[splicing_factor] = signature_db
-            
-    results_dir = output_dir+'/SFEnrichmentResults'
-    result_file = results_dir+'/SF-correlated_SignatureScores.txt'
-    try: os.mkdir(results_dir)
-    except: pass
-    eo=open(result_file,'w')
-    eo.write(string.join(['Splicing Factor','Signature', 'Number Changed', 'Number Measured', 'Z-score','FisherExactP','AdjustedP'],'\t')+'\n') #'Events'
-    
-    ### Perform a permutation analysis to get BH adjusted p-values
-    for splicing_factor in splicing_factor_correlated_scores:
-        sorted_results=[]
-        signature_db = splicing_factor_correlated_scores[splicing_factor]
-        ### Updates the adjusted p-value instances
-        mappfinder.adjustPermuteStats(signature_db)
-        for signature in signature_db:
-            zsd = signature_db[signature]
-            if float(zsd.ZScore())>1.96 and float(zsd.Changed())>2 and float(zsd.PermuteP())<0.05:
-                enriched_SFs={}
-                results = [splicing_factor,signature, zsd.Changed(), zsd.Measured(), zsd.ZScore(), zsd.PermuteP(), zsd.AdjP()] #string.join(zsd.AssociatedIDs(),'|')
-                sorted_results.append([float(zsd.PermuteP()),results])
-        sorted_results.sort() ### Sort by p-value
-        for (p,values) in sorted_results:
-            eo.write(string.join(values,'\t')+'\n')
-        if len(sorted_results)==0:
-            eo.write(string.join([splicing_factor,'NONE','NONE','NONE','NONE','NONE','NONE'],'\t')+'\n')
-    eo.close()
-    
-def Zscore(r,n,N,R):
-    """where N is the total number of events measured: 
-    R is the total number of events meeting the criterion:
-    n is the total number of events in this specific reference gene-set: 
-    r is the number of events meeting the criterion in the examined reference gene-set: """
-    N=float(N) ### This bring all other values into float space
-    z = (r - n*(R/N))/math.sqrt(n*(R/N)*(1-(R/N))*(1-((n-1)/(N-1))))
-    return z
 
 if __name__ == '__main__':
-
     try:
         import multiprocessing as mlp
         mlp.freeze_support()
@@ -289,23 +174,12 @@ if __name__ == '__main__':
         print "Warning! Please designate a tab-delimited input expression file in the command-line"
         print 'Example: SpliceEnricher.py --PSI "/Data/PSI_data.txt" --geneExp "/Data/GeneExp_data.txt" --geneList "/Data/SplicingFactors.txt" --rho 0.5'
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['PSI=','species=','o=','platform=','useMulti=',
-                                                    'geneExp=','geneList=','rho=','eventDir='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['reference=','output=','input='])
 
         for opt, arg in options:
-            if opt == '--PSI': PSI_dir=arg
-            elif opt == '--geneExp': exp_dir=arg
-            elif opt == '--geneList': SF_dir=arg
-            elif opt == '--species': species=arg
-            elif opt == '--o': output_dir=arg
-            elif opt == '--platform': platform=arg
-            elif opt == '--rho': PearsonCutoff=float(arg)
-            elif opt == '--eventDir': eventDir=arg
+            if opt == '--reference': PSI_dir=arg
+            elif opt == '--input': dSPI_dir=arg
+            elif opt == '--output': output_dir=arg
     
-    if output_dir==None:
-        output_dir = string.replace(PSI_dir,'\\','/')
-        output_dir = string.join(string.split(output_dir,'/')[:-1],'/')
-    if PSI_dir !=None:
-        findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff)
-    if eventDir !=None:
-        performEventEnrichment(output_dir,eventDir,species)
+    findcorrelations(PSI_dir, dPSI_dir, output_dir)
+

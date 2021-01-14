@@ -128,8 +128,13 @@ def checkExpressionFileFormat(expFile,reportNegatives=False,filterIDs=False):
                 values = t[1:]
             try: values = map(lambda x: float(x), values)
             except Exception:
-                print values
-                print traceback.format_exc()
+                values2 = []
+                for x in values:
+                    try: values2.append(float(x))
+                    except: values2.append(0)
+                values = values2
+                #print values
+                #print traceback.format_exc()
             
             if max(values)>inputMax: inputMax = max(values)
             if min(values)<inputMin: inputMin = min(values)

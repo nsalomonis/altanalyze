@@ -3008,6 +3008,11 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 ### For summary plot export of cell cluster frequencies
                 try: groups_to_samples[cluster_name].append(sample)
                 except: groups_to_samples[cluster_name] = [sample]
+            
+            max_group_size = 0
+            for cluster_name in groups_to_samples:
+                if len(groups_to_samples[cluster_name])>max_group_size:
+                    max_group_size = len(groups_to_samples[cluster_name])
             export_object.close()
             expression_file_reordered = expression_file[:-4]+'-reordered.txt'
             status = verifyFile(expression_file)
@@ -3034,6 +3039,8 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
                 min_cells = 19
             else:
                 min_cells = 3
+            if max_group_size < 20: ### Expected for pseudobulks
+                min_cells = 1
             for (null,group1,group2) in comps:
                 g = cluster_lookup[group1]
                 g1_len = len(groups_to_samples[group1])
@@ -3676,7 +3683,13 @@ def importExpressionFile(input_file,ignoreClusters=False,filterIDs=False,customL
             if inputFormat == 'Clustering':
                 ### store the row cluster ID
                 row_cluster_index[uid]=cluster
-            numericVals = map(float, values[numStart:])
+            try: numericVals = map(float, values[numStart:])
+            except:
+                ### For PSI data or similar
+                numericVals=[]
+                for val in values[numStart:]:
+                    try: numericVals.append(float(val))
+                    except: numericVals.append(0)
             if increment<-1 and convertNonLogToLog == False:
                 ### Indicates the data is really fold changes (if the increment is a small negative,
                 ### it could be due to quantile normalization and the values are really raw expression values)
