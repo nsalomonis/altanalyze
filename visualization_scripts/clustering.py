@@ -2771,6 +2771,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     if len(column_header)>60000:
         marker_size = 0.2
     print 'Marker size =',marker_size
+    #marker_size=4*marker_size
     
     ### Color By Gene
     if colorByGene != None and len(matrix)==0:
@@ -3010,7 +3011,8 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     ### Compute the mode coordinate pair to assign the group label to a fragmented population
     if colorByGene == None:
         try:
-            median_or_mode = 'median'
+            centrality = 'median'
+            #centrality = 'average'
             font_size = 10
             if len(group_scores)>10:
                 font_size = 8
@@ -3022,9 +3024,10 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 coords = group_scores[group_name]
                 coords.sort()
                 new_font_size = font_size
-                #avg = [float(sum(col))/len(col) for col in zip(*coords)] ### separate average values
-                #avg = [float(numpy.median(col)) for col in zip(*coords)] ### separate median values
-                if median_or_mode == 'median':
+                if centrality == 'average':
+                    coord1,coord2 = [float(sum(col))/len(col) for col in zip(*coords)] ### separate average values
+                    #avg = [float(numpy.median(col)) for col in zip(*coords)] ### separate median values
+                elif centrality == 'median':
                     coord1,coord2 = coords[len(coords)/2]  ### median list
                 else:
                     coord1 = stats.mode(map(lambda x: int(x[0]), coords))[0][0]
@@ -7917,7 +7920,7 @@ def returnIntronJunctionRatio(counts_file,species = 'Mm'):
     eo.close()
     eoi.close()
 
-def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True):
+def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True,all=False):
     
     gene_symbol_db={}
     try:
@@ -7965,8 +7968,9 @@ def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True):
             header +=1
             if gene in gene_symbol_db:
                 symbol = gene_symbol_db[gene]
-                
-                if symbol not in added_symbols: 
+                if all:
+                    eo.write(string.join([symbol]+values[1:],'\t')+'\n')
+                elif symbol not in added_symbols: 
                     added_symbols.append(symbol)
                     if logNormalize:
                         values = map(lambda x: math.log(float(x)+1,2),values[1:])
@@ -7982,6 +7986,8 @@ def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True):
                 if max(values)> 0.5:
                     values = map(lambda x: str(x)[:5],values)
                     eo.write(string.join([gene]+values,'\t')+'\n')
+            elif all:
+                eo.write(line)
             else:
                 not_found.append(gene)
     print len(not_found),not_found[:10]
@@ -9382,10 +9388,10 @@ if __name__ == '__main__':
     #buildGraphFromSIF('Ensembl','Mm','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/Interactions-ALL.sif','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/'); sys.exit()
     
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
-    b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
-    input_file = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/LungMAP/Perl/exp.ExplantBronchiolitisObliterans.txt'
+    #b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
+    input_file = '/Users/saljh8/Downloads//ICGS-NMF/exp.FinalMarkerHeatmap_all.txt'
     #Log2Only(input_file);sys.exit()
-    #convertSymbolLog(input_file,b,species='Hs',logNormalize=True); sys.exit()
+    #convertSymbolLog(input_file,b,species='Hs',logNormalize=False); sys.exit()
     
     marker_genes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx/Gene-level/ExpressionInput/Genes-MarkerFinder.txt'
     #TFisoToGene('/Users/saljh8/Downloads/clones.txt',marker_genes);sys.exit()
@@ -9508,9 +9514,9 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r1/ExpressionInput/groups.cellHarmony-9k-viewer-groups.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm_CITE-All-60ADT/captures.60ADT-filtered-cellHarmony-cells-top-200.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
-    #convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
+    convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
     b = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/tests/clusters.txt'
     #simpleCombineFiles('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Jose/NewTranscriptome/CombinedDataset/ExpressionInput/Events-LogFold_0.58_rawp')

@@ -3135,7 +3135,9 @@ def compareRawJunctionExpression(root_dir,platform,species,critical_exon_db,expF
                     gene = probeset_gene_db[uid]
                 else: proceed = False
             if proceed:
-                counts = map(lambda x: float(x), t[1:])
+                try: counts = map(lambda x: float(x), t[1:])
+                except:
+                    continue ### not clear why non-numeric values end up here but shouldn't
                 if platform == 'junction' or platform == 'AltMouse':
                     counts = map(lambda x: int(math.pow(2,x)), counts)  #log transform these instead, to make like junction counts
                 if '-' in uid or uid in junction_locations:

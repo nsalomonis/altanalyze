@@ -6594,9 +6594,9 @@ def commandLineRun():
             GeneSelection = ''
             PathwaySelection = ''
             GeneSetSelection = 'None Selected'
-            excludeCellCycle = True
+            excludeCellCycle = False
             rho_cutoff = 0.2
-            restrictBy = None
+            restrictBy = 'protein_coding'
             featurestoEvaluate = 'Genes'
             ExpressionCutoff = 1
             CountsCutoff = 0.9
@@ -6647,7 +6647,7 @@ def commandLineRun():
                         print 'Invalid k... setting to None'
                         k=None
                 elif opt == '--downsample': downsample=int(arg) ### Number of cells to downsample to
-                elif opt == '--numVarGenes': numVarGenes=int(arg) ### Number of cells to downsample to
+                elif opt == '--numVarGenes': numVarGenes=int(arg) ### Number of variable genes to consider for
                 elif opt == '--numGenesExp': numGenesExp=int(arg) ### For barcode filtering
                 elif opt == '--runCompleteWorkflow':
                     runCompleteWorkflow=arg

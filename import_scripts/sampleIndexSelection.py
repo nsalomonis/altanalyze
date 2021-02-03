@@ -61,6 +61,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                     sample_index_list = map(lambda x: values.index(x), filter_names)
                 except:
                     ### If ":" in header name
+                    original_values = values
                     if ':' in line:
                         values2=[]
                         for x in values:
@@ -76,7 +77,14 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                                 x=string.split(x,'.')[0]
                             values2.append(x)
                         values = values2
-                        sample_index_list = map(lambda x: values.index(x), filter_names)
+                        try: sample_index_list = map(lambda x: values.index(x), filter_names)
+                        except:
+                            for x in filter_names:
+                                if x not in original_values:
+                                    print x
+                                    print filter_names[:5]
+                                    print original_values[:5]
+                                    error
                     elif '.$' in line:
                         filter_names2=[]
                         for f in filter_names: ### if the name in the filter is a string within the input data-file

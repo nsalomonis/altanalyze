@@ -4197,7 +4197,6 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
             exp_files.append([os.path.getsize(root_dir+'/ExpressionInput/'+file),file])
             if 'steady-state' in file:
                 steady_state_files.append([os.path.getsize(root_dir+'/ExpressionInput/'+file),file])
-                expression_files_ss
             if exp_dir_prefix in file:
                 specific_matches.append([os.path.getsize(root_dir+'/ExpressionInput/'+file),file])
         if 'filteredExp.' in file: 

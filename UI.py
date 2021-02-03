@@ -5476,8 +5476,8 @@ def getUserParameters(run_parameter,Multi=None):
                         if len(input_file6)>0: files_to_merge.append(input_file6)
                         if len(input_file7)>0: files_to_merge.append(input_file7)
                         if len(input_file8)>0: files_to_merge.append(input_file8)
-                        if len(input_file7)>0: files_to_merge.append(input_file9)
-                        if len(input_file8)>0: files_to_merge.append(input_file10)
+                        if len(input_file9)>0: files_to_merge.append(input_file9)
+                        if len(input_file10)>0: files_to_merge.append(input_file10)
                         values = files_to_merge, join_option, ID_option, output_merge_dir
                         StatusWindow(values,analysis) ### display an window with download status
                         AltAnalyze.AltAnalyzeSetup((selected_parameters[:-1],user_variables)); sys.exit()

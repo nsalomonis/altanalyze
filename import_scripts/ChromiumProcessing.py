@@ -14,7 +14,7 @@ try:
 except:
     print ('Missing the h5py library (hdf5 support)...')
 
-def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True, geneIDs=False, minReads=1000, maxCells=15000):
+def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True, geneIDs=False, minReads=1000, maxCells=150000):
     """ Process a filtered or full sparse matrix expression dataset in mtx, mtx.gz or .h5 format """
     print 'Processing:',matrices_dir
     

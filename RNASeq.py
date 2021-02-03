@@ -1904,6 +1904,7 @@ def getGeneExonLengths(species):
     gene_lengths={}
     filename = 'AltDatabase/'+species+'/RNASeq/'+species+'_Ensembl_exons.txt'
     fn=filepath(filename)
+    #fn = '/Users/saljh8/Documents/GitHub/altanalyze/AltDatabase/EnsMart91/Ma/RNASeq/Ma_Ensembl_exons.txt'
     firstLine=True
     for line in open(fn,'rU').xreadlines():             
         line = line.rstrip('\n')
@@ -2779,6 +2780,8 @@ def importBiologicalRelationships(species):
             symbol = string.lower(gene_to_symbol_db[gene][0])
             ### The below genes cause issues with many single cell datasets in terms of being highly correlated
             if 'rpl'==symbol[:3] or 'rps'==symbol[:3] or 'mt-'==symbol[:3] or '.' in symbol or 'gm'==symbol[:2]:
+                coding_type = 'ncRNA'
+            if 'xis'==symbol[:3] or 'tsi'==symbol[:3] or 'rsp'==symbol[:3] or 'hla'==symbol[:3] or 'y'==symbol[-1]:
                 coding_type = 'ncRNA'
         try: gene_db = custom_annotation_dbase[coding_type]; gene_db[gene]=[]
         except Exception: custom_annotation_dbase[coding_type] = {gene:[]}
@@ -5684,7 +5687,7 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
 if __name__ == '__main__':
     samplesDiffering = 3
     column_method = 'hopach'
-    species = 'Hs'
+    species = 'Ma'
     excludeCellCycle = False
     icgs_groups_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/FinalGroups.txt'
     goelite_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/GO-Elite/clustering/exp.FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
@@ -5697,6 +5700,11 @@ if __name__ == '__main__':
     """
     import UI; import multiprocessing as mlp
 
+    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Trumpp-HSC-2017/counts.rawTrumpp.txt'
+    filename = '/Users/saljh8/Downloads/counts.GSE128537_Rhesus_RNA_gene_count.txt'
+    calculateRPKMsFromGeneCounts(filename,species,AdjustExpression=False);sys.exit()
+    #fastRPKMCalculate(filename);sys.exit()
+    
     #runKallisto('Mm','ALP-ILC','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/',mlp);sys.exit()
     runKallisto('Hs','BreastCancer-Lines','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio',mlp);sys.exit()
 
@@ -5721,10 +5729,6 @@ if __name__ == '__main__':
     expFile = '/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/exp.GBM_scRNA-Seq-steady-state.txt'
     #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
     
-    filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Trumpp-HSC-2017/counts.rawTrumpp.txt'
-    filename = '/Volumes/salomonis2/Erica-data/GSE98451/counts.GSE98451_uterus_single_cell_RNA-Seq_counts-Ensembl.txt'
-
-    #fastRPKMCalculate(filename);sys.exit()
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()
     import multiprocessing as mlp

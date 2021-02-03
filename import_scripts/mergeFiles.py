@@ -124,7 +124,8 @@ def latteralMerge(files_to_merge,original_filename,outputPath = None):
         for file2 in file_uids:
             uids2 = file_uids[file2]
             if uids1 != uids2:
-                print 'WARNING!!! Imperfect match in:',len(uids1),file1,len(uids2), file2
+                if len(t)>1000:
+                    print len(t),'WARNING!!! Imperfect match in:',len(uids1),file1,len(uids2), file2
                 perfectMatch = False
 
     if perfectMatch:
@@ -469,7 +470,7 @@ if __name__ == '__main__':
         files_to_merge=[]
         if '.' not in matrices_dir[:-4]:
             for file in os.listdir(matrices_dir):
-                if '.txt' in file or '.csv' in file:
+                if '.txt' in file or '.csv' in file or '.mtx' in file or '.h5' in file:
                     files_to_merge.append(os.path.join(matrices_dir, file))
             expFile = joinFiles(files_to_merge, combine_type, False, matrices_dir)
         else:
