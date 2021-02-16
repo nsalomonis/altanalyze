@@ -39,6 +39,7 @@ try:
     import warnings
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
+        warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
         import matplotlib
         if commandLine and 'linux' in sys.platform:
             ### TkAgg doesn't work when AltAnalyze is run remotely (ssh or sh script)
@@ -2633,7 +2634,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
         cleaned_headers = map(lambda x: string.split(x,':')[1],column_header) ### remove group prefix
     else:
         cleaned_headers = column_header
-    
+
     if reimportModelScores:
         start = time.time()
         
@@ -2664,7 +2665,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
                 scores = revised_scores
         except:
             print 'Failed to link the prior coordinates file to the current dataset... rederiving'
-        
+    
     if reimportModelScores==False:
         start = time.time()
         
@@ -2771,7 +2772,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     if len(column_header)>60000:
         marker_size = 0.2
     print 'Marker size =',marker_size
-    #marker_size=4*marker_size
+    #marker_size=2*marker_size
     
     ### Color By Gene
     if colorByGene != None and len(matrix)==0:
@@ -5089,7 +5090,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
         
     ### Transpose matrix and build PCA
     geneFilter=None
-    if (algorithm == 't-SNE' or algorithm == 'UMAP') and reimportModelScores:
+    if (algorithm == 't-SNE' or algorithm == 'UMAP' or algorithm == 'SPRING') and reimportModelScores:
         dataset_name = string.split(filename,'/')[-1][:-4]
         try:
             ### if the scores are present, we only need to import the genes of interest (save time importing large matrices)
@@ -5104,6 +5105,11 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
                     coord_path = coordinateFile
                 else:
                     coord_path = root_dir+dataset_name+'-UMAP_scores.txt'
+            if algorithm == 'SPRING':
+                if coordinateFile != None:
+                    coord_path = coordinateFile
+                else:
+                    coord_path = root_dir+dataset_name+'-SPRING_scores.txt'
                 importtSNEScores(coord_path)
             if len(colorByGene)==None:
                 geneFilter = [''] ### It won't import the matrix, basically
@@ -5116,7 +5122,14 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
             #print traceback.format_exc()
             geneFilter = None ### It won't import the matrix, basically
 
-    matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,geneFilter=geneFilter,forceClusters=forceClusters)
+    if algorithm == 'SPRING':
+        ### Perform SPRING pre-processing analysis analysis (visualize coordiantes in tSNE
+        reimportModelScores = True
+        filename, coordinateFile = SPRING(root_dir,filename,dataset_name)
+
+    ### Import the data matrix
+    matrix, column_header, row_header, dataset_name, group_db = importData(filename,zscore=zscore,
+                                                        geneFilter=geneFilter,forceClusters=forceClusters)
     if transpose == False: ### We normally transpose the data, so if True, we don't transpose (I know, it's confusing)
         matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
         column_header, row_header = row_header, column_header
@@ -5125,7 +5138,7 @@ def runPCAonly(filename,graphics,transpose,showLabels=True,plotType='3D',display
     #PrincipalComponentAnalysis(numpy.array(matrix), row_header, column_header, dataset_name, group_db, display=True)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore",category=UserWarning) ### hides import warnings
-        if algorithm == 't-SNE' or algorithm == 'UMAP':
+        if algorithm == 't-SNE' or algorithm == 'UMAP' or algorithm == 'SPRING':
             matrix = map(numpy.array, zip(*matrix)) ### coverts these to tuples
             column_header, row_header = row_header, column_header
             if separateGenePlots and (len(colorByGene)>0 or colorByGene==None) and maskGroups==None:
@@ -8380,19 +8393,22 @@ def convertPSICoordinatesToBED(folder):
                     except:
                         coordinates = t[1]
 
-                    j1, j2 = string.split(coordinates, '|')
-                    c1a, c1b = map(int, string.split(j1.split(':')[1], '-'))
-                    strand = '+'
-                    if c1a > c1b:
-                        c1a, c1b = c1b, c1a
-                        strand = '-'
-                    c2a, c2b = map(int, string.split(j2.split(':')[1], '-'))
-                    if c2a > c2b:
-                        c2a, c2b = c2b, c2a
-                    chr = string.split(coordinates, ':')[0]
-                    uid = string.replace(t[0], ':', '__')
-                    eo.write(string.join([chr, str(c1a), str(c1b), uid + '--' + file, strand, str(c1a), str(c1b), '0'], '\t') + '\n')
-                    eo.write(string.join([chr, str(c2a), str(c2b), uid + '--' + file, strand, str(c2a), str(c2b), '0'], '\t') + '\n')
+                    try:
+                        j1, j2 = string.split(coordinates, '|')
+                        c1a, c1b = map(int, string.split(j1.split(':')[1], '-'))
+                        strand = '+'
+                        if c1a > c1b:
+                            c1a, c1b = c1b, c1a
+                            strand = '-'
+                        c2a, c2b = map(int, string.split(j2.split(':')[1], '-'))
+                        if c2a > c2b:
+                            c2a, c2b = c2b, c2a
+                        chr = string.split(coordinates, ':')[0]
+                        uid = string.replace(t[0], ':', '__')
+                        eo.write(string.join([chr, str(c1a), str(c1b), uid + '--' + file, strand, str(c1a), str(c1b), '0'], '\t') + '\n')
+                        eo.write(string.join([chr, str(c2a), str(c2b), uid + '--' + file, strand, str(c2a), str(c2b), '0'], '\t') + '\n')
+                    except:
+                        pass
     eo.close()
 
 def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
@@ -8463,29 +8479,29 @@ def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
                 mouse_events[alt_junction1].append([event, tissue])
             except:
                 mouse_events[alt_junction1] = [[event, tissue]]
-            else:
-                try:
-                    mouse_events[alt_junction2].append([event, tissue])
-                except:
-                    mouse_events[alt_junction2] = [[event, tissue]]
-                else:
-                    junction = chr + ':' + c1 + '-' + c2
-                    alt_junction1 = chr + ':' + str(int(c1) + 1) + '-' + str(int(c2) + 1)
-                    alt_junction2 = chr + ':' + str(int(c1) - 1) + '-' + str(int(c2) - 1)
-                    try:
-                        mouse_events[junction].append([event, tissue])
-                    except:
-                        mouse_events[junction] = [[event, tissue]]
-
-                try:
-                    mouse_events[alt_junction1].append([event, tissue])
-                except:
-                    mouse_events[alt_junction1] = [[event, tissue]]
 
             try:
                 mouse_events[alt_junction2].append([event, tissue])
             except:
                 mouse_events[alt_junction2] = [[event, tissue]]
+            else:
+                junction = chr + ':' + c1 + '-' + c2
+                alt_junction1 = chr + ':' + str(int(c1) + 1) + '-' + str(int(c2) + 1)
+                alt_junction2 = chr + ':' + str(int(c1) - 1) + '-' + str(int(c2) - 1)
+                try:
+                    mouse_events[junction].append([event, tissue])
+                except:
+                    mouse_events[junction] = [[event, tissue]]
+
+            try:
+                mouse_events[alt_junction1].append([event, tissue])
+            except:
+                mouse_events[alt_junction1] = [[event, tissue]]
+
+        try:
+            mouse_events[alt_junction2].append([event, tissue])
+        except:
+            mouse_events[alt_junction2] = [[event, tissue]]
 
     print 'mouse_events',len(mouse_events)
     for line in open(Ba_events, 'rU').xreadlines():
@@ -8500,22 +8516,30 @@ def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
         symbol = string.split(event, ':')[0]
         event = symbol + ':' + junctions
         baboon_corridinates[event] = coordinates
+        if '8639843' in coordinates:
+            print 'Hs',coordinates
         try:
             j1, j2 = string.split(coordinates, '|')
         except:
             continue
-        else:
-            tissues = tissues.split('|')
-            try:
-                baboon_events[j1].append([event, tissues])
-            except:
-                baboon_events[j1] = [[event, tissues]]
+        tissues = tissues.split('|')
+        try:
+            baboon_events[j1].append([event, tissues])
+        except:
+            baboon_events[j1] = [[event, tissues]]
 
-            try:
-                baboon_events[j2].append([event, tissues])
-            except:
-                baboon_events[j2] = [[event, tissues]]
+        try:
+            baboon_events[j2].append([event, tissues])
+        except:
+            baboon_events[j2] = [[event, tissues]]
 
+    for i in baboon_events:
+        if '8639843' in i:
+            print 'Hs',i
+    for i in mouse_events:
+        if '8639843' in i:
+            print 'Ss',i
+        
     print len(mouse_events), len(baboon_events)
     common = 0
     matched_events = {}
@@ -8578,9 +8602,6 @@ def convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events):
                     except:
                         ba_single_tissue_counts[bt] = 1
 
-    for i in mm_single_tissue_counts:
-        print [i]
-    sys.exit()
     print mm_single_tissue_counts['Heart']
     print tissue_matrix[('Heart', 'Heart')]
     tissue_matrix_table = []
@@ -9378,13 +9399,249 @@ def pseudoBulkCellSumm(groups_file):
         eo.write(sample_id+'\t'+string.join(counts,'\t')+'\n')
     eo.close()
 
+def SPRING(root_dir,expfile,expname,visualize=False):
+    """ Run a SPRING weighted dimensionality reduction graph """
+    from visualization_scripts import spring_helper
+    from collections import defaultdict
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore",category=RuntimeWarning) ### hides import warnings
+        import pandas as pd
+        exp_data = pd.read_csv(expfile,sep="\t",index_col=0)
+
+    # Rows should be cells and columns should be genes
+    exp_data = exp_data.transpose()
+    genes_before_filter = list(exp_data.columns)
+    exp_np_arr = exp_data.values
+    if 'ICGS' in expfile or 'FinalMarker' in expfile:
+        rs = 2; cs = 2
+    else:
+        rs = 1; cs = 1
+    try: E = spring_helper.text_to_sparse(spring_helper.file_opener(expfile),delim='\t',start_row=rs,start_column=cs,data_type=float)
+    except: E = spring_helper.text_to_sparse(spring_helper.file_opener(expfile),delim='\t',start_row=2,start_column=2,data_type=float)
+    E = E.T
+    
+    cell_total_counts = exp_data.sum(axis=1)
+    print("Saving SPRING coordinates...")
+    t0 = time.time()
+    spring_path = root_dir+'/SPRING/'
+    try: os.mkdir(spring_path)
+    except: pass
+    save_path = spring_path + expname
+    out = spring_helper.make_spring_subplot(E, genes_before_filter, save_path, 
+                        normalize = True, tot_counts_final = None,
+                        min_counts = 2, min_cells = 100, min_vscore_pctl = 85,show_vscore_plot = False, 
+                        num_pc = 15, k_neigh = 20, num_force_iter = 400)
+    numpy.save(save_path + '/cell_filter.npy', numpy.arange(E.shape[0]))
+    numpy.savetxt(save_path + '/cell_filter.txt',  numpy.arange(E.shape[0]), fmt='%i')
+    print 'Finished in %i seconds' %(time.time() - t0)
+    spring_coordinates = spring_path+expname+'/coordinates.txt'
+    headers, expfile = importHeaders(expfile, spring_path+expname)
+    export_path = spring_coordinates[:-4]+'-SPRING.txt'
+    exportCoordinates(headers,spring_coordinates,export_path)
+    
+    if visualize:
+        plots = UI.performPCA(expfile, 'no', 'UMAP', False, None, plotType='2D',species='Mm',forceClusters=False,
+                reimportModelScores=True, coordinateFile=export_path)
+    return expfile, export_path
+    
+def importHeaders(filename,spring_directory):
+    header = []
+    firstRow = True
+    row_count = 0
+    ### Export the first few rows to a new file
+    header_path = spring_directory+'/exp.SPRING.txt'
+    eos = export.ExportFile(header_path)
+    for line in open(filename,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            if t[1] == 'row_clusters-flat':
+                header_temp = t[2:]
+            else:
+                header_temp = t[1:]
+            for i in header_temp:
+                if ':' in i:
+                    i = string.split(i,':')[1]
+                header.append(i)
+            firstRow = False
+            eos.write(line)
+        elif row_count>4:
+            break
+        else:
+            eos.write(line)
+        row_count+=1
+    eos.close()
+    
+    if 'exp.' in filename:
+        from shutil import copyfile
+        groups_file = string.replace(filename,'exp.','groups.')
+        try: copyfile(groups_file, spring_directory+'/groups.SPRING.txt')
+        except: pass
+    
+    return header, header_path
+
+def exportCoordinates(headers,coordinate_dir,export_path):
+    eo = export.ExportFile(export_path)
+    i=0
+    for line in open(coordinate_dir,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,',')
+        eo.write(string.join([headers[i]]+t[1:],'\t')+'\n')
+        i+=1
+    eo.close()
+    return export_path
+        
+def iterativeMarkerFinder(root_dir,dataType='PSI'):
+    """ Iteratively perform MarkerFinder and combine the results """
+    import ExpressionBuilder, shutil
+    species = 'Hs'
+    
+    if dataType == 'PSI':
+        platform = 'exon'
+    else:
+        platform = dataType
+    import markerFinder
+    import collections
+    consolidated_MarkerFinder = collections.OrderedDict()
+    ordered_groups = []
+    files = UI.read_directory(root_dir+'/ExpressionInput')
+    files.sort()
+    for file in files:
+        if 'exp.' in file:
+            print file
+            marker_dir = root_dir+'/ExpressionInput/'+file
+            group_dir = marker_dir.replace('exp.','groups.')
+            comps_dir = marker_dir.replace('exp.','comps.')
+            sample_group_db = ExpressionBuilder.simplerGroupImport(group_dir)
+            for sample in sample_group_db:
+                group = sample_group_db[sample]
+                if group not in ordered_groups: ordered_groups.append(group)
+                
+            fl = UI.ExpressionFileLocationData(marker_dir,'','',''); fl.setOutputDir(root_dir)
+            fl.setSpecies(species); fl.setVendor(dataType); fl.setVendor(dataType)
+            fl.setRPKMThreshold(0)
+            fl.setCorrelationDirection('up')
+            logTransform = False
+            markerFinder.analyzeData(marker_dir,species,platform,'protein_coding',geneToReport=50,correlateAll=True,AdditionalParameters=fl,logTransform=logTransform)
+            ICGS_State_ranked = importMarkerFinderHits(root_dir+'/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt',dataType)
+            shutil.copy(root_dir+'/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt',root_dir+'/ExpressionOutput/MarkerFinder/'+file[:-4]+'-up.txt')
+            consolidated_MarkerFinder[file[:-4],'up']=ICGS_State_ranked
+            fl.setCorrelationDirection('down')
+            markerFinder.analyzeData(marker_dir,species,platform,'protein_coding',geneToReport=50,correlateAll=True,AdditionalParameters=fl,logTransform=logTransform)
+            ICGS_State_ranked = importMarkerFinderHits(root_dir+'/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt',dataType)
+            shutil.copy(root_dir+'/ExpressionOutput/MarkerFinder/AllGenes_correlations-ReplicateBased.txt',root_dir+'/ExpressionOutput/MarkerFinder/'+file[:-4]+'-down.txt')
+            consolidated_MarkerFinder[file[:-4],'down']=ICGS_State_ranked
+            #graphics_mf = markerFinder.generateMarkerHeatMaps(fl,dataType,convertNonLogToLog=logTransform,Species=species)
+    
+    ### Reorganize groups
+    if 'del' in ordered_groups[3] or 'Del' in ordered_groups[3]:
+        deleted = ordered_groups[3]
+        del ordered_groups[3]
+        ordered_groups.append(deleted)
+    organizeConsolidatedMarkerFinder(consolidated_MarkerFinder,ordered_groups,root_dir,marker_dir)
+    
+def organizeConsolidatedMarkerFinder(consolidated_MarkerFinder,ordered_groups,root_dir,marker_dir):
+    organized_patterns={}
+    for (file,direction) in consolidated_MarkerFinder:
+        ICGS_State_ranked = consolidated_MarkerFinder[(file,direction)]
+        for cell_state in ICGS_State_ranked:
+            for (rho,gene,symbol) in ICGS_State_ranked[cell_state]:
+                try: organized_patterns[gene].append([rho,cell_state,direction])
+                except: organized_patterns[gene] = [[rho,cell_state,direction]]
+    ranked_cell_state_genes={}
+    count=0
+
+    for gene in organized_patterns:
+        gene_pattern = unique.unique(organized_patterns[gene])
+        gene_pattern.sort()
+        rho, cell_state, direction = gene_pattern[-1]
+        try:
+            rho2, cell_state2, direction2 = gene_pattern[-2]
+            if rho == rho2:
+                ### Occurs with oppositive patterns solving the same objective
+                if direction2 == 'up':
+                    rho, cell_state, direction = rho2, cell_state2, direction2
+                    if direction2 != direction:
+                        print gene, rho, cell_state, direction, rho2, cell_state2, direction2
+        except: pass ### No other instances with a rho>cutoff
+        try: ranked_cell_state_genes[direction,cell_state].append([rho,gene])
+        except Exception: ranked_cell_state_genes[direction,cell_state] = [[rho,gene]]
+        count+=1
+    
+    ordered_patterns=[]
+    for cell_state in ordered_groups:
+        try: ranked_cell_state_genes['up',cell_state].sort()
+        except:
+            print 'up',cell_state, '---failed'
+            continue
+        ranked_cell_state_genes['up',cell_state].reverse()
+        for (rho,gene) in ranked_cell_state_genes['up',cell_state]:
+            ordered_patterns.append(['up-'+cell_state,gene])
+    for cell_state in ordered_groups:
+        try: ranked_cell_state_genes['down',cell_state].sort()
+        except:
+            print 'down',cell_state, '---failed'
+            continue
+        ranked_cell_state_genes['down',cell_state].reverse()
+        for (rho,gene) in ranked_cell_state_genes['down',cell_state]:
+            ordered_patterns.append(['down-'+cell_state,gene])
+    #print 'Number of events matching the MarkerFinder and stastical cutoffs:',len(ordered_patterns)
+    
+    export_file = root_dir+'/DataPlots/Consolidated-MarkerFinder.txt'
+    eo = export.ExportFile(export_file)
+    matrix, column_header, row_header, dataset_name, group_db = importData(marker_dir)
+    revised_column_headers = ['UID']
+    for i in column_header:
+        revised_column_headers.append(group_db[i][0] + ':' + i)
+    eo.write(string.join(revised_column_headers,'\t')+'\n')
+    for (pattern,gene) in ordered_patterns:
+        i = row_header.index(gene)
+        gene = string.replace(gene,':','__')
+        eo.write(string.join([pattern+':'+gene]+map(str,matrix[i]),'\t')+'\n')
+    eo.close()
+
+    row_method = None; row_metric = 'correlation'; column_method = None; column_metric = 'cosine'; color_gradient = 'yellow_black_blue'
+    transpose = False; Normalize='median'; #gsp.setClusterGOElite('PathwayCommons')
+
+    graphics = runHCexplicit(export_file, [], row_method, row_metric,
+                column_method, column_metric, color_gradient, transpose, Normalize=Normalize,
+                contrast=10, display=False)
+    
+def importMarkerFinderHits(fn,dataType):
+    if dataType == 'PSI': cutoff = 0.5
+    else: cutoff = 0.7
+    print "Using a MarkerFinder Pearson rho >",cutoff
+    genes={}
+    ICGS_State_ranked={}
+    skip=True
+    for line in open(fn,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if skip: skip=False
+        else:
+            try:
+                gene,symbol,rho,ICGS_State = string.split(data,'\t')
+            except Exception:
+                gene,symbol,rho,rho_p,ICGS_State = string.split(data,'\t')
+            if float(rho)>cutoff:
+                try: ICGS_State_ranked[ICGS_State].append([float(rho),gene,symbol])
+                except Exception: ICGS_State_ranked[ICGS_State] = [[float(rho),gene,symbol]]
+    return ICGS_State_ranked
+
 if __name__ == '__main__':
+    exportMarkersForCellBrowser(marker_file,cluster_names_dir,export_path);sys.exit()
+    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.1_rawp/AltAnalyze/'
+    #input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/GeneExpression-eCLIP/DEGs-LogFold_0.58_adjp/Iterative-MarkerFinder/'
+    #iterativeMarkerFinder(input_dir,dataType='PSI');sys.exit()
+    root_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/'
+    expfile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/exp.MarkerFinder-cellHarmony-reference__cellHarmony-ReOrdered-Q2.txt'
+    expname = 'in-vivo'
+    #SPRING(root_dir,expfile,expname);sys.exit()
     #filterPSIValues('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-AS-correlation/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation-75p.txt');sys.exit()
-    #convertPSICoordinatesToBED('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Krithika/Baboon-Human/temp/');sys.exit()
+    #convertPSICoordinatesToBED('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/Events-dPSI_0.1_rawp/combined');sys.exit()
     #filterByFoldAndExpression('/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/cancers', '/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/1.5-fold_and_RPKM-filtered', fold=1.5);sys.exit()
     #countDEGs('/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/SF/MutationAll/GE/All',fold=2);sys.exit()
     #combineGeneExpressionResults('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Naren/Combined/cellHarmony-immune-1.2-adjp/DifferentialExpression_Fold_1.2_adjp_0.05/temp');sys.exit()
-    #pseudoBulkCellSumm('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/COVID-Brain-GSE159812_RAW/CPTT/All-Merged/cellHarmony-all-vs-75/QueryGroups.cellHarmony-1b.txt');sys.exit()
+    #pseudoBulkCellSumm('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq_Hs-Male-Female/150k-4-donors/cellHarmony/QueryGroups.cellHarmony.txt');sys.exit()
     #buildGraphFromSIF('Ensembl','Mm','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/Interactions-ALL.sif','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/'); sys.exit()
     
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
@@ -9476,12 +9733,14 @@ if __name__ == '__main__':
     filename = '/Volumes/salomonis2/LabFiles/Nathan/10x-PBMC-CD34+/AML-p27-pre-post/pre/cellHarmony-latest/gene_summary-p27.txt'
     filename = '/Volumes/salomonis2/LabFiles/Dan-Schnell/To_cellHarmony/MIToSham/Input/cellHarmony/cell-frequency-stats.txt'
     
+    Ss_Hs_coordinates = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/Events-dPSI_0.1_rawp/combined/ss_to_hglft_genome_64db0_973390.bed'
+    Hs_events = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/Events-dPSI_0.1_rawp/combined/All-human-events.txt'
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/NCI-R01/CCSB_TFIso_Clones.txt'
     PSI_dir = '/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/TCGA-files-Ens91/bams/AltResults/AlternativeOutput/OncoSPlice-All-Samples-filtered-names/SubtypeAnalyses-Results/round1/Events-dPSI_0.1_adjp/'
     print 'here'
     #convertPSIConservedCoordinatesToBED(Mm_Ba_coordinates, Ba_events);sys.exit()
+    #convertPSIConservedCoordinatesToBED(Ss_Hs_coordinates, Hs_events);sys.exit()
 
-    
     filename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/TF_ratio_correlation-analysis/tcga_rsem_isopct_filtered-filtered.2-filtered.txt'
     TF_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TF-isoform/Ensembl-isoform-key-CCSB.txt'
     #exportIntraTFIsoformCorrelations(filename,TF_file,0.3,anticorrelation=True);sys.exit()
@@ -9514,7 +9773,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm_CITE-All-60ADT/captures.60ADT-filtered-cellHarmony-cells-top-200.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r5/captures.r5-reorganized-top-110.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'

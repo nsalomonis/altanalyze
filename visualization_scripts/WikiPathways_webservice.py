@@ -59,7 +59,7 @@ class PathwayData:
         return output
     def __repr__(self): return self.Report()
 
-def getPathwayAs(pathway_db,species_code,mod):
+def getPathwayAs(pathway_db,species_code,mod,keepGPML=True):
     begin_time = time.time()
     for wpid in pathway_db:
         #print [wpid],'pathway_db',len(pathway_db)
@@ -77,6 +77,7 @@ def getPathwayAs(pathway_db,species_code,mod):
         wp_id_data = wikipathways_api_client_instance.get_pathway_as(file_format = file_type,identifier = wpid, version = 0)
         #wp_id_data = base64.b64decode(wp_id_data)
         gpml_path = filepath('BuildDBs/WPs/'+processor_time+'/'+wpid+'.gpml')
+        gpml_path = filepath('BuildDBs/WPs/'+wpid+'.gpml') ### Used in version 2.1.5 and later
         #print gpml_path
         outfile = export.ExportFile(gpml_path)
         outfile.write(wp_id_data); outfile.close()
@@ -84,18 +85,19 @@ def getPathwayAs(pathway_db,species_code,mod):
         parent_path = export.findParentDir(gpml_path)
         pathway_db = gene_associations.getGPMLGraphData(parent_path,species_code,mod) ### get GPML data back
         
-        #os.remove(gpml_path) ### Only store the file temporarily
-        try: export.deleteFolder('BuildDBs/WPs/'+processor_time) ### clear any remaining pathway files
-        except Exception: pass
+        if keepGPML:
+            #os.remove(gpml_path) ### Only store the file temporarily
+            try: export.deleteFolder('BuildDBs/WPs/'+processor_time) ### clear any remaining pathway files
+            except Exception: pass
         
     end_time = time.time(); time_diff = float(end_time-begin_time)
     """
     try: print "WikiPathways data imported in %d seconds" % time_diff
     except Exception: null=None ### Occurs when transitioning back from the Official Database download window (not sure why) -- TclError: can't invoke "update" command
     """
-    return pathway_db
+    return pathway_db,gpml_path
 
-def getHexadecimalColorRanges(fold_db,analysis_type):
+def getHexadecimalColorRanges(fold_db,analysis_type,includeHash=False):
     all_folds=[]
     folds_to_gene={}
     for gene in fold_db:
@@ -159,7 +161,10 @@ def getHexadecimalColorRanges(fold_db,analysis_type):
             hex = '#%02x%02x%02x' % rgb
             #print f,n,rgb,hex
             for gene in genes:
-                fold_db[gene] = hex[1:]
+                if includeHash:
+                    fold_db[gene] = hex
+                else:
+                    fold_db[gene] = hex[1:]
     return fold_db
 
 def getColorRange(x):
@@ -170,7 +175,8 @@ def getColorRange(x):
     vmin = -1*vmax
     return vmax,vmin
     
-def getGraphIDAssociations(id_color_db,pathway_db,key_by):
+def getGraphIDAssociations(id_color_db,pathway_db,key_by,exportGraphID=True):
+    ### Export EITHER the differentially expresed gene Hex code for the WP GraphID OR the Source System/UID from the GPML for gpml2svg
     graphID_pathway_db={}
     for pathway in pathway_db:
         wpi = pathway_db[pathway] ### all data for the pathway is stored in this single object - wpi.Pathway() is the pathway name
@@ -188,7 +194,11 @@ def getGraphIDAssociations(id_color_db,pathway_db,key_by):
                     for mod_id in gi.ModID():
                         if mod_id in id_color_db:
                             hex_color = id_color_db[mod_id]
-                            graphID_pathway_db[pathway,wpi.Pathway()][gi.GraphID()] = hex_color ### set the key,value of the child dictionary
+                            if exportGraphID: ### Used by the legacy WP Webservice getColoredPathway
+                                graphID_pathway_db[pathway,wpi.Pathway()][gi.GraphID()] = hex_color ### set the key,value of the child dictionary
+                            else:
+                                ### Export by the tuple of System and ID from the GPML source
+                                graphID_pathway_db[gi.System(), gi.GeneID()] = [hex_color,1]
                 except Exception: None ### No MOD translation for this ID
     return graphID_pathway_db
             
@@ -211,7 +221,7 @@ def viewLineageProfilerResults(filename,graphic_links):
     pathway_db={}
     pathway_db['WP2062'] = PathwayData('TissueFateMap')
     ### MOD and species are not particularly important for Lineage analysis
-    pathway_db = getPathwayAs(pathway_db,'Hs','Ensembl')
+    pathway_db,gpml_path = getPathwayAs(pathway_db,'Hs','Ensembl')
     log_report.write('Pathway data imported from GPML files obtained from webservice\n')
     i=0
     group_id_db={} ### store the results separately for each sample
@@ -224,7 +234,7 @@ def viewLineageProfilerResults(filename,graphic_links):
     for biological_group in group_id_db:
         group_specific = group_id_db[biological_group]
         analysis_type = 'Lineage'
-        id_color_db = getHexadecimalColorRanges(group_specific,analysis_type) ### example "id_db" is key:tissue, value:z-score
+        id_color_db = getHexadecimalColorRanges(group_specific,analysis_type,includeHash=True) ### example "id_db" is key:tissue, value:z-score
         graphID_db = getGraphIDAssociations(id_color_db,pathway_db,'Label')
         file_type = 'png' ### svg, pdf, png
         getColoredPathway(root_dir,graphID_db,file_type,'-'+biological_group)
@@ -234,8 +244,40 @@ def viewLineageProfilerResults(filename,graphic_links):
     log_report.write('Pathways colored and images saved to disk. Exiting webservice.\n')
     log_report.close()
     return graphic_link
+
+def exportGPML2SVG(pathway_db,gpml_path,output=None):
+    #### Use gpml2svg to export the gpml with colors
+    from visualization_scripts import gpml2svg
+    svg_path = gpml2svg.remote(gpml_path,pathway_db,output=output)
+    print [svg_path]
     
-def visualizePathwayAssociations(filename,species,mod_type,wpid,imageExport=True):
+    #The below code - in different permutations - fails due to various issues
+    """
+    from visualization_scripts.svglib import svg2rlg
+    from reportlab.graphics import renderPDF
+    from svglib.svglib import SvgRenderer
+    from reportlab.graphics import renderPDF
+    svgRenderer = SvgRenderer(svg_path)
+    renderPDF.drawToFile(svgRenderer, svg_path.replace('.svg','.pdf'))"""
+
+    """
+    import xml
+    doc = xml.dom.minidom.parse(svg_path)
+    svg = doc.documentElement
+    
+    from svglib.svglib import SvgRenderer
+    svgRenderer = SvgRenderer(svg_path)
+    svgRenderer.render(svg)
+    drawing = svgRenderer.finish()
+    renderPDF.drawToFile(drawing, svg_path.replace('.svg','.pdf'))
+    """
+        
+    import cairosvg ### This option kinda works - produces a pdf/png with black backgrounds and text offsets - non-vector (local directory code)
+    cairosvg.svg2png(url=svg_path, write_to=svg_path.replace('.svg','.png'))
+    cairosvg.svg2pdf(url=svg_path, write_to=svg_path.replace('.svg','.pdf'))
+    return svg_path[:-4]+'.png'
+    
+def visualizePathwayAssociations(filename,species,mod_type,wpid,imageExport=True,gpml2svg=True):
     ### Log any potential problems
     log_file = filepath('webservice.log')
     log_report = open(log_file,'w')
@@ -261,10 +303,23 @@ def visualizePathwayAssociations(filename,species,mod_type,wpid,imageExport=True
     log_report.write('%d IDs imported\n' % len(id_db))
     pathway_db={}
     pathway_db[wpid] = PathwayData(None) ### only need to analyze object (method allows for analysis of any number)
-    pathway_db = getPathwayAs(pathway_db,species_code,mod)
+    pathway_db,gpml_path = getPathwayAs(pathway_db,species_code,mod,keepGPML=True)
     log_report.write('Pathway data imported from GPML files obtained from webservice\n')
-    id_color_db = getHexadecimalColorRanges(id_db,analysis_type) ### example id_db" is key:gene, value:fold
-    graphID_db = getGraphIDAssociations(id_color_db,pathway_db,'MOD')
+    id_color_db = getHexadecimalColorRanges(id_db,analysis_type,includeHash=True) ### example id_db" is key:gene, value:fold
+
+    if gpml2svg:
+        exportGraphID = False
+    graphID_db = getGraphIDAssociations(id_color_db,pathway_db,'MOD',exportGraphID=exportGraphID)
+
+    if gpml2svg:
+        for pathway in pathway_db: wpi = pathway_db[pathway]; name = wpi.Pathway()
+        try: os.mkdir(root_dir)
+        except: pass
+        output_filename = str(root_dir+wpid+'_'+name+'-'+criterion_name)
+        svg_path = exportGPML2SVG(graphID_db,gpml_path,output=output_filename)
+        graphic_link['WP'] = svg_path
+        return graphic_link
+        
     if imageExport != 'png':
         file_type = 'pdf' ### svg, pdf, png
         getColoredPathway(root_dir,graphID_db,file_type,'-'+criterion_name,WPID=wpid)
@@ -403,14 +458,15 @@ def getAllSpeciesPathways(species_full):
     return pathway_db
 
 if __name__ == '__main__':
-    pathway_db = getAllSpeciesPathways('Homo sapiens');
-    for i in pathway_db:
-        print i
+    import webbrowser
+    filename = "/Users/saljh8/Documents/GitHub/altanalyze/GPML/GE.EB_ESC.txt"
+    visualizePathwayAssociations(filename,'Hs','Ensembl','WP399')
+    sys.exit()
     
+    pathway_db = getAllSpeciesPathways('Homo sapiens');
     getPathwayAs(pathway_db,'','');sys.exit()
     getColoredPathwayTest();sys.exit()
-    filename = "/Users/saljh8/Desktop/PCBC_MetaData_Comparisons/AltAnalyzeExon/Methylation_Variance/GO-Elite_adjp-2fold/regulated/GE.poor_vs_good-fold2.0_adjp0.05.txt"
-    visualizePathwayAssociations(filename,'Hs','Ensembl','WP2857')
+
     #viewLineageProfilerResults(filename,[]); sys.exit()
     filename = "/Users/nsalomonis/Desktop/code/AltAnalyze/datasets/3'Array/Merrill/GO-Elite/input/GE.ko_vs_wt.txt"
     pathway_db = getAllSpeciesPathways('Homo sapiens')

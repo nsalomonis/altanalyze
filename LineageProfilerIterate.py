@@ -2229,6 +2229,9 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     try: FoldCutoff = fl.FoldCutoff()
     except: FoldCutoff = 1.5
     
+    try: MinimalPlots = fl.MinimalPlots()
+    except: MinimalPlots = False
+    
     customLabels = None
     try:
         if len(fl.Labels())>0:
@@ -2297,43 +2300,48 @@ def harmonizeClassifiedSamples(species,reference_exp_file, query_exp_file, class
     import UI
     import warnings
     warnings.filterwarnings('ignore')
-    try:
-        try: os.mkdir(fl.OutputDir()+'/UMAP-plots')
-        except: pass
-        """ Output UMAP combined plot colored by reference and query cell identity """
-        plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species=species, zscore=False, reimportModelScores=False,
-            separateGenePlots=False, returnImageLoc=True)
-        plot = plot[-1][-1][:-4]+'.pdf'
-        shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-vs-ref.pdf')
-
-        """ Output UMAP combined plot colored by cell tates """
-        plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species='Mm', zscore=False, reimportModelScores=True,
-            separateGenePlots=False, returnImageLoc=True, forceClusters=True)
-        plot = plot[-1][-1][:-4]+'.pdf'
-        shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-vs-ref-clusters.pdf')
-
-        """ Output individual UMAP plots colored by cell tates """
-        groups_file = string.replace(output_file,'exp.','groups.')
-        plots = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
-            display=False, geneSetName=None, species='Mm', zscore=False, reimportModelScores=True,
-            separateGenePlots=False, returnImageLoc=True, forceClusters=True, maskGroups=groups_file)
-        for plot in plots:
-            plot = plot[-1][:-4]+'.pdf'
-
-            if '-cellHarmony-Reference-' in plot:
-                shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-ref-clusters.pdf')
-            else:
-                shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-clusters.pdf')
-    except:
+    
+    if MinimalPlots:
+        print 'Skipping UMAP plot creation!'
+    else:
+        ### Include making UMAP plots (will add significant time)
         try:
-            print traceback.format_exc() 
-            print 'UMAP error encountered (dependency not met), trying t-SNE'
-            UI.performPCA(output_file, 'no', 't-SNE', False, None, plotType='2D',
-                display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+            try: os.mkdir(fl.OutputDir()+'/UMAP-plots')
+            except: pass
+            """ Output UMAP combined plot colored by reference and query cell identity """
+            plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
+                display=False, geneSetName=None, species=species, zscore=False, reimportModelScores=False,
                 separateGenePlots=False, returnImageLoc=True)
-        except: pass
+            plot = plot[-1][-1][:-4]+'.pdf'
+            shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-vs-ref.pdf')
+    
+            """ Output UMAP combined plot colored by cell tates """
+            plot = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
+                display=False, geneSetName=None, species='Mm', zscore=False, reimportModelScores=True,
+                separateGenePlots=False, returnImageLoc=True, forceClusters=True)
+            plot = plot[-1][-1][:-4]+'.pdf'
+            shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-vs-ref-clusters.pdf')
+    
+            """ Output individual UMAP plots colored by cell tates """
+            groups_file = string.replace(output_file,'exp.','groups.')
+            plots = UI.performPCA(output_file, 'no', 'UMAP', False, None, plotType='2D',
+                display=False, geneSetName=None, species='Mm', zscore=False, reimportModelScores=True,
+                separateGenePlots=False, returnImageLoc=True, forceClusters=True, maskGroups=groups_file)
+            for plot in plots:
+                plot = plot[-1][:-4]+'.pdf'
+    
+                if '-cellHarmony-Reference-' in plot:
+                    shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-ref-clusters.pdf')
+                else:
+                    shutil.copy(plot,fl.OutputDir()+'/UMAP-plots/UMAP-query-clusters.pdf')
+        except:
+            try:
+                print traceback.format_exc() 
+                print 'UMAP error encountered (dependency not met), trying t-SNE'
+                UI.performPCA(output_file, 'no', 't-SNE', False, None, plotType='2D',
+                    display=False, geneSetName=None, species=species, zscore=True, reimportModelScores=False,
+                    separateGenePlots=False, returnImageLoc=True)
+            except: pass
             
     useMarkerFinder=False
     
@@ -3977,11 +3985,11 @@ def createMetaICGSResults(ICGS_files,outputDir,CenterMethod='median',
     # re-cluster this merged file with HOPACH to produce the final combined medoid reference
     from visualization_scripts import clustering
     row_method = None; row_metric = 'correlation'; column_method = None; column_metric = 'cosine'; color_gradient = 'yellow_black_blue'
-    transpose = False; Normalize=False
+    transpose = False; Normalize='median'
 
     graphics = clustering.runHCexplicit(query_output_file, [], row_method, row_metric,
                 column_method, column_metric, color_gradient, transpose, Normalize=Normalize,
-                contrast=3, display=False)
+                contrast=4, display=False)
     print 'Completed clustering'
     revised_cellHarmony_reference = graphics[-1][-1][:-4]+'.txt'
     final_output_dir = outputDir+'/CellHarmonyReference/ICGS-merged-reference.txt'
@@ -4168,7 +4176,7 @@ def collapseSimilarMedoids(outputfile,cutoff=0.9):
     return collapsed_dir, unclustered_collapsed
     
 def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=False,
-                CenterMethod='median',geneOverride=None,combineFullDatasets=True,species='Hs',fl=None):
+                CenterMethod='mean',geneOverride=None,combineFullDatasets=True,species='Hs',fl=None):
     """This function will import an ICGS row normalized heatmap and return raw
     expression values substituted for the values. """
     
@@ -4389,6 +4397,7 @@ def convertICGSClustersToExpression(heatmap_file,query_exp_file,returnCentroids=
         eo.write(string.join(['UID','row_clusters-flat']+map(str,group_index_db),'\t')+'\n')
         eo.write(string.join(['column_clusters-flat','']+map(lambda x: string.replace(x,'cluster-',''),group_index_db),'\t')+'\n')
     from stats_scripts import statistics
+    print 'CenterMethod:',CenterMethod
     try:
         for uid in reference_matrix:
             median_matrix=[]

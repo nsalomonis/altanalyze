@@ -19,7 +19,6 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
     print 'Processing:',matrices_dir
     
     start_time = time.time()
-    
     if dataset_name == '10X_filtered':
         matrix_fn = os.path.basename(string.replace(matrices_dir,'\\','/'))
         if '.gz' in matrix_fn:
@@ -59,15 +58,18 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
         if os.path.isfile(genes_path)==False:
             genes_path = string.replace(matrix_dir,'matrix.mtx','features.tsv')
             genes_path = string.replace(matrix_dir,'counts.mtx','features.tsv')
-        if 'matrix' in genes_path:
-            genes_path = string.replace(genes_path,'matrix','features')
+        if 'matrix.' in genes_path:
+            genes_path = string.replace(genes_path,'matrix.','features.')
             genes_path = string.replace(genes_path,'.mtx','.tsv')
             if os.path.isfile(genes_path)==False:
-                genes_path = string.replace(genes_path,'features','genes')
+                genes_path = string.replace(genes_path,'features.','genes.')
                 if os.path.isfile(genes_path)==False:
-                    incorrectGenePathError
-        if 'matrix' in barcodes_path:
-            barcodes_path = string.replace(barcodes_path,'matrix','barcodes')
+                    try: incorrectGenePathError
+                    except:
+                        print 'WARNING!!!!! incorrectGenePathError'
+                        print genes_path
+        if 'matrix.' in barcodes_path:
+            barcodes_path = string.replace(barcodes_path,'matrix.','barcodes.')
             barcodes_path = string.replace(barcodes_path,'.mtx','.tsv')
             if os.path.isfile(barcodes_path)==False:
                 incorrectBarcodePathError
@@ -83,7 +85,12 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
             barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
     
     if geneIDs:
-        gene_names = gene_ids       
+        gene_names = gene_ids
+    else:
+        for i in gene_names:
+            if ':' in i:
+                gene_names = gene_ids ### Occurs for species such as Zebrafish - can break AltAnalyze
+                break
     #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes) ### could possibly cause issues with comparative analyses
     matrices_dir = os.path.abspath(os.path.join(matrices_dir, os.pardir))
 

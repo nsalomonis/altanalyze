@@ -1152,6 +1152,19 @@ def performPCA(filename, pca_labels, pca_algorithm, transpose, root, plotType='3
     if zscore=='yes': zscore = True
     elif zscore=='no': zscore = False
     pca_graphical_links=[]
+    """
+    print 'start'
+    print filename
+    print transpose
+    print pca_labels
+    print species
+    print zscore
+    print colorByGene
+    print reimportModelScores
+    print separateGenePlots
+    print forceClusters
+    print maskGroups
+    print coordinateFile"""
     try:
         pca_graphical_links = clustering.runPCAonly(filename, graphics, transpose, showLabels=pca_labels,
                     plotType=plotType,display=display, algorithm=pca_algorithm, geneSetName=geneSetName,
@@ -1769,27 +1782,31 @@ class GUI:
         except Exception:
             from PIL import ImageTk
         png_file_dir = self.graphic_link['WP']
-        img = ImageTk.PhotoImage(file=png_file_dir)
-        
-        sf = PmwFreeze.ScrolledFrame(tl, labelpos = 'n', label_text = '',
-                usehullsize = 1, hull_width = 800, hull_height = 550)
-        sf.pack(padx = 0, pady = 0, fill = 'both', expand = 1)
-        frame = sf.interior()
-
-        tl.title(png_file_dir)
-        can = Canvas(frame)
-        can.pack(fill=BOTH, padx = 0, pady = 0)
-        w = img.width()
-        h = height=img.height()
-        
-        can.config(width=w, height=h)        
-        can.create_image(2, 2, image=img, anchor=NW)
-        if 'quit' in self.graphic_link:
-            tl.protocol("WM_DELETE_WINDOW", lambda: self.tldeleteWindow(tl))
-            tl.mainloop()
+        if '.svg' in png_file_dir:
+            try: webbrowser.open(png_file_dir)
+            except Exception: pass
         else:
-            tl.protocol("WM_DELETE_WINDOW", lambda: self.tldeleteWindow(tl))
-            tl.mainloop()
+            img = ImageTk.PhotoImage(file=png_file_dir)
+            
+            sf = PmwFreeze.ScrolledFrame(tl, labelpos = 'n', label_text = '',
+                    usehullsize = 1, hull_width = 800, hull_height = 550)
+            sf.pack(padx = 0, pady = 0, fill = 'both', expand = 1)
+            frame = sf.interior()
+    
+            tl.title(png_file_dir)
+            can = Canvas(frame)
+            can.pack(fill=BOTH, padx = 0, pady = 0)
+            w = img.width()
+            h = height=img.height()
+            
+            can.config(width=w, height=h)        
+            can.create_image(2, 2, image=img, anchor=NW)
+            if 'quit' in self.graphic_link:
+                tl.protocol("WM_DELETE_WINDOW", lambda: self.tldeleteWindow(tl))
+                tl.mainloop()
+            else:
+                tl.protocol("WM_DELETE_WINDOW", lambda: self.tldeleteWindow(tl))
+                tl.mainloop()
 
     def openPNGImage(self):
         png_file_dir = self.graphic_link['WP']
@@ -4577,6 +4594,15 @@ class ExpressionFileLocationData:
         else:
             return True
     def setLabels(self,labels): self.labels = labels
+    def setMinimalPlots(self,minimalPlots): self.minimalPlots = minimalPlots
+    def MinimalPlots(self):
+        try:
+            if 'rue' in self.minimalPlots or 'es' in self.minimalPlots:
+                return True
+            else:
+                return False
+        except:
+            return False
     def Labels(self): return self.labels
     def setFoldCutoff(self, foldCutoff): self.foldCutoff = foldCutoff
     def FoldCutoff(self): return self.foldCutoff

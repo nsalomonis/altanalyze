@@ -158,7 +158,7 @@ def checkExpressionFileFormat(expFile,reportNegatives=False,filterIDs=False):
 
 def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,comp_group_dir,probeset_db,annotate_db):
     print "Processing the expression file:",expr_input_dir
-    
+     
     try: expressionDataFormat,increment,convertNonLogToLog = checkExpressionFileFormat(expr_input_dir)
     except Exception:
         print traceback.format_exc()
@@ -913,19 +913,9 @@ def exportGeneRegulationSummary(filename,headers,system_code):
                         if log_fold>0:
                             try: criterion_db[criterion_name,'upregulated','protein_coding']+=1
                             except KeyError: criterion_db[criterion_name,'upregulated','protein_coding'] = 1
-                            try:
-                                if 'miR-1(' in af[mi]:
-                                    try: criterion_db[criterion_name,'upregulated','protein_coding',search_miR[:-1]]+=1
-                                    except KeyError: criterion_db[criterion_name,'upregulated','protein_coding',search_miR[:-1]] = 1
-                            except Exception: None ### occurs when mi not present
                         else:
                             try: criterion_db[criterion_name,'downregulated','protein_coding']+=1
                             except KeyError: criterion_db[criterion_name,'downregulated','protein_coding'] = 1
-                            try:
-                                if 'miR-1(' in af[mi]:
-                                    try: criterion_db[criterion_name,'downregulated','protein_coding',search_miR[:-1]]+=1
-                                    except KeyError: criterion_db[criterion_name,'downregulated','protein_coding',search_miR[:-1]] = 1
-                            except Exception: None ### occurs when mi not present
                     else:
                         if protein_class == 'NULL':
                             class_name = 'unclassified'
@@ -934,19 +924,9 @@ def exportGeneRegulationSummary(filename,headers,system_code):
                         if log_fold>0:
                             try: criterion_db[criterion_name,'upregulated',class_name]+=1
                             except KeyError: criterion_db[criterion_name,'upregulated',class_name] = 1
-                            try:
-                                if 'miR-1(' in af[mi]:
-                                    try: criterion_db[criterion_name,'upregulated',class_name,search_miR[:-1]]+=1
-                                    except KeyError: criterion_db[criterion_name,'upregulated',class_name,search_miR[:-1]] = 1
-                            except Exception: None ### occurs when mi not present
                         else:
                             try: criterion_db[criterion_name,'downregulated',class_name]+=1
                             except KeyError: criterion_db[criterion_name,'downregulated',class_name] = 1
-                            try:
-                                if 'miR-1(' in af[mi]:
-                                    try: criterion_db[criterion_name,'downregulated',class_name,search_miR[:-1]]+=1
-                                    except KeyError: criterion_db[criterion_name,'downregulated',class_name,search_miR[:-1]] = 1
-                            except Exception: None ### occurs when mi not present
             index += 1
             
     if len(criterion_db)>0:
@@ -1382,7 +1362,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
             if 'ENS' in arrayid and Vendor == 'Symbol': 
                 Vendor = 'Ensembl'
                 break
-        if array_type != "AltMouse" and (array_type != "3'array" or 'Ensembl' in Vendor):
+        if array_type != "AltMouse" and (array_type != "3'array" or 'Ensembl' in Vendor or 'RNASeq' in Vendor):
             #annotate_db[gene] = symbol, definition,rna_processing
             #probeset_db[gene] = transcluster_string, exon_id_string
             title = ['Ensembl_gene','Definition','Symbol','Transcript_cluster_ids','Constitutive_exons_used','Constitutive_IDs_used','Putative microRNA binding sites','Select Cellular Compartments','Select Protein Classes','Chromosome','Strand','Genomic Gene Corrdinates','GO-Biological Process','GO-Molecular Function','GO-Cellular Component','WikiPathways']
@@ -1408,7 +1388,7 @@ def exportAnalyzedData(comp_group_list2,expr_group_db):
                 symbol = ca.Symbol()
                 data_val = [arrayid,ca.Description(),ca.Symbol(),ca.Species(),ca.Coordinates()]
                 data_val = string.join(data_val,'\t')
-            elif array_type != 'AltMouse' and (array_type != "3'array" or 'Ensembl' in Vendor):
+            elif array_type != 'AltMouse' and (array_type != "3'array" or 'Ensembl' in Vendor or 'RNASeq' in Vendor):
                 try: definition = annotate_db[arrayid][0]; symbol = annotate_db[arrayid][1]; rna_processing = annotate_db[arrayid][2]
                 except Exception: definition=''; symbol=''; rna_processing=''
                 report = 'all'
@@ -1905,7 +1885,8 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         platform_description = array_type
     print "Beginning to process the",species,platform_description,'dataset'
   
-    process_custom = 'no'  
+    process_custom = 'no'
+    
     if array_type == "custom": ### Keep this code for now, even though not currently used
         import_dir = '/AltDatabase/affymetrix/custom'
         dir_list = read_directory(import_dir)  #send a sub_directory to a function to identify all files in a directory
@@ -1919,7 +1900,7 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         probe_annotation_file = "AltDatabase/"+species+'/'+ array_type+'/'+array_type+"_annotations.txt"
         original_annotate_db = import_annotations(probe_annotation_file)
         conventional_array_db = []
-    elif array_type == "3'array" and 'Ensembl' not in vendor: ### If user supplied IDs are from Ensembl - doesn't matter the vendor
+    elif array_type == "3'array" and 'Ensembl' not in vendor and 'RNASeq' not in vendor: ### If user supplied IDs are from Ensembl - doesn't matter the vendor
         original_vendor = vendor
         if 'other:' in vendor:
             vendor = string.replace(vendor,'other:','')
@@ -1942,8 +1923,10 @@ def remoteExpressionBuilder(Species,Array_type,dabg_p,expression_threshold,
         probeset_db = []; annotate_db = []; constitutive_db = []; conventional_array_db = []
         ### The below function gathers GO annotations from the GO-Elite database (not Affymetrix as the module name implies)
         conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
-    if 'Ensembl' in vendor:
+    if 'Ensembl' in vendor or 'RNASeq' in vendor:
+        robeset_db = []; annotate_db = []; constitutive_db = []; conventional_array_db = []
         annotate_db = importGeneAnnotations(species) ### populate annotate_db - mimicking export structure of exon array
+        conventional_array_db = BuildAffymetrixAssociations.getEnsemblAnnotationsFromGOElite(species)
 
     original_platform = array_type
     global expr_threshold; global dabg_pval; global gene_exp_threshold; global gene_rpkm_threshold; dabg_pval = dabg_p

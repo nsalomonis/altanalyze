@@ -304,6 +304,75 @@ def exportCustomPathwayMappings(gene_to_custom,mod,system_codes,custom_sets_fold
     data.close()
     #print relationships,'Custom pathway-to-ID relationships exported...'
 
+def visualizeWikiPathways(species_code,gpml_data,pathway_db,pathway_id,mod='Ensembl'):
+    import matplotlib.pyplot as plt
+    
+    #styles = mpatches.ArrowStyle.get_styles()
+
+    fig, ax = plt.subplots() #fig, ax = plt.subplots(figsize=(3, 2))
+    #fig.suptitle(pathway_id, fontsize=14, fontweight='bold')
+    """
+    an1 = ax.annotate("Test 1", xy=(0.5, 0.5), xycoords="data",
+                      va="center", ha="center",
+                      bbox=dict(boxstyle="round", fc="w"))
+    
+    an2 = ax.annotate("Test 2", xy=(0.5, 1.), xycoords=an1,
+                      xytext=(0.5, 1.1), textcoords=(an1, "axes fraction"),
+                      va="bottom", ha="center",
+                      bbox=dict(boxstyle="round", fc="w"),
+                      arrowprops=dict(arrowstyle="->"))
+    """
+    try: gene_to_symbol_db = getGeneToUid(species_code,('hide',mod+'-Symbol.txt')); #print mod_source, 'relationships imported.'
+    except Exception: gene_to_symbol_db={}
+    
+    wpd = pathway_db[pathway_id]
+    for gi in wpd.PathwayGeneData():
+        #print gi.YCoord()/1000
+        y = (-1*gi.YCoord()/1000)+1
+        #print [gi.Height(), gi.Width(), gi.XCoord(), gi.YCoord(), gi.Label(), gi.GraphID()]
+        ax.annotate(gi.Label(), xy=(gi.XCoord()/1000, y), xycoords="data",
+                          va="center", ha="center", size = 4,
+                          bbox=dict(boxstyle="round", fc="w"))
+        
+    for intd in wpd.Interactions():
+        gi1 = intd.GeneObject1()
+        gi2 = intd.GeneObject2()
+        coord = intd.Coordinates()
+        x = coord[0][0]
+        y = coord[0][1]
+        dx = coord[1][0] - x
+        dy = coord[1][1] - y #(y+(y*0.1))
+        x = x/1000
+        y = (-1*y/1000)+1
+        dx = dx/1000
+        dy = dy/1000
+        ax.arrow(x, y, dx, dy)
+        
+        ### Gene ID mapping below for color-based visualization
+        if len(gene_to_symbol_db)>0:
+            try:
+                if gi1.ModID()[0] in gene_to_symbol_db:
+                    symbol = gene_to_symbol_db[gi1.ModID()[0]][0]
+                    if len(symbol)>0:
+                        gi1.setLabel(symbol) ### Replace the WikiPathways user annnotated symbol with a MOD symbol
+            except Exception:
+                None
+            try:
+                if gi2.ModID()[0] in gene_to_symbol_db:
+                    symbol = gene_to_symbol_db[gi2.ModID()[0]][0]
+                    if len(symbol)>0:
+                        gi2.setLabel(symbol) ### Replace the WikiPathways user annnotated symbol with a MOD symbol
+            except Exception:
+                None
+        #gi1.Label()
+        #gi2.Label()
+                    
+    ax.xaxis.set_visible(False)
+    ax.yaxis.set_visible(False)
+    
+    fig.subplots_adjust(top=0.83)
+    plt.show()
+    
 def exportNodeInteractions(pathway_db,mod,custom_sets_folder):
     
     import GO_Elite
@@ -1365,6 +1434,15 @@ class GeneIDInfo:
     def Label(self): return self.label
     def setModID(self,mod_list): self.mod_list = mod_list
     def ModID(self): return self.mod_list
+    def setXCoord(self,xCoord): self.xCoord = xCoord
+    def setYCoord(self,yCoord): self.yCoord = yCoord
+    def setWidth(self,width): self.width = width
+    def setHeight(self,height): self.height = height
+    def XCoord(self): return self.xCoord
+    def YCoord(self): return self.yCoord
+    def Height(self): return self.height
+    def Width(self): return self.width
+
     def Report(self):
         try: output = self.GeneID()+'|'+self.System()
         except Exception: print self.Label()
@@ -1453,7 +1531,7 @@ def convertAllGPML(specific_species,all_species):
             
             ### Download all species GPML from .zip
             #url = 'http://wikipathways.org//wpi/cache/wikipathways_'+species+'_Curation-AnalysisCollection__gpml.zip'
-            url = 'http://data.wikipathways.org/20200510/gpml/wikipathways-20200510-gpml-'+species+'.zip'
+            url = 'http://data.wikipathways.org/20210110/gpml/wikipathways-20210110-gpml-'+species+'.zip'
             print url
             fln,status = update.download(url,'GPML/','')
             
@@ -1559,21 +1637,25 @@ class WikiPathwaysData:
     def Count(self): return str(self.count)
     def __repr__(self): return self.Report()
 
-class InteractionData:
-    def __init__(self, gene1,gene2,int_type):
-        self.gene1 = gene1; self.gene2 = gene2; self.int_type = int_type
-    def GeneObject1(self): return self.gene1
-    def GeneObject2(self): return self.gene2
-    def InteractionType(self): return self.int_type
-
 class EdgeData:
     def __init__(self, graphid1,graphid2,int_type):
         self.graphid1 = graphid1; self.graphid2 = graphid2; self.int_type = int_type
     def GraphID1(self): return self.graphid1
     def GraphID2(self): return self.graphid2
+    def setCoordinates(self,coordinates): self.coordinates = coordinates
+    def Coordinates(self): return self.coordinates
     def InteractionType(self): return self.int_type
+    def __repr__(self): print 'EdgeData repr'
     
-def parseGPML(custom_sets_folder):
+class InteractionData(EdgeData):
+    def __init__(self, gene1,gene2,int_type):
+        self.gene1 = gene1; self.gene2 = gene2; self.int_type = int_type
+    def GeneObject1(self): return self.gene1
+    def GeneObject2(self): return self.gene2
+    def InteractionType(self): return self.int_type
+    def __repr__(self): print self.edgeData()
+
+def parseGPML(custom_sets_folder,includeGraphicElements=True):
     import xml.dom.minidom
     from xml.dom.minidom import Node
     from xml.dom.minidom import parse, parseString
@@ -1610,11 +1692,24 @@ def parseGPML(custom_sets_folder):
             ### Store internal graph data for pathway edges to build gene interaction networks later
             graphid = ed.getAttribute("GraphRef")
             edge_type = ed.getAttribute("ArrowHead")
-            if edge_type == '': edge_pair = [graphid] ### either just a graphical line or the begining of a node-node edge
+            if edge_type == '':
+                edge_pair = [graphid] ### either just a graphical line or the begining of a node-node edge
+                try:
+                    graphX1 = ed.getAttribute("X")
+                    graphY1 = ed.getAttribute("Y")
+                except: pass
             else:
+                try:
+                    graphX2 = ed.getAttribute("X")
+                    graphY2 = ed.getAttribute("Y")
+                    edge_coord = [(float(graphX1),float(graphY1)),(float(graphX2),float(graphY2))]
+                except: pass
                 try:
                     edge_pair.append(graphid)
                     edd = EdgeData(str(edge_pair[0]),str(edge_pair[1]),str(edge_type))
+                    try:
+                        edd.setCoordinates(edge_coord)
+                    except: pass
                     edge_data.append(edd)
                 except Exception:
                     None ### Can happen with some pathways
@@ -1645,6 +1740,13 @@ def parseGPML(custom_sets_folder):
                 if x.nodeName == 'Xref': ### Since the attributes we want are children of these nodes, must find the parents first
                     system_name = x.getAttribute("Database") ### System Code
                     id = x.getAttribute("ID") ### Gene or metabolite ID
+                    
+                if x.nodeName == 'Graphics' and includeGraphicElements: ### Positional location of the same gene ID as above
+                    xCoord = x.getAttribute("CenterX") ### X coordinate
+                    yCoord = x.getAttribute("CenterY") ### Y coordinate
+                    width = x.getAttribute("Width") ### X coordinate
+                    height = x.getAttribute("Height") ### Y coordinate
+                    
             label = i.getAttribute("TextLabel") ### Gene or metabolite label
             type = i.getAttribute('Type') #E.g.', GeneProduct, Metabolite
             graphID = i.getAttribute("GraphId") ### WikiPathways graph ID
@@ -1655,6 +1757,13 @@ def parseGPML(custom_sets_folder):
                 gi.setGroupID(str(groupID)) ### Include internal graph IDs for determining edges
                 gi.setGraphID(graphID)
                 gi.setLabel(label)
+                try:
+                    gi.setXCoord(float(xCoord))
+                    gi.setYCoord(float(yCoord))
+                    gi.setWidth(float(width))
+                    gi.setHeight(float(height))
+                except:
+                    pass
                 if len(id)>0 or 'Tissue' in pathway_name: ### Applies to the Lineage Profiler pathway which doesn't have IDs
                     gene_data.append(gi)
                     pathway_gene_data.append(gi)
@@ -1689,6 +1798,7 @@ def getInteractions(complexes_data,edge_data,wpd):
                 for gi1 in gi_list1:
                     for gi2 in gi_list2:
                         intd = InteractionData(gi1,gi2,eed.InteractionType())
+                        intd.setCoordinates(eed.Coordinates())
                         interaction_data.append(intd)
             except KeyError: null=[] ### Typically occurs for interactions with Labels and similar objects
     return interaction_data
@@ -1981,7 +2091,7 @@ if __name__ == '__main__':
     for i in gene_annotations:
         print i, gene_annotations[i].Symbol(); break
     print len(gene_annotations)
-    sys.exit()
+    #sys.exit()
     import GO_Elite
     system_codes,source_types,mod_types = GO_Elite.getSourceData()
     #custom_sets_folder = '/test'
@@ -1995,6 +2105,13 @@ if __name__ == '__main__':
                             
     gpml_data,pathway_db = parseGPML(custom_sets_folder)
     gene_to_WP = unifyGeneSystems(gpml_data,species_code,mod)
+    for pathway in pathway_db:
+        print pathway
+        
+    #### Use Matplotlib to visualize a WikiPathway (poorly)
+    visualizeWikiPathways(species_code,gpml_data,pathway_db,pathway,mod='Ensembl')
+    sys.exit()
+    
     exportNodeInteractions(pathway_db,mod,custom_sets_folder)
     sys.exit()
     biopax_data = parseBioPax('/test'); sys.exit()

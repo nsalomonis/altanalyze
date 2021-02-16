@@ -5108,6 +5108,39 @@ def callWXPython():
     app = wx.App(False)
     AltAnalyzeViewer.remoteViewer(app)
     
+def rewriteFinalGroups(filename,export_path):
+    eo = export.ExportFile(export_path)
+    eo.write(string.join(['cell_ID','Cluster','Cell-Type-Prediction'],'\t')+'\n')
+    for line in open(filename,'rU').xreadlines():
+        eo.write(line)
+    eo.close()
+    
+def exportMarkersForCellBrowser(marker_file,cluster_names_dir,export_path):
+    eo = export.ExportFile(export_path)
+    cluster_names={}
+    eo.write('cluster\tgene\tavg_diff\tp_val\t_hprdClass\t_expr\t_geneLists\n')
+    for line in open(cluster_names_dir,'rU').xreadlines():
+        data = cleanUpLine(line)
+        cluster,name = string.split(data,'\t')
+        cluster_names[cluster] = name
+    firstRow=True
+    cluster_count={}
+    for line in open(marker_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        if firstRow: firstRow=False
+        else:
+            try:
+                gene,symbol,rho,ICGS_State = string.split(data,'\t')
+            except Exception:
+                gene,symbol,rho,rho_p,ICGS_State = string.split(data,'\t')
+            name = cluster_names[ICGS_State]
+            try: cluster_count[name]+=1
+            except: cluster_count[name]=1
+            score = str(float(rho)*10.0)
+            if score>2 and cluster_count[name]<101:
+                eo.write(string.join([name,gene,score,rho_p,"NA","NA","AltAnalyze"],'\t')+'\n')
+    eo.close()
+        
 def AltAnalyzeSetup(skip_intro):
     global apt_location; global root_dir;global log_file; global summary_data_db; summary_data_db={}; reload(UI)
     global probability_statistic; global commandLineMode; commandLineMode = 'no'
@@ -6358,7 +6391,9 @@ def commandLineRun():
                                                          'downsample=','query=','referenceFull=', 'maskGroups=',
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
                                                          'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses=',
-                                                         'useExonReads=','ChromiumSparseMatrixDir=','coordinateFile='])
+                                                         'useExonReads=','ChromiumSparseMatrixDir=','coordinateFile=',
+                                                         'minimalPlots=','cellBrowser=','cellbrowser='])
+        
     except Exception:
         print traceback.format_exc()
         print "There is an error in the supplied command-line arguments (each flag requires an argument)"; sys.exit()
@@ -6611,6 +6646,7 @@ def commandLineRun():
             downsample=2500
             numGenesExp=500
             numVarGenes=500
+            cellBrowser = False
             if ChromiumSparseMatrix != '' or ChromiumSparseMatrixDir != '':
                 rho_cutoff = 0.2
                 column_metric = 'euclidean'
@@ -6671,6 +6707,9 @@ def commandLineRun():
                     try: contrast=float(arg)
                     except Exception: print '--contrast not a valid float';sys.exit()
                 elif opt == '--vendor': vendor=arg
+                elif opt == '--cellBrowser' or opt == '--cellbrowser':
+                    if 'true' in arg.lower() or 'yes' in arg.lower():
+                        cellBrowser = True
                 elif opt == '--display':
                     if arg=='yes':
                         display=True
@@ -6732,7 +6771,8 @@ def commandLineRun():
                             print 'Setting output directory to:',output_dir
                             expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
                     if ChromiumSparseMatrix != '':
-                        exp_name = 'scRNA-Seq'
+                        try: exp_name
+                        except: exp_name = 'scRNA-Seq'
                         print 'Setting experiment name to:',exp_name
                         try: expFile = output_dir + '/ExpressionInput/'+ 'exp.'+exp_name+'.txt'
                         except:
@@ -6894,6 +6934,20 @@ def commandLineRun():
             fl.setCompsFile(comps_file)
             exp_file_location_db[exp_name+'-ICGS'] = fl
             
+            if cellBrowser:
+                import shutil
+                ### Export additional formatted results for the UCSC cellbrowser
+                cellbrowser_dir = root_dir+'/ICGS-NMF/cellbrowser'
+                try: os.mkdir(cellbrowser_dir)
+                except: pass
+                shutil.move(newExpFile,cellbrowser_dir+'/exp.cellbrowser.txt')
+                shutil.copy(root_dir+'/ICGS-NMF/FinalMarkerHeatmap-UMAP_coordinates.txt',cellbrowser_dir+'/FinalMarkerHeatmap-UMAP_coordinates.txt')
+                rewriteFinalGroups(root_dir+'/ICGS-NMF/FinalGroups-CellTypesFull.txt',cellbrowser_dir+'/FinalGroups-CellTypesFull.txt')
+                marker_file = root_dir+'/ICGS-NMF/MarkerGenes.txt'
+                cluster_names_dir = root_dir+'/ICGS-NMF/FinalGroups-CellTypes.txt'
+                marker_export_dir = root_dir+'/ICGS-NMF/cellbrowser/markers.tsv'
+                exportMarkersForCellBrowser(marker_file,cluster_names_dir,marker_export_dir)
+                
             ### force MarkerFinder to be run
             input_exp_file = newExpFile  ### Point MarkerFinder to the new ICGS ordered copied expression file
             runMarkerFinder=True ### Not necessary for ICGS2 as MarkerFinder will already have been run - but good for other ICGS outputs
@@ -7059,7 +7113,7 @@ def commandLineRun():
             #from visualization_scripts import clustering; clustering.outputClusters([input_file_dir],[])
             sys.exit()
                         
-        if 'PCA' in image_export or 't-SNE' in image_export or 'UMAP' in image_export or 'umap' in image_export:
+        if 'PCA' in image_export or 't-SNE' in image_export or 'tsne' in image_export or 'UMAP' in image_export or 'umap' in image_export or 'spring' in image_export or 'SPRING' in image_export:
             #AltAnalyze.py --input "/Users/nsalomonis/Desktop/folds.txt" --image PCA --plotType 3D --display True --labels yes
             #python AltAnalyze.py --input "/Users/nsalomonis/Desktop/log2_expression.txt" --image "t-SNE" --plotType 2D --display True --labels no --genes "ACTG2 ARHDIA KRT18 KRT8 ATP2B1 ARHGDIB" --species Hs --platform RNASeq --separateGenePlots True --zscore no
             #--algorithm "t-SNE"
@@ -7073,10 +7127,12 @@ def commandLineRun():
             reimportModelScores = True
             maskGroups = None
             coordinateFile = None
-            if 't-SNE' in image_export:
+            if 't-SNE' in image_export or 'tsne' in image_export:
                 pca_algorithm = 't-SNE'
-            if 'UMAP' in image_export or 'umap' in image_export:
+            if 'umap' in image_export or 'UMAP' in image_export:
                 pca_algorithm = 'UMAP'
+            if 'spring' in image_export or 'SPRING' in image_export:
+                pca_algorithm = 'SPRING'
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 #print opt,arg
                 if opt == '--labels':
@@ -8141,6 +8197,7 @@ def commandLineRun():
                 performDiffExp=True
                 pval = 0.05
                 adjp = True
+                minimalPlots = False
                 for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                     if opt == '--fold': FoldDiff=float(arg)
                     elif opt == '--pval': pval = float(arg)
@@ -8150,6 +8207,7 @@ def commandLineRun():
                     elif opt == '--labels': labels = arg
                     elif opt == '--genes': genes = arg
                     elif opt == '--referenceFull': referenceFull = arg
+                    elif opt == '--minimalPlots': minimalPlots = arg
                     
                 fl = UI.ExpressionFileLocationData('','','','')
                 fl.setSpecies(species)
@@ -8165,6 +8223,7 @@ def commandLineRun():
                     fl.setPvalThreshold(pval)
                     fl.setFoldCutoff(FoldDiff)
                     fl.setLabels(labels)
+                    fl.setMinimalPlots(minimalPlots)
                 else:
                     fl.setClassificationAnalysis('LineageProfiler')
                 #fl.setCompendiumType('AltExon')

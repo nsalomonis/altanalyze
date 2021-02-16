@@ -609,13 +609,13 @@ def justConvertFilenames(species,outputdir):
                 continue
             
 if __name__ == '__main__':
-    ExportCountsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/counts.TCGA-BRCA.txt');sys.exit()
-    Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,events=None)
-    root_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/'
+    #ExportCountsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/counts.TCGA-BRCA.txt');sys.exit()
+    #Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,events=None)
+    root_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Theodosia/CDA/'
     events = ['Psip1:ENSMUSG00000028484:E10.2-I10.1|ENSMUSG00000028484:E10.1-E12.1']
     events = None
     eventsToVisualizeFilename = None
-    eventsToVisualizeFilename = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/AltResults/AlternativeOutput/top50/MultiPath-PSI.txt'
+    eventsToVisualizeFilename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Theodosia/CDA/AltResults/AlternativeOutput/Events-dPSI_0.1_rawp/events.txt'
     bamdir = root_dir
     remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()
