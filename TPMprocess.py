@@ -86,7 +86,7 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
 
-######### Below code deals with building the AltDatabase #########
+# Below code deals with building the AltDatabase #
 def collapseNoveExonBoundaries(novel_exon_coordinates,dataset_dir):
     """ Merge exon predictions based on junction measurments from TopHat. The predicted exons are
     bound by the identified splice site and the consensus length of reads in that sample"""
@@ -387,7 +387,7 @@ def getEnsemblAssociations(species,data_type,test_status,force):
     exportKnownJunctionComparisons(species)
     getExonAndJunctionSequences(species)
 
-######### Below code deals with user read alignment as opposed to building the AltDatabase #########
+# Below code deals with user read alignment as opposed to building the AltDatabase #
 
 class ExonInfo:
     def __init__(self,start,unique_id,annotation):
@@ -5393,10 +5393,7 @@ def calculateGeneTPMs(species,expMatrix):
     gene_matrix = {}
     present_gene_transcripts={}
     for transcript in expMatrix:
-        if '.' in transcript and 'ENS' in transcript:
-            transcript_alt = string.split(transcript,'.')[0]
-        else:
-            transcript_alt = transcript
+        transcript_alt = transcript
         gene = None
         if transcript_alt in transcript_to_gene_db:
             gene = transcript_to_gene_db[transcript_alt][0]
@@ -5439,8 +5436,7 @@ def importTPMs(sample,input_path,expMatrix,countMatrix,countSampleMatrix):
             except Exception: ### nan instead of float found due to lack of alignment
                 est_counts = '0.0'
                 tpm = '0.0'
-            if '.' in target_id:
-                target_id = string.split(target_id,'.')[0] ### Ensembl isoform IDs in more recent Ensembl builds
+            #if '.' in target_id: target_id = string.split(target_id,'.')[0] ### Ensembl isoform IDs in more recent Ensembl builds
             try: expMatrix[target_id].append(tpm)
             except Exception: expMatrix[target_id]=[tpm]
             try: countSampleMatrix[sample]+=float(est_counts)
@@ -5682,11 +5678,13 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
  
 if __name__ == '__main__':
     expMatrix =  '/Volumes/salomonis2/PublicDatasets/GSE127270-hPSCs-Hs/kallsito-GC30-6k-hPSCs/ExpressionInput/protein.kallsito-GC30-6k-hPSCs.txt'
-    output = '/Volumes/salomonis2/PublicDatasets/GSE127270-hPSCs-Hs/kallsito-GC30-6k-hPSCs/ExpressionInput/gene.kallsito-GC30-6k-hPSCs.txt'
-    expMatrix =  '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/protein.BRC-GC30-6k.txt'
+    expMatrix = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio/cell-lines/ExpressionInput/transcript.BreastCancer.txt'
+    output = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio/cell-lines/ExpressionInput/transcript.BreastCancer.txt'
+    #expMatrix =  '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/protein.BRC-GC30-6k.txt'
     output = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC30-6k/ExpressionInput/gene.BRC-GC30-6k.txt'
-    lookup = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/gene-protein.6k.txt'
-    #lookup = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/protein-transcript6k.txt'
+    output = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio/cell-lines/ExpressionInput/protein.BreastCancer.txt'
+    lookup = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio/gene-transcript.txt'
+    lookup = '/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio/TFmRNA-TFprotein.txt'
     po = export.ExportFile(output)
     expMatrix,headers = importTranscriptMatrix(expMatrix)
     print len(expMatrix)
@@ -5700,7 +5698,7 @@ if __name__ == '__main__':
     excludeCellCycle = False
     icgs_groups_path='/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/FinalGroups.txt'
     goelite_path='/Users/saljh8/Documents/GitHub/altanalyze/DemoData/cellHarmony/Mouse_BoneMarrow/inputFile/ICGS-NMF/GO-Elite/clustering/FinalMarkerHeatmap/GO-Elite_results/pruned-results_z-score_elite.txt'
-    predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
+    #predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
     platform = 'RNASeq'; graphic_links=[('','/Volumes/HomeBackup/CCHMC/PBMC-10X/ExpressionInput/SamplePrediction/DataPlots/Clustering-33k_CPTT_matrix-CORRELATED-FEATURES-iterFilt-hierarchical_cosine_cosine.txt')]
     """
     graphic_links,new_results_file = correlateClusteredGenes(platform,graphic_links[-1][-1][:-4]+'.txt',
@@ -5710,7 +5708,7 @@ if __name__ == '__main__':
     import UI; import multiprocessing as mlp
 
     #runKallisto('Mm','BoneMarrow','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/altanalyze/Mm-FASTQ',mlp);sys.exit()
-    runKallisto('Hs','BreastCancer','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/input',mlp);sys.exit()
+    runKallisto('Hs','BreastCancer','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio/cell-lines','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio/cell-lines',mlp);sys.exit()
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
     #correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)

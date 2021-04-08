@@ -833,7 +833,7 @@ def identifyMarkers(filename,cluster_comps,binarize=False):
                         exp_values =  map(lambda x: binaryExp(x), exp_values)
                 if analyze_housekeeping == 'yes': ### Only grab these when analyzing all tissues
                     findHousekeepingGenes((probeset,symbol),exp_values)
-                elif platform == 'RNASeq': ### Exclude low expression (RPKM) genes
+                elif platform == 'RNASeq':# or platform == "3'array": ### Exclude low expression (RPKM) genes
                     if max(exp_values)>RPKM_threshold:
                         PearsonCorrelationAnalysis((probeset,symbol),exp_values,tissue_template_db)
                     else:

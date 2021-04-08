@@ -441,6 +441,7 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
             for geneset_dir in available_genesets:
                 geneset_type = getResourceType(geneset_dir)
                 permuted_z_scores={}; original_mapp_z_score_data={}
+                ### BELOW IS WHERE IMPORT ERRORS CAN PREVENT PROCESSING OF A REFERENCE GENE-MAPP
                 if geneset_type == resources_to_analyze:
                     status, mapp_to_mod_genes = performGeneSetORA(geneset_dir)
                     run_status += status

@@ -55,7 +55,7 @@ def cleanUpLine(line):
     data = string.replace(data,'"','')
     return data
     
-def latteralMerge(files_to_merge,original_filename,outputPath = None):
+def latteralMerge(files_to_merge,original_filename,outputPath = None,includeFilenames=True):
     """ Merging files can be dangerous, if there are duplicate IDs (e.g., gene symbols).
     To overcome issues in redundant gene IDs that are improperly matched (one row with zeros
     and the other with values), this function determines if a lateral merge is more appropriate.
@@ -92,7 +92,6 @@ def latteralMerge(files_to_merge,original_filename,outputPath = None):
     files_to_merge = files_to_merge_revised
     print 'Files to merge:',files_to_merge
         
-    includeFilenames = True
     file_uids = {}
     for filename in files_to_merge:
         firstRow=True
@@ -192,10 +191,10 @@ def latteralMerge(files_to_merge,original_filename,outputPath = None):
         print 'Different identifier order in the input files encountered...'
         return False
         
-def combineAllLists(files_to_merge,original_filename,includeColumns=False):
+def combineAllLists(files_to_merge,original_filename,includeColumns=False,includeFilenames=True):
     headers =[]; files=[]
     
-    run = latteralMerge(files_to_merge,original_filename)
+    run = latteralMerge(files_to_merge,original_filename,includeFilenames=includeFilenames)
     if run:
         return ### Exit Merge Function
     
@@ -427,7 +426,7 @@ def getAllListCombinations(a):
     else:
         return list(itertools.product(*a))
     
-def joinFiles(files_to_merge,CombineType,unique_join,outputDir):
+def joinFiles(files_to_merge,CombineType,unique_join,outputDir,includeFilenames=True):
     """ Join multiple files into a single output file """
     global combine_type
     global permform_all_pairwise
@@ -444,7 +443,7 @@ def joinFiles(files_to_merge,CombineType,unique_join,outputDir):
     if unique_join:
         combineUniqueAllLists(files_to_merge,'')
     else:
-        combineAllLists(files_to_merge,'')
+        combineAllLists(files_to_merge,'',includeFilenames=includeFilenames)
         
     return output_dir+'/MergedFiles.txt'
 

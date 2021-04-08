@@ -118,7 +118,7 @@ pca_labels	Display sample labels next to each object	comboBox	PCA			no	yes|no	ye
 transpose	Transpose matrix	comboBox	PCA			no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 zscore	Z-score normalize	comboBox	PCA			no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
 reimportModelScores	Re-import prior t-SNE plot coordinates	comboBox	PCA			yes	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no	yes|no
-pca_algorithm	Algorithm to use	comboBox	PCA			UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP	SVD|Eigen Vectors|t-SNE|UMAP
+pca_algorithm	Algorithm to use	comboBox	PCA			UMAP	SVD|Eigen Vectors|t-SNE|SPRING|UMAP	SVD|Eigen Vectors|t-SNE|SPRING|UMAP	SVD|Eigen Vectors|t-SNE|SPRING|UMAP	SVD|Eigen Vectors|t-SNE|SPRING|UMAP	SVD|Eigen Vectors|t-SNE|SPRING|UMAP	SVD|Eigen Vectors|t-SNE|SPRING|UMAP	SVD|Eigen Vectors|t-SNE|SPRING|UMAP
 dimensions	Dimensions to display	comboBox	PCA			3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D	2D|3D
 colorByGene	(Optional) Enter a gene to color the plot by	enter	PCA				---	---	---	---	---	---	---
 pcaGeneSets	(Optional) Store top 200 component genes as	enter	PCA				---	---	---	---	---	---	---

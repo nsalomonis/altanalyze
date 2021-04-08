@@ -213,7 +213,7 @@ def countIf(raw_values,expressionCutoff):
             pass
     return counts
 
-def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False):
+def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False,stringMatch=False):
     export_object = open(output_file,'w')
     firstLine = True
     uid_index=0
@@ -237,6 +237,14 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False)
                     if exclude==False:
                         export_object.write(line)
                 elif exclude: ### Only write out the entries NOT in the filter list
+                    export_object.write(line)
+            elif stringMatch !=False:
+                if stringMatch in values[uid_index]:
+                    if logData:
+                        line = string.join([values[0]]+map(str,(map(lambda x: math.log(float(x)+1,2),values[1:]))),'\t')+'\n'
+                    if exclude==False:
+                        export_object.write(line)
+                elif exclude:
                     export_object.write(line)
             else:
                 max_val = max(map(float,values[1:]))
@@ -486,6 +494,24 @@ def transposeMatrix(input_file):
         eo.write(string.join(t,'\t')+'\n')
     eo.close()
 
+def translation(translate_path,input_file):
+    import export
+    translation_db={}
+    for line in open(translate_path,'rU').xreadlines():
+        data = cleanUpLine(line)
+        source,destination = string.split(data,'\t')
+        translation_db[source]=destination
+        
+    eo = export.ExportFile(input_file[:-4]+'-translated.txt')
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data,'\t')
+        uid = values[0]
+        if uid in translation_db:
+            uid = translation_db[uid]
+        eo.write(string.join([uid]+values[1:],'\t')+'\n')
+    eo.close()
+    
 if __name__ == '__main__':
     ################  Comand-line arguments ################
 
@@ -504,6 +530,8 @@ if __name__ == '__main__':
     log2=False
     partialMatch=False
     count=False
+    stringMatch=False
+    translate=False
     
     fileFormat = 'columns'
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
@@ -513,7 +541,7 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
                             'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize=',
-                            'transpose=','fileFormat=','log2=','partialMatch=','count='])
+                            'transpose=','fileFormat=','log2=','partialMatch=','count=','stringMatch=','translate='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
@@ -538,15 +566,24 @@ if __name__ == '__main__':
             elif opt == '--geneCountFilter': geneCountFilter=True
             elif opt == '--expressionCutoff': expressionCutoff=float(arg)
             elif opt == '--minGeneCutoff': minGeneCutoff=int(arg)
+            elif opt == '--translate':
+                translate = True
+                translate_path = arg
             elif opt == '--binarize':
                 if 'alse' in arg or 'no' in arg:
                     binarize=False
+            elif opt == '--stringMatch':
+                stringMatch = arg
+                filter_names = None
             elif opt == '--fileFormat':
                 fileFormat=arg
                 if fileFormat != 'columns':
                     fileFormat = 'rows'
             
     output_file = input_file[:-4]+'-filtered.txt'
+    if translate:
+        translation(translate_path,input_file)
+        sys.exit()
     if transpose:
         transposeMatrix(input_file)
         sys.exit()
@@ -556,8 +593,9 @@ if __name__ == '__main__':
         else:
             statisticallyFilterTransposedFile(input_file,input_file[:-4]+'-OutlierRemoved.txt',expressionCutoff,minGeneCutoff=199,binarize=binarize); sys.exit()
     if filter_rows:
-        filter_names = getFilters(filter_file)
-        filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude)
+        if stringMatch == False:
+            filter_names = getFilters(filter_file)
+        filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude,stringMatch=stringMatch)
     elif calculateCentroids:
         if count:
             output_file = input_file[:-4]+'-count-'+str(expressionCutoff)+'.txt'

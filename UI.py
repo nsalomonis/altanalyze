@@ -973,9 +973,9 @@ def altExonViewer(species,platform,exp_file,gene,show_introns,analysisType,root)
         try: root.destroy()
         except Exception: None
     
-def MergeFiles(files_to_merge, join_option, ID_option, output_merge_dir, root):
+def MergeFiles(files_to_merge, join_option, ID_option, output_merge_dir, root, includeFilenames=True):
     from import_scripts import mergeFiles
-    try: outputfile = mergeFiles.joinFiles(files_to_merge, join_option, ID_option, output_merge_dir)
+    try: outputfile = mergeFiles.joinFiles(files_to_merge, join_option, ID_option, output_merge_dir, includeFilenames=includeFilenames)
     except Exception:
         outputfile = 'failed'
         error = traceback.format_exc()

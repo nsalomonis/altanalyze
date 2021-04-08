@@ -228,7 +228,9 @@ def importGroupsComps(groups_file):
     try:
         for line in open(comps_file,'rU').xreadlines():
             data = cleanUpLine(line)
-            g1,g2 = string.split(data,'\t')
+            try: g1,g2 = string.split(data,'\t')
+            except:
+                pass ### empty row
             try: 
                 g1_name = group_id_lookup[g1]
                 g2_name = group_id_lookup[g2]
@@ -1822,7 +1824,7 @@ if __name__ == '__main__':
                     uniqueDonors = False
                     if string.lower(arg) == 'both':
                         runAgain = True
-                        
+ 
     if len(used)>0:
         ###Upload existing results folder to Synapse
         import synapseclient
@@ -1861,10 +1863,10 @@ if __name__ == '__main__':
                 logfold_threshold= log_fold_cutoff
         if platform == 'PSI':
             print 'Using a dPSI of:',logfold_threshold
+        """
         if platform == 'methylation':
-            use_adjusted_p = True
+            use_adjusted_p = True """
         if platform == 'miRSeq':
-            use_adjusted_p = False
             logfold_threshold=math.log(1,2)
         print 'Filtering on adjusted p-value:',use_adjusted_p
 

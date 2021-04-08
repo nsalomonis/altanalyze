@@ -278,9 +278,11 @@ def importGeneMAPPData(species_code,mod):
         if x: x=False
         else:
             t = string.split(data,'\t')
-            gene = t[0]; mapp = t[2]
+            try: gene = t[0]; mapp = t[2]
+            except: continue
             try: gene_to_mapp[gene].append(mapp)
             except KeyError: gene_to_mapp[gene]= [mapp]
+            #prior = t
     return gene_to_mapp
 
 def exportCustomPathwayMappings(gene_to_custom,mod,system_codes,custom_sets_folder):

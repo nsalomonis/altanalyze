@@ -6552,10 +6552,12 @@ def MakeJunctionFasta(filename):
         ea.write(string.upper(seq)+'\n')
     ea.close()
     
-def ToppGeneFilter(filename):
+def ToppGeneFilter(filename,species='Hs'):
     import gene_associations; from import_scripts import OBO_import
     gene_to_symbol = gene_associations.getGeneToUid('Hs',('hide','Ensembl-Symbol'))
     symbol_to_gene = OBO_import.swapKeyValues(gene_to_symbol)
+
+    entrez_to_symbol = gene_associations.getGeneToUid('Hs',('hide','EntrezGene-Symbol'))
     
     fn = filepath(filename)
     firstRow=True
@@ -6571,8 +6573,14 @@ def ToppGeneFilter(filename):
             #print len(t)
             ea.write(string.join(['Ensembl\t\tCategory'],'\t')+'\n')
         else:
-            symbol = t[1]; category = t[3]
-            symbol = symbol[0]+string.lower(symbol[1:]) ### Mouse
+            symbol = t[1]; category = t[3]; entrez = t[0]
+            if species == 'Mm':
+                symbol = symbol[0]+string.lower(symbol[1:]) ### Mouse
+            if symbol == '':
+                if entrez in entrez_to_symbol:
+                    symbol = entrez_to_symbol[entrez][0]
+                else:
+                    continue
             category = category[:100]
             if symbol in symbol_to_gene:
                 ensembl = symbol_to_gene[symbol][0]
@@ -7933,16 +7941,19 @@ def returnIntronJunctionRatio(counts_file,species = 'Mm'):
     eo.close()
     eoi.close()
 
-def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True,all=False):
+def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True,all=False, convertGenes=True):
     
     gene_symbol_db={}
     try:
         for line in open(ensembl_symbol,'rU').xreadlines():
             data = cleanUpLine(line)
-            ensembl,symbol = string.split(data,'\t')
+            t = string.split(data,'\t')
+            ensembl = t[0]
+            symbol = t[1] 
             gene_symbol_db[ensembl]=symbol
     except:
         pass
+
     if species != None and len(gene_symbol_db)==0:
         import gene_associations
         gene_symbol_db = gene_associations.getGeneToUid(species,('hide','Ensembl-Symbol'))
@@ -7979,8 +7990,11 @@ def convertSymbolLog(input_file,ensembl_symbol,species=None,logNormalize=True,al
         
         else:
             header +=1
-            if gene in gene_symbol_db:
-                symbol = gene_symbol_db[gene]
+            if gene in gene_symbol_db or convertGenes == False:
+                if convertGenes:
+                    symbol = gene_symbol_db[gene]
+                else:
+                    symbol = gene
                 if all:
                     eo.write(string.join([symbol]+values[1:],'\t')+'\n')
                 elif symbol not in added_symbols: 
@@ -8641,7 +8655,7 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
                 header = True
                 file = file[:-4]
                 file = string.split(file[3:], '_')[0]
-                if 'GE.RR44' in file or 'GE.ThPOK' in file:
+                if 'GE.RR44' in file or 'GE.ThPOK' in file or 'GE.combo' in file or 'GE.LPS' in file:
                     file = 'global'
                     continue
                 for line in open(filename, 'rU').xreadlines():
@@ -8664,7 +8678,7 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
                                 fold = -1 / math.pow(2, float(LogFold))
                             if Symbol == 'S100a8':
                                 print 'S100a8', file, LogFold, fold
-                            if abs(fold) > 0.0 and rawp < 0.05:
+                            if abs(fold) > 0 and rawp < 0.05:
                                 try:
                                     DEG_db[Symbol].append([file, direction])
                                 except:
@@ -8690,8 +8704,9 @@ def rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repai
                     if direction1 == direction2 and file1 == file2:
                         try: total_repaired_genes[gene].append([direction1,file1,file2])
                         except: total_repaired_genes[gene] = [[direction1,file1,file2]]
+    
     for gene in total_repaired_genes:
-        print gene+'\t'+str(total_repaired_genes[gene])
+        print gene
     sys.exit()
     def importCellHarmonyPseudoBulkFolds(filename):
         fold_db = {}
@@ -9427,10 +9442,16 @@ def SPRING(root_dir,expfile,expname,visualize=False):
     try: os.mkdir(spring_path)
     except: pass
     save_path = spring_path + expname
+    
+    stringent = True
+    if stringent:
+        num_pc = 15; min_cells = 100; k_neigh = 20; num_force_iter = 400
+    else:
+        num_pc = 30; min_cells = 10; k_neigh = 5; num_force_iter = 100
     out = spring_helper.make_spring_subplot(E, genes_before_filter, save_path, 
                         normalize = True, tot_counts_final = None,
-                        min_counts = 2, min_cells = 100, min_vscore_pctl = 85,show_vscore_plot = False, 
-                        num_pc = 15, k_neigh = 20, num_force_iter = 400)
+                        min_counts = 2, min_cells = min_cells, min_vscore_pctl = 85,show_vscore_plot = False, 
+                        num_pc = num_pc, k_neigh = k_neigh, num_force_iter = num_force_iter)
     numpy.save(save_path + '/cell_filter.npy', numpy.arange(E.shape[0]))
     numpy.savetxt(save_path + '/cell_filter.txt',  numpy.arange(E.shape[0]), fmt='%i')
     print 'Finished in %i seconds' %(time.time() - t0)
@@ -9491,7 +9512,7 @@ def exportCoordinates(headers,coordinate_dir,export_path):
     eo.close()
     return export_path
         
-def iterativeMarkerFinder(root_dir,dataType='PSI'):
+def iterativeMarkerFinder(root_dir,dataType='PSI',geneRPKM=0):
     """ Iteratively perform MarkerFinder and combine the results """
     import ExpressionBuilder, shutil
     species = 'Hs'
@@ -9519,7 +9540,7 @@ def iterativeMarkerFinder(root_dir,dataType='PSI'):
                 
             fl = UI.ExpressionFileLocationData(marker_dir,'','',''); fl.setOutputDir(root_dir)
             fl.setSpecies(species); fl.setVendor(dataType); fl.setVendor(dataType)
-            fl.setRPKMThreshold(0)
+            fl.setRPKMThreshold(geneRPKM)
             fl.setCorrelationDirection('up')
             logTransform = False
             markerFinder.analyzeData(marker_dir,species,platform,'protein_coding',geneToReport=50,correlateAll=True,AdditionalParameters=fl,logTransform=logTransform)
@@ -9534,10 +9555,12 @@ def iterativeMarkerFinder(root_dir,dataType='PSI'):
             #graphics_mf = markerFinder.generateMarkerHeatMaps(fl,dataType,convertNonLogToLog=logTransform,Species=species)
     
     ### Reorganize groups
-    if 'del' in ordered_groups[3] or 'Del' in ordered_groups[3]:
-        deleted = ordered_groups[3]
-        del ordered_groups[3]
-        ordered_groups.append(deleted)
+    try:
+        if 'del' in ordered_groups[3] or 'Del' in ordered_groups[3]:
+            deleted = ordered_groups[3]
+            del ordered_groups[3]
+            ordered_groups.append(deleted)
+    except: pass
     organizeConsolidatedMarkerFinder(consolidated_MarkerFinder,ordered_groups,root_dir,marker_dir)
     
 def organizeConsolidatedMarkerFinder(consolidated_MarkerFinder,ordered_groups,root_dir,marker_dir):
@@ -9609,7 +9632,8 @@ def organizeConsolidatedMarkerFinder(consolidated_MarkerFinder,ordered_groups,ro
     
 def importMarkerFinderHits(fn,dataType):
     if dataType == 'PSI': cutoff = 0.5
-    else: cutoff = 0.7
+    elif dataType == 'RNASeq': cutoff = 0.7
+    else: cutoff = 0.6
     print "Using a MarkerFinder Pearson rho >",cutoff
     genes={}
     ICGS_State_ranked={}
@@ -9627,11 +9651,94 @@ def importMarkerFinderHits(fn,dataType):
                 except Exception: ICGS_State_ranked[ICGS_State] = [[float(rho),gene,symbol]]
     return ICGS_State_ranked
 
+"""
+def findCommonGenes():
+    f = open("demofile2.txt", "a")
+    f.write("Now the file has more content!")
+    f.close()
+    
+def addGenesToRegulatedDB(regulation_db):
+    regulation_db={}
+    gene = t[1]
+    fold = float(t[2])
+    if fold>0:
+        direction = 'up'
+    else:
+        direction = 'down'
+    try: regulation_db[gene,file,direction]+=1
+    except: regulation_db[gene,file,direction] =1
+    
+    for key in regulation_db:
+        gene,file,direction = key
+        if regulation_db[key]>1:
+            oe.write()
+"""
+
+def combinePSIClusterPredictions(folder):
+    ### For Anu's predicted splicing-defined patient clusters - combine these
+    eo = export.ExportFile(folder+'/Combined-samples.txt')
+    files = UI.read_directory(folder)
+    file_names = []
+    subtypes = {}
+    for file in files: 
+        path = folder+'/'+file
+        for line in open(path,'rU').xreadlines():
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            sample_id = t[0]
+            try: subtypes[sample_id].append(file[:-4])
+            except: subtypes[sample_id] = [file[:-4]]
+            if file[:-4] not in file_names:
+                file_names.append(file[:-4])
+    
+    eo.write(string.join(['Sample-ID']+file_names,'\t')+'\n')
+    for sample in subtypes:
+        varaints = []
+        for variant in file_names:
+            if variant in subtypes[sample]:
+                varaints.append('1')
+            else:
+                varaints.append('0')
+        eo.write(string.join([sample]+varaints,'\t')+'\n')
+        
+    eo.close()
+    
+def HTO(filename,DataType='log'):
+    firstRow = True
+    hashed={}
+    export_results = filename[:-4]+'-associations.txt'
+    eos = export.ExportFile(export_results)
+    for line in open(filename,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            firstRow = False
+            header = t[1:]
+        else:
+            cell = t[0]
+            values = map(float,t[1:])
+            if DataType == 'log':
+                values = map(lambda x: math.pow(2,x),values)
+            sum_values = sum(values)
+            index=0
+            for val in values:
+                if val>0:
+                    if (val/sum_values)>0.6:
+                        eos.write(cell+'\t'+header[index]+'\n')
+                        hashed[cell] = header[index] 
+                index+=1
+    eos.close()
+    
 if __name__ == '__main__':
-    exportMarkersForCellBrowser(marker_file,cluster_names_dir,export_path);sys.exit()
-    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.1_rawp/AltAnalyze/'
-    #input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/GeneExpression-eCLIP/DEGs-LogFold_0.58_adjp/Iterative-MarkerFinder/'
-    #iterativeMarkerFinder(input_dir,dataType='PSI');sys.exit()
+    #HTO('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/counts-90k/MergedFiles-HTO-transposed.txt',DataType='non-log');sys.exit()
+    #combinePSIClusterPredictions('/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/SF/CNV/metaDataAnalysis_Amp/CorrelationOutput/');sys.exit()
+    filename = '/Users/saljh8/Downloads/Pathways.txt'
+    #ToppGeneFilter(filename); sys.exit()
+    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.1_rawp/AltAnalyze2'
+    #input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/QAPA/DEGs-LogFold_0.1_rawp/AltAnalyze/'
+    input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/AltAnalyze/'
+    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Beena/Rhesus-project/Dan-Analyses/ExpressionValues/Brain/'
+    #iterativeMarkerFinder(input_dir,dataType='RNASeq',geneRPKM=1);sys.exit()
     root_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/'
     expfile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/exp.MarkerFinder-cellHarmony-reference__cellHarmony-ReOrdered-Q2.txt'
     expname = 'in-vivo'
@@ -9646,9 +9753,10 @@ if __name__ == '__main__':
     
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
     #b = '/data/salomonis2/GSE107727_RAW-10X-Mm/filtered-counts/ExpressionInput/Mm_compatible_symbols.txt'
-    input_file = '/Users/saljh8/Downloads//ICGS-NMF/exp.FinalMarkerHeatmap_all.txt'
+    #b = '/Users/saljh8/Dropbox/Collaborations/Josh-Waxman/ACO-Mutant/features.tsv'
+    input_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/BEAT-AML/exp.BEAT-AML-MDS-steady-state.txt'
     #Log2Only(input_file);sys.exit()
-    #convertSymbolLog(input_file,b,species='Hs',logNormalize=False); sys.exit()
+    #convertSymbolLog(input_file,b,species='Hs',logNormalize=True,convertGenes=True); sys.exit()
     
     marker_genes = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Isoform-U01/6k-Genecode30/GTEx/Gene-level/ExpressionInput/Genes-MarkerFinder.txt'
     #TFisoToGene('/Users/saljh8/Downloads/clones.txt',marker_genes);sys.exit()
@@ -9702,16 +9810,16 @@ if __name__ == '__main__':
     organized_diff_ref = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Merged-GFP-WT-RR44/cellHarmony_KO-vs-WT/OrganizedDifferentials.txt'
     repair1_folds = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/OtherFiles/exp.WT__ThPOK-AllCells-folds.txt'
     repair2_folds = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/OtherFiles/exp.WT__ThPOK-AllCells-folds.txt'
-    reference_fold_dir = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Merged-GFP-WT-RR44/cellHarmony_KO-vs-WT/DifferentialExpression_Fold_1.2_adjp_0.05'
+    reference_fold_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Rhesus-Lung-10x-v3/cellHarmony-v2-LPS/DifferentialExpression_Fold_1.2_adjp_0.05'
     repair_dir1 = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/DifferentialExpression_Fold_1.2_rawp_0.05'
     repair_dir2 = '/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/Fluidigm/GeneExpression/cellHarmony_ThPOK-vs-WT-Nature2020-Fluidigm-rawp/DifferentialExpression_Fold_1.2_rawp_0.05'
     
-    organized_diff_ref = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp2/OrganizedDifferentials.txt'
-    repair1_folds = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/OtherFiles/exp.WTB__JB-AllCells-folds.txt'
+    organized_diff_ref = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Rhesus-Lung-10x-v3/cellHarmony-v2-LPS/OrganizedDifferentials.txt'
+    repair1_folds = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Rhesus-Lung-10x-v3/cellHarmony_Combo-vs-Saline/OtherFiles/exp.LPS__Combo-AllCells-folds.txt'
     repair2_folds = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/OtherFiles/exp.WTB__JB-AllCells-folds.txt'
-    reference_fold_dir = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp2/DifferentialExpression_Fold_1.2_adjp_0.05'
-    repair_dir1 = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/DifferentialExpression_Fold_1.2_adjp_0.05'
-    repair_dir2 = '/Users/saljh8/Dropbox/Collaborations/Huppert/Joint-ICGS2-JAG-WTB/UnsupervisedAnalysis/ICGS-NMF_euclidean_cc/cellHarmony-exp1/DifferentialExpression_Fold_1.2_adjp_0.05'
+    reference_fold_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Rhesus-Lung-10x-v3/cellHarmony-v2-LPS/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir1 = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Rhesus-Lung-10x-v3/cellHarmony_Combo-vs-Saline/DifferentialExpression_Fold_1.2_adjp_0.05'
+    repair_dir2 = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Claire/Rhesus-Lung-10x-v3/cellHarmony_Combo-vs-Saline/DifferentialExpression_Fold_1.2_adjp_0.05'
     
     print 'comparing cellHarmony outputs'
     #rankExpressionRescueFromCellHarmony(organized_diff_ref, repair1_folds, repair2_folds, reference_fold_dir, repair_dir1, repair_dir2);sys.exit()
@@ -9773,7 +9881,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r5/captures.r5-reorganized-top-110.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/CPTT/AltAnalyze/MultiLin/hto.Biolegend-mRNA-ADT-HTO-singlets-ML.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'
@@ -9814,8 +9922,6 @@ if __name__ == '__main__':
     #CountKallistoAlignedJunctions(filename);sys.exit()
     filename = '/Users/saljh8/Desktop/Code/AltAnalyze/AltDatabase/EnsMart72/Mm/junction1/junction_critical-junction-seq.txt'
     #MakeJunctionFasta(filename);sys.exit()
-    filename = '/Users/saljh8/Downloads/CoexpressionAtlas.txt'
-    #ToppGeneFilter(filename); sys.exit()
     #countIntronsExons(filename);sys.exit()
     #filterForJunctions(filename);sys.exit()
     #filename = '/Users/saljh8/Desktop/Grimes/GEC14074/ExpressionOutput/LineageCorrelations-test-protein_coding-zscores.txt'

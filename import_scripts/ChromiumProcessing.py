@@ -14,11 +14,12 @@ try:
 except:
     print ('Missing the h5py library (hdf5 support)...')
 
-def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True, geneIDs=False, minReads=1000, maxCells=150000):
+def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True, geneIDs=False, minReads=1000, maxCells=25000):
     """ Process a filtered or full sparse matrix expression dataset in mtx, mtx.gz or .h5 format """
     print 'Processing:',matrices_dir
     
     start_time = time.time()
+    feature_types=[]
     if dataset_name == '10X_filtered':
         matrix_fn = os.path.basename(string.replace(matrices_dir,'\\','/'))
         if '.gz' in matrix_fn:
@@ -34,8 +35,11 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
         if 'matrix' in f:
             # CellRanger v3
             barcodes = list(f['matrix']['barcodes'])
-            gene_ids = f['matrix']['features']['id']
-            gene_names = f['matrix']['features']['name']
+            ### feature_type, genome, id, name, pattern, read, sequence
+            gene_ids = map(str,f['matrix']['features']['id']) ### deep copy
+            gene_names = map(str,f['matrix']['features']['name']) ### deep copy
+            try: feature_types = f['matrix']['features']['feature_type']
+            except: feature_types=[]
             mat = sparse.csc_matrix((f['matrix']['data'], f['matrix']['indices'], f['matrix']['indptr']), shape=f['matrix']['shape'])
         else:
             # CellRanger v2
@@ -77,6 +81,8 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
             gene_ids = [row[0] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
             try: gene_names = [row[1] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
             except: gene_names = gene_ids
+            try: feature_types = [row[2] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
+            except: feature_types=[]
             barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
         else:
             gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
@@ -91,6 +97,14 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
             if ':' in i:
                 gene_names = gene_ids ### Occurs for species such as Zebrafish - can break AltAnalyze
                 break
+        counts=0
+        for i in feature_types:
+            if i == 'Antibody Capture':
+                gene_names[counts] = gene_ids[counts]+'--ADT'
+            if i == 'Multiplexing Capture':
+                gene_names[counts] = gene_ids[counts]+'--HTO'
+            counts+=1
+            
     #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes) ### could possibly cause issues with comparative analyses
     matrices_dir = os.path.abspath(os.path.join(matrices_dir, os.pardir))
 
@@ -221,7 +235,7 @@ if __name__ == '__main__':
     
     completed = False
     minReads = 1000
-    maxCells = 15000
+    maxCells = 25000
     
     if matrices_folder == None:
         matrices = [matrices_dir]

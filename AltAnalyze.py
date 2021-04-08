@@ -6392,7 +6392,7 @@ def commandLineRun():
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
                                                          'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses=',
                                                          'useExonReads=','ChromiumSparseMatrixDir=','coordinateFile=',
-                                                         'minimalPlots=','cellBrowser=','cellbrowser='])
+                                                         'minimalPlots=','cellBrowser=','cellbrowser=','includeFilenames='])
         
     except Exception:
         print traceback.format_exc()
@@ -7010,15 +7010,19 @@ def commandLineRun():
             files_to_merge=[]
             join_option='Intersection'
             uniqueOnly=False
+            includeFilenames = True
             for opt, arg in options: ### Accept user input for these hierarchical clustering variables
                 if opt == '--input':
                     arg = verifyPath(arg)
                     files_to_merge.append(arg)
                 if opt == '--join': join_option = arg
                 if opt == '--uniqueOnly': unique_only = arg
+                if opt == '--includeFilenames':
+                    if 'false' in string.lower(arg) or 'no' in string.lower(arg):
+                        includeFilenames = False
             if len(files_to_merge)<2:
                 print 'Please designate two or more files to merge (--input)';sys.exit()
-            UI.MergeFiles(files_to_merge, join_option, uniqueOnly, output_dir, None)
+            UI.MergeFiles(files_to_merge, join_option, uniqueOnly, output_dir, None, includeFilenames=includeFilenames)
             sys.exit()
 
         if 'IDTranslation' in accessoryAnalysis:
