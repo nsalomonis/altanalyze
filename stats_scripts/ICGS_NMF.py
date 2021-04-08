@@ -1412,7 +1412,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
     except: data_format = 'scaled'
 
     ### Scale and log2 normalize a counts expression file
-    if 'count' in data_format:
+    if 'count' in data_format and ('CPTT' not in inputExpFile and 'exp.' not in inputExpFile):
         print 'Scaling counts as column normalized log2 values.',
         from import_scripts import CountsNormalize
         inputExpFile = CountsNormalize.normalizeDropSeqCountsMemoryEfficient(inputExpFile)
