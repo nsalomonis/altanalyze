@@ -894,6 +894,7 @@ def importUIDsForMAPPFinderQuery(filedir,system_codes,return_uid_values):
                 x+=1; source_data_read = ''
                 uid = t[0]
                 uid = string.replace(uid,'---','') ###occurs for Affymetrix gene ID input
+                uid = string.replace(uid,'--ADT','') ###occurs for Affymetrix gene ID input
                 uids = string.split(uid,' /// ') ###occurs for Affymetrix gene IDs where there are multiple associations
                 for uid in uids:  
                     if len(uid) > 0 and uid != ' ':
@@ -955,8 +956,10 @@ def importUIDsForMAPPFinderQuery(filedir,system_codes,return_uid_values):
                 while len(values) != longest_value_list: values.append('')
         if system_code_found == 'yes': value_headers = value_headers[1:]###Therfore, column #2 has system code data
         return uid_list,uid_value_db,value_headers,error
-    elif return_uid_values == 'yes': return uid_list,uid_value_db,value_headers,error
-    else: return uid_list,source_data,error
+    elif return_uid_values == 'yes':
+        return uid_list,uid_value_db,value_headers,error
+    else:
+        return uid_list,source_data,error
     
 def getAllDenominators(denom_search_dir,system_codes):
     import mappfinder; denom_all_db={}

@@ -730,7 +730,12 @@ def importBEDFile(bed_dir,root_dir,species,normalize_feature_exp,getReads=False,
                                     print t; force_exception
                                 if 'chr' not in chr: chr = 'chr'+chr
                                 algorithm = 'TopHat-exon'; biotype = 'exon'; biotypes[biotype]=[]
-                                exon1_stop,exon2_start = int(start),int(end); junction_id=exon_id; seq_length = float(bp_total)
+                                try:
+                                    exon1_stop,exon2_start = int(start),int(end); junction_id=exon_id; seq_length = float(bp_total)
+                                except:
+                                    print fn
+                                    print line
+                                    kill
                                 if seq_length == 0:
                                     seq_length = abs(float(exon1_stop-exon2_start))
                                 ### Adjust exon positions - not ideal but necessary. Needed as a result of exon regions overlapping by 1nt (due to build process)
@@ -5117,6 +5122,7 @@ def runKallisto(species,dataset_name,root_dir,fastq_folder,mlp,returnSampleNames
             fastq_paths.append(fastq_folder+file)
     fastq_paths,paired = findPairs(fastq_paths)
 
+
     ### Check to see if Kallisto files already exist and use these if so (could be problematic but allows for outside quantification)
     kallisto_tsv_paths=[]
     dir_list = read_directory(output_dir)
@@ -5684,11 +5690,32 @@ def predictCellTypesFromClusters(icgs_groups_path, goelite_path):
     eo2.close()
     return annotatedGroupsFile
  
+def checkJunctionFileLength(bed_dir):
+    dir_list = read_directory(bed_dir)
+    for filename in dir_list:
+        print '.',
+        fn=filepath(bed_dir+filename)
+        delim = 'rU'
+        line_number = 1
+        if '.tab' in string.lower(filename) or '.bed' in string.lower(filename) or '.junction_quantification.txt' in string.lower(filename):
+            for line in open(fn,delim).xreadlines(): ### changed rU to r to remove \r effectively, rather than read as end-lines
+                if line[0] == '#': continue
+                else:
+                    t = string.split(line,'\t')
+                    row_length = len(t)
+                    if line_number<4:
+                        default_row_length = row_length
+                    else:
+                        if default_row_length!=row_length:
+                            print 'Error...', [filename], 'expected length =',default_row_length,': obtained =',row_length
+                    line_number+=1
+
 if __name__ == '__main__':
     samplesDiffering = 3
     column_method = 'hopach'
     species = 'Ma'
     excludeCellCycle = False
+    checkJunctionFileLength('/data/salomonis2/NCI-R01/TCGA-HNSCC/GDC-BAMs/bed_files/');sys.exit()
     icgs_groups_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/FinalGroups.txt'
     goelite_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/GO-Elite/clustering/exp.FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
     #predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
@@ -5702,11 +5729,11 @@ if __name__ == '__main__':
 
     filename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/Trumpp-HSC-2017/counts.rawTrumpp.txt'
     filename = '/Users/saljh8/Downloads/counts.GSE128537_Rhesus_RNA_gene_count.txt'
-    calculateRPKMsFromGeneCounts(filename,species,AdjustExpression=False);sys.exit()
+    #calculateRPKMsFromGeneCounts(filename,species,AdjustExpression=False);sys.exit()
     #fastRPKMCalculate(filename);sys.exit()
     
     #runKallisto('Mm','ALP-ILC','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/','/Volumes/salomonis2/PublicDatasets/GSE113765-ILC-Mm/bulk-RNASeq/',mlp);sys.exit()
-    runKallisto('Hs','BreastCancer-Lines','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio','/Volumes/salomonis2/NCI-R01/Harvard/BRC_RNA_seq/kallisto-GC33-iso1-pacbio',mlp);sys.exit()
+    runKallisto('Hs','GBM-paired','/Volumes/salomonis2/FASTQs/External-Collaborations/CPMC_Melanoma-GBM/PairedRecurrent/fastq/old/','/Volumes/salomonis2/FASTQs/External-Collaborations/CPMC_Melanoma-GBM/PairedRecurrent/fastq/old/',mlp);sys.exit()
 
     results_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/l/July-2017/PSI/test/Clustering-exp.round2-Guide3-hierarchical_cosine_correlation.txt'
     #correlateClusteredGenesParameters(results_file,rho_cutoff=0.3,hits_cutoff=4,hits_to_report=50,ReDefinedClusterBlocks=True,filter=True)
@@ -5727,7 +5754,7 @@ if __name__ == '__main__':
         True,'gene','protein_coding',False,'cosine','hopach',0.4)
     #expFile = '/Users/saljh8/Desktop/Grimes/KashishNormalization/test/Original/ExpressionInput/exp.CombinedSingleCell_March_15_2015.txt'
     expFile = '/Volumes/My Passport/salomonis2/SRP042161_GBM-single-cell/bams/ExpressionInput/exp.GBM_scRNA-Seq-steady-state.txt'
-    #singleCellRNASeqWorkflow('Hs', "RNASeq", expFile, mlp, parameters=gsp);sys.exit()
+    #singleCellRNASeqWorkflow('Hs', "GBM-paired", expFile, mlp, parameters=gsp);sys.exit()
     
     #calculateRPKMsFromGeneCounts(filename,'Mm',AdjustExpression=False);sys.exit()
     #copyICGSfiles('','');sys.exit()

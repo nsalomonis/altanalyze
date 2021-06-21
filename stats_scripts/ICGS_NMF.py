@@ -1034,7 +1034,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
         Guidefile=graphic_links3[-1][-1]
         Guidefile=Guidefile[:-4]+'.txt'
     else:
-        Guidefile="/Users/saljh8/Downloads/Clustering-exp.type2b_cell_to_cluster-VarGenes-Guide3-hierarchical_cosine_correlation.txt"
+        Guidefile="/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r6/ExpressionInput/amplify/DataPlots/Clustering-exp.MergedFiles-BM-Sp-VarGenes-PageRank-downsampled-Guide3-hierarchical_cosine_correlation.txt"
 
     rho_cutoff=0.2
     try:
@@ -1096,8 +1096,7 @@ def CompleteICGSWorkflow(root_dir,processedInputExpFile,EventAnnot,iteration,rho
                 filteredInputExpFile = string.replace(filteredInputExpFile,'.txt','-OutliersRemoved.txt')
             try:
                 NMFResult,BinarizedOutput,Metadata,Annotation=NMF_Analysis.NMFAnalysis(filteredInputExpFile,NMFinput,Rank,platform,iteration)
-            except Exception:
-                "Exception, choose a lower k value."
+            except Exception: print "Exception, choose a lower k value."
         if Rank>1:
 
             if platform == 'PSI':
@@ -1491,7 +1490,7 @@ def runICGS_NMF(inputExpFile,scaling,platform,species,gsp,enrichmentInput='',dyn
             else: processedInputExpFile = inputExpFile
     else:
         ### Re-run using a prior produced ICGS2 result
-        processedInputExpFile = '/Users/saljh8/Downloads/Type2b/ExpressionInput/exp.type2b_cell_to_cluster-VarGenes.txt'
+        processedInputExpFile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r6/ExpressionInput/exp.MergedFiles-BM-Sp-VarGenes-PageRank-downsampled.txt'
 
     flag=True
     iteration=1 ### Always equal to 1 for scRNA-Seq but can increment for splice-ICGS

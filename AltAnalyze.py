@@ -6941,7 +6941,8 @@ def commandLineRun():
                 try: os.mkdir(cellbrowser_dir)
                 except: pass
                 shutil.move(newExpFile,cellbrowser_dir+'/exp.cellbrowser.txt')
-                shutil.copy(root_dir+'/ICGS-NMF/FinalMarkerHeatmap-UMAP_coordinates.txt',cellbrowser_dir+'/FinalMarkerHeatmap-UMAP_coordinates.txt')
+                try: shutil.copy(root_dir+'/ICGS-NMF/FinalMarkerHeatmap-UMAP_coordinates.txt',cellbrowser_dir+'/FinalMarkerHeatmap-UMAP_coordinates.txt')
+                except: shutil.copy(root_dir+'/ICGS-NMF/FinalMarkerHeatmap_all-UMAP_coordinates.txt',cellbrowser_dir+'/FinalMarkerHeatmap-UMAP_coordinates.txt')
                 rewriteFinalGroups(root_dir+'/ICGS-NMF/FinalGroups-CellTypesFull.txt',cellbrowser_dir+'/FinalGroups-CellTypesFull.txt')
                 marker_file = root_dir+'/ICGS-NMF/MarkerGenes.txt'
                 cluster_names_dir = root_dir+'/ICGS-NMF/FinalGroups-CellTypes.txt'
@@ -7005,7 +7006,7 @@ def commandLineRun():
             
             sampleIndexSelection.filterFile(input_file,output_file,filter_order)
             sys.exit()
-        if 'MergeFiles' in accessoryAnalysis:
+        if 'MergeFiles' in accessoryAnalysis or 'mergefiles' in accessoryAnalysis:
             #python AltAnalyze.py --accessoryAnalysis MergeFiles --input "C:\file1.txt" --input "C:\file2.txt" --output "C:\tables"
             files_to_merge=[]
             join_option='Intersection'
@@ -7605,7 +7606,6 @@ def commandLineRun():
                     ir = 'AltDatabase/'+ensembl_version+'/'
                     er = 'ArchiveDBs/'+ensembl_version+'/'+species+'/'+ensembl_version+'/'
                     export.copyFile(ir+file, er+file)
-                    
             
             if 'RNASeq' in species_to_package[species]:
                 common_to_copy+=['ensembl/'+species+'/'+species+'_Ensembl_junction.txt']

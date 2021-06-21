@@ -14,7 +14,8 @@ try:
 except:
     print ('Missing the h5py library (hdf5 support)...')
 
-def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True, geneIDs=False, minReads=1000, maxCells=25000):
+def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True,
+            geneIDs=False, minReads=1000, maxCells=25000,filterCells=None):
     """ Process a filtered or full sparse matrix expression dataset in mtx, mtx.gz or .h5 format """
     print 'Processing:',matrices_dir
     
@@ -113,21 +114,30 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
     if expFile!=None:
         if 'exp.' in expFile:
             counts_path = string.replace(expFile,'exp.','counts.')
-            
-    barcode_sum = numpy.ndarray.tolist(numpy.sum(mat,axis=0))[0] ### Get the sum counts for all barcodes, 0 is the y-axis in the matrix
-    if len(barcodes)>maxCells:
-        print "Dataset too large, with",len(barcodes), 'cell barcodes... filtering...'
-        ind = 0
-        barcode_rank=[]
-        for count in barcode_sum:
-            if count>minReads: ### Require at least 100 reads/cell
-                barcode_rank.append([count,ind,barcodes[ind]])
-            ind+=1
-        barcode_rank.sort()
-        barcode_rank.reverse()
-        barcode_rank = barcode_rank[:maxCells+5000] ### Don't all more than 20k cells
-        barcode_ind = map(lambda x: x[1],barcode_rank)
-        barcodes = map(lambda x: x[2],barcode_rank) ### Replace barcodes
+    
+    if filterCells==None:
+        barcode_sum = numpy.ndarray.tolist(numpy.sum(mat,axis=0))[0] ### Get the sum counts for all barcodes, 0 is the y-axis in the matrix
+    else:
+        barcode_sum = 1
+    
+    ### Filter the original sparse matrix
+    if len(barcodes)>maxCells or filterCells!=None:
+        if filterCells==None:
+            print "Dataset too large, with",len(barcodes), 'cell barcodes... filtering...'
+            ind = 0
+            barcode_rank=[]
+            for count in barcode_sum:
+                if count>minReads: ### Require at least 100 reads/cell
+                    barcode_rank.append([count,ind,barcodes[ind]])
+                ind+=1
+            barcode_rank.sort()
+            barcode_rank.reverse()
+            barcode_rank = barcode_rank[:maxCells+5000] ### Don't all more than 20k cells
+            barcode_ind = map(lambda x: x[1],barcode_rank)
+            barcodes = map(lambda x: x[2],barcode_rank) ### Replace barcodes
+        else:
+             barcode_ind = map(lambda x: barcodes.index(x),filterCells)
+             barcodes = filterCells
         try: mat = mat[:,barcode_ind]
         except: ### for coo_matrix formats (newer 10x) which don't support slicing
             mat = mat.tocsr()
@@ -208,7 +218,7 @@ def getTextMatrices(folder):
         if '.txt' in file:
             paths.append(os.path.join(folder, file))
     return paths
-
+        
 if __name__ == '__main__':
     import getopt
     filter_rows=False
@@ -218,25 +228,33 @@ if __name__ == '__main__':
     geneID = False
     matrices_dir = None
     matrices_folder = None
+    filter_cells = None
+    completed = False
+    minReads = 1000
+    maxCells = 250000
+    
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
         #Filtering samples in a datasets
         #python 10XProcessing.py --i /Users/test/10X/outs/filtered_gene_bc_matrices/ --g hg19 --n My10XExperiment
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','d=','g=','n=','geneID='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','d=','g=','n=','geneID=','maxCells=','f='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': matrices_dir=arg
             elif opt == '--d': matrices_folder=arg
             elif opt == '--g': genome=arg
             elif opt == '--n': dataset_name=arg
+            elif opt == '--f':
+                filter_cells=[row[0] for row in csv.reader(open(arg), delimiter="\t")]
+                print 'Filtering cells to',len(filter_cells)
             elif opt == '--geneID':
                 geneID = True
+            elif opt == '--maxCells':
+                maxCells = int(arg)
     
-    completed = False
-    minReads = 1000
-    maxCells = 25000
-    
+    print 'maxCells =',maxCells
+
     if matrices_folder == None:
         matrices = [matrices_dir]
     else:
@@ -249,7 +267,7 @@ if __name__ == '__main__':
         count=0
         while completed == False:
             try:
-                import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID, minReads=minReads, maxCells=maxCells)
+                import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID, minReads=minReads, maxCells=maxCells,filterCells=filter_cells)
                 completed = True
             except MemoryError:
                 ### Make the requirement for how many cells to process more stringent

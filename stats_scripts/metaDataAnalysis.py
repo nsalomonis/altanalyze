@@ -315,6 +315,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
     psi_annotations={}
     rootdir=export.findParentDir(input_file)
     #print rootdir;sys.exit()
+
     if platform != 'PSI':
         try:
             import ExpressionBuilder

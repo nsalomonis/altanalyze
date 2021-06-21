@@ -121,11 +121,6 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                 header = values
             if 'PSI_EventAnnotation' in input_file:
                 uid_index = values.index('UID')
-            if log2:
-                try:
-                    values = map(lambda x: math.log(x+1,2))
-                except:
-                    pass
             if calculateCentroids:
                 if len(comparisons)>0:
                     exportType = '-fold'
@@ -156,6 +151,15 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                 values+=diff*['']
             filtered_values = map(lambda x: values[x], sample_index_list) ### simple and fast way to reorganize the samples
             #print values[0]; print sample_index_list; print values; print len(values); print len(prior_values);kill
+
+        if log2:
+            try:
+                filtered_values = map(str,map(lambda x: math.log(x+1,2),map(float,filtered_values)))
+            except:
+                #print filtered_values[:20]
+                print traceback.format_exc()
+                pass
+                
         prior_values=values
         ######################## Begin Centroid Calculation ########################
         if calculateCentroids:
@@ -255,6 +259,32 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False,
     export_object.close()
     print 'Filtered rows printed to:',output_file
     
+def filterRowsInOrder(input_file,output_file,ordered_genes):
+    export_object = open(output_file,'w')
+    firstLine = True
+    uid_index=0
+    vals_db={}
+    for line in open(input_file,'rU').xreadlines():
+        data = cleanUpLine(line)
+        values = string.split(data,'\t')
+        if firstLine:
+            try:uid_index=values.index('UID')
+            except Exception:
+                try: uid_index=values.index('uid')
+                except Exception: uid_index = 0
+            firstLine = False
+            export_object.write(line)
+        else:
+            uid = values[uid_index]
+            if uid in ordered_genes:
+                vals_db[uid] = line
+    for gene in ordered_genes:
+        if gene in vals_db:
+            line = vals_db[gene]
+            export_object.write(line)
+    export_object.close()
+    print 'Filtered rows printed to:',output_file
+    
 def getFiltersFromHeatmap(filter_file):
     import collections
     alt_filter_list=None
@@ -301,12 +331,11 @@ def getComparisons(filter_file):
         comparisons.append([group2,group1])
     return comparisons
 
-def getFilters(filter_file,calculateCentroids=False):
+def getFilters(filter_file,calculateCentroids=False,order=False):
     """Import sample list for filtering and optionally sample to groups """
     filter_list=[]
-    if calculateCentroids:
-        import collections
-        group_index_db = collections.OrderedDict()
+    import collections
+    group_index_db = collections.OrderedDict()
     
     index=0
     for line in open(filter_file,'rU').xreadlines():
@@ -317,8 +346,13 @@ def getFilters(filter_file,calculateCentroids=False):
             sample,group_num,group_name = string.split(data,'\t')
             try: group_index_db[group_name].append(index)
             except Exception: group_index_db[group_name] = [index]
+        elif order:
+            t = string.split(data,'\t')
+            sample,group_num = t[:2]
+            try: group_index_db[sample].append(group_num)
+            except Exception: group_index_db[sample] = [group_num]
         index+=1
-    if calculateCentroids:
+    if calculateCentroids==True or order==True:
         return filter_list,group_index_db
     else:
         return filter_list
@@ -499,9 +533,12 @@ def translation(translate_path,input_file):
     translation_db={}
     for line in open(translate_path,'rU').xreadlines():
         data = cleanUpLine(line)
-        source,destination = string.split(data,'\t')
+        if '\t' in data:
+            source,destination = string.split(data,'\t')
+        else:
+            source,destination = string.split(data,',')
         translation_db[source]=destination
-        
+
     eo = export.ExportFile(input_file[:-4]+'-translated.txt')
     for line in open(input_file,'rU').xreadlines():
         data = cleanUpLine(line)
@@ -532,6 +569,8 @@ if __name__ == '__main__':
     count=False
     stringMatch=False
     translate=False
+    order=False
+    ordered_genes=None
     
     fileFormat = 'columns'
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
@@ -541,7 +580,8 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
                             'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize=',
-                            'transpose=','fileFormat=','log2=','partialMatch=','count=','stringMatch=','translate='])
+                            'transpose=','fileFormat=','log2=','partialMatch=','count=','stringMatch=','translate=',
+                            'order='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
@@ -554,6 +594,7 @@ if __name__ == '__main__':
             elif opt == '--fold': returnComparisons = True
             elif opt == '--log2': log2 = True
             elif opt == '--partialMatch': partialMatch = True
+            elif opt == '--order': order = True
             elif opt == '--r':
                 if arg == 'exclude':
                     filter_rows=True
@@ -595,6 +636,10 @@ if __name__ == '__main__':
     if filter_rows:
         if stringMatch == False:
             filter_names = getFilters(filter_file)
+        if order:
+            filter_names,ordered_genes = getFilters(filter_file,order=order)
+            filterRowsInOrder(input_file,output_file,ordered_genes)
+            sys.exit()
         filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude,stringMatch=stringMatch)
     elif calculateCentroids:
         if count:

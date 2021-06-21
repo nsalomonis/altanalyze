@@ -315,7 +315,7 @@ def runLineageProfiler(species,array_type,exp_input,exp_output,
         try: customMarkers = convertICGSClustersToExpression(customMarkers,exp_input,returnCentroids=returnCentroids,species=species,fl=fl)
         except:
             print traceback.format_exc() 
-            print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analsyes..."
+            print "Using the supplied reference file only (not importing raw expression)...Proceeding without differential expression analyses..."
             pass
 
     if label_file != None and  label_file != '':
@@ -2794,6 +2794,7 @@ def importAndCombineExpressionFiles(species,reference_exp_file,query_exp_file,cl
             try: sample_classes[assigned_class].append([score,cd])
             except Exception: sample_classes[assigned_class] = [[score,cd]]
             query_header_proppegated_clusters[sample]=assigned_class
+            #print [sample],[pearsonThreshold],[score];sys.exit()
             if score<pearsonThreshold: ### Minimum allowed correlation threshold
                 exclude.append(sample)
     

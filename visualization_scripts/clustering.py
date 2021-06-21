@@ -309,6 +309,8 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         cmap=RedBlackGreen()
     if color_gradient == 'yellow_black_blue':
         cmap=YellowBlackBlue()
+    if color_gradient == 'yellow_black':
+        cmap=YellowBlack()
     if color_gradient == 'black_yellow_blue':
         cmap=BlackYellowBlue()
     if color_gradient == 'seismic':
@@ -323,7 +325,7 @@ def heatmap(x, row_header, column_header, row_method, column_method, row_metric,
         cmap=pylab.cm.YlOrRd
     if color_gradient == 'Spectral':
         cmap = pylab.cm.Spectral_r
-        
+    
     vmin=x.min()
     vmax=x.max()
     vmax = max([vmax,abs(vmin)])
@@ -1585,6 +1587,8 @@ def exportFlatClusterData(filename, root_dir, dataset_name, new_row_header,new_c
                 cluster = 'cluster-'+string.split(id,':')[0]
             elif sy == 'Sy' and ':' in id:
                 cluster = 'cluster-'+string.split(id,':')[0]
+            elif sy == 'En' and ':' in id: ### Added in 2.1.5 - 6/9/21
+                cluster = 'cluster-'+string.split(id,':')[0]
             else:
                 cluster = 'c'+str(ind1[i])
             if ':' in id:
@@ -1900,6 +1904,11 @@ def YellowBlackBlue():
     ### yellow is created by adding y = 1 to RedBlackSkyBlue green last tuple
     ### modulate between blue and cyan using the last y var in the first green tuple
     my_cmap = mc.LinearSegmentedColormap('my_colormap',cdict,256)
+    return my_cmap
+
+def YellowBlack():
+    colors = [(0, 0, 0), (1.0, 1.0, 0.0)] # first color is black, last is yellow
+    my_cmap = mc.LinearSegmentedColormap.from_list("Custom", colors, N=256)
     return my_cmap
 
 def BlackYellowBlue():
@@ -2772,7 +2781,7 @@ def tSNE(matrix, column_header,dataset_name,group_db,display=True,showLabels=Fal
     if len(column_header)>60000:
         marker_size = 0.2
     print 'Marker size =',marker_size
-    #marker_size=2*marker_size
+    #marker_size=5*marker_size
     
     ### Color By Gene
     if colorByGene != None and len(matrix)==0:
@@ -7644,7 +7653,8 @@ def combineGeneExpressionResults(folder):
     oe = export.ExportFile(folder+'/combined.results.txt')
     files = UI.read_directory(folder)
     for file in files:
-        if '.txt' in file and 'GE.' in file:
+        if '.txt' in file and ('GE.' in file or 'PSI.' in file):
+            print file
             fn = folder+'/'+file
             firstLine = True
             for line in open(fn,'rU').xreadlines():
@@ -8350,10 +8360,10 @@ def PSIfilterAndImpute(folder):
             print count, '\t', fileg
 
 def summarizePSIresults(folder, TF_file):
-    #TFs = simpleListImport(TF_file)
+    TFs = simpleListImport(TF_file)
     ### Import PSI results and report number of impacted TFs
     files = UI.read_directory(folder)
-    #eo = export.ExportFile(folder + '/TF_events.txt')
+    eo = export.ExportFile(folder + '/TF_events.txt')
     all_TFs = []
     for file in files:
         TFs_in_file = []
@@ -8370,15 +8380,15 @@ def summarizePSIresults(folder, TF_file):
                     t = string.split(data, '\t')
                     symbol = string.split(t[0], ':')[0]
                     dPSI = abs(float(t[(-5)]))
-                    if symbol=='HOXA1':
-                        """
-                        if symbol in TFs and symbol not in TFs_in_file and dPSI > 0.2:
-                            eo.write(string.join(t + [file], '\t') + '\n')
-                            TFs_in_file.append(symbol)
-                            if symbol not in all_TFs:
-                                all_TFs.append(symbol)
-                            count += 1
-                        """
+                    #if symbol=='HOXA1':
+                    #"""
+                    if symbol in TFs and symbol not in TFs_in_file and dPSI > 0.4:
+                        eo.write(string.join(t + [file], '\t') + '\n')
+                        TFs_in_file.append(symbol)
+                        if symbol not in all_TFs:
+                            all_TFs.append(symbol)
+                        count += 1
+                    #"""
                         print file+"\t"+t[-5]+"\t"+t[-4]+"\t"+t[0]
             ##print file, count, len(all_TFs), string.join(TFs_in_file, ',')
 
@@ -9632,6 +9642,7 @@ def organizeConsolidatedMarkerFinder(consolidated_MarkerFinder,ordered_groups,ro
     
 def importMarkerFinderHits(fn,dataType):
     if dataType == 'PSI': cutoff = 0.5
+    elif dataType == 'ADT': cutoff = 0.2
     elif dataType == 'RNASeq': cutoff = 0.7
     else: cutoff = 0.6
     print "Using a MarkerFinder Pearson rho >",cutoff
@@ -9729,7 +9740,186 @@ def HTO(filename,DataType='log'):
                 index+=1
     eos.close()
     
+def convertStringToGeneID(filename):
+    import gene_associations
+    from import_scripts import OBO_import
+    human_gene_to_symbol = gene_associations.getGeneToUid('Hs',('hide','EntrezGene-Symbol'))
+    human_symbol_to_gene = OBO_import.swapKeyValues(human_gene_to_symbol)
+
+    mouse_gene_to_symbol = gene_associations.getGeneToUid('Mm',('hide','EntrezGene-Symbol'))
+    mouse_symbol_to_gene = OBO_import.swapKeyValues(mouse_gene_to_symbol)
+    
+    human_symbol_to_gene2 = {}
+    for gene in human_symbol_to_gene:
+        entrez = human_symbol_to_gene[gene]
+        human_symbol_to_gene2[gene+'H']=entrez
+        human_symbol_to_gene2[gene]=entrez
+    human_symbol_to_gene = human_symbol_to_gene2
+
+    mouse_symbol_to_gene2={}
+    for gene in mouse_symbol_to_gene:
+        entrez = mouse_symbol_to_gene[gene]
+        mouse_symbol_to_gene2[gene+'M']=entrez
+        mouse_symbol_to_gene2[gene]=entrez
+    mouse_symbol_to_gene = mouse_symbol_to_gene2
+
+    for line in open('/Users/saljh8/Documents/GitHub/altanalyze/AltDatabase/EnsMart100/uniprot/Hs/custom_annotations.txt','rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        gene = t[3]
+        synonyms = t[4]
+        if ';' in gene:
+            gene = string.split(gene,';')[0]
+        synonyms = string.split(synonyms,';')
+        for synonym in synonyms:
+            synonym = string.split(synonym,'=')[-1]
+            if gene in human_symbol_to_gene:
+                entrez = human_symbol_to_gene[gene]
+                human_symbol_to_gene[synonym]=entrez
+    
+    firstRow = True
+    hashed={}
+    count=0
+    export_results = filename[:-4]+'-associations.txt'
+    eos = export.ExportFile(export_results)
+    export_results = filename[:-4]+'-associations2.txt'
+    eom = export.ExportFile(export_results)
+    for line in open(filename,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        if firstRow:
+            firstRow = False
+            header = t[1:]
+        else:
+            cell = t[0]
+            strings = t[1:]
+            revised_strings = []
+            count+=1
+            for string_val in strings:
+                original = str(string_val)
+                string_val = string.replace(string_val,' ',',')
+                #string_val = string.replace(string_val,'-',',')
+                string_val = string.replace(string_val,'+',',')
+                string_val = string.replace(string_val,'/',',')
+                string_val = string.replace(string_val,'cre',',')
+                string_val = string.replace(string_val,'(',',')
+                string_val = string.replace(string_val,')',',')
+                string_val = string.split(string_val,',')
+                #if 'HLA-DRB1' in original: print string_val;sys.exit()
+                for i in string_val:
+                    if len(i)>1:
+                        if i in human_symbol_to_gene:
+                            entrez = human_symbol_to_gene[i]
+                            original = string.replace(original,i,i+'['+entrez[0]+']')
+                            original = string.replace(original,'['+entrez[0]+']['+entrez[0]+']','['+entrez[0]+']')
+                            original = string.replace(original,'['+entrez[0]+']['+entrez[0]+']','['+entrez[0]+']')
+                            eom.write(i+'\t'+entrez[0]+'\n')
+                        if i in mouse_symbol_to_gene:
+                            entrez = mouse_symbol_to_gene[i]
+                            original = string.replace(original,i,i+'['+entrez[0]+']')
+                            original = string.replace(original,'['+entrez[0]+']['+entrez[0]+']','['+entrez[0]+']')
+                            original = string.replace(original,'['+entrez[0]+']['+entrez[0]+']','['+entrez[0]+']')
+                            eom.write(i+'\t'+entrez[0]+'\n')
+                revised_strings.append(original)
+            final=string.join([cell]+revised_strings,'\t')+'\n'
+            eos.write(final)
+    eos.close()
+    eom.close()
+    
+def consolidateMutations(mutation_dir,groupIDs):
+    groupID_db={}
+    groupID_db2={}
+    for line in open(groupIDs,'rU').xreadlines():
+        data = cleanUpLine(line)
+        t = string.split(data,'\t')
+        uid = t[0]
+        groupID_db[uid[:12]] = uid
+        groupID_db2[uid] = uid[:12]
+            
+    mutations={}
+    all_mutations={}
+    eo = export.ExportFile(mutation_dir+'/combined/Combined-samples.txt')
+    files = UI.read_directory(mutation_dir)
+    for file in files: 
+        path = mutation_dir+'/'+file
+        firstRow = True
+        if '.txt' in path:
+            for line in open(path,'rU').xreadlines():
+                data = cleanUpLine(line)
+                t = string.split(data,'\t')
+                if firstRow:
+                    header = []
+                    for i in t:
+                        if ' ' in i:
+                            i = string.split(i,' ')[0]
+                        header.append(i)
+                    firstRow=False
+                else:
+                    if t[0] in groupID_db:
+                        uid = groupID_db[t[0]]
+                        index=0
+                        for i in t:
+                            if len(i) > 1 and i!= 'Case':
+                                try: mutations[uid].append(header[index])
+                                except: mutations[uid] = [header[index]]
+                            index+=1
+        
+    for uid in mutations:
+        for mutant in mutations[uid]:
+            if len(mutant)>1 and mutant != 'Case':
+                eo.write(string.join([uid]+[mutant],'\t')+'\n')
+                all_mutations[mutant]=[]
+    eo.close()
+    
+    eo = export.ExportFile(mutation_dir+'/combined/mutant-matrix.txt')
+    header=['UID']
+    for mutation in all_mutations:
+        header.append(mutation)
+    eo.write(string.join(header,'\t')+'\n')
+    
+    for longID in groupID_db2:
+        uid = groupID_db2[longID]
+        if longID in mutations:
+            binary=[]
+            for mutation in all_mutations:
+                if mutation in mutations[longID]:binary.append('1')#; print mutation, longID;sys.exit()
+                else: binary.append('0')
+            eo.write(string.join([longID]+binary,'\t')+'\n')
+        else:
+            binary=[]
+            for mutation in all_mutations:
+                binary.append('0')
+            eo.write(string.join([longID]+binary,'\t')+'\n')
+    eo.close()
+    
+def temp1():
+    fn = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r6/Spleen+BM/ExpressionInput/exp.MergedFiles-BM-Sp.txt'
+    export_results = fn[:-4]+'-fixed.txt'
+    eos = export.ExportFile(export_results)
+    firstRow = True
+    for line in open(fn,'rU').xreadlines():
+        
+        
+        if firstRow:
+            data = cleanUpLine(line)
+            t = string.split(data,'\t')
+            firstRow = False
+            header = []
+            for i in t:
+                if '-1' in i and '.' not in i:
+                    i = i+'.exp.Spleen'
+                header.append(i)
+            eos.write(string.join(header,'\t')+'\n')
+        else:
+            eos.write(line)
+    eos.close()
+            
 if __name__ == '__main__':
+    consolidateMutations('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/Currated-Mutations-Rearangments/','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/OncoSplice/full-broad/groups.TCGA-HNSCC.txt');sys.exit()
+    #convertStringToGeneID('/Users/saljh8/Downloads/Cell-Cards.Metadata.txt');sys.exit()
+    PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/OncoSplice-0.3-conservative-TUMORS*/SubtypeAnalyses-Results/round3/Events-dPSI_0.1_adjp/'
+    TF_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TFs-lambert.txt'
+    #summarizePSIresults(PSI_dir,TF_dir);sys.exit()
     #HTO('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/counts-90k/MergedFiles-HTO-transposed.txt',DataType='non-log');sys.exit()
     #combinePSIClusterPredictions('/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/SF/CNV/metaDataAnalysis_Amp/CorrelationOutput/');sys.exit()
     filename = '/Users/saljh8/Downloads/Pathways.txt'
@@ -9737,8 +9927,8 @@ if __name__ == '__main__':
     input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.1_rawp/AltAnalyze2'
     #input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/QAPA/DEGs-LogFold_0.1_rawp/AltAnalyze/'
     input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/AltAnalyze/'
-    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Beena/Rhesus-project/Dan-Analyses/ExpressionValues/Brain/'
-    #iterativeMarkerFinder(input_dir,dataType='RNASeq',geneRPKM=1);sys.exit()
+    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/scvi-tools/IterativeMarkerFinder-BMCP/'
+    iterativeMarkerFinder(input_dir,dataType='ADT',geneRPKM=1);sys.exit()
     root_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/'
     expfile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/exp.MarkerFinder-cellHarmony-reference__cellHarmony-ReOrdered-Q2.txt'
     expname = 'in-vivo'
@@ -9747,8 +9937,8 @@ if __name__ == '__main__':
     #convertPSICoordinatesToBED('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/Events-dPSI_0.1_rawp/combined');sys.exit()
     #filterByFoldAndExpression('/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/cancers', '/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/1.5-fold_and_RPKM-filtered', fold=1.5);sys.exit()
     #countDEGs('/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/SF/MutationAll/GE/All',fold=2);sys.exit()
-    #combineGeneExpressionResults('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Naren/Combined/cellHarmony-immune-1.2-adjp/DifferentialExpression_Fold_1.2_adjp_0.05/temp');sys.exit()
-    #pseudoBulkCellSumm('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/CITE-Seq_Hs-Male-Female/150k-4-donors/cellHarmony/QueryGroups.cellHarmony.txt');sys.exit()
+    combineGeneExpressionResults('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/QAPA/DEGs-LogFold_0.1_rawp');sys.exit()
+    #pseudoBulkCellSumm('/Users/saljh8/Downloads/Transfer/cellHarmony-rho0.55-use/QueryGroups.cellHarmony-rho-0.55-labels.txt');sys.exit()
     #buildGraphFromSIF('Ensembl','Mm','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/Interactions-ALL.sif','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/'); sys.exit()
     
     b = '/Volumes/salomonis2/Immune-10x-data-Human-Atlas/Bone-Marrow/Stuart/Browser/ExpressionInput/HS-compatible_symbols.txt'
@@ -9881,7 +10071,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/CPTT/AltAnalyze/MultiLin/hto.Biolegend-mRNA-ADT-HTO-singlets-ML.txt'
+    b = '/Users/saljh8/Downloads/Transfer/cellHarmony-rho0.55-use/QueryGroups.cellHarmony-rho-0.55-labels2.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'

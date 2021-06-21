@@ -378,7 +378,6 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
         available_ontologies = reorganizeResourceList(od.getAllFiles(mod))
         
         input_gene_count = len(input_gene_list) ###Count number of genes associated with source input IDs
-
         if len(input_gene_list)==0 or len(denominator_gene_list)==0:
             if len(input_gene_list)==0:
                 try:
@@ -386,7 +385,9 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
                     print_out += '\nSelected species: '+species_name
                     print_out += '\nInput ID system: '+str(source_data_input)
                     print_out += '\nPrimary ID system (MOD): '+str(mod)
-                    if PoolVar: q.put([print_out]); return None 
+                    try:
+                        if PoolVar: q.put([print_out]); return None
+                    except: pass
                 except Exception:
                     pass
                 ForceCriticalError(print_out)
@@ -396,7 +397,10 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
                     print_out += '\nSelected species: '+species_name
                     print_out += '\nDenominator ID system: '+str(source)
                     print_out += '\nPrimary ID system (MOD):'+str(mod)
-                    if PoolVar: q.put([print_out]); return None
+                    try:
+                        if PoolVar: q.put([print_out]); return None
+                    except:
+                        pass
                     ForceCriticalError(print_out)   
                 except Exception:
                     pass
@@ -460,7 +464,10 @@ def generateMAPPFinderScores(species_title,species_id,source,mod_db,system_Codes
                 ### Returns the number of successfully analyzed gene-set databases
                 program_type,database_dir = unique.whatProgramIsThis()
                 print_out = "Warning!!! Either the MOD you have selected: "+mod+"\nis missing the appropriate relationship files necessary to run GO-Elite\nor you have selected an invalid resource to analyze.  Either replace\nthe missing MOD files in "+database_dir+'/'+species_code+' sub-directories or\nselect a different MOD at run-time.'
-                if PoolVar: q.put([print_out]); return None
+                try:
+                    if PoolVar: q.put([print_out]); return None
+                except:
+                    pass
                 ForceCriticalError(print_out)
                 
     end_time = time.time()
