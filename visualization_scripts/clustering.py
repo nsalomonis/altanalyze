@@ -9915,7 +9915,7 @@ def temp1():
     eos.close()
             
 if __name__ == '__main__':
-    consolidateMutations('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/Currated-Mutations-Rearangments/','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/OncoSplice/full-broad/groups.TCGA-HNSCC.txt');sys.exit()
+    #consolidateMutations('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/Currated-Mutations-Rearangments/','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/OncoSplice/full-broad/groups.TCGA-HNSCC.txt');sys.exit()
     #convertStringToGeneID('/Users/saljh8/Downloads/Cell-Cards.Metadata.txt');sys.exit()
     PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/OncoSplice-0.3-conservative-TUMORS*/SubtypeAnalyses-Results/round3/Events-dPSI_0.1_adjp/'
     TF_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/TFs-lambert.txt'
@@ -9927,8 +9927,8 @@ if __name__ == '__main__':
     input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.1_rawp/AltAnalyze2'
     #input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/QAPA/DEGs-LogFold_0.1_rawp/AltAnalyze/'
     input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/AltAnalyze/'
-    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/scvi-tools/IterativeMarkerFinder-BMCP/'
-    iterativeMarkerFinder(input_dir,dataType='ADT',geneRPKM=1);sys.exit()
+    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/CPTT/AltAnalyze/IterativeMarkerFinder-BMCP/'
+    iterativeMarkerFinder(input_dir,dataType='RNASeq',geneRPKM=1);sys.exit()
     root_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/'
     expfile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/exp.MarkerFinder-cellHarmony-reference__cellHarmony-ReOrdered-Q2.txt'
     expname = 'in-vivo'

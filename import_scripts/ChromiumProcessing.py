@@ -136,7 +136,10 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
             barcode_ind = map(lambda x: x[1],barcode_rank)
             barcodes = map(lambda x: x[2],barcode_rank) ### Replace barcodes
         else:
-             barcode_ind = map(lambda x: barcodes.index(x),filterCells)
+             try: barcode_ind = map(lambda x: barcodes.index(x),filterCells)
+             except:
+                filterCells = list(set(filterCells) & set(barcodes))
+                barcode_ind = map(lambda x: barcodes.index(x),filterCells)
              barcodes = filterCells
         try: mat = mat[:,barcode_ind]
         except: ### for coo_matrix formats (newer 10x) which don't support slicing

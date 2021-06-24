@@ -224,9 +224,11 @@ def combineAllLists(files_to_merge,original_filename,includeColumns=False,includ
                     try: t = t[1:]
                     except Exception: t = ['null']
                     if includeColumns==False:
-                        for i in t:    
-                            headers.append(i+'.'+file)
-                            #headers.append(i)
+                        for i in t:
+                            if includeFilenames:
+                                headers.append(i+'.'+file)
+                            else:
+                                headers.append(i)
                     else:
                         headers.append(t[includeColumns]+'.'+file)
             else: #elif 'FOXP1' in data or 'SLK' in data or 'MBD2' in data:

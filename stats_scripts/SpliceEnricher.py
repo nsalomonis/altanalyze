@@ -112,7 +112,9 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
         count+=1
     count=0
     #print 'next'
-
+    
+    use_spearman = False
+    
     for gene in genesToExamine:
         gene_name = genesToExamine[gene]
         #print len(geneExpression_db),[gene]
@@ -124,13 +126,29 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
             count=0
             for junctionID in PSI_data_db:
                 psi_values = PSI_data_db[junctionID]
-                if 0.000101 in psi_values:
-                    coefr=numpy.ma.corrcoef(expression_values,psi_values)
-                    rho = coefr[0][1]
+                if use_spearman:
+                    if 0.000101 in psi_values:
+                        index=0
+                        psi_values2=[]
+                        expression_values2=[]
+                        for val in psi_values:
+                            if val!=0.000101:
+                                psi_values2.append(val)
+                                expression_values2.append(expression_values[index])
+                            index+=1
+                        rho,p = stats.spearmanr(expression_values2,psi_values2)
+                    else:
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings("ignore",category=RuntimeWarning) 
+                            rho,p = stats.spearmanr(expression_values,psi_values)   
                 else:
-                    with warnings.catch_warnings():
-                        warnings.filterwarnings("ignore",category=RuntimeWarning) 
-                        rho,p = stats.pearsonr(expression_values,psi_values)
+                    if 0.000101 in psi_values:
+                        coefr=numpy.ma.corrcoef(expression_values,psi_values)
+                        rho = coefr[0][1]
+                    else:
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings("ignore",category=RuntimeWarning) 
+                            rho,p = stats.pearsonr(expression_values,psi_values)
                 if abs(rho)>PearsonCutoff:
                     count+=1
                     Corrsflist.append([junctionID,rho])
