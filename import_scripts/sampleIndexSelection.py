@@ -34,6 +34,17 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
             values = string.split(data,'\t')
         row_count+=1
         if firstLine:
+            """
+            samples_added=[]
+            it=1
+            for s in values:
+                if s in samples_added:
+                    samples_added.append(s+"."+str(it)) ### Ensure only unique sample IDs exist
+                    it+=1
+                else:
+                    samples_added.append(s)
+            values = samples_added
+            """
             uid_index = 0
             if data[0]!='#':
                 if force == True:
@@ -60,6 +71,14 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                 try:
                     sample_index_list = map(lambda x: values.index(x), filter_names)
                 except:
+                    first_pass_count=0
+                    for i in filter_names:
+                        try:
+                            values.index(i)
+                            first_pass_count+=1
+                        except:
+                            pass
+                    print first_pass_count, len(values),len(filter_names)
                     ### If ":" in header name
                     original_values = values
                     if ':' in line:

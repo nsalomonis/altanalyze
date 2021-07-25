@@ -253,7 +253,7 @@ def community_sampling(inputfile,downsample_cutoff):
                 except Exception:
                     continue
             counter+=1
-             #   break
+            #break
         X.append(val)
     
     X=zip(*X)
@@ -264,12 +264,12 @@ def community_sampling(inputfile,downsample_cutoff):
     nn=X.shape[0]
     nm=X.shape[1]
     
-
     from annoy import AnnoyIndex
+    print 'AnnoyIndex imported...'
     t=AnnoyIndex(nm,metric="euclidean")
     for i in range(nn):
-      try:  t.add_item(i,X[i])
-      except Exception: print i
+        try:  t.add_item(i,X[i])
+        except Exception: print i
     t.build(100)
     ### t.save('ICGS.ann')
     ### u=AnnoyIndex(nm,metric="euclidean")
@@ -278,12 +278,12 @@ def community_sampling(inputfile,downsample_cutoff):
     #n1=25
     print "creating graphs"
     for i in range(nn):
-    #ind = tree.query([Xtemp[i]],k=10,return_distance=False,dualtree=True)
+        #ind = tree.query([Xtemp[i]],k=10,return_distance=False,dualtree=True)
         ind=t.get_nns_by_item(i,10)
         diclst[i]=ind
 
     G=nx.from_dict_of_lists(diclst)
-   # nx.write_adjlist(G,"test.adjlist")
+    #nx.write_adjlist(G,"test.adjlist")
     #G=nx.read_adjlist("test.adjlist")
     dendrogram= community.generate_dendrogram(G)
     #for level in range(len(dendrogram) - 1):

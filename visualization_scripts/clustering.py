@@ -7360,7 +7360,7 @@ def removeRedundantCluster(filename,clusterID_file):
                                     coefr=numpy.ma.corrcoef(values1,values2)
                                     #rho,p = stats.pearsonr(values1,values2)
                                     rho = coefr[0][1]
-                                    if rho>0.6 or rho<-0.6:
+                                    if rho>0.9 or rho<-0.9:
                                         exclude[event2[0]]=[]
                                     compared[event1[0],event2[0]]=[]
                                     compared[event2[0],event1[0]]=[]
@@ -9826,6 +9826,40 @@ def convertStringToGeneID(filename):
     eos.close()
     eom.close()
     
+def parseTCGAMeta(mutation_dir):
+    mutations={}
+    all_mutations={}
+    eo = export.ExportFile(mutation_dir+'/combined/Combined-samples.txt')
+    files = UI.read_directory(mutation_dir)
+    for file in files: 
+        path = mutation_dir+'/'+file
+        firstRow = True
+        if '.txt' in path:
+            for line in open(path,'rU').xreadlines():
+                data = cleanUpLine(line)
+                t = string.split(data,'\t')
+                if firstRow:
+                    header = []
+                    for i in t:
+                        if ' ' in i:
+                            i = string.split(i,' ')[0]
+                        header.append(i)
+                    firstRow=False
+                else:
+                    uid = t[0]
+                    index=0
+                    for i in t:
+                        if i == 'NO' or i == 'NA' or i == 'wt':
+                            pass
+                        else:
+                            if i == 'YES':
+                                i = header[index]
+                            else:
+                                i = i+'-'+header[index]
+                            eo.write(string.join([uid]+[i],'\t')+'\n')
+                            index+=1
+    eo.close()
+    
 def consolidateMutations(mutation_dir,groupIDs):
     groupID_db={}
     groupID_db2={}
@@ -9914,7 +9948,32 @@ def temp1():
             eos.write(line)
     eos.close()
             
+def getSimpleCorrelations(filename):
+    X, column_header, row_header, dataset_name, group_db = importData(filename)
+    i=0; i2=0
+    for ls1 in X:
+        for ls2 in X:
+            if ls1 != ls2:
+                rho,p = stats.pearsonr(ls1,ls2)
+                gene1 = row_header[i]
+                gene2 = row_header[i2]
+                print gene1, gene2, str(rho)[:6], p
+            i2+=1
+        i+=1
+        i2=0
+
+def exportNamesToFiles(filename):
+    dir = export.findParentDir(filename)
+    for line in open(filename,'rU').xreadlines():
+        data = cleanUpLine(line)
+        export_results = dir+'/'+data
+        eos = export.ExportFile(export_results)
+    eos.close()
+   
 if __name__ == '__main__':
+    #exportNamesToFiles('null');sys.exit()
+    #getSimpleCorrelations('/Users/saljh8/Dropbox/Collaborations/Grimes/Cebpa-HSC-manuscript/Cebpa-SuperPan/exp.SuperPan-v4-augmented-simple-filtered.txt');sys.exit()
+    parseTCGAMeta('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/LGG/Metadata/');sys.exit()
     #consolidateMutations('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/Currated-Mutations-Rearangments/','/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/HNSCC/OncoSplice/full-broad/groups.TCGA-HNSCC.txt');sys.exit()
     #convertStringToGeneID('/Users/saljh8/Downloads/Cell-Cards.Metadata.txt');sys.exit()
     PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/OncoSplice-0.3-conservative-TUMORS*/SubtypeAnalyses-Results/round3/Events-dPSI_0.1_adjp/'
@@ -9927,8 +9986,8 @@ if __name__ == '__main__':
     input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Ichi/August.11.2017/Events-dPSI_0.1_rawp/AltAnalyze2'
     #input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/QAPA/DEGs-LogFold_0.1_rawp/AltAnalyze/'
     input_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/AltAnalyze/'
-    input_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/Biolegend/CPTT/AltAnalyze/IterativeMarkerFinder-BMCP/'
-    iterativeMarkerFinder(input_dir,dataType='RNASeq',geneRPKM=1);sys.exit()
+    input_dir = '/Users/saljh8/Downloads/Meduloblastoma/'
+    #iterativeMarkerFinder(input_dir,dataType='PSI',geneRPKM=0);sys.exit()
     root_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/'
     expfile = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Klein-Camargo/in-vitro-lenti/cellHarmony-in-vivo/OtherFiles/exp.MarkerFinder-cellHarmony-reference__cellHarmony-ReOrdered-Q2.txt'
     expname = 'in-vivo'
@@ -9937,7 +9996,7 @@ if __name__ == '__main__':
     #convertPSICoordinatesToBED('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/2020-paper/Pig-Orthology/Events-dPSI_0.1_rawp/combined');sys.exit()
     #filterByFoldAndExpression('/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/cancers', '/Users/saljh8/Dropbox/Manuscripts/InProgress/Krithika/final/Cancer-Gene-Elite/input/1.5-fold_and_RPKM-filtered', fold=1.5);sys.exit()
     #countDEGs('/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/SF/MutationAll/GE/All',fold=2);sys.exit()
-    combineGeneExpressionResults('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/QAPA/DEGs-LogFold_0.1_rawp');sys.exit()
+    #combineGeneExpressionResults('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/RBM20/QAPA/DEGs-LogFold_0.1_rawp');sys.exit()
     #pseudoBulkCellSumm('/Users/saljh8/Downloads/Transfer/cellHarmony-rho0.55-use/QueryGroups.cellHarmony-rho-0.55-labels.txt');sys.exit()
     #buildGraphFromSIF('Ensembl','Mm','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/Interactions-ALL.sif','/Volumes/salomonis2/NCI-R01/TCGA-BREAST-CANCER/Anukana-New-Analysis/TF/BCvsControls/correlation/GO-ELITE/'); sys.exit()
     
@@ -9982,6 +10041,7 @@ if __name__ == '__main__':
     
     PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
     PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/6.16.2020/AltResults/AlternativeOutput/KD-concordance/'
+    PSI_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/TCGA/All-Signatures-hg38/combined/'
     #summarizePSIresults(PSI_dir,PSI_dir);sys.exit()
     #tempFunction('/Users/saljh8/Downloads/LungCarcinoma/HCC.S5063.TPM.txt');sys.exit()
     a = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Leucegene/July-2017/PSI/SpliceICGS.R1.Depleted.12.27.17/all-depleted-and-KD/temp/'
@@ -10071,7 +10131,7 @@ if __name__ == '__main__':
     ##transposeMatrix(a);sys.exit()
     #returnIntronJunctionRatio('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Fluidigm_scRNA-Seq/12.09.2107/counts.WT-R412X.txt');sys.exit()
     #geneExpressionSummary('/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-Fluidigm/updated.8.29.17/Ly6g/combined-ICGS-Final/ExpressionInput/DEGs-LogFold_1.0_rawp');sys.exit()
-    b = '/Users/saljh8/Downloads/Transfer/cellHarmony-rho0.55-use/QueryGroups.cellHarmony-rho-0.55-labels2.txt'
+    b = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Grimes/All-10x/Mm-100k-CITE-Seq/All/Elite-Clusters-r6/Spleen+BM/cellHarmony-all/captures.biolegend-ML-skewed.txt'
     a = '/Users/saljh8/Dropbox/scRNA-Seq Markers/Human/Expression/Lung/Adult/Perl-CCHMC/FinalMarkerHeatmap_all.txt'
     convertGroupsToBinaryMatrix(b,b,cellHarmony=False);sys.exit()
     a = '/Users/saljh8/Desktop/temp/groups.TNBC.txt'

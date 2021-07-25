@@ -611,11 +611,11 @@ def justConvertFilenames(species,outputdir):
 if __name__ == '__main__':
     #ExportCountsSummary('/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/Anukana/Breast-Cancer/counts.TCGA-BRCA.txt');sys.exit()
     #Sashimiplottting(bamdir,countsin,PSIFilename,eventsToVisualizeFilename,events=None)
-    root_dir = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Theodosia/CDA/'
-    events = ['Psip1:ENSMUSG00000028484:E10.2-I10.1|ENSMUSG00000028484:E10.1-E12.1']
-    events = None
+    root_dir = '/Volumes/salomonis2/CCHMC-Collaborations/Jose/raw_data_RNAseq/BAMs/'
+    events = ['ENSMUSG00000040111:I20.1-E21.1']
+    #events = None
     eventsToVisualizeFilename = None
-    eventsToVisualizeFilename = '/Users/saljh8/Desktop/dataAnalysis/Collaborative/Theodosia/CDA/AltResults/AlternativeOutput/Events-dPSI_0.1_rawp/events.txt'
+    #eventsToVisualizeFilename = '/Volumes/salomonis2/CCHMC-Collaborations/Jose/raw_data_RNAseq/BAMs/AltResults/AlternativeOutput/Events-dPSI_0.1_rawp/PSI.KO-MPP_vs_WT-MPP.txt'
     bamdir = root_dir
-    remoteSashimiPlot('Hs', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
+    remoteSashimiPlot('Mm', root_dir, bamdir, eventsToVisualizeFilename, events=events, show=False)
     sys.exit()

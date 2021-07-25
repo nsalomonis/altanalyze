@@ -6392,7 +6392,8 @@ def commandLineRun():
                                                          'elite_dir=','numGenesExp=','numVarGenes=','accessoryAnalyses=',
                                                          'dataFormat=','geneTPM=','markerPearsonCutoff=', 'additionalAnalyses=',
                                                          'useExonReads=','ChromiumSparseMatrixDir=','coordinateFile=',
-                                                         'minimalPlots=','cellBrowser=','cellbrowser=','includeFilenames='])
+                                                         'minimalPlots=','cellBrowser=','cellbrowser=','includeFilenames=',
+                                                         'cellHarmonyCombine='])
         
     except Exception:
         print traceback.format_exc()
@@ -7006,6 +7007,18 @@ def commandLineRun():
             
             sampleIndexSelection.filterFile(input_file,output_file,filter_order)
             sys.exit()
+        if 'cellHarmonyCombine' in accessoryAnalysis:
+            cellHarmonyFiles=[]
+            for opt, arg in options:
+                if opt == '--input': ### cellHarmony OrganizedDifferentials file
+                    arg = verifyPath(arg)
+                    cellHarmonyFiles.append(arg)
+            if len(cellHarmonyFiles)<2:
+                print 'Please designate two or more results to combine (--input)';sys.exit()
+            from stats_scripts import cellHarmonyCombine
+            cellHarmonyCombine.combine(cellHarmonyFiles,species,output_dir)
+            sys.exit()
+                        
         if 'MergeFiles' in accessoryAnalysis or 'mergefiles' in accessoryAnalysis:
             #python AltAnalyze.py --accessoryAnalysis MergeFiles --input "C:\file1.txt" --input "C:\file2.txt" --output "C:\tables"
             files_to_merge=[]
@@ -7017,7 +7030,7 @@ def commandLineRun():
                     arg = verifyPath(arg)
                     files_to_merge.append(arg)
                 if opt == '--join': join_option = arg
-                if opt == '--uniqueOnly': unique_only = arg
+                if opt == '--uniqueOnly': uniqueOnly = arg
                 if opt == '--includeFilenames':
                     if 'false' in string.lower(arg) or 'no' in string.lower(arg):
                         includeFilenames = False

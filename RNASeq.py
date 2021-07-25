@@ -5715,7 +5715,7 @@ if __name__ == '__main__':
     column_method = 'hopach'
     species = 'Ma'
     excludeCellCycle = False
-    checkJunctionFileLength('/data/salomonis2/NCI-R01/TCGA-HNSCC/GDC-BAMs/bed_files/');sys.exit()
+    checkJunctionFileLength('/data/salomonis2/NCI-R01/TCGA-BLCA/bedFiles/');sys.exit()
     icgs_groups_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/FinalGroups.txt'
     goelite_path='/Users/saljh8/Downloads/Correlation_files_BRCA/ICGS-NMF/GO-Elite/clustering/exp.FinalMarkerHeatmap_all/GO-Elite_results/pruned-results_z-score_elite.txt'
     #predictCellTypesFromClusters(icgs_groups_path, goelite_path);sys.exit()
