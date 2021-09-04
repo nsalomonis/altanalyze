@@ -15,12 +15,16 @@ except:
     print ('Missing the h5py library (hdf5 support)...')
 
 def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True,
-            geneIDs=False, minReads=1000, maxCells=25000,filterCells=None):
+            geneIDs=False, minReads=1000, maxCells=25000,filterCells=None, IDs='symbol'):
     """ Process a filtered or full sparse matrix expression dataset in mtx, mtx.gz or .h5 format """
     print 'Processing:',matrices_dir
     
     start_time = time.time()
     feature_types=[]
+    if IDs=='symbol':
+        gindex = 1
+    else:
+        gindex = 0
     if dataset_name == '10X_filtered':
         matrix_fn = os.path.basename(string.replace(matrices_dir,'\\','/'))
         if '.gz' in matrix_fn:
@@ -52,6 +56,8 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
             gene_names = f[genome]['gene_names']
             barcodes = list(f[genome]['barcodes'])
             gene_ids = f[genome]['genes']
+            if IDs=='symbol':
+                gene_names = gene_ids
     else:
         #matrix_dir = os.path.join(matrices_dir, genome)
         matrix_dir = matrices_dir
@@ -80,14 +86,14 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
                 incorrectBarcodePathError
         if '.gz' in genes_path:
             gene_ids = [row[0] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
-            try: gene_names = [row[1] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
+            try: gene_names = [row[gindex] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
             except: gene_names = gene_ids
             try: feature_types = [row[2] for row in csv.reader(gzip.open(genes_path), delimiter="\t")]
             except: feature_types=[]
             barcodes = [row[0] for row in csv.reader(gzip.open(barcodes_path), delimiter="\t")]
         else:
             gene_ids = [row[0] for row in csv.reader(open(genes_path), delimiter="\t")]
-            try: gene_names = [row[1] for row in csv.reader(open(genes_path), delimiter="\t")]
+            try: gene_names = [row[gindex] for row in csv.reader(open(genes_path), delimiter="\t")]
             except: gene_names = gene_ids
             barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
     
@@ -234,20 +240,22 @@ if __name__ == '__main__':
     filter_cells = None
     completed = False
     minReads = 1000
-    maxCells = 250000
+    maxCells = 25000
+    IDs = 'symbol'
     
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
         #Filtering samples in a datasets
         #python 10XProcessing.py --i /Users/test/10X/outs/filtered_gene_bc_matrices/ --g hg19 --n My10XExperiment
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','d=','g=','n=','geneID=','maxCells=','f='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','d=','g=','n=','geneID=','maxCells=','f=','IDs='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': matrices_dir=arg
             elif opt == '--d': matrices_folder=arg
             elif opt == '--g': genome=arg
             elif opt == '--n': dataset_name=arg
+            elif opt == '--IDs': IDs=arg
             elif opt == '--f':
                 filter_cells=[row[0] for row in csv.reader(open(arg), delimiter="\t")]
                 print 'Filtering cells to',len(filter_cells)
@@ -270,7 +278,7 @@ if __name__ == '__main__':
         count=0
         while completed == False:
             try:
-                import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID, minReads=minReads, maxCells=maxCells,filterCells=filter_cells)
+                import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID, minReads=minReads, maxCells=maxCells,filterCells=filter_cells,IDs=IDs)
                 completed = True
             except MemoryError:
                 ### Make the requirement for how many cells to process more stringent

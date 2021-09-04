@@ -96,10 +96,13 @@ def combine(organized_differentials,species,output_dir):
     datasets=[]
     fold_files=[]
     organizedDiffGene_db = collections.OrderedDict()
-    
+    version=1
     for OD in organized_differentials:
         cellHarmony_dir = export.findParentDir(OD)
         folds_file, datasetName = getDatasetName(cellHarmony_dir+'/OtherFiles/')
+        if datasetName in datasets:
+            datasetName+='.'+str(version) ### Some datasets can have identical comparison names
+            version+=1
         organizedDiffGene_db = reformatOrganizedDifferentials(OD,datasetName,organizedDiffGene_db)
         fold_files.append(folds_file)
         datasets.append(datasetName)

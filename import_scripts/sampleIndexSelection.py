@@ -367,7 +367,8 @@ def getFilters(filter_file,calculateCentroids=False,order=False):
             except Exception: group_index_db[group_name] = [index]
         elif order:
             t = string.split(data,'\t')
-            sample,group_num = t[:2]
+            try: sample,group_num = t[:2]
+            except: sample = t[0];group_num=None  ### actually a gene
             try: group_index_db[sample].append(group_num)
             except Exception: group_index_db[sample] = [group_num]
         index+=1
@@ -534,7 +535,8 @@ def statisticallyFilterFile(input_file,output_file,threshold,minGeneCutoff=499,b
 def transposeMatrix(input_file):
     arrays=[]
     import export
-    eo = export.ExportFile(input_file[:-4]+'-transposed.txt')
+    export_path = input_file[:-4]+'-transposed.txt'
+    eo = export.ExportFile(export_path)
     for line in open(input_file,'rU').xreadlines():
         data = cleanUpLine(line)
         if '.csv' in input_file:
@@ -546,6 +548,7 @@ def transposeMatrix(input_file):
     for t in t_arrays:
         eo.write(string.join(t,'\t')+'\n')
     eo.close()
+    return export_path
 
 def translation(translate_path,input_file):
     import export

@@ -114,7 +114,7 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
                 elif md.FieldType() == 'Exclude': 
                     if sample_value in md.FieldValues():
                         samplesToRemove.append(sampleID)
-                elif md.FieldType() == 'Covariate':
+                elif md.FieldType() == 'Covariate' or md.FieldType() == 'covariate':
                     """ This is the field we are deriving our groups and comps from """
                     ### If the covariateSamples key already present
                     if sample_value in md.FieldValues():

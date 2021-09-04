@@ -8,7 +8,7 @@ from scipy import stats
 import warnings
 import time
 
-def importFile(filename,convertToFloat=False):
+def importFile(filename,returnSamples=False):
     db={}
     firstRow=True
     dataset_max=0
@@ -16,35 +16,47 @@ def importFile(filename,convertToFloat=False):
         data = line.rstrip()
         t = string.split(data,'\t')
         uid = t[0]
-        if firstRow: samples = t[1:]; firstRow=False
+        if ':' in uid:
+            data_type = 'splicing-event'
+        else:
+            data_type = 'gene expression'
+        if firstRow:
+            samples = t[1:]; firstRow=False
         if len(t)>1:
             values = t[1:]
-            if convertToFloat:
-                try:
-                    values = map(float,values)
-                    max_val = max(values)
-                    if max_val > dataset_max:
-                        dataset_max = max_val
-                except:
-                    continue ### Header row
-            else:
-                values = t[1] ### Just store the gene symbol
+            try:
+                values = map(float,values)
+                max_val = max(values)
+                if max_val > dataset_max:
+                    dataset_max = max_val
+            except:
+                values2=[]
+                for value in values:
+                    try: values2.append(float(value))
+                    except:
+                        values2.append(0.000101) ### Missing value
+                values = numpy.ma.masked_values(values2,0.000101)
         else:
-            values = uid
+            values = uid ### Just store the gene symbol
+        if len(values) != len(samples):
+            diff = len(samples) - len(values)
+            values=list(values)+ [0.000101]*diff
+            values = numpy.ma.masked_values(values,0.000101)
         db[uid]=values
-    if convertToFloat:
-        if dataset_max>100: ### Data is not log2
-            print 'Converting gene expression data to log2 values'
-            for uid in db:
-                db[uid] = map(lambda x: math.log(x+1,2), db[uid])
-        print 'Imported %d gene expression rows' % len(db)
+
+    if dataset_max>100: ### Data is not log2
+        print 'Converting %s data to log2 values' % data_type
+        for uid in db:
+            db[uid] = map(lambda x: math.log(x+1,2), db[uid])
+    print 'Imported %d %s rows' % (len(db),data_type)
+    if returnSamples:
         return db, samples
     else:
-        print 'Imported %d splicing factors' % len(db) 
         return db
         
 def importPSIData(PSI_dir,samples):
     """Import PSI data from either EventAnnotation or PSI value file"""
+    dataset_max=0
     firstRow=True
     PSI_data_db={}
     for line in open(PSI_dir,'rU').xreadlines():
@@ -74,6 +86,9 @@ def importPSIData(PSI_dir,samples):
             PSI_data = PSI_data[data_index:]
             try:
                 values = map(lambda x: float(x), PSI_data)
+                max_val = max(values)
+                if max_val > dataset_max:
+                    dataset_max = max_val
             except Exception:
                 values=[]
                 for value in PSI_data:
@@ -82,6 +97,12 @@ def importPSIData(PSI_dir,samples):
                         values.append(0.000101) ### Missing value
                 values = numpy.ma.masked_values(values,0.000101)
             PSI_data_db[junctionID]=values
+    #dataset_max=0
+    if dataset_max>100:
+        print 'Converting values to log2 for:',PSI_dir
+        for uid in PSI_data_db:
+            ### This is for gene expression data when correlating genes to splicing events
+            PSI_data_db[uid] = map(lambda x: math.log(x+1,2), PSI_data_db[uid])
 
     print 'Imported %d splicing event rows' % len(PSI_data_db)
     return PSI_data_db
@@ -91,7 +112,7 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
     ### Import the list of splicing factors or other genes of interest
     genesToExamine = importFile(SF_dir)
     ### Import the tab-delimited gene expression matrix
-    geneExpression_db, samples = importFile(exp_dir,convertToFloat=True)
+    geneExpression_db, samples = importFile(exp_dir,returnSamples=True)
     ### Import the PSI data
     PSI_data_db = importPSIData(PSI_dir,samples)
     
@@ -116,14 +137,14 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
     use_spearman = False
     
     for gene in genesToExamine:
-        gene_name = genesToExamine[gene]
+        Corrsflist=[]
+        count=0
+        gene_name = gene
         #print len(geneExpression_db),[gene]
         if gene in geneExpression_db:
             start_time = time.time()
             ### Hence, the gene is a splicing factor
             expression_values = geneExpression_db[gene]
-            Corrsflist=[]
-            count=0
             for junctionID in PSI_data_db:
                 psi_values = PSI_data_db[junctionID]
                 if use_spearman:
@@ -137,12 +158,22 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
                                 expression_values2.append(expression_values[index])
                             index+=1
                         rho,p = stats.spearmanr(expression_values2,psi_values2)
+                    elif 0.000101 in expression_values:
+                        index=0
+                        psi_values2=[]
+                        expression_values2=[]
+                        for val in expression_values:
+                            if val!=0.000101:
+                                expression_values2.append(val)
+                                psi_values2.append(psi_values[index])
+                            index+=1
+                        rho,p = stats.spearmanr(expression_values2,psi_values2)
                     else:
                         with warnings.catch_warnings():
                             warnings.filterwarnings("ignore",category=RuntimeWarning) 
                             rho,p = stats.spearmanr(expression_values,psi_values)   
                 else:
-                    if 0.000101 in psi_values:
+                    if 0.000101 in psi_values or 0.000101 in expression_values:
                         coefr=numpy.ma.corrcoef(expression_values,psi_values)
                         rho = coefr[0][1]
                     else:
@@ -153,7 +184,8 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
                     count+=1
                     Corrsflist.append([junctionID,rho])
                 gene_correlation_time.append(time.time()-start_time)
-        
+        else:
+            continue
         gene_name = string.replace(gene_name,':',"__")
         if '|' in gene_name:
             gene_name = string.split(gene_name,'|')[0]
@@ -164,11 +196,20 @@ def findcorrelations(SF_dir, PSI_dir, exp_dir, output_dir, PearsonCutoff):
             eg.write("SplicingEvent\tSystemCode\tPearsonRho\n")
         
             for (junctionID,rho) in Corrsflist:
-                eg.write(junctionID+"\t"+"Ae\t"+str(rho)+"\n")
+                if 'ENS' in junctionID:
+                    if ':' in junctionID:
+                        idtype = 'Ae'
+                    else:
+                        idtype = 'En'
+                else:
+                    idtype = 'Sy'     
+                eg.write(junctionID+"\t"+idtype+"\t"+str(rho)+"\n")
             eg.close()
         counter+=1
         print '.',
-    print '\n...Correlations obtained on average of %d seconds/gene' % numpy.mean(gene_correlation_time)
+    try:
+        print '\n...Correlations obtained on average of %d seconds/gene' % numpy.mean(gene_correlation_time)
+    except: pass
 
 def performEventEnrichment(output_dir,eventDir,species):
     """Import significant splicing events from metaDataAnalysis.py comparisons and test for their
