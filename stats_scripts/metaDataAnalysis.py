@@ -117,9 +117,15 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
                 elif md.FieldType() == 'Covariate' or md.FieldType() == 'covariate':
                     """ This is the field we are deriving our groups and comps from """
                     ### If the covariateSamples key already present
-                    if sample_value in md.FieldValues():
+                    if sample_value in 'M':
+                        sample_type = md.FieldName()+'-Male'
+                    elif sample_value in 'F':
+                        sample_type = md.FieldName()+'-Female'
+                    elif sample_value in md.FieldValues():
                         ### Hence, this sample is TRUE to the field name (e.g., diseaseX)
                         sample_type = md.FieldName()
+                    elif sample_value in 'NA':
+                        sample_type = 'ignore'
                     else:
                         sample_type = 'Others'
                     if md.FieldName() in covariateSamples:
@@ -171,6 +177,7 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
                     updated_samples.append(sample)
             #print len(updated_samples)
             groups[group_id] = updated_samples
+            
         if len(covariateSamples[field])>0:
             groups_db[field] = covariateSamples[field]
     
@@ -182,18 +189,24 @@ def prepareComparisonData(metadata_file,metadata_filters,groups_db,comps_db):
         for group_id in groups:
             if len(groups[group_id])>1: ### Ensure sufficient samples to compare
                 if group_id not in group_names:
-                    group_names.append(group_id)
+                    if group_id != 'ignore':
+                        group_names.append(group_id)
         if len(group_names) == 2:
-            if 'Others'in group_names:
+            if 'Others' in group_names:
+                if group_names[0] == 'Others':
+                    group_names = group_names[1],group_names[0]
                 comps.append(tuple(group_names))
-            if 'Others'not in group_names:
+            if 'Others' not in group_names:
+                if 'Female' in group_names[0]:
+                    group_names = group_names[1],group_names[0]
                 comps.append(tuple(group_names))
         else:
             for group1 in group_names:
                 for group2 in group_names:
                     if group1!=group2:
                         if (group2,group1) not in comps:
-                            comps.append((group1,group2))
+                            comps.append([group1,group2])
+        
         comps_db[field]=comps
                         
     print len(list(set(samplesToRetainFinal))), 'samples considered for analysis.', len(list(set(samplesToRemove))), 'removed.'
@@ -343,6 +356,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
     row_count=0
     header_db={}
     headers_compared={}
+    FDR_blacklist={}
     for line in open(input_file,'rU').xreadlines():
         row_count+=1
         if '.bed' in line:
@@ -351,6 +365,14 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         data = string.replace(data,'"','')
         values = string.split(data,'\t')
         if firstLine:
+            header = values
+            if '.counts' in line:
+                values2=[]
+                for x in values:
+                    if '.jun' in x:
+                        x = string.split(x,'.junction_quantification.txt')[0]
+                    values2.append(x)
+                values = values2
             header = values
             for group in groups_db:
                 samplesToEvaluate = groups_db[group]
@@ -422,7 +444,7 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     unfiltered=[]
                     for x in sample_index_list:
                         initial_filtered.append(values[x])
-                    filtered_values=[]
+                    filtered_values=[]                        
                     for x in initial_filtered:
                         if x != '' and x!= 'NA':
                             filtered_values.append(float(x))
@@ -445,15 +467,32 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     headers_compared[header_samples]=[]
                     if suppressPrintOuts==False:
                         print len(g1_headers),len(g2_headers),groups
-                try:
-                    data_list1 = group_expression_values[group1]
-                except KeyError:
-                    ### This error is linked to the above Strings rather than values present error
-                    continue
-                try:
-                    data_list2 = group_expression_values[group2]
-                except:
-                    continue
+                        
+                if probability_statistic == 'paired t-test':
+                    ### Samples need to be commonly ordered and filtered
+                    def returnPresentIndexes(vals):
+                        ind=0
+                        present_indexes=[]
+                        for x in vals:
+                            if x != '' and x != 'NA':
+                                present_indexes.append(ind)
+                            ind+=1
+                        return present_indexes
+                    present1 = returnPresentIndexes(original_group[group1])
+                    present2 = returnPresentIndexes(original_group[group2])
+                    present = list(set(present1) & set(present2))
+                    data_list1 = map(lambda i: float(original_group[group1][i]),present)
+                    data_list2 = map(lambda i: float(original_group[group2][i]),present)
+                else:
+                    try:
+                        data_list1 = group_expression_values[group1]
+                    except KeyError:
+                        ### This error is linked to the above Strings rather than values present error
+                        continue
+                    try:
+                        data_list2 = group_expression_values[group2]
+                    except:
+                        continue
                 combined = data_list1+data_list2
                 if g1_headers==0 or g2_headers==0:
                     continue ### no samples matching the criterion
@@ -470,8 +509,17 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     pass
                 else:
                     continue ### Don't analyze
-                #print len(g1_headers), len(g2_headers);sys.exit()
+                #print len(data_list1), len(data_list2);sys.exit()
                 if (len(data_list1)>1 and len(data_list2)>1) or (len(g1_headers)==1 or len(g2_headers)==1): ### For splicing data
+                    
+                    def countif(val):
+                        if val>minRPKM: return 1
+                        else: return 0
+                    min_num_exp = sum(map(lambda x: x>minRPKM,data_list1+data_list2))
+                    if min_num_exp < min([len(data_list1),len(data_list2)]):
+                        try: FDR_blacklist[groups].append(uid)
+                        except: FDR_blacklist[groups] = [uid]
+                        
                     ### Just a One-Way ANOVA at first - moderation happens later !!!!
                     try:
                         p = statistics.runComparisonStatistic(data_list1,data_list2,probability_statistic)
@@ -484,10 +532,24 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
                     else: max_avg = 10000
 
                     valid = True
+                    
+                    """
                     try:
                         if max_avg<minRPKM:
                             log_fold = 'Insufficient Expression'
                     except Exception: pass
+                    """
+                    
+                    """ New strategy for FDR including an independent filtering component
+                    
+                    Step 1) estimate or have the user determine a minimum TPM or RPKM cutoff - or in the case of splicing, minimum values detected -  in all samples.
+                    Step 2) If the minimum group size < 10, apply this adjusted FDR method although we could apply to larger groups with the following modification
+                            min_group_size * 0.7 +3, when great than 9 samples (matching what limma does).
+                    Step 3) Only compute an FDR p for genes with minimum of samples > cutoff in the vector of samples (for example if smallest group size = 3, >2 samples must have TPM>1)
+                    Step 4) Could apply the cutoff for all groups or just two (try to do both).
+                    Step 5) Evaluate to ensure the FDR significant highly overlap with genes that have mutual exclusive expression between the two groups.
+                    """
+                    
                     gs = statistics.GroupStats(log_fold,None,p)
                     gs.setAdditionalStats(data_list1,data_list2) ### Assuming equal variance
                     pval_db = pval_summary_db[groups] ### for calculated adjusted statistics
@@ -548,14 +610,18 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
         #uo.write(header)
         so.write('Gene\tPval\n')
         pval_db = pval_summary_db[groups]
+        try: blacklist = FDR_blacklist[groups]
+        except: blacklist=[]
+        #print 'blacklist:',len(blacklist)
         if 'moderated' in probability_statistic: # and pval_threshold<1:
-            try: statistics.moderateTestStats(pval_db,probability_statistic) ### Moderates the original reported test p-value prior to adjusting
+            try:
+                statistics.moderateTestStats(pval_db,probability_statistic) ### Moderates the original reported test p-value prior to adjusting
             except Exception:
                 print 'Moderated test failed... using student t-test instead',group1,group2
                 #print traceback.format_exc()
         else:
             'Skipping moderated t-test...'
-        statistics.adjustPermuteStats(pval_db) ### sets the adjusted p-values for objects
+        statistics.adjustPermuteStats(pval_db,blacklist=blacklist) ### sets the adjusted p-values for objects
         
         pval_sort=[]
         for uid in pval_db:
@@ -574,7 +640,8 @@ def performDifferentialExpressionAnalysis(species,platform,input_file,groups_db,
             group1_avg = str(group_avg_exp_db[group1][uid])
             group2_avg = str(group_avg_exp_db[group2][uid])
             if use_adjusted_p:
-                pval = float(gs.AdjP())
+                try: pval = float(gs.AdjP())
+                except: pval = 1
             else:
                 pval = gs.Pval()
             if platform == 'miRSeq':
@@ -1333,7 +1400,8 @@ def exportUpDownGenes(results_dir):
         filename = results_dir+'/'+file
         output_dir = results_dir+'/regulated/'+file
         firstLine=True
-        if '.txt' in filename and 'GE.' in filename:
+        
+        if '.txt' in filename:
             ou = export.ExportFile(output_dir[:-4]+'-up.txt')
             od = export.ExportFile(output_dir[:-4]+'-down.txt')
             for line in open(filename,'rU').xreadlines():
@@ -1441,7 +1509,7 @@ def exportGeneSetsFromCombined(filename):
 
 def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,
                 use_adjusted_pval=True,pvalThreshold=0.05,use_custom_output_dir='',
-                exportHeatmap=False, suppressPrintOuts=False):
+                exportHeatmap=False, suppressPrintOuts=False,meta_description_file=None):
     
     print "Performing a differential expression analysis (be patient)..."
     global pval_threshold
@@ -1452,6 +1520,8 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
     global use_adjusted_p
     global logfold_threshold
     global minSampleNumber
+    global minRPKM
+    minRPKM = -1
     minSampleNumber = 2
     logfold_threshold = log_fold_cutoff
     use_adjusted_p = use_adjusted_pval
@@ -1465,7 +1535,6 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
         CovariateQuery = 'DEGs'
     pval_threshold = float(pvalThreshold)
     metadata_files = [groups_file]
-    meta_description_file = None
     
     if platform == 'PSI' or platform == 'methylation':
         if log_fold_cutoff==None:
@@ -1577,7 +1646,10 @@ def remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_c
             print 'PSI Heatmap failed to export...'
             print traceback.format_exc() 
             
-    return graphics
+    if meta_description_file != None: ### For OncoSplice - non-groups metadata
+        return rootdir,CovariateQuery
+    else:
+        return graphics
 
 def compareDomainComposition(folder):
     ### Compare domain composition
@@ -1734,7 +1806,7 @@ if __name__ == '__main__':
     expression_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/AltResults/AlternativeOutput/Hs_RNASeq_top_alt_junctions-PSI_EventAnnotation.txt'
     groups_file = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/ExpressionInput/groups.test.txt'
     computed_results_dir = '/Users/saljh8/Desktop/dataAnalysis/SalomonisLab/BreastCancerDemo/FASTQs/all/ExpressionInput/comps.test.txt'
-    #exportUpDownGenes('/Users/saljh8/Dropbox/Collaborations/Jayati/Thpok/SoupX/cellHarmony/DifferentialExpression_Fold_1.1_adjp_0.05/');sys.exit()
+    #exportUpDownGenes('/Users/saljh8/Downloads/GBM_meeting/reg');sys.exit()
     #remoteAnalysis(species,expression_file,groups_file,platform='PSI',log_fold_cutoff=0.1,use_adjusted_pval=True,pvalThreshold=0.05,exportHeatmap=True);sys.exit()
     #compareDomainComposition(computed_results_dir)
     ################  Comand-line arguments ################
@@ -1782,7 +1854,8 @@ if __name__ == '__main__':
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['m=','i=','d=','c=','u=','p=','s=','f=',
             'g=','e=','ce=','rc=','cd=','o=','md=','in=','target=','parent=','urls=','used=','mf=',
-            'adjp=','dPSI=','pval=','percentExp=','percentExp=', 'fold=', 'species=', 'platform=', 'expdir='])
+            'adjp=','dPSI=','pval=','minRPKM=','percentExp=', 'fold=', 'species=', 'platform=', 'expdir=',
+            'test='])
         for opt, arg in options:
             if opt == '--m': metadata_files.append(arg)
             if opt == '--o':
@@ -1812,6 +1885,11 @@ if __name__ == '__main__':
             if opt == '--urls': executed_urls.append(arg) ### options are: all, junction, exon, reference
             if opt == '--used': used.append(arg)
             if opt == '--percentExp': PercentExp = int(arg)
+            if opt == '--minRPKM': minRPKM = float(arg)
+            if opt == '--test':
+                probability_statistic = arg
+                if 'paired' in probability_statistic:
+                    probability_statistic = 'paired t-test'
             if opt == '--adjp':
                 if string.lower(arg) == 'yes' or string.lower(arg) == 'true':
                     use_adjusted_p = True

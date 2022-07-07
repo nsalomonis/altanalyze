@@ -7145,6 +7145,7 @@ def commandLineRun():
             reimportModelScores = True
             maskGroups = None
             coordinateFile = None
+            Normalize = False
             if 't-SNE' in image_export or 'tsne' in image_export:
                 pca_algorithm = 't-SNE'
             if 'umap' in image_export or 'UMAP' in image_export:
@@ -7165,6 +7166,10 @@ def commandLineRun():
                 if opt == '--genes': colorByGene=arg
                 if opt == '--maskGroups': maskGroups=arg
                 if opt == '--coordinateFile': coordinateFile=arg
+                if opt == '--normalization':
+                    Normalize=arg
+                    if 'alse' in Normalize: Normalize = False
+                    if 'rue' in Normalize: Normalize = True
                 if opt == '--reimportModelScores':
                     if arg == 'yes' or arg == 'True' or arg == 'true':
                         reimportModelScores = True
@@ -7187,8 +7192,8 @@ def commandLineRun():
             if input_file_dir==None:
                 print 'Please provide a valid file location for your input data matrix (must have an annotation row and an annotation column)';sys.exit()
 
-            UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None,
-                          plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore,
+            UI.performPCA(input_file_dir, include_labels, pca_algorithm, transpose, None, Normalize=Normalize,
+                          plotType=plotType, display=display, geneSetName=geneSetName, species=species, zscore=zscore, 
                           colorByGene=colorByGene, reimportModelScores=reimportModelScores, separateGenePlots=separateGenePlots,
                           maskGroups=maskGroups,coordinateFile=coordinateFile)
             sys.exit()
@@ -7804,7 +7809,11 @@ def commandLineRun():
                 elif len(input_fastq_dir)>0:
                     output_dir = input_fastq_dir
                 else: 
-                    output_dir = export.findParentDir(input_file_dir)
+                    try: output_dir = export.findParentDir(input_file_dir)
+                    except:
+                        input_file_dir = export.findParentDir(input_exp_file)
+                        output_dir = export.findParentDir(input_file_dir[:-1])
+                        input_file_dir = None
 
             log_file = filepath(output_dir+'/AltAnalyze_report-'+time_stamp+'.log')
             log_report = open(log_file,'w'); log_report.close()
@@ -8332,8 +8341,9 @@ def commandLineRun():
                         print "Invalid exon expression threshold entered:",exon_exp_threshold,'. Must be > 1'; sys.exit()
                     if exon_rpkm_threshold < 0:
                         print "Invalid exon RPKM threshold entered:",exon_rpkm_threshold,'. Must be >= 0'; sys.exit()
+                    """
                     if gene_exp_threshold < 1:
-                        print "Invalid gene expression threshold entered:",gene_exp_threshold,'. Must be > 1'; sys.exit()
+                        print "Invalid gene expression threshold entered:",gene_exp_threshold,'. Must be > 1'; sys.exit()"""
                         
         if 'FIRMA' in additional_algorithms and array_type == 'RNASeq':
             print 'FIRMA is not an available option for RNASeq... Changing this to splicing-index.'

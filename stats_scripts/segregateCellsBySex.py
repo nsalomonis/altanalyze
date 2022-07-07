@@ -17,7 +17,7 @@ def cleanUpLine(line):
 def computeOnSexTranscripts(fn):
     """ Import a flat single-cell expression matrix """
     female = ['TSIX','XIST','ENSG00000229807','ENSMUSG00000086503','ENSG00000270641','ENSMUSG00000085715']
-    male = ['EIF2S3Y','EDX3Y','UTY','ENSMUSG00000069049','ENSMUSG00000069049', 'ENSG00000067048', 'ENSMUSG00000069045','ENSMUSP00000070012', 'ENSG00000183878']
+    male = ['EIF2S3Y','DDX3Y','UTY','SRY','ENSMUSG00000069049','ENSMUSG00000069049', 'ENSG00000067048', 'ENSMUSG00000069045','ENSMUSP00000070012', 'ENSG00000183878','ENSG00000184895','ENSG00000067048']
     informative_genes = male+female
     female_data = []
     male_data = []
@@ -37,7 +37,8 @@ def computeOnSexTranscripts(fn):
                     male_data.append(values)
                 else:
                     female_data.append(values)
-    
+    print len(male_data)
+    print len(female_data)
     male_data = np.array(male_data)
     female_data = np.array(female_data)
     male_data = np.average(male_data, axis=0)

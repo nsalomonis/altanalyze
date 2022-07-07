@@ -130,18 +130,21 @@ def retreiveAllKnownSpliceSites(returnExonRetention=False,DesignatedSpecies=None
     try: parent_dir = export.findParentDir(bam_file)
     except Exception: parent_dir = export.findParentDir(path)
     species = None
-    for file in os.listdir(parent_dir):
-        if 'AltAnalyze_report' in file and '.log' in file:
-            log_file = unique.filepath(parent_dir+'/'+file)
-            log_contents = open(log_file, "rU")
-            species_tag = '	species: '
-            for line in log_contents:
-                line = line.rstrip()
-                if species_tag in line:
-                    species = string.split(line,species_tag)[1]
-    if species == None:
-        try: species = IndicatedSpecies
-        except Exception: species = DesignatedSpecies
+    try:
+        for file in os.listdir(parent_dir):
+            if 'AltAnalyze_report' in file and '.log' in file:
+                log_file = unique.filepath(parent_dir+'/'+file)
+                log_contents = open(log_file, "rU")
+                species_tag = '	species: '
+                for line in log_contents:
+                    line = line.rstrip()
+                    if species_tag in line:
+                        species = string.split(line,species_tag)[1]
+        if species == None:
+            try: species = IndicatedSpecies
+            except Exception: species = DesignatedSpecies
+    except:
+        species = 'Hs'
     
     splicesite_db={}
     gene_coord_db={}
@@ -226,7 +229,7 @@ def parseJunctionEntries(bam_dir,multi=False, Species=None, ReferenceDir=None):
         except Exception: junction_db={}
     original_junction_db = copy.deepcopy(junction_db)
     
-    bamf = pysam.Samfile(bam_dir, "rb" )
+    bamf = pysam.Samfile(bam_dir, "rb" , check_sq=False)
     ### Is there an indexed .bai for the BAM? Check.
     try:
         for entry in bamf.fetch():

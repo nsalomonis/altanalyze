@@ -296,7 +296,6 @@ def importqueryResults(species,dir_file,id_db):
                     else:
                         query_db[id] = id ### Currently not dealt with
                         ensembl_ls1 = [id]
-                    
                     ### If a SIF file add genes and interactions
                     if len(t)>1 and 'SIF' in inputDataType: ### Potentially SIF format
                         interaction_type = t[1]

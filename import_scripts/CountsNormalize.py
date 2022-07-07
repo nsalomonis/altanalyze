@@ -66,7 +66,7 @@ def calculateCPTT(val,barcode_sum,log=True):
             else:
                 return 10000.00*val/barcode_sum
 
-def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
+def normalizeDropSeqCountsMemoryEfficient(expFile,log=True,exportSumCounts=False):
     """ A more memory efficient function than the above for scaling scRNA-Seq, line-by-line """
     
     start_time = time.time()
@@ -80,6 +80,8 @@ def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
         data = line.rstrip('\n')
         if '\t' in data:
             t = string.split(data,'\t')
+        elif '/t' in data:
+            t = string.split(data,'/t')
         else:
             t = string.split(data,',')
         if firstLine:
@@ -100,9 +102,19 @@ def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
                 print len(barcodes), len(values), len(count_sum_array)
                 continue
             count_sum_array = [sum(value) for value in zip(*[count_sum_array,values])]
-
+            
+    if exportSumCounts:
+        output_file = expFile[:-4]+'_barcodeSum.txt'
+        export_object = open(output_file,'w')
+        export_object.write(string.join(barcodes,'\t')+'\n')
+        export_object.write(string.join(map(str,count_sum_array),'\t')+'\n')
+        export_object.close()
+    
     ### Import the expression dataset again and now scale
-    output_file = expFile[:-4]+'_CPTT-log2.txt'
+    if log:
+        output_file = expFile[:-4]+'_CPTT-log2.txt'
+    else:
+        output_file = expFile[:-4]+'_CPTT.txt'
     export_object = open(output_file,'w')
     firstLine=True
     for line in open(expFile,'rU').xreadlines():
@@ -110,6 +122,8 @@ def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
         data = line.rstrip('\n')
         if '\t' in data:
             t = string.split(data,'\t')
+        elif '/t' in data:
+            t = string.split(data,'/t')
         else:
             t = string.split(data,',')
         if firstLine:
@@ -119,6 +133,8 @@ def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
             gene = t[0]
             if 'ENS' in gene and '.' in gene:
                 gene = string.split(gene,'.')[0]
+            if '_ENS' in gene:
+                gene = string.split(gene,'_ENS')[0]
             try: values = map(float,t[1:])
             except:
                 values=[]
@@ -135,7 +151,7 @@ def normalizeDropSeqCountsMemoryEfficient(expFile,log=True):
                 except:
                     print [gene], len(count_sum_array), len(values),len(barcodes);sys.exit()
                 val = values[index]
-                cptt_val = calculateCPTT(val,barcode_sum)
+                cptt_val = calculateCPTT(val,barcode_sum,log=log)
                 cptt_values.append(cptt_val)
                 index+=1
             values = string.join([gene]+map(lambda x: str(x)[:7], cptt_values),'\t')
@@ -219,6 +235,7 @@ if __name__ == '__main__':
     organ = None
     emptydrops = True
     cells_dir = None
+    exportSumCounts = False
     
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
@@ -226,13 +243,15 @@ if __name__ == '__main__':
         #python DropSeqProcessing.py --i dropseq.txt
     else:
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','log=','csv=','organ=','expressionCutoff=',
-                                                             'emptydrops=','cells='])
+                                                             'emptydrops=','cells=','exportSumCounts='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': matrices_dir=arg
             elif opt == '--csv': matrices_dir=arg
             elif opt == '--cells': cells_dir=arg
             elif opt == '--organ': target_organ=arg
+            elif opt == '--exportSumCounts':
+                exportSumCounts=True
             elif opt == '--expressionCutoff':
                 expressionCutoff=float(arg)
             elif opt == '--emptydrops':
@@ -246,5 +265,5 @@ if __name__ == '__main__':
     if cells_dir != None:
         CSVformat(matrices_dir,cells_dir,emptydrops=emptydrops,target_organ=target_organ,expressionCutoff=expressionCutoff)
     else:
-        normalizeDropSeqCountsMemoryEfficient(matrices_dir)
+        normalizeDropSeqCountsMemoryEfficient(matrices_dir,log=log, exportSumCounts=exportSumCounts)
         #normalizeDropSeqCounts(matrices_dir,log=log)

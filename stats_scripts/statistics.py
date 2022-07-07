@@ -112,7 +112,7 @@ def BenjaminiHochberg(filename):
         eo.write(element+'\t'+str(p)+'\t'+str(adjp)+'\n')
     eo.close()
         
-def adjustPermuteStats(pval_db):
+def adjustPermuteStats(pval_db,blacklist=[]):
     #1. Sort ascending the original input p value vector.  Call this spval.  Keep the original indecies so you can sort back.
     #2. Define a new vector called tmp.  tmp= spval.  tmp will contain the BH p values.
     #3. m is the length of tmp (also spval)
@@ -126,18 +126,23 @@ def adjustPermuteStats(pval_db):
     global spval; spval=[]
     for element in pval_db:
         zsd = pval_db[element]
-        try:
-            try: p = float(zsd.PermuteP())
-            except AttributeError: p = float(zsd[0]) ### When values are indeces rather than objects
-        except Exception: p = 1
-        spval.append([p,element])
+        if element not in blacklist:
+            try:
+                try: p = float(zsd.PermuteP())
+                except AttributeError: p = float(zsd[0]) ### When values are indeces rather than objects
+            except Exception: p = 1
+            spval.append([p,element])
+        """
+        else:
+            spval.append([1,element])
+        """
 
     spval.sort(); tmp = spval; m = len(spval); i=m-2; x=0 ###Step 1-4       
     #spval.sort(); tmp = spval; m = len(spval)-1; i=m-1; x=0 ###Step 1-4
     
     while i > -1:
         tmp[i]=min(tmp[i+1][0], min((float(m)/(i+1))*spval[i][0],1)),tmp[i][1]; i -= 1
-        
+    #print 'tmp',len(tmp)
     for (adjp,element) in tmp:
         zsd = pval_db[element]
         try: zsd.SetAdjP(adjp)
@@ -155,7 +160,9 @@ class GroupStats:
     def AdjIndex(self): return self.adj_index
     def RawIndex(self): return self.pval_index
     def SetAdjP(self,adjp): self.adj_p = adjp
-    def AdjP(self): return str(self.adj_p)
+    def AdjP(self):
+        try: return str(self.adj_p)
+        except: return 'NA'
     def setPval(self,p): self.p = p ### Typically re-set when a moderated statistic is calculated (e.g., emperical Bayesian - eBayes)
     def SetMod(self,adjp): self.adj_p = adjp
     def setMaxCount(self,max_count): self.max_count = max_count

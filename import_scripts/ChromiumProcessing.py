@@ -6,7 +6,6 @@ from scipy import sparse, stats, io
 import numpy
 import time
 import math
-from scipy import sparse, stats
 import traceback
 import gzip
 try:
@@ -15,9 +14,13 @@ except:
     print ('Missing the h5py library (hdf5 support)...')
 
 def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=True,
-            geneIDs=False, minReads=1000, maxCells=25000,filterCells=None, IDs='symbol'):
+            geneIDs=False, minReads=1000, maxCells=15000,filterCells=None, IDs='symbol',
+            featureType='all'):
+    
     """ Process a filtered or full sparse matrix expression dataset in mtx, mtx.gz or .h5 format """
     print 'Processing:',matrices_dir
+    if geneIDs:
+        print 'Using Ensembl as the UID over Symbol'
     
     start_time = time.time()
     feature_types=[]
@@ -56,12 +59,13 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
             gene_names = f[genome]['gene_names']
             barcodes = list(f[genome]['barcodes'])
             gene_ids = f[genome]['genes']
-            if IDs=='symbol':
-                gene_names = gene_ids
     else:
         #matrix_dir = os.path.join(matrices_dir, genome)
         matrix_dir = matrices_dir
-        mat = scipy.io.mmread(matrix_dir)
+        try: mat = scipy.io.mmread(matrix_dir)
+        except ValueError:
+            fixMTX(matrix_dir)
+            mat = scipy.io.mmread(matrix_dir)
         genes_path = string.replace(matrix_dir,'matrix.mtx','genes.tsv')
         genes_path = string.replace(matrix_dir,'counts.mtx','genes.tsv')
         barcodes_path = string.replace(matrix_dir,'matrix.mtx','barcodes.tsv')
@@ -96,7 +100,7 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
             try: gene_names = [row[gindex] for row in csv.reader(open(genes_path), delimiter="\t")]
             except: gene_names = gene_ids
             barcodes = [row[0] for row in csv.reader(open(barcodes_path), delimiter="\t")]
-    
+        
     if geneIDs:
         gene_names = gene_ids
     else:
@@ -110,8 +114,41 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
                 gene_names[counts] = gene_ids[counts]+'--ADT'
             if i == 'Multiplexing Capture':
                 gene_names[counts] = gene_ids[counts]+'--HTO'
+            if i == 'Peaks':
+                gene_names[counts] = gene_ids[counts]+'--Peak'
             counts+=1
             
+    if featureType != 'all':
+        counts=0
+        revised_order=0
+        includeIDs=[]
+        gene_names_filtered={}
+        #print len(gene_names)
+        print mat.shape
+        if featureType == 'GEX': featureType = 'Gene Expression'
+        if featureType == 'RNA': featureType = 'Gene Expression'
+        if featureType == 'ADT': featureType = 'Antibody Capture'
+        if featureType == 'HTO': featureType = 'Multiplexing Capture'
+        if featureType == 'peak': featureType = 'Peaks'
+        if featureType == 'ATAC': featureType = 'Peaks'
+        for i in feature_types:
+            if ':' in gene_names[counts] or i != featureType:
+                pass
+            else:
+                gene_names_filtered[revised_order] = gene_names[counts]
+                includeIDs.append(counts)
+                revised_order+=1
+            counts+=1
+        gene_names = gene_names_filtered
+        try: mat = mat[includeIDs,:]
+        except: ### for coo_matrix formats (newer 10x) which don't support slicing
+            mat = mat.tocsr()
+            mat = mat[includeIDs,:]
+        print len(includeIDs)
+        #print len(gene_names)
+        print mat.shape
+        #print gene_names
+        
     #barcodes = map(lambda x: string.replace(x,'-1',''), barcodes) ### could possibly cause issues with comparative analyses
     matrices_dir = os.path.abspath(os.path.join(matrices_dir, os.pardir))
 
@@ -214,6 +251,29 @@ def import10XSparseMatrix(matrices_dir, genome, dataset_name, expFile=None, log=
     print norm_path
     return norm_path
 
+def fixMTX(matrix_dir):
+    ### Error in the header regarding the number of entries
+    print '...Error in mtx file, correcting and saving a copy of the original in the source directory (archive)'
+    from shutil import copyfile
+    matrix_dir_copy = matrix_dir[:-4]+'-archive.mtx'
+    copyfile(matrix_dir, matrix_dir_copy)
+    count=-3
+    for line in open(matrix_dir_copy,'rU').xreadlines():
+        count+=1
+    eo = open(matrix_dir,'w')
+    entries = count
+    print entries
+    count=-2
+    for line in open(matrix_dir_copy,'rU').xreadlines():
+        if count == 0:
+            data = line.rstrip()
+            data = string.split(data,' ')
+            eo.write(string.join(data[:-1],' ')+' '+str(entries)+'\n')
+        else:
+            eo.write(line)
+        count+=1
+    eo.close()
+    
 def getMatrices(folder):
     paths = []
     for file in os.listdir(folder):
@@ -242,13 +302,14 @@ if __name__ == '__main__':
     minReads = 1000
     maxCells = 25000
     IDs = 'symbol'
+    featureType = 'all'
     
     if len(sys.argv[1:])<=1:  ### Indicates that there are insufficient number of command-line arguments
         print "Insufficient options provided";sys.exit()
         #Filtering samples in a datasets
         #python 10XProcessing.py --i /Users/test/10X/outs/filtered_gene_bc_matrices/ --g hg19 --n My10XExperiment
     else:
-        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','d=','g=','n=','geneID=','maxCells=','f=','IDs='])
+        options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','d=','g=','n=','geneID=','maxCells=','f=','IDs=','minReads=','featureType='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': matrices_dir=arg
@@ -256,11 +317,14 @@ if __name__ == '__main__':
             elif opt == '--g': genome=arg
             elif opt == '--n': dataset_name=arg
             elif opt == '--IDs': IDs=arg
+            elif opt == '--minReads': minReads=int(arg)
+            elif opt == '--featureType': featureType = arg
             elif opt == '--f':
                 filter_cells=[row[0] for row in csv.reader(open(arg), delimiter="\t")]
                 print 'Filtering cells to',len(filter_cells)
             elif opt == '--geneID':
-                geneID = True
+                if 'true' in arg or 'es' in arg: geneID = True
+                else: geneID = False
             elif opt == '--maxCells':
                 maxCells = int(arg)
     
@@ -278,7 +342,8 @@ if __name__ == '__main__':
         count=0
         while completed == False:
             try:
-                import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID, minReads=minReads, maxCells=maxCells,filterCells=filter_cells,IDs=IDs)
+                import10XSparseMatrix(matrices_dir,genome,dataset_name,geneIDs = geneID, minReads=minReads,
+                                      maxCells=maxCells,filterCells=filter_cells,IDs=IDs,featureType=featureType)
                 completed = True
             except MemoryError:
                 ### Make the requirement for how many cells to process more stringent

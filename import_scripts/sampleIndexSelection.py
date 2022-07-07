@@ -5,6 +5,7 @@ import math
 import traceback
 try: from stats_scripts import statistics
 except Exception: pass
+import collections
 
 def makeTestFile():
     all_data = [['name','harold','bob','frank','sally','kim','tim'],
@@ -19,7 +20,7 @@ def makeTestFile():
     return input_file
 
 def filterFile(input_file,output_file,filter_names,force=False,calculateCentroids=False,comparisons=[],
-               log2=False,convertPSIUID=False,partialMatch=False,expressionCutoff=1,count=False):
+               log2=False,convertPSIUID=False,partialMatch=False,expressionCutoff=1,count=False,computeSum=False):
     if calculateCentroids:
         filter_names,group_index_db=filter_names
         
@@ -126,10 +127,11 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                         filter_names = filter_names_upated
                         sample_index_list = map(lambda x: values.index(x), filter_names)
                     else:
+                        not_found_items=[]
                         temp_count=1
                         for x in filter_names:
                             if x not in values:
-                                temp_count+=1
+                                temp_count+=1; not_found_items.append(not_found_items)
                                 if temp_count==500: print 'too many to print'
                                 elif temp_count>500:
                                     pass
@@ -176,7 +178,7 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
                 filtered_values = map(str,map(lambda x: math.log(x+1,2),map(float,filtered_values)))
             except:
                 #print filtered_values[:20]
-                print traceback.format_exc()
+                #print traceback.format_exc()
                 pass
                 
         prior_values=values
@@ -194,6 +196,8 @@ def filterFile(input_file,output_file,filter_names,force=False,calculateCentroid
 
                 if count: ### count the number of instances the value > expressionCutoff
                     mean=countIf(raw_values2,expressionCutoff)
+                elif computeSum:
+                    mean = sum(raw_values2)
                 elif len(raw_values2)>1:
                     mean=statistics.avg(raw_values2)
                 else:
@@ -236,7 +240,7 @@ def countIf(raw_values,expressionCutoff):
             pass
     return counts
 
-def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False,stringMatch=False):
+def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False,stringMatch=False,partialMatch=False):
     export_object = open(output_file,'w')
     firstLine = True
     uid_index=0
@@ -253,7 +257,7 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False,
             firstLine = False
             export_object.write(line)
         else:
-            if filterDB!=None:
+            if filterDB!=None and partialMatch==False:
                 if values[uid_index] in filterDB:
                     if logData:
                         line = string.join([values[0]]+map(str,(map(lambda x: math.log(float(x)+1,2),values[1:]))),'\t')+'\n'
@@ -261,6 +265,10 @@ def filterRows(input_file,output_file,filterDB=None,logData=False,exclude=False,
                         export_object.write(line)
                 elif exclude: ### Only write out the entries NOT in the filter list
                     export_object.write(line)
+            elif filterDB !=None and partialMatch:
+                for name in filterDB:
+                    if name in values[uid_index]:
+                        export_object.write(line)
             elif stringMatch !=False:
                 if stringMatch in values[uid_index]:
                     if logData:
@@ -305,7 +313,6 @@ def filterRowsInOrder(input_file,output_file,ordered_genes):
     print 'Filtered rows printed to:',output_file
     
 def getFiltersFromHeatmap(filter_file):
-    import collections
     alt_filter_list=None
     group_index_db = collections.OrderedDict()
     index=0
@@ -352,15 +359,15 @@ def getComparisons(filter_file):
 
 def getFilters(filter_file,calculateCentroids=False,order=False):
     """Import sample list for filtering and optionally sample to groups """
-    filter_list=[]
-    import collections
+    filter_list=collections.OrderedDict()
     group_index_db = collections.OrderedDict()
     
     index=0
     for line in open(filter_file,'rU').xreadlines():
         data = cleanUpLine(line)
         sample = string.split(data,'\t')[0]
-        filter_list.append(sample)
+        if len(sample)>0:
+            filter_list[sample]=[]
         if calculateCentroids:
             sample,group_num,group_name = string.split(data,'\t')
             try: group_index_db[group_name].append(index)
@@ -589,6 +596,7 @@ if __name__ == '__main__':
     log2=False
     partialMatch=False
     count=False
+    computeSum=False
     stringMatch=False
     translate=False
     order=False
@@ -603,16 +611,18 @@ if __name__ == '__main__':
         options, remainder = getopt.getopt(sys.argv[1:],'', ['i=','f=','r=','median=','medoid=', 'fold=', 'folds=',
                             'centroid=','force=','minGeneCutoff=','expressionCutoff=','geneCountFilter=', 'binarize=',
                             'transpose=','fileFormat=','log2=','partialMatch=','count=','stringMatch=','translate=',
-                            'order='])
+                            'order=','sum='])
         #print sys.argv[1:]
         for opt, arg in options:
             if opt == '--i': input_file=arg
             elif opt == '--transpose': transpose = True
             elif opt == '--f': filter_file=arg
-            elif opt == '--median' or opt=='--medoid' or opt=='--centroid' or  opt=='--count':
+            elif opt == '--median' or opt=='--medoid' or opt=='--centroid' or  opt=='--count' or opt=='--sum':
                 calculateCentroids = True
                 if  opt=='--count':
                     count = True
+                if opt == '--sum':
+                    computeSum=True
             elif opt == '--fold': returnComparisons = True
             elif opt == '--log2': log2 = True
             elif opt == '--partialMatch': partialMatch = True
@@ -662,7 +672,7 @@ if __name__ == '__main__':
             filter_names,ordered_genes = getFilters(filter_file,order=order)
             filterRowsInOrder(input_file,output_file,ordered_genes)
             sys.exit()
-        filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude,stringMatch=stringMatch)
+        filterRows(input_file,output_file,filterDB=filter_names,logData=False,exclude=exclude,stringMatch=stringMatch,partialMatch=partialMatch)
     elif calculateCentroids:
         if count:
             output_file = input_file[:-4]+'-count-'+str(expressionCutoff)+'.txt'
@@ -675,9 +685,10 @@ if __name__ == '__main__':
         except Exception:
             print traceback.format_exc()
             filter_names,group_index_db = getFiltersFromHeatmap(filter_file)
-        filterFile(input_file,output_file,(filter_names,group_index_db),force=force,calculateCentroids=calculateCentroids,
-                   comparisons=comparisons,expressionCutoff=expressionCutoff,count=count)
+        filterFile(input_file,output_file,(filter_names.keys(),group_index_db),force=force,calculateCentroids=calculateCentroids,
+                   comparisons=comparisons,expressionCutoff=expressionCutoff,count=count,computeSum=computeSum)
     else:
         filter_names = getFilters(filter_file)
-        filterFile(input_file,output_file,filter_names,force=force,log2=log2,partialMatch=partialMatch)
+        
+        filterFile(input_file,output_file,filter_names.keys(),force=force,log2=log2,partialMatch=partialMatch)
 

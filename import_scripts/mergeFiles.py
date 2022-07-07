@@ -80,13 +80,13 @@ def latteralMerge(files_to_merge,original_filename,outputPath = None,includeFile
                 export_name = export.findFilename(export_name[:-1])
             elif file == 'matrix.mtx.gz' or file == 'matrix.mtx':
                 parent = export.findParentDir(filename)
-                export_name = export.findParentDir(parent)
-                export_name = export.findFilename(export_name[:-1])
+                export_name = export.findFilename(parent[:-1])
             else:
                 export_name = string.replace(file,'.mtx.gz','')
                 export_name = string.replace(export_name,'.mtx','')
                 export_name = string.replace(export_name,'.h5','')
                 export_name = string.replace(export_name,'_matrix','')
+            print 'Export name:',[export_name]
             filename = ChromiumProcessing.import10XSparseMatrix(filename,'species',export_name)
         files_to_merge_revised.append(filename)
     files_to_merge = files_to_merge_revised
@@ -469,10 +469,15 @@ if __name__ == '__main__':
             if opt == '--i': matrices_dir=arg
             if opt == '--join': combine_type=arg
         files_to_merge=[]
-        if '.' not in matrices_dir[:-4]:
+        print matrices_dir[:-4]
+        if '.' not in matrices_dir[-4:]:
             for file in os.listdir(matrices_dir):
                 if '.txt' in file or '.csv' in file or '.mtx' in file or '.h5' in file:
                     files_to_merge.append(os.path.join(matrices_dir, file))
+                elif '.' not in file:
+                    for file2 in os.listdir(matrices_dir+'/'+file):
+                        if '.txt' in file2 or '.csv' in file2 or '.mtx' in file2 or '.h5' in file2:
+                            files_to_merge.append(os.path.join(matrices_dir+'/'+file, file2))
             expFile = joinFiles(files_to_merge, combine_type, False, matrices_dir)
         else:
             print 'Directory path not provided... exiting.';sys.exit()

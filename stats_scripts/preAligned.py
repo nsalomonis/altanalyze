@@ -32,7 +32,7 @@ def cellHarmony(species,platform,query_exp_file,exp_output,
     
     ### Get the query and reference cells, dataset names
     refererence_cells, query_cells, reference_dataset, query_dataset = importCelltoClusterAnnotations(customLabels)  ### Get the reference and query cells in their respective order
-    
+
     ### copy and re-name the input expression file to the output cellHarmony directory
     if len(reference_dataset)>0 and len(query_dataset)>0:
         target_exp_dir = export_directory+'/cellHarmony/exp.'+reference_dataset+'__'+query_dataset+'-AllCells.txt'
@@ -128,6 +128,8 @@ def simpleHeaderImport(filename):
         for h in header:
             if ":" in h:
                 h = string.split(h,':')[-1]
+            if '.Reference' in h:
+                h = string.replace(h,'.Reference','')
             header2.append(h)
         break
     return header2
@@ -155,7 +157,8 @@ def importCelltoClusterAnnotations(filename):
         else:
             t = string.split(data,',')
         if firstRow:
-            ci = t.index('cell_id')
+            try: ci = t.index('cell_id')
+            except: ci = t.index('cell_barcode')
             try: cn = t.index('cluster_number')
             except: cn = 'False'
             try: cm = t.index('cluster_name')
@@ -163,7 +166,7 @@ def importCelltoClusterAnnotations(filename):
             try: cnm = t.index('ClustNameNum')
             except: cnm = 'False'
             try: cnm = t.index('label')
-            except: pass
+            except: cnm = t.index('labels')
             dn = t.index('dataset_name')
             dt = t.index('dataset_type')
             firstRow = False

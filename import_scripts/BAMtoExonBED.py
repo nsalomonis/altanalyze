@@ -98,12 +98,21 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
     ### Import the gene data and remove introns that overlap with exons on the opposite or same strand
     exonData_db={}
     exon_sorted_list=[]
+    reference_file = 'BED'
     for line in open(reference_exon_bed,'rU').xreadlines(): ### read each line one-at-a-time rather than loading all in memory
         line = line.rstrip('\n')
         reference_rows+=1
         #if reference_rows==6000: break
         ref_entries = string.split(line,'\t'); #'12', '6998470', '6998522', 'ENSG00000111671:E1.1_ENSE00001754003', '0', '-'
-        chr,start,stop,exon,null,strand = ref_entries[:6]
+        if reference_file == 'BED':
+            chr,start,stop,exon,null,strand = ref_entries[:6]
+        else:
+            gene,exon,chr,strand,start,stop = ref_entries[:6]
+            exon = gene+':'+exon
+        if chr == 'gene':
+            reference_file = 'TXT'
+            continue
+        
         start = int(start)
         stop = int(stop)
         if 'novel' not in exon:
@@ -162,7 +171,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
         if ':I' in exon or exon in retainedIntrons:
             try:
                 totalIntrons+=1
-                query_regions =  exon_sorted_list[exon_index-10:exon_index]+exon_sorted_list[exon_index+1:exon_index+10]
+                query_regions = exon_sorted_list[exon_index-10:exon_index]+exon_sorted_list[exon_index+1:exon_index+10]
                 overlap = checkOverlap(region,query_regions)
                 """
                 if 'ENSG00000262880:I3.1' == exon:
@@ -209,7 +218,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
             start,stop=int(start),int(stop)
             regionLen = abs(start-stop)
             interval_read_count=0
-            if exportCoordinates:
+            if exportCoordinates: ### Used for Kallisot Index
                 if regionLen<700:
                     exportIntervals = [[start-50,stop+50]] ### Buffer intron into the exon
                 else:
@@ -293,6 +302,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                                     ir.setIntronMateRead()
                                                     intronJunction[readname] = ir
                                         if readname in intronJunction:
+                                            junction_id = exon+'-'+str(start)
                                             ir = intronJunction[readname]
                                             found = ir.For_and_Rev_Present()
                                             if found: ### if the intron is less 500 (CAN CAUSE ISSUES IF READS BLEED OVER ON BOTH SIDES OF THE INTRON)
@@ -306,6 +316,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                             elif regionLen<500:
                                                 combined_pos = ir.CombinedPositions()
                                                 read_pos = ir.IntronSpanningRead()
+                                                
                                                 intron_read_overlap = combined_pos[2]-combined_pos[1]
                                                 #print intron_read_overlap
                                                 if intron_read_overlap>25:
@@ -314,7 +325,7 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                                         #print readname, exon, start, stop, X, Y, strand, read_pos, combined_pos
                                                     elif read_pos[1]==combined_pos[-1]:
                                                         #print read_pos, combined_pos, intron_read_overlap
-                                                        three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon                                         
+                                                        three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon
                                     else:
                                         mate = bamfile.mate(alignedread) ### looup the paired-end mate for this read
                                         try: cigarstring = mate.cigarstring
@@ -333,7 +344,6 @@ def parseExonReferences(bam_dir,reference_exon_bed,multi=False,intronRetentionOn
                                                     #print readname,exon, start, stop, X, Y, RX, RY, strand, read_strand;sys.exit()
                                                 elif read_pos[1]==intron_boundaries[-1]:
                                                     three_intron_junction_count+=1 ### intron junction read that spans the 3' intron-exon
-                                        
                             except Exception,e: ### Usually an unmapped read
                                 #print traceback.format_exc();sys.exit()
                                 pass

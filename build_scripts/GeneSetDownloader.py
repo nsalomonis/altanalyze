@@ -1318,8 +1318,8 @@ if __name__ == '__main__':
     #exportBioTypes(selected_species);sys.exit()
     additional_resources=['Latest WikiPathways']#'KEGG','BioGRID','DrugBank','miRNA Targets','Transcription Factor Targets']
     #translateBioMarkersBetweenSpecies('AltDatabase/ensembl/'+download_species,species);sys.exit()
-    additional_resources=['Latest WikiPathways','PathwayCommons','Transcription Factor Targets','Domains','BioMarkers']
-    additional_resources+=['miRNA Targets','GOSlim','Disease Ontology','Phenotype Ontology','KEGG','RVista Transcription Factor Sites']
-    additional_resources=['Phenotype Ontology','Disease Ontology']
+    #additional_resources=['Latest WikiPathways','PathwayCommons','Transcription Factor Targets','Domains','BioMarkers']
+    #additional_resources+=['miRNA Targets','GOSlim','Disease Ontology','Phenotype Ontology','KEGG','RVista Transcription Factor Sites']
+    #additional_resources=['Phenotype Ontology','Disease Ontology']
     buildAccessoryPathwayDatabases(selected_species,additional_resources,force)
     

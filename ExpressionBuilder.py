@@ -182,7 +182,7 @@ def calculate_expression_measures(expr_input_dir,expr_group_dir,experiment_name,
             if arrayid[0]== ' ':
                 try: arrayid = arrayid[1:] ### Cufflinks issue
                 except Exception: arrayid = ' ' ### can be the first row UID column as blank
-            if 'ENSG' in arrayid and '.' in arrayid:
+            if 'ENSG' in arrayid and '.' in arrayid and '-' not in arrayid:
                 arrayid = string.split(arrayid,'.')[0]
         else:
             arrayid = 'UID'

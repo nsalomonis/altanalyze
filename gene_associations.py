@@ -1536,10 +1536,9 @@ def convertAllGPML(specific_species,all_species):
             
             ### Download all species GPML from .zip
             #url = 'http://wikipathways.org//wpi/cache/wikipathways_'+species+'_Curation-AnalysisCollection__gpml.zip'
-            url = 'http://data.wikipathways.org/20210110/gpml/wikipathways-20210110-gpml-'+species+'.zip'
+            url = 'https://wikipathways-data.wmcloud.org/20210810/gpml/wikipathways-20210810-gpml-'+species+'.zip'
             print url
             fln,status = update.download(url,'GPML/','')
-            
             if 'Internet' not in status:
                 if len(specific_species) == 1:
                     print 'Including the latest WikiPathways associations'
