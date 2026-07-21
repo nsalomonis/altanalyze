@@ -17,7 +17,7 @@
 #SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 """This module contains instructions for recalling operating system file and directory paths,
-eliminating redundant list entries, removing unecessary file paths from py2app or py2exe
+eliminating redundant list entries, removing unnecessary file paths from py2app or py2exe
 and reading the propper Ensembl database version to allow for version specific access."""
 
 import sys, string
