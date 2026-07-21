@@ -4788,7 +4788,7 @@ def importAltAnalyzeExonResults(dir_list,novel_exon_junction_db,results_dir):
                 scores.sort()
                 if (scores[0][0]*scores[-1][0])<0:
                     ss1 = scores[0][1]; ss2 = scores[-1][1]
-                    if ss1.ProbesetsSorted() == ss2.ProbesetsSorted(): ss1.setDirection('mutual') ### same exons, hence, mutually exclusive event (or similiar)
+                    if ss1.ProbesetsSorted() == ss2.ProbesetsSorted(): ss1.setDirection('mutual') ### same exons, hence, mutually exclusive event (or similar)
                     else: ss1.setDirection('both') ### opposite directions in the same comparison-file, hence, conflicting data
                     report=[ss1]
                 else:
